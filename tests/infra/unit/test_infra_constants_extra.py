@@ -71,7 +71,7 @@ class TestFlextInfraConstantsAlias:
     """Tests for module-level alias."""
 
     def test_c_alias_is_string(self) -> None:
-        tm.that(infra_c, is_=str)
+        tm.that(infra_c, is_=type)
 
     def test_c_alias_provides_access_to_namespaces(self) -> None:
         tm.that(hasattr(infra_c, "Infra"), eq=True)

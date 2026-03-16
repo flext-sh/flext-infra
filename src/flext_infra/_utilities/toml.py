@@ -190,16 +190,14 @@ class FlextInfraUtilitiesToml:
                 )
             except ValidationError:
                 return None
-        if isinstance(raw_value, list):
-            try:
-                return FlextInfraUtilitiesToml._get_container_list_adapter().validate_python(
+        try:
+            return (
+                FlextInfraUtilitiesToml._get_container_list_adapter().validate_python(
                     raw_value
                 )
-            except ValidationError:
-                return None
-        if not isinstance(raw_value, (dict, list)):
+            )
+        except ValidationError:
             return None
-        return None
 
     @staticmethod
     def table_string_keys(table: Table) -> list[str]:
@@ -240,9 +238,11 @@ class FlextInfraUtilitiesToml:
             or failure with descriptive error.
 
         """
+        if not path.exists():
+            return r[TOMLDocument].fail(f"failed to read TOML: {path}")
         doc = FlextInfraUtilitiesToml.read(path)
         if doc is None:
-            return r[TOMLDocument].fail(f"failed to read TOML: {path}")
+            return r[TOMLDocument].fail(f"TOML parse failed: {path}")
         return r[TOMLDocument].ok(doc)
 
     @staticmethod

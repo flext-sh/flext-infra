@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from flext_tests.models import FlextTestsModels
 
+from flext_infra import FlextInfraModels
+
 
 class FlextInfraTestModels(FlextTestsModels):
     """Infra test models extending FlextTestsModels with infra-specific models.
@@ -19,7 +21,7 @@ class FlextInfraTestModels(FlextTestsModels):
     All base models from FlextTestsModels are available through inheritance.
     """
 
-    class Infra:
+    class Infra(FlextInfraModels.Infra):
         """Infra-specific models namespace."""
 
         class Tests:

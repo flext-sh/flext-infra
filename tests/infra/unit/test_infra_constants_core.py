@@ -112,7 +112,7 @@ class TestFlextInfraConstantsExcludedNamespace:
             "t.Tests.Matcher.MatcherKwargValue",
             infra_c.Infra.Excluded.COMMON_EXCLUDED_DIRS,
         )
-        tm.that(excluded, is_=str)
+        tm.that(excluded, is_=frozenset)
 
     def test_common_excluded_dirs_contains_standard_dirs(self) -> None:
         excluded = cast(
@@ -172,19 +172,19 @@ class TestFlextInfraConstantsExcludedNamespace:
                 "t.Tests.Matcher.MatcherKwargValue",
                 infra_c.Infra.Excluded.DOC_EXCLUDED_DIRS,
             ),
-            is_=str,
+            is_=frozenset,
         )
         tm.that(
             cast(
                 "t.Tests.Matcher.MatcherKwargValue",
                 infra_c.Infra.Excluded.PYPROJECT_SKIP_DIRS,
             ),
-            is_=str,
+            is_=frozenset,
         )
         tm.that(
             cast(
                 "t.Tests.Matcher.MatcherKwargValue",
                 infra_c.Infra.Excluded.CHECK_EXCLUDED_DIRS,
             ),
-            is_=str,
+            is_=frozenset,
         )

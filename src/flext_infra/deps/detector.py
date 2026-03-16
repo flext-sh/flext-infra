@@ -177,7 +177,10 @@ def main() -> int:
         if isinstance(deps_type, type):
             detector_type = deps_type
     root_module = sys.modules.get("flext_infra")
-    if root_module is not None:
+    if (
+        root_module is not None
+        and detector_type is FlextInfraRuntimeDevDependencyDetector
+    ):
         root_type = getattr(
             root_module,
             "FlextInfraRuntimeDevDependencyDetector",
