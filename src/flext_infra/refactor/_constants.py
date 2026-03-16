@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from pathlib import Path
-from typing import ClassVar, TypeAlias
+from typing import ClassVar
 
 
 class FlextInfraRefactorConstants:
@@ -342,7 +342,7 @@ class FlextInfraRefactorConstants:
         "integration",
         "app",
     })
-    ProjectKind: TypeAlias = str
+    type ProjectKind = str
 
 
 __all__ = ["FlextInfraRefactorConstants"]

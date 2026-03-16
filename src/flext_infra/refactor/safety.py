@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TypeAlias, overload
+from typing import overload
 
 from flext_core import r
 
 from flext_infra import c, m, p, u
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 
-RBool: TypeAlias = r[bool]
-RStr: TypeAlias = r[str]
-RCheckpoint: TypeAlias = r[m.Infra.Refactor.Checkpoint]
+type RBool = r[bool]
+type RStr = r[str]
+type RCheckpoint = r[m.Infra.Refactor.Checkpoint]
 
 
 class FlextInfraRefactorSafetyManager:

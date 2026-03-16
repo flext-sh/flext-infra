@@ -32,7 +32,13 @@ class FlextInfraRefactorMROResolver:
     ) -> tuple[m.Infra.Refactor.FamilyMROResolution, ...]:
         """Resolve and validate MRO for all facade families."""
         resolutions: list[m.Infra.Refactor.FamilyMROResolution] = []
-        for family in ("c", "t", "p", "m", "u"):
+        for family in (
+            c.FacadeFamily.C,
+            c.FacadeFamily.T,
+            c.FacadeFamily.P,
+            c.FacadeFamily.M,
+            c.FacadeFamily.U,
+        ):
             facade_class = family_classes[family]
             expected_chain = expected_base_chains[family]
             resolutions.append(
@@ -98,7 +104,13 @@ class FlextInfraRefactorMROResolver:
         family_chains: Mapping[str, Sequence[str]],
     ) -> dict[t.Infra.FacadeFamily, tuple[str, ...]]:
         normalized: dict[t.Infra.FacadeFamily, tuple[str, ...]] = {}
-        for family in ("c", "t", "p", "m", "u"):
+        for family in (
+            c.FacadeFamily.C,
+            c.FacadeFamily.T,
+            c.FacadeFamily.P,
+            c.FacadeFamily.M,
+            c.FacadeFamily.U,
+        ):
             raw_chain = family_chains.get(family)
             if raw_chain is None:
                 msg = f"Missing expected family chain for {family!r}."

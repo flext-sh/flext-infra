@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from enum import StrEnum, unique
 from typing import Final
 
 from flext_core import FlextConstants
@@ -524,6 +525,14 @@ class FlextInfraConstants(FlextConstants):
 
         class Refactor(FlextInfraRefactorConstants):
             """Refactor module constants via MRO."""
+
+    @unique
+    class FacadeFamily(StrEnum):
+        C = "c"
+        T = "t"
+        P = "p"
+        M = "m"
+        U = "u"
 
 
 c = FlextInfraConstants

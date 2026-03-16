@@ -15,10 +15,12 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import Literal, TypeAlias
+from typing import TypeAlias
 
 from flext_core import FlextTypes
 from pydantic import BaseModel
+
+from flext_infra import c
 
 
 class FlextInfraTypes(FlextTypes):
@@ -96,7 +98,7 @@ class FlextInfraTypes(FlextTypes):
             int | list[Mapping[str, FlextTypes.Scalar]],
         ]
         "Workspace PR orchestration summary."
-        type FacadeFamily = Literal["c", "t", "p", "m", "u"]
+        type FacadeFamily = c.FacadeFamily
         "Facade family identifier for MRO chain resolution."
         type ExpectedBase = type | str
         "Expected MRO base: a class or its qualified name."

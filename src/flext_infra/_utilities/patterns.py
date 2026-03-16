@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from typing import ClassVar, TypeGuard
+from typing import ClassVar, TypeIs
 
 
 class FlextInfraUtilitiesPatterns:
@@ -66,7 +66,7 @@ class FlextInfraUtilitiesPatterns:
     """Match inline code spans for stripping before analysis."""
 
     @staticmethod
-    def _is_str_pattern(value: re.Pattern[str] | None) -> TypeGuard[re.Pattern[str]]:
+    def _is_str_pattern(value: re.Pattern[str] | None) -> TypeIs[re.Pattern[str]]:
         return isinstance(value, re.Pattern)
 
     @staticmethod

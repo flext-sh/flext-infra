@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from enum import StrEnum
+from enum import StrEnum, unique
 from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
@@ -19,6 +19,7 @@ from flext_core import r, s
 from flext_infra import c, output, u
 
 
+@unique
 class WorkspaceMode(StrEnum):
     """Workspace execution mode enumeration."""
 
