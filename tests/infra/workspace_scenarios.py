@@ -3,8 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from pydantic import ConfigDict
-from pydantic.dataclasses import dataclass
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WorkspaceFactoryLike(Protocol):
@@ -13,9 +12,10 @@ class WorkspaceFactoryLike(Protocol):
     def create_full(self, tmp_path: Path, name: str) -> Path: ...
 
 
-@dataclass(config=ConfigDict(frozen=True))
-class EmptyScenario:
-    workspace_name: str = "workspace"
+class EmptyScenario(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    workspace_name: str = Field(default="workspace")
 
     def build(self, factory: WorkspaceFactoryLike, tmp_path: Path) -> Path:
         _ = factory
@@ -24,25 +24,28 @@ class EmptyScenario:
         return root
 
 
-@dataclass(config=ConfigDict(frozen=True))
-class MinimalScenario:
-    project_name: str = "test-proj"
+class MinimalScenario(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    project_name: str = Field(default="test-proj")
 
     def build(self, factory: WorkspaceFactoryLike, tmp_path: Path) -> Path:
         return factory.create_minimal(tmp_path=tmp_path, name=self.project_name)
 
 
-@dataclass(config=ConfigDict(frozen=True))
-class FullScenario:
-    project_name: str = "full-proj"
+class FullScenario(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    project_name: str = Field(default="full-proj")
 
     def build(self, factory: WorkspaceFactoryLike, tmp_path: Path) -> Path:
         return factory.create_full(tmp_path=tmp_path, name=self.project_name)
 
 
-@dataclass(config=ConfigDict(frozen=True))
-class BrokenScenario:
-    project_name: str = "broken-proj"
+class BrokenScenario(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    project_name: str = Field(default="broken-proj")
 
     def build(self, factory: WorkspaceFactoryLike, tmp_path: Path) -> Path:
         project_root = factory.create_minimal(tmp_path=tmp_path, name=self.project_name)
