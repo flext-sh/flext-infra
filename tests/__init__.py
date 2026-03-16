@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-import importlib.util
+import importlib
+import sys
 from pathlib import Path
 
-_flext_core_tests = (
-    Path(__file__).parent.parent.parent / "flext-core" / "tests" / "__init__.py"
-)
-_spec = importlib.util.spec_from_file_location("_flext_core_tests", _flext_core_tests)
-if _spec and _spec.loader:
-    _module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_module)
-    TestsFlextModels = _module.TestsFlextModels
-else:
-    raise ImportError("Could not load flext-core tests module")
+_flext_core_path = Path(__file__).parent.parent.parent / "flext-core"
+if str(_flext_core_path) not in sys.path:
+    sys.path.insert(0, str(_flext_core_path))
+
+_tests_models = importlib.import_module("tests.models")
+TestsFlextModels = _tests_models.TestsFlextModels
 
 __all__ = ["TestsFlextModels"]
