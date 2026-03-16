@@ -87,6 +87,39 @@ class FlextInfraNamespaceEnforcerModels:
                 suggested_import=suggested_import,
             )
 
+    class NamespaceSourceViolation(FlextModels.ArbitraryTypesModel):
+        model_config = ConfigDict(frozen=True)
+
+        file: Annotated[str, Field(min_length=1)]
+        line: Annotated[int, Field(ge=1)]
+        alias: Annotated[str, Field(min_length=1)]
+        current_source: Annotated[str, Field(min_length=1)]
+        correct_source: Annotated[str, Field(min_length=1)]
+        current_import: Annotated[str, Field()]
+        suggested_import: Annotated[str, Field()]
+
+        @classmethod
+        def create(
+            cls,
+            *,
+            file: str,
+            line: int,
+            alias: str,
+            current_source: str,
+            correct_source: str,
+            current_import: str,
+            suggested_import: str,
+        ) -> Self:
+            return cls(
+                file=file,
+                line=line,
+                alias=alias,
+                current_source=current_source,
+                correct_source=correct_source,
+                current_import=current_import,
+                suggested_import=suggested_import,
+            )
+
     class InternalImportViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
@@ -249,6 +282,10 @@ class FlextInfraNamespaceEnforcerModels:
             list[FlextInfraNamespaceEnforcerModels.ImportAliasViolation],
             Field(default_factory=list),
         ]
+        namespace_source_violations: Annotated[
+            list[FlextInfraNamespaceEnforcerModels.NamespaceSourceViolation],
+            Field(default_factory=list),
+        ]
         internal_import_violations: Annotated[
             list[FlextInfraNamespaceEnforcerModels.InternalImportViolation],
             Field(default_factory=list),
@@ -294,6 +331,9 @@ class FlextInfraNamespaceEnforcerModels:
             import_violations: list[
                 FlextInfraNamespaceEnforcerModels.ImportAliasViolation
             ],
+            namespace_source_violations: list[
+                FlextInfraNamespaceEnforcerModels.NamespaceSourceViolation
+            ],
             internal_import_violations: list[
                 FlextInfraNamespaceEnforcerModels.InternalImportViolation
             ],
@@ -326,6 +366,7 @@ class FlextInfraNamespaceEnforcerModels:
                 facade_statuses=facade_statuses,
                 loose_objects=loose_objects,
                 import_violations=import_violations,
+                namespace_source_violations=namespace_source_violations,
                 internal_import_violations=internal_import_violations,
                 manual_protocol_violations=manual_protocol_violations,
                 cyclic_imports=cyclic_imports,
@@ -346,6 +387,7 @@ class FlextInfraNamespaceEnforcerModels:
         total_facades_missing: Annotated[int, Field(default=0, ge=0)]
         total_loose_objects: Annotated[int, Field(default=0, ge=0)]
         total_import_violations: Annotated[int, Field(default=0, ge=0)]
+        total_namespace_source_violations: Annotated[int, Field(default=0, ge=0)]
         total_internal_import_violations: Annotated[int, Field(default=0, ge=0)]
         total_manual_protocol_violations: Annotated[int, Field(default=0, ge=0)]
         total_cyclic_imports: Annotated[int, Field(default=0, ge=0)]
@@ -365,6 +407,7 @@ class FlextInfraNamespaceEnforcerModels:
             total_facades_missing: int,
             total_loose_objects: int,
             total_import_violations: int,
+            total_namespace_source_violations: int,
             total_internal_import_violations: int,
             total_manual_protocol_violations: int,
             total_cyclic_imports: int,
@@ -381,6 +424,7 @@ class FlextInfraNamespaceEnforcerModels:
                 total_facades_missing=total_facades_missing,
                 total_loose_objects=total_loose_objects,
                 total_import_violations=total_import_violations,
+                total_namespace_source_violations=total_namespace_source_violations,
                 total_internal_import_violations=total_internal_import_violations,
                 total_manual_protocol_violations=total_manual_protocol_violations,
                 total_cyclic_imports=total_cyclic_imports,
@@ -398,6 +442,7 @@ class FlextInfraNamespaceEnforcerModels:
                 self.total_facades_missing > 0
                 or self.total_loose_objects > 0
                 or self.total_import_violations > 0
+                or self.total_namespace_source_violations > 0
                 or self.total_internal_import_violations > 0
                 or self.total_manual_protocol_violations > 0
                 or self.total_cyclic_imports > 0
