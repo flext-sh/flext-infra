@@ -77,10 +77,10 @@ class_nesting:
     target_name: _Predicate
     confidence: high
     reason: top_level_class_in_private_directory
-  - loose_name: ResultHelpers
+  - loose_name: FlextUtilitiesResultHelpers
     current_file: flext-core/src/flext_core/_utilities/result_helpers.py
     target_namespace: FlextUtilities
-    target_name: ResultHelpers
+    target_name: FlextUtilitiesResultHelpers
     confidence: high
     reason: top_level_class_in_private_directory
   - loose_name: DispatchMessage

@@ -554,16 +554,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: _utilities
-    source_symbol: ResultHelpers
+    source_symbol: FlextUtilitiesResultHelpers
     target_facade_class: FlextUtilities
-    target_namespace_path: FlextUtilities.ResultHelpers
+    target_namespace_path: FlextUtilities.FlextUtilitiesResultHelpers
     expected_base_chain: *id006
     forbidden_targets: *id007
     confidence: 0.9
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: ResultHelpers
+          symbol: FlextUtilitiesResultHelpers
       - type: target_facade_exists
         params:
           facade: FlextUtilities

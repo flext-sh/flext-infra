@@ -566,19 +566,37 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
         is_core_internal = current_pkg.startswith(
             c.Infra.Packages.CORE_UNDERSCORE + ".",
         )
-        if current_pkg == c.Infra.Packages.CORE_UNDERSCORE or is_core_internal:
+        is_l0_typings = current_pkg.startswith(
+            c.Infra.Packages.CORE_UNDERSCORE + "._typings",
+        )
+        if is_l0_typings:
+            out.extend([
+                "# L0-OVERRIDE — inline lazy to avoid circular: _typings -> _utilities.lazy -> typings -> _typings",
+                "from __future__ import annotations",
+                "",
+                "import importlib",
+                "import sys",
+            ])
+        elif current_pkg == c.Infra.Packages.CORE_UNDERSCORE or is_core_internal:
             lazy_import = "from flext_core._utilities.lazy import cleanup_submodule_namespace, lazy_getattr"
+            out.extend([
+                "from __future__ import annotations",
+                "",
+                "from typing import TYPE_CHECKING",
+                "",
+                lazy_import,
+            ])
         else:
             lazy_import = (
                 "from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr"
             )
-        out.extend([
-            "from __future__ import annotations",
-            "",
-            "from typing import TYPE_CHECKING",
-            "",
-            lazy_import,
-        ])
+            out.extend([
+                "from __future__ import annotations",
+                "",
+                "from typing import TYPE_CHECKING",
+                "",
+                lazy_import,
+            ])
         if eager_typevar_names:
             typings_mod = f"{current_pkg}.typings"
             sorted_tvars = sorted(eager_typevar_names)
@@ -590,8 +608,9 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
             else:
                 out.append(eager_line)
         out.append("")
-        out.extend(FlextInfraUtilitiesCodegen.generate_type_checking(groups))
-        out.append("")
+        if not is_l0_typings:
+            out.extend(FlextInfraUtilitiesCodegen.generate_type_checking(groups))
+            out.append("")
         for name, value in sorted(inline_constants.items()):
             out.append(f'{name} = "{value}"')
         if inline_constants:
@@ -607,20 +626,50 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
         out.append("__all__ = [")
         out.extend(f'    "{exp}",' for exp in sorted(exports))
         out.extend(["]", "", ""])
-        out.extend([
-            "def __getattr__(name: str) -> FlextTypes.ModuleExport:",
-            '    """Lazy-load module attributes on first access (PEP 562)."""',
-            "    return lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)",
-            "",
-            "",
-            "def __dir__() -> list[str]:",
-            '    """Return list of available attributes for dir() and autocomplete."""',
-            "    return sorted(__all__)",
-            "",
-            "",
-            "cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)",
-            "",
-        ])
+        if is_l0_typings:
+            out.extend([
+                "def __getattr__(name: str) -> object:",
+                "    if name in _LAZY_IMPORTS:",
+                "        module_path, attr_name = _LAZY_IMPORTS[name]",
+                "        module = importlib.import_module(module_path)",
+                "        value = getattr(module, attr_name)",
+                "        globals()[name] = value",
+                "        return value",
+                '    msg = f"module {__name__!r} has no attribute {name!r}"',
+                "    raise AttributeError(msg)",
+                "",
+                "",
+                "def __dir__() -> list[str]:",
+                "    return sorted(__all__)",
+                "",
+                "",
+                "_current = sys.modules.get(__name__)",
+                "if _current is not None:",
+                '    _parts = __name__.split(".")',
+                "    for _mod_path, _ in _LAZY_IMPORTS.values():",
+                "        if _mod_path:",
+                '            _mp = _mod_path.split(".")',
+                "            if len(_mp) > len(_parts) and _mp[: len(_parts)] == _parts:",
+                "                _sub = getattr(_current, _mp[len(_parts)], None)",
+                "                if _sub is not None and isinstance(_sub, type(sys)):",
+                "                    delattr(_current, _mp[len(_parts)])",
+                "",
+            ])
+        else:
+            out.extend([
+                "def __getattr__(name: str) -> FlextTypes.ModuleExport:",
+                '    """Lazy-load module attributes on first access (PEP 562)."""',
+                "    return lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)",
+                "",
+                "",
+                "def __dir__() -> list[str]:",
+                '    """Return list of available attributes for dir() and autocomplete."""',
+                "    return sorted(__all__)",
+                "",
+                "",
+                "cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)",
+                "",
+            ])
         return "\n".join(out)
 
     @staticmethod
