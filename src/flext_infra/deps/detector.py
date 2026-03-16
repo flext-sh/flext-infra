@@ -10,7 +10,7 @@ from typing import Protocol, runtime_checkable
 from flext_core import FlextLogger, r
 
 import flext_infra as infra
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.deps._detector_runtime import (
     DepsService,
     FlextInfraDependencyDetectorRuntime,
@@ -30,7 +30,7 @@ FlextInfraDependencyDetectionService = infra.FlextInfraDependencyDetectionServic
 class FlextInfraRuntimeDevDependencyDetector:
     """CLI tool for detecting runtime vs dev dependencies across workspace."""
 
-    log = FlextLogger.create_module_logger(__name__)
+    log: p.Logger = FlextLogger.create_module_logger(__name__)
     paths: PathsService
     reporting: ReportingService
     json: JsonService

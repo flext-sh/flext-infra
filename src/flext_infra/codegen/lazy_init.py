@@ -128,8 +128,6 @@ class FlextInfraCodegenLazyInit(s[int]):
         if files_result.is_failure:
             return []
         files = files_result.value
-        if not isinstance(files, list):
-            return []
         for py_file in files:
             if any(
                 part.startswith(".") or part in {"vendor", "node_modules", ".venv"}

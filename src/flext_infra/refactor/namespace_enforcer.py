@@ -43,6 +43,7 @@ class FlextInfraNamespaceEnforcer:
         total_manual_protocol_v = 0
         total_manual_typing_v = 0
         total_compat_alias_v = 0
+        total_namespace_source_v = 0
         total_parse_failures = 0
         total_files = 0
         for project_root in project_roots:
@@ -63,6 +64,7 @@ class FlextInfraNamespaceEnforcer:
             total_manual_protocol_v += len(report.manual_protocol_violations)
             total_manual_typing_v += len(report.manual_typing_violations)
             total_compat_alias_v += len(report.compatibility_alias_violations)
+            total_namespace_source_v += len(report.namespace_source_violations)
             total_parse_failures += len(report.parse_failures)
             total_files += report.files_scanned
         return nem.WorkspaceEnforcementReport.create(
@@ -71,6 +73,7 @@ class FlextInfraNamespaceEnforcer:
             total_facades_missing=total_missing,
             total_loose_objects=total_loose,
             total_import_violations=total_import_v,
+            total_namespace_source_violations=total_namespace_source_v,
             total_internal_import_violations=total_internal_import_v,
             total_cyclic_imports=total_cyclic,
             total_runtime_alias_violations=total_alias_v,
@@ -266,6 +269,7 @@ class FlextInfraNamespaceEnforcer:
             facade_statuses=facade_statuses,
             loose_objects=loose_objects,
             import_violations=import_violations,
+            namespace_source_violations=[],
             internal_import_violations=internal_import_violations,
             manual_protocol_violations=manual_protocol_violations,
             cyclic_imports=cyclic_imports,

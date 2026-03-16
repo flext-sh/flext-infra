@@ -12,8 +12,6 @@ from __future__ import annotations
 import re
 from typing import ClassVar, TypeGuard
 
-from flext_infra.typings import t
-
 
 class FlextInfraUtilitiesPatterns:
     """Centralized regex patterns for infrastructure operations.
@@ -68,7 +66,7 @@ class FlextInfraUtilitiesPatterns:
     """Match inline code spans for stripping before analysis."""
 
     @staticmethod
-    def _is_compiled_pattern(value: t.Infra.InfraValue) -> TypeGuard[re.Pattern[str]]:
+    def _is_str_pattern(value: re.Pattern[str] | None) -> TypeGuard[re.Pattern[str]]:
         return isinstance(value, re.Pattern)
 
     @staticmethod
@@ -87,10 +85,10 @@ class FlextInfraUtilitiesPatterns:
             True
 
         """
-        pattern_obj: t.Infra.InfraValue = getattr(
+        pattern_obj: re.Pattern[str] | None = getattr(
             FlextInfraUtilitiesPatterns, pattern_name, None
         )
-        if not FlextInfraUtilitiesPatterns._is_compiled_pattern(pattern_obj):
+        if not FlextInfraUtilitiesPatterns._is_str_pattern(pattern_obj):
             return False
         return pattern_obj.search(text) is not None
 

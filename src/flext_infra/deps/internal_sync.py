@@ -278,9 +278,7 @@ class FlextInfraInternalDependencySyncService:
         if remote.is_failure:
             return None
         remote_val = remote.value
-        if isinstance(remote_val, str):
-            return self.owner_from_remote_url(remote_val.strip())
-        return None
+        return self.owner_from_remote_url(remote_val.strip())
 
     def is_workspace_mode(self, project_root: Path) -> tuple[bool, Path | None]:
         """Determine workspace mode and return resolved workspace root."""
@@ -296,7 +294,7 @@ class FlextInfraInternalDependencySyncService:
         )
         if superproject.is_success:
             sp_val = superproject.value
-            value = sp_val.strip() if isinstance(sp_val, str) else ""
+            value = sp_val.strip()
             if value:
                 return (True, Path(value))
         heuristic_workspace_root = self.workspace_root_from_parents(project_root)
@@ -382,13 +380,13 @@ class FlextInfraInternalDependencySyncService:
         branch = u.Infra.git_current_branch(project_root)
         if branch.is_success:
             branch_val = branch.value
-            current = branch_val.strip() if isinstance(branch_val, str) else ""
+            current = branch_val.strip()
             if current and current != c.Infra.Git.HEAD:
                 return current
         tag = u.Infra.git_run(["describe", "--tags", "--exact-match"], cwd=project_root)
         if tag.is_success:
             tag_val = tag.value
-            return tag_val.strip() if isinstance(tag_val, str) else c.Infra.Git.MAIN
+            return tag_val.strip()
         return c.Infra.Git.MAIN
 
     def synthesized_repo_map(
