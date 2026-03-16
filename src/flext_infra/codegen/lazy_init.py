@@ -127,7 +127,9 @@ class FlextInfraCodegenLazyInit(s[int]):
         )
         if files_result.is_failure:
             return []
-        for py_file in files_result.value:
+        files = files_result.value
+        assert isinstance(files, list)
+        for py_file in files:
             if any(
                 part.startswith(".") or part in {"vendor", "node_modules", ".venv"}
                 for part in py_file.parts
@@ -181,7 +183,11 @@ class FlextInfraCodegenLazyInit(s[int]):
         lazy_map.update(version_lazy)
 
         # 5. Handle single-letter aliases via ALIAS_TO_SUFFIX
-        self._resolve_aliases(lazy_map)
+        # IMPORTANT: Only generate single-letter aliases at root-level public packages.
+        # Internal packages (_models, _utilities, _dispatcher, etc.) MUST NOT receive
+        # short aliases — they conflict with the root namespace MRO (d, m, s, r, …).
+        if not pkg_dir.name.startswith("_"):
+            self._resolve_aliases(lazy_map)
 
         # 6. Remove infrastructure names (eagerly imported, not lazy)
         for infra_name in ("cleanup_submodule_namespace", "lazy_getattr"):

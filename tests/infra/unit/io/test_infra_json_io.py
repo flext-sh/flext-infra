@@ -10,9 +10,16 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tf, tm
+from pydantic import BaseModel
 
 from flext_infra import FlextInfraUtilitiesIo
-from tests.unit._models import SampleModel
+
+
+class SampleModel(BaseModel):
+    """Sample model for testing."""
+
+    name: str
+    value: int
 
 
 class TestFlextInfraJsonService:
