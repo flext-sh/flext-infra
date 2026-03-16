@@ -67,11 +67,20 @@ class TestGenerateTypeChecking:
     """Test generate_type_checking function."""
 
     def test_with_empty_groups(self) -> None:
-        """Test with no imports."""
+        """Test with no imports returns header + FlextTypes only."""
         groups: dict[str, list[tuple[str, str]]] = {}
         lines = FlextInfraUtilitiesCodegen.generate_type_checking(groups)
         tm.that(lines, contains="if TYPE_CHECKING:")
-        tm.that(any("pass" in line for line in lines), eq=True)
+        tm.that(any("FlextTypes" in line for line in lines), eq=True)
+
+    def test_with_empty_groups_no_flext_types(self) -> None:
+        """Test with no imports and no FlextTypes returns empty list."""
+        groups: dict[str, list[tuple[str, str]]] = {}
+        lines = FlextInfraUtilitiesCodegen.generate_type_checking(
+            groups,
+            include_flext_types=False,
+        )
+        tm.that(lines, eq=[])
 
     def test_with_single_module(self) -> None:
         """Test with single module."""

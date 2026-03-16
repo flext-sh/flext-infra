@@ -472,6 +472,8 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
     @staticmethod
     def generate_type_checking(
         groups: Mapping[str, list[tuple[str, str]]],
+        *,
+        include_flext_types: bool = True,
     ) -> list[str]:
         """Generate the ``if TYPE_CHECKING`` import block.
 
@@ -480,15 +482,19 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
 
         Args:
             groups: Mapping of module names to list of (export_name, attr_name) tuples.
+            include_flext_types: Whether to include ``FlextTypes`` import.
+                Set to False for L0 typings to avoid circular
+                ``_typings -> typings -> _typings`` resolution.
 
         Returns:
             List of lines for the TYPE_CHECKING block.
 
         """
         lines: list[str] = ["if TYPE_CHECKING:"]
-        lines.append("    from flext_core.typings import FlextTypes")
+        if include_flext_types:
+            lines.append("    from flext_core.typings import FlextTypes")
         if not groups:
-            return lines
+            return lines if len(lines) > 1 else []
 
         def _emit_module(mod: str) -> None:
             items = groups[mod]
@@ -576,6 +582,8 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
                 "",
                 "import importlib",
                 "import sys",
+                "",
+                "from typing import TYPE_CHECKING",
             ])
         elif current_pkg == c.Infra.Packages.CORE_UNDERSCORE or is_core_internal:
             lazy_import = "from flext_core._utilities.lazy import cleanup_submodule_namespace, lazy_getattr"
@@ -608,9 +616,13 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
             else:
                 out.append(eager_line)
         out.append("")
-        if not is_l0_typings:
-            out.extend(FlextInfraUtilitiesCodegen.generate_type_checking(groups))
-            out.append("")
+        out.extend(
+            FlextInfraUtilitiesCodegen.generate_type_checking(
+                groups,
+                include_flext_types=not is_l0_typings,
+            )
+        )
+        out.append("")
         for name, value in sorted(inline_constants.items()):
             out.append(f'{name} = "{value}"')
         if inline_constants:

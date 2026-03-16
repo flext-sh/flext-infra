@@ -8,10 +8,10 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from flext_core import FlextLogger, r
+from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class _WorkspaceReport(Protocol):
@@ -116,7 +116,7 @@ class _DetectorRuntime(Protocol):
     json: JsonService
     deps: DepsService
     runner: RunnerService
-    log: FlextLogger
+    log: p.Logger
 
     @staticmethod
     def parser(default_limits_path: Path) -> argparse.ArgumentParser: ...
