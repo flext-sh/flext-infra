@@ -10,10 +10,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from _pytest.monkeypatch import MonkeyPatch
-
 from flext_core import r
-from flext_infra.check.services import FlextInfraWorkspaceChecker, run_cli
 from flext_tests import tm
+
+from flext_infra.check.services import FlextInfraWorkspaceChecker, run_cli
 
 
 def test_resolve_gates_maps_type_alias() -> None:

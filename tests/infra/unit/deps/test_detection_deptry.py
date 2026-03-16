@@ -4,9 +4,9 @@ import json
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import FlextInfraDependencyDetectionService
-from flext_tests import tm
 from tests.infra import m, t
 
 

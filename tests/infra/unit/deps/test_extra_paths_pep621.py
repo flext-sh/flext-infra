@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import tomlkit
+from flext_tests import tm
 
 from flext_infra import FlextInfraExtraPathsManager
-from flext_tests import tm
 from tests.infra import h
 
 

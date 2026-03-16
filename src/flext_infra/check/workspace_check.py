@@ -12,9 +12,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
+from flext_core import r, s, t
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
-from flext_core import r, s, t
 from flext_infra import (
     c,
     m,

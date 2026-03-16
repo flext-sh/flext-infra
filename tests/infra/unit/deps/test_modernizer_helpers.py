@@ -3,10 +3,10 @@ from __future__ import annotations
 import pytest
 import tomlkit
 import tomlkit.items
+from flext_tests import tb, tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import t, u
-from flext_tests import tb, tm
 
 array = u.Infra.array
 as_string_list = u.Infra.as_string_list

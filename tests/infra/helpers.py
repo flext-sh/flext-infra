@@ -21,6 +21,7 @@ from types import SimpleNamespace
 
 from flext_core import r
 from flext_tests import tm
+
 from tests.infra.typings import t
 
 

@@ -10,12 +10,12 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.check.services import (
     FlextInfraWorkspaceChecker,
     ProjectResult,
 )
-from flext_tests import tm
 
 from ... import h
 from ...models import m

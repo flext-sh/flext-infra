@@ -12,11 +12,11 @@ from pathlib import Path
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-
 from flext_core import r, t
+from flext_tests import tm
+
 from flext_infra.basemk.__main__ import _build_config, main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_tests import tm
 
 
 def test_basemk_main_with_no_command(monkeypatch: MonkeyPatch) -> None:

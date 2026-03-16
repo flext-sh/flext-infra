@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
+from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_core import r
 from flext_infra import c, m, t, u
 
 type RConfigMapping = r[t.Infra.ContainerDict]

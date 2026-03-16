@@ -15,6 +15,7 @@ from typing import override
 from urllib.parse import urlparse
 
 from flext_core import r, s
+
 from flext_infra import c, output, u
 
 

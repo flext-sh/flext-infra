@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.codegen as codegen_module
 from flext_infra.codegen import FlextInfraCodegenLazyInit
-from flext_tests import tm
 
 
 def test_codegen_getattr_raises_attribute_error() -> None:

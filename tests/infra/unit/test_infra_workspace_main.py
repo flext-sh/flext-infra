@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
+from flext_tests import tm
+
 from flext_infra._utilities.cli import FlextInfraUtilitiesCli
 from flext_infra.models import FlextInfraModels as m
 from flext_infra.workspace import __main__ as workspace_main
@@ -12,7 +13,6 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector, Workspac
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
-from flext_tests import tm
 
 
 def _cli(workspace: Path) -> FlextInfraUtilitiesCli.CliArgs:

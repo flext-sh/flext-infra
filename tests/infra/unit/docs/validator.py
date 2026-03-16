@@ -9,11 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import r, t
+from flext_tests import tm
+
 from flext_infra.docs.shared import FlextInfraDocsShared
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_tests import tm
 from tests.infra.models import m
 
 

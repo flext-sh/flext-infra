@@ -9,13 +9,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.check.services import (
     CheckIssue,
     FlextInfraWorkspaceChecker,
     GateExecution,
 )
-from flext_tests import tm
 
 from ...models import m
 

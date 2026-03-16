@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_tests import tm
+
+from flext_infra.docs.auditor import FlextInfraDocAuditor
 
 
 class TestLoadAuditBudgets:

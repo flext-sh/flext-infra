@@ -17,9 +17,8 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel
-
 from flext_core import FlextTypes
+from pydantic import BaseModel
 
 
 class FlextInfraTypes(FlextTypes):

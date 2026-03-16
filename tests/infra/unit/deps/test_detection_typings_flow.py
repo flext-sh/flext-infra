@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
-from flext_infra import FlextInfraDependencyDetectionService, u
 from flext_tests import tm
+
+from flext_infra import FlextInfraDependencyDetectionService, u
 from tests.infra import m, t
 
 

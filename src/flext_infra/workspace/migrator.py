@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import override
 
 import tomlkit
+from flext_core import r, s, t
 from pydantic import BaseModel, JsonValue, TypeAdapter
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_core import r, s, t
 from flext_infra import c, m, p, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 

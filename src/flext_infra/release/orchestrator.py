@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import override
 
 from flext_core import FlextLogger, r, s
+
 from flext_infra import c, m, u
 from flext_infra.release._reporting import FlextInfraReleaseReporting
 

@@ -9,9 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from flext_tests import tm
+
 from flext_infra.constants import c
 from flext_infra.models import FlextInfraModels
-from flext_tests import tm
 
 
 class TestExcludedProjects:

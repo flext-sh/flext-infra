@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.core as core_module
 from flext_infra.core import FlextInfraBaseMkValidator
-from flext_tests import tm
 
 
 class TestCoreModuleInit:

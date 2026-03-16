@@ -12,10 +12,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector, WorkspaceMode
 from flext_tests import tm
+
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector, WorkspaceMode
 
 
 @pytest.fixture

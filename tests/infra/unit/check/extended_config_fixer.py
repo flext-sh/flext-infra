@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import tomlkit
+from flext_tests import tm
 
 from flext_infra.check.services import FlextInfraConfigFixer
-from flext_tests import tm
 
 
 class TestConfigFixerProcessFile:

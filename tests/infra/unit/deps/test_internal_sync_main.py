@@ -4,11 +4,11 @@ import argparse
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
+from flext_tests import tm
+
 from flext_infra.deps import internal_sync
 from flext_infra.deps.internal_sync import main
-from flext_tests import tm
 from tests.infra import h, u
 
 

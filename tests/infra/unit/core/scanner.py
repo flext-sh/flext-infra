@@ -9,8 +9,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_infra.core.scanner import FlextInfraTextPatternScanner
 from flext_tests import tm
+
+from flext_infra.core.scanner import FlextInfraTextPatternScanner
 
 
 class TestScannerCore:

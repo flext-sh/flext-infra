@@ -11,6 +11,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
+
     from tests.infra.unit import (
         _utilities,
         basemk,
@@ -883,14 +884,6 @@ if TYPE_CHECKING:
     )
     from tests.infra.unit.test_infra_subprocess_extra import (
         TestFlextInfraCommandRunnerExtra,
-    )
-    from tests.infra.unit.test_infra_templates import (
-        engine,
-        test_engine_constants_shared,
-        test_multiple_instances_independent,
-        test_render_failure,
-        test_render_success,
-        test_template_constants,
     )
     from tests.infra.unit.test_infra_toml_io import (
         TestFlextInfraTomlDocument,
@@ -2343,7 +2336,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "discovery": ("tests.infra.unit.discovery", ""),
     "doc": ("tests.infra.unit.deps.test_modernizer_helpers", "doc"),
     "docs": ("tests.infra.unit.docs", ""),
-    "engine": ("tests.infra.unit.test_infra_templates", "engine"),
     "ensure_table": ("tests.infra.unit.deps.test_modernizer_helpers", "ensure_table"),
     "extract_dep_name": (
         "tests.infra.unit.deps.test_path_sync_helpers",
@@ -2588,10 +2580,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_engine_always_enables_class_nesting_file_rule": (
         "tests.infra.unit.refactor.test_infra_refactor_engine",
         "test_engine_always_enables_class_nesting_file_rule",
-    ),
-    "test_engine_constants_shared": (
-        "tests.infra.unit.test_infra_templates",
-        "test_engine_constants_shared",
     ),
     "test_ensure_future_annotations_after_docstring": (
         "tests.infra.unit.refactor.test_infra_refactor_legacy_and_annotations",
@@ -3029,10 +3017,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_mro_redundancy_checker_removes_nested_attribute_inheritance",
     ),
-    "test_multiple_instances_independent": (
-        "tests.infra.unit.test_infra_templates",
-        "test_multiple_instances_independent",
-    ),
     "test_parse_semver_invalid": (
         "tests.infra.unit.test_infra_versioning",
         "test_parse_semver_invalid",
@@ -3120,14 +3104,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_render_all_has_no_scripts_path_references": (
         "tests.infra.unit.basemk.engine",
         "test_render_all_has_no_scripts_path_references",
-    ),
-    "test_render_failure": (
-        "tests.infra.unit.test_infra_templates",
-        "test_render_failure",
-    ),
-    "test_render_success": (
-        "tests.infra.unit.test_infra_templates",
-        "test_render_success",
     ),
     "test_replace_project_version": (
         "tests.infra.unit.test_infra_versioning",
@@ -3305,10 +3281,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_target_path": (
         "tests.infra.unit.deps.test_path_sync_helpers",
         "test_target_path",
-    ),
-    "test_template_constants": (
-        "tests.infra.unit.test_infra_templates",
-        "test_template_constants",
     ),
     "test_unwrap_item": (
         "tests.infra.unit.deps.test_modernizer_helpers",
@@ -3784,7 +3756,6 @@ __all__ = [
     "discovery",
     "doc",
     "docs",
-    "engine",
     "ensure_table",
     "extract_dep_name",
     "fixer",
@@ -3862,7 +3833,6 @@ __all__ = [
     "test_detect_mode_with_path_object",
     "test_discover_projects_wrapper",
     "test_engine_always_enables_class_nesting_file_rule",
-    "test_engine_constants_shared",
     "test_ensure_future_annotations_after_docstring",
     "test_ensure_future_annotations_moves_existing_import_to_top",
     "test_ensure_pyrefly_config_phase_apply_errors",
@@ -3972,7 +3942,6 @@ __all__ = [
     "test_migrator_workspace_root_project_detection",
     "test_mro_checker_keeps_external_attribute_base",
     "test_mro_redundancy_checker_removes_nested_attribute_inheritance",
-    "test_multiple_instances_independent",
     "test_parse_semver_invalid",
     "test_parse_semver_result_type",
     "test_parse_semver_valid",
@@ -3995,8 +3964,6 @@ __all__ = [
     "test_release_tag_from_branch_valid",
     "test_render_all_generates_large_makefile",
     "test_render_all_has_no_scripts_path_references",
-    "test_render_failure",
-    "test_render_success",
     "test_replace_project_version",
     "test_resolve_gates_maps_type_alias",
     "test_rewrite_dep_paths_dry_run",
@@ -4042,7 +4009,6 @@ __all__ = [
     "test_sync_success_scenarios",
     "test_syntax_error_files_skipped",
     "test_target_path",
-    "test_template_constants",
     "test_unwrap_item",
     "test_unwrap_item_toml_item",
     "test_violation_analysis_counts_massive_patterns",

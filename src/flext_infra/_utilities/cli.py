@@ -15,10 +15,10 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from pydantic import BaseModel
-
 from flext_core import FlextRuntime, r
 from flext_core.models import FlextModels
+from pydantic import BaseModel
+
 from flext_infra import t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.output import output

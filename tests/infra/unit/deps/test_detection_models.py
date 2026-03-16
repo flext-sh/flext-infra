@@ -5,12 +5,13 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
+from flext_tests import tm
+
 from flext_infra import (
     FlextInfraDependencyDetectionService,
     dm,
     t,
 )
-from flext_tests import tm
 
 
 class TestFlextInfraDependencyDetectionModels:

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from flext_core import FlextProtocols, r
+
 from flext_infra.models import m
 from flext_infra.typings import t
 

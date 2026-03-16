@@ -4,10 +4,10 @@ import types
 from pathlib import Path
 
 import pytest
-
-import flext_infra.deps as detector_module
 from flext_core import r
 from flext_tests import tm
+
+import flext_infra.deps as detector_module
 from tests.infra.unit.deps.test_detector_detect import _DepsStub, _setup_detector
 
 

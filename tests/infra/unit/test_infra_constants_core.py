@@ -10,8 +10,9 @@ from __future__ import annotations
 
 from typing import cast
 
-from flext_infra import c as infra_c
 from flext_tests import t, tm
+
+from flext_infra import c as infra_c
 
 
 class TestFlextInfraConstantsPathsNamespace:

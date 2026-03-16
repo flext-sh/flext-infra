@@ -6,9 +6,9 @@ Tests lazy loading and __getattr__ fallthrough behavior.
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.deps as deps_mod
-from flext_tests import tm
 
 
 class TestFlextInfraDeps:

@@ -9,10 +9,10 @@ from types import SimpleNamespace
 
 import pytest
 import tomlkit
+from flext_tests import tm
 
 from flext_infra import FlextInfraPyprojectModernizer, u
 from flext_infra.deps.modernizer import main
-from flext_tests import tm
 
 
 class TestFlextInfraPyprojectModernizer:

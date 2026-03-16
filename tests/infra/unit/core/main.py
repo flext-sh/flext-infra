@@ -13,12 +13,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra.core.__main__ import (
     _run_basemk_validate,
     _run_inventory,
     _run_scan,
 )
-from flext_tests import tm
 
 _CWD = "/home/marlonsc/flext/flext-core"
 

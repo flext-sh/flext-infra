@@ -12,9 +12,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from flext_core import FlextLogger, r
 from pydantic import JsonValue
 
-from flext_core import FlextLogger, r
 from flext_infra import FlextInfraDocsShared, c, m, u
 
 logger = FlextLogger.create_module_logger(__name__)

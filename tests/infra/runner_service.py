@@ -9,8 +9,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_core import r, t
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_tests import s
+
+from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 
 
 class RealSubprocessRunner(s[str]):

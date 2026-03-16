@@ -6,9 +6,9 @@ import fnmatch
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
+from flext_core import r
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_core import r
 from flext_infra import c, m, t, u
 from flext_infra.refactor._base_rule import FlextInfraRefactorRule
 from flext_infra.refactor.rules.class_nesting import ClassNestingRefactorRule

@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import override
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.maintenance.__main__ import main
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from flext_tests import tm
 
 
 def _create_workspace(root: Path, *, python_minor: int = 13) -> Path:

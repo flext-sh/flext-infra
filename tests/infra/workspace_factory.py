@@ -12,11 +12,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
+from flext_core import t
+from flext_tests import m
 from pydantic import Field
 
-from flext_core import t
 from flext_infra.constants import FlextInfraConstants
-from flext_tests import m
 
 
 class WorkspaceFactory(m.Config):

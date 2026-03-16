@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import ClassVar, override
 
 import libcst as cst
+from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_core import r
 from flext_infra import c, m, p, u
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,

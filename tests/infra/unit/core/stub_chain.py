@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.core.stub_chain import FlextInfraStubSupplyChain
 from flext_tests import tm
+
+from flext_infra.core.stub_chain import FlextInfraStubSupplyChain
 
 
 class TestStubChainCore:

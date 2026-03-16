@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from flext_core import r
+
 from flext_infra import c, m, u
 from flext_infra.github.linter import FlextInfraWorkflowLinter
 from flext_infra.github.pr import main as pr_main

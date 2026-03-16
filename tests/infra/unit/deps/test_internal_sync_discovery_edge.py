@@ -4,8 +4,9 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import FlextInfraInternalDependencySyncService
 from flext_tests import tm
+
+from flext_infra import FlextInfraInternalDependencySyncService
 from tests.infra import h, t
 
 

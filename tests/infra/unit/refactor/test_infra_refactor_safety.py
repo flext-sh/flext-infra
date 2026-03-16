@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import overload, override
 
 import pytest
-
 from flext_core import r
 
 try:
@@ -15,8 +14,9 @@ try:
     )
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
-from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_tests import tm
+
+from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 
 
 class EngineSafetyStub(FlextInfraRefactorSafetyManager):

@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.docs.shared import FlextInfraDocsShared
 from flext_tests import tm
+
+from flext_infra.docs.shared import FlextInfraDocsShared
 
 
 class TestIterMarkdownFiles:

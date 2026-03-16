@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
+from flext_core import r
+from flext_tests import tm
 
 import flext_infra.release.__main__ as _main_mod
-from flext_core import r
 from flext_infra.release.__main__ import _resolve_tag, _resolve_version
-from flext_tests import tm
 
 
 def _args(

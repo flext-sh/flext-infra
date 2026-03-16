@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tf, tm
 
 from flext_infra.docs.fixer import FlextInfraDocFixer
-from flext_tests import tf, tm
 from tests.infra.models import m
 
 

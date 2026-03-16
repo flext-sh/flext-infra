@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
+from flext_tests import tm
+
 from flext_infra import (
     build_project_report,
     classify_issues,
@@ -13,7 +14,6 @@ from flext_infra import (
     module_to_types_package,
 )
 from flext_infra.deps import detection
-from flext_tests import tm
 
 
 class _StubService:

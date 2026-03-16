@@ -11,11 +11,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra.codegen import __main__ as codegen_main
 from flext_infra.codegen.constants_quality_gate import (
     FlextInfraCodegenConstantsQualityGate,
 )
-from flext_tests import tm
 
 
 class TestConstantsQualityGateCLIDispatch:

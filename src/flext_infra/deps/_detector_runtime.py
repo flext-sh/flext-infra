@@ -8,9 +8,9 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from flext_core import FlextLogger, r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_core import FlextLogger, r
 from flext_infra import c, m, t, u
 
 

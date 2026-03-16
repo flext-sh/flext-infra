@@ -6,8 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.check.services import FlextInfraWorkspaceChecker
 from flext_tests import tm
+
+from flext_infra.check.services import FlextInfraWorkspaceChecker
 
 
 class TestWorkspaceCheckerResolveGates:

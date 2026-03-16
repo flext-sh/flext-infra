@@ -5,9 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Annotated
 
-from pydantic import Field
-
 from flext_core import FlextModels
+from pydantic import Field
 
 
 class FlextInfraReleaseModels:

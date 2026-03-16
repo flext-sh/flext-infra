@@ -6,11 +6,11 @@ from collections.abc import MutableMapping
 from typing import cast
 
 import tomlkit
+from flext_tests import t, tm
 
 from flext_infra import m
 from flext_infra.deps._phases import EnsurePyreflyConfigPhase
 from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
-from flext_tests import t, tm
 
 
 def _test_tool_config() -> m.Infra.Deps.ToolConfigDocument:

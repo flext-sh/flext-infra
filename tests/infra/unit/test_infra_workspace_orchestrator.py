@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import pytest
-
 from flext_core import r
+from flext_tests import tm
+
 from flext_infra.models import FlextInfraModels as m
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_tests import tm
 
 
 def _cmd_out(exit_code: int = 0) -> m.Infra.Core.CommandOutput:

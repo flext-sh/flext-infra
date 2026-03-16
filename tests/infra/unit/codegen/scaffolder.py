@@ -11,8 +11,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from flext_tests import tm
+
+from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 
 _SRC_MODULE_FILES = (
     "constants.py",

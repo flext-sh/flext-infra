@@ -13,9 +13,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.check.services import FlextInfraWorkspaceChecker
-from flext_tests import tm
 from tests.infra import h
 
 from ...models import m

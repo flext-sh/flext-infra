@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol, override
 
+from flext_core import r, s
 from jinja2 import (
     Environment,
     FileSystemLoader,
@@ -13,7 +14,6 @@ from jinja2 import (
     select_autoescape,
 )
 
-from flext_core import r, s
 from flext_infra import c, m
 
 

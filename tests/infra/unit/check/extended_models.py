@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from flext_tests import tm
+
 from flext_infra.check.services import (
     CheckIssue,
     GateExecution,
     ProjectResult,
 )
-from flext_tests import tm
 
 from ...models import m
 

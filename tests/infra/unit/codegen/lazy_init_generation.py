@@ -11,11 +11,11 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.codegen as mod
 from flext_infra.codegen._utilities import FlextInfraUtilitiesCodegen
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_tests import tm
 
 _resolve_aliases: Callable[[dict[str, tuple[str, str]]], None] = getattr(
     FlextInfraCodegenLazyInit, "_resolve_aliases"

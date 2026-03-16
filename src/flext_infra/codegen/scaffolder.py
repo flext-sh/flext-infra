@@ -12,9 +12,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
+from flext_core import r, s, t
 from pydantic import BaseModel
 
-from flext_core import r, s, t
 from flext_infra import (
     FlextInfraNamespaceValidator,
     c,

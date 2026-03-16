@@ -6,11 +6,11 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 import tomlkit
+from flext_tests import tm
 
 from flext_infra import m, u
 from flext_infra.deps._phases import EnsurePyrightConfigPhase
 from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
-from flext_tests import tm
 
 
 def _test_tool_config() -> m.Infra.Deps.ToolConfigDocument:

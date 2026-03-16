@@ -15,9 +15,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
+from flext_core import FlextLogger, r
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_core import FlextLogger, r
 from flext_infra import FlextInfraDocsShared, c, m, output, t, u
 
 logger = FlextLogger.create_module_logger(__name__)

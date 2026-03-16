@@ -28,11 +28,13 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import ClassVar, override
 
-from flext_core import r, s
+from flext_core import r
+from flext_core.service import FlextService
+
 from flext_infra import c, output, u
 
 
-class FlextInfraMainCLI(s[int]):
+class FlextInfraMainCLI(FlextService[int]):
     """Unified CLI dispatcher for flext-infra groups.
 
     Encapsulates group routing, help display, and argv rewriting

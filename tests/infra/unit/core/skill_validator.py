@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.core.skill_validator import FlextInfraSkillValidator
-from flext_tests import tm
 
 _safe_load_yaml = FlextInfraSkillValidator._safe_load_yaml
 _normalize_string_list = FlextInfraSkillValidator._normalize_string_list

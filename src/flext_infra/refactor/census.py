@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 from flext_core import r
+
 from flext_infra import (
     CensusImportDiscoveryVisitor,
     CensusUsageCollector,

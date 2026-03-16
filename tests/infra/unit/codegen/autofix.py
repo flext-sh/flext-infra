@@ -14,9 +14,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_tests import tm
 
 
 def _create_project(

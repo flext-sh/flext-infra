@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import io
 
+from flext_tests import tm
+
 from flext_infra import u
 from flext_infra._utilities.output import OutputBackend
-from flext_tests import tm
 
 
 def _make_backend(

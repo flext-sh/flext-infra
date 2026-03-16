@@ -7,10 +7,10 @@ from typing import cast
 from unittest.mock import patch
 
 import tomlkit
+from flext_tests import t, tm
 
 from flext_infra import u
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer, main
-from flext_tests import t, tm
 
 
 class TestReadDoc:

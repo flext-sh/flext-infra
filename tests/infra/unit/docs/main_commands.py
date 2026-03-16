@@ -6,14 +6,14 @@ import argparse
 from collections.abc import Callable
 
 import pytest
-
 from flext_core import r, t
+from flext_tests import tm
+
 from flext_infra.docs import __main__ as docs_main
 from flext_infra.docs.__main__ import _run_build, _run_generate, _run_validate
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_tests import tm
 from tests.infra.models import m
 
 _R = m.Infra.Docs.DocsPhaseReport

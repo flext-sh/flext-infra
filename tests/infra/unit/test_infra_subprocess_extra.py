@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import t
-from flext_infra import FlextInfraUtilitiesSubprocess, m
 from flext_tests import tm
+
+from flext_infra import FlextInfraUtilitiesSubprocess, m
 
 
 class TestFlextInfraCommandRunnerExtra:

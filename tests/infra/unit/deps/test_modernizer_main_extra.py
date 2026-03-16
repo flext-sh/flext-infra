@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 import tomlkit
+from flext_tests import t, tm
 
 from flext_infra import FlextInfraPyprojectModernizer, FlextInfraUtilitiesCli
 from flext_infra.deps import modernizer as modernizer_module
-from flext_tests import t, tm
 
 
 def _modernizer_args(**overrides: t.Tests.object) -> argparse.Namespace:

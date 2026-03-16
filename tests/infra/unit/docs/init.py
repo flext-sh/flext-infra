@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.docs as docs_module
 from flext_infra.docs import (
@@ -18,7 +19,6 @@ from flext_infra.docs import (
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
 )
-from flext_tests import tm
 
 
 class TestFlextInfraDocs:

@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import shutil
 
-from flext_infra import FlextInfraUtilities
 from flext_tests import FlextTestsUtilities
+
+from flext_infra import FlextInfraUtilities
 
 
 class FlextInfraTestUtilities(FlextTestsUtilities):

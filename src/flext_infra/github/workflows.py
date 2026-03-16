@@ -13,9 +13,9 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TypeAlias
 
+from flext_core import r
 from pydantic import JsonValue
 
-from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesIo,
     FlextInfraUtilitiesSelection,

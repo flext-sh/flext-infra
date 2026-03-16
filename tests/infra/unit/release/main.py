@@ -10,9 +10,9 @@ import sys
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
+from flext_tests import tm
 
 from flext_infra.release.__main__ import _parse_args
-from flext_tests import tm
 
 
 class TestReleaseMainParsing:

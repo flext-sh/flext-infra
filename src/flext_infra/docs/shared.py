@@ -13,9 +13,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from flext_core import r
 from pydantic import BaseModel, JsonValue
 
-from flext_core import r
 from flext_infra import c, m, u
 
 

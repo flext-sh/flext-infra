@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-
 from flext_core import r, t
+from flext_tests import tm
+
 from flext_infra.release import orchestrator as _orch_mod
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from flext_tests import tm
 from tests.infra.unit.release._stubs import FakeReporting
 
 if TYPE_CHECKING:

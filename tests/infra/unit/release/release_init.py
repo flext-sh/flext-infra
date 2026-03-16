@@ -9,9 +9,9 @@ from __future__ import annotations
 import importlib
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.release import FlextInfraReleaseOrchestrator
-from flext_tests import tm
 
 
 class TestReleaseInit:

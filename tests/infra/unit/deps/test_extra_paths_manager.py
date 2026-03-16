@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 import tomlkit
+from flext_core import r
+from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_core import r
 from flext_infra import FlextInfraExtraPathsManager
 from flext_infra.deps import extra_paths
 from flext_infra.deps._constants import FlextInfraDepsConstants
-from flext_tests import tm
 from tests.infra import t
 
 

@@ -8,12 +8,12 @@ from pathlib import Path
 from typing import override
 
 import pytest
-
 from flext_core import r
+from flext_tests import tf, tm
+
 from flext_infra import m, t
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.workspace.sync import FlextInfraSyncService, main
-from flext_tests import tf, tm
 
 _S = FlextInfraSyncService
 SetupFn = Callable[[_S, pytest.MonkeyPatch], None]

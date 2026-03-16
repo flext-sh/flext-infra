@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import t
+
 from flext_infra import c, m, u
 from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 

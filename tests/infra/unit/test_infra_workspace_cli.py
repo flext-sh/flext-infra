@@ -10,8 +10,8 @@ import sys
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
-
 from flext_core import r
+
 from flext_infra import __main__ as workspace_cli, m
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 

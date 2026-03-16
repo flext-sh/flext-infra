@@ -4,10 +4,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
-from flext_infra import FlextInfraInternalDependencySyncService
 from flext_tests import tm
+
+from flext_infra import FlextInfraInternalDependencySyncService
 from tests.infra import t
 
 

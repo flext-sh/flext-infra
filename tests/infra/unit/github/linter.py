@@ -10,10 +10,10 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
-from flext_infra.github.linter import FlextInfraWorkflowLinter
 from flext_tests import tm
+
+from flext_infra.github.linter import FlextInfraWorkflowLinter
 from tests.infra.models import m
 from tests.infra.unit.github._stubs import StubJsonIo, StubRunner
 

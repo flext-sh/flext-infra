@@ -13,11 +13,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from flext_core import r, t
+from flext_tests import tm
+
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_infra.check.services import FlextInfraWorkspaceChecker
-from flext_tests import tm
 
 from ...helpers import h
 from ...models import m

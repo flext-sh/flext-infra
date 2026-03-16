@@ -10,8 +10,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_tests import tm
+
+from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 
 
 def _to_pascal(snake: str) -> str:

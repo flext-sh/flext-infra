@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import cast
 
 import tomlkit
+from flext_tests import t as tt, tm
 from tomlkit.items import Table
 
 from flext_infra import FlextInfraUtilitiesToml, t
-from flext_tests import t as tt, tm
 
 
 class TestFlextInfraTomlRead:

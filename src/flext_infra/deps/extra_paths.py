@@ -5,11 +5,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesPaths,
     FlextInfraUtilitiesToml,

@@ -12,8 +12,9 @@ from __future__ import annotations
 import io
 import re
 
-from flext_infra._utilities.output import OutputBackend
 from flext_tests import tm
+
+from flext_infra._utilities.output import OutputBackend
 
 ANSI_RE = re.compile(r"\033\[\d+m")
 

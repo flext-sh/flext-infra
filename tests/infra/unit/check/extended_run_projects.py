@@ -10,6 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import m
 from flext_infra.check.services import (
@@ -18,7 +19,6 @@ from flext_infra.check.services import (
     GateExecution,
     ProjectResult,
 )
-from flext_tests import tm
 
 CheckProjectStub = Callable[[Path, list[str], Path], ProjectResult]
 

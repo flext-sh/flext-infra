@@ -13,9 +13,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
+from flext_core import r, s, t
 from pydantic import BaseModel
 
-from flext_core import r, s, t
 from flext_infra import (
     FlextInfraNamespaceValidator,
     FlextInfraUtilitiesDiscovery,

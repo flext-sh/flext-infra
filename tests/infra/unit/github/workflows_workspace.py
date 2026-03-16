@@ -9,9 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import r
+from flext_tests import tm
+
 from flext_infra import m
 from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
-from flext_tests import tm
 from tests.infra.unit.github._stubs import (
     StubJsonIo,
     StubSelector,

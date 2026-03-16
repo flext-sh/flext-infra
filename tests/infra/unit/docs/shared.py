@@ -9,11 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
+from flext_tests import tm
+
 from flext_infra.constants import c
 from flext_infra.docs.shared import FlextInfraDocsShared
-from flext_tests import tm
 from tests.infra.models import m
 
 _OUT = c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR

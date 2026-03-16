@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import ConfigDict, Field
-
 from flext_core import FlextModels
+from pydantic import ConfigDict, Field
 
 
 class FlextInfraGithubModels:

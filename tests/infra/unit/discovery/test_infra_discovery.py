@@ -8,10 +8,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
-from flext_infra import FlextInfraUtilitiesDiscovery, m
 from flext_tests import tm
+
+from flext_infra import FlextInfraUtilitiesDiscovery, m
 
 
 class TestFlextInfraDiscoveryService:

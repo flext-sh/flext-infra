@@ -12,8 +12,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_tests import tm
+
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 
 def _create_init_file(directory: Path, content: str) -> Path:

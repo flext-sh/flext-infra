@@ -5,11 +5,11 @@ from __future__ import annotations
 import argparse
 
 import pytest
-
 from flext_core import r
+from flext_tests import tm
+
 from flext_infra.github import pr as pr_module
 from flext_infra.github.pr import FlextInfraPrManager, main
-from flext_tests import tm
 from tests.infra.helpers import h
 from tests.infra.typings import t
 from tests.infra.unit.github._stubs import StubPrManager, StubUtilities
