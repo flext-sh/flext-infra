@@ -1,0 +1,566 @@
+# [MANAGED] FLEXT pyproject standardization
+# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.
+# Sections with [CUSTOM] are project-specific extension points.
+# Sections with [AUTO] are derived from workspace layout and dependencies.
+# [MANAGED] build system
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = [ "poetry-core>=2" ]
+
+# [CUSTOM] project metadata
+[project]
+name = "flext-infra"
+version = "0.12.0-dev"
+description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
+readme = "README.md"
+keywords = [ "automation", "codegen", "flext", "infrastructure", "tooling" ]
+license = "MIT"
+maintainers = [ {email = "team@flext.sh", name = "FLEXT Team"} ]
+authors = [ {email = "team@flext.sh", name = "FLEXT Team"} ]
+requires-python = ">=3.13,<3.14"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: Pydantic :: 2",
+  "Framework :: Pydantic",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Code Generators",
+  "Typing :: Typed",
+]
+dependencies = [
+  "flext-core @ file:../flext-core",
+  "flext-cli @ file:../flext-cli",
+]
+urls = {Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md", Homepage = "https://github.com/flext-sh/flext-infra", Repository = "https://github.com/flext-sh/flext-infra"}
+scripts = {"flext-basemk" = "flext_infra.basemk:main", "flext-check" = "flext_infra.check:main", "flext-modernize" = "flext_infra.deps.modernizer:main", "flext-sync" = "flext_infra.workspace.sync:main", "flext-validate" = "flext_infra.core:main"}
+
+# [CUSTOM] poetry
+[tool.poetry]
+packages = [
+  {include = "flext_infra", from = "src"},
+]
+
+# [MANAGED] deptry
+[tool.deptry]
+known_first_party = [
+  "flext_infra",
+]
+pep621_dev_dependency_groups = [ "dev" ]
+
+[tool.bandit]
+exclude_dirs = [ "tests" ]
+severity = "MEDIUM"
+skips = [ "B101" ]
+targets = [ "src" ]
+
+# [MANAGED] codespell
+[tool.codespell]
+check-filenames = true
+ignore-words-list = "crate,nd"
+skip = ".git,poetry.lock,.mypy_cache,.pytest_cache,.ruff_cache"
+
+[tool.interrogate]
+exclude = [ "docs", "examples", "scripts", "tests" ]
+fail-under = 70
+ignore-init-method = true
+ignore-init-module = true
+ignore-magic = true
+ignore-module = false
+ignore-private = true
+ignore-property-decorators = true
+
+[tool.radon]
+cc_min = "B"
+exclude = "tests/*,examples/*"
+mi_min = "B"
+
+[tool.pyrefly]
+ignore-errors-in-generated-code = true
+project-excludes = [
+  "**/*_pb2*.py",
+  "**/*_pb2_grpc*.py",
+]
+python-version = "3.13"
+search-path = [
+  ".",
+]
+
+[tool.pyrefly.errors]
+bad-override = false
+deprecated = true
+implicit-abstract-class = true
+implicit-any = true
+implicitly-defined-attribute = true
+missing-override-decorator = true
+missing-source = true
+not-required-key-access = true
+open-unpacking = true
+protocol-implicitly-defined-attribute = true
+redundant-cast = true
+unannotated-attribute = true
+unannotated-parameter = true
+unannotated-return = true
+
+# [MANAGED] mypy
+[tool.mypy]
+disable_error_code = [
+  "prop-decorator",
+]
+mypy_path = [ "src" ]
+plugins = [
+  "pydantic.mypy",
+]
+python_version = "3.13"
+
+# [MANAGED] pydantic-mypy
+explicit_package_bases = true
+ignore_missing_imports = true
+namespace_packages = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.ruff]
+exclude = [
+  ".git",
+  ".mypy_cache",
+  ".pytest_cache",
+  ".ruff_cache",
+  ".venv",
+  "__pycache__",
+  "archive",
+  "backup",
+  "build",
+  "dist",
+  "htmlcov",
+  "temp-backup",
+  "typings",
+  "vendor",
+  "venv",
+]
+fix = true
+line-length = 88
+preview = true
+respect-gitignore = true
+show-fixes = true
+src = [
+  "src",
+]
+target-version = "py313"
+
+[tool.ruff.lint]
+ignore = [
+  "ANN202",
+  "B009",
+  "B010",
+  "B017",
+  "BLE001",
+  "C901",
+  "COM812",
+  "CPY001",
+  "D203",
+  "D213",
+  "D401",
+  "D417",
+  "DOC201",
+  "DOC202",
+  "DOC402",
+  "DOC501",
+  "DOC502",
+  "E501",
+  "ERA001",
+  "FBT003",
+  "G004",
+  "N805",
+  "N813",
+  "N816",
+  "PIE790",
+  "PLR0904",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0914",
+  "PLR0915",
+  "PLR0917",
+  "PLR1702",
+  "PLR6301",
+  "PLW0108",
+  "PLW2901",
+  "PLW3201",
+  "PYI042",
+  "Q000",
+  "RUF001",
+  "RUF002",
+  "RUF003",
+  "RUF005",
+  "S608",
+  "TC001",
+  "TC002",
+  "TC003",
+  "TRY003",
+  "TRY300",
+  "TRY301",
+  "UP040",
+  "W293",
+]
+select = [
+  "ALL",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+  "flext_infra",
+]
+
+# [MANAGED] pyright
+combine-as-imports = true
+force-single-line = false
+split-on-trailing-comma = true
+
+[tool.ruff.lint.per-file-ignores]
+"**/.vulture_whitelist.py" = [
+  "ALL",
+]
+"**/*_pb2*.py" = [
+  "ALL",
+]
+"**/*docs*" = [
+  "INP001",
+  "S404",
+  "S603",
+  "T201",
+]
+"**/*examples*" = [
+  "ANN401",
+  "C901",
+  "D103",
+  "EXE001",
+  "FBT001",
+  "FBT002",
+  "FIX002",
+  "INP001",
+  "N999",
+  "PLR2004",
+  "S105",
+  "S106",
+  "S112",
+  "S404",
+  "S603",
+  "T201",
+  "TID252",
+]
+"src/flext_infra/codegen/_utilities.py" = ["E402"]
+"src/flext_infra/refactor/_utilities.py" = ["E402"]
+"**/*exceptions*" = [
+  "A001",
+  "S105",
+  "SLF001",
+]
+"**/*instrumentation*" = [
+  "C901",
+  "FBT001",
+  "SLF001",
+]
+"**/*loggings*" = [
+  "PLR0904",
+  "PLW0603",
+]
+"**/*middleware*" = [
+  "ANN401",
+  "FBT001",
+  "FBT002",
+  "PLC2801",
+  "S107",
+]
+"**/*models*" = [
+  "ANN401",
+  "F821",
+  "FBT001",
+  "PLC2701",
+  "PLR0206",
+  "PLW0603",
+]
+"**/*result*" = [
+  "PLC2701",
+  "SLF001",
+]
+"**/*scripts*" = [
+  "EXE001",
+  "FIX002",
+  "INP001",
+  "PLR0911",
+  "PLR0912",
+  "PLR0915",
+  "PLR2004",
+  "PLW2901",
+  "S105",
+  "S107",
+  "S404",
+  "S603",
+  "T201",
+  "TID252",
+]
+"**/*service*" = [
+  "N815",
+  "PLC2801",
+  "S404",
+  "S603",
+  "SLF001",
+]
+"**/*subprocess_utils*" = [
+  "S404",
+  "S603",
+]
+"**/*tests*" = [
+  "ANN001",
+  "ANN002",
+  "ANN003",
+  "ANN401",
+  "ARG001",
+  "ARG002",
+  "ARG003",
+  "ARG004",
+  "ARG005",
+  "B009",
+  "B010",
+  "B018",
+  "B903",
+  "C901",
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D107",
+  "EM102",
+  "F822",
+  "FBT001",
+  "FBT002",
+  "FBT003",
+  "FURB118",
+  "INP001",
+  "N818",
+  "N999",
+  "PLC0206",
+  "PLC1901",
+  "PLC2701",
+  "PLC2801",
+  "PLR0904",
+  "PLR0912",
+  "PLR0913",
+  "PLR0914",
+  "PLR0915",
+  "PLR0917",
+  "PLR1704",
+  "PLR2004",
+  "PLR6301",
+  "PLW1641",
+  "PLW2901",
+  "PT011",
+  "PT018",
+  "PT019",
+  "PYI063",
+  "RUF012",
+  "RUF029",
+  "S101",
+  "S103",
+  "S104",
+  "S105",
+  "S106",
+  "S107",
+  "S108",
+  "S110",
+  "S112",
+  "S311",
+  "S404",
+  "S603",
+  "S607",
+  "S608",
+  "SIM105",
+  "SIM117",
+  "SLF001",
+  "TD002",
+  "TD003",
+  "TID252",
+  "TRY003",
+  "TRY004",
+]
+"**/*typings*" = [
+  "ANN401",
+]
+"**/*utilities*" = [
+  "C901",
+  "PLW1510",
+  "S404",
+  "S603",
+]
+"**/__init__.py" = [
+  "ANN401",
+  "D107",
+  "F822",
+  "N999",
+  "RUF067",
+]
+"**/_utilities/parser.py" = [
+  "ARG004",
+  "FBT001",
+]
+"**/config.py" = [
+  "ANN401",
+  "FBT001",
+  "SLF001",
+]
+"**/constants.py" = [
+  "S105",
+]
+"**/container.py" = [
+  "ANN401",
+  "SLF001",
+]
+"**/file_tools.py" = [
+  "D102",
+]
+"**/managers.py" = [
+  "S105",
+]
+"**/models.py" = [
+  "PLC2801",
+  "S102",
+]
+"**/output.py" = [
+  "FBT001",
+]
+"**/plugins/*.py" = [
+  "FBT001",
+  "FBT002",
+  "S404",
+  "S603",
+  "S607",
+  "TID252",
+]
+"**/providers/*.py" = [
+  "S106",
+  "S107",
+]
+"**/services/prompts.py" = [
+  "D102",
+  "D107",
+]
+"**/settings.py" = [
+  "ANN401",
+]
+"**/singer/*.py" = [
+  "S404",
+  "S603",
+]
+"**/subprocess.py" = [
+  "S404",
+  "S603",
+]
+"**/tools/*.py" = [
+  "FBT001",
+  "FBT002",
+  "N802",
+  "S404",
+  "S603",
+  "S607",
+  "T201",
+]
+"**/tools/**/*.py" = [
+  "FBT001",
+  "FBT002",
+  "N802",
+  "S404",
+  "S603",
+  "S607",
+  "T201",
+]
+"**/typings.py" = [
+  "RUF036",
+]
+
+[tool.ruff.format]
+docstring-code-format = true
+indent-style = "space"
+line-ending = "lf"
+quote-style = "double"
+[tool.pyright]
+extraPaths = [
+  "src",
+  "tests",
+]
+pythonPlatform = "Linux"
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+
+# [MANAGED] tomlsort
+reportConstantRedefinition = "error"
+reportIncompatibleMethodOverride = "error"
+reportIncompatibleVariableOverride = "error"
+reportInconsistentConstructor = "error"
+reportMissingImports = "error"
+reportMissingModuleSource = "error"
+reportMissingTypeStubs = "warning"
+reportPrivateUsage = "warning"
+reportUnnecessaryCast = "error"
+reportUnnecessaryComparison = "warning"
+reportUnnecessaryIsInstance = "warning"
+reportUnusedClass = "error"
+reportUnusedFunction = "error"
+reportUnusedImport = "error"
+reportUnusedVariable = "error"
+
+[[tool.pyright.executionEnvironments]]
+reportPrivateUsage = "error"
+root = "src"
+
+[[tool.pyright.executionEnvironments]]
+reportPrivateUsage = "none"
+root = "tests"
+[tool.tomlsort]
+all = true
+in_place = true
+sort_first = [
+  "build-system",
+  "dependency-groups",
+  "project",
+  "tool",
+]
+
+# [MANAGED] yamlfix
+[tool.yamlfix]
+explicit_start = false
+line_length = 88
+preserve_quotes = true
+section_whitelines = 1
+whitelines = 1
+
+[tool.pytest.ini_options]
+addopts = [ "--strict-markers" ]
+enable_assertion_pass_hook = true
+filterwarnings = [
+  "ignore:Remove `format_exc_info` from your processor chain:UserWarning:structlog",
+]
+markers = [
+  "core: core functionality tests",
+  "integration: integration tests",
+  "unit: unit tests",
+]
+minversion = "8.0"
+python_classes = [ "Test*" ]
+python_files = [ "*_test.py", "*_tests.py", "test_*.py" ]
+
+# [MANAGED] ruff
+
+# [MANAGED] pyrefly
+
+[tool.coverage.report]
+fail_under = 45
+precision = 2
+show_missing = true
+skip_covered = false
