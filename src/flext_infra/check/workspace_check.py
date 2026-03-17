@@ -27,7 +27,7 @@ from flext_infra.check._base_gate import FlextInfraGateContext
 from flext_infra.check._constants import FlextInfraCheckConstants
 from flext_infra.check._gate_registry import FlextInfraGateRegistry
 from flext_infra.check._report import FlextInfraCheckReporter
-from flext_infra.check.fix_pyrefly_config import FlextInfraConfigFixer
+from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 
 
 class FlextInfraWorkspaceChecker(s):

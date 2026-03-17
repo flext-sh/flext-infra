@@ -1,7 +1,7 @@
 """YAML loading and config normalization helpers for infrastructure.
 
 Centralizes YAML-related helpers previously defined as module-level
-functions in ``flext_infra.core.skill_validator``.
+functions in ``flext_infra.validate.skill_validator``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

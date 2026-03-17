@@ -1,4 +1,4 @@
-"""Tests for flext_infra.core.__main__ CLI entry point.
+"""Tests for flext_infra.validate.__main__ CLI entry point.
 
 Tests CLI subcommand routing via subprocess for real integration testing.
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.core.__main__ import (
+from flext_infra.validate.__main__ import (
     _run_basemk_validate,
     _run_inventory,
     _run_scan,
@@ -30,9 +30,9 @@ def _ns(**kwargs: str | list[str] | None) -> argparse.Namespace:
 
 
 def _cli(*args: str) -> subprocess.CompletedProcess[str]:
-    """Run flext_infra.core CLI via subprocess."""
+    """Run flext_infra.validate CLI via subprocess."""
     return subprocess.run(
-        [sys.executable, "-m", "flext_infra.core", *args],
+        [sys.executable, "-m", "flext_infra.validate", *args],
         capture_output=True,
         text=True,
         cwd=_CWD,

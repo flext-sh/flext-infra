@@ -47,7 +47,7 @@ def test_main_all_groups_defined() -> None:
         "basemk",
         "check",
         "codegen",
-        "core",
+        "validate",
         "deps",
         "docs",
         "github",

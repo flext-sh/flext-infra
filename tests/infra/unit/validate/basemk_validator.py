@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra.core.basemk_validator import FlextInfraBaseMkValidator
+from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from tests.infra.models import m
 
 _ROOT = "# root content"

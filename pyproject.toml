@@ -35,7 +35,7 @@ dependencies = [
   "flext-cli @ file:../flext-cli",
 ]
 urls = {Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md", Homepage = "https://github.com/flext-sh/flext-infra", Repository = "https://github.com/flext-sh/flext-infra"}
-scripts = {"flext-basemk" = "flext_infra.basemk:main", "flext-check" = "flext_infra.check:main", "flext-modernize" = "flext_infra.deps.modernizer:main", "flext-sync" = "flext_infra.workspace.sync:main", "flext-validate" = "flext_infra.core:main"}
+scripts = {"flext-basemk" = "flext_infra.basemk:main", "flext-check" = "flext_infra.check:main", "flext-modernize" = "flext_infra.deps.modernizer:main", "flext-sync" = "flext_infra.workspace.sync:main", "flext-validate" = "flext_infra.validate:main"}
 
 # [CUSTOM] poetry
 [tool.poetry]

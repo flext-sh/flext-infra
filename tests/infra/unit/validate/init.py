@@ -1,4 +1,4 @@
-"""Tests for flext_infra.core module initialization.
+"""Tests for flext_infra.validate module initialization.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,8 +9,8 @@ from __future__ import annotations
 import pytest
 from flext_tests import tm
 
-import flext_infra.core as core_module
-from flext_infra.core import FlextInfraBaseMkValidator
+import flext_infra.validate as core_module
+from flext_infra.validate import FlextInfraBaseMkValidator
 
 
 class TestCoreModuleInit:

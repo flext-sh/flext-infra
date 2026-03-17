@@ -16,8 +16,8 @@ from typing import override
 import pytest
 from flext_tests import tm
 
-from flext_infra.maintenance.__main__ import main
-from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_infra.workspace.maintenance.__main__ import main
+from flext_infra.workspace.maintenance.python_version import FlextInfraPythonVersionEnforcer
 
 
 def _create_workspace(root: Path, *, python_minor: int = 13) -> Path:

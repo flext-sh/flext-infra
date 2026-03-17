@@ -23,12 +23,12 @@ from pathlib import Path
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import c, m, output, t, u
-from flext_infra.core.basemk_validator import FlextInfraBaseMkValidator
-from flext_infra.core.inventory import FlextInfraInventoryService
-from flext_infra.core.pytest_diag import FlextInfraPytestDiagExtractor
-from flext_infra.core.scanner import FlextInfraTextPatternScanner
-from flext_infra.core.skill_validator import FlextInfraSkillValidator
-from flext_infra.core.stub_chain import FlextInfraStubSupplyChain
+from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+from flext_infra.validate.inventory import FlextInfraInventoryService
+from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+from flext_infra.validate.skill_validator import FlextInfraSkillValidator
+from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 
 
 def _extract_reports_written(

@@ -20,47 +20,47 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from flext_infra.core.basemk_validator import FlextInfraBaseMkValidator
-    from flext_infra.core.inventory import (
+    from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+    from flext_infra.validate.inventory import (
         FlextInfraInventoryService,
         FlextInfraInventoryService as s,
     )
-    from flext_infra.core.namespace_validator import FlextInfraNamespaceValidator
-    from flext_infra.core.pytest_diag import FlextInfraPytestDiagExtractor
-    from flext_infra.core.scanner import FlextInfraTextPatternScanner
-    from flext_infra.core.skill_validator import FlextInfraSkillValidator
-    from flext_infra.core.stub_chain import FlextInfraStubSupplyChain
+    from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
+    from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+    from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+    from flext_infra.validate.skill_validator import FlextInfraSkillValidator
+    from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraBaseMkValidator": (
-        "flext_infra.core.basemk_validator",
+        "flext_infra.validate.basemk_validator",
         "FlextInfraBaseMkValidator",
     ),
     "FlextInfraInventoryService": (
-        "flext_infra.core.inventory",
+        "flext_infra.validate.inventory",
         "FlextInfraInventoryService",
     ),
     "FlextInfraNamespaceValidator": (
-        "flext_infra.core.namespace_validator",
+        "flext_infra.validate.namespace_validator",
         "FlextInfraNamespaceValidator",
     ),
     "FlextInfraPytestDiagExtractor": (
-        "flext_infra.core.pytest_diag",
+        "flext_infra.validate.pytest_diag",
         "FlextInfraPytestDiagExtractor",
     ),
     "FlextInfraSkillValidator": (
-        "flext_infra.core.skill_validator",
+        "flext_infra.validate.skill_validator",
         "FlextInfraSkillValidator",
     ),
     "FlextInfraStubSupplyChain": (
-        "flext_infra.core.stub_chain",
+        "flext_infra.validate.stub_chain",
         "FlextInfraStubSupplyChain",
     ),
     "FlextInfraTextPatternScanner": (
-        "flext_infra.core.scanner",
+        "flext_infra.validate.scanner",
         "FlextInfraTextPatternScanner",
     ),
-    "s": ("flext_infra.core.inventory", "FlextInfraInventoryService"),
+    "s": ("flext_infra.validate.inventory", "FlextInfraInventoryService"),
 }
 
 __all__ = [

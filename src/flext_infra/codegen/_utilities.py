@@ -26,8 +26,8 @@ from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra.codegen._models import FlextInfraCodegenModels
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
-from flext_infra.core._models import FlextInfraCoreModels
 from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
+from flext_infra.validate._models import FlextInfraCoreModels
 
 
 class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):

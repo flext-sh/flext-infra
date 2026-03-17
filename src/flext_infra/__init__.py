@@ -102,16 +102,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
     from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
     from flext_infra.constants import FlextInfraConstants, c
-    from flext_infra.core.basemk_validator import FlextInfraBaseMkValidator
-    from flext_infra.core.inventory import (
-        FlextInfraInventoryService,
-        FlextInfraInventoryService as s,
-    )
-    from flext_infra.core.namespace_validator import FlextInfraNamespaceValidator
-    from flext_infra.core.pytest_diag import FlextInfraPytestDiagExtractor
-    from flext_infra.core.scanner import FlextInfraTextPatternScanner
-    from flext_infra.core.skill_validator import FlextInfraSkillValidator
-    from flext_infra.core.stub_chain import FlextInfraStubSupplyChain
     from flext_infra.deps._phases.consolidate_groups import ConsolidateGroupsPhase
     from flext_infra.deps._phases.ensure_coverage import EnsureCoverageConfigPhase
     from flext_infra.deps._phases.ensure_extra_paths import EnsureExtraPathsPhase
@@ -159,10 +149,6 @@ if TYPE_CHECKING:
     from flext_infra.github.pr import FlextInfraPrManager
     from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
     from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
-    from flext_infra.maintenance.python_version import (
-        FlextInfraPythonVersionEnforcer,
-        logger,
-    )
     from flext_infra.models import FlextInfraModels, m
     from flext_infra.protocols import FlextInfraProtocols, p
     from flext_infra.refactor import rules, transformers
@@ -295,9 +281,23 @@ if TYPE_CHECKING:
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
     from flext_infra.typings import FlextInfraTypes, t
     from flext_infra.utilities import FlextInfraUtilities, u
+    from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+    from flext_infra.validate.inventory import (
+        FlextInfraInventoryService,
+        FlextInfraInventoryService as s,
+    )
+    from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
+    from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+    from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+    from flext_infra.validate.skill_validator import FlextInfraSkillValidator
+    from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
     from flext_infra.workspace.detector import (
         FlextInfraWorkspaceDetector,
         WorkspaceMode,
+    )
+    from flext_infra.workspace.maintenance.python_version import (
+        FlextInfraPythonVersionEnforcer,
+        logger,
     )
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
@@ -383,7 +383,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraBaseMkTemplateEngine",
     ),
     "FlextInfraBaseMkValidator": (
-        "flext_infra.core.basemk_validator",
+        "flext_infra.validate.basemk_validator",
         "FlextInfraBaseMkValidator",
     ),
     "FlextInfraCodegenCensus": (
@@ -441,7 +441,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraInternalDependencySyncService",
     ),
     "FlextInfraInventoryService": (
-        "flext_infra.core.inventory",
+        "flext_infra.validate.inventory",
         "FlextInfraInventoryService",
     ),
     "FlextInfraMarkdownGate": (
@@ -455,7 +455,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraNamespaceEnforcer",
     ),
     "FlextInfraNamespaceValidator": (
-        "flext_infra.core.namespace_validator",
+        "flext_infra.validate.namespace_validator",
         "FlextInfraNamespaceValidator",
     ),
     "FlextInfraOrchestratorService": (
@@ -485,11 +485,11 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraPyrightGate",
     ),
     "FlextInfraPytestDiagExtractor": (
-        "flext_infra.core.pytest_diag",
+        "flext_infra.validate.pytest_diag",
         "FlextInfraPytestDiagExtractor",
     ),
     "FlextInfraPythonVersionEnforcer": (
-        "flext_infra.maintenance.python_version",
+        "flext_infra.workspace.maintenance.python_version",
         "FlextInfraPythonVersionEnforcer",
     ),
     "FlextInfraRefactorAliasRemover": (
@@ -678,16 +678,16 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraRuntimeDevDependencyDetector",
     ),
     "FlextInfraSkillValidator": (
-        "flext_infra.core.skill_validator",
+        "flext_infra.validate.skill_validator",
         "FlextInfraSkillValidator",
     ),
     "FlextInfraStubSupplyChain": (
-        "flext_infra.core.stub_chain",
+        "flext_infra.validate.stub_chain",
         "FlextInfraStubSupplyChain",
     ),
     "FlextInfraSyncService": ("flext_infra.workspace.sync", "FlextInfraSyncService"),
     "FlextInfraTextPatternScanner": (
-        "flext_infra.core.scanner",
+        "flext_infra.validate.scanner",
         "FlextInfraTextPatternScanner",
     ),
     "FlextInfraTypes": ("flext_infra.typings", "FlextInfraTypes"),
@@ -859,7 +859,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "check": ("flext_infra.check", ""),
     "classify_issues": ("flext_infra.deps.detection", "classify_issues"),
     "codegen": ("flext_infra.codegen", ""),
-    "core": ("flext_infra.core", ""),
+    "core": ("flext_infra.validate", ""),
     "deps": ("flext_infra.deps", ""),
     "discover_project_paths": ("flext_infra.deps.detection", "discover_project_paths"),
     "dm": ("flext_infra.deps.detection", "dm"),
@@ -872,9 +872,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "get_required_typings": ("flext_infra.deps.detection", "get_required_typings"),
     "github": ("flext_infra.github", ""),
     "load_dependency_limits": ("flext_infra.deps.detection", "load_dependency_limits"),
-    "logger": ("flext_infra.maintenance.python_version", "logger"),
+    "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "m": ("flext_infra.models", "m"),
-    "maintenance": ("flext_infra.maintenance", ""),
+    "maintenance": ("flext_infra.workspace.maintenance", ""),
     "module_to_types_package": (
         "flext_infra.deps.detection",
         "module_to_types_package",
@@ -889,7 +889,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "run_deptry": ("flext_infra.deps.detection", "run_deptry"),
     "run_mypy_stub_hints": ("flext_infra.deps.detection", "run_mypy_stub_hints"),
     "run_pip_check": ("flext_infra.deps.detection", "run_pip_check"),
-    "s": ("flext_infra.core.inventory", "FlextInfraInventoryService"),
+    "s": ("flext_infra.validate.inventory", "FlextInfraInventoryService"),
     "shutil": ("flext_infra.deps.internal_sync", "shutil"),
     "t": ("flext_infra.typings", "t"),
     "transformers": ("flext_infra.refactor.transformers", ""),

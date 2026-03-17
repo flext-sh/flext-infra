@@ -18,15 +18,15 @@ from flext_core import FlextConstants
 from flext_infra.basemk._constants import FlextInfraBasemkConstants
 from flext_infra.check._constants import FlextInfraCheckConstants
 from flext_infra.codegen._constants import FlextInfraCodegenConstants
-from flext_infra.core._constants import (
-    FlextInfraCoreConstants,
-    FlextInfraSharedInfraConstants,
-)
 from flext_infra.deps._constants import FlextInfraDepsConstants
 from flext_infra.docs._constants import FlextInfraDocsConstants
 from flext_infra.github._constants import FlextInfraGithubConstants
 from flext_infra.refactor._constants import FlextInfraRefactorConstants
 from flext_infra.release._constants import FlextInfraReleaseConstants
+from flext_infra.validate._constants import (
+    FlextInfraCoreConstants,
+    FlextInfraSharedInfraConstants,
+)
 from flext_infra.workspace._constants import FlextInfraWorkspaceConstants
 
 

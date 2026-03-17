@@ -1,4 +1,4 @@
-"""Tests for flext_infra.check.fix_pyrefly_config module.
+"""Tests for flext_infra.deps.fix_pyrefly_config module.
 
 Tests the real CLI entry point.
 """
