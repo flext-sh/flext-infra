@@ -8,7 +8,7 @@ from typing import Annotated
 from flext_core import FlextModels
 from pydantic import ConfigDict, Field
 
-type _DeptryIssueMap = Mapping[str, str | int | float | bool | None]
+type _DeptryIssueMap = Mapping[str, t.Primitives | None]
 
 
 def _empty_deptry_issues() -> list[_DeptryIssueMap]:

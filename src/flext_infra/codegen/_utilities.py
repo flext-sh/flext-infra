@@ -26,6 +26,7 @@ from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra.codegen._models import FlextInfraCodegenModels
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
+from flext_infra.core._models import FlextInfraCoreModels
 from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
 
 
@@ -640,7 +641,7 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
         out.extend(["]", "", ""])
         if is_l0_typings:
             out.extend([
-                "def __getattr__(name: str) -> object:",
+                "def __getattr__(name: str) -> t.Container:",
                 "    if name in _LAZY_IMPORTS:",
                 "        module_path, attr_name = _LAZY_IMPORTS[name]",
                 "        module = importlib.import_module(module_path)",
@@ -1171,6 +1172,8 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
         if result.is_failure:
             return []
         output = result.value
+        if not isinstance(output, FlextInfraCoreModels.CommandOutput):
+            return []
         if output.exit_code != 0:
             return []
         return [line.strip() for line in output.stdout.splitlines() if line.strip()]
@@ -1240,6 +1243,12 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
                 "exit_code": 127,
             }
         command_output = result.value
+        if not isinstance(command_output, FlextInfraCoreModels.CommandOutput):
+            return {
+                "passed": False,
+                "detail": "unexpected result type",
+                "exit_code": 127,
+            }
         output = (command_output.stderr or command_output.stdout or "").strip()
         lines = [line for line in output.splitlines() if line.strip()]
         excerpt = " | ".join(lines[:5]) if lines else "ok"

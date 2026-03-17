@@ -528,6 +528,8 @@ class FlextInfraConstants(FlextConstants):
 
     @unique
     class FacadeFamily(StrEnum):
+        """Facade family enumeration."""
+
         C = "c"
         T = "t"
         P = "p"

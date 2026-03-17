@@ -176,11 +176,11 @@ class OutputBackend:
         for item in instances:
             iterable = item.items() if isinstance(item, Mapping) else item
             for key, value in iterable:
-                if isinstance(value, str | int | float | bool | Path) or value is None:
+                if isinstance(value, t.Primitives | Path) or value is None:
                     sys.stdout.write(f"{key}={value}\n")
 
         for key, value in kwargs.items():
-            if isinstance(value, str | int | float | bool | Path) or value is None:
+            if isinstance(value, t.Primitives | Path) or value is None:
                 sys.stdout.write(f"{key}={value}\n")
 
         sys.stdout.flush()
