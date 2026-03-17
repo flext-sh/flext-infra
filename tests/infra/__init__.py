@@ -12,22 +12,22 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from tests.infra import unit
-    from tests.infra.constants import FlextInfraTestConstants, c
-    from tests.infra.fixtures import (
+    from . import unit as unit
+    from .constants import FlextInfraTestConstants, c
+    from .fixtures import (
         real_docs_project,
         real_makefile_project,
         real_python_package,
         real_toml_project,
         real_workspace,
     )
-    from tests.infra.fixtures_git import real_git_repo
-    from tests.infra.git_service import RealGitService
-    from tests.infra.helpers import FlextInfraTestHelpers, h
-    from tests.infra.models import FlextInfraTestModels, m
-    from tests.infra.protocols import FlextInfraTestProtocols, p
-    from tests.infra.runner_service import RealSubprocessRunner
-    from tests.infra.scenarios import (
+    from .fixtures_git import real_git_repo
+    from .git_service import RealGitService
+    from .helpers import FlextInfraTestHelpers, h
+    from .models import FlextInfraTestModels, m
+    from .protocols import FlextInfraTestProtocols, p
+    from .runner_service import RealSubprocessRunner
+    from .scenarios import (
         DependencyScenario,
         DependencyScenarios,
         GitScenario,
@@ -37,46 +37,41 @@ if TYPE_CHECKING:
         WorkspaceScenario,
         WorkspaceScenarios,
     )
-    from tests.infra.typings import FlextInfraTestTypes, t
-    from tests.infra.unit import (
-        basemk,
-        check,
-        codegen,
-        container,
-        deps,
-        discovery,
-        docs,
-        github,
-        io,
-        refactor,
-        release,
-        validate,
+    from .typings import FlextInfraTestTypes, t
+    from .unit import (
+        basemk as basemk,
+        check as check,
+        codegen as codegen,
+        container as container,
+        deps as deps,
+        discovery as discovery,
+        docs as docs,
+        github as github,
+        io as io,
+        refactor as refactor,
+        release as release,
+        validate as validate,
     )
-    from tests.infra.unit._utilities.test_discovery_consolidated import (
+    from .unit._utilities.test_discovery_consolidated import (
         TestDiscoveryDiscoverProjects,
         TestDiscoveryFindAllPyprojectFiles,
         TestDiscoveryIterPythonFiles,
         TestDiscoveryProjectRoots,
     )
-    from tests.infra.unit._utilities.test_formatting import TestFormattingRunRuffFix
-    from tests.infra.unit._utilities.test_iteration import (
-        TestIterWorkspacePythonModules,
-    )
-    from tests.infra.unit._utilities.test_parsing import (
-        TestParsingModuleAst,
-        TestParsingModuleCst,
-    )
-    from tests.infra.unit._utilities.test_safety import (
+    from .unit._utilities.test_formatting import TestFormattingRunRuffFix
+    from .unit._utilities.test_iteration import TestIterWorkspacePythonModules
+    from .unit._utilities.test_parsing import TestParsingModuleAst, TestParsingModuleCst
+    from .unit._utilities.test_safety import (
         TestSafetyCheckpoint,
         TestSafetyRollback,
         TestSafetyWorkspaceValidation,
     )
-    from tests.infra.unit._utilities.test_scanning import (
+    from .unit._utilities.test_scanning import (
         MockScanner,
         TestScanFileBatch,
         TestScanModels,
     )
-    from tests.infra.unit.basemk.engine import (
+    from .unit.basemk.engine import (
         test_basemk_cli_generate_to_file,
         test_basemk_cli_generate_to_stdout,
         test_basemk_engine_execute_calls_render_all,
@@ -89,7 +84,7 @@ if TYPE_CHECKING:
         test_render_all_generates_large_makefile,
         test_render_all_has_no_scripts_path_references,
     )
-    from tests.infra.unit.basemk.generator import (
+    from .unit.basemk.generator import (
         test_generator_execute_returns_generated_content,
         test_generator_generate_propagates_render_failure,
         test_generator_generate_with_basemk_config_object,
@@ -103,7 +98,7 @@ if TYPE_CHECKING:
         test_generator_write_to_file,
         test_generator_write_to_stream,
     )
-    from tests.infra.unit.basemk.generator_edge_cases import (
+    from .unit.basemk.generator_edge_cases import (
         test_generator_normalize_config_with_basemk_config,
         test_generator_normalize_config_with_dict,
         test_generator_normalize_config_with_invalid_dict,
@@ -112,8 +107,8 @@ if TYPE_CHECKING:
         test_generator_write_handles_file_permission_error,
         test_generator_write_to_stream_handles_oserror,
     )
-    from tests.infra.unit.basemk.init import TestFlextInfraBaseMk
-    from tests.infra.unit.basemk.main import (
+    from .unit.basemk.init import TestFlextInfraBaseMk
+    from .unit.basemk.main import (
         test_basemk_build_config_with_none,
         test_basemk_build_config_with_project_name,
         test_basemk_main_calls_sys_exit,
@@ -128,7 +123,7 @@ if TYPE_CHECKING:
         test_basemk_main_with_project_name,
         test_basemk_main_with_write_failure,
     )
-    from tests.infra.unit.check.cli import (
+    from .unit.check.cli import (
         test_resolve_gates_maps_type_alias,
         test_run_cli_run_returns_one_for_fail,
         test_run_cli_run_returns_two_for_error,
@@ -136,13 +131,13 @@ if TYPE_CHECKING:
         test_run_cli_with_fail_fast_flag,
         test_run_cli_with_multiple_projects,
     )
-    from tests.infra.unit.check.extended_cli_entry import (
+    from .unit.check.extended_cli_entry import (
         TestCheckMainEntryPoint,
         TestFixPyrelfyCLI,
         TestRunCLIExtended,
         TestWorkspaceCheckCLI,
     )
-    from tests.infra.unit.check.extended_config_fixer import (
+    from .unit.check.extended_config_fixer import (
         TestConfigFixerEnsureProjectExcludes,
         TestConfigFixerExecute,
         TestConfigFixerFindPyprojectFiles,
@@ -152,13 +147,13 @@ if TYPE_CHECKING:
         TestConfigFixerRun,
         TestConfigFixerToArray,
     )
-    from tests.infra.unit.check.extended_config_fixer_errors import (
+    from .unit.check.extended_config_fixer_errors import (
         TestConfigFixerPathResolution,
         TestConfigFixerRunMethods,
         TestConfigFixerRunWithVerbose,
         TestProcessFileReadError,
     )
-    from tests.infra.unit.check.extended_error_reporting import (
+    from .unit.check.extended_error_reporting import (
         RunStub,
         TestErrorReporting,
         TestGoFmtEmptyLinesInOutput,
@@ -166,30 +161,30 @@ if TYPE_CHECKING:
         TestMypyEmptyLinesInOutput,
         TestRuffFormatDuplicateFiles,
     )
-    from tests.infra.unit.check.extended_gate_bandit_markdown import (
+    from .unit.check.extended_gate_bandit_markdown import (
         TestWorkspaceCheckerRunBandit,
         TestWorkspaceCheckerRunMarkdown,
     )
-    from tests.infra.unit.check.extended_gate_go_cmd import (
+    from .unit.check.extended_gate_go_cmd import (
         TestWorkspaceCheckerCollectMarkdownFiles,
         TestWorkspaceCheckerRunCommand,
         TestWorkspaceCheckerRunGo,
     )
-    from tests.infra.unit.check.extended_gate_mypy_pyright import (
+    from .unit.check.extended_gate_mypy_pyright import (
         TestWorkspaceCheckerRunMypy,
         TestWorkspaceCheckerRunPyright,
     )
-    from tests.infra.unit.check.extended_models import (
+    from .unit.check.extended_models import (
         TestCheckIssueFormatted,
         TestProjectResultProperties,
         TestWorkspaceCheckerErrorSummary,
     )
-    from tests.infra.unit.check.extended_project_runners import TestJsonWriteFailure
-    from tests.infra.unit.check.extended_projects import (
+    from .unit.check.extended_project_runners import TestJsonWriteFailure
+    from .unit.check.extended_projects import (
         TestCheckProjectRunners,
         TestLintAndFormatPublicMethods,
     )
-    from tests.infra.unit.check.extended_reports import (
+    from .unit.check.extended_reports import (
         TestMarkdownReportSkipsEmptyGates,
         TestMarkdownReportWithErrors,
         TestWorkspaceCheckerMarkdownReport,
@@ -197,32 +192,32 @@ if TYPE_CHECKING:
         TestWorkspaceCheckerSARIFReport,
         TestWorkspaceCheckerSARIFReportEdgeCases,
     )
-    from tests.infra.unit.check.extended_resolve_gates import (
+    from .unit.check.extended_resolve_gates import (
         TestWorkspaceCheckerParseGateCSV,
         TestWorkspaceCheckerResolveGates,
     )
-    from tests.infra.unit.check.extended_run_projects import (
+    from .unit.check.extended_run_projects import (
         CheckProjectStub,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
         TestRunSingleProject,
     )
-    from tests.infra.unit.check.extended_runners import TestRunMypy, TestRunPyrefly
-    from tests.infra.unit.check.extended_runners_extra import (
+    from .unit.check.extended_runners import TestRunMypy, TestRunPyrefly
+    from .unit.check.extended_runners_extra import (
         TestRunBandit,
         TestRunMarkdown,
         TestRunPyright,
     )
-    from tests.infra.unit.check.extended_runners_go import TestRunGo
-    from tests.infra.unit.check.extended_runners_ruff import (
+    from .unit.check.extended_runners_go import TestRunGo
+    from .unit.check.extended_runners_ruff import (
         RunCallable,
         TestCollectMarkdownFiles,
         TestRunCommand,
         TestRunRuffFormat,
         TestRunRuffLint,
     )
-    from tests.infra.unit.check.extended_workspace_init import (
+    from .unit.check.extended_workspace_init import (
         TestWorkspaceCheckerBuildGateResult,
         TestWorkspaceCheckerBuildGateResult as r,
         TestWorkspaceCheckerDirsWithPy,
@@ -232,17 +227,17 @@ if TYPE_CHECKING:
         TestWorkspaceCheckerInitOSError,
         TestWorkspaceCheckerResolveWorkspaceRootFallback,
     )
-    from tests.infra.unit.check.fix_pyrefly_config import (
+    from .unit.check.fix_pyrefly_config import (
         test_fix_pyrefly_config_main_executes_real_cli_help,
     )
-    from tests.infra.unit.check.init import TestFlextInfraCheck
-    from tests.infra.unit.check.main import test_check_main_executes_real_cli
-    from tests.infra.unit.check.pyrefly import TestFlextInfraConfigFixer
-    from tests.infra.unit.check.workspace import TestFlextInfraWorkspaceChecker
-    from tests.infra.unit.check.workspace_check import (
+    from .unit.check.init import TestFlextInfraCheck
+    from .unit.check.main import test_check_main_executes_real_cli
+    from .unit.check.pyrefly import TestFlextInfraConfigFixer
+    from .unit.check.workspace import TestFlextInfraWorkspaceChecker
+    from .unit.check.workspace_check import (
         test_workspace_check_main_returns_error_without_projects,
     )
-    from tests.infra.unit.codegen.autofix import (
+    from .unit.codegen.autofix import (
         fixer,
         test_in_context_typevar_not_flagged,
         test_standalone_final_detected_as_fixable,
@@ -250,104 +245,100 @@ if TYPE_CHECKING:
         test_standalone_typevar_detected_as_fixable,
         test_syntax_error_files_skipped,
     )
-    from tests.infra.unit.codegen.autofix_workspace import (
+    from .unit.codegen.autofix_workspace import (
         test_files_modified_tracks_affected_files,
         test_flexcore_excluded_from_run,
         test_project_without_src_returns_empty,
     )
-    from tests.infra.unit.codegen.census import (
+    from .unit.codegen.census import (
         TestFixabilityClassification,
         TestParseViolationInvalid,
         TestParseViolationValid,
         census,
     )
-    from tests.infra.unit.codegen.census_models import (
+    from .unit.codegen.census_models import (
         TestCensusReportModel,
         TestCensusViolationModel,
         TestExcludedProjects,
         TestViolationPattern,
     )
-    from tests.infra.unit.codegen.constants_quality_gate import (
+    from .unit.codegen.constants_quality_gate import (
         TestConstantsQualityGateCLIDispatch,
         TestConstantsQualityGateVerdict,
     )
-    from tests.infra.unit.codegen.init import (
+    from .unit.codegen.init import (
         test_codegen_dir_returns_all_exports,
         test_codegen_getattr_raises_attribute_error,
         test_codegen_lazy_imports_work,
     )
-    from tests.infra.unit.codegen.lazy_init_generation import (
+    from .unit.codegen.lazy_init_generation import (
         TestGenerateFile,
         TestGenerateTypeChecking,
         TestResolveAliases,
         TestRunRuffFix,
         test_codegen_init_getattr_raises_attribute_error,
     )
-    from tests.infra.unit.codegen.lazy_init_helpers import (
+    from .unit.codegen.lazy_init_helpers import (
         TestBuildSiblingExportIndex,
         TestExtractExports,
         TestInferPackage,
         TestReadExistingDocstring,
     )
-    from tests.infra.unit.codegen.lazy_init_process import TestProcessDirectory
-    from tests.infra.unit.codegen.lazy_init_service import TestFlextInfraCodegenLazyInit
-    from tests.infra.unit.codegen.lazy_init_tests import (
+    from .unit.codegen.lazy_init_process import TestProcessDirectory
+    from .unit.codegen.lazy_init_service import TestFlextInfraCodegenLazyInit
+    from .unit.codegen.lazy_init_tests import (
         TestAllDirectoriesScanned,
         TestCheckOnlyMode,
         TestEdgeCases,
         TestExcludedDirectories,
     )
-    from tests.infra.unit.codegen.lazy_init_transforms import (
+    from .unit.codegen.lazy_init_transforms import (
         TestExtractInlineConstants,
         TestExtractVersionExports,
         TestMergeChildExports,
         TestScanAstPublicDefs,
         TestShouldBubbleUp,
     )
-    from tests.infra.unit.codegen.main import (
+    from .unit.codegen.main import (
         TestHandleLazyInit,
         TestMainCommandDispatch,
         TestMainEntryPoint,
     )
-    from tests.infra.unit.codegen.pipeline import test_codegen_pipeline_end_to_end
-    from tests.infra.unit.codegen.scaffolder import (
+    from .unit.codegen.pipeline import test_codegen_pipeline_end_to_end
+    from .unit.codegen.scaffolder import (
         TestScaffoldProjectCreatesSrcModules,
         TestScaffoldProjectCreatesTestsModules,
         TestScaffoldProjectIdempotency,
         TestScaffoldProjectNoop,
     )
-    from tests.infra.unit.codegen.scaffolder_naming import (
+    from .unit.codegen.scaffolder_naming import (
         TestGeneratedClassNamingConvention,
         TestGeneratedFilesAreValidPython,
     )
-    from tests.infra.unit.container.test_infra_container import (
+    from .unit.container.test_infra_container import (
         TestInfraContainerFunctions,
         TestInfraMroPattern,
         TestInfraServiceRetrieval,
     )
-    from tests.infra.unit.deps.test_detection_classify import (
+    from .unit.deps.test_detection_classify import (
         TestBuildProjectReport,
         TestClassifyIssues,
     )
-    from tests.infra.unit.deps.test_detection_deptry import TestRunDeptry
-    from tests.infra.unit.deps.test_detection_models import (
+    from .unit.deps.test_detection_deptry import TestRunDeptry
+    from .unit.deps.test_detection_models import (
         TestFlextInfraDependencyDetectionModels,
         TestFlextInfraDependencyDetectionService,
         TestFlextInfraDependencyDetectionService as s,
         TestToInfraValue,
     )
-    from tests.infra.unit.deps.test_detection_pip_check import TestRunPipCheck
-    from tests.infra.unit.deps.test_detection_typings import (
+    from .unit.deps.test_detection_pip_check import TestRunPipCheck
+    from .unit.deps.test_detection_typings import (
         TestLoadDependencyLimits,
         TestRunMypyStubHints,
     )
-    from tests.infra.unit.deps.test_detection_typings_flow import (
-        TestModuleAndTypingsFlow,
-    )
-    from tests.infra.unit.deps.test_detection_uncovered import (
-        TestDetectionUncoveredLines,
-    )
-    from tests.infra.unit.deps.test_detection_wrappers import (
+    from .unit.deps.test_detection_typings_flow import TestModuleAndTypingsFlow
+    from .unit.deps.test_detection_uncovered import TestDetectionUncoveredLines
+    from .unit.deps.test_detection_wrappers import (
         TestModuleLevelWrappers,
         test_discover_projects_wrapper,
         test_get_current_typings_from_pyproject_wrapper,
@@ -356,38 +347,34 @@ if TYPE_CHECKING:
         test_run_mypy_stub_hints_wrapper,
         test_run_pip_check_wrapper,
     )
-    from tests.infra.unit.deps.test_detector_detect import (
+    from .unit.deps.test_detector_detect import (
         TestFlextInfraRuntimeDevDependencyDetectorRunDetect,
     )
-    from tests.infra.unit.deps.test_detector_detect_failures import (
-        TestDetectorRunFailures,
-    )
-    from tests.infra.unit.deps.test_detector_init import (
+    from .unit.deps.test_detector_detect_failures import TestDetectorRunFailures
+    from .unit.deps.test_detector_init import (
         TestFlextInfraRuntimeDevDependencyDetectorInit,
     )
-    from tests.infra.unit.deps.test_detector_main import (
+    from .unit.deps.test_detector_main import (
         TestFlextInfraRuntimeDevDependencyDetectorRunTypings,
         TestMainFunction,
     )
-    from tests.infra.unit.deps.test_detector_models import (
-        TestFlextInfraDependencyDetectorModels,
-    )
-    from tests.infra.unit.deps.test_detector_report import (
+    from .unit.deps.test_detector_models import TestFlextInfraDependencyDetectorModels
+    from .unit.deps.test_detector_report import (
         TestFlextInfraRuntimeDevDependencyDetectorRunReport,
     )
-    from tests.infra.unit.deps.test_detector_report_flags import TestDetectorReportFlags
-    from tests.infra.unit.deps.test_extra_paths_manager import (
+    from .unit.deps.test_detector_report_flags import TestDetectorReportFlags
+    from .unit.deps.test_extra_paths_manager import (
         TestConstants,
         TestFlextInfraExtraPathsManager,
         TestGetDepPaths,
         TestSyncOne,
     )
-    from tests.infra.unit.deps.test_extra_paths_pep621 import (
+    from .unit.deps.test_extra_paths_pep621 import (
         TestPathDepPathsPep621,
         TestPathDepPathsPoetry,
         test_helpers_alias_exposed,
     )
-    from tests.infra.unit.deps.test_extra_paths_sync import (
+    from .unit.deps.test_extra_paths_sync import (
         pyright_content,
         test_main_success_modes,
         test_main_sync_failure,
@@ -396,53 +383,49 @@ if TYPE_CHECKING:
         test_sync_extra_paths_sync_failure,
         test_sync_one_edge_cases,
     )
-    from tests.infra.unit.deps.test_init import TestFlextInfraDeps
-    from tests.infra.unit.deps.test_internal_sync_discovery import (
+    from .unit.deps.test_init import TestFlextInfraDeps
+    from .unit.deps.test_internal_sync_discovery import (
         TestCollectInternalDeps,
         TestParseGitmodules,
         TestParseRepoMap,
     )
-    from tests.infra.unit.deps.test_internal_sync_discovery_edge import (
+    from .unit.deps.test_internal_sync_discovery_edge import (
         TestCollectInternalDepsEdgeCases,
     )
-    from tests.infra.unit.deps.test_internal_sync_resolve import (
+    from .unit.deps.test_internal_sync_resolve import (
         TestInferOwnerFromOrigin,
         TestResolveRef,
         TestSynthesizedRepoMap,
     )
-    from tests.infra.unit.deps.test_internal_sync_sync import TestSync
-    from tests.infra.unit.deps.test_internal_sync_sync_edge import (
-        TestSyncMethodEdgeCases,
-    )
-    from tests.infra.unit.deps.test_internal_sync_sync_edge_more import (
-        TestSyncMethodEdgeCasesMore,
-    )
-    from tests.infra.unit.deps.test_internal_sync_update import (
+    from .unit.deps.test_internal_sync_sync import TestSync
+    from .unit.deps.test_internal_sync_sync_edge import TestSyncMethodEdgeCases
+    from .unit.deps.test_internal_sync_sync_edge_more import TestSyncMethodEdgeCasesMore
+    from .unit.deps.test_internal_sync_update import (
         TestEnsureCheckout,
         TestEnsureSymlink,
         TestEnsureSymlinkEdgeCases,
     )
-    from tests.infra.unit.deps.test_internal_sync_update_checkout_edge import (
+    from .unit.deps.test_internal_sync_update_checkout_edge import (
         TestEnsureCheckoutEdgeCases,
     )
-    from tests.infra.unit.deps.test_internal_sync_validation import (
+    from .unit.deps.test_internal_sync_validation import (
         TestFlextInfraInternalDependencySyncService,
         TestIsInternalPathDep,
         TestIsRelativeTo,
         TestOwnerFromRemoteUrl,
         TestValidateGitRefEdgeCases,
     )
-    from tests.infra.unit.deps.test_internal_sync_workspace import (
+    from .unit.deps.test_internal_sync_workspace import (
         TestIsWorkspaceMode,
         TestWorkspaceRootFromEnv,
         TestWorkspaceRootFromParents,
     )
-    from tests.infra.unit.deps.test_main import (
+    from .unit.deps.test_main import (
         TestMainHelpAndErrors,
         TestMainReturnValues,
         TestSubcommandMapping,
     )
-    from tests.infra.unit.deps.test_main_dispatch import (
+    from .unit.deps.test_main_dispatch import (
         TestMainDelegation,
         TestMainExceptionHandling,
         TestMainModuleImport,
@@ -450,19 +433,19 @@ if TYPE_CHECKING:
         TestMainSysArgvModification,
         test_string_zero_return_value,
     )
-    from tests.infra.unit.deps.test_modernizer_comments import (
+    from .unit.deps.test_modernizer_comments import (
         TestInjectCommentsPhase,
         test_inject_comments_phase_apply_banner,
         test_inject_comments_phase_apply_broken_group_section,
         test_inject_comments_phase_apply_markers,
         test_inject_comments_phase_apply_with_optional_dependencies_dev,
     )
-    from tests.infra.unit.deps.test_modernizer_consolidate import (
+    from .unit.deps.test_modernizer_consolidate import (
         TestConsolidateGroupsPhase,
         test_consolidate_groups_phase_apply_removes_old_groups,
         test_consolidate_groups_phase_apply_with_empty_poetry_group,
     )
-    from tests.infra.unit.deps.test_modernizer_helpers import (
+    from .unit.deps.test_modernizer_helpers import (
         array,
         as_string_list,
         canonical_dev_dependencies,
@@ -484,57 +467,55 @@ if TYPE_CHECKING:
         test_unwrap_item_toml_item,
         unwrap_item,
     )
-    from tests.infra.unit.deps.test_modernizer_main import (
+    from .unit.deps.test_modernizer_main import (
         TestFlextInfraPyprojectModernizer,
         TestModernizerRunAndMain,
     )
-    from tests.infra.unit.deps.test_modernizer_main_extra import (
+    from .unit.deps.test_modernizer_main_extra import (
         TestModernizerEdgeCases,
         TestModernizerUncoveredLines,
         test_flext_infra_pyproject_modernizer_find_pyproject_files,
         test_flext_infra_pyproject_modernizer_process_file_invalid_toml,
     )
-    from tests.infra.unit.deps.test_modernizer_pyrefly import (
+    from .unit.deps.test_modernizer_pyrefly import (
         TestEnsurePyreflyConfigPhase,
         test_ensure_pyrefly_config_phase_apply_errors,
         test_ensure_pyrefly_config_phase_apply_ignore_errors,
         test_ensure_pyrefly_config_phase_apply_python_version,
         test_ensure_pyrefly_config_phase_apply_search_path,
     )
-    from tests.infra.unit.deps.test_modernizer_pyright import (
-        TestEnsurePyrightConfigPhase,
-    )
-    from tests.infra.unit.deps.test_modernizer_pytest import (
+    from .unit.deps.test_modernizer_pyright import TestEnsurePyrightConfigPhase
+    from .unit.deps.test_modernizer_pytest import (
         TestEnsurePytestConfigPhase,
         test_ensure_pytest_config_phase_apply_markers,
         test_ensure_pytest_config_phase_apply_minversion,
         test_ensure_pytest_config_phase_apply_python_classes,
     )
-    from tests.infra.unit.deps.test_modernizer_workspace import (
+    from .unit.deps.test_modernizer_workspace import (
         TestParser,
         TestReadDoc,
         test_workspace_root_doc_construction,
     )
-    from tests.infra.unit.deps.test_path_sync_helpers import (
+    from .unit.deps.test_path_sync_helpers import (
         extract_dep_name,
         test_extract_dep_name,
         test_extract_requirement_name,
         test_helpers_alias_is_reachable_helpers,
         test_target_path,
     )
-    from tests.infra.unit.deps.test_path_sync_init import (
+    from .unit.deps.test_path_sync_init import (
         TestDetectMode,
         TestFlextInfraDependencyPathSync,
         TestPathSyncEdgeCases,
         test_detect_mode_with_nonexistent_path,
         test_detect_mode_with_path_object,
     )
-    from tests.infra.unit.deps.test_path_sync_main import (
+    from .unit.deps.test_path_sync_main import (
         TestMain,
         test_helpers_alias_is_reachable_main,
     )
-    from tests.infra.unit.deps.test_path_sync_main_edges import TestMainEdgeCases
-    from tests.infra.unit.deps.test_path_sync_main_more import (
+    from .unit.deps.test_path_sync_main_edges import TestMainEdgeCases
+    from .unit.deps.test_path_sync_main_more import (
         test_main_discovery_failure,
         test_main_no_changes_needed,
         test_main_project_invalid_toml,
@@ -544,12 +525,12 @@ if TYPE_CHECKING:
         test_main_with_changes_no_dry_run,
         test_workspace_root_fallback,
     )
-    from tests.infra.unit.deps.test_path_sync_main_project_obj import (
+    from .unit.deps.test_path_sync_main_project_obj import (
         test_helpers_alias_is_reachable_project_obj,
         test_main_project_obj_not_dict_first_loop,
         test_main_project_obj_not_dict_second_loop,
     )
-    from tests.infra.unit.deps.test_path_sync_rewrite_deps import (
+    from .unit.deps.test_path_sync_rewrite_deps import (
         TestRewriteDepPaths,
         rewrite_dep_paths,
         test_rewrite_dep_paths_dry_run,
@@ -557,25 +538,23 @@ if TYPE_CHECKING:
         test_rewrite_dep_paths_with_internal_names,
         test_rewrite_dep_paths_with_no_deps,
     )
-    from tests.infra.unit.deps.test_path_sync_rewrite_pep621 import (
+    from .unit.deps.test_path_sync_rewrite_pep621 import (
         TestRewritePep621,
         test_rewrite_pep621_invalid_path_dep_regex,
         test_rewrite_pep621_no_project_table,
         test_rewrite_pep621_non_string_item,
     )
-    from tests.infra.unit.deps.test_path_sync_rewrite_poetry import (
+    from .unit.deps.test_path_sync_rewrite_poetry import (
         TestRewritePoetry,
         test_rewrite_poetry_no_poetry_table,
         test_rewrite_poetry_no_tool_table,
         test_rewrite_poetry_with_non_dict_value,
     )
-    from tests.infra.unit.discovery.test_infra_discovery import (
-        TestFlextInfraDiscoveryService,
-    )
-    from tests.infra.unit.discovery.test_infra_discovery_edge_cases import (
+    from .unit.discovery.test_infra_discovery import TestFlextInfraDiscoveryService
+    from .unit.discovery.test_infra_discovery_edge_cases import (
         TestFlextInfraDiscoveryServiceUncoveredLines,
     )
-    from tests.infra.unit.docs.auditor import (
+    from .unit.docs.auditor import (
         TestAuditorCore,
         TestAuditorNormalize,
         auditor,
@@ -583,121 +562,89 @@ if TYPE_CHECKING:
         normalize_link,
         should_skip_target,
     )
-    from tests.infra.unit.docs.auditor_budgets import TestLoadAuditBudgets
-    from tests.infra.unit.docs.auditor_cli import (
-        TestAuditorMainCli,
-        TestAuditorScopeFailure,
-    )
-    from tests.infra.unit.docs.auditor_links import (
-        TestAuditorBrokenLinks,
-        TestAuditorToMarkdown,
-    )
-    from tests.infra.unit.docs.auditor_scope import (
-        TestAuditorForbiddenTerms,
-        TestAuditorScope,
-    )
-    from tests.infra.unit.docs.builder import TestBuilderCore, builder
-    from tests.infra.unit.docs.builder_scope import TestBuilderScope
-    from tests.infra.unit.docs.fixer import TestFixerCore
-    from tests.infra.unit.docs.fixer_internals import (
+    from .unit.docs.auditor_budgets import TestLoadAuditBudgets
+    from .unit.docs.auditor_cli import TestAuditorMainCli, TestAuditorScopeFailure
+    from .unit.docs.auditor_links import TestAuditorBrokenLinks, TestAuditorToMarkdown
+    from .unit.docs.auditor_scope import TestAuditorForbiddenTerms, TestAuditorScope
+    from .unit.docs.builder import TestBuilderCore, builder
+    from .unit.docs.builder_scope import TestBuilderScope
+    from .unit.docs.fixer import TestFixerCore
+    from .unit.docs.fixer_internals import (
         TestFixerMaybeFixLink,
         TestFixerProcessFile,
         TestFixerScope,
         TestFixerToc,
     )
-    from tests.infra.unit.docs.generator import TestGeneratorCore
-    from tests.infra.unit.docs.generator_internals import (
+    from .unit.docs.generator import TestGeneratorCore
+    from .unit.docs.generator_internals import (
         TestGeneratorHelpers,
         TestGeneratorScope,
         gen,
     )
-    from tests.infra.unit.docs.init import TestFlextInfraDocs
-    from tests.infra.unit.docs.main import TestRunAudit, TestRunFix
-    from tests.infra.unit.docs.main_commands import (
-        TestRunBuild,
-        TestRunGenerate,
-        TestRunValidate,
-    )
-    from tests.infra.unit.docs.main_entry import TestMainRouting, TestMainWithFlags
-    from tests.infra.unit.docs.shared import TestBuildScopes, TestFlextInfraDocScope
-    from tests.infra.unit.docs.shared_iter import (
-        TestIterMarkdownFiles,
-        TestSelectedProjectNames,
-    )
-    from tests.infra.unit.docs.shared_write import TestWriteJson, TestWriteMarkdown
-    from tests.infra.unit.docs.validator import TestValidateCore, TestValidateReport
-    from tests.infra.unit.docs.validator_internals import (
+    from .unit.docs.init import TestFlextInfraDocs
+    from .unit.docs.main import TestRunAudit, TestRunFix
+    from .unit.docs.main_commands import TestRunBuild, TestRunGenerate, TestRunValidate
+    from .unit.docs.main_entry import TestMainRouting, TestMainWithFlags
+    from .unit.docs.shared import TestBuildScopes, TestFlextInfraDocScope
+    from .unit.docs.shared_iter import TestIterMarkdownFiles, TestSelectedProjectNames
+    from .unit.docs.shared_write import TestWriteJson, TestWriteMarkdown
+    from .unit.docs.validator import TestValidateCore, TestValidateReport
+    from .unit.docs.validator_internals import (
         TestAdrHelpers,
         TestMaybeWriteTodo,
         TestValidateScope,
         validator,
     )
-    from tests.infra.unit.github.linter import TestFlextInfraWorkflowLinter
-    from tests.infra.unit.github.main import (
+    from .unit.github.linter import TestFlextInfraWorkflowLinter
+    from .unit.github.main import (
         TestRunLint,
         TestRunWorkflows,
         run_lint,
         run_pr,
         run_workflows,
     )
-    from tests.infra.unit.github.main_dispatch import (
-        TestRunPrWorkspace,
-        run_pr_workspace,
-    )
-    from tests.infra.unit.github.pr import (
-        TestCreate,
-        TestFlextInfraPrManager,
-        TestStatus,
-    )
-    from tests.infra.unit.github.pr_cli import TestParseArgs, TestSelectorFunction
-    from tests.infra.unit.github.pr_init import TestGithubInit
-    from tests.infra.unit.github.pr_operations import (
+    from .unit.github.main_dispatch import TestRunPrWorkspace, run_pr_workspace
+    from .unit.github.pr import TestCreate, TestFlextInfraPrManager, TestStatus
+    from .unit.github.pr_cli import TestParseArgs, TestSelectorFunction
+    from .unit.github.pr_init import TestGithubInit
+    from .unit.github.pr_operations import (
         TestChecks,
         TestClose,
         TestMerge,
         TestTriggerRelease,
         TestView,
     )
-    from tests.infra.unit.github.pr_workspace import (
+    from .unit.github.pr_workspace import (
         TestCheckpoint,
         TestFlextInfraPrWorkspaceManager,
         TestRunPr,
     )
-    from tests.infra.unit.github.pr_workspace_orchestrate import (
-        TestOrchestrate,
-        TestStaticMethods,
-    )
-    from tests.infra.unit.github.workflows import (
+    from .unit.github.pr_workspace_orchestrate import TestOrchestrate, TestStaticMethods
+    from .unit.github.workflows import (
         TestFlextInfraWorkflowSyncer,
         TestRenderTemplate,
         TestSyncOperation,
         TestSyncProject,
     )
-    from tests.infra.unit.github.workflows_workspace import (
-        TestSyncWorkspace,
-        TestWriteReport,
-    )
-    from tests.infra.unit.io.test_infra_json_io import (
-        SampleModel,
-        TestFlextInfraJsonService,
-    )
-    from tests.infra.unit.io.test_infra_output_edge_cases import (
+    from .unit.github.workflows_workspace import TestSyncWorkspace, TestWriteReport
+    from .unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
+    from .unit.io.test_infra_output_edge_cases import (
         TestInfraOutputEdgeCases,
         TestInfraOutputNoColor,
         TestMroFacadeMethods,
     )
-    from tests.infra.unit.io.test_infra_output_formatting import (
+    from .unit.io.test_infra_output_formatting import (
         TestInfraOutputHeader,
         TestInfraOutputMessages,
         TestInfraOutputProgress,
         TestInfraOutputStatus,
         TestInfraOutputSummary,
     )
-    from tests.infra.unit.io.test_infra_terminal_detection import (
+    from .unit.io.test_infra_terminal_detection import (
         TestShouldUseColor,
         TestShouldUseUnicode,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_analysis import (
+    from .unit.refactor.test_infra_refactor_analysis import (
         test_build_impact_map_extracts_rename_entries,
         test_build_impact_map_extracts_signature_entries,
         test_main_analyze_violations_is_read_only,
@@ -705,7 +652,7 @@ if TYPE_CHECKING:
         test_violation_analysis_counts_massive_patterns,
         test_violation_analyzer_skips_non_utf8_files,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_class_and_propagation import (
+    from .unit.refactor.test_infra_refactor_class_and_propagation import (
         test_class_reconstructor_reorders_each_contiguous_method_block,
         test_class_reconstructor_reorders_methods_by_config,
         test_class_reconstructor_skips_interleaved_non_method_members,
@@ -717,7 +664,7 @@ if TYPE_CHECKING:
         test_symbol_propagation_renames_import_and_local_references,
         test_symbol_propagation_updates_mro_base_references,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_class_placement import (
+    from .unit.refactor.test_infra_refactor_class_placement import (
         test_detects_attribute_base_class,
         test_detects_basemodel_in_non_model_file,
         test_detects_multiple_models,
@@ -728,7 +675,7 @@ if TYPE_CHECKING:
         test_skips_protected_files,
         test_skips_settings_file,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_engine import (
+    from .unit.refactor.test_infra_refactor_engine import (
         test_engine_always_enables_class_nesting_file_rule,
         test_refactor_files_skips_non_python_inputs,
         test_refactor_project_scans_tests_and_scripts_dirs,
@@ -737,7 +684,7 @@ if TYPE_CHECKING:
         test_rule_dispatch_keeps_legacy_id_fallback_mapping,
         test_rule_dispatch_prefers_fix_action_metadata,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_import_modernizer import (
+    from .unit.refactor.test_infra_refactor_import_modernizer import (
         test_import_modernizer_adds_c_when_existing_c_is_aliased,
         test_import_modernizer_does_not_rewrite_function_parameter_shadow,
         test_import_modernizer_does_not_rewrite_rebound_local_name_usage,
@@ -749,7 +696,7 @@ if TYPE_CHECKING:
         test_lazy_import_rule_hoists_import_to_module_level,
         test_lazy_import_rule_uses_fix_action_for_hoist,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_legacy_and_annotations import (
+    from .unit.refactor.test_infra_refactor_legacy_and_annotations import (
         test_ensure_future_annotations_after_docstring,
         test_ensure_future_annotations_moves_existing_import_to_top,
         test_legacy_import_bypass_collapses_to_primary_import,
@@ -759,7 +706,7 @@ if TYPE_CHECKING:
         test_legacy_wrapper_function_is_inlined_as_alias,
         test_legacy_wrapper_non_passthrough_is_not_inlined,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_namespace_aliases import (
+    from .unit.refactor.test_infra_refactor_namespace_aliases import (
         test_import_alias_detector_skips_facade_and_subclass_files,
         test_import_alias_detector_skips_nested_private_and_as_renames,
         test_import_alias_detector_skips_private_and_class_imports,
@@ -768,7 +715,7 @@ if TYPE_CHECKING:
         test_namespace_rewriter_skips_facade_and_subclass_files,
         test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_namespace_source import (
+    from .unit.refactor.test_infra_refactor_namespace_source import (
         test_detects_only_wrong_alias_in_mixed_import,
         test_detects_same_project_submodule_alias_import,
         test_detects_wrong_source_m_import,
@@ -784,7 +731,7 @@ if TYPE_CHECKING:
         test_skips_same_project_private_submodule,
         test_skips_same_project_submodule_class_import,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_pattern_corrections import (
+    from .unit.refactor.test_infra_refactor_pattern_corrections import (
         test_pattern_rule_converts_dict_annotations_to_mapping,
         test_pattern_rule_keeps_dict_param_when_copy_used,
         test_pattern_rule_keeps_dict_param_when_subscript_mutated,
@@ -794,21 +741,21 @@ if TYPE_CHECKING:
         test_pattern_rule_removes_nested_type_object_cast_chain,
         test_pattern_rule_skips_overload_signatures,
     )
-    from tests.infra.unit.refactor.test_infra_refactor_safety import (
+    from .unit.refactor.test_infra_refactor_safety import (
         EngineSafetyStub,
         test_refactor_project_integrates_safety_manager,
     )
-    from tests.infra.unit.release.flow import TestReleaseMainFlow
-    from tests.infra.unit.release.main import TestReleaseMainParsing
-    from tests.infra.unit.release.orchestrator import TestReleaseOrchestratorExecute
-    from tests.infra.unit.release.orchestrator_git import (
+    from .unit.release.flow import TestReleaseMainFlow
+    from .unit.release.main import TestReleaseMainParsing
+    from .unit.release.orchestrator import TestReleaseOrchestratorExecute
+    from .unit.release.orchestrator_git import (
         TestCollectChanges,
         TestCreateBranches,
         TestCreateTag,
         TestPreviousTag,
         TestPushRelease,
     )
-    from tests.infra.unit.release.orchestrator_helpers import (
+    from .unit.release.orchestrator_helpers import (
         TestBuildTargets,
         TestBumpNextDev,
         TestDispatchPhase,
@@ -817,29 +764,26 @@ if TYPE_CHECKING:
         TestUpdateChangelog,
         TestVersionFiles,
     )
-    from tests.infra.unit.release.orchestrator_phases import (
+    from .unit.release.orchestrator_phases import (
         TestPhaseBuild,
         TestPhaseValidate,
         TestPhaseVersion,
     )
-    from tests.infra.unit.release.orchestrator_publish import (
-        TestPhasePublish,
-        workspace_root,
-    )
-    from tests.infra.unit.release.release_init import TestReleaseInit
-    from tests.infra.unit.release.version_resolution import (
+    from .unit.release.orchestrator_publish import TestPhasePublish, workspace_root
+    from .unit.release.release_init import TestReleaseInit
+    from .unit.release.version_resolution import (
         TestReleaseMainTagResolution,
         TestReleaseMainVersionResolution,
         TestResolveVersionInteractive,
     )
-    from tests.infra.unit.test_infra_constants_core import (
+    from .unit.test_infra_constants_core import (
         TestFlextInfraConstantsExcludedNamespace,
         TestFlextInfraConstantsFilesNamespace,
         TestFlextInfraConstantsGatesNamespace,
         TestFlextInfraConstantsPathsNamespace,
         TestFlextInfraConstantsStatusNamespace,
     )
-    from tests.infra.unit.test_infra_constants_extra import (
+    from .unit.test_infra_constants_extra import (
         TestFlextInfraConstantsAlias,
         TestFlextInfraConstantsCheckNamespace,
         TestFlextInfraConstantsConsistency,
@@ -847,75 +791,69 @@ if TYPE_CHECKING:
         TestFlextInfraConstantsGithubNamespace,
         TestFlextInfraConstantsImmutability,
     )
-    from tests.infra.unit.test_infra_git import (
+    from .unit.test_infra_git import (
         TestFlextInfraGitService,
         TestGitPush,
         TestGitTagOperations,
         TestRemovedCompatibilityMethods,
         git_repo,
     )
-    from tests.infra.unit.test_infra_init_lazy_core import TestFlextInfraInitLazyLoading
-    from tests.infra.unit.test_infra_init_lazy_submodules import (
+    from .unit.test_infra_init_lazy_core import TestFlextInfraInitLazyLoading
+    from .unit.test_infra_init_lazy_submodules import (
         TestFlextInfraSubmoduleInitLazyLoading,
     )
-    from tests.infra.unit.test_infra_main import (
+    from .unit.test_infra_main import (
         test_main_all_groups_defined,
         test_main_group_modules_are_valid,
         test_main_help_flag_returns_zero,
         test_main_returns_error_when_no_args,
         test_main_unknown_group_returns_error,
     )
-    from tests.infra.unit.test_infra_maintenance_init import TestFlextInfraMaintenance
-    from tests.infra.unit.test_infra_maintenance_main import (
+    from .unit.test_infra_maintenance_init import TestFlextInfraMaintenance
+    from .unit.test_infra_maintenance_main import (
         TestMaintenanceMainEnforcer,
         TestMaintenanceMainSuccess,
     )
-    from tests.infra.unit.test_infra_maintenance_python_version import (
+    from .unit.test_infra_maintenance_python_version import (
         TestDiscoverProjects,
         TestEnforcerExecute,
         TestEnsurePythonVersionFile,
         TestReadRequiredMinor,
         TestWorkspaceRoot,
     )
-    from tests.infra.unit.test_infra_paths import TestFlextInfraPathResolver
-    from tests.infra.unit.test_infra_patterns_core import (
+    from .unit.test_infra_paths import TestFlextInfraPathResolver
+    from .unit.test_infra_patterns_core import (
         TestFlextInfraPatternsMarkdown,
         TestFlextInfraPatternsTooling,
     )
-    from tests.infra.unit.test_infra_patterns_extra import (
+    from .unit.test_infra_patterns_extra import (
         TestFlextInfraPatternsEdgeCases,
         TestFlextInfraPatternsPatternTypes,
     )
-    from tests.infra.unit.test_infra_protocols import TestFlextInfraProtocolsImport
-    from tests.infra.unit.test_infra_reporting_core import (
-        TestFlextInfraReportingServiceCore,
-    )
-    from tests.infra.unit.test_infra_reporting_extra import (
-        TestFlextInfraReportingServiceExtra,
-    )
-    from tests.infra.unit.test_infra_selection import TestFlextInfraUtilitiesSelection
-    from tests.infra.unit.test_infra_subprocess_core import (
+    from .unit.test_infra_protocols import TestFlextInfraProtocolsImport
+    from .unit.test_infra_reporting_core import TestFlextInfraReportingServiceCore
+    from .unit.test_infra_reporting_extra import TestFlextInfraReportingServiceExtra
+    from .unit.test_infra_selection import TestFlextInfraUtilitiesSelection
+    from .unit.test_infra_subprocess_core import (
         runner,
         test_capture_cases,
         test_run_cases,
         test_run_raw_cases,
     )
-    from tests.infra.unit.test_infra_subprocess_extra import (
-        TestFlextInfraCommandRunnerExtra,
-    )
-    from tests.infra.unit.test_infra_toml_io import (
+    from .unit.test_infra_subprocess_extra import TestFlextInfraCommandRunnerExtra
+    from .unit.test_infra_toml_io import (
         TestFlextInfraTomlDocument,
         TestFlextInfraTomlHelpers,
         TestFlextInfraTomlRead,
     )
-    from tests.infra.unit.test_infra_typings import TestFlextInfraTypesImport
-    from tests.infra.unit.test_infra_utilities import TestFlextInfraUtilitiesImport
-    from tests.infra.unit.test_infra_version_core import TestFlextInfraVersionClass
-    from tests.infra.unit.test_infra_version_extra import (
+    from .unit.test_infra_typings import TestFlextInfraTypesImport
+    from .unit.test_infra_utilities import TestFlextInfraUtilitiesImport
+    from .unit.test_infra_version_core import TestFlextInfraVersionClass
+    from .unit.test_infra_version_extra import (
         TestFlextInfraVersionModuleLevel,
         TestFlextInfraVersionPackageInfo,
     )
-    from tests.infra.unit.test_infra_versioning import (
+    from .unit.test_infra_versioning import (
         service,
         test_bump_version_invalid,
         test_bump_version_result_type,
@@ -929,25 +867,25 @@ if TYPE_CHECKING:
         test_release_tag_from_branch_valid,
         test_replace_project_version,
     )
-    from tests.infra.unit.test_infra_workspace_cli import (
+    from .unit.test_infra_workspace_cli import (
         test_workspace_cli_migrate_command,
         test_workspace_cli_migrate_output_contains_summary,
     )
-    from tests.infra.unit.test_infra_workspace_detector import (
+    from .unit.test_infra_workspace_detector import (
         TestDetectorBasicDetection,
         TestDetectorGitRunScenarios,
         TestDetectorRepoNameExtraction,
         detector,
     )
-    from tests.infra.unit.test_infra_workspace_init import TestFlextInfraWorkspace
-    from tests.infra.unit.test_infra_workspace_main import (
+    from .unit.test_infra_workspace_init import TestFlextInfraWorkspace
+    from .unit.test_infra_workspace_main import (
         TestMainCli,
         TestRunDetect,
         TestRunMigrate,
         TestRunOrchestrate,
         TestRunSync,
     )
-    from tests.infra.unit.test_infra_workspace_migrator import (
+    from .unit.test_infra_workspace_migrator import (
         test_migrator_apply_updates_project_files,
         test_migrator_discovery_failure,
         test_migrator_dry_run_reports_changes_without_writes,
@@ -958,7 +896,7 @@ if TYPE_CHECKING:
         test_migrator_workspace_root_not_exists,
         test_migrator_workspace_root_project_detection,
     )
-    from tests.infra.unit.test_infra_workspace_migrator_deps import (
+    from .unit.test_infra_workspace_migrator_deps import (
         test_migrate_makefile_not_found_non_dry_run,
         test_migrate_pyproject_flext_core_non_dry_run,
         test_migrator_has_flext_core_dependency_in_poetry,
@@ -969,7 +907,7 @@ if TYPE_CHECKING:
         test_workspace_migrator_makefile_read_error,
         test_workspace_migrator_pyproject_write_error,
     )
-    from tests.infra.unit.test_infra_workspace_migrator_dryrun import (
+    from .unit.test_infra_workspace_migrator_dryrun import (
         test_migrator_flext_core_dry_run,
         test_migrator_flext_core_project_skipped,
         test_migrator_gitignore_already_normalized_dry_run,
@@ -977,26 +915,26 @@ if TYPE_CHECKING:
         test_migrator_makefile_read_failure,
         test_migrator_pyproject_not_found_dry_run,
     )
-    from tests.infra.unit.test_infra_workspace_migrator_errors import (
+    from .unit.test_infra_workspace_migrator_errors import (
         TestMigratorReadFailures,
         TestMigratorWriteFailures,
     )
-    from tests.infra.unit.test_infra_workspace_migrator_internal import (
+    from .unit.test_infra_workspace_migrator_internal import (
         TestMigratorEdgeCases,
         TestMigratorInternalMakefile,
         TestMigratorInternalPyproject,
     )
-    from tests.infra.unit.test_infra_workspace_migrator_pyproject import (
+    from .unit.test_infra_workspace_migrator_pyproject import (
         TestMigratorDryRun,
         TestMigratorFlextCore,
         TestMigratorPoetryDeps,
     )
-    from tests.infra.unit.test_infra_workspace_orchestrator import (
+    from .unit.test_infra_workspace_orchestrator import (
         TestOrchestratorBasic,
         TestOrchestratorFailures,
         orchestrator,
     )
-    from tests.infra.unit.test_infra_workspace_sync import (
+    from .unit.test_infra_workspace_sync import (
         SetupFn,
         svc,
         test_atomic_write_fail,
@@ -1010,42 +948,42 @@ if TYPE_CHECKING:
         test_sync_root_validation,
         test_sync_success_scenarios,
     )
-    from tests.infra.unit.validate.basemk_validator import (
+    from .unit.validate.basemk_validator import (
         TestBaseMkValidatorCore,
         TestBaseMkValidatorEdgeCases,
         TestBaseMkValidatorSha256,
         v,
     )
-    from tests.infra.unit.validate.init import TestCoreModuleInit
-    from tests.infra.unit.validate.inventory import (
+    from .unit.validate.init import TestCoreModuleInit
+    from .unit.validate.inventory import (
         TestInventoryServiceCore,
         TestInventoryServiceReports,
         TestInventoryServiceScripts,
     )
-    from tests.infra.unit.validate.main import (
+    from .unit.validate.main import (
         TestMainBaseMkValidate,
         TestMainCliRouting,
         TestMainInventory,
         TestMainScan,
     )
-    from tests.infra.unit.validate.pytest_diag import (
+    from .unit.validate.pytest_diag import (
         TestPytestDiagExtractorCore,
         TestPytestDiagLogParsing,
         TestPytestDiagParseXml,
     )
-    from tests.infra.unit.validate.scanner import (
+    from .unit.validate.scanner import (
         TestScannerCore,
         TestScannerHelpers,
         TestScannerMultiFile,
     )
-    from tests.infra.unit.validate.skill_validator import (
+    from .unit.validate.skill_validator import (
         TestNormalizeStringList,
         TestSafeLoadYaml,
         TestSkillValidatorAstGrepCount,
         TestSkillValidatorCore,
         TestSkillValidatorRenderTemplate,
     )
-    from tests.infra.unit.validate.stub_chain import (
+    from .unit.validate.stub_chain import (
         TestStubChainAnalyze,
         TestStubChainCore,
         TestStubChainDiscoverProjects,
@@ -1053,9 +991,9 @@ if TYPE_CHECKING:
         TestStubChainStubExists,
         TestStubChainValidate,
     )
-    from tests.infra.utilities import FlextInfraTestUtilities, u
-    from tests.infra.workspace_factory import WorkspaceFactory
-    from tests.infra.workspace_scenarios import (
+    from .utilities import FlextInfraTestUtilities, u
+    from .workspace_factory import WorkspaceFactory
+    from .workspace_scenarios import (
         BrokenScenario,
         EmptyScenario,
         FullScenario,

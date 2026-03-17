@@ -12,56 +12,33 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from tests.infra.unit.github.linter import TestFlextInfraWorkflowLinter
-    from tests.infra.unit.github.main import (
-        TestRunLint,
-        TestRunWorkflows,
-        run_lint,
-        run_pr,
-        run_workflows,
-    )
-    from tests.infra.unit.github.main_dispatch import (
-        TestRunPrWorkspace,
-        run_pr_workspace,
-    )
-    from tests.infra.unit.github.main_integration import TestMain, main
-    from tests.infra.unit.github.pr import (
-        TestCreate,
-        TestFlextInfraPrManager,
-        TestStatus,
-    )
-    from tests.infra.unit.github.pr_cli import (
-        TestMainFunction,
-        TestParseArgs,
-        TestSelectorFunction,
-    )
-    from tests.infra.unit.github.pr_init import TestGithubInit
-    from tests.infra.unit.github.pr_operations import (
+    from .linter import TestFlextInfraWorkflowLinter
+    from .main import TestRunLint, TestRunWorkflows, run_lint, run_pr, run_workflows
+    from .main_dispatch import TestRunPrWorkspace, run_pr_workspace
+    from .main_integration import TestMain, main
+    from .pr import TestCreate, TestFlextInfraPrManager, TestStatus
+    from .pr_cli import TestMainFunction, TestParseArgs, TestSelectorFunction
+    from .pr_init import TestGithubInit
+    from .pr_operations import (
         TestChecks,
         TestClose,
         TestMerge,
         TestTriggerRelease,
         TestView,
     )
-    from tests.infra.unit.github.pr_workspace import (
+    from .pr_workspace import (
         TestCheckpoint,
         TestFlextInfraPrWorkspaceManager,
         TestRunPr,
     )
-    from tests.infra.unit.github.pr_workspace_orchestrate import (
-        TestOrchestrate,
-        TestStaticMethods,
-    )
-    from tests.infra.unit.github.workflows import (
+    from .pr_workspace_orchestrate import TestOrchestrate, TestStaticMethods
+    from .workflows import (
         TestFlextInfraWorkflowSyncer,
         TestRenderTemplate,
         TestSyncOperation,
         TestSyncProject,
     )
-    from tests.infra.unit.github.workflows_workspace import (
-        TestSyncWorkspace,
-        TestWriteReport,
-    )
+    from .workflows_workspace import TestSyncWorkspace, TestWriteReport
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestCheckpoint": ("tests.infra.unit.github.pr_workspace", "TestCheckpoint"),

@@ -20,7 +20,7 @@ class TestAuditorForbiddenTerms:
     def test_forbidden_term_issues_empty_scope(self, tmp_path: Path) -> None:
         """Test forbidden_term_issues with no markdown files."""
         auditor = FlextInfraDocAuditor()
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -34,7 +34,7 @@ class TestAuditorForbiddenTerms:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("# Test")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="root",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -48,7 +48,7 @@ class TestAuditorForbiddenTerms:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("# Test")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="flext-core",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -63,7 +63,7 @@ class TestAuditorForbiddenTerms:
         """Test forbidden_term_issues skips non-docs files in root scope."""
         auditor = FlextInfraDocAuditor()
         (tmp_path / "README.md").write_text("# Test")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="root",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -75,7 +75,7 @@ class TestAuditorForbiddenTerms:
         """Test forbidden_term_issues skips non-flext scopes."""
         auditor = FlextInfraDocAuditor()
         (tmp_path / "test.md").write_text("# Test")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="other-project",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -90,7 +90,7 @@ class TestAuditorScope:
     def test_audit_scope_with_links_check(self, tmp_path: Path) -> None:
         """Test audit_scope runs links check."""
         auditor = FlextInfraDocAuditor()
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -108,7 +108,7 @@ class TestAuditorScope:
     def test_audit_scope_with_forbidden_terms_check(self, tmp_path: Path) -> None:
         """Test audit_scope runs forbidden-terms check."""
         auditor = FlextInfraDocAuditor()
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -126,7 +126,7 @@ class TestAuditorScope:
     def test_audit_scope_strict_mode_passes(self, tmp_path: Path) -> None:
         """Test audit_scope passes in strict mode with no issues."""
         auditor = FlextInfraDocAuditor()
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -143,7 +143,7 @@ class TestAuditorScope:
     def test_audit_scope_non_strict_mode_always_passes(self, tmp_path: Path) -> None:
         """Test audit_scope passes in non-strict mode."""
         auditor = FlextInfraDocAuditor()
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -160,7 +160,7 @@ class TestAuditorScope:
     def test_audit_scope_with_budget_limit(self, tmp_path: Path) -> None:
         """Test audit_scope respects issue budget."""
         auditor = FlextInfraDocAuditor()
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -177,7 +177,7 @@ class TestAuditorScope:
     def test_audit_scope_with_scope_specific_budget(self, tmp_path: Path) -> None:
         """Test audit_scope uses scope-specific budget."""
         auditor = FlextInfraDocAuditor()
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",

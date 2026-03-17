@@ -155,7 +155,7 @@ class FlextInfraPrWorkspaceManager:
         checkpoint: bool = True,
         fail_fast: bool = False,
         pr_args: Mapping[str, str] | None = None,
-    ) -> r[m.Infra.Github.PrOrchestrationResult]:
+    ) -> r[m.Infra.PrOrchestrationResult]:
         """Run PR operations across workspace repositories.
 
         Args:
@@ -178,7 +178,7 @@ class FlextInfraPrWorkspaceManager:
         else:
             projects_result = u.Infra.resolve_projects(workspace_root, projects or [])
         if projects_result.is_failure:
-            return r[m.Infra.Github.PrOrchestrationResult].fail(
+            return r[m.Infra.PrOrchestrationResult].fail(
                 projects_result.error or "project resolution failed",
             )
         repos = [p.path for p in projects_result.value]
@@ -189,12 +189,12 @@ class FlextInfraPrWorkspaceManager:
             "base": c.Infra.Git.MAIN,
         }
         failures = 0
-        results: list[m.Infra.Github.PrExecutionResult] = []
+        results: list[m.Infra.PrExecutionResult] = []
         for repo_root in repos:
             self.checkout_branch(repo_root, branch)
             if checkpoint:
                 self.checkpoint(repo_root, branch)
-            run_result: r[m.Infra.Github.PrExecutionResult] = self.run_pr(
+            run_result: r[m.Infra.PrExecutionResult] = self.run_pr(
                 repo_root,
                 workspace_root,
                 effective_args,
@@ -211,11 +211,11 @@ class FlextInfraPrWorkspaceManager:
                 if fail_fast:
                     break
         total = len(repos)
-        orchestration_results: tuple[m.Infra.Github.PrExecutionResult, ...] = tuple(
+        orchestration_results: tuple[m.Infra.PrExecutionResult, ...] = tuple(
             results,
         )
-        return r[m.Infra.Github.PrOrchestrationResult].ok(
-            m.Infra.Github.PrOrchestrationResult(
+        return r[m.Infra.PrOrchestrationResult].ok(
+            m.Infra.PrOrchestrationResult(
                 total=total,
                 success=total - failures,
                 fail=failures,
@@ -228,7 +228,7 @@ class FlextInfraPrWorkspaceManager:
         repo_root: Path,
         workspace_root: Path,
         pr_args: Mapping[str, str],
-    ) -> r[m.Infra.Github.PrExecutionResult]:
+    ) -> r[m.Infra.PrExecutionResult]:
         """Execute a PR operation on a single repository.
 
         Args:
@@ -266,15 +266,15 @@ class FlextInfraPrWorkspaceManager:
         else:
             to_file_result = u.Infra.run_to_file(command, log_path)
         if to_file_result.is_failure:
-            return r[m.Infra.Github.PrExecutionResult].fail(
+            return r[m.Infra.PrExecutionResult].fail(
                 to_file_result.error or "command execution error",
             )
         exit_code = to_file_result.value
         elapsed = int(time.monotonic() - started)
         status = c.Infra.Status.OK if exit_code == 0 else c.Infra.Status.FAIL
         log_str = str(log_path)
-        return r[m.Infra.Github.PrExecutionResult].ok(
-            m.Infra.Github.PrExecutionResult(
+        return r[m.Infra.PrExecutionResult].ok(
+            m.Infra.PrExecutionResult(
                 display=display,
                 status=status,
                 elapsed=elapsed,

@@ -26,7 +26,7 @@ class TestFlextInfraDocScope:
         """Test FlextInfraDocScope creation."""
         rd = tmp_path / "reports"
         rd.mkdir(parents=True, exist_ok=True)
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test-project",
             path=tmp_path,
             report_dir=rd,
@@ -40,12 +40,12 @@ class TestFlextInfraDocScope:
         rd = tmp_path / "reports"
         rd.mkdir(parents=True, exist_ok=True)
         with pytest.raises(Exception):
-            m.Infra.Docs.FlextInfraDocScope(name="", path=tmp_path, report_dir=rd)
+            m.Infra.FlextInfraDocScope(name="", path=tmp_path, report_dir=rd)
 
     def test_scope_path_required(self) -> None:
         """Test FlextInfraDocScope requires path."""
         with pytest.raises(Exception):
-            m.Infra.Docs.FlextInfraDocScope.model_validate({
+            m.Infra.FlextInfraDocScope.model_validate({
                 "name": "test",
                 "path": None,
                 "report_dir": "/tmp",
@@ -54,7 +54,7 @@ class TestFlextInfraDocScope:
     def test_scope_report_dir_required(self, tmp_path: Path) -> None:
         """Test FlextInfraDocScope requires report_dir."""
         with pytest.raises(Exception):
-            m.Infra.Docs.FlextInfraDocScope.model_validate({
+            m.Infra.FlextInfraDocScope.model_validate({
                 "name": "test",
                 "path": str(tmp_path),
                 "report_dir": None,
@@ -70,7 +70,7 @@ class TestBuildScopes:
         project: str | None = None,
         projects: str | None = None,
         output_dir: str = _OUT,
-    ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
+    ) -> r[list[m.Infra.FlextInfraDocScope]]:
         return FlextInfraDocsShared.build_scopes(
             root=root,
             project=project,

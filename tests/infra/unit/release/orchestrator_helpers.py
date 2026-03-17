@@ -103,8 +103,8 @@ class TestRunMake:
 
     def test_success(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         fake_sp = FakeSubprocess()
-        output = _m.Infra.Core.CommandOutput(exit_code=0, stdout="ok", stderr="")
-        fake_sp._run_raw_result = r[_m.Infra.Core.CommandOutput].ok(output)
+        output = _m.Infra.CommandOutput(exit_code=0, stdout="ok", stderr="")
+        fake_sp._run_raw_result = r[_m.Infra.CommandOutput].ok(output)
         _patch_sp(monkeypatch, fake_sp)
         result = _CLS._run_make(workspace_root, "build")
         tm.ok(result)
@@ -113,7 +113,7 @@ class TestRunMake:
 
     def test_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         fake_sp = FakeSubprocess()
-        fake_sp._run_raw_result = r[_m.Infra.Core.CommandOutput].fail("failed")
+        fake_sp._run_raw_result = r[_m.Infra.CommandOutput].fail("failed")
         _patch_sp(monkeypatch, fake_sp)
         tm.fail(_CLS._run_make(workspace_root, "build"))
 

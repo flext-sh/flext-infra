@@ -16,7 +16,7 @@ from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from tests.infra.models import m
 
-_R = m.Infra.Docs.DocsPhaseReport
+_R = m.Infra.DocsPhaseReport
 
 
 def _cli_args(

@@ -19,7 +19,7 @@ class _StubDiscovery:
 
     def __init__(
         self,
-        projects: list[im.Infra.Workspace.ProjectInfo] | None = None,
+        projects: list[im.Infra.ProjectInfo] | None = None,
         *,
         error: str = "",
     ) -> None:
@@ -29,11 +29,11 @@ class _StubDiscovery:
     def discover_projects(
         self,
         workspace_root: Path,
-    ) -> r[list[im.Infra.Workspace.ProjectInfo]]:
+    ) -> r[list[im.Infra.ProjectInfo]]:
         _ = workspace_root
         if self._error:
-            return r[list[im.Infra.Workspace.ProjectInfo]].fail(self._error)
-        return r[list[im.Infra.Workspace.ProjectInfo]].ok(self._projects)
+            return r[list[im.Infra.ProjectInfo]].fail(self._error)
+        return r[list[im.Infra.ProjectInfo]].ok(self._projects)
 
 
 class _StubGenerator(FlextInfraBaseMkGenerator):
@@ -47,7 +47,7 @@ class _StubGenerator(FlextInfraBaseMkGenerator):
     @override
     def generate(
         self,
-        config: im.Infra.Basemk.BaseMkConfig | Mapping[str, t.Scalar] | None = None,
+        config: im.Infra.BaseMkConfig | Mapping[str, t.Scalar] | None = None,
     ) -> r[str]:
         if self._fail:
             return r[str].fail(self._fail)
@@ -57,8 +57,8 @@ class _StubGenerator(FlextInfraBaseMkGenerator):
 def _project(
     project_root: Path,
     name: str = "project-a",
-) -> im.Infra.Workspace.ProjectInfo:
-    return im.Infra.Workspace.ProjectInfo.model_validate(
+) -> im.Infra.ProjectInfo:
+    return im.Infra.ProjectInfo.model_validate(
         obj={
             "name": name,
             "path": project_root,
@@ -70,7 +70,7 @@ def _project(
 
 
 def _build_migrator(
-    project: im.Infra.Workspace.ProjectInfo,
+    project: im.Infra.ProjectInfo,
     base_mk: str,
 ) -> FlextInfraProjectMigrator:
     migrator = FlextInfraProjectMigrator()

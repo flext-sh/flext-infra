@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests.infra import m, t
 
 

@@ -22,11 +22,11 @@ class TestValidateReport:
 
     def test_report_frozen(self) -> None:
         """Test DocsPhaseReport is frozen (immutable)."""
-        tm.that(m.Infra.Docs.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     def test_missing_adr_skills_field(self) -> None:
         """Test DocsPhaseReport missing_adr_skills field."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope="test",
             result="FAIL",
@@ -38,7 +38,7 @@ class TestValidateReport:
 
     def test_todo_written_field(self) -> None:
         """Test DocsPhaseReport todo_written field."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope="test",
             result="PASS",
@@ -50,7 +50,7 @@ class TestValidateReport:
     def test_result_field_values(self) -> None:
         """Test DocsPhaseReport result field accepts valid values."""
         for status in ["PASS", "FAIL", "WARN"]:
-            report = m.Infra.Docs.DocsPhaseReport(
+            report = m.Infra.DocsPhaseReport(
                 phase="validate",
                 scope="test",
                 result=status,
@@ -60,7 +60,7 @@ class TestValidateReport:
 
     def test_message_field(self) -> None:
         """Test DocsPhaseReport message field."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope="test",
             result="PASS",
@@ -184,8 +184,8 @@ class TestValidateCore:
         def mock_build_scopes(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
-            return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("Scope error")
+        ) -> r[list[m.Infra.FlextInfraDocScope]]:
+            return r[list[m.Infra.FlextInfraDocScope]].fail("Scope error")
 
         monkeypatch.setattr(FlextInfraDocsShared, "build_scopes", mock_build_scopes)
         result = validator.validate(tmp_path)

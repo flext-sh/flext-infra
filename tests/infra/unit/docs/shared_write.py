@@ -37,7 +37,7 @@ class TestWriteJson:
     def test_with_model(self, tmp_path: Path) -> None:
         """Test write_json with Pydantic model."""
         json_file = tmp_path / "test.json"
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="audit",
             scope="test",
             items=[],

@@ -99,8 +99,8 @@ class FlextInfraDocAuditor:
 
     @staticmethod
     def to_markdown(
-        scope: m.Infra.Docs.FlextInfraDocScope,
-        issues: list[m.Infra.Docs.AuditIssue],
+        scope: m.Infra.FlextInfraDocScope,
+        issues: list[m.Infra.AuditIssue],
     ) -> list[str]:
         """Format audit issues as a markdown report."""
         return [
@@ -127,7 +127,7 @@ class FlextInfraDocAuditor:
         output_dir: str = c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR,
         check: str = "all",
         strict: bool = True,
-    ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+    ) -> r[list[m.Infra.DocsPhaseReport]]:
         """Run documentation audit across project scopes.
 
         Args:
@@ -149,11 +149,11 @@ class FlextInfraDocAuditor:
             output_dir=output_dir,
         )
         if scopes_result.is_failure:
-            return r[list[m.Infra.Docs.DocsPhaseReport]].fail(
+            return r[list[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
         default_budget, by_scope_budget = self.load_audit_budgets(workspace_root)
-        reports: list[m.Infra.Docs.DocsPhaseReport] = []
+        reports: list[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self.audit_scope(
                 scope,
@@ -163,22 +163,22 @@ class FlextInfraDocAuditor:
                 max_issues_by_scope=by_scope_budget,
             )
             reports.append(report)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].ok(reports)
+        return r[list[m.Infra.DocsPhaseReport]].ok(reports)
 
     def audit_scope(
         self,
-        scope: m.Infra.Docs.FlextInfraDocScope,
+        scope: m.Infra.FlextInfraDocScope,
         *,
         check: str,
         strict: bool,
         max_issues_default: int | None,
         max_issues_by_scope: Mapping[str, int],
-    ) -> m.Infra.Docs.DocsPhaseReport:
+    ) -> m.Infra.DocsPhaseReport:
         """Run configured audit checks on a single scope."""
         checks = {part.strip() for part in check.split(",") if part.strip()}
         if not checks or "all" in checks:
             checks = {"links", "forbidden-terms"}
-        issues: list[m.Infra.Docs.AuditIssue] = []
+        issues: list[m.Infra.AuditIssue] = []
         if "links" in checks:
             issues.extend(self.broken_link_issues(scope))
         if "forbidden-terms" in checks:
@@ -227,11 +227,11 @@ class FlextInfraDocAuditor:
             result=status,
             reason=reason,
         )
-        return m.Infra.Docs.DocsPhaseReport(
+        return m.Infra.DocsPhaseReport(
             phase="audit",
             scope=scope.name,
             items=[
-                m.Infra.Docs.DocsPhaseItem(
+                m.Infra.DocsPhaseItem(
                     phase="audit",
                     file=issue.file,
                     issue_type=issue.issue_type,
@@ -250,10 +250,10 @@ class FlextInfraDocAuditor:
 
     def broken_link_issues(
         self,
-        scope: m.Infra.Docs.FlextInfraDocScope,
-    ) -> list[m.Infra.Docs.AuditIssue]:
+        scope: m.Infra.FlextInfraDocScope,
+    ) -> list[m.Infra.AuditIssue]:
         """Collect broken internal-link issues for markdown files in scope."""
-        issues: list[m.Infra.Docs.AuditIssue] = []
+        issues: list[m.Infra.AuditIssue] = []
         for md_file in FlextInfraDocsShared.iter_markdown_files(scope.path):
             content = md_file.read_text(
                 encoding=c.Infra.Encoding.DEFAULT,
@@ -278,7 +278,7 @@ class FlextInfraDocAuditor:
                     path = (md_file.parent / target).resolve()
                     if not path.exists():
                         issues.append(
-                            m.Infra.Docs.AuditIssue(
+                            m.Infra.AuditIssue(
                                 file=rel,
                                 issue_type="broken_link",
                                 severity="high",
@@ -289,10 +289,10 @@ class FlextInfraDocAuditor:
 
     def forbidden_term_issues(
         self,
-        scope: m.Infra.Docs.FlextInfraDocScope,
-    ) -> list[m.Infra.Docs.AuditIssue]:
+        scope: m.Infra.FlextInfraDocScope,
+    ) -> list[m.Infra.AuditIssue]:
         """Collect forbidden-term issues for markdown files in scope."""
-        issues: list[m.Infra.Docs.AuditIssue] = []
+        issues: list[m.Infra.AuditIssue] = []
         terms: tuple[str, ...] = ()
         for md_file in FlextInfraDocsShared.iter_markdown_files(scope.path):
             rel = md_file.relative_to(scope.path).as_posix()
@@ -307,7 +307,7 @@ class FlextInfraDocAuditor:
                 errors=c.Infra.Toml.IGNORE,
             ).lower()
             issues.extend(
-                m.Infra.Docs.AuditIssue(
+                m.Infra.AuditIssue(
                     file=rel,
                     issue_type="forbidden_term",
                     severity="medium",

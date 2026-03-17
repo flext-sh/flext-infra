@@ -229,7 +229,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Scanner(Protocol):
             """Protocol for file scanners that detect violations."""
 
-            def scan_file(self, *, file_path: Path) -> m.Infra.Utilities.ScanResult:
+            def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
                 """Scan a single file and return scan result."""
                 ...
 

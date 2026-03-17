@@ -6,7 +6,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import (
+from flext_infra.deps.detection import (
     build_project_report,
     classify_issues,
     dm,

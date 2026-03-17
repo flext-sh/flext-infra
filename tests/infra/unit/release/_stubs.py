@@ -104,18 +104,18 @@ class FakeSubprocess:
     """Fake for FlextInfraUtilitiesSubprocess."""
 
     _run_checked_result: r[bool] = r[bool].ok(True)
-    _run_raw_result: r[_m.Infra.Core.CommandOutput] | None = None
+    _run_raw_result: r[_m.Infra.CommandOutput] | None = None
     _run_checked_called: bool = False
 
     def run_checked(self, *args: str, **kwargs: str) -> r[bool]:
         self._run_checked_called = True
         return self._run_checked_result
 
-    def run_raw(self, *args: str, **kwargs: str) -> r[_m.Infra.Core.CommandOutput]:
+    def run_raw(self, *args: str, **kwargs: str) -> r[_m.Infra.CommandOutput]:
         if self._run_raw_result is not None:
             return self._run_raw_result
-        output = _m.Infra.Core.CommandOutput(exit_code=0, stdout="ok", stderr="")
-        return r[_m.Infra.Core.CommandOutput].ok(output)
+        output = _m.Infra.CommandOutput(exit_code=0, stdout="ok", stderr="")
+        return r[_m.Infra.CommandOutput].ok(output)
 
 
 class FakeReporting:

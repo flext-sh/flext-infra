@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyDetectionService, t
+from flext_infra import t
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 
 
 class TestClassifyIssues:

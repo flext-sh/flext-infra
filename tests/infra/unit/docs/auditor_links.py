@@ -19,7 +19,7 @@ class TestAuditorToMarkdown:
 
     def test_to_markdown_empty_issues(self) -> None:
         """Test to_markdown with no issues."""
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=Path(),
             report_dir=Path(),
@@ -30,12 +30,12 @@ class TestAuditorToMarkdown:
 
     def test_to_markdown_with_issues(self) -> None:
         """Test to_markdown with issues."""
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=Path(),
             report_dir=Path(),
         )
-        issue = m.Infra.Docs.AuditIssue(
+        issue = m.Infra.AuditIssue(
             file="README.md",
             issue_type="broken_link",
             severity="high",
@@ -52,7 +52,7 @@ class TestAuditorBrokenLinks:
     def test_broken_link_issues_empty_scope(self, tmp_path: Path) -> None:
         """Test broken_link_issues with no markdown files."""
         auditor = FlextInfraDocAuditor()
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -66,7 +66,7 @@ class TestAuditorBrokenLinks:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](test.md)")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -80,7 +80,7 @@ class TestAuditorBrokenLinks:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](https://example.com)")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -94,7 +94,7 @@ class TestAuditorBrokenLinks:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](#section)")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -108,7 +108,7 @@ class TestAuditorBrokenLinks:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("```\n[link](nonexistent.md)\n```")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -125,7 +125,7 @@ class TestAuditorBrokenLinks:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[a, b]")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -139,7 +139,7 @@ class TestAuditorBrokenLinks:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](missing.md)")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -154,7 +154,7 @@ class TestAuditorBrokenLinks:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[some text]")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -168,7 +168,7 @@ class TestAuditorBrokenLinks:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](some text)")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",

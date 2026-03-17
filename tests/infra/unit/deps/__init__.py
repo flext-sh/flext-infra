@@ -12,31 +12,21 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from tests.infra.unit.deps.test_detection_classify import (
-        TestBuildProjectReport,
-        TestClassifyIssues,
-    )
-    from tests.infra.unit.deps.test_detection_deptry import TestRunDeptry
-    from tests.infra.unit.deps.test_detection_discover import TestDiscoverProjects
-    from tests.infra.unit.deps.test_detection_models import (
+    from .test_detection_classify import TestBuildProjectReport, TestClassifyIssues
+    from .test_detection_deptry import TestRunDeptry
+    from .test_detection_discover import TestDiscoverProjects
+    from .test_detection_models import (
         TestFlextInfraDependencyDetectionModels,
         TestFlextInfraDependencyDetectionModels as m,
         TestFlextInfraDependencyDetectionService,
         TestFlextInfraDependencyDetectionService as s,
         TestToInfraValue,
     )
-    from tests.infra.unit.deps.test_detection_pip_check import TestRunPipCheck
-    from tests.infra.unit.deps.test_detection_typings import (
-        TestLoadDependencyLimits,
-        TestRunMypyStubHints,
-    )
-    from tests.infra.unit.deps.test_detection_typings_flow import (
-        TestModuleAndTypingsFlow,
-    )
-    from tests.infra.unit.deps.test_detection_uncovered import (
-        TestDetectionUncoveredLines,
-    )
-    from tests.infra.unit.deps.test_detection_wrappers import (
+    from .test_detection_pip_check import TestRunPipCheck
+    from .test_detection_typings import TestLoadDependencyLimits, TestRunMypyStubHints
+    from .test_detection_typings_flow import TestModuleAndTypingsFlow
+    from .test_detection_uncovered import TestDetectionUncoveredLines
+    from .test_detection_wrappers import (
         TestModuleLevelWrappers,
         test_discover_projects_wrapper,
         test_get_current_typings_from_pyproject_wrapper,
@@ -45,39 +35,33 @@ if TYPE_CHECKING:
         test_run_mypy_stub_hints_wrapper,
         test_run_pip_check_wrapper,
     )
-    from tests.infra.unit.deps.test_detector_detect import (
+    from .test_detector_detect import (
         TestFlextInfraRuntimeDevDependencyDetectorRunDetect,
     )
-    from tests.infra.unit.deps.test_detector_detect_failures import (
-        TestDetectorRunFailures,
-    )
-    from tests.infra.unit.deps.test_detector_init import (
-        TestFlextInfraRuntimeDevDependencyDetectorInit,
-    )
-    from tests.infra.unit.deps.test_detector_main import (
+    from .test_detector_detect_failures import TestDetectorRunFailures
+    from .test_detector_init import TestFlextInfraRuntimeDevDependencyDetectorInit
+    from .test_detector_main import (
         TestFlextInfraRuntimeDevDependencyDetectorRunTypings,
         TestMainFunction,
     )
-    from tests.infra.unit.deps.test_detector_models import (
-        TestFlextInfraDependencyDetectorModels,
-    )
-    from tests.infra.unit.deps.test_detector_report import (
+    from .test_detector_models import TestFlextInfraDependencyDetectorModels
+    from .test_detector_report import (
         TestFlextInfraRuntimeDevDependencyDetectorRunReport,
     )
-    from tests.infra.unit.deps.test_detector_report_flags import TestDetectorReportFlags
-    from tests.infra.unit.deps.test_extra_paths_manager import (
+    from .test_detector_report_flags import TestDetectorReportFlags
+    from .test_extra_paths_manager import (
         TestConstants,
         TestConstants as c,
         TestFlextInfraExtraPathsManager,
         TestGetDepPaths,
         TestSyncOne,
     )
-    from tests.infra.unit.deps.test_extra_paths_pep621 import (
+    from .test_extra_paths_pep621 import (
         TestPathDepPathsPep621,
         TestPathDepPathsPoetry,
         test_helpers_alias_exposed,
     )
-    from tests.infra.unit.deps.test_extra_paths_sync import (
+    from .test_extra_paths_sync import (
         pyright_content,
         test_main_success_modes,
         test_main_sync_failure,
@@ -86,53 +70,45 @@ if TYPE_CHECKING:
         test_sync_extra_paths_sync_failure,
         test_sync_one_edge_cases,
     )
-    from tests.infra.unit.deps.test_init import TestFlextInfraDeps
-    from tests.infra.unit.deps.test_internal_sync_discovery import (
+    from .test_init import TestFlextInfraDeps
+    from .test_internal_sync_discovery import (
         TestCollectInternalDeps,
         TestParseGitmodules,
         TestParseRepoMap,
     )
-    from tests.infra.unit.deps.test_internal_sync_discovery_edge import (
-        TestCollectInternalDepsEdgeCases,
-    )
-    from tests.infra.unit.deps.test_internal_sync_resolve import (
+    from .test_internal_sync_discovery_edge import TestCollectInternalDepsEdgeCases
+    from .test_internal_sync_resolve import (
         TestInferOwnerFromOrigin,
         TestResolveRef,
         TestSynthesizedRepoMap,
     )
-    from tests.infra.unit.deps.test_internal_sync_sync import TestSync
-    from tests.infra.unit.deps.test_internal_sync_sync_edge import (
-        TestSyncMethodEdgeCases,
-    )
-    from tests.infra.unit.deps.test_internal_sync_sync_edge_more import (
-        TestSyncMethodEdgeCasesMore,
-    )
-    from tests.infra.unit.deps.test_internal_sync_update import (
+    from .test_internal_sync_sync import TestSync
+    from .test_internal_sync_sync_edge import TestSyncMethodEdgeCases
+    from .test_internal_sync_sync_edge_more import TestSyncMethodEdgeCasesMore
+    from .test_internal_sync_update import (
         TestEnsureCheckout,
         TestEnsureSymlink,
         TestEnsureSymlinkEdgeCases,
     )
-    from tests.infra.unit.deps.test_internal_sync_update_checkout_edge import (
-        TestEnsureCheckoutEdgeCases,
-    )
-    from tests.infra.unit.deps.test_internal_sync_validation import (
+    from .test_internal_sync_update_checkout_edge import TestEnsureCheckoutEdgeCases
+    from .test_internal_sync_validation import (
         TestFlextInfraInternalDependencySyncService,
         TestIsInternalPathDep,
         TestIsRelativeTo,
         TestOwnerFromRemoteUrl,
         TestValidateGitRefEdgeCases,
     )
-    from tests.infra.unit.deps.test_internal_sync_workspace import (
+    from .test_internal_sync_workspace import (
         TestIsWorkspaceMode,
         TestWorkspaceRootFromEnv,
         TestWorkspaceRootFromParents,
     )
-    from tests.infra.unit.deps.test_main import (
+    from .test_main import (
         TestMainHelpAndErrors,
         TestMainReturnValues,
         TestSubcommandMapping,
     )
-    from tests.infra.unit.deps.test_main_dispatch import (
+    from .test_main_dispatch import (
         TestMainDelegation,
         TestMainExceptionHandling,
         TestMainModuleImport,
@@ -140,19 +116,19 @@ if TYPE_CHECKING:
         TestMainSysArgvModification,
         test_string_zero_return_value,
     )
-    from tests.infra.unit.deps.test_modernizer_comments import (
+    from .test_modernizer_comments import (
         TestInjectCommentsPhase,
         test_inject_comments_phase_apply_banner,
         test_inject_comments_phase_apply_broken_group_section,
         test_inject_comments_phase_apply_markers,
         test_inject_comments_phase_apply_with_optional_dependencies_dev,
     )
-    from tests.infra.unit.deps.test_modernizer_consolidate import (
+    from .test_modernizer_consolidate import (
         TestConsolidateGroupsPhase,
         test_consolidate_groups_phase_apply_removes_old_groups,
         test_consolidate_groups_phase_apply_with_empty_poetry_group,
     )
-    from tests.infra.unit.deps.test_modernizer_helpers import (
+    from .test_modernizer_helpers import (
         array,
         as_string_list,
         canonical_dev_dependencies,
@@ -174,58 +150,53 @@ if TYPE_CHECKING:
         test_unwrap_item_toml_item,
         unwrap_item,
     )
-    from tests.infra.unit.deps.test_modernizer_main import (
+    from .test_modernizer_main import (
         TestFlextInfraPyprojectModernizer,
         TestModernizerRunAndMain,
     )
-    from tests.infra.unit.deps.test_modernizer_main_extra import (
+    from .test_modernizer_main_extra import (
         TestModernizerEdgeCases,
         TestModernizerUncoveredLines,
         test_flext_infra_pyproject_modernizer_find_pyproject_files,
         test_flext_infra_pyproject_modernizer_process_file_invalid_toml,
     )
-    from tests.infra.unit.deps.test_modernizer_pyrefly import (
+    from .test_modernizer_pyrefly import (
         TestEnsurePyreflyConfigPhase,
         test_ensure_pyrefly_config_phase_apply_errors,
         test_ensure_pyrefly_config_phase_apply_ignore_errors,
         test_ensure_pyrefly_config_phase_apply_python_version,
         test_ensure_pyrefly_config_phase_apply_search_path,
     )
-    from tests.infra.unit.deps.test_modernizer_pyright import (
-        TestEnsurePyrightConfigPhase,
-    )
-    from tests.infra.unit.deps.test_modernizer_pytest import (
+    from .test_modernizer_pyright import TestEnsurePyrightConfigPhase
+    from .test_modernizer_pytest import (
         TestEnsurePytestConfigPhase,
         test_ensure_pytest_config_phase_apply_markers,
         test_ensure_pytest_config_phase_apply_minversion,
         test_ensure_pytest_config_phase_apply_python_classes,
     )
-    from tests.infra.unit.deps.test_modernizer_workspace import (
+    from .test_modernizer_workspace import (
         TestParser,
         TestReadDoc,
         TestWorkspaceRoot,
         test_workspace_root_doc_construction,
     )
-    from tests.infra.unit.deps.test_path_sync_helpers import (
+    from .test_path_sync_helpers import (
         extract_dep_name,
         test_extract_dep_name,
         test_extract_requirement_name,
         test_helpers_alias_is_reachable_helpers,
         test_target_path,
     )
-    from tests.infra.unit.deps.test_path_sync_init import (
+    from .test_path_sync_init import (
         TestDetectMode,
         TestFlextInfraDependencyPathSync,
         TestPathSyncEdgeCases,
         test_detect_mode_with_nonexistent_path,
         test_detect_mode_with_path_object,
     )
-    from tests.infra.unit.deps.test_path_sync_main import (
-        TestMain,
-        test_helpers_alias_is_reachable_main,
-    )
-    from tests.infra.unit.deps.test_path_sync_main_edges import TestMainEdgeCases
-    from tests.infra.unit.deps.test_path_sync_main_more import (
+    from .test_path_sync_main import TestMain, test_helpers_alias_is_reachable_main
+    from .test_path_sync_main_edges import TestMainEdgeCases
+    from .test_path_sync_main_more import (
         test_main_discovery_failure,
         test_main_no_changes_needed,
         test_main_project_invalid_toml,
@@ -235,12 +206,12 @@ if TYPE_CHECKING:
         test_main_with_changes_no_dry_run,
         test_workspace_root_fallback,
     )
-    from tests.infra.unit.deps.test_path_sync_main_project_obj import (
+    from .test_path_sync_main_project_obj import (
         test_helpers_alias_is_reachable_project_obj,
         test_main_project_obj_not_dict_first_loop,
         test_main_project_obj_not_dict_second_loop,
     )
-    from tests.infra.unit.deps.test_path_sync_rewrite_deps import (
+    from .test_path_sync_rewrite_deps import (
         TestRewriteDepPaths,
         rewrite_dep_paths,
         test_rewrite_dep_paths_dry_run,
@@ -248,13 +219,13 @@ if TYPE_CHECKING:
         test_rewrite_dep_paths_with_internal_names,
         test_rewrite_dep_paths_with_no_deps,
     )
-    from tests.infra.unit.deps.test_path_sync_rewrite_pep621 import (
+    from .test_path_sync_rewrite_pep621 import (
         TestRewritePep621,
         test_rewrite_pep621_invalid_path_dep_regex,
         test_rewrite_pep621_no_project_table,
         test_rewrite_pep621_non_string_item,
     )
-    from tests.infra.unit.deps.test_path_sync_rewrite_poetry import (
+    from .test_path_sync_rewrite_poetry import (
         TestRewritePoetry,
         test_rewrite_poetry_no_poetry_table,
         test_rewrite_poetry_no_tool_table,

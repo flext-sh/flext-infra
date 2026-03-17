@@ -60,18 +60,18 @@ class TestFixerCore:
 
     def test_fix_item_structure(self) -> None:
         """Test FixItem model structure."""
-        item = m.Infra.Docs.DocsPhaseItem(phase="fix", file="README.md", links=2, toc=1)
+        item = m.Infra.DocsPhaseItem(phase="fix", file="README.md", links=2, toc=1)
         tm.that(item.file, eq="README.md")
         tm.that(item.links, eq=2)
         tm.that(item.toc, eq=1)
 
     def test_fix_report_frozen(self) -> None:
         """Test FixReport is frozen (immutable)."""
-        tm.that(m.Infra.Docs.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     def test_fix_item_frozen(self) -> None:
         """Test FixItem is frozen (immutable)."""
-        tm.that(m.Infra.Docs.DocsPhaseItem.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.DocsPhaseItem.model_config.get("frozen"), eq=True)
 
     @pytest.mark.parametrize(
         ("project", "projects", "apply", "output_dir"),
@@ -108,7 +108,7 @@ class TestFixerCore:
 
     def test_fix_report_changed_files_count(self) -> None:
         """Test FixReport changed_files field."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="fix",
             scope="test",
             changed_files=5,
@@ -122,7 +122,7 @@ class TestFixerCore:
     )
     def test_fix_report_applied_field(self, changed_files: int, applied: bool) -> None:
         """Test FixReport applied field."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="fix",
             scope="test",
             changed_files=changed_files,
@@ -133,10 +133,10 @@ class TestFixerCore:
     def test_fix_report_items_list(self) -> None:
         """Test FixReport items list."""
         items = [
-            m.Infra.Docs.DocsPhaseItem(phase="fix", file="file1.md", links=1, toc=0),
-            m.Infra.Docs.DocsPhaseItem(phase="fix", file="file2.md", links=0, toc=1),
+            m.Infra.DocsPhaseItem(phase="fix", file="file1.md", links=1, toc=0),
+            m.Infra.DocsPhaseItem(phase="fix", file="file2.md", links=0, toc=1),
         ]
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="fix",
             scope="test",
             changed_files=2,
@@ -157,8 +157,8 @@ class TestFixerCore:
         def mock_build_scopes(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
-            return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("Scope error")
+        ) -> r[list[m.Infra.FlextInfraDocScope]]:
+            return r[list[m.Infra.FlextInfraDocScope]].fail("Scope error")
 
         monkeypatch.setattr(FlextInfraDocsShared, "build_scopes", mock_build_scopes)
         result = fixer.fix(tmp_path)

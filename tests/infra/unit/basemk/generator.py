@@ -19,7 +19,7 @@ from tests.infra.models import m as im
 class _SuccessRenderer:
     """Mock renderer that returns valid make syntax."""
 
-    def render_all(self, config: im.Infra.Basemk.BaseMkConfig | None = None) -> r[str]:
+    def render_all(self, config: im.Infra.BaseMkConfig | None = None) -> r[str]:
         del config
         return r[str].ok(".PHONY: help\nhelp:\n\t@echo 'help'\n")
 
@@ -27,7 +27,7 @@ class _SuccessRenderer:
 class _FailureRenderer:
     """Mock renderer that returns failure."""
 
-    def render_all(self, config: im.Infra.Basemk.BaseMkConfig | None = None) -> r[str]:
+    def render_all(self, config: im.Infra.BaseMkConfig | None = None) -> r[str]:
         del config
         return r[str].fail("render error")
 
@@ -62,7 +62,7 @@ def test_generator_generate_with_none_config_uses_default() -> None:
 
 def test_generator_generate_with_basemk_config_object() -> None:
     """Test generate() accepts BaseMkConfig object directly."""
-    config = im.Infra.Basemk.BaseMkConfig(
+    config = im.Infra.BaseMkConfig(
         project_name="test-proj",
         python_version="3.13",
         core_stack="python",
@@ -79,7 +79,7 @@ def test_generator_generate_with_basemk_config_object() -> None:
 
 def test_generator_generate_with_dict_config() -> None:
     """Test generate() accepts dict configuration."""
-    config = im.Infra.Basemk.BaseMkConfig(
+    config = im.Infra.BaseMkConfig(
         project_name="dict-proj",
         python_version="3.13",
         core_stack="python",

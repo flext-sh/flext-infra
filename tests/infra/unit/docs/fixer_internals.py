@@ -172,7 +172,7 @@ class TestFixerScope:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         _ = tf.create_in("# Test\n\n## Section\n", "README.md", docs_dir)
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",

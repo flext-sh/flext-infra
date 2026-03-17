@@ -46,7 +46,7 @@ class TestBuilderScope:
     ) -> None:
         """Test _build_scope with mkdocs.yml present."""
         (tmp_path / "mkdocs.yml").write_text("site_name: Test\n")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -60,7 +60,7 @@ class TestBuilderScope:
         tmp_path: Path,
     ) -> None:
         """Test _build_scope without mkdocs.yml returns SKIP."""
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -74,7 +74,7 @@ class TestBuilderScope:
         tmp_path: Path,
     ) -> None:
         """Test _run_mkdocs returns SKIP when mkdocs.yml not found."""
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -90,7 +90,7 @@ class TestBuilderScope:
     ) -> None:
         """Test _run_mkdocs handles command failures."""
         (tmp_path / "mkdocs.yml").write_text("site_name: Test\n")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -107,7 +107,7 @@ class TestBuilderScope:
     ) -> None:
         """Test _run_mkdocs returns OK when exit_code is 0."""
         (tmp_path / "mkdocs.yml").write_text("site_name: Test\n")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -132,12 +132,12 @@ class TestBuilderScope:
         """Test _write_reports creates both JSON and markdown files."""
         report_dir = tmp_path / "reports"
         report_dir.mkdir(parents=True, exist_ok=True)
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=report_dir,
         )
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="build",
             scope="test",
             result="OK",
@@ -159,8 +159,8 @@ class TestBuilderScope:
         def mock_build_scopes(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
-            return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("Scope error")
+        ) -> r[list[m.Infra.FlextInfraDocScope]]:
+            return r[list[m.Infra.FlextInfraDocScope]].fail("Scope error")
 
         monkeypatch.setattr(FlextInfraDocsShared, "build_scopes", mock_build_scopes)
         result = builder.build(tmp_path)

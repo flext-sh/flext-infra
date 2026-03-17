@@ -32,8 +32,8 @@ class TestAuditorScopeFailure:
         def mock_build_scopes(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
-            return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("scope build error")
+        ) -> r[list[m.Infra.FlextInfraDocScope]]:
+            return r[list[m.Infra.FlextInfraDocScope]].fail("scope build error")
 
         monkeypatch.setattr(FlextInfraDocsShared, "build_scopes", mock_build_scopes)
         result = auditor.audit(tmp_path)
@@ -53,8 +53,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
-            return r[list[m.Infra.Docs.DocsPhaseReport]].fail("audit error")
+        ) -> r[list[m.Infra.DocsPhaseReport]]:
+            return r[list[m.Infra.DocsPhaseReport]].fail("audit error")
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
@@ -67,7 +67,7 @@ class TestAuditorMainCli:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test main() returns 1 when reports have failures."""
-        failed_report = m.Infra.Docs.DocsPhaseReport(
+        failed_report = m.Infra.DocsPhaseReport(
             phase="audit",
             scope="test",
             items=[],
@@ -79,8 +79,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
-            return r[list[m.Infra.Docs.DocsPhaseReport]].ok([failed_report])
+        ) -> r[list[m.Infra.DocsPhaseReport]]:
+            return r[list[m.Infra.DocsPhaseReport]].ok([failed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
@@ -93,7 +93,7 @@ class TestAuditorMainCli:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test main() returns 0 when all reports pass."""
-        passed_report = m.Infra.Docs.DocsPhaseReport(
+        passed_report = m.Infra.DocsPhaseReport(
             phase="audit",
             scope="test",
             items=[],
@@ -105,8 +105,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
-            return r[list[m.Infra.Docs.DocsPhaseReport]].ok([passed_report])
+        ) -> r[list[m.Infra.DocsPhaseReport]]:
+            return r[list[m.Infra.DocsPhaseReport]].ok([passed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
@@ -119,7 +119,7 @@ class TestAuditorMainCli:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test main() CLI with all arguments."""
-        passed_report = m.Infra.Docs.DocsPhaseReport(
+        passed_report = m.Infra.DocsPhaseReport(
             phase="audit",
             scope="test",
             items=[],
@@ -131,8 +131,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
-            return r[list[m.Infra.Docs.DocsPhaseReport]].ok([passed_report])
+        ) -> r[list[m.Infra.DocsPhaseReport]]:
+            return r[list[m.Infra.DocsPhaseReport]].ok([passed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(
@@ -161,7 +161,7 @@ class TestAuditorMainCli:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test main() returns 0 on success."""
-        passed_report = m.Infra.Docs.DocsPhaseReport(
+        passed_report = m.Infra.DocsPhaseReport(
             phase="audit",
             scope="test",
             items=[],
@@ -173,8 +173,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
-            return r[list[m.Infra.Docs.DocsPhaseReport]].ok([passed_report])
+        ) -> r[list[m.Infra.DocsPhaseReport]]:
+            return r[list[m.Infra.DocsPhaseReport]].ok([passed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])

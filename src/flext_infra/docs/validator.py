@@ -37,7 +37,7 @@ class FlextInfraDocValidator:
 
     @staticmethod
     def _maybe_write_todo(
-        scope: m.Infra.Docs.FlextInfraDocScope,
+        scope: m.Infra.FlextInfraDocScope,
         *,
         apply_mode: bool,
     ) -> bool:
@@ -58,7 +58,7 @@ class FlextInfraDocValidator:
         output_dir: str = c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR,
         check: str = "all",
         apply: bool = False,
-    ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+    ) -> r[list[m.Infra.DocsPhaseReport]]:
         """Run documentation validation across project scopes.
 
         Args:
@@ -73,7 +73,7 @@ class FlextInfraDocValidator:
             r with list of ValidateReport objects.
 
         """
-        scopes_result: r[list[m.Infra.Docs.FlextInfraDocScope]] = (
+        scopes_result: r[list[m.Infra.FlextInfraDocScope]] = (
             FlextInfraDocsShared.build_scopes(
                 workspace_root=workspace_root,
                 project=project,
@@ -82,14 +82,14 @@ class FlextInfraDocValidator:
             )
         )
         if scopes_result.is_failure:
-            return r[list[m.Infra.Docs.DocsPhaseReport]].fail(
+            return r[list[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: list[m.Infra.Docs.DocsPhaseReport] = []
+        reports: list[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._validate_scope(scope, check=check, apply_mode=apply)
             reports.append(report)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].ok(reports)
+        return r[list[m.Infra.DocsPhaseReport]].ok(reports)
 
     def _run_adr_skill_check(self, workspace_root: Path) -> tuple[int, list[str]]:
         """Run ADR skill check and return exit code with missing skill names."""
@@ -124,11 +124,11 @@ class FlextInfraDocValidator:
 
     def _validate_scope(
         self,
-        scope: m.Infra.Docs.FlextInfraDocScope,
+        scope: m.Infra.FlextInfraDocScope,
         *,
         check: str,
         apply_mode: bool,
-    ) -> m.Infra.Docs.DocsPhaseReport:
+    ) -> m.Infra.DocsPhaseReport:
         """Run validation for a single project scope."""
         status = c.Infra.Status.OK
         message = "validation passed"
@@ -182,7 +182,7 @@ class FlextInfraDocValidator:
             result=status,
             reason=message,
         )
-        return m.Infra.Docs.DocsPhaseReport(
+        return m.Infra.DocsPhaseReport(
             phase="validate",
             scope=scope.name,
             result=status,

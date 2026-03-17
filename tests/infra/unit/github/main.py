@@ -65,8 +65,8 @@ class TestRunWorkflows:
 class TestRunLint:
     def _lint_ok(self) -> StubLinter:
         return StubLinter(
-            lint_returns=r[m.Infra.Github.WorkflowLintResult].ok(
-                m.Infra.Github.WorkflowLintResult(status="ok"),
+            lint_returns=r[m.Infra.WorkflowLintResult].ok(
+                m.Infra.WorkflowLintResult(status="ok"),
             ),
         )
 
@@ -77,7 +77,7 @@ class TestRunLint:
 
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         linter = StubLinter(
-            lint_returns=r[m.Infra.Github.WorkflowLintResult].fail("lint failed"),
+            lint_returns=r[m.Infra.WorkflowLintResult].fail("lint failed"),
         )
         monkeypatch.setattr(github_main, "FlextInfraWorkflowLinter", lambda: linter)
         assert run_lint(["--root", str(tmp_path)]) == 1

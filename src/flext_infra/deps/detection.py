@@ -19,6 +19,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.deps._models import FlextInfraDepsModels
 
 
 class FlextInfraDependencyDetectionService:
@@ -527,7 +528,7 @@ class FlextInfraDependencyDetectionService:
 
 
 _service = FlextInfraDependencyDetectionService()
-dm = m.Infra.Deps
+dm = FlextInfraDepsModels
 
 
 def discover_project_paths(

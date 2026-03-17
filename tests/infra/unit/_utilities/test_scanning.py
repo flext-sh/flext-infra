@@ -10,13 +10,13 @@ class MockScanner:
         self.detector_name = detector_name
         self.scanned: list[Path] = []
 
-    def scan_file(self, *, file_path: Path) -> m.Infra.Utilities.ScanResult:
+    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
         self.scanned.append(file_path)
-        return m.Infra.Utilities.ScanResult(
+        return m.Infra.ScanResult(
             file_path=file_path,
             detector_name=self.detector_name,
             violations=[
-                m.Infra.Utilities.ScanViolation(
+                m.Infra.ScanViolation(
                     line=1,
                     message=f"checked {file_path.name}",
                     severity="low",
@@ -55,7 +55,7 @@ class TestScanFileBatch:
 
 class TestScanModels:
     def test_scan_violation_model_fields(self) -> None:
-        violation = m.Infra.Utilities.ScanViolation(
+        violation = m.Infra.ScanViolation(
             line=42,
             message="forbidden import",
             severity="high",
@@ -68,7 +68,7 @@ class TestScanModels:
         assert violation.rule_id == "FLEXT001"
 
     def test_scan_result_model_fields_and_defaults(self, tmp_path: Path) -> None:
-        result = m.Infra.Utilities.ScanResult(
+        result = m.Infra.ScanResult(
             file_path=tmp_path / "sample.py",
             detector_name="scanner-x",
             violations=[],
@@ -80,13 +80,13 @@ class TestScanModels:
         assert payload["violations"] == []
 
     def test_scan_result_with_violations(self, tmp_path: Path) -> None:
-        violation = m.Infra.Utilities.ScanViolation(
+        violation = m.Infra.ScanViolation(
             line=7,
             message="rule hit",
             severity="medium",
             rule_id=None,
         )
-        result = m.Infra.Utilities.ScanResult(
+        result = m.Infra.ScanResult(
             file_path=tmp_path / "violating.py",
             detector_name="scanner-y",
             violations=[violation],

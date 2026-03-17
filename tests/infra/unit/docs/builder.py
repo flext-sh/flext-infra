@@ -58,7 +58,7 @@ class TestBuilderCore:
 
     def test_build_report_frozen(self) -> None:
         """Test BuildReport is frozen (immutable)."""
-        tm.that(m.Infra.Docs.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     @pytest.mark.parametrize(
         "kwargs",
@@ -83,7 +83,7 @@ class TestBuilderCore:
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
     def test_build_report_result_field_values(self, status: str) -> None:
         """Test BuildReport result field accepts valid values."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="build",
             scope="test",
             result=status,
@@ -94,7 +94,7 @@ class TestBuilderCore:
 
     def test_build_report_site_dir_field(self) -> None:
         """Test BuildReport site_dir field."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="build",
             scope="test",
             result="OK",

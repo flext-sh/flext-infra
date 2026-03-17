@@ -12,7 +12,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from tests.infra.unit.docs.auditor import (
+    from .auditor import (
         TestAuditorCore,
         TestAuditorNormalize,
         auditor,
@@ -20,51 +20,31 @@ if TYPE_CHECKING:
         normalize_link,
         should_skip_target,
     )
-    from tests.infra.unit.docs.auditor_budgets import TestLoadAuditBudgets
-    from tests.infra.unit.docs.auditor_cli import (
-        TestAuditorMainCli,
-        TestAuditorScopeFailure,
-    )
-    from tests.infra.unit.docs.auditor_links import (
-        TestAuditorBrokenLinks,
-        TestAuditorToMarkdown,
-    )
-    from tests.infra.unit.docs.auditor_scope import (
-        TestAuditorForbiddenTerms,
-        TestAuditorScope,
-    )
-    from tests.infra.unit.docs.builder import TestBuilderCore, builder
-    from tests.infra.unit.docs.builder_scope import TestBuilderScope
-    from tests.infra.unit.docs.fixer import TestFixerCore
-    from tests.infra.unit.docs.fixer_internals import (
+    from .auditor_budgets import TestLoadAuditBudgets
+    from .auditor_cli import TestAuditorMainCli, TestAuditorScopeFailure
+    from .auditor_links import TestAuditorBrokenLinks, TestAuditorToMarkdown
+    from .auditor_scope import TestAuditorForbiddenTerms, TestAuditorScope
+    from .builder import TestBuilderCore, builder
+    from .builder_scope import TestBuilderScope
+    from .fixer import TestFixerCore
+    from .fixer_internals import (
         TestFixerMaybeFixLink,
         TestFixerProcessFile,
         TestFixerScope,
         TestFixerToc,
         fixer,
     )
-    from tests.infra.unit.docs.generator import TestGeneratorCore
-    from tests.infra.unit.docs.generator_internals import (
-        TestGeneratorHelpers,
-        TestGeneratorScope,
-        gen,
-    )
-    from tests.infra.unit.docs.init import TestFlextInfraDocs
-    from tests.infra.unit.docs.main import TestRunAudit, TestRunFix
-    from tests.infra.unit.docs.main_commands import (
-        TestRunBuild,
-        TestRunGenerate,
-        TestRunValidate,
-    )
-    from tests.infra.unit.docs.main_entry import TestMainRouting, TestMainWithFlags
-    from tests.infra.unit.docs.shared import TestBuildScopes, TestFlextInfraDocScope
-    from tests.infra.unit.docs.shared_iter import (
-        TestIterMarkdownFiles,
-        TestSelectedProjectNames,
-    )
-    from tests.infra.unit.docs.shared_write import TestWriteJson, TestWriteMarkdown
-    from tests.infra.unit.docs.validator import TestValidateCore, TestValidateReport
-    from tests.infra.unit.docs.validator_internals import (
+    from .generator import TestGeneratorCore
+    from .generator_internals import TestGeneratorHelpers, TestGeneratorScope, gen
+    from .init import TestFlextInfraDocs
+    from .main import TestRunAudit, TestRunFix
+    from .main_commands import TestRunBuild, TestRunGenerate, TestRunValidate
+    from .main_entry import TestMainRouting, TestMainWithFlags
+    from .shared import TestBuildScopes, TestFlextInfraDocScope
+    from .shared_iter import TestIterMarkdownFiles, TestSelectedProjectNames
+    from .shared_write import TestWriteJson, TestWriteMarkdown
+    from .validator import TestValidateCore, TestValidateReport
+    from .validator_internals import (
         TestAdrHelpers,
         TestMaybeWriteTodo,
         TestValidateScope,

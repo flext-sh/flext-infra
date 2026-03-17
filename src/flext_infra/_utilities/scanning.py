@@ -26,7 +26,7 @@ class FlextInfraUtilitiesScanning:
     def scan_files_batch(
         scanner: p.Infra.Scanner,
         files: Sequence[Path],
-    ) -> list[m.Infra.Utilities.ScanResult]:
+    ) -> list[m.Infra.ScanResult]:
         """Run a scanner across multiple files and collect results.
 
         Args:
@@ -37,7 +37,7 @@ class FlextInfraUtilitiesScanning:
             List of ScanResult from each file.
 
         """
-        results: list[m.Infra.Utilities.ScanResult] = []
+        results: list[m.Infra.ScanResult] = []
         for file_path in files:
             result = scanner.scan_file(file_path=file_path)
             results.append(result)

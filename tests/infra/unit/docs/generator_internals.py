@@ -26,7 +26,7 @@ class TestGeneratorScope:
         gen: FlextInfraDocGenerator,
         tmp_path: Path,
     ) -> None:
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="root",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -39,7 +39,7 @@ class TestGeneratorScope:
         gen: FlextInfraDocGenerator,
         tmp_path: Path,
     ) -> None:
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test-project",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -52,7 +52,7 @@ class TestGeneratorScope:
         gen: FlextInfraDocGenerator,
         tmp_path: Path,
     ) -> None:
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="root",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -65,7 +65,7 @@ class TestGeneratorScope:
         gen: FlextInfraDocGenerator,
         tmp_path: Path,
     ) -> None:
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -85,7 +85,7 @@ class TestGeneratorScope:
         guides_dir = tmp_path / "docs/guides"
         guides_dir.mkdir(parents=True, exist_ok=True)
         (guides_dir / "test.md").write_text("# Test Guide\n\nContent.\n")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path / "project",
             report_dir=tmp_path / "reports",
@@ -102,7 +102,7 @@ class TestGeneratorScope:
         gen: FlextInfraDocGenerator,
         tmp_path: Path,
     ) -> None:
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
@@ -117,7 +117,7 @@ class TestGeneratorScope:
         tmp_path: Path,
     ) -> None:
         (tmp_path / "mkdocs.yml").write_text("site_name: Test\n")
-        scope = m.Infra.Docs.FlextInfraDocScope(
+        scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",

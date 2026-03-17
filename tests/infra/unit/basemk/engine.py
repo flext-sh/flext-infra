@@ -21,7 +21,7 @@ from tests.infra.models import m as im
 
 
 class _InvalidTemplateEngine:
-    def render_all(self, config: im.Infra.Basemk.BaseMkConfig | None = None) -> r[str]:
+    def render_all(self, config: im.Infra.BaseMkConfig | None = None) -> r[str]:
         del config
         return r[str].ok("ifneq (,\n")
 
@@ -40,7 +40,7 @@ def test_render_all_has_no_scripts_path_references() -> None:
 
 
 def test_generator_renders_with_config_override() -> None:
-    config = im.Infra.Basemk.BaseMkConfig(
+    config = im.Infra.BaseMkConfig(
         project_name="sample-project",
         python_version="3.13",
         core_stack="python",
@@ -99,7 +99,7 @@ def test_basemk_engine_render_all_returns_string() -> None:
 
 def test_basemk_engine_render_all_with_valid_config() -> None:
     """Test engine.render_all() with explicit config."""
-    config = im.Infra.Basemk.BaseMkConfig(
+    config = im.Infra.BaseMkConfig(
         project_name="test-project",
         python_version="3.13",
         core_stack="python",

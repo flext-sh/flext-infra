@@ -20,8 +20,8 @@ from tests.infra.unit.github._stubs import (
 main = github_main.main
 
 
-def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.Github.PrOrchestrationResult:
-    return m.Infra.Github.PrOrchestrationResult(
+def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
+    return m.Infra.PrOrchestrationResult(
         total=total,
         success=max(total - fail, 0),
         fail=fail,
@@ -66,8 +66,8 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         linter = StubLinter(
-            lint_returns=r[m.Infra.Github.WorkflowLintResult].ok(
-                m.Infra.Github.WorkflowLintResult(status="ok"),
+            lint_returns=r[m.Infra.WorkflowLintResult].ok(
+                m.Infra.WorkflowLintResult(status="ok"),
             ),
         )
         monkeypatch.setattr(github_main, "FlextInfraWorkflowLinter", lambda: linter)
@@ -104,7 +104,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = StubWorkspaceManager(
-            orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
+            orchestrate_returns=r[m.Infra.PrOrchestrationResult].ok(
                 _orch(fail=0),
             ),
         )
@@ -149,8 +149,8 @@ class TestMain:
             ),
         )
         linter = StubLinter(
-            lint_returns=r[m.Infra.Github.WorkflowLintResult].ok(
-                m.Infra.Github.WorkflowLintResult(status="ok"),
+            lint_returns=r[m.Infra.WorkflowLintResult].ok(
+                m.Infra.WorkflowLintResult(status="ok"),
             ),
         )
         monkeypatch.setattr(github_main, "FlextInfraWorkflowLinter", lambda: linter)

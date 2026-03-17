@@ -23,7 +23,7 @@ from tests.infra.unit.test_infra_workspace_migrator import (
 )
 
 
-def _setup_basic(tmp_path: Path) -> tuple[Path, im.Infra.Workspace.ProjectInfo]:
+def _setup_basic(tmp_path: Path) -> tuple[Path, im.Infra.ProjectInfo]:
     root = tmp_path / "project-a"
     root.mkdir(parents=True)
     (root / ".git").mkdir()

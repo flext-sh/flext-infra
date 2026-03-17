@@ -65,7 +65,7 @@ class TestAuditorCore:
             tm.that(hasattr(report, "items"), eq=True)
 
     def test_issue_structure(self) -> None:
-        issue = m.Infra.Docs.AuditIssue(
+        issue = m.Infra.AuditIssue(
             file="README.md",
             issue_type="broken_link",
             severity="high",
@@ -110,10 +110,10 @@ class TestAuditorCore:
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_report_frozen(self) -> None:
-        tm.that(m.Infra.Docs.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     def test_issue_frozen(self) -> None:
-        tm.that(m.Infra.Docs.AuditIssue.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.AuditIssue.model_config.get("frozen"), eq=True)
 
 
 class TestAuditorNormalize:

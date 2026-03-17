@@ -43,10 +43,38 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
                     )
 
     @staticmethod
+    def _render_type_checking_module(mod: str, current_pkg: str) -> str:
+        """Render module path for TYPE_CHECKING imports.
+
+        For local ``tests`` packages, use relative imports so static analyzers
+        resolve project-local modules without requiring an installed top-level
+        ``tests`` package.
+        """
+        if not current_pkg.startswith("tests"):
+            return mod
+        pkg_parts = current_pkg.split(".")
+        mod_parts = mod.split(".")
+        if not mod_parts or mod_parts[0] != "tests":
+            return mod
+        common = 0
+        limit = min(len(pkg_parts), len(mod_parts))
+        while common < limit and pkg_parts[common] == mod_parts[common]:
+            common += 1
+        if common == 0:
+            return mod
+        up_levels = len(pkg_parts) - common
+        prefix = "." * (up_levels + 1)
+        remainder = ".".join(mod_parts[common:])
+        if not remainder:
+            return prefix
+        return f"{prefix}{remainder}"
+
+    @staticmethod
     def generate_type_checking(
         groups: Mapping[str, list[tuple[str, str]]],
         *,
         include_flext_types: bool = True,
+        current_pkg: str = "",
     ) -> list[str]:
         lines: list[str] = ["if TYPE_CHECKING:"]
         if include_flext_types:
@@ -56,6 +84,10 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
 
         def _emit_module(mod: str) -> None:
             items = groups[mod]
+            rendered_mod = FlextInfraCodegenGeneration._render_type_checking_module(
+                mod,
+                current_pkg,
+            )
             alias_items = sorted(
                 (item for item in items if not item[1]),
                 key=operator.itemgetter(0),
@@ -65,7 +97,14 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
                 key=lambda x: (x[1], x[0] != x[1]),
             )
             for export_name, _ in alias_items:
-                alias_line = f"    import {mod} as {export_name}"
+                if rendered_mod.startswith(".") and rendered_mod != ".":
+                    parent_mod, _, child_name = rendered_mod.rpartition(".")
+                    alias_line = (
+                        f"    from {parent_mod or '.'} import {child_name} "
+                        f"as {export_name}"
+                    )
+                else:
+                    alias_line = f"    import {mod} as {export_name}"
                 lines.append(alias_line)
             if not sorted_items:
                 return
@@ -76,9 +115,9 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
                 else:
                     parts.append(f"{attr_name} as {export_name}")
             joined = ", ".join(parts)
-            line = f"    from {mod} import {joined}"
+            line = f"    from {rendered_mod} import {joined}"
             if len(line) > c.Infra.Codegen.MAX_LINE_LENGTH:
-                lines.append(f"    from {mod} import (")
+                lines.append(f"    from {rendered_mod} import (")
                 lines.extend(f"        {part}," for part in parts)
                 lines.append("    )")
             else:
@@ -166,6 +205,7 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
             FlextInfraCodegenGeneration.generate_type_checking(
                 groups,
                 include_flext_types=not is_l0_typings,
+                current_pkg=current_pkg,
             ),
         )
         out.append("")

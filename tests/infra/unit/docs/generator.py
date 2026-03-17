@@ -61,17 +61,17 @@ class TestGeneratorCore:
 
     def test_generated_file_structure(self) -> None:
         """Test GeneratedFile model structure."""
-        file = m.Infra.Docs.GeneratedFile(path="README.md", written=True)
+        file = m.Infra.GeneratedFile(path="README.md", written=True)
         tm.that(file.path, eq="README.md")
         tm.that(file.written, eq=True)
 
     def test_generate_report_frozen(self) -> None:
         """Test GenerateReport is frozen (immutable)."""
-        tm.that(m.Infra.Docs.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     def test_generated_file_frozen(self) -> None:
         """Test GeneratedFile is frozen (immutable)."""
-        tm.that(m.Infra.Docs.GeneratedFile.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.GeneratedFile.model_config.get("frozen"), eq=True)
 
     def test_generate_with_project_filter(
         self,
@@ -120,7 +120,7 @@ class TestGeneratorCore:
 
     def test_generate_report_generated_count(self) -> None:
         """Test GenerateReport generated field."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="generate",
             scope="test",
             generated=5,
@@ -131,7 +131,7 @@ class TestGeneratorCore:
 
     def test_generate_report_applied_field(self) -> None:
         """Test GenerateReport applied field."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="generate",
             scope="test",
             generated=0,
@@ -142,7 +142,7 @@ class TestGeneratorCore:
 
     def test_generate_report_source_field(self) -> None:
         """Test GenerateReport source field."""
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="generate",
             scope="test",
             generated=0,
@@ -154,14 +154,14 @@ class TestGeneratorCore:
     def test_generate_report_files_list(self) -> None:
         """Test GenerateReport files list."""
         items = [
-            m.Infra.Docs.DocsPhaseItem(phase="generate", path="file1.md", written=True),
-            m.Infra.Docs.DocsPhaseItem(
+            m.Infra.DocsPhaseItem(phase="generate", path="file1.md", written=True),
+            m.Infra.DocsPhaseItem(
                 phase="generate",
                 path="file2.md",
                 written=False,
             ),
         ]
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="generate",
             scope="test",
             generated=2,
@@ -175,11 +175,11 @@ class TestGeneratorCore:
     def test_generated_file_written_field(self) -> None:
         """Test GeneratedFile written field."""
         tm.that(
-            m.Infra.Docs.GeneratedFile(path="test.md", written=True).written,
+            m.Infra.GeneratedFile(path="test.md", written=True).written,
             eq=True,
         )
         tm.that(
-            m.Infra.Docs.GeneratedFile(path="test2.md", written=False).written,
+            m.Infra.GeneratedFile(path="test2.md", written=False).written,
             eq=False,
         )
 
@@ -194,8 +194,8 @@ class TestGeneratorCore:
         def mock_build_scopes(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
-            return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("Scope error")
+        ) -> r[list[m.Infra.FlextInfraDocScope]]:
+            return r[list[m.Infra.FlextInfraDocScope]].fail("Scope error")
 
         monkeypatch.setattr(FlextInfraDocsShared, "build_scopes", mock_build_scopes)
         result = gen.generate(tmp_path)

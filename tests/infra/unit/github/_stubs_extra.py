@@ -122,12 +122,12 @@ class StubSyncer:
 
     def __init__(
         self,
-        sync_returns: r[list[m.Infra.Github.SyncOperation]] | None = None,
+        sync_returns: r[list[m.Infra.SyncOperation]] | None = None,
     ) -> None:
         self._sync_returns = (
             sync_returns
             if sync_returns is not None
-            else r[list[m.Infra.Github.SyncOperation]].ok([])
+            else r[list[m.Infra.SyncOperation]].ok([])
         )
         self.sync_workspace_calls: list[dict[str, t.Infra.InfraValue]] = []
 
@@ -139,7 +139,7 @@ class StubSyncer:
         report_path: Path | None = None,
         apply: bool = False,
         prune: bool = False,
-    ) -> r[list[m.Infra.Github.SyncOperation]]:
+    ) -> r[list[m.Infra.SyncOperation]]:
         kwargs: dict[str, t.Infra.InfraValue] = {
             "workspace_root": str(workspace_root),
             "source_workflow": str(source_workflow) if source_workflow else None,
@@ -156,13 +156,13 @@ class StubLinter:
 
     def __init__(
         self,
-        lint_returns: r[m.Infra.Github.WorkflowLintResult] | None = None,
+        lint_returns: r[m.Infra.WorkflowLintResult] | None = None,
     ) -> None:
         self._lint_returns = (
             lint_returns
             if lint_returns is not None
-            else r[m.Infra.Github.WorkflowLintResult].ok(
-                m.Infra.Github.WorkflowLintResult(status="ok", exit_code=0),
+            else r[m.Infra.WorkflowLintResult].ok(
+                m.Infra.WorkflowLintResult(status="ok", exit_code=0),
             )
         )
         self.lint_calls: list[dict[str, t.Infra.InfraValue]] = []
@@ -173,7 +173,7 @@ class StubLinter:
         *,
         report_path: Path | None = None,
         strict: bool = False,
-    ) -> r[m.Infra.Github.WorkflowLintResult]:
+    ) -> r[m.Infra.WorkflowLintResult]:
         kwargs: dict[str, t.Infra.InfraValue] = {
             "root": str(root),
             "report_path": str(report_path) if report_path else None,
@@ -188,13 +188,13 @@ class StubWorkspaceManager:
 
     def __init__(
         self,
-        orchestrate_returns: r[m.Infra.Github.PrOrchestrationResult] | None = None,
+        orchestrate_returns: r[m.Infra.PrOrchestrationResult] | None = None,
     ) -> None:
         self._orchestrate_returns = (
             orchestrate_returns
             if orchestrate_returns is not None
-            else r[m.Infra.Github.PrOrchestrationResult].ok(
-                m.Infra.Github.PrOrchestrationResult(
+            else r[m.Infra.PrOrchestrationResult].ok(
+                m.Infra.PrOrchestrationResult(
                     total=0,
                     success=0,
                     fail=0,
@@ -214,7 +214,7 @@ class StubWorkspaceManager:
         checkpoint: bool = True,
         fail_fast: bool = False,
         pr_args: dict[str, str] | None = None,
-    ) -> r[m.Infra.Github.PrOrchestrationResult]:
+    ) -> r[m.Infra.PrOrchestrationResult]:
         infra_projects: list[t.Infra.InfraValue] | None = (
             [str(p) for p in projects] if projects else None
         )

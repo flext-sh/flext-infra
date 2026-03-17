@@ -37,11 +37,11 @@ def test_generator_normalize_config_with_none() -> None:
     gen = FlextInfraBaseMkGenerator()
     result = gen._normalize_config(None)
     tm.ok(result)
-    assert isinstance(result.value, im.Infra.Basemk.BaseMkConfig)
+    assert isinstance(result.value, im.Infra.BaseMkConfig)
 
 
 def test_generator_normalize_config_with_basemk_config() -> None:
-    config = im.Infra.Basemk.BaseMkConfig(
+    config = im.Infra.BaseMkConfig(
         project_name="test",
         python_version="3.13",
         core_stack="python",
@@ -58,7 +58,7 @@ def test_generator_normalize_config_with_basemk_config() -> None:
 
 
 def test_generator_normalize_config_with_dict() -> None:
-    config = im.Infra.Basemk.BaseMkConfig(
+    config = im.Infra.BaseMkConfig(
         project_name="test",
         python_version="3.13",
         core_stack="python",
@@ -71,7 +71,7 @@ def test_generator_normalize_config_with_dict() -> None:
     gen = FlextInfraBaseMkGenerator()
     result = gen._normalize_config(config)
     tm.ok(result)
-    assert isinstance(result.value, im.Infra.Basemk.BaseMkConfig)
+    assert isinstance(result.value, im.Infra.BaseMkConfig)
 
 
 def test_generator_normalize_config_with_invalid_dict() -> None:

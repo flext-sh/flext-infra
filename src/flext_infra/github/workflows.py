@@ -25,7 +25,7 @@ from flext_infra import (
     u,
 )
 
-SyncOperation: TypeAlias = m.Infra.Github.SyncOperation
+SyncOperation: TypeAlias = m.Infra.SyncOperation
 
 
 class FlextInfraWorkflowSyncer:

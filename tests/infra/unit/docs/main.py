@@ -47,53 +47,53 @@ def _fix_args(**overrides: t.Scalar | None) -> argparse.Namespace:
 
 
 def _ok(
-    val: list[m.Infra.Docs.DocsPhaseReport],
-) -> Callable[..., r[list[m.Infra.Docs.DocsPhaseReport]]]:
+    val: list[m.Infra.DocsPhaseReport],
+) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **_kw: t.Scalar,
-    ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+    ) -> r[list[m.Infra.DocsPhaseReport]]:
         _ = (_self, _a, _kw)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].ok(val)
+        return r[list[m.Infra.DocsPhaseReport]].ok(val)
 
     return _fn
 
 
-def _fail_report(err: str) -> Callable[..., r[list[m.Infra.Docs.DocsPhaseReport]]]:
+def _fail_report(err: str) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **_kw: t.Scalar,
-    ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+    ) -> r[list[m.Infra.DocsPhaseReport]]:
         _ = (_self, _a, _kw)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].fail(err)
+        return r[list[m.Infra.DocsPhaseReport]].fail(err)
 
     return _fn
 
 
 def _ok_list(
-    val: list[m.Infra.Docs.DocsPhaseReport],
-) -> Callable[..., r[list[m.Infra.Docs.DocsPhaseReport]]]:
+    val: list[m.Infra.DocsPhaseReport],
+) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **_kw: t.Scalar,
-    ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+    ) -> r[list[m.Infra.DocsPhaseReport]]:
         _ = (_self, _a, _kw)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].ok(val)
+        return r[list[m.Infra.DocsPhaseReport]].ok(val)
 
     return _fn
 
 
-def _fail_list(err: str) -> Callable[..., r[list[m.Infra.Docs.DocsPhaseReport]]]:
+def _fail_list(err: str) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **_kw: t.Scalar,
-    ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+    ) -> r[list[m.Infra.DocsPhaseReport]]:
         _ = (_self, _a, _kw)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].fail(err)
+        return r[list[m.Infra.DocsPhaseReport]].fail(err)
 
     return _fn
 
@@ -103,15 +103,15 @@ _SILENT = type("O", (), {"error": staticmethod(lambda *a: None)})()
 
 def _capturing(
     captured: dict[str, t.Scalar],
-) -> Callable[..., r[list[m.Infra.Docs.DocsPhaseReport]]]:
+) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **kw: t.Scalar,
-    ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+    ) -> r[list[m.Infra.DocsPhaseReport]]:
         _ = (_self, _a)
         captured.update(kw)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].ok([])
+        return r[list[m.Infra.DocsPhaseReport]].ok([])
 
     return _fn
 
@@ -127,7 +127,7 @@ class TestRunAudit:
         passed: bool,
         expected: int,
     ) -> None:
-        report = m.Infra.Docs.DocsPhaseReport(
+        report = m.Infra.DocsPhaseReport(
             phase="audit",
             scope="root",
             items=[],
@@ -188,10 +188,10 @@ class TestRunFix:
             _self: t.Scalar,
             *_a: t.Scalar,
             **kw: t.Scalar,
-        ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+        ) -> r[list[m.Infra.DocsPhaseReport]]:
             _ = (_self, _a)
             captured_kwargs.update(kw)
-            return r[list[m.Infra.Docs.DocsPhaseReport]].ok([])
+            return r[list[m.Infra.DocsPhaseReport]].ok([])
 
         monkeypatch.setattr(FlextInfraDocFixer, "fix", mock_fix)
         _run_fix(_fix_args(apply=apply))

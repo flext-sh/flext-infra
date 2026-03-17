@@ -15,8 +15,8 @@ from tests.infra.unit.github._stubs import StubWorkspaceManager
 run_pr_workspace = getattr(github_main, "_run_pr_workspace")
 
 
-def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.Github.PrOrchestrationResult:
-    return m.Infra.Github.PrOrchestrationResult(
+def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
+    return m.Infra.PrOrchestrationResult(
         total=total,
         success=max(total - fail, 0),
         fail=fail,
@@ -28,13 +28,13 @@ class TestRunPrWorkspace:
     def _stub(
         self,
         *,
-        orchestrate_returns: r[m.Infra.Github.PrOrchestrationResult] | None = None,
+        orchestrate_returns: r[m.Infra.PrOrchestrationResult] | None = None,
     ) -> StubWorkspaceManager:
         return StubWorkspaceManager(orchestrate_returns=orchestrate_returns)
 
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = self._stub(
-            orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
+            orchestrate_returns=r[m.Infra.PrOrchestrationResult].ok(
                 _orch(fail=0),
             ),
         )
@@ -43,7 +43,7 @@ class TestRunPrWorkspace:
 
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = self._stub(
-            orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].fail(
+            orchestrate_returns=r[m.Infra.PrOrchestrationResult].fail(
                 "orchestration failed",
             ),
         )
@@ -56,7 +56,7 @@ class TestRunPrWorkspace:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
-            orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
+            orchestrate_returns=r[m.Infra.PrOrchestrationResult].ok(
                 _orch(fail=2, total=2),
             ),
         )
@@ -69,7 +69,7 @@ class TestRunPrWorkspace:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
-            orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
+            orchestrate_returns=r[m.Infra.PrOrchestrationResult].ok(
                 _orch(fail=0, total=2),
             ),
         )
@@ -80,7 +80,7 @@ class TestRunPrWorkspace:
 
     def test_with_branch(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = self._stub(
-            orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
+            orchestrate_returns=r[m.Infra.PrOrchestrationResult].ok(
                 _orch(fail=0),
             ),
         )
@@ -99,7 +99,7 @@ class TestRunPrWorkspace:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
-            orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
+            orchestrate_returns=r[m.Infra.PrOrchestrationResult].ok(
                 _orch(fail=0),
             ),
         )
@@ -113,7 +113,7 @@ class TestRunPrWorkspace:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
-            orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
+            orchestrate_returns=r[m.Infra.PrOrchestrationResult].ok(
                 _orch(fail=0),
             ),
         )
@@ -127,7 +127,7 @@ class TestRunPrWorkspace:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
-            orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
+            orchestrate_returns=r[m.Infra.PrOrchestrationResult].ok(
                 _orch(fail=0),
             ),
         )

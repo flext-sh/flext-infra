@@ -23,12 +23,12 @@ from tests.infra.models import m
 from tests.infra.typings import t
 
 
-def _ok_empty(*a: t.Scalar, **kw: t.Scalar) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
-    return r[list[m.Infra.Docs.DocsPhaseReport]].ok([])
+def _ok_empty(*a: t.Scalar, **kw: t.Scalar) -> r[list[m.Infra.DocsPhaseReport]]:
+    return r[list[m.Infra.DocsPhaseReport]].ok([])
 
 
-def _ok_audit(*a: t.Scalar, **kw: t.Scalar) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
-    return r[list[m.Infra.Docs.DocsPhaseReport]].ok([])
+def _ok_audit(*a: t.Scalar, **kw: t.Scalar) -> r[list[m.Infra.DocsPhaseReport]]:
+    return r[list[m.Infra.DocsPhaseReport]].ok([])
 
 
 class TestMainRouting:
@@ -103,20 +103,20 @@ class TestMainRouting:
 
 def _capture_audit(
     store: dict[str, t.Scalar],
-) -> Callable[..., r[list[m.Infra.Docs.DocsPhaseReport]]]:
-    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
+    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[list[m.Infra.DocsPhaseReport]]:
         store.update(kw)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].ok([])
+        return r[list[m.Infra.DocsPhaseReport]].ok([])
 
     return _fn
 
 
 def _capture_simple(
     store: dict[str, t.Scalar],
-) -> Callable[..., r[list[m.Infra.Docs.DocsPhaseReport]]]:
-    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
+    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[list[m.Infra.DocsPhaseReport]]:
         store.update(kw)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].ok([])
+        return r[list[m.Infra.DocsPhaseReport]].ok([])
 
     return _fn
 

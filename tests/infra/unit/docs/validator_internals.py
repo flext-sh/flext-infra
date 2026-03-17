@@ -20,8 +20,8 @@ def validator() -> FlextInfraDocValidator:
     return FlextInfraDocValidator()
 
 
-def _scope(tmp_path: Path, name: str = "test") -> m.Infra.Docs.FlextInfraDocScope:
-    return m.Infra.Docs.FlextInfraDocScope(
+def _scope(tmp_path: Path, name: str = "test") -> m.Infra.FlextInfraDocScope:
+    return m.Infra.FlextInfraDocScope(
         name=name,
         path=tmp_path,
         report_dir=tmp_path / "reports",

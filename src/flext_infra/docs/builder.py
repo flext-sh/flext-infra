@@ -31,8 +31,8 @@ class FlextInfraDocBuilder:
 
     @staticmethod
     def _write_reports(
-        scope: m.Infra.Docs.FlextInfraDocScope,
-        report: m.Infra.Docs.DocsPhaseReport,
+        scope: m.Infra.FlextInfraDocScope,
+        report: m.Infra.DocsPhaseReport,
     ) -> None:
         """Persist build JSON summary and markdown report."""
         _ = u.Infra.write_json(
@@ -58,7 +58,7 @@ class FlextInfraDocBuilder:
         project: str | None = None,
         projects: str | None = None,
         output_dir: str = c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR,
-    ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
+    ) -> r[list[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes.
 
         Args:
@@ -78,19 +78,19 @@ class FlextInfraDocBuilder:
             output_dir=output_dir,
         )
         if scopes_result.is_failure:
-            return r[list[m.Infra.Docs.DocsPhaseReport]].fail(
+            return r[list[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: list[m.Infra.Docs.DocsPhaseReport] = []
+        reports: list[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._build_scope(scope)
             reports.append(report)
-        return r[list[m.Infra.Docs.DocsPhaseReport]].ok(reports)
+        return r[list[m.Infra.DocsPhaseReport]].ok(reports)
 
     def _build_scope(
         self,
-        scope: m.Infra.Docs.FlextInfraDocScope,
-    ) -> m.Infra.Docs.DocsPhaseReport:
+        scope: m.Infra.FlextInfraDocScope,
+    ) -> m.Infra.DocsPhaseReport:
         """Run mkdocs build --strict for a single scope."""
         report = self._run_mkdocs(scope)
         self._write_reports(scope, report)
@@ -105,12 +105,12 @@ class FlextInfraDocBuilder:
 
     def _run_mkdocs(
         self,
-        scope: m.Infra.Docs.FlextInfraDocScope,
-    ) -> m.Infra.Docs.DocsPhaseReport:
+        scope: m.Infra.FlextInfraDocScope,
+    ) -> m.Infra.DocsPhaseReport:
         """Run mkdocs build --strict and return the result."""
         config = scope.path / "mkdocs.yml"
         if not config.exists():
-            return m.Infra.Docs.DocsPhaseReport(
+            return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
                 result="SKIP",
@@ -133,7 +133,7 @@ class FlextInfraDocBuilder:
         ]
         completed = self._runner.run_raw(cmd, cwd=scope.path)
         if completed.is_failure:
-            return m.Infra.Docs.DocsPhaseReport(
+            return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
                 result=c.Infra.Status.FAIL,
@@ -143,7 +143,7 @@ class FlextInfraDocBuilder:
             )
         output = completed.value
         if output.exit_code == 0:
-            return m.Infra.Docs.DocsPhaseReport(
+            return m.Infra.DocsPhaseReport(
                 phase="build",
                 scope=scope.name,
                 result=c.Infra.Status.OK,
@@ -153,7 +153,7 @@ class FlextInfraDocBuilder:
             )
         reason = (output.stderr or output.stdout).strip().splitlines()
         tail = reason[-1] if reason else f"mkdocs exited {output.exit_code}"
-        return m.Infra.Docs.DocsPhaseReport(
+        return m.Infra.DocsPhaseReport(
             phase="build",
             scope=scope.name,
             result=c.Infra.Status.FAIL,

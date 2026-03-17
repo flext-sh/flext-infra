@@ -52,11 +52,11 @@ class FlextInfraDocsShared:
         project: str | None,
         projects: str | None,
         output_dir: str,
-    ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
+    ) -> r[list[m.Infra.FlextInfraDocScope]]:
         """Build DocScope objects for workspace root and each selected project."""
         try:
-            scopes: list[m.Infra.Docs.FlextInfraDocScope] = [
-                m.Infra.Docs.FlextInfraDocScope(
+            scopes: list[m.Infra.FlextInfraDocScope] = [
+                m.Infra.FlextInfraDocScope(
                     name=c.Infra.ReportKeys.ROOT,
                     path=workspace_root,
                     report_dir=(workspace_root / output_dir).resolve(),
@@ -75,15 +75,15 @@ class FlextInfraDocsShared:
                 ):
                     continue
                 scopes.append(
-                    m.Infra.Docs.FlextInfraDocScope(
+                    m.Infra.FlextInfraDocScope(
                         name=name,
                         path=path,
                         report_dir=(path / output_dir).resolve(),
                     ),
                 )
-            return r[list[m.Infra.Docs.FlextInfraDocScope]].ok(scopes)
+            return r[list[m.Infra.FlextInfraDocScope]].ok(scopes)
         except (OSError, TypeError, ValueError) as exc:
-            return r[list[m.Infra.Docs.FlextInfraDocScope]].fail(
+            return r[list[m.Infra.FlextInfraDocScope]].fail(
                 f"scope resolution failed: {exc}",
             )
 
