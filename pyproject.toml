@@ -31,8 +31,10 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "flext-core @ file:../flext-core",
   "flext-cli @ file:../flext-cli",
+  "flext-core @ file:../flext-core",
+  "libcst (>=1.5.1,<2)",
+  "rope (>=1.14.0,<2.0.0)",
 ]
 urls = {Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md", Homepage = "https://github.com/flext-sh/flext-infra", Repository = "https://github.com/flext-sh/flext-infra"}
 scripts = {"flext-basemk" = "flext_infra.basemk:main", "flext-check" = "flext_infra.check:main", "flext-modernize" = "flext_infra.deps.modernizer:main", "flext-sync" = "flext_infra.workspace.sync:main", "flext-validate" = "flext_infra.validate:main"}
@@ -256,8 +258,6 @@ split-on-trailing-comma = true
   "T201",
   "TID252",
 ]
-"src/flext_infra/codegen/_utilities.py" = ["E402"]
-"src/flext_infra/refactor/_utilities.py" = ["E402"]
 "**/*exceptions*" = [
   "A001",
   "S105",
@@ -485,6 +485,8 @@ split-on-trailing-comma = true
 "**/typings.py" = [
   "RUF036",
 ]
+"src/flext_infra/codegen/_utilities.py" = [ "E402" ]
+"src/flext_infra/refactor/_utilities.py" = [ "E402" ]
 
 [tool.ruff.format]
 docstring-code-format = true
