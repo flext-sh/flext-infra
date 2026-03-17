@@ -1,10 +1,3 @@
-"""Base gate class and protocol for quality gate library.
-
-Defines the structural contract (Protocol) and shared implementation
-base (ABC) for quality gates. Each gate encapsulates a single tool
-(ruff, mypy, pyrefly, etc.) with check and optional fix operations.
-"""
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -13,57 +6,32 @@ from pathlib import Path
 from typing import Annotated, Protocol, runtime_checkable
 
 from flext_core import FlextModels
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, TypeAdapter, ValidationError
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t as t_infra, u
 
 
 class FlextInfraGateContext(FlextModels.FrozenStrictModel):
-    """Typed execution context passed to each gate invocation.
-
-    Centralizes run-specific parameters instead of ``**kwargs``.
-    """
-
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
-
     workspace_root: Annotated[Path, Field(description="Workspace root directory")]
     reports_dir: Annotated[Path, Field(description="Reports output directory")]
     fail_fast: Annotated[
-        bool,
-        Field(default=False, description="Stop on first gate failure"),
+        bool, Field(default=False, description="Stop on first gate failure")
     ] = False
 
 
 @runtime_checkable
 class FlextInfraGateProtocol(Protocol):
-    """Structural contract for quality gates."""
-
     @property
-    def gate_id(self) -> str:
-        """Unique gate identifier (e.g. 'lint', 'mypy')."""
-        ...
-
+    def gate_id(self) -> str: ...
     @property
-    def can_fix(self) -> bool:
-        """Whether this gate supports auto-fix."""
-        ...
-
+    def can_fix(self) -> bool: ...
     def check(
-        self,
-        project_dir: Path,
-        ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
-        """Run the gate check and return execution result."""
-        ...
+        self, project_dir: Path, ctx: FlextInfraGateContext
+    ) -> m.Infra.Check.GateExecution: ...
 
 
 class FlextInfraGate(ABC):
-    """Base class for quality gates with shared infrastructure.
-
-    Each concrete gate implements ``check()`` for a specific tool.
-    Gates with auto-fix capability override ``fix()`` as well.
-    """
-
     gate_id: str = ""
     gate_name: str = ""
     can_fix: bool = False
@@ -71,23 +39,16 @@ class FlextInfraGate(ABC):
     tool_url: str = ""
 
     def __init__(self, workspace_root: Path) -> None:
-        """Initialize gate with workspace root."""
         self._workspace_root = workspace_root
 
     @abstractmethod
     def check(
-        self,
-        project_dir: Path,
-        ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
-        """Run the quality check and return execution result."""
+        self, project_dir: Path, ctx: FlextInfraGateContext
+    ) -> m.Infra.Check.GateExecution: ...
 
     def fix(
-        self,
-        project_dir: Path,
-        ctx: FlextInfraGateContext,
+        self, project_dir: Path, ctx: FlextInfraGateContext
     ) -> m.Infra.Check.GateExecution:
-        """Auto-fix issues (override in gates with ``can_fix=True``)."""
         _ = ctx
         return self._build_gate_result(
             project=project_dir.name,
@@ -97,8 +58,6 @@ class FlextInfraGate(ABC):
             raw_output=f"Gate {self.gate_id} does not support fix",
         )
 
-    # -- Shared infrastructure ------------------------------------------------
-
     def _run(
         self,
         cmd: list[str],
@@ -106,7 +65,6 @@ class FlextInfraGate(ABC):
         timeout: int = c.Infra.Timeouts.DEFAULT,
         env: Mapping[str, str] | None = None,
     ) -> m.Infra.Core.CommandOutput:
-        """Execute a subprocess command and return output."""
         result = u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.is_failure:
             return m.Infra.Core.CommandOutput(
@@ -114,13 +72,7 @@ class FlextInfraGate(ABC):
                 stderr=result.error or "command execution failed",
                 exit_code=1,
             )
-        cmd_output: m.Infra.Core.CommandOutput = result.value
-        return m.Infra.Core.CommandOutput(
-            stdout=cmd_output.stdout,
-            stderr=cmd_output.stderr,
-            exit_code=cmd_output.exit_code,
-            duration=cmd_output.duration,
-        )
+        return result.value
 
     def _build_gate_result(
         self,
@@ -131,7 +83,6 @@ class FlextInfraGate(ABC):
         duration: float,
         raw_output: str = "",
     ) -> m.Infra.Check.GateExecution:
-        """Build a standardized gate execution result."""
         model = m.Infra.Check.GateResult(
             gate=self.gate_id,
             project=project,
@@ -140,17 +91,13 @@ class FlextInfraGate(ABC):
             duration=round(duration, 3),
         )
         return m.Infra.Check.GateExecution(
-            result=model,
-            issues=issues,
-            raw_output=raw_output,
+            result=model, issues=issues, raw_output=raw_output
         )
 
     def _result_exit_code(self, result: m.Infra.Core.CommandOutput) -> int:
-        """Extract exit code from command output."""
         return result.exit_code if hasattr(result, "exit_code") else 1
 
     def _existing_check_dirs(self, project_dir: Path) -> list[str]:
-        """Return check directories that exist in the project."""
         dirs = (
             c.Infra.Check.DEFAULT_CHECK_DIRS
             if project_dir.resolve() == self._workspace_root.resolve()
@@ -160,22 +107,90 @@ class FlextInfraGate(ABC):
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: list[str]) -> list[str]:
-        """Filter directories to those containing Python files."""
         out: list[str] = []
         for directory in dirs:
             path = project_dir / directory
             if not path.is_dir():
                 continue
             if next(path.rglob(c.Infra.Extensions.PYTHON_GLOB), None) or next(
-                path.rglob("*.pyi"),
-                None,
+                path.rglob("*.pyi"), None
             ):
                 out.append(directory)
         return out
 
+    @staticmethod
+    def _to_mapping(
+        value: t_infra.Infra.InfraValue,
+    ) -> dict[str, t_infra.Infra.InfraValue]:
+        if not isinstance(value, Mapping):
+            return {}
+        return TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(value)
 
-__all__ = [
-    "FlextInfraGate",
-    "FlextInfraGateContext",
-    "FlextInfraGateProtocol",
-]
+    @classmethod
+    def _to_mapping_list(
+        cls, value: t_infra.Infra.InfraValue
+    ) -> list[dict[str, t_infra.Infra.InfraValue]]:
+        if not isinstance(value, list):
+            return []
+        typed_items = TypeAdapter(list[t_infra.Infra.InfraValue]).validate_python(value)
+        normalized: list[dict[str, t_infra.Infra.InfraValue]] = []
+        for raw_item in typed_items:
+            try:
+                typed_item = TypeAdapter(
+                    dict[str, t_infra.Infra.InfraValue]
+                ).validate_python(raw_item)
+            except ValidationError:
+                continue
+            normalized.append(typed_item)
+        return normalized
+
+    @staticmethod
+    def _as_int(value: t_infra.Infra.InfraValue, default: int = 0) -> int:
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return default
+        return default
+
+    @staticmethod
+    def _as_str(value: t_infra.Infra.InfraValue, default: str = "") -> str:
+        return value if isinstance(value, str) else default
+
+    @staticmethod
+    def _nested_mapping(
+        data: dict[str, t_infra.Infra.InfraValue], *keys: str
+    ) -> dict[str, t_infra.Infra.InfraValue]:
+        current: t_infra.Infra.InfraValue = data
+        for key in keys:
+            if not isinstance(current, Mapping):
+                return {}
+            typed_current = TypeAdapter(
+                dict[str, t_infra.Infra.InfraValue]
+            ).validate_python(current)
+            if key not in typed_current:
+                return {}
+            child: t_infra.Infra.InfraValue = typed_current[key]
+            if child is None:
+                return {}
+            current = child
+        if not isinstance(current, Mapping):
+            return {}
+        return TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(current)
+
+    @classmethod
+    def _nested_int(
+        cls, data: dict[str, t_infra.Infra.InfraValue], *keys: str, default: int = 0
+    ) -> int:
+        target = cls._nested_mapping(data, *keys[:-1])
+        raw: t_infra.Infra.InfraValue = target.get(keys[-1])
+        if raw is None:
+            return default
+        return cls._as_int(raw, default)
+
+
+__all__ = ["FlextInfraGate", "FlextInfraGateContext", "FlextInfraGateProtocol"]

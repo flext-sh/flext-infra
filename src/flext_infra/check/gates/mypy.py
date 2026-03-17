@@ -107,22 +107,5 @@ class FlextInfraMypyGate(FlextInfraGate):
             raw_output=result.stderr,
         )
 
-    @staticmethod
-    def _as_int(value: t_infra.Infra.InfraValue, default: int = 0) -> int:
-        if isinstance(value, int):
-            return value
-        if isinstance(value, float):
-            return int(value)
-        if isinstance(value, str):
-            try:
-                return int(value)
-            except ValueError:
-                return default
-        return default
-
-    @staticmethod
-    def _as_str(value: t_infra.Infra.InfraValue, default: str = "") -> str:
-        return value if isinstance(value, str) else default
-
 
 __all__ = ["FlextInfraMypyGate"]

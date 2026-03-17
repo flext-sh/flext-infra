@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_infra import c, m, t as t_infra, u
 from flext_infra.check._base_gate import FlextInfraGate, FlextInfraGateContext
@@ -26,49 +26,6 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     can_fix = False
     tool_name = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.PYREFLY][0]
     tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.PYREFLY][1]
-
-    @staticmethod
-    def _to_mapping(
-        value: t_infra.Infra.InfraValue,
-    ) -> dict[str, t_infra.Infra.InfraValue]:
-        if not isinstance(value, Mapping):
-            return {}
-        return TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(value)
-
-    @staticmethod
-    def _to_mapping_list(
-        value: t_infra.Infra.InfraValue,
-    ) -> list[dict[str, t_infra.Infra.InfraValue]]:
-        if not isinstance(value, list):
-            return []
-        typed_items = TypeAdapter(list[t_infra.Infra.InfraValue]).validate_python(value)
-        normalized: list[dict[str, t_infra.Infra.InfraValue]] = []
-        for raw_item in typed_items:
-            try:
-                typed_item = TypeAdapter(
-                    dict[str, t_infra.Infra.InfraValue]
-                ).validate_python(raw_item)
-            except ValidationError:
-                continue
-            normalized.append(typed_item)
-        return normalized
-
-    @staticmethod
-    def _as_int(value: t_infra.Infra.InfraValue, default: int = 0) -> int:
-        if isinstance(value, int):
-            return value
-        if isinstance(value, float):
-            return int(value)
-        if isinstance(value, str):
-            try:
-                return int(value)
-            except ValueError:
-                return default
-        return default
-
-    @staticmethod
-    def _as_str(value: t_infra.Infra.InfraValue, default: str = "") -> str:
-        return value if isinstance(value, str) else default
 
     @override
     @override

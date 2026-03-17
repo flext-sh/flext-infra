@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
-from flext_infra import c, m, t as t_infra, u
+from flext_infra import c, m, u
 from flext_infra.check._base_gate import FlextInfraGate, FlextInfraGateContext
 
 
@@ -73,71 +72,6 @@ class FlextInfraPyrightGate(FlextInfraGate):
             duration=time.monotonic() - started,
             raw_output=result.stderr,
         )
-
-    @staticmethod
-    def _to_mapping(
-        value: t_infra.Infra.InfraValue,
-    ) -> dict[str, t_infra.Infra.InfraValue]:
-        if not isinstance(value, Mapping):
-            return {}
-        return TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(value)
-
-    @classmethod
-    def _to_mapping_list(
-        cls, value: t_infra.Infra.InfraValue
-    ) -> list[dict[str, t_infra.Infra.InfraValue]]:
-        if not isinstance(value, list):
-            return []
-        typed = TypeAdapter(list[t_infra.Infra.InfraValue]).validate_python(value)
-        normalized: list[dict[str, t_infra.Infra.InfraValue]] = []
-        for item in typed:
-            try:
-                normalized.append(
-                    TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(
-                        item
-                    )
-                )
-            except ValidationError:
-                continue
-        return normalized
-
-    @staticmethod
-    def _nested_mapping(
-        data: dict[str, t_infra.Infra.InfraValue], *keys: str
-    ) -> dict[str, t_infra.Infra.InfraValue]:
-        current: t_infra.Infra.InfraValue = data
-        for key in keys:
-            if not isinstance(current, Mapping):
-                return {}
-            typed = TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(
-                current
-            )
-            if key not in typed:
-                return {}
-            child: t_infra.Infra.InfraValue = typed[key]
-            if child is None:
-                return {}
-            current = child
-        if not isinstance(current, Mapping):
-            return {}
-        return TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(current)
-
-    @classmethod
-    def _nested_int(
-        cls, data: dict[str, t_infra.Infra.InfraValue], *keys: str, default: int = 0
-    ) -> int:
-        target = cls._nested_mapping(data, *keys[:-1])
-        raw: t_infra.Infra.InfraValue = target.get(keys[-1])
-        if isinstance(raw, int):
-            return raw
-        if isinstance(raw, float):
-            return int(raw)
-        if isinstance(raw, str):
-            try:
-                return int(raw)
-            except ValueError:
-                return default
-        return default
 
 
 __all__ = ["FlextInfraPyrightGate"]

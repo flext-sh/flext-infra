@@ -25,32 +25,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     tool_name = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.LINT][0]
     tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.LINT][1]
 
-    @classmethod
-    def _nested_int(
-        cls,
-        data: dict[str, t_infra.Infra.InfraValue],
-        *keys: str,
-        default: int = 0,
-    ) -> int:
-        current: t_infra.Infra.InfraValue = data
-        for key in keys:
-            if not isinstance(current, Mapping):
-                return default
-            value = current.get(key)
-            if value is None:
-                return default
-            current = value
-        if isinstance(current, int):
-            return current
-        if isinstance(current, float):
-            return int(current)
-        if isinstance(current, str):
-            try:
-                return int(current)
-            except ValueError:
-                return default
-        return default
-
     @override
     @override
     def check(

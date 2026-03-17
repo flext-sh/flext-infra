@@ -4,17 +4,14 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
-from flext_infra import c, m, t as t_infra, u
+from flext_infra import c, m, u
 from flext_infra.check._base_gate import FlextInfraGate, FlextInfraGateContext
 from flext_infra.check._constants import FlextInfraCheckConstants
-
-InfraValue = t_infra.Infra.InfraValue
 
 
 class FlextInfraBanditGate(FlextInfraGate):
@@ -28,42 +25,6 @@ class FlextInfraBanditGate(FlextInfraGate):
     tool_name = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.SECURITY][0]
     tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.SECURITY][1]
 
-    @staticmethod
-    def _to_mapping(value: InfraValue) -> dict[str, InfraValue]:
-        if not isinstance(value, Mapping):
-            return {}
-        return TypeAdapter(dict[str, InfraValue]).validate_python(value)
-
-    @staticmethod
-    def _to_mapping_list(value: InfraValue) -> list[dict[str, InfraValue]]:
-        if not isinstance(value, list):
-            return []
-        out: list[dict[str, InfraValue]] = []
-        for raw_item in TypeAdapter(list[InfraValue]).validate_python(value):
-            try:
-                out.append(TypeAdapter(dict[str, InfraValue]).validate_python(raw_item))
-            except ValidationError:
-                continue
-        return out
-
-    @staticmethod
-    def _as_int(value: InfraValue, default: int = 0) -> int:
-        if isinstance(value, int):
-            return value
-        if isinstance(value, float):
-            return int(value)
-        if not isinstance(value, str):
-            return default
-        try:
-            return int(value)
-        except ValueError:
-            return default
-
-    @staticmethod
-    def _as_str(value: InfraValue, default: str = "") -> str:
-        return value if isinstance(value, str) else default
-
-    @override
     @override
     def check(
         self, project_dir: Path, ctx: FlextInfraGateContext
