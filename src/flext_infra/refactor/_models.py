@@ -54,7 +54,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class ProjectInfo(FlextModels.ArbitraryTypesModel):
+    class RefactorProjectInfo(FlextModels.ArbitraryTypesModel):
         name: Annotated[str, Field(min_length=1, description="Project directory name")]
         path: Annotated[Path, Field(description="Absolute project path")]
         src_path: Annotated[Path, Field(description="Absolute src/ path")]
@@ -781,7 +781,7 @@ class FlextInfraRefactorModels(
         ]
         total: Annotated[int, Field(ge=0, description="Total usages in project")]
 
-    class CensusReport(FlextModels.ArbitraryTypesModel):
+    class UtilitiesCensusReport(FlextModels.ArbitraryTypesModel):
         """Full census report for _utilities method usage."""
 
         classes: Annotated[

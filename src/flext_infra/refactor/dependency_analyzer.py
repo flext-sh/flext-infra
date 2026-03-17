@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import operator
 import sys
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
@@ -128,8 +129,8 @@ class DependencyAnalyzer:
         except CycleError:
             return r[list[str]].ok(sorted(graph))
 
-    def _discover_projects(self) -> list[m.Infra.ProjectInfo]:
-        projects: list[m.Infra.ProjectInfo] = []
+    def _discover_projects(self) -> list[m.Infra.RefactorProjectInfo]:
+        projects: list[m.Infra.RefactorProjectInfo] = []
         for candidate in sorted(self._workspace_root.iterdir()):
             if not candidate.is_dir() or candidate.name.startswith("."):
                 continue
@@ -137,7 +138,7 @@ class DependencyAnalyzer:
             if not src.is_dir():
                 continue
             projects.append(
-                m.Infra.ProjectInfo(
+                m.Infra.RefactorProjectInfo(
                     name=candidate.name,
                     path=candidate,
                     src_path=src,
@@ -163,7 +164,7 @@ class DependencyAnalyzer:
 
     def _build_package_index(
         self,
-        projects: list[m.Infra.ProjectInfo],
+        projects: list[m.Infra.RefactorProjectInfo],
     ) -> dict[str, str]:
         idx: dict[str, str] = {}
         for proj in projects:
@@ -173,7 +174,7 @@ class DependencyAnalyzer:
 
     def _find_import_candidate_files(
         self,
-        project: m.Infra.ProjectInfo,
+        project: m.Infra.RefactorProjectInfo,
     ) -> list[Path]:
         grep_files = self._scan_import_files_with_ast_grep(project.src_path)
         if grep_files.is_success and grep_files.value:
@@ -1310,7 +1311,7 @@ class MROCompletenessDetector(p.Infra.Scanner):
         )
         violations: list[nem.MROCompletenessViolation] = []
         for candidate_name, candidate_line in sorted(
-            candidates, key=lambda item: item[0]
+            candidates, key=operator.itemgetter(0)
         ):
             if candidate_name in declared_bases:
                 continue
@@ -2015,9 +2016,9 @@ __all__ = [
     "ImportAliasDetector",
     "InternalImportDetector",
     "LooseObjectDetector",
+    "MROCompletenessDetector",
     "ManualProtocolDetector",
     "ManualTypingAliasDetector",
-    "MROCompletenessDetector",
     "NamespaceFacadeScanner",
     "NamespaceSourceDetector",
     "RuntimeAliasDetector",

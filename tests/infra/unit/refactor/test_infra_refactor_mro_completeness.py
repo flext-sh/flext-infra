@@ -6,6 +6,7 @@ import pytest
 
 try:
     from flext_infra.refactor.dependency_analyzer import MROCompletenessDetector
+    from flext_infra.refactor.namespace_rewriter import NamespaceEnforcementRewriter
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -84,3 +85,21 @@ def test_skips_private_candidate_classes(tmp_path: Path) -> None:
     violations = MROCompletenessDetector.detect_file(file_path=facade_file)
 
     assert violations == []
+
+
+def test_rewriter_adds_missing_base_and_formats(tmp_path: Path) -> None:
+    facade_file = _write_models_project(
+        tmp_path=tmp_path,
+        facade_bases="FlextExampleModelsBase",
+        candidate_class="FlextExampleModelsDomain",
+    )
+
+    violations = MROCompletenessDetector.detect_file(file_path=facade_file)
+    NamespaceEnforcementRewriter.rewrite_mro_completeness_violations(
+        violations=violations,
+        parse_failures=[],
+    )
+
+    rewritten = facade_file.read_text(encoding="utf-8")
+    assert "FlextExampleModelsDomain" in rewritten
+    assert "class FlextExampleModels(" in rewritten

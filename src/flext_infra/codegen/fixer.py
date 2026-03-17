@@ -435,7 +435,7 @@ class FlextInfraCodegenFixer(s):
         for project in discovered:
             if project.name in c.Infra.Codegen.EXCLUDED_PROJECTS:
                 continue
-            if project.stack.startswith(c.Infra.Gates.GO):
+            if (project.path / c.Infra.Files.GO_MOD).exists():
                 continue
             result = self.fix_project(project.path)
             results.append(result)

@@ -29,6 +29,7 @@ if TYPE_CHECKING:
         LooseObjectDetector,
         ManualProtocolDetector,
         ManualTypingAliasDetector,
+        MROCompletenessDetector,
         NamespaceFacadeScanner,
         NamespaceSourceDetector,
         RuntimeAliasDetector,
@@ -175,6 +176,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "LooseObjectDetector",
     ),
+    "MROCompletenessDetector": (
+        "flext_infra.refactor.dependency_analyzer",
+        "MROCompletenessDetector",
+    ),
     "ManualProtocolDetector": (
         "flext_infra.refactor.dependency_analyzer",
         "ManualProtocolDetector",
@@ -235,6 +240,7 @@ __all__ = [
     "ImportAliasDetector",
     "InternalImportDetector",
     "LooseObjectDetector",
+    "MROCompletenessDetector",
     "ManualProtocolDetector",
     "ManualTypingAliasDetector",
     "NamespaceEnforcementRewriter",

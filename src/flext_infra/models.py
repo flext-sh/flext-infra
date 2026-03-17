@@ -38,8 +38,7 @@ class FlextInfraModels(FlextModels):
         FlextInfraCoreModels,
         FlextInfraWorkspaceModels,
     ):
-        CensusReport = FlextInfraCodegenModels.CensusReport
-        ProjectInfo = FlextInfraWorkspaceModels.ProjectInfo
+        pass
 
 
 m = FlextInfraModels

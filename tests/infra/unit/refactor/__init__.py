@@ -74,6 +74,12 @@ if TYPE_CHECKING:
         test_legacy_wrapper_function_is_inlined_as_alias,
         test_legacy_wrapper_non_passthrough_is_not_inlined,
     )
+    from .test_infra_refactor_mro_completeness import (
+        test_detects_missing_local_composition_base,
+        test_skips_non_facade_files,
+        test_skips_private_candidate_classes,
+        test_skips_when_candidate_is_already_in_facade_bases,
+    )
     from .test_infra_refactor_namespace_aliases import (
         test_import_alias_detector_skips_facade_and_subclass_files,
         test_import_alias_detector_skips_nested_private_and_as_renames,
@@ -156,6 +162,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_detects_basemodel_in_non_model_file": (
         "tests.infra.unit.refactor.test_infra_refactor_class_placement",
         "test_detects_basemodel_in_non_model_file",
+    ),
+    "test_detects_missing_local_composition_base": (
+        "tests.infra.unit.refactor.test_infra_refactor_mro_completeness",
+        "test_detects_missing_local_composition_base",
     ),
     "test_detects_multiple_models": (
         "tests.infra.unit.refactor.test_infra_refactor_class_placement",
@@ -405,6 +415,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_namespace_source",
         "test_skips_non_alias_symbols",
     ),
+    "test_skips_non_facade_files": (
+        "tests.infra.unit.refactor.test_infra_refactor_mro_completeness",
+        "test_skips_non_facade_files",
+    ),
+    "test_skips_private_candidate_classes": (
+        "tests.infra.unit.refactor.test_infra_refactor_mro_completeness",
+        "test_skips_private_candidate_classes",
+    ),
     "test_skips_private_class": (
         "tests.infra.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_private_class",
@@ -428,6 +446,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_skips_settings_file": (
         "tests.infra.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_settings_file",
+    ),
+    "test_skips_when_candidate_is_already_in_facade_bases": (
+        "tests.infra.unit.refactor.test_infra_refactor_mro_completeness",
+        "test_skips_when_candidate_is_already_in_facade_bases",
     ),
     "test_symbol_propagation_keeps_alias_reference_when_asname_used": (
         "tests.infra.unit.refactor.test_infra_refactor_class_and_propagation",
@@ -462,6 +484,7 @@ __all__ = [
     "test_class_reconstructor_skips_interleaved_non_method_members",
     "test_detects_attribute_base_class",
     "test_detects_basemodel_in_non_model_file",
+    "test_detects_missing_local_composition_base",
     "test_detects_multiple_models",
     "test_detects_only_wrong_alias_in_mixed_import",
     "test_detects_same_project_submodule_alias_import",
@@ -524,12 +547,15 @@ __all__ = [
     "test_skips_models_directory",
     "test_skips_models_file",
     "test_skips_non_alias_symbols",
+    "test_skips_non_facade_files",
+    "test_skips_private_candidate_classes",
     "test_skips_private_class",
     "test_skips_protected_files",
     "test_skips_r_alias_universal_exception",
     "test_skips_same_project_private_submodule",
     "test_skips_same_project_submodule_class_import",
     "test_skips_settings_file",
+    "test_skips_when_candidate_is_already_in_facade_bases",
     "test_symbol_propagation_keeps_alias_reference_when_asname_used",
     "test_symbol_propagation_renames_import_and_local_references",
     "test_symbol_propagation_updates_mro_base_references",

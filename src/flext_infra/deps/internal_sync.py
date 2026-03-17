@@ -432,7 +432,7 @@ def main() -> int:
     if result.is_success:
         return result.value
     sync_error = result.error or "sync_internal_deps_failed"
-    service.log.error("sync_internal_deps_failed", error=sync_error)
+    service.log.error("sync_internal_deps_failed", error_detail=sync_error)
     u.Infra.error(f"[sync-deps] {sync_error}")
     return 1
 

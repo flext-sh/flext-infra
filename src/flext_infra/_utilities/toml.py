@@ -221,7 +221,7 @@ class FlextInfraUtilitiesToml:
             FlextInfraUtilitiesToml.logger.warning(
                 "Failed to read or parse TOML document",
                 path=str(path),
-                error=str(exc),
+                error=exc,
                 error_type=type(exc).__name__,
             )
             return None

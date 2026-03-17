@@ -309,6 +309,19 @@ class FlextInfraNamespaceEnforcer:
                     parse_failures=parse_failures,
                 ),
             )
+        if apply and len(mro_completeness_violations) > 0:
+            NamespaceEnforcementRewriter.rewrite_mro_completeness_violations(
+                violations=mro_completeness_violations,
+                parse_failures=parse_failures,
+            )
+            mro_completeness_violations = []
+            for py_file in py_files:
+                mro_completeness_violations.extend(
+                    FlextInfraRefactorDependencyAnalyzerFacade.MROCompletenessDetector.detect_file(
+                        file_path=py_file,
+                        parse_failures=parse_failures,
+                    ),
+                )
         return m.Infra.ProjectEnforcementReport.create(
             project=project_name,
             project_root=str(project_root),

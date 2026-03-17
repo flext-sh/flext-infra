@@ -287,7 +287,7 @@ class FlextInfraDependencyPathSync:
                 self._log.error(
                     "sync_dep_paths_root_failed",
                     pyproject=str(root_pyproject),
-                    error=root_error,
+                    error_detail=root_error,
                 )
                 return 1
             changes: list[str] = changes_result.value
@@ -304,7 +304,7 @@ class FlextInfraDependencyPathSync:
             self._log.error(
                 "sync_dep_paths_discovery_failed",
                 root=str(self._root),
-                error=discovery_error,
+                error_detail=discovery_error,
             )
             return 1
 
@@ -346,7 +346,7 @@ class FlextInfraDependencyPathSync:
                 self._log.error(
                     "sync_dep_paths_project_failed",
                     pyproject=str(pyproject),
-                    error=project_error,
+                    error_detail=project_error,
                 )
                 return 1
             project_changes: list[str] = changes_result.value

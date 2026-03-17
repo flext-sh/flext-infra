@@ -6,6 +6,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
+from flext_infra.deps import detection
 from flext_infra.deps.detection import (
     build_project_report,
     classify_issues,
@@ -13,7 +14,6 @@ from flext_infra.deps.detection import (
     load_dependency_limits,
     module_to_types_package,
 )
-from flext_infra.deps import detection
 
 
 class _StubService:

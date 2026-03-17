@@ -23,14 +23,14 @@ from flext_infra import (
 )
 from flext_infra.refactor.output import FlextInfraRefactorOutputRenderer
 
-type RCensusReport = r[m.Infra.CensusReport]
+type RCensusReport = r[m.Infra.UtilitiesCensusReport]
 
 
 class FlextInfraRefactorCensus:
     """Census execution engine resolving family usage patterns."""
 
     @staticmethod
-    def render_text(report: m.Infra.CensusReport) -> str:
+    def render_text(report: m.Infra.UtilitiesCensusReport) -> str:
         """Render the census report cleanly."""
         return FlextInfraRefactorOutputRenderer.render_census_report(report)
 
@@ -86,7 +86,7 @@ class FlextInfraRefactorCensus:
             exclude_packages=frozenset({target.core_project}),
         )
         if files_result.is_failure:
-            return r[m.Infra.CensusReport].fail(
+            return r[m.Infra.UtilitiesCensusReport].fail(
                 f"Failed to discover files: {files_result.error}",
             )
         modules = files_result.value
@@ -134,7 +134,7 @@ class FlextInfraRefactorCensus:
             skipped=errs,
             elapsed=time.monotonic() - t0,
         )
-        return r[m.Infra.CensusReport].ok(rep)
+        return r[m.Infra.UtilitiesCensusReport].ok(rep)
 
 
 __all__ = ["FlextInfraRefactorCensus"]

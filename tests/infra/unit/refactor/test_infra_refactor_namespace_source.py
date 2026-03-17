@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -254,7 +255,8 @@ def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
     target.write_text(
         "from __future__ import annotations\n"
         "from flext_core import m, r\n"
-        f"from {package_name} import u\n",
+        f"from {package_name} import u\n"
+        "_ = (m, r, u)\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(
@@ -269,7 +271,10 @@ def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
 
     rewritten = target.read_text(encoding="utf-8")
     assert "from flext_core import r" in rewritten
-    assert f"from {package_name} import u, m" in rewritten
+    match = re.search(rf"from {package_name} import (.+)", rewritten)
+    assert match is not None
+    names = {name.strip() for name in match.group(1).split(",")}
+    assert {"m", "u"}.issubset(names)
 
 
 def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
@@ -281,7 +286,9 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\nfrom flext_core import FlextLogger, u\n",
+        "from __future__ import annotations\n"
+        "from flext_core import FlextLogger, u\n"
+        "_ = (FlextLogger, u)\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(
@@ -297,6 +304,46 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
     rewritten = target.read_text(encoding="utf-8")
     assert "from flext_core import FlextLogger" in rewritten
     assert f"from {package_name} import u" in rewritten
+
+
+def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> None:
+    project_root, package_dir, package_name, project_name = (
+        _create_project_with_facades(
+            tmp_path=tmp_path,
+            families=("m", "u"),
+        )
+    )
+    target = package_dir / "consumer.py"
+    target.write_text(
+        "from __future__ import annotations\n"
+        "from flext_core import FlextLogger, m, r\n"
+        f"from {package_name}.utilities import u\n"
+        "_ = (FlextLogger, m, r, u)\n",
+    )
+
+    violations_first = NamespaceSourceDetector.detect_file(
+        file_path=target,
+        project_name=project_name,
+        project_root=project_root,
+    )
+    NamespaceEnforcementRewriter.rewrite_namespace_source_violations(
+        violations=violations_first,
+        parse_failures=[],
+    )
+    first_result = target.read_text(encoding="utf-8")
+
+    violations_second = NamespaceSourceDetector.detect_file(
+        file_path=target,
+        project_name=project_name,
+        project_root=project_root,
+    )
+    NamespaceEnforcementRewriter.rewrite_namespace_source_violations(
+        violations=violations_second,
+        parse_failures=[],
+    )
+    second_result = target.read_text(encoding="utf-8")
+
+    assert first_result == second_result
 
 
 def test_detects_same_project_submodule_alias_import(tmp_path: Path) -> None:

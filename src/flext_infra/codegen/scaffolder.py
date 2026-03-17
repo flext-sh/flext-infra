@@ -71,7 +71,7 @@ class FlextInfraCodegenScaffolder(s):
         for project in projects:
             if project.name in c.Infra.Codegen.EXCLUDED_PROJECTS:
                 continue
-            if project.stack.startswith(c.Infra.Gates.GO):
+            if (project.path / c.Infra.Files.GO_MOD).exists():
                 continue
             result = self.scaffold_project(project.path)
             results.append(result)

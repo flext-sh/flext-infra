@@ -168,7 +168,7 @@ class FlextInfraRefactorOutputRenderer:
         return "\n".join(lines) + "\n"
 
     @staticmethod
-    def render_census_report(report: m.Infra.CensusReport) -> str:
+    def render_census_report(report: m.Infra.UtilitiesCensusReport) -> str:
         """Render a human-readable census report."""
         sep = "=" * 110
         lines: list[str] = [

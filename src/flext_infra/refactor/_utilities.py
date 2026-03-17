@@ -618,7 +618,7 @@ class FlextInfraUtilitiesRefactor:
         records: list[m.Infra.CensusUsageRecord],
         files_scanned: int,
         parse_errors: int,
-    ) -> m.Infra.CensusReport:
+    ) -> m.Infra.UtilitiesCensusReport:
         """Pivot raw AST method visit occurrences into a structured usage report."""
         cnt: Counter[tuple[str, str, str]] = Counter()
         pcnt: Counter[tuple[str, str, str, str]] = Counter()
@@ -673,7 +673,7 @@ class FlextInfraUtilitiesRefactor:
                 ),
             )
 
-        return m.Infra.CensusReport(
+        return m.Infra.UtilitiesCensusReport(
             classes=cls_sums,
             projects=[
                 m.Infra.CensusProjectSummary(

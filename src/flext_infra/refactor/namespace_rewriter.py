@@ -11,10 +11,7 @@ from collections import defaultdict
 from io import StringIO
 from pathlib import Path
 
-from flext_infra import c
-from flext_infra.refactor._models_namespace_enforcer import (
-    FlextInfraNamespaceEnforcerModels as nem,
-)
+from flext_infra import c, m, u
 from flext_infra.refactor.dependency_analyzer import (
     FlextInfraRefactorDependencyAnalyzerFacade,
 )
@@ -71,7 +68,7 @@ class NamespaceEnforcementRewriter:
         *,
         project_root: Path,
         project_name: str,
-        facade_statuses: list[nem.FacadeStatus],
+        facade_statuses: list[m.Infra.FacadeStatus],
     ) -> None:
         """Create missing facade module files for the project."""
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
@@ -272,11 +269,11 @@ class NamespaceEnforcementRewriter:
     def rewrite_namespace_source_violations(
         cls,
         *,
-        violations: list[nem.NamespaceSourceViolation],
-        parse_failures: list[nem.ParseFailureViolation],
+        violations: list[m.Infra.NamespaceSourceViolation],
+        parse_failures: list[m.Infra.ParseFailureViolation],
     ) -> None:
         """Rewrite wrong-source alias imports to use correct project facade."""
-        violations_by_file: dict[Path, list[nem.NamespaceSourceViolation]] = (
+        violations_by_file: dict[Path, list[m.Infra.NamespaceSourceViolation]] = (
             defaultdict(
                 list,
             )
@@ -301,7 +298,7 @@ class NamespaceEnforcementRewriter:
                 and stmt.level == 0
                 and stmt.end_lineno is not None
             }
-            violations_by_line: dict[int, list[nem.NamespaceSourceViolation]] = (
+            violations_by_line: dict[int, list[m.Infra.NamespaceSourceViolation]] = (
                 defaultdict(
                     list,
                 )
@@ -385,6 +382,91 @@ class NamespaceEnforcementRewriter:
                 "".join(final_lines),
                 encoding=c.Infra.Encoding.DEFAULT,
             )
+            u.Infra.run_ruff_fix(file_path, include_format=True, quiet=True)
+
+    @classmethod
+    def rewrite_mro_completeness_violations(
+        cls,
+        *,
+        violations: list[m.Infra.MROCompletenessViolation],
+        parse_failures: list[m.Infra.ParseFailureViolation],
+    ) -> None:
+        """Rewrite facade class headers adding missing MRO bases and Ruff-format."""
+        violations_by_file: dict[Path, list[m.Infra.MROCompletenessViolation]] = (
+            defaultdict(
+                list,
+            )
+        )
+        for violation in violations:
+            violations_by_file[Path(violation.file)].append(violation)
+        for file_path, file_violations in violations_by_file.items():
+            parsed = load_python_module(
+                file_path,
+                stage="mro-completeness-rewrite",
+                parse_failures=parse_failures,
+            )
+            if parsed is None:
+                continue
+            lines = parsed.source.splitlines(keepends=True)
+            changed = False
+            missing_by_facade: dict[str, set[str]] = defaultdict(set)
+            for violation in file_violations:
+                missing_by_facade[violation.facade_class].add(violation.missing_base)
+            facade_nodes = [
+                stmt
+                for stmt in parsed.tree.body
+                if isinstance(stmt, ast.ClassDef) and stmt.name in missing_by_facade
+            ]
+            for class_node in sorted(
+                facade_nodes, key=operator.attrgetter("lineno"), reverse=True
+            ):
+                current_bases = [
+                    base_name
+                    for base_name in (
+                        cls._extract_base_name(base_expr)
+                        for base_expr in class_node.bases
+                    )
+                    if len(base_name) > 0
+                ]
+                missing_bases = sorted(missing_by_facade[class_node.name])
+                proposed_bases = current_bases + [
+                    base_name
+                    for base_name in missing_bases
+                    if base_name not in current_bases
+                ]
+                if len(proposed_bases) == len(current_bases):
+                    continue
+                indent = " " * class_node.col_offset
+                new_header = (
+                    f"{indent}class {class_node.name}({', '.join(proposed_bases)}):\n"
+                )
+                start = class_node.lineno - 1
+                end = start
+                while end < len(lines):
+                    if lines[end].rstrip().endswith("):"):
+                        break
+                    end += 1
+                if end >= len(lines):
+                    continue
+                lines[start : end + 1] = [new_header]
+                changed = True
+            if not changed:
+                continue
+            _ = file_path.write_text(
+                "".join(lines),
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+            u.Infra.run_ruff_fix(file_path, include_format=True, quiet=True)
+
+    @staticmethod
+    def _extract_base_name(base_expr: ast.expr) -> str:
+        if isinstance(base_expr, ast.Name):
+            return base_expr.id
+        if isinstance(base_expr, ast.Attribute):
+            return base_expr.attr
+        if isinstance(base_expr, ast.Subscript):
+            return NamespaceEnforcementRewriter._extract_base_name(base_expr.value)
+        return ""
 
     @staticmethod
     def _namespace_source_import_insert_index(*, lines: list[str]) -> int:
@@ -490,7 +572,7 @@ class NamespaceEnforcementRewriter:
         *,
         project_root: Path,
         py_files: list[Path],
-        violations: list[nem.ManualProtocolViolation],
+        violations: list[m.Infra.ManualProtocolViolation],
     ) -> None:
         """Move manual protocol definitions to their canonical files."""
         grouped_names: dict[Path, set[str]] = defaultdict(set)
@@ -577,8 +659,8 @@ class NamespaceEnforcementRewriter:
         cls,
         *,
         project_root: Path,
-        violations: list[nem.ManualTypingAliasViolation],
-        parse_failures: list[nem.ParseFailureViolation],
+        violations: list[m.Infra.ManualTypingAliasViolation],
+        parse_failures: list[m.Infra.ParseFailureViolation],
     ) -> None:
         """Move manual typing aliases to their canonical files."""
         grouped_names: dict[Path, set[str]] = defaultdict(set)
@@ -599,7 +681,7 @@ class NamespaceEnforcementRewriter:
         project_root: Path,
         source_file: Path,
         alias_names: set[str],
-        parse_failures: list[nem.ParseFailureViolation],
+        parse_failures: list[m.Infra.ParseFailureViolation],
     ) -> None:
         parsed = load_python_module(
             source_file,
@@ -698,8 +780,8 @@ class NamespaceEnforcementRewriter:
     @staticmethod
     def rewrite_compatibility_alias_violations(
         *,
-        violations: list[nem.CompatibilityAliasViolation],
-        parse_failures: list[nem.ParseFailureViolation],
+        violations: list[m.Infra.CompatibilityAliasViolation],
+        parse_failures: list[m.Infra.ParseFailureViolation],
     ) -> None:
         """Rewrite compatibility alias violations in source files."""
         grouped: dict[Path, dict[str, str]] = defaultdict(dict)
