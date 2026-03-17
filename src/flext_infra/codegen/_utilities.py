@@ -641,7 +641,7 @@ class FlextInfraUtilitiesCodegen(FlextInfraCodegenTransforms):
         out.extend(["]", "", ""])
         if is_l0_typings:
             out.extend([
-                "def __getattr__(name: str) -> t.Container:",
+                "def __getattr__(name: str) -> type:",
                 "    if name in _LAZY_IMPORTS:",
                 "        module_path, attr_name = _LAZY_IMPORTS[name]",
                 "        module = importlib.import_module(module_path)",

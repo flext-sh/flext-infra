@@ -5,8 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Annotated
 
-from flext_core import FlextModels
+from flext_core import m
 from pydantic import ConfigDict, Field
+
+from flext_infra.typings import t
 
 type _DeptryIssueMap = Mapping[str, t.Primitives | None]
 
@@ -18,7 +20,7 @@ def _empty_deptry_issues() -> list[_DeptryIssueMap]:
 class FlextInfraDepsModels:
     """Models for dependency detection and modernization reporting."""
 
-    class RuffFormatConfig(FlextModels.ArbitraryTypesModel):
+    class RuffFormatConfig(m.ArbitraryTypesModel):
         """Ruff format settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -51,7 +53,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class RuffIsortConfig(FlextModels.ArbitraryTypesModel):
+    class RuffIsortConfig(m.ArbitraryTypesModel):
         """Ruff isort settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -77,7 +79,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class RuffLintConfig(FlextModels.ArbitraryTypesModel):
+    class RuffLintConfig(m.ArbitraryTypesModel):
         """Ruff lint settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -104,7 +106,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class RuffConfig(FlextModels.ArbitraryTypesModel):
+    class RuffConfig(m.ArbitraryTypesModel):
         """Ruff top-level settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -151,7 +153,7 @@ class FlextInfraDepsModels:
         format: FlextInfraDepsModels.RuffFormatConfig
         lint: FlextInfraDepsModels.RuffLintConfig
 
-    class MypyConfig(FlextModels.ArbitraryTypesModel):
+    class MypyConfig(m.ArbitraryTypesModel):
         """Mypy baseline settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -177,7 +179,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class PydanticMypyConfig(FlextModels.ArbitraryTypesModel):
+    class PydanticMypyConfig(m.ArbitraryTypesModel):
         """Pydantic mypy plugin settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -200,7 +202,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class PyrightConfig(FlextModels.ArbitraryTypesModel):
+    class PyrightConfig(m.ArbitraryTypesModel):
         """Pyright strict settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -220,7 +222,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class PyreflyConfig(FlextModels.ArbitraryTypesModel):
+    class PyreflyConfig(m.ArbitraryTypesModel):
         """Pyrefly strict settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -239,7 +241,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class PytestConfig(FlextModels.ArbitraryTypesModel):
+    class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -258,7 +260,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class TomlsortConfig(FlextModels.ArbitraryTypesModel):
+    class TomlsortConfig(m.ArbitraryTypesModel):
         """tomlsort baseline settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -271,7 +273,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class YamlfixConfig(FlextModels.ArbitraryTypesModel):
+    class YamlfixConfig(m.ArbitraryTypesModel):
         """yamlfix baseline settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -292,7 +294,7 @@ class FlextInfraDepsModels:
             bool, Field(description="Emit explicit YAML start marker.")
         ]
 
-    class CoverageFailUnderConfig(FlextModels.ArbitraryTypesModel):
+    class CoverageFailUnderConfig(m.ArbitraryTypesModel):
         """Coverage fail-under thresholds by layer."""
 
         model_config = ConfigDict(extra="forbid")
@@ -321,7 +323,7 @@ class FlextInfraDepsModels:
             Field(description="Minimum coverage percentage required for app layer."),
         ]
 
-    class CoverageConfig(FlextModels.ArbitraryTypesModel):
+    class CoverageConfig(m.ArbitraryTypesModel):
         """Coverage baseline settings loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -356,7 +358,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class ToolConfigTools(FlextModels.ArbitraryTypesModel):
+    class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
         model_config = ConfigDict(extra="forbid")
@@ -381,7 +383,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class ProjectTypeOverrideConfig(FlextModels.ArbitraryTypesModel):
+    class ProjectTypeOverrideConfig(m.ArbitraryTypesModel):
         """Per-project-type override settings."""
 
         model_config = ConfigDict(extra="forbid")
@@ -390,7 +392,7 @@ class FlextInfraDepsModels:
             description="Pyright override settings for this project type.",
         )
 
-    class ProjectTypeOverridesConfig(FlextModels.ArbitraryTypesModel):
+    class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
         """Project-type-specific override matrix from tool_config.yml."""
 
         model_config = ConfigDict(extra="forbid")
@@ -425,19 +427,19 @@ class FlextInfraDepsModels:
             default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig()
         )
 
-    class DependencyLimitsInfo(FlextModels.ArbitraryTypesModel):
+    class DependencyLimitsInfo(m.ArbitraryTypesModel):
         """Dependency limits configuration metadata."""
 
         python_version: str | None = None
         limits_path: Annotated[str, Field(default="")]
 
-    class PipCheckReport(FlextModels.ArbitraryTypesModel):
+    class PipCheckReport(m.ArbitraryTypesModel):
         """Pip check execution report with status and output lines."""
 
         ok: bool = True
         lines: Annotated[list[str], Field(default_factory=list)]
 
-    class ToolConfigDocument(FlextModels.ArbitraryTypesModel):
+    class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for tool_config.yml."""
 
         model_config = ConfigDict(extra="forbid")
@@ -453,7 +455,7 @@ class FlextInfraDepsModels:
             alias="project-type-overrides",
         )
 
-    class DependencyReport(FlextModels.ArbitraryTypesModel):
+    class DependencyReport(m.ArbitraryTypesModel):
         """Report of dependency detection for a single project."""
 
         project: Annotated[str, Field(min_length=1, description="Project name")]
@@ -479,7 +481,7 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class ModernizerFileChanges(FlextModels.ArbitraryTypesModel):
+    class ModernizerFileChanges(m.ArbitraryTypesModel):
         """Modernizer changes for one pyproject file."""
 
         file: Annotated[str, Field(min_length=1, description="Relative pyproject path")]
@@ -487,7 +489,7 @@ class FlextInfraDepsModels:
             list[str], Field(default_factory=list, description="Applied changes")
         ]
 
-    class DeptryIssueGroups(FlextModels.ArbitraryTypesModel):
+    class DeptryIssueGroups(m.ArbitraryTypesModel):
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 
         dep001: list[_DeptryIssueMap] = Field(
@@ -507,7 +509,7 @@ class FlextInfraDepsModels:
             description="DEP004 issues",
         )
 
-    class DeptryReport(FlextModels.ArbitraryTypesModel):
+    class DeptryReport(m.ArbitraryTypesModel):
         """Deptry analysis report with categorized issue modules."""
 
         missing: Annotated[list[str], Field(default_factory=list)]
@@ -516,13 +518,13 @@ class FlextInfraDepsModels:
         dev_in_runtime: Annotated[list[str], Field(default_factory=list)]
         raw_count: Annotated[int, Field(default=0, ge=0)]
 
-    class ProjectDependencyReport(FlextModels.ArbitraryTypesModel):
+    class ProjectDependencyReport(m.ArbitraryTypesModel):
         """Project-level dependency report combining deptry results."""
 
         project: Annotated[str, Field(min_length=1)]
         deptry: FlextInfraDepsModels.DeptryReport
 
-    class TypingsReport(FlextModels.ArbitraryTypesModel):
+    class TypingsReport(m.ArbitraryTypesModel):
         """Typing stubs analysis report with required/current/delta packages."""
 
         required_packages: Annotated[list[str], Field(default_factory=list)]
@@ -534,13 +536,13 @@ class FlextInfraDepsModels:
         limits_applied: bool = False
         python_version: str | None = None
 
-    class ProjectRuntimeReport(FlextModels.ArbitraryTypesModel):
+    class ProjectRuntimeReport(m.ArbitraryTypesModel):
         """Project runtime dependency and typings report."""
 
         deptry: FlextInfraDepsModels.DeptryReport
         typings: FlextInfraDepsModels.TypingsReport | None = None
 
-    class WorkspaceDependencyReport(FlextModels.ArbitraryTypesModel):
+    class WorkspaceDependencyReport(m.ArbitraryTypesModel):
         """Workspace-level dependency analysis report aggregating all projects."""
 
         workspace: str
