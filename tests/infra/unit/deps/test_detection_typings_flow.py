@@ -28,12 +28,12 @@ class _StubReadPlain:
 class _StubRunRaw:
     """Stub for u.Infra.run_raw that returns a predefined result."""
 
-    def __init__(self, result: r[m.Infra.Core.CommandOutput]) -> None:
+    def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
         self._result = result
 
     def __call__(
         self, *args: t.Infra.TomlValue, **kwargs: t.Infra.TomlValue,
-    ) -> r[m.Infra.Core.CommandOutput]:
+    ) -> r[m.Infra.CommandOutput]:
         _ = args
         _ = kwargs
         return self._result
@@ -111,10 +111,10 @@ class TestModuleAndTypingsFlow:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "mypy").write_text("")
-        out = m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr="")
+        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
         service = FlextInfraDependencyDetectionService()
         monkeypatch.setattr(
-            u.Infra, "run_raw", _StubRunRaw(r[m.Infra.Core.CommandOutput].ok(out)),
+            u.Infra, "run_raw", _StubRunRaw(r[m.Infra.CommandOutput].ok(out)),
         )
         monkeypatch.setattr(
             u.Infra,
@@ -139,7 +139,7 @@ class TestModuleAndTypingsFlow:
         monkeypatch.setattr(
             u.Infra,
             "run_raw",
-            _StubRunRaw(r[m.Infra.Core.CommandOutput].fail("mypy crash")),
+            _StubRunRaw(r[m.Infra.CommandOutput].fail("mypy crash")),
         )
         monkeypatch.setattr(
             u.Infra,

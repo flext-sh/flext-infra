@@ -11,12 +11,12 @@ from tests.infra import m
 
 
 class _StubSelector:
-    def __init__(self, result: r[list[m.Infra.Workspace.ProjectInfo]]) -> None:
+    def __init__(self, result: r[list[m.Infra.ProjectInfo]]) -> None:
         self._result = result
 
     def resolve_projects(
         self, workspace_root: Path, names: list[str],
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
+    ) -> r[list[m.Infra.ProjectInfo]]:
         _ = workspace_root
         _ = names
         return self._result
@@ -25,7 +25,7 @@ class _StubSelector:
 class TestDiscoverProjects:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         service = FlextInfraDependencyDetectionService()
-        proj = m.Infra.Workspace.ProjectInfo(
+        proj = m.Infra.ProjectInfo(
             name="proj", path=tmp_path / "proj", stack="py",
         )
         proj.path.mkdir()
@@ -33,7 +33,7 @@ class TestDiscoverProjects:
         monkeypatch.setattr(
             service,
             "selector",
-            _StubSelector(r[list[m.Infra.Workspace.ProjectInfo]].ok([proj])),
+            _StubSelector(r[list[m.Infra.ProjectInfo]].ok([proj])),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.is_success, eq=True)
@@ -45,7 +45,7 @@ class TestDiscoverProjects:
         monkeypatch.setattr(
             service,
             "selector",
-            _StubSelector(r[list[m.Infra.Workspace.ProjectInfo]].fail("failed")),
+            _StubSelector(r[list[m.Infra.ProjectInfo]].fail("failed")),
         )
         tm.fail(service.discover_project_paths(tmp_path))
 
@@ -53,14 +53,14 @@ class TestDiscoverProjects:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
-        proj = m.Infra.Workspace.ProjectInfo(
+        proj = m.Infra.ProjectInfo(
             name="no-pyproject", path=tmp_path / "no-pyproject", stack="py",
         )
         proj.path.mkdir()
         monkeypatch.setattr(
             service,
             "selector",
-            _StubSelector(r[list[m.Infra.Workspace.ProjectInfo]].ok([proj])),
+            _StubSelector(r[list[m.Infra.ProjectInfo]].ok([proj])),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.is_success, eq=True)

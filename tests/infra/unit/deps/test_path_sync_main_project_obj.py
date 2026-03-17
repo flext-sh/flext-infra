@@ -19,8 +19,8 @@ class _OutputNoop:
         return None
 
 
-def _project(path: Path) -> m.Infra.Workspace.ProjectInfo:
-    return m.Infra.Workspace.ProjectInfo(
+def _project(path: Path) -> m.Infra.ProjectInfo:
+    return m.Infra.ProjectInfo(
         path=path,
         name="test",
         stack="test-stack",
@@ -40,8 +40,8 @@ def test_main_project_obj_not_dict_first_loop(
     def _discover_projects(
         _self: t.Scalar,
         _root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-        return r[list[m.Infra.Workspace.ProjectInfo]].ok([_project(project_dir)])
+    ) -> r[list[m.Infra.ProjectInfo]]:
+        return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
     def _read_document(_self: t.Scalar, _path: Path) -> r[TOMLDocument]:
         return r[TOMLDocument].ok(tomlkit.parse('[project]\nvalue = "not-a-dict"\n'))
@@ -66,8 +66,8 @@ def test_main_project_obj_not_dict_second_loop(
     def _discover_projects(
         _self: t.Scalar,
         _root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-        return r[list[m.Infra.Workspace.ProjectInfo]].ok([
+    ) -> r[list[m.Infra.ProjectInfo]]:
+        return r[list[m.Infra.ProjectInfo]].ok([
             _project(tmp_path / "test-project"),
         ])
 

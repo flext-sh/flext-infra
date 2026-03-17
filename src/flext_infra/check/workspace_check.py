@@ -62,7 +62,7 @@ class FlextInfraWorkspaceChecker(s):
 
     @staticmethod
     def generate_sarif_report(
-        results: list[m.Infra.Check.ProjectResult],
+        results: list[m.Infra.ProjectResult],
         gates: list[str],
     ) -> JsonValue:
         """Generate a SARIF payload from gate results."""
@@ -98,24 +98,24 @@ class FlextInfraWorkspaceChecker(s):
             "Use run() or run_projects() directly",
         )
 
-    def format(self, project_dir: Path) -> r[m.Infra.Check.GateResult]:
+    def format(self, project_dir: Path) -> r[m.Infra.GateResult]:
         """Run format checks for one project."""
-        return r[m.Infra.Check.GateResult].ok(
+        return r[m.Infra.GateResult].ok(
             self._run_gate(c.Infra.Gates.FORMAT, project_dir).result,
         )
 
     def generate_markdown_report(
         self,
-        results: list[m.Infra.Check.ProjectResult],
+        results: list[m.Infra.ProjectResult],
         gates: list[str],
         timestamp: str,
     ) -> str:
         """Generate a markdown summary report for check results."""
         return FlextInfraCheckReporter.markdown(results, gates, timestamp)
 
-    def lint(self, project_dir: Path) -> r[m.Infra.Check.GateResult]:
+    def lint(self, project_dir: Path) -> r[m.Infra.GateResult]:
         """Run lint checks for one project."""
-        return r[m.Infra.Check.GateResult].ok(
+        return r[m.Infra.GateResult].ok(
             self._run_gate(c.Infra.Gates.LINT, project_dir).result,
         )
 
@@ -123,7 +123,7 @@ class FlextInfraWorkspaceChecker(s):
         self,
         project: str,
         gates: Sequence[str],
-    ) -> r[list[m.Infra.Check.ProjectResult]]:
+    ) -> r[list[m.Infra.ProjectResult]]:
         """Run selected gates for one project."""
         return self.run_projects([project], list(gates)).map(lambda value: value)
 
@@ -134,17 +134,17 @@ class FlextInfraWorkspaceChecker(s):
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
-    ) -> r[list[m.Infra.Check.ProjectResult]]:
+    ) -> r[list[m.Infra.ProjectResult]]:
         """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.is_failure:
-            return r[list[m.Infra.Check.ProjectResult]].fail(
+            return r[list[m.Infra.ProjectResult]].fail(
                 resolved_gates_result.error or "invalid gates",
             )
         resolved_gates: list[str] = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         report_base.mkdir(parents=True, exist_ok=True)
-        results: list[m.Infra.Check.ProjectResult] = []
+        results: list[m.Infra.ProjectResult] = []
         total = len(projects)
         failed = 0
         skipped = 0
@@ -183,7 +183,7 @@ class FlextInfraWorkspaceChecker(s):
         sarif_payload = self.generate_sarif_report(results, resolved_gates)
         json_write_result = u.Infra.write_json(sarif_path, sarif_payload)
         if json_write_result.is_failure:
-            return r[list[m.Infra.Check.ProjectResult]].fail(
+            return r[list[m.Infra.ProjectResult]].fail(
                 json_write_result.error or "failed to write sarif report",
             )
         total_errors = sum(project.total_errors for project in results)
@@ -215,7 +215,7 @@ class FlextInfraWorkspaceChecker(s):
                 output.error(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",
                 )
-        return r[list[m.Infra.Check.ProjectResult]].ok(results)
+        return r[list[m.Infra.ProjectResult]].ok(results)
 
     def _gate_ctx(self, reports_dir: Path | None = None) -> FlextInfraGateContext:
         return FlextInfraGateContext(
@@ -228,11 +228,11 @@ class FlextInfraWorkspaceChecker(s):
         gate_id: str,
         project_dir: Path,
         reports_dir: Path | None = None,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         gate = self._registry.create(gate_id, self._workspace_root)
         if gate is None:
-            return m.Infra.Check.GateExecution(
-                result=m.Infra.Check.GateResult(
+            return m.Infra.GateExecution(
+                result=m.Infra.GateResult(
                     gate=gate_id,
                     project=project_dir.name,
                     passed=False,
@@ -249,8 +249,8 @@ class FlextInfraWorkspaceChecker(s):
         project_dir: Path,
         gates: list[str],
         reports_dir: Path,
-    ) -> m.Infra.Check.ProjectResult:
-        result = m.Infra.Check.ProjectResult(project=project_dir.name)
+    ) -> m.Infra.ProjectResult:
+        result = m.Infra.ProjectResult(project=project_dir.name)
         ctx = self._gate_ctx(reports_dir)
         for gate in gates:
             gate_instance = self._registry.create(gate, self._workspace_root)
@@ -273,32 +273,32 @@ class FlextInfraWorkspaceChecker(s):
         result = u.Infra.workspace_root()
         return result.value if result.is_success else Path.cwd().resolve()
 
-    def _run_bandit(self, project_dir: Path) -> m.Infra.Check.GateExecution:
+    def _run_bandit(self, project_dir: Path) -> m.Infra.GateExecution:
         return self._run_gate(c.Infra.Gates.SECURITY, project_dir)
 
-    def _run_go(self, project_dir: Path) -> m.Infra.Check.GateExecution:
+    def _run_go(self, project_dir: Path) -> m.Infra.GateExecution:
         return self._run_gate(c.Infra.Gates.GO, project_dir)
 
-    def _run_markdown(self, project_dir: Path) -> m.Infra.Check.GateExecution:
+    def _run_markdown(self, project_dir: Path) -> m.Infra.GateExecution:
         return self._run_gate(c.Infra.Gates.MARKDOWN, project_dir)
 
-    def _run_mypy(self, project_dir: Path) -> m.Infra.Check.GateExecution:
+    def _run_mypy(self, project_dir: Path) -> m.Infra.GateExecution:
         return self._run_gate(c.Infra.Gates.MYPY, project_dir)
 
     def _run_pyrefly(
         self,
         project_dir: Path,
         reports_dir: Path,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         return self._run_gate(c.Infra.Gates.PYREFLY, project_dir, reports_dir)
 
-    def _run_pyright(self, project_dir: Path) -> m.Infra.Check.GateExecution:
+    def _run_pyright(self, project_dir: Path) -> m.Infra.GateExecution:
         return self._run_gate(c.Infra.Gates.PYRIGHT, project_dir)
 
-    def _run_ruff_format(self, project_dir: Path) -> m.Infra.Check.GateExecution:
+    def _run_ruff_format(self, project_dir: Path) -> m.Infra.GateExecution:
         return self._run_gate(c.Infra.Gates.FORMAT, project_dir)
 
-    def _run_ruff_lint(self, project_dir: Path) -> m.Infra.Check.GateExecution:
+    def _run_ruff_lint(self, project_dir: Path) -> m.Infra.GateExecution:
         return self._run_gate(c.Infra.Gates.LINT, project_dir)
 
 
@@ -351,7 +351,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         if run_result.is_failure:
             output.error(run_result.error or "check failed")
             return 2
-        run_results: list[m.Infra.Check.ProjectResult] = run_result.value
+        run_results: list[m.Infra.ProjectResult] = run_result.value
         failed_projects = [project for project in run_results if not project.passed]
         return 1 if failed_projects else 0
     if args.command == "fix-pyrefly-config":

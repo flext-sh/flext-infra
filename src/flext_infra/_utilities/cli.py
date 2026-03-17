@@ -328,7 +328,7 @@ class FlextInfraUtilitiesCli:
     @staticmethod
     def iter_projects(
         cli: FlextInfraUtilitiesCli.CliArgs,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
+    ) -> r[list[m.Infra.ProjectInfo]]:
         """Discover and filter projects based on CLI arguments.
 
         Calls discover_projects() and filters by project_names() if specified.
@@ -352,19 +352,19 @@ class FlextInfraUtilitiesCli:
         # Filter by project names if specified
         if project_names is not None:
             filtered = [p for p in projects if p.name in project_names]
-            return r[list[m.Infra.Workspace.ProjectInfo]].ok(
+            return r[list[m.Infra.ProjectInfo]].ok(
                 sorted(filtered, key=lambda p: p.name),
             )
 
         # Return all projects sorted
-        return r[list[m.Infra.Workspace.ProjectInfo]].ok(
+        return r[list[m.Infra.ProjectInfo]].ok(
             sorted(projects, key=lambda p: p.name),
         )
 
     @staticmethod
     def _discover_projects_impl(
         workspace: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
+    ) -> r[list[m.Infra.ProjectInfo]]:
         """Internal implementation that delegates to discovery module.
 
         This method exists to allow iter_projects() to call the discovery

@@ -23,11 +23,11 @@ def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:
         *,
         workspace_root: Path,
         dry_run: bool,
-    ) -> r[list[m.Infra.Workspace.MigrationResult]]:
+    ) -> r[list[m.Infra.MigrationResult]]:
         del self, workspace_root
         assert dry_run is True
-        return r[list[m.Infra.Workspace.MigrationResult]].ok([
-            m.Infra.Workspace.MigrationResult.model_validate(
+        return r[list[m.Infra.MigrationResult]].ok([
+            m.Infra.MigrationResult.model_validate(
                 obj={
                     "project": "flext-core",
                     "changes": ["[DRY-RUN] base.mk regenerated via BaseMkGenerator"],
@@ -55,10 +55,10 @@ def test_workspace_cli_migrate_output_contains_summary(
         *,
         workspace_root: Path,
         dry_run: bool,
-    ) -> r[list[m.Infra.Workspace.MigrationResult]]:
+    ) -> r[list[m.Infra.MigrationResult]]:
         del self, workspace_root, dry_run
-        return r[list[m.Infra.Workspace.MigrationResult]].ok([
-            m.Infra.Workspace.MigrationResult.model_validate(
+        return r[list[m.Infra.MigrationResult]].ok([
+            m.Infra.MigrationResult.model_validate(
                 obj={
                     "project": "flext-core",
                     "changes": [

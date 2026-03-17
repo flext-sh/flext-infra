@@ -243,7 +243,7 @@ class HelperConsolidationTransformer(cst.CSTTransformer):
     def _policy_for_helper(
         self,
         helper_name: str,
-    ) -> m.Infra.Refactor.ClassNestingPolicy | None:
+    ) -> m.Infra.ClassNestingPolicy | None:
         return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._helper_families,

@@ -90,7 +90,7 @@ class DependencyAnalyzer:
                 parsed = self._parse_imports(fp)
                 if parsed.is_failure:
                     continue
-                file_data: m.Infra.Refactor.FileImportData = parsed.value
+                file_data: m.Infra.FileImportData = parsed.value
                 for mod_root in file_data.imported_modules:
                     if mod_root in self._stdlib_roots:
                         continue
@@ -128,8 +128,8 @@ class DependencyAnalyzer:
         except CycleError:
             return r[list[str]].ok(sorted(graph))
 
-    def _discover_projects(self) -> list[m.Infra.Refactor.ProjectInfo]:
-        projects: list[m.Infra.Refactor.ProjectInfo] = []
+    def _discover_projects(self) -> list[m.Infra.ProjectInfo]:
+        projects: list[m.Infra.ProjectInfo] = []
         for candidate in sorted(self._workspace_root.iterdir()):
             if not candidate.is_dir() or candidate.name.startswith("."):
                 continue
@@ -137,7 +137,7 @@ class DependencyAnalyzer:
             if not src.is_dir():
                 continue
             projects.append(
-                m.Infra.Refactor.ProjectInfo(
+                m.Infra.ProjectInfo(
                     name=candidate.name,
                     path=candidate,
                     src_path=src,
@@ -163,7 +163,7 @@ class DependencyAnalyzer:
 
     def _build_package_index(
         self,
-        projects: list[m.Infra.Refactor.ProjectInfo],
+        projects: list[m.Infra.ProjectInfo],
     ) -> dict[str, str]:
         idx: dict[str, str] = {}
         for proj in projects:
@@ -173,7 +173,7 @@ class DependencyAnalyzer:
 
     def _find_import_candidate_files(
         self,
-        project: m.Infra.Refactor.ProjectInfo,
+        project: m.Infra.ProjectInfo,
     ) -> list[Path]:
         grep_files = self._scan_import_files_with_ast_grep(project.src_path)
         if grep_files.is_success and grep_files.value:
@@ -198,7 +198,7 @@ class DependencyAnalyzer:
             result = self._run_ast_grep(src_path, pattern)
             if result.is_failure:
                 return r[set[Path]].fail(result.error or "ast-grep failed")
-            entries: list[m.Infra.Refactor.AstGrepMatchEnvelope] = result.value
+            entries: list[m.Infra.AstGrepMatchEnvelope] = result.value
             for entry in entries:
                 fp = Path(entry.file)
                 if not fp.is_absolute():
@@ -211,7 +211,7 @@ class DependencyAnalyzer:
         self,
         src_path: Path,
         pattern: str,
-    ) -> r[list[m.Infra.Refactor.AstGrepMatchEnvelope]]:
+    ) -> r[list[m.Infra.AstGrepMatchEnvelope]]:
         cmd = [
             "sg",
             "--pattern",
@@ -223,30 +223,30 @@ class DependencyAnalyzer:
         ]
         capture = u.Infra.capture(cmd)
         if capture.is_failure:
-            return r[list[m.Infra.Refactor.AstGrepMatchEnvelope]].fail(
+            return r[list[m.Infra.AstGrepMatchEnvelope]].fail(
                 capture.error or "capture failed",
             )
         if not capture.value:
-            return r[list[m.Infra.Refactor.AstGrepMatchEnvelope]].ok([])
+            return r[list[m.Infra.AstGrepMatchEnvelope]].ok([])
         try:
             json_raw: str | bytes | bytearray = capture.value
-            envelopes: list[m.Infra.Refactor.AstGrepMatchEnvelope] = TypeAdapter(
-                list[m.Infra.Refactor.AstGrepMatchEnvelope],
+            envelopes: list[m.Infra.AstGrepMatchEnvelope] = TypeAdapter(
+                list[m.Infra.AstGrepMatchEnvelope],
             ).validate_json(
                 json_raw,
             )
-            return r[list[m.Infra.Refactor.AstGrepMatchEnvelope]].ok(envelopes)
+            return r[list[m.Infra.AstGrepMatchEnvelope]].ok(envelopes)
         except ValidationError as exc:
-            return r[list[m.Infra.Refactor.AstGrepMatchEnvelope]].fail(str(exc))
+            return r[list[m.Infra.AstGrepMatchEnvelope]].fail(str(exc))
 
-    def _parse_imports(self, file_path: Path) -> r[m.Infra.Refactor.FileImportData]:
+    def _parse_imports(self, file_path: Path) -> r[m.Infra.FileImportData]:
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
-            return r[m.Infra.Refactor.FileImportData].fail(f"{file_path}: parse_failed")
+            return r[m.Infra.FileImportData].fail(f"{file_path}: parse_failed")
         col = ImportCollector()
         _ = tree.visit(col)
-        return r[m.Infra.Refactor.FileImportData].ok(
-            m.Infra.Refactor.FileImportData(
+        return r[m.Infra.FileImportData].ok(
+            m.Infra.FileImportData(
                 imported_modules=col.imported_modules,
                 imported_symbols=col.imported_symbols,
             ),
@@ -657,6 +657,8 @@ class ImportAliasDetector(p.Infra.Scanner):
 
 
 class NamespaceSourceDetector(p.Infra.Scanner):
+    """Detect alias imports from wrong source packages."""
+
     _PROJECT_ALIAS_MAP_CACHE: ClassVar[dict[Path, dict[str, str]]] = {}
 
     def __init__(
@@ -724,6 +726,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         project_root: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.NamespaceSourceViolation]:
+        """Scan a file for wrong-source alias imports."""
         if file_path.name == "__init__.py":
             return []
         if file_path.name in c.Infra.Refactor.NAMESPACE_PROTECTED_FILES:
@@ -779,6 +782,34 @@ class NamespaceSourceDetector(p.Infra.Scanner):
                         correct_source=correct_source,
                         current_import=current_import,
                         suggested_import=suggested,
+                    ),
+                )
+        package_name = cls._discover_project_package_name(project_root=project_root)
+        if len(package_name) == 0:
+            return violations
+        for stmt in parsed.tree.body:
+            if not isinstance(stmt, ast.ImportFrom) or stmt.module is None:
+                continue
+            if not stmt.module.startswith(f"{package_name}."):
+                continue
+            if "._" in stmt.module:
+                continue
+            for alias_node in stmt.names:
+                if alias_node.asname is not None:
+                    continue
+                if alias_node.name not in project_alias_map:
+                    continue
+                violations.append(
+                    nem.NamespaceSourceViolation.create(
+                        file=str(file_path),
+                        line=stmt.lineno,
+                        alias=alias_node.name,
+                        current_source=stmt.module,
+                        correct_source=package_name,
+                        current_import=f"from {stmt.module} import ...",
+                        suggested_import=(
+                            f"from {package_name} import {alias_node.name}"
+                        ),
                     ),
                 )
         return violations
@@ -1047,6 +1078,138 @@ class ManualProtocolDetector(p.Infra.Scanner):
         return False
 
 
+class ClassPlacementDetector(p.Infra.Scanner):
+    """Detect BaseModel subclasses outside canonical model files."""
+
+    PYDANTIC_BASE_NAMES: ClassVar[frozenset[str]] = frozenset(
+        {
+            "BaseModel",
+            "FrozenModel",
+            "ArbitraryTypesModel",
+            "FrozenStrictModel",
+            "FrozenValueModel",
+            "TimestampedModel",
+        },
+    )
+    CANONICAL_MODEL_FILES: ClassVar[frozenset[str]] = frozenset(
+        {"models.py", "_models.py"},
+    )
+    CANONICAL_MODEL_DIR: ClassVar[str] = "_models"
+
+    def __init__(
+        self,
+        *,
+        parse_failures: list[nem.ParseFailureViolation] | None = None,
+    ) -> None:
+        """Initialize scanner with project configuration."""
+        super().__init__()
+        self._parse_failures = parse_failures
+
+    @override
+    def scan_file(self, *, file_path: Path) -> m.Infra.Utilities.ScanResult:
+        """Scan a file and return protocol-standardized scan output."""
+        violations = type(self).scan_file_impl(
+            file_path=file_path,
+            _parse_failures=self._parse_failures,
+        )
+        return m.Infra.Utilities.ScanResult(
+            file_path=file_path,
+            violations=[
+                m.Infra.Utilities.ScanViolation(
+                    line=violation.line,
+                    message=(
+                        f"Model class '{violation.name}' must be in canonical "
+                        f"model files ({violation.suggestion})"
+                    ),
+                    severity="error",
+                    rule_id="namespace.class_placement",
+                )
+                for violation in violations
+            ],
+            detector_name=self.__class__.__name__,
+        )
+
+    @classmethod
+    def detect_file(
+        cls,
+        *,
+        file_path: Path,
+        parse_failures: list[nem.ParseFailureViolation] | None = None,
+    ) -> list[nem.ClassPlacementViolation]:
+        """Scan a file and return typed namespace violations."""
+        return cls.scan_file_impl(
+            file_path=file_path,
+            _parse_failures=parse_failures,
+        )
+
+    @classmethod
+    def scan_file_impl(
+        cls,
+        *,
+        file_path: Path,
+        _parse_failures: list[nem.ParseFailureViolation] | None = None,
+    ) -> list[nem.ClassPlacementViolation]:
+        """Scan a file for BaseModel subclasses outside canonical model files."""
+        if file_path.name in cls.CANONICAL_MODEL_FILES:
+            return []
+        if cls.CANONICAL_MODEL_DIR in file_path.parts:
+            return []
+        if file_path.name in c.Infra.Refactor.NAMESPACE_PROTECTED_FILES:
+            return []
+        if file_path.name in c.Infra.Refactor.NAMESPACE_SETTINGS_FILE_NAMES:
+            return []
+        tree = u.Infra.parse_module_ast(file_path)
+        if tree is None:
+            return []
+        violations: list[nem.ClassPlacementViolation] = []
+        for stmt in tree.body:
+            if not isinstance(stmt, ast.ClassDef):
+                continue
+            if stmt.name.startswith("_"):
+                continue
+            is_model_class, base_class_name = cls.is_pydantic_model_class(stmt)
+            if not is_model_class:
+                continue
+            violations.append(
+                nem.ClassPlacementViolation.create(
+                    file=str(file_path),
+                    line=stmt.lineno,
+                    name=stmt.name,
+                    base_class=base_class_name,
+                    suggestion="Move class to models.py/_models.py or _models/",
+                ),
+            )
+        return violations
+
+    @staticmethod
+    def is_pydantic_model_class(node: ast.ClassDef) -> tuple[bool, str]:
+        """Return (is_model, base_class_name) for known Pydantic ancestors."""
+        for base in node.bases:
+            if (
+                isinstance(base, ast.Name)
+                and base.id in ClassPlacementDetector.PYDANTIC_BASE_NAMES
+            ):
+                return (True, base.id)
+            if (
+                isinstance(base, ast.Attribute)
+                and base.attr in ClassPlacementDetector.PYDANTIC_BASE_NAMES
+            ):
+                return (True, base.attr)
+            if isinstance(base, ast.Subscript):
+                val = base.value
+                if (
+                    isinstance(val, ast.Attribute)
+                    and val.attr in ClassPlacementDetector.PYDANTIC_BASE_NAMES
+                ):
+                    return (True, val.attr)
+                if (
+                    isinstance(val, ast.Name)
+                    and val.id in ClassPlacementDetector.PYDANTIC_BASE_NAMES
+                ):
+                    return (True, val.id)
+        return (False, "")
+
+
 class CyclicImportDetector:
     """Detect cyclic import dependencies within a project."""
 
@@ -1073,7 +1236,8 @@ class CyclicImportDetector:
         for scan_dir in scan_dirs:
             for py_file in u.Infra.iter_directory_python_files(scan_dir):
                 base_module_name = cls._file_to_module(
-                    file_path=py_file, src_dir=scan_dir,
+                    file_path=py_file,
+                    src_dir=scan_dir,
                 )
                 module_name = cls._module_name_for_scan_dir(
                     scan_dir=scan_dir,
@@ -1558,7 +1722,7 @@ class FlextInfraRefactorDependencyAnalyzerFacade:
         *,
         stage: str = "scan",
         parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> m.Infra.Refactor.ParsedPythonModule | None:
+    ) -> m.Infra.ParsedPythonModule | None:
         """Load and parse a Python source file, recording failures if provided."""
         try:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -1596,7 +1760,7 @@ class FlextInfraRefactorDependencyAnalyzerFacade:
                     ),
                 )
             return None
-        return m.Infra.Refactor.ParsedPythonModule(source=source, tree=tree)
+        return m.Infra.ParsedPythonModule(source=source, tree=tree)
 
     NamespaceFacadeScanner = NamespaceFacadeScanner
     LooseObjectDetector = LooseObjectDetector
@@ -1604,6 +1768,7 @@ class FlextInfraRefactorDependencyAnalyzerFacade:
     NamespaceSourceDetector = NamespaceSourceDetector
     InternalImportDetector = InternalImportDetector
     ManualProtocolDetector = ManualProtocolDetector
+    ClassPlacementDetector = ClassPlacementDetector
     CyclicImportDetector = CyclicImportDetector
     RuntimeAliasDetector = RuntimeAliasDetector
     FutureAnnotationsDetector = FutureAnnotationsDetector
@@ -1612,6 +1777,7 @@ class FlextInfraRefactorDependencyAnalyzerFacade:
 
 
 __all__ = [
+    "ClassPlacementDetector",
     "CompatibilityAliasDetector",
     "CyclicImportDetector",
     "DependencyAnalyzer",

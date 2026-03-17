@@ -38,7 +38,7 @@ class FlextInfraDocsShared:
                     part.strip() for part in requested[0].split(" ") if part.strip()
                 ]
             return requested
-        result: r[list[m.Infra.Workspace.ProjectInfo]] = u.Infra.discover_projects(
+        result: r[list[m.Infra.ProjectInfo]] = u.Infra.discover_projects(
             workspace_root,
         )
         return result.fold(

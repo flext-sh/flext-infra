@@ -28,7 +28,7 @@ class PreCheckGate:
             "class-policy-v2.yml",
         )
         self._schema_path = self._policy_path.with_name("class-policy-v2.schema.json")
-        self._policy_by_family: dict[str, m.Infra.Refactor.ClassNestingPolicy] = (
+        self._policy_by_family: dict[str, m.Infra.ClassNestingPolicy] = (
             self._load_policy()
         )
 
@@ -98,7 +98,7 @@ class PreCheckGate:
             )
         return (True, None)
 
-    def _load_policy(self) -> dict[str, m.Infra.Refactor.ClassNestingPolicy]:
+    def _load_policy(self) -> dict[str, m.Infra.ClassNestingPolicy]:
         try:
             loaded = u.Infra.safe_load_yaml(self._policy_path)
         except (OSError, TypeError):
@@ -109,10 +109,10 @@ class PreCheckGate:
         if not self._schema_valid(loaded_dict):
             return {}
         policy_matrix = u.Infra.mapping_list(loaded_dict.get("policy_matrix"))
-        by_family: dict[str, m.Infra.Refactor.ClassNestingPolicy] = {}
+        by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
         for raw in policy_matrix:
             try:
-                policy = m.Infra.Refactor.ClassNestingPolicy.model_validate(raw)
+                policy = m.Infra.ClassNestingPolicy.model_validate(raw)
             except ValidationError:
                 continue
             by_family[policy.family_name] = policy

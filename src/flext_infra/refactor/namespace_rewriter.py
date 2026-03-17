@@ -275,6 +275,7 @@ class NamespaceEnforcementRewriter:
         violations: list[nem.NamespaceSourceViolation],
         parse_failures: list[nem.ParseFailureViolation],
     ) -> None:
+        """Rewrite wrong-source alias imports to use correct project facade."""
         violations_by_file: dict[Path, list[nem.NamespaceSourceViolation]] = (
             defaultdict(
                 list,
@@ -455,7 +456,8 @@ class NamespaceEnforcementRewriter:
             if lines[0].startswith("#!"):
                 insert_idx = 1
             if insert_idx < len(lines) and re.match(
-                r"^#.*coding[:=]", lines[insert_idx],
+                r"^#.*coding[:=]",
+                lines[insert_idx],
             ):
                 insert_idx += 1
             if insert_idx < len(lines) and (

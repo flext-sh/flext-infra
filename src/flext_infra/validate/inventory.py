@@ -29,7 +29,7 @@ class FlextInfraInventoryService:
         workspace_root: Path,
         *,
         output_dir: Path | None = None,
-    ) -> r[m.Infra.Core.InventoryReport]:
+    ) -> r[m.Infra.InventoryReport]:
         """Build and write scripts inventory reports.
 
         Args:
@@ -75,29 +75,29 @@ class FlextInfraInventoryService:
             )
             write_result = u.Infra.write_json(inventory_path, inventory, sort_keys=True)
             if write_result.is_failure:
-                return r[m.Infra.Core.InventoryReport].fail(
+                return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )
             written.append(str(inventory_path))
             write_result = u.Infra.write_json(wiring_path, wiring, sort_keys=True)
             if write_result.is_failure:
-                return r[m.Infra.Core.InventoryReport].fail(
+                return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )
             written.append(str(wiring_path))
             write_result = u.Infra.write_json(external_path, external, sort_keys=True)
             if write_result.is_failure:
-                return r[m.Infra.Core.InventoryReport].fail(
+                return r[m.Infra.InventoryReport].fail(
                     write_result.error or "write failed",
                 )
             written.append(str(external_path))
-            result = m.Infra.Core.InventoryReport(
+            result = m.Infra.InventoryReport(
                 total_scripts=len(scripts),
                 reports_written=written,
             )
-            return r[m.Infra.Core.InventoryReport].ok(result)
+            return r[m.Infra.InventoryReport].ok(result)
         except (OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.Core.InventoryReport].fail(
+            return r[m.Infra.InventoryReport].fail(
                 f"inventory generation failed: {exc}",
             )
 

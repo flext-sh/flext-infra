@@ -28,7 +28,7 @@ class FlextInfraBanditGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         _ = ctx
         started = time.monotonic()
         if not (project_dir / c.Infra.Paths.DEFAULT_SRC_DIR).exists():
@@ -53,12 +53,12 @@ class FlextInfraBanditGate(FlextInfraGate):
             ],
             project_dir,
         )
-        issues: list[m.Infra.Check.Issue] = []
+        issues: list[m.Infra.Issue] = []
         try:
             parsed = u.Infra.parse(result.stdout or "{}")
             bandit_data = self._to_mapping(parsed.value) if parsed.is_success else {}
             issues.extend(
-                m.Infra.Check.Issue(
+                m.Infra.Issue(
                     file=self._as_str(raw_item.get("filename", "?"), "?"),
                     line=self._as_int(raw_item.get("line_number", 0)),
                     column=0,

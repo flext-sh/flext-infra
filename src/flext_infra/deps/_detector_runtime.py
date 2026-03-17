@@ -17,8 +17,8 @@ from flext_infra import c, m, p, t, u
 class _WorkspaceReport(Protocol):
     """Protocol for workspace dependency report model contract."""
 
-    pip_check: m.Infra.Deps.PipCheckReport | None
-    dependency_limits: m.Infra.Deps.DependencyLimitsInfo | None
+    pip_check: m.Infra.PipCheckReport | None
+    dependency_limits: m.Infra.DependencyLimitsInfo | None
 
     def model_dump(self) -> dict[str, t.Infra.InfraValue]:
         """Serialize report model payload."""
@@ -85,7 +85,7 @@ class TypingsDepsService(Protocol):
         limits_path: Path | None = None,
         *,
         include_mypy: bool = True,
-    ) -> r[m.Infra.Deps.TypingsReport]: ...
+    ) -> r[m.Infra.TypingsReport]: ...
 
 
 @runtime_checkable
@@ -105,7 +105,7 @@ class RunnerService(Protocol):
         cwd: Path | None = None,
         timeout: int | None = None,
         env: dict[str, str] | None = None,
-    ) -> r[m.Infra.Core.CommandOutput]: ...
+    ) -> r[m.Infra.CommandOutput]: ...
 
 
 class _DetectorRuntime(Protocol):
@@ -134,8 +134,8 @@ class FlextInfraDependencyDetectorRuntime:
         self,
         detector: _DetectorRuntime,
         workspace_report_factory: Callable[..., _WorkspaceReport],
-        dependency_limits_factory: Callable[..., m.Infra.Deps.DependencyLimitsInfo],
-        pip_check_factory: Callable[..., m.Infra.Deps.PipCheckReport],
+        dependency_limits_factory: Callable[..., m.Infra.DependencyLimitsInfo],
+        pip_check_factory: Callable[..., m.Infra.PipCheckReport],
     ) -> None:
         self._detector = detector
         self._workspace_report_factory = workspace_report_factory
@@ -254,7 +254,7 @@ class FlextInfraDependencyDetectorRuntime:
                                 package=package,
                             )
                         else:
-                            run_output: m.Infra.Core.CommandOutput = run.value
+                            run_output: m.Infra.CommandOutput = run.value
                             if run_output.exit_code != 0:
                                 detector.log.warning(
                                     "deps_typings_add_failed",
@@ -324,8 +324,8 @@ class FlextInfraDependencyDetectorRuntime:
     def run_detector(
         detector: _DetectorRuntime,
         workspace_report_factory: Callable[..., _WorkspaceReport],
-        dependency_limits_factory: Callable[..., m.Infra.Deps.DependencyLimitsInfo],
-        pip_check_factory: Callable[..., m.Infra.Deps.PipCheckReport],
+        dependency_limits_factory: Callable[..., m.Infra.DependencyLimitsInfo],
+        pip_check_factory: Callable[..., m.Infra.PipCheckReport],
         argv: list[str] | None = None,
     ) -> r[int]:
         """Execute dependency detection and generate workspace report."""

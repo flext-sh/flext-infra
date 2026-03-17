@@ -12,8 +12,8 @@ from flext_infra.deps import path_sync as path_sync_module
 from tests.infra import h, m
 
 
-def _project(path: Path, name: str = "flext-core") -> m.Infra.Workspace.ProjectInfo:
-    return m.Infra.Workspace.ProjectInfo(
+def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
+    return m.Infra.ProjectInfo(
         path=path,
         name=name,
         stack="python",
@@ -96,8 +96,8 @@ class TestMain:
 
         def _discover_fail(
             _root: Path,
-        ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-            return r[list[m.Infra.Workspace.ProjectInfo]].fail("discovery failed")
+        ) -> r[list[m.Infra.ProjectInfo]]:
+            return r[list[m.Infra.ProjectInfo]].fail("discovery failed")
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
@@ -149,8 +149,8 @@ class TestMain:
 
         def _discover_project(
             _root: Path,
-        ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-            return r[list[m.Infra.Workspace.ProjectInfo]].ok([_project(project_dir)])
+        ) -> r[list[m.Infra.ProjectInfo]]:
+            return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(

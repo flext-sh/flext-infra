@@ -152,7 +152,7 @@ class TestDiscoveryDiscoverProjects:
         assert result.is_success
         assert len(result.value) == 1
         info = result.value[0]
-        assert isinstance(info, m.Infra.Workspace.ProjectInfo)
+        assert isinstance(info, m.Infra.ProjectInfo)
         assert info.name == "alpha"
         assert info.has_src is True
         assert info.has_tests is True

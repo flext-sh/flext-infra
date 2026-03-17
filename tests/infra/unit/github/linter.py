@@ -20,9 +20,9 @@ from tests.infra.unit.github._stubs import StubJsonIo, StubRunner
 
 def _ok_output(
     *, exit_code: int = 0, stdout: str = "", stderr: str = "",
-) -> r[m.Infra.Core.CommandOutput]:
-    return r[m.Infra.Core.CommandOutput].ok(
-        m.Infra.Core.CommandOutput(
+) -> r[m.Infra.CommandOutput]:
+    return r[m.Infra.CommandOutput].ok(
+        m.Infra.CommandOutput(
             exit_code=exit_code,
             stdout=stdout,
             stderr=stderr,
@@ -99,7 +99,7 @@ class TestFlextInfraWorkflowLinter:
 
         monkeypatch.setattr(shutil, "which", _which)
         runner = StubRunner(
-            run_returns=[r[m.Infra.Core.CommandOutput].fail("workflow has errors")],
+            run_returns=[r[m.Infra.CommandOutput].fail("workflow has errors")],
         )
         json_io = StubJsonIo()
         linter = FlextInfraWorkflowLinter(runner=runner, json_io=json_io)

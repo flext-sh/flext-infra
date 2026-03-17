@@ -23,8 +23,8 @@ from tests.infra.unit.github._stubs import (
 )
 
 
-def _as_project(info: StubProjectInfo) -> m.Infra.Workspace.ProjectInfo:
-    return m.Infra.Workspace.ProjectInfo.model_validate(info.model_dump())
+def _as_project(info: StubProjectInfo) -> m.Infra.ProjectInfo:
+    return m.Infra.ProjectInfo.model_validate(info.model_dump())
 
 
 class TestOrchestrate:
@@ -34,7 +34,7 @@ class TestOrchestrate:
         proj = StubProjectInfo(name="proj", path=tmp_path / "proj", stack="python")
         proj.path.mkdir()
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
+            resolve_returns=r[list[m.Infra.ProjectInfo]].ok([
                 _as_project(proj),
             ]),
         )
@@ -49,7 +49,7 @@ class TestOrchestrate:
 
     def test_project_resolution_failure(self, tmp_path: Path) -> None:
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].fail("no projects"),
+            resolve_returns=r[list[m.Infra.ProjectInfo]].fail("no projects"),
         )
         manager = FlextInfraPrWorkspaceManager(
             runner=StubRunner(), selector=selector, reporting=StubReporting(),
@@ -65,7 +65,7 @@ class TestOrchestrate:
         p2 = StubProjectInfo(name="p2", path=tmp_path / "p2", stack="python")
         p2.path.mkdir()
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
+            resolve_returns=r[list[m.Infra.ProjectInfo]].ok([
                 _as_project(p1),
                 _as_project(p2),
             ]),
@@ -83,7 +83,7 @@ class TestOrchestrate:
         runner = StubRunner(run_to_file_returns=[r[int].ok(0)])
         reporting = StubReporting(report_dir=tmp_path / "reports")
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([]),
+            resolve_returns=r[list[m.Infra.ProjectInfo]].ok([]),
         )
         manager = FlextInfraPrWorkspaceManager(
             runner=runner, selector=selector, reporting=reporting,
@@ -102,7 +102,7 @@ class TestOrchestrate:
         proj = StubProjectInfo(name="proj", path=tmp_path / "proj", stack="python")
         proj.path.mkdir()
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
+            resolve_returns=r[list[m.Infra.ProjectInfo]].ok([
                 _as_project(proj),
             ]),
         )
@@ -141,7 +141,7 @@ class TestOrchestrate:
         proj = StubProjectInfo(name="proj", path=tmp_path / "proj", stack="python")
         proj.path.mkdir()
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
+            resolve_returns=r[list[m.Infra.ProjectInfo]].ok([
                 _as_project(proj),
             ]),
         )

@@ -32,7 +32,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
         module_ast = u.Infra.parse_ast_from_source(source)
         if module_ast is None:
             return (tree, [])
-        candidates: list[m.Infra.Refactor.MROSymbolCandidate] = []
+        candidates: list[m.Infra.MROSymbolCandidate] = []
         for stmt in module_ast.body:
             if not isinstance(stmt, ast.AnnAssign):
                 continue
@@ -43,7 +43,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
             if not self._is_final_annotation(stmt.annotation):
                 continue
             candidates.append(
-                m.Infra.Refactor.MROSymbolCandidate(
+                m.Infra.MROSymbolCandidate(
                     symbol=stmt.target.id,
                     line=stmt.lineno,
                 ),
@@ -51,7 +51,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
         if len(candidates) == 0:
             return (tree, [])
         constants_class = self._first_constants_class_name(module_ast)
-        scan_result = m.Infra.Refactor.MROScanReport(
+        scan_result = m.Infra.MROScanReport(
             file=str(_file_path),
             module="",
             constants_class=constants_class,

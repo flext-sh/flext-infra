@@ -29,7 +29,7 @@ class FlextInfraBaseMkValidator:
         """Compute SHA-256 hash of a file."""
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
-    def validate(self, workspace_root: Path) -> r[m.Infra.Core.ValidationReport]:
+    def validate(self, workspace_root: Path) -> r[m.Infra.ValidationReport]:
         """Validate that all vendored base.mk copies match root base.mk.
 
         Args:
@@ -42,8 +42,8 @@ class FlextInfraBaseMkValidator:
         try:
             source = workspace_root / c.Infra.Files.BASE_MK
             if not source.exists():
-                return r[m.Infra.Core.ValidationReport].ok(
-                    m.Infra.Core.ValidationReport(
+                return r[m.Infra.ValidationReport].ok(
+                    m.Infra.ValidationReport(
                         passed=False,
                         violations=["missing root base.mk"],
                         summary="missing root base.mk",
@@ -68,15 +68,15 @@ class FlextInfraBaseMkValidator:
                 if passed
                 else f"{len(mismatched)} base.mk files out of sync"
             )
-            return r[m.Infra.Core.ValidationReport].ok(
-                m.Infra.Core.ValidationReport(
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
                     passed=passed,
                     violations=mismatched,
                     summary=summary,
                 ),
             )
         except OSError as exc:
-            return r[m.Infra.Core.ValidationReport].fail(
+            return r[m.Infra.ValidationReport].fail(
                 f"base.mk validation failed: {exc}",
             )
 

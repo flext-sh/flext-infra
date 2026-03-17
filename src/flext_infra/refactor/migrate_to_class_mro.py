@@ -26,7 +26,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         *,
         target: str,
         apply: bool,
-    ) -> m.Infra.Refactor.MROMigrationReport:
+    ) -> m.Infra.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
         normalized_target = self._normalize_target(target=target)
         scan_results, files_scanned = (
@@ -40,7 +40,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         stash_ref = ""
         moved_index: dict[str, dict[str, str]] = {}
         module_facade_aliases: dict[str, str] = {}
-        migrations: list[m.Infra.Refactor.MROFileMigration] = []
+        migrations: list[m.Infra.MROFileMigration] = []
         for scan_result in scan_results:
             try:
                 updated_source, migration, symbol_alias_map = (
@@ -74,7 +74,7 @@ class FlextInfraRefactorMigrateToClassMRO:
                 target=normalized_target,
             )
         )
-        return m.Infra.Refactor.MROMigrationReport(
+        return m.Infra.MROMigrationReport(
             workspace=str(self._workspace_root),
             target=normalized_target,
             dry_run=not apply,
@@ -90,7 +90,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         )
 
     @staticmethod
-    def render_text(report: m.Infra.Refactor.MROMigrationReport) -> str:
+    def render_text(report: m.Infra.MROMigrationReport) -> str:
         """Render migration report in CLI-friendly plain text."""
         lines = [
             f"Workspace: {report.workspace}",

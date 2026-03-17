@@ -12,12 +12,12 @@ from tests.infra import m, t
 
 
 class _StubRunner:
-    def __init__(self, result: r[m.Infra.Core.CommandOutput]) -> None:
+    def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
         self._result = result
 
     def run_raw(
         self, *args: t.Infra.TomlValue, **kwargs: t.Infra.TomlValue,
-    ) -> r[m.Infra.Core.CommandOutput]:
+    ) -> r[m.Infra.CommandOutput]:
         _ = args
         _ = kwargs
         return self._result
@@ -35,9 +35,9 @@ class TestDetectionUncoveredLines:
         (project / "pyproject.toml").write_text("")
         out_file = project / ".deptry-report.json"
         out_file.write_text(json.dumps(["not_a_dict", {"error": {"code": "DEP001"}}]))
-        out = m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr="")
+        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
-            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out)),
+            service, "runner", _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
         issues, _ = tm.ok(
             service.run_deptry(project, venv_bin, json_output_path=out_file),
@@ -51,9 +51,9 @@ class TestDetectionUncoveredLines:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "pip").write_text("")
-        out = m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr="")
+        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
-            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out)),
+            service, "runner", _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
         lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
         tm.that(lines, eq=[])
@@ -66,9 +66,9 @@ class TestDetectionUncoveredLines:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "mypy").write_text("")
-        out = m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr="")
+        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
-            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out)),
+            service, "runner", _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
 
         class _Toml:

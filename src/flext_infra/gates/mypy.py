@@ -27,7 +27,7 @@ class FlextInfraMypyGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         _ = u
         started = time.monotonic()
         check_dirs = self._existing_check_dirs(project_dir)
@@ -70,7 +70,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             project_dir,
             env=mypy_env,
         )
-        issues: list[m.Infra.Check.Issue] = []
+        issues: list[m.Infra.Issue] = []
         for raw_line in (result.stdout or "").splitlines():
             stripped = raw_line.strip()
             if not stripped:
@@ -88,7 +88,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                 )
                 if severity in {"error", "warning", "note"}:
                     issues.append(
-                        m.Infra.Check.Issue(
+                        m.Infra.Issue(
                             file=self._as_str(line_data.get("file", "?"), "?"),
                             line=self._as_int(line_data.get("line", 0)),
                             column=self._as_int(line_data.get("column", 0)),

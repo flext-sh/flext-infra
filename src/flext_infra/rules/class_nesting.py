@@ -40,11 +40,11 @@ class ClassNestingRefactorRule:
         file_path: Path,
         *,
         dry_run: bool = False,
-    ) -> m.Infra.Refactor.Result:
+    ) -> m.Infra.Result:
         """Transform *file_path* according to loaded mappings and policy."""
         try:
             if file_path.suffix != c.Infra.Extensions.PYTHON:
-                return m.Infra.Refactor.Result(
+                return m.Infra.Result(
                     file_path=file_path,
                     success=True,
                     modified=False,
@@ -54,7 +54,7 @@ class ClassNestingRefactorRule:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             tree = u.Infra.parse_cst_from_source(source)
             if tree is None:
-                return m.Infra.Refactor.Result(
+                return m.Infra.Result(
                     file_path=file_path,
                     success=True,
                     modified=False,
@@ -112,7 +112,7 @@ class ClassNestingRefactorRule:
                 confidence_threshold,
             )
             if precheck_violations:
-                return m.Infra.Refactor.Result(
+                return m.Infra.Result(
                     file_path=file_path,
                     success=False,
                     modified=False,
@@ -151,7 +151,7 @@ class ClassNestingRefactorRule:
                     confidence_threshold,
                 )
                 post_ok, post_errors = self._post_check_gate.validate(
-                    m.Infra.Refactor.Result(
+                    m.Infra.Result(
                         file_path=file_path,
                         success=True,
                         modified=True,
@@ -161,7 +161,7 @@ class ClassNestingRefactorRule:
                     post_payload,
                 )
                 if not post_ok:
-                    return m.Infra.Refactor.Result(
+                    return m.Infra.Result(
                         file_path=file_path,
                         success=False,
                         modified=False,
@@ -171,7 +171,7 @@ class ClassNestingRefactorRule:
                     )
             if modified and (not dry_run):
                 u.write_file(file_path, result_code, encoding=c.Infra.Encoding.DEFAULT)
-            return m.Infra.Refactor.Result(
+            return m.Infra.Result(
                 file_path=file_path,
                 success=True,
                 modified=modified,
@@ -179,7 +179,7 @@ class ClassNestingRefactorRule:
                 refactored_code=result_code,
             )
         except Exception as exc:
-            return m.Infra.Refactor.Result(
+            return m.Infra.Result(
                 file_path=file_path,
                 success=False,
                 modified=False,

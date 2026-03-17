@@ -16,7 +16,7 @@ from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
 class TemplateRenderer(Protocol):
     def render_all(
         self,
-        config: m.Infra.Basemk.BaseMkConfig | None = None,
+        config: m.Infra.BaseMkConfig | None = None,
     ) -> r[str]: ...
 
 
@@ -54,7 +54,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def generate(
         self,
-        config: m.Infra.Basemk.BaseMkConfig | Mapping[str, t.Scalar] | None = None,
+        config: m.Infra.BaseMkConfig | Mapping[str, t.Scalar] | None = None,
     ) -> r[str]:
         """Generate base.mk content from configuration."""
         config_result = self._normalize_config(config)
@@ -92,21 +92,21 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def _normalize_config(
         self,
-        config: m.Infra.Basemk.BaseMkConfig | Mapping[str, t.Scalar] | None,
-    ) -> r[m.Infra.Basemk.BaseMkConfig]:
+        config: m.Infra.BaseMkConfig | Mapping[str, t.Scalar] | None,
+    ) -> r[m.Infra.BaseMkConfig]:
         if config is None:
-            return r[m.Infra.Basemk.BaseMkConfig].ok(
+            return r[m.Infra.BaseMkConfig].ok(
                 FlextInfraBaseMkTemplateEngine.default_config(),
             )
-        if isinstance(config, m.Infra.Basemk.BaseMkConfig):
-            return r[m.Infra.Basemk.BaseMkConfig].ok(config)
+        if isinstance(config, m.Infra.BaseMkConfig):
+            return r[m.Infra.BaseMkConfig].ok(config)
         try:
-            normalized = m.Infra.Basemk.BaseMkConfig.model_validate(
+            normalized = m.Infra.BaseMkConfig.model_validate(
                 dict(config.items()),
             )
-            return r[m.Infra.Basemk.BaseMkConfig].ok(normalized)
+            return r[m.Infra.BaseMkConfig].ok(normalized)
         except (TypeError, ValueError) as exc:
-            return r[m.Infra.Basemk.BaseMkConfig].fail(
+            return r[m.Infra.BaseMkConfig].fail(
                 f"base.mk configuration validation failed: {exc}",
             )
 

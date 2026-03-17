@@ -32,7 +32,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     def _run_markdown(
         self, project_dir: Path, *, fix: bool,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         started = time.monotonic()
         md_files = self._collect_markdown_files(project_dir)
         if not md_files:
@@ -54,14 +54,14 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             cmd.extend(["--config", str(local_config)])
         cmd.extend(str(path.relative_to(project_dir)) for path in md_files)
         result = self._run(cmd, project_dir)
-        issues: list[m.Infra.Check.Issue] = []
+        issues: list[m.Infra.Issue] = []
         if not fix:
             for line in (result.stdout + "\n" + result.stderr).splitlines():
                 match = FlextInfraCheckConstants.MARKDOWN_RE.match(line.strip())
                 if not match:
                     continue
                 issues.append(
-                    m.Infra.Check.Issue(
+                    m.Infra.Issue(
                         file=match.group("file"),
                         line=int(match.group("line")),
                         column=int(match.group("col") or 1),
@@ -71,7 +71,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                 )
             if self._result_exit_code(result) != 0 and (not issues):
                 issues.append(
-                    m.Infra.Check.Issue(
+                    m.Infra.Issue(
                         file=".",
                         line=1,
                         column=1,
@@ -98,7 +98,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         _ = ctx
         return self._run_markdown(project_dir, fix=False)
 
@@ -106,7 +106,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     @override
     def fix(
         self, project_dir: Path, ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         _ = ctx
         return self._run_markdown(project_dir, fix=True)
 

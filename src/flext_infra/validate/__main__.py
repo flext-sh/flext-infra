@@ -46,7 +46,7 @@ def _run_basemk_validate(cli: u.Infra.CliArgs) -> int:
     validator = FlextInfraBaseMkValidator()
     result = validator.validate(cli.workspace)
     if result.is_success:
-        report: m.Infra.Core.ValidationReport = result.value
+        report: m.Infra.ValidationReport = result.value
         output.info(report.summary)
         for v in report.violations:
             output.warning(v)
@@ -146,7 +146,7 @@ def _run_skill_validate(cli: u.Infra.CliArgs, skill: str, mode: str) -> int:
     validator = FlextInfraSkillValidator()
     result = validator.validate(cli.workspace, skill, mode=mode)
     if result.is_success:
-        report: m.Infra.Core.ValidationReport = result.value
+        report: m.Infra.ValidationReport = result.value
         output.info(report.summary)
         for v in report.violations:
             output.warning(v)
@@ -163,7 +163,7 @@ def _run_stub_validate(cli: u.Infra.CliArgs, project: list[str] | None) -> int:
     )
     result = chain.validate(cli.workspace, project_dirs=project_dirs)
     if result.is_success:
-        report: m.Infra.Core.ValidationReport = result.value
+        report: m.Infra.ValidationReport = result.value
         output.info(report.summary)
         for v in report.violations:
             output.warning(v)

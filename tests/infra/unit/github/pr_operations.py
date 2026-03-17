@@ -22,9 +22,9 @@ def _mgr(
     )
 
 
-def _ok_cmd() -> r[m.Infra.Core.CommandOutput]:
-    return r[m.Infra.Core.CommandOutput].ok(
-        m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr=""),
+def _ok_cmd() -> r[m.Infra.CommandOutput]:
+    return r[m.Infra.CommandOutput].ok(
+        m.Infra.CommandOutput(exit_code=0, stdout="", stderr=""),
     )
 
 
@@ -47,7 +47,7 @@ class TestChecks:
 
     def test_checks_fail_non_strict(self, tmp_path: Path) -> None:
         runner = StubRunner(
-            run_returns=[r[m.Infra.Core.CommandOutput].fail("checks failed")],
+            run_returns=[r[m.Infra.CommandOutput].fail("checks failed")],
         )
         result = _mgr(runner=runner).checks(tmp_path, "42")
         tm.ok(result)
@@ -55,7 +55,7 @@ class TestChecks:
 
     def test_checks_fail_strict(self, tmp_path: Path) -> None:
         runner = StubRunner(
-            run_returns=[r[m.Infra.Core.CommandOutput].fail("checks failed")],
+            run_returns=[r[m.Infra.CommandOutput].fail("checks failed")],
         )
         tm.fail(_mgr(runner=runner).checks(tmp_path, "42", strict=True))
 
@@ -71,14 +71,14 @@ class TestMerge:
 
     def test_merge_failure(self, tmp_path: Path) -> None:
         runner = StubRunner(
-            run_returns=[r[m.Infra.Core.CommandOutput].fail("merge conflict")],
+            run_returns=[r[m.Infra.CommandOutput].fail("merge conflict")],
         )
         tm.fail(_mgr(runner=runner).merge(tmp_path, "42", "feature"))
 
     def test_merge_not_mergeable_retry(self, tmp_path: Path) -> None:
         runner = StubRunner(
             run_returns=[
-                r[m.Infra.Core.CommandOutput].fail("not mergeable"),
+                r[m.Infra.CommandOutput].fail("not mergeable"),
                 _ok_cmd(),
                 _ok_cmd(),
             ],
@@ -178,7 +178,7 @@ class TestTriggerRelease:
         self._release_setup(tmp_path)
         versioning = StubVersioning(release_tag_returns=r[str].ok("v1.0.0"))
         runner = StubRunner(
-            run_returns=[r[m.Infra.Core.CommandOutput].fail("not found"), _ok_cmd()],
+            run_returns=[r[m.Infra.CommandOutput].fail("not found"), _ok_cmd()],
         )
         result = _mgr(runner=runner, versioning=versioning)._trigger_release_if_needed(
             tmp_path,
@@ -192,8 +192,8 @@ class TestTriggerRelease:
         versioning = StubVersioning(release_tag_returns=r[str].ok("v1.0.0"))
         runner = StubRunner(
             run_returns=[
-                r[m.Infra.Core.CommandOutput].fail("not found"),
-                r[m.Infra.Core.CommandOutput].fail("dispatch failed"),
+                r[m.Infra.CommandOutput].fail("not found"),
+                r[m.Infra.CommandOutput].fail("dispatch failed"),
             ],
         )
         result = _mgr(runner=runner, versioning=versioning)._trigger_release_if_needed(

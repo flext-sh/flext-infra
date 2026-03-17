@@ -33,7 +33,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         started = time.monotonic()
         check_dirs = self._existing_check_dirs(project_dir)
         targets = check_dirs or [c.Infra.Paths.DEFAULT_SRC_DIR]
@@ -53,7 +53,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             "--summary=none",
         ]
         result = self._run(cmd, project_dir)
-        issues: list[m.Infra.Check.Issue] = []
+        issues: list[m.Infra.Issue] = []
         if json_file.exists():
             try:
                 raw_text = json_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -68,7 +68,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 else:
                     error_items = []
                 issues.extend(
-                    m.Infra.Check.Issue(
+                    m.Infra.Issue(
                         file=self._as_str(item.get("path"), "?"),
                         line=self._as_int(item.get("line"), 0),
                         column=self._as_int(item.get("column"), 0),
@@ -86,7 +86,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             if match:
                 count = int(match.group(1))
                 issues = [
-                    m.Infra.Check.Issue(
+                    m.Infra.Issue(
                         file="?",
                         line=0,
                         column=0,

@@ -13,7 +13,7 @@ from flext_infra.deps._phases import EnsurePytestConfigPhase
 from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
 
 
-def _test_tool_config() -> m.Infra.Deps.ToolConfigDocument:
+def _test_tool_config() -> m.Infra.ToolConfigDocument:
     result = FlextInfraDependencyToolConfig.load_tool_config()
     tm.that(result.is_failure, eq=False)
     if result.is_failure:

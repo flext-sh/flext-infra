@@ -28,7 +28,7 @@ class FlextInfraGateProtocol(Protocol):
     def can_fix(self) -> bool: ...
     def check(
         self, project_dir: Path, ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution: ...
+    ) -> m.Infra.GateExecution: ...
 
 
 class FlextInfraGate(ABC):
@@ -44,11 +44,11 @@ class FlextInfraGate(ABC):
     @abstractmethod
     def check(
         self, project_dir: Path, ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution: ...
+    ) -> m.Infra.GateExecution: ...
 
     def fix(
         self, project_dir: Path, ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         _ = ctx
         return self._build_gate_result(
             project=project_dir.name,
@@ -64,10 +64,10 @@ class FlextInfraGate(ABC):
         cwd: Path,
         timeout: int = c.Infra.Timeouts.DEFAULT,
         env: Mapping[str, str] | None = None,
-    ) -> m.Infra.Core.CommandOutput:
+    ) -> m.Infra.CommandOutput:
         result = u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.is_failure:
-            return m.Infra.Core.CommandOutput(
+            return m.Infra.CommandOutput(
                 stdout="",
                 stderr=result.error or "command execution failed",
                 exit_code=1,
@@ -79,22 +79,22 @@ class FlextInfraGate(ABC):
         *,
         project: str,
         passed: bool,
-        issues: list[m.Infra.Check.Issue],
+        issues: list[m.Infra.Issue],
         duration: float,
         raw_output: str = "",
-    ) -> m.Infra.Check.GateExecution:
-        model = m.Infra.Check.GateResult(
+    ) -> m.Infra.GateExecution:
+        model = m.Infra.GateResult(
             gate=self.gate_id,
             project=project,
             passed=passed,
             errors=[issue.formatted for issue in issues],
             duration=round(duration, 3),
         )
-        return m.Infra.Check.GateExecution(
+        return m.Infra.GateExecution(
             result=model, issues=issues, raw_output=raw_output,
         )
 
-    def _result_exit_code(self, result: m.Infra.Core.CommandOutput) -> int:
+    def _result_exit_code(self, result: m.Infra.CommandOutput) -> int:
         return result.exit_code if hasattr(result, "exit_code") else 1
 
     def _existing_check_dirs(self, project_dir: Path) -> list[str]:

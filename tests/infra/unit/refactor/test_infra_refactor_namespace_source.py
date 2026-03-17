@@ -297,3 +297,71 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
     rewritten = target.read_text(encoding="utf-8")
     assert "from flext_core import FlextLogger" in rewritten
     assert f"from {package_name} import u" in rewritten
+
+
+def test_detects_same_project_submodule_alias_import(tmp_path: Path) -> None:
+    project_root, package_dir, package_name, project_name = (
+        _create_project_with_facades(
+            tmp_path=tmp_path,
+            families=("c",),
+        )
+    )
+    target = package_dir / "consumer.py"
+    target.write_text(
+        f"from __future__ import annotations\nfrom {package_name}.constants import c\n",
+    )
+
+    violations = NamespaceSourceDetector.detect_file(
+        file_path=target,
+        project_name=project_name,
+        project_root=project_root,
+    )
+
+    assert len(violations) == 1
+    assert violations[0].alias == "c"
+    assert violations[0].current_source == f"{package_name}.constants"
+    assert violations[0].correct_source == package_name
+
+
+def test_skips_same_project_submodule_class_import(tmp_path: Path) -> None:
+    project_root, package_dir, package_name, project_name = (
+        _create_project_with_facades(
+            tmp_path=tmp_path,
+            families=("c",),
+        )
+    )
+    target = package_dir / "consumer.py"
+    target.write_text(
+        "from __future__ import annotations\n"
+        f"from {package_name}.constants import FlextXyzConstants\n",
+    )
+
+    violations = NamespaceSourceDetector.detect_file(
+        file_path=target,
+        project_name=project_name,
+        project_root=project_root,
+    )
+
+    assert violations == []
+
+
+def test_skips_same_project_private_submodule(tmp_path: Path) -> None:
+    project_root, package_dir, package_name, project_name = (
+        _create_project_with_facades(
+            tmp_path=tmp_path,
+            families=("c",),
+        )
+    )
+    target = package_dir / "consumer.py"
+    target.write_text(
+        "from __future__ import annotations\n"
+        f"from {package_name}._constants import c\n",
+    )
+
+    violations = NamespaceSourceDetector.detect_file(
+        file_path=target,
+        project_name=project_name,
+        project_root=project_root,
+    )
+
+    assert violations == []

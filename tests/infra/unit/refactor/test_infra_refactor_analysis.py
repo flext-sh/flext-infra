@@ -20,7 +20,7 @@ except ImportError as exc:
 
 
 def test_build_impact_map_extracts_rename_entries() -> None:
-    result = m.Infra.Refactor.Result(
+    result = m.Infra.Result(
         file_path=Path("/tmp/flext-core/src/module.py"),
         success=True,
         modified=True,
@@ -37,7 +37,7 @@ def test_build_impact_map_extracts_rename_entries() -> None:
 
 
 def test_build_impact_map_extracts_signature_entries() -> None:
-    result = m.Infra.Refactor.Result(
+    result = m.Infra.Result(
         file_path=Path("/tmp/flext-core/src/module.py"),
         success=True,
         modified=True,

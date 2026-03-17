@@ -18,7 +18,7 @@ from pydantic import TypeAdapter, ValidationError
 from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, u
 
 type _ClassNestingMappingIndex = dict[
-    tuple[str, str], m.Infra.Refactor.ClassNestingMapping,
+    tuple[str, str], m.Infra.ClassNestingMapping,
 ]
 
 
@@ -129,7 +129,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         source: str,
         *,
         file_path: Path,
-    ) -> m.Infra.Refactor.AliasMove | None:
+    ) -> m.Infra.AliasMove | None:
         keys = (
             "dict",
             "payload",
@@ -159,7 +159,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                     expr,
                 ):
                     return None
-                return m.Infra.Refactor.AliasMove(
+                return m.Infra.AliasMove(
                     name=alias_name,
                     start=node.lineno,
                     end=node.end_lineno or node.lineno,
@@ -185,7 +185,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                 annotation = ast.get_source_segment(source, node.annotation) or ""
                 if ("TypeAlias" not in annotation) and (not is_typings_scope):
                     return None
-                return m.Infra.Refactor.AliasMove(
+                return m.Infra.AliasMove(
                     name=alias_name,
                     start=node.lineno,
                     end=node.end_lineno or node.lineno,
@@ -208,7 +208,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                     expr,
                 ):
                     return None
-                return m.Infra.Refactor.AliasMove(
+                return m.Infra.AliasMove(
                     name=alias_name,
                     start=node.lineno,
                     end=node.end_lineno or node.lineno,
@@ -220,7 +220,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
     @staticmethod
     def _typed_dict_factory_model(
         node: ast.Assign,
-    ) -> m.Infra.Refactor.ClassMove | None:
+    ) -> m.Infra.ClassMove | None:
         if len(node.targets) != 1:
             return None
         target = node.targets[0]
@@ -278,7 +278,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
             '    model_config = ConfigDict(extra="forbid")\n'
             f"{rendered_fields}\n"
         )
-        return m.Infra.Refactor.ClassMove(
+        return m.Infra.ClassMove(
             name=target.id,
             start=node.lineno,
             end=node.end_lineno or node.lineno,
@@ -320,7 +320,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
     @staticmethod
     def collect_moves(
         file_path: Path,
-    ) -> tuple[list[m.Infra.Refactor.ClassMove], list[m.Infra.Refactor.AliasMove]]:
+    ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]]:
         source = file_path.read_text(encoding="utf-8")
         # given source text is needed for ast.get_source_segment below
         tree = u.Infra.parse_ast_from_source(source)
@@ -328,8 +328,8 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
             msg = "Failed to parse source"
             raise SyntaxError(msg)
         lines = source.splitlines()
-        class_moves: list[m.Infra.Refactor.ClassMove] = []
-        alias_moves: list[m.Infra.Refactor.AliasMove] = []
+        class_moves: list[m.Infra.ClassMove] = []
+        alias_moves: list[m.Infra.AliasMove] = []
         for stmt in tree.body:
             typed_dict_factory_move = (
                 FlextInfraRefactorPydanticCentralizerAnalysis._typed_dict_factory_model(
@@ -361,7 +361,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                         source,
                     )
                 class_moves.append(
-                    m.Infra.Refactor.ClassMove(
+                    m.Infra.ClassMove(
                         name=stmt.name,
                         start=start,
                         end=end,
@@ -385,9 +385,9 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
     def collect_moves_safe(
         file_path: Path,
         *,
-        failure_stats: m.Infra.Refactor.CentralizerFailureStats,
+        failure_stats: m.Infra.CentralizerFailureStats,
     ) -> (
-        tuple[list[m.Infra.Refactor.ClassMove], list[m.Infra.Refactor.AliasMove]] | None
+        tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]] | None
     ):
         try:
             return FlextInfraRefactorPydanticCentralizerAnalysis.collect_moves(
@@ -435,8 +435,8 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
     @staticmethod
     def rewrite_source(
         file_path: Path,
-        class_moves: list[m.Infra.Refactor.ClassMove],
-        alias_moves: list[m.Infra.Refactor.AliasMove],
+        class_moves: list[m.Infra.ClassMove],
+        alias_moves: list[m.Infra.AliasMove],
         *,
         import_statement: str,
     ) -> str:
@@ -470,10 +470,10 @@ class FlextInfraRefactorClassNestingAnalyzer:
     """Analyze files for class nesting violations using YAML mapping rules."""
 
     @classmethod
-    def analyze_files(cls, files: list[Path]) -> m.Infra.Refactor.ClassNestingReport:
+    def analyze_files(cls, files: list[Path]) -> m.Infra.ClassNestingReport:
         """Return aggregate and per-file class-nesting violation counts."""
         if not files:
-            return m.Infra.Refactor.ClassNestingReport(
+            return m.Infra.ClassNestingReport(
                 violations_count=0,
                 confidence_counts={},
                 violations=[],
@@ -481,7 +481,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             )
         grouped_targets = cls._group_targets_by_project_root(files)
         if not grouped_targets:
-            return m.Infra.Refactor.ClassNestingReport(
+            return m.Infra.ClassNestingReport(
                 violations_count=0,
                 confidence_counts={},
                 violations=[],
@@ -494,15 +494,15 @@ class FlextInfraRefactorClassNestingAnalyzer:
         )
         confidence_counts: Counter[str] = Counter()
         per_file_counts: Counter[str] = Counter()
-        violations: list[m.Infra.Refactor.ClassNestingViolation] = []
+        violations: list[m.Infra.ClassNestingViolation] = []
         for project_root, target_files in grouped_targets.items():
             scan_result = scanner.scan(project_root)
             if scan_result.is_failure:
                 continue
             try:
-                parsed_violations: list[m.Infra.Refactor.LooseClassViolation] = (
+                parsed_violations: list[m.Infra.LooseClassViolation] = (
                     TypeAdapter(
-                        list[m.Infra.Refactor.LooseClassViolation],
+                        list[m.Infra.LooseClassViolation],
                     ).validate_python(
                         scan_result.value.get(c.Infra.ReportKeys.VIOLATIONS, []),
                     )
@@ -530,7 +530,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 elif parsed_violation.expected_prefix:
                     target_namespace = parsed_violation.expected_prefix
                 violations.append(
-                    m.Infra.Refactor.ClassNestingViolation(
+                    m.Infra.ClassNestingViolation(
                         file=normalized_file,
                         line=line,
                         class_name=parsed_violation.class_name,
@@ -541,7 +541,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 )
                 confidence_counts[confidence] += 1
                 per_file_counts[normalized_file] += 1
-        return m.Infra.Refactor.ClassNestingReport(
+        return m.Infra.ClassNestingReport(
             violations_count=len(violations),
             confidence_counts=dict(confidence_counts.items()),
             violations=violations,
@@ -599,7 +599,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             return r[_ClassNestingMappingIndex].ok({})
         try:
             entries = TypeAdapter(
-                list[m.Infra.Refactor.ClassNestingMapping],
+                list[m.Infra.ClassNestingMapping],
             ).validate_python(raw_nesting)
         except ValidationError as exc:
             return r[_ClassNestingMappingIndex].fail(str(exc))
@@ -607,7 +607,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         for entry in entries:
             scope = cls._normalize_rewrite_scope(entry.rewrite_scope)
             norm = cls._normalize_module_path(entry.current_file)
-            index[norm, entry.loose_name] = m.Infra.Refactor.ClassNestingMapping(
+            index[norm, entry.loose_name] = m.Infra.ClassNestingMapping(
                 loose_name=entry.loose_name,
                 current_file=entry.current_file,
                 target_namespace=entry.target_namespace,
@@ -651,13 +651,13 @@ class FlextInfraRefactorViolationAnalyzer:
     def analyze_files(
         cls,
         files: list[Path],
-    ) -> m.Infra.Refactor.ViolationAnalysisReport:
+    ) -> m.Infra.ViolationAnalysisReport:
         """Return aggregate and per-file violation counts."""
         totals: Counter[str] = Counter()
         per_file: dict[str, dict[str, int]] = {}
-        helper_suggestions: list[m.Infra.Refactor.HelperClassification] = []
+        helper_suggestions: list[m.Infra.HelperClassification] = []
         helper_totals: Counter[str] = Counter()
-        helper_manual_review: list[m.Infra.Refactor.HelperClassification] = []
+        helper_manual_review: list[m.Infra.HelperClassification] = []
         for file_path in files:
             try:
                 content = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -690,19 +690,19 @@ class FlextInfraRefactorViolationAnalyzer:
             ranked_files.append((file_name, sum(counts.values()), counts))
         ranked_files.sort(key=itemgetter(1), reverse=True)
         hottest_files = [
-            m.Infra.Refactor.ViolationAnalysisReport.TopFileSection(
+            m.Infra.ViolationAnalysisReport.TopFileSection(
                 file=file_name,
                 total=total,
                 counts=counts,
             )
             for file_name, total, counts in ranked_files[:25]
         ]
-        helper_report = m.Infra.Refactor.HelperClassificationReport(
+        helper_report = m.Infra.HelperClassificationReport(
             totals=dict(helper_totals.items()),
             suggestions=helper_suggestions,
             manual_review=helper_manual_review,
         )
-        return m.Infra.Refactor.ViolationAnalysisReport(
+        return m.Infra.ViolationAnalysisReport(
             totals=dict(totals.items()),
             files=per_file,
             top_files=hottest_files,
@@ -716,13 +716,13 @@ class FlextInfraRefactorViolationAnalyzer:
         cls,
         *,
         file_path: Path,
-    ) -> m.Infra.Refactor.HelperFileAnalysis:
-        suggestions: list[m.Infra.Refactor.HelperClassification] = []
+    ) -> m.Infra.HelperFileAnalysis:
+        suggestions: list[m.Infra.HelperClassification] = []
         totals: Counter[str] = Counter()
-        manual_review: list[m.Infra.Refactor.HelperClassification] = []
+        manual_review: list[m.Infra.HelperClassification] = []
         module = u.Infra.parse_module_cst(file_path)
         if module is None:
-            return m.Infra.Refactor.HelperFileAnalysis(
+            return m.Infra.HelperFileAnalysis(
                 suggestions=suggestions,
                 totals=dict(totals.items()),
                 manual_review=manual_review,
@@ -742,7 +742,7 @@ class FlextInfraRefactorViolationAnalyzer:
             totals[category] += 1
             if classification.manual_review:
                 manual_review.append(classification)
-        return m.Infra.Refactor.HelperFileAnalysis(
+        return m.Infra.HelperFileAnalysis(
             suggestions=suggestions,
             totals=dict(totals.items()),
             manual_review=manual_review,
@@ -755,7 +755,7 @@ class FlextInfraRefactorViolationAnalyzer:
         file_path: Path,
         function: cst.FunctionDef,
         local_to_import: Mapping[str, str],
-    ) -> m.Infra.Refactor.HelperClassification:
+    ) -> m.Infra.HelperClassification:
         dependency_collector = FunctionDependencyCollector()
         function.visit(dependency_collector)
         dependencies: set[str] = set()
@@ -781,7 +781,7 @@ class FlextInfraRefactorViolationAnalyzer:
             matched_categories=matched_categories,
         )
         namespace_root = c.Infra.Refactor.NAMESPACE_PREFIXES[category]
-        return m.Infra.Refactor.HelperClassification(
+        return m.Infra.HelperClassification(
             file=str(file_path),
             function=function.name.value,
             category=category,

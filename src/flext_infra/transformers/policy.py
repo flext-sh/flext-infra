@@ -18,7 +18,7 @@ class FlextInfraRefactorTransformerPolicyUtilities:
         policy_context: t.Infra.PolicyContext | None,
         symbol_families: Mapping[str, str] | None,
         symbol_name: str,
-    ) -> m.Infra.Refactor.ClassNestingPolicy | None:
+    ) -> m.Infra.ClassNestingPolicy | None:
         """Resolve and validate policy for a symbol based on its family."""
         if policy_context is None or symbol_families is None:
             return None
@@ -29,14 +29,14 @@ class FlextInfraRefactorTransformerPolicyUtilities:
         if raw is None:
             return None
         try:
-            return m.Infra.Refactor.ClassNestingPolicy.model_validate(raw)
+            return m.Infra.ClassNestingPolicy.model_validate(raw)
         except ValidationError:
             return None
 
     @staticmethod
     def target_allowed(
         *,
-        policy: m.Infra.Refactor.ClassNestingPolicy,
+        policy: m.Infra.ClassNestingPolicy,
         target_namespace: str,
     ) -> bool:
         """Check whether policy allows writing the symbol to target namespace."""

@@ -94,7 +94,7 @@ class CensusUsageCollector(cst.CSTVisitor):
         self.direct_imports = direct_imports
         self.file_path = file_path
         self.project_name = project_name
-        self.records: list[m.Infra.Refactor.CensusUsageRecord] = []
+        self.records: list[m.Infra.CensusUsageRecord] = []
 
     @override
     def visit_Attribute(self, node: cst.Attribute) -> None:
@@ -130,7 +130,7 @@ class CensusUsageCollector(cst.CSTVisitor):
 
     def _record(self, class_name: str, method_name: str, mode: str) -> None:
         self.records.append(
-            m.Infra.Refactor.CensusUsageRecord(
+            m.Infra.CensusUsageRecord(
                 class_name=class_name,
                 method_name=method_name,
                 access_mode=mode,

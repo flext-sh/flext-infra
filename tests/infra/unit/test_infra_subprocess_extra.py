@@ -20,7 +20,7 @@ class TestFlextInfraCommandRunnerExtra:
 
     def test_command_output_model(self) -> None:
         """Test CommandOutput model creation."""
-        output = m.Infra.Core.CommandOutput(stdout="out", stderr="err", exit_code=0)
+        output = m.Infra.CommandOutput(stdout="out", stderr="err", exit_code=0)
         assert output.stdout == "out"
         assert output.stderr == "err"
         assert output.exit_code == 0

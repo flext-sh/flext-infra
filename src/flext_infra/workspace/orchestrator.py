@@ -71,7 +71,7 @@ class FlextInfraOrchestratorService(s):
         *,
         fail_fast: bool = False,
         make_args: Sequence[str] = (),
-    ) -> r[list[m.Infra.Core.CommandOutput]]:
+    ) -> r[list[m.Infra.CommandOutput]]:
         """Execute make verb across projects with per-project logging.
 
         Args:
@@ -86,7 +86,7 @@ class FlextInfraOrchestratorService(s):
         """
         output.header("Workspace Orchestration")
         try:
-            results: list[m.Infra.Core.CommandOutput] = []
+            results: list[m.Infra.CommandOutput] = []
             total = len(projects)
             success = 0
             failed = 0
@@ -96,7 +96,7 @@ class FlextInfraOrchestratorService(s):
                 output.progress(idx, total, project, verb)
                 if skipped:
                     results.append(
-                        m.Infra.Core.CommandOutput(
+                        m.Infra.CommandOutput(
                             stdout="",
                             stderr="",
                             exit_code=0,
@@ -113,7 +113,7 @@ class FlextInfraOrchestratorService(s):
                 if output_result.is_failure:
                     failed += 1
                     results.append(
-                        m.Infra.Core.CommandOutput(
+                        m.Infra.CommandOutput(
                             stdout="",
                             stderr=output_result.error or "project execution failed",
                             exit_code=1,
@@ -124,7 +124,7 @@ class FlextInfraOrchestratorService(s):
                         skipped = total - idx
                     continue
                 output_value = output_result.value
-                cmd_output: m.Infra.Core.CommandOutput = output_value
+                cmd_output: m.Infra.CommandOutput = output_value
                 results.append(cmd_output)
                 if cmd_output.exit_code == 0:
                     success += 1
@@ -134,9 +134,9 @@ class FlextInfraOrchestratorService(s):
                     skipped = total - idx
             elapsed_total = time.monotonic() - started_total
             output.summary(verb, total, success, failed, skipped, elapsed_total)
-            return r[list[m.Infra.Core.CommandOutput]].ok(results)
+            return r[list[m.Infra.CommandOutput]].ok(results)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
-            return r[list[m.Infra.Core.CommandOutput]].fail(
+            return r[list[m.Infra.CommandOutput]].fail(
                 f"Orchestration failed: {exc}",
             )
 
@@ -147,7 +147,7 @@ class FlextInfraOrchestratorService(s):
         _index: int,
         *,
         make_args: list[str],
-    ) -> r[m.Infra.Core.CommandOutput]:
+    ) -> r[m.Infra.CommandOutput]:
         """Execute make verb for a single project.
 
         Args:
@@ -181,8 +181,8 @@ class FlextInfraOrchestratorService(s):
         output.info(
             f"  {status_symbol} {project} completed in {int(elapsed)}s (log: {log_path.name})",
         )
-        return r[m.Infra.Core.CommandOutput].ok(
-            m.Infra.Core.CommandOutput(
+        return r[m.Infra.CommandOutput].ok(
+            m.Infra.CommandOutput(
                 stdout=str(log_path),
                 stderr=stderr,
                 exit_code=return_code,

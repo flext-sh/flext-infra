@@ -23,19 +23,19 @@ from ...helpers import h
 from ...models import m
 
 RunCallable = Callable[
-    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput,
+    [list[str], Path, int, dict[str, str] | None], m.Infra.CommandOutput,
 ]
 
 
-def _stub_run(result: m.Infra.Core.CommandOutput | SimpleNamespace) -> RunCallable:
+def _stub_run(result: m.Infra.CommandOutput | SimpleNamespace) -> RunCallable:
     """Create a stub _run method returning a fixed result."""
 
     def _as_command_output(
-        output: m.Infra.Core.CommandOutput | SimpleNamespace,
-    ) -> m.Infra.Core.CommandOutput:
-        if isinstance(output, m.Infra.Core.CommandOutput):
+        output: m.Infra.CommandOutput | SimpleNamespace,
+    ) -> m.Infra.CommandOutput:
+        if isinstance(output, m.Infra.CommandOutput):
             return output
-        return m.Infra.Core.CommandOutput(
+        return m.Infra.CommandOutput(
             stdout=output.stdout,
             stderr=output.stderr,
             exit_code=output.returncode,
@@ -46,7 +46,7 @@ def _stub_run(result: m.Infra.Core.CommandOutput | SimpleNamespace) -> RunCallab
         _cwd: Path,
         _timeout: int = 120,
         _env: dict[str, str] | None = None,
-    ) -> m.Infra.Core.CommandOutput:
+    ) -> m.Infra.CommandOutput:
         del _cmd, _cwd, _timeout, _env
         return _as_command_output(result)
 
@@ -159,9 +159,9 @@ class TestRunCommand:
 
         def _fake_run_raw(
             _self: FlextInfraUtilitiesSubprocess, _cmd: list[str], **_kw: t.Scalar,
-        ) -> r[m.Infra.Core.CommandOutput]:
-            return r[m.Infra.Core.CommandOutput].ok(
-                m.Infra.Core.CommandOutput(stdout="output", stderr="", exit_code=0),
+        ) -> r[m.Infra.CommandOutput]:
+            return r[m.Infra.CommandOutput].ok(
+                m.Infra.CommandOutput(stdout="output", stderr="", exit_code=0),
             )
 
         monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_raw", _fake_run_raw)
@@ -176,8 +176,8 @@ class TestRunCommand:
 
         def _fake_run_raw(
             _self: FlextInfraUtilitiesSubprocess, _cmd: list[str], **_kw: t.Scalar,
-        ) -> r[m.Infra.Core.CommandOutput]:
-            return r[m.Infra.Core.CommandOutput].fail("execution failed")
+        ) -> r[m.Infra.CommandOutput]:
+            return r[m.Infra.CommandOutput].fail("execution failed")
 
         monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_raw", _fake_run_raw)
         result = checker._run(["false"], tmp_path)

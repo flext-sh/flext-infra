@@ -56,7 +56,7 @@ class FlextInfraDependencyPathSync:
         """Configure workspace root for path resolution."""
         self._root = workspace_root
 
-    def _discover_projects(self) -> r[list[m.Infra.Workspace.ProjectInfo]]:
+    def _discover_projects(self) -> r[list[m.Infra.ProjectInfo]]:
         try:
             return self._discovery.discover_projects(self._root)
         except TypeError:
@@ -303,7 +303,7 @@ class FlextInfraDependencyPathSync:
             )
             return 1
 
-        projects_list: list[m.Infra.Workspace.ProjectInfo] = discover_result.value
+        projects_list: list[m.Infra.ProjectInfo] = discover_result.value
         all_project_dirs = [project.path for project in projects_list]
         if selected_projects:
             project_dirs = [self._root / project for project in selected_projects]

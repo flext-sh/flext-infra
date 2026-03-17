@@ -28,7 +28,7 @@ class FlextInfraGoGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         _ = ctx
         started = time.monotonic()
         if not (project_dir / c.Infra.Files.GO_MOD).exists():
@@ -39,7 +39,7 @@ class FlextInfraGoGate(FlextInfraGate):
                 duration=time.monotonic() - started,
                 raw_output="",
             )
-        issues: list[m.Infra.Check.Issue] = []
+        issues: list[m.Infra.Issue] = []
         raw_output = ""
         vet_result = self._run(
             [c.Infra.Cli.GOVET, "vet", "./..."],
@@ -54,7 +54,7 @@ class FlextInfraGoGate(FlextInfraGate):
             if not match:
                 continue
             issues.append(
-                m.Infra.Check.Issue(
+                m.Infra.Issue(
                     file=match.group("file"),
                     line=int(match.group("line")),
                     column=int(match.group("col") or 1),
@@ -64,7 +64,7 @@ class FlextInfraGoGate(FlextInfraGate):
             )
         if self._result_exit_code(vet_result) != 0 and (not issues):
             issues.append(
-                m.Infra.Check.Issue(
+                m.Infra.Issue(
                     file=".",
                     line=1,
                     column=1,
@@ -96,7 +96,7 @@ class FlextInfraGoGate(FlextInfraGate):
                 if not cleaned:
                     continue
                 issues.append(
-                    m.Infra.Check.Issue(
+                    m.Infra.Issue(
                         file=cleaned,
                         line=1,
                         column=1,

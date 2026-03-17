@@ -171,7 +171,7 @@ class FlextInfraPrWorkspaceManager:
 
         """
         if self._selector is not None:
-            projects_result: r[list[m.Infra.Workspace.ProjectInfo]] = (
+            projects_result: r[list[m.Infra.ProjectInfo]] = (
                 self._selector.resolve_projects(workspace_root, projects or [])
             )
         else:

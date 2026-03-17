@@ -19,15 +19,15 @@ class FlextInfraRefactorMROMigrationTransformer:
     @staticmethod
     def migrate_file(
         *,
-        scan_result: m.Infra.Refactor.MROScanReport,
-    ) -> tuple[str, m.Infra.Refactor.MROFileMigration, dict[str, str]]:
+        scan_result: m.Infra.MROScanReport,
+    ) -> tuple[str, m.Infra.MROFileMigration, dict[str, str]]:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
         module = u.Infra.parse_cst_from_source(source)
         if module is None:
             return (
                 source,
-                m.Infra.Refactor.MROFileMigration(
+                m.Infra.MROFileMigration(
                     file=scan_result.file,
                     module=scan_result.module,
                     moved_symbols=(),
@@ -50,7 +50,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         if len(moved_statements) == 0:
             return (
                 source,
-                m.Infra.Refactor.MROFileMigration(
+                m.Infra.MROFileMigration(
                     file=scan_result.file,
                     module=scan_result.module,
                     moved_symbols=(),
@@ -125,7 +125,7 @@ class FlextInfraRefactorMROMigrationTransformer:
                 renames=qualified_renames,
             )
             updated_module = updated_module.visit(qualified_transformer)
-        migration = m.Infra.Refactor.MROFileMigration(
+        migration = m.Infra.MROFileMigration(
             file=scan_result.file,
             module=scan_result.module,
             moved_symbols=tuple(ordered_symbols),

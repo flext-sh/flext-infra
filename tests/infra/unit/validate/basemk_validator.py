@@ -64,7 +64,7 @@ class TestBaseMkValidatorCore:
     ) -> None:
         ws = _workspace(tmp_path, _ROOT, {"project1": _ROOT})
         report = tm.ok(v.validate(ws))
-        assert isinstance(report, m.Infra.Core.ValidationReport)
+        assert isinstance(report, m.Infra.ValidationReport)
 
     @pytest.mark.parametrize(
         ("projects", "expect_pass", "summary_has"),

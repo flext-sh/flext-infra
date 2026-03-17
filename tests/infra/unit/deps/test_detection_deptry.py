@@ -14,8 +14,8 @@ class _FakeResult:
     def __init__(
         self,
         success: bool,
-        value: list[m.Infra.Workspace.ProjectInfo]
-        | m.Infra.Core.CommandOutput
+        value: list[m.Infra.ProjectInfo]
+        | m.Infra.CommandOutput
         | None = None,
         error: str | None = None,
     ) -> None:
@@ -50,7 +50,7 @@ class _StubSelector:
 class TestDiscoverProjects:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         service = FlextInfraDependencyDetectionService()
-        proj = m.Infra.Workspace.ProjectInfo(
+        proj = m.Infra.ProjectInfo(
             name="proj", path=tmp_path / "proj", stack="py",
         )
         proj.path.mkdir()
@@ -74,7 +74,7 @@ class TestDiscoverProjects:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
-        proj = m.Infra.Workspace.ProjectInfo(
+        proj = m.Infra.ProjectInfo(
             name="no-pyproject", path=tmp_path / "no-pyproject", stack="py",
         )
         proj.path.mkdir()
@@ -101,7 +101,7 @@ class TestRunDeptry:
         out_file.write_text(
             json.dumps([{"error": {"code": "DEP001"}, "module": "foo"}]),
         )
-        cmd_out = m.Infra.Core.CommandOutput(
+        cmd_out = m.Infra.CommandOutput(
             exit_code=0, stdout="", stderr="", duration=0.0,
         )
         monkeypatch.setattr(service, "runner", _StubRunner(_FakeResult(True, cmd_out)))
@@ -146,7 +146,7 @@ class TestRunDeptry:
         project = tmp_path / "project"
         project.mkdir()
         (project / "pyproject.toml").write_text("")
-        cmd_out = m.Infra.Core.CommandOutput(
+        cmd_out = m.Infra.CommandOutput(
             exit_code=0, stdout="", stderr="", duration=0.0,
         )
         monkeypatch.setattr(service, "runner", _StubRunner(_FakeResult(True, cmd_out)))
@@ -169,7 +169,7 @@ class TestRunDeptry:
         (project / "pyproject.toml").write_text("")
         default_out = project / ".deptry-report.json"
         default_out.write_text("[]")
-        cmd_out = m.Infra.Core.CommandOutput(
+        cmd_out = m.Infra.CommandOutput(
             exit_code=0, stdout="", stderr="", duration=0.0,
         )
         monkeypatch.setattr(service, "runner", _StubRunner(_FakeResult(True, cmd_out)))

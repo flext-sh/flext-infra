@@ -23,7 +23,7 @@ from ._stubs import make_gate_exec, make_issue
 
 CheckProjectStub = Callable[[Path, list[str], Path], ProjectResult]
 RunStub = Callable[
-    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput,
+    [list[str], Path, int, dict[str, str] | None], m.Infra.CommandOutput,
 ]
 
 
@@ -136,9 +136,9 @@ class TestMypyEmptyLinesInOutput:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
-            return m.Infra.Core.CommandOutput(
+            return m.Infra.CommandOutput(
                 stdout=f"{line1}\n\n{line2}\n",
                 stderr="",
                 exit_code=1,
@@ -172,8 +172,8 @@ class TestGoFmtEmptyLinesInOutput:
         (proj_dir / "main.go").write_text("package main\n")
         call_idx = [0]
         results = [
-            m.Infra.Core.CommandOutput(stdout="", stderr="", exit_code=0),
-            m.Infra.Core.CommandOutput(
+            m.Infra.CommandOutput(stdout="", stderr="", exit_code=0),
+            m.Infra.CommandOutput(
                 stdout="src/file.go\n\nsrc/other.go\n",
                 stderr="",
                 exit_code=1,
@@ -185,7 +185,7 @@ class TestGoFmtEmptyLinesInOutput:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
             index = min(call_idx[0], len(results) - 1)
             call_idx[0] += 1
@@ -213,9 +213,9 @@ class TestRuffFormatDuplicateFiles:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
-            return m.Infra.Core.CommandOutput(
+            return m.Infra.CommandOutput(
                 stdout="--> src/file.py:1:1\n--> src/file.py:1:1\n--> src/other.py:1:1\n",
                 stderr="",
                 exit_code=1,

@@ -57,7 +57,7 @@ def _run_orchestrate(
         make_args=make_args,
     )
     if result.is_success:
-        outputs: list[m.Infra.Core.CommandOutput] = result.value
+        outputs: list[m.Infra.CommandOutput] = result.value
         failures = [o for o in outputs if o.exit_code != 0]
         return max((o.exit_code for o in failures), default=0)
     return u.Infra.exit_code(result, failure_msg="orchestration failed")
@@ -68,7 +68,7 @@ def _run_migrate(cli: u.Infra.CliArgs) -> int:
     result = service.migrate(workspace_root=cli.workspace, dry_run=cli.dry_run)
     if result.is_failure:
         return u.Infra.exit_code(result, failure_msg="migration failed")
-    migrations: list[m.Infra.Workspace.MigrationResult] = result.value
+    migrations: list[m.Infra.MigrationResult] = result.value
     failed_projects = 0
     for migration in migrations:
         output.info(f"{migration.project}:")

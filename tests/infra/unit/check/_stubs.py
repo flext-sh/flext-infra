@@ -89,7 +89,7 @@ def make_gate_exec(
 ) -> GateExecution:
     """Create a _GateExecution with defaults."""
     return GateExecution(
-        result=m.Infra.Check.GateResult(
+        result=m.Infra.GateResult(
             gate=gate, project=project, passed=passed, errors=[], duration=0.0,
         ),
         issues=issues or [],

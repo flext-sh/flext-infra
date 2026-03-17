@@ -152,9 +152,9 @@ class FlextInfraRuntimeDevDependencyDetector:
         """Execute dependency detection and generate workspace report."""
         runtime = FlextInfraDependencyDetectorRuntime(
             detector=self,
-            workspace_report_factory=m.Infra.Deps.WorkspaceDependencyReport,
-            dependency_limits_factory=m.Infra.Deps.DependencyLimitsInfo,
-            pip_check_factory=m.Infra.Deps.PipCheckReport,
+            workspace_report_factory=m.Infra.WorkspaceDependencyReport,
+            dependency_limits_factory=m.Infra.DependencyLimitsInfo,
+            pip_check_factory=m.Infra.PipCheckReport,
         )
         return runtime.run(argv=argv)
 

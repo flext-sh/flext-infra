@@ -23,7 +23,7 @@ class TestWorkspaceCheckerMarkdownReport:
 
     def test_markdown_report_with_errors(self) -> None:
         checker = FlextInfraWorkspaceChecker()
-        gate = m.Infra.Check.GateResult(
+        gate = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         issue = CheckIssue(
@@ -42,7 +42,7 @@ class TestWorkspaceCheckerMarkdownReport:
 
     def test_markdown_report_no_errors(self) -> None:
         checker = FlextInfraWorkspaceChecker()
-        gate = m.Infra.Check.GateResult(
+        gate = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         gate_exec = GateExecution(result=gate, issues=[], raw_output="")
@@ -57,10 +57,10 @@ class TestWorkspaceCheckerMarkdownReport:
 
     def test_markdown_report_multiple_projects(self) -> None:
         checker = FlextInfraWorkspaceChecker()
-        gate1 = m.Infra.Check.GateResult(
+        gate1 = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
-        gate2 = m.Infra.Check.GateResult(
+        gate2 = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         exec1 = GateExecution(result=gate1, issues=[], raw_output="")
@@ -86,7 +86,7 @@ class TestWorkspaceCheckerSARIFReport:
 
     def test_sarif_report_structure(self) -> None:
         checker = FlextInfraWorkspaceChecker()
-        gate = m.Infra.Check.GateResult(
+        gate = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         gate_exec = GateExecution(result=gate, issues=[], raw_output="")
@@ -97,7 +97,7 @@ class TestWorkspaceCheckerSARIFReport:
 
     def test_sarif_report_with_issues(self) -> None:
         checker = FlextInfraWorkspaceChecker()
-        gate = m.Infra.Check.GateResult(
+        gate = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         issue = CheckIssue(
@@ -115,7 +115,7 @@ class TestWorkspaceCheckerSARIFReportEdgeCases:
 
     def test_sarif_report_with_missing_gate_result(self) -> None:
         checker = FlextInfraWorkspaceChecker()
-        gate = m.Infra.Check.GateResult(
+        gate = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         exec1 = GateExecution(result=gate, issues=[], raw_output="")
@@ -126,7 +126,7 @@ class TestWorkspaceCheckerSARIFReportEdgeCases:
 
     def test_markdown_report_with_max_display_issues(self) -> None:
         checker = FlextInfraWorkspaceChecker()
-        gate = m.Infra.Check.GateResult(
+        gate = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         issues = [
@@ -155,10 +155,10 @@ class TestMarkdownReportSkipsEmptyGates:
 
     def test_generate_markdown_report_skips_empty_gates(self) -> None:
         checker = FlextInfraWorkspaceChecker()
-        gate1 = m.Infra.Check.GateResult(
+        gate1 = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
-        gate2 = m.Infra.Check.GateResult(
+        gate2 = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         exec1 = GateExecution(result=gate1, issues=[], raw_output="")
@@ -185,7 +185,7 @@ class TestMarkdownReportWithErrors:
             message="error",
             severity="error",
         )
-        gate1 = m.Infra.Check.GateResult(
+        gate1 = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         exec1 = GateExecution(result=gate1, issues=[issue], raw_output="")
@@ -198,10 +198,10 @@ class TestWorkspaceCheckerMarkdownReportEdgeCases:
     """Test markdown report generation edge cases."""
 
     def test_markdown_report_skips_gates_with_no_issues(self) -> None:
-        gate_with_issues = m.Infra.Check.GateResult(
+        gate_with_issues = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
-        gate_no_issues = m.Infra.Check.GateResult(
+        gate_no_issues = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0,
         )
         issue = CheckIssue(

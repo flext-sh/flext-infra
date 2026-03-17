@@ -16,20 +16,20 @@ from flext_infra import c, m, t, u
 type RConfigMapping = r[t.Infra.ContainerDict]
 type RListPath = r[list[Path]]
 type RPath = r[Path]
-type RListClassOccurrence = r[list[m.Infra.Refactor.ClassOccurrence]]
+type RListClassOccurrence = r[list[m.Infra.ClassOccurrence]]
 type RDictPathGrep = r[dict[Path, dict[str, int]]]
 
 
 class TopLevelClassCollector(cst.CSTVisitor):
     def __init__(self) -> None:
         self._depth = 0
-        self.classes: list[m.Infra.Refactor.ClassOccurrence] = []
+        self.classes: list[m.Infra.ClassOccurrence] = []
 
     @override
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
         is_top_level = self._depth == 0
         self.classes.append(
-            m.Infra.Refactor.ClassOccurrence(
+            m.Infra.ClassOccurrence(
                 name=node.name.value,
                 line=0,
                 is_top_level=is_top_level,
@@ -59,14 +59,14 @@ class FlextInfraRefactorLooseClassScanner:
         grep_index: dict[Path, dict[str, int]] = (
             grep_result.value if grep_result.is_success else {}
         )
-        violations: list[m.Infra.Refactor.LooseClassViolation] = []
+        violations: list[m.Infra.LooseClassViolation] = []
         targets_found = dict.fromkeys(c.Infra.Refactor.REQUIRED_CLASS_TARGETS, False)
         classes_scanned = 0
         for fp in discovered_files:
             parsed = self._scan_file_with_libcst(fp)
             if parsed.is_failure:
                 continue
-            occurrences: list[m.Infra.Refactor.ClassOccurrence] = parsed.value
+            occurrences: list[m.Infra.ClassOccurrence] = parsed.value
             classes_scanned += len(occurrences)
             rel = self._relative_module_path(project_root, fp)
             if rel.is_failure:
@@ -100,9 +100,9 @@ class FlextInfraRefactorLooseClassScanner:
     def _build_violation(
         self,
         rel_path: Path,
-        occ: m.Infra.Refactor.ClassOccurrence,
+        occ: m.Infra.ClassOccurrence,
         grep_hits: Mapping[str, int],
-    ) -> m.Infra.Refactor.LooseClassViolation | None:
+    ) -> m.Infra.LooseClassViolation | None:
         if not occ.is_top_level:
             return None
         prefix = self._expected_prefix_for_module(rel_path)
@@ -114,7 +114,7 @@ class FlextInfraRefactorLooseClassScanner:
         if occ.name in grep_hits:
             score = min(score + 0.02, 0.99)
             line = grep_hits[occ.name]
-        return m.Infra.Refactor.LooseClassViolation(
+        return m.Infra.LooseClassViolation(
             file=rel_path.as_posix(),
             line=max(line, 1),
             class_name=occ.name,
@@ -178,13 +178,13 @@ class FlextInfraRefactorLooseClassScanner:
     ) -> RListClassOccurrence:
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
-            out: RListClassOccurrence = r[list[m.Infra.Refactor.ClassOccurrence]].fail(
+            out: RListClassOccurrence = r[list[m.Infra.ClassOccurrence]].fail(
                 f"{file_path}: parse_failed",
             )
             return out
         col = TopLevelClassCollector()
         tree.visit(col)
-        out2: RListClassOccurrence = r[list[m.Infra.Refactor.ClassOccurrence]].ok(
+        out2: RListClassOccurrence = r[list[m.Infra.ClassOccurrence]].ok(
             col.classes,
         )
         return out2
@@ -211,7 +211,7 @@ class FlextInfraRefactorLooseClassScanner:
         try:
             json_raw: str | bytes | bytearray = capture.value
             entries = TypeAdapter(
-                list[m.Infra.Refactor.AstGrepMatchEnvelope],
+                list[m.Infra.AstGrepMatchEnvelope],
             ).validate_json(json_raw)
         except ValidationError as exc:
             out3: RDictPathGrep = r[dict[Path, dict[str, int]]].fail(str(exc))

@@ -55,7 +55,7 @@ class FlextInfraCodegenScaffolder(s):
             t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]
         ].fail("Use run() directly")
 
-    def run(self) -> list[m.Infra.Codegen.ScaffoldResult]:
+    def run(self) -> list[m.Infra.ScaffoldResult]:
         """Scaffold missing base modules for all projects in workspace.
 
         Returns:
@@ -65,8 +65,8 @@ class FlextInfraCodegenScaffolder(s):
         projects_result = u.Infra.discover_projects(self._workspace_root)
         if not projects_result.is_success:
             return []
-        results: list[m.Infra.Codegen.ScaffoldResult] = []
-        discovered: list[m.Infra.Workspace.ProjectInfo] = projects_result.unwrap()
+        results: list[m.Infra.ScaffoldResult] = []
+        discovered: list[m.Infra.ProjectInfo] = projects_result.unwrap()
         projects = discovered
         for project in projects:
             if project.name in c.Infra.Codegen.EXCLUDED_PROJECTS:
@@ -77,7 +77,7 @@ class FlextInfraCodegenScaffolder(s):
             results.append(result)
         return results
 
-    def scaffold_project(self, project_path: Path) -> m.Infra.Codegen.ScaffoldResult:
+    def scaffold_project(self, project_path: Path) -> m.Infra.ScaffoldResult:
         """Scaffold missing base modules for a single project.
 
         Args:
@@ -89,7 +89,7 @@ class FlextInfraCodegenScaffolder(s):
         """
         prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
         if not prefix:
-            return m.Infra.Codegen.ScaffoldResult(
+            return m.Infra.ScaffoldResult(
                 project=project_path.name,
                 files_created=[],
                 files_skipped=[],
@@ -116,7 +116,7 @@ class FlextInfraCodegenScaffolder(s):
                 files_created=files_created,
                 files_skipped=files_skipped,
             )
-        return m.Infra.Codegen.ScaffoldResult(
+        return m.Infra.ScaffoldResult(
             project=project_path.name,
             files_created=files_created,
             files_skipped=files_skipped,

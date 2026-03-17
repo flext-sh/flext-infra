@@ -66,7 +66,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
     def __init__(
         self,
         *,
-        migrations: list[m.Infra.Refactor.RuleConfigs.SignatureMigration],
+        migrations: list[m.Infra.RuleConfigs.SignatureMigration],
         on_change: Callable[[str], None] | None = None,
     ) -> None:
         """Initialize transformer state for declarative signature migrations."""
@@ -143,7 +143,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
 
     def _add_keywords(
         self,
-        migration: m.Infra.Refactor.RuleConfigs.SignatureMigration,
+        migration: m.Infra.RuleConfigs.SignatureMigration,
     ) -> Mapping[str, str]:
         return migration.add_keywords
 
@@ -154,7 +154,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
 
     def _keyword_renames(
         self,
-        migration: m.Infra.Refactor.RuleConfigs.SignatureMigration,
+        migration: m.Infra.RuleConfigs.SignatureMigration,
     ) -> Mapping[str, str]:
         return migration.keyword_renames
 
@@ -176,7 +176,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
 
     def _matches_migration(
         self,
-        migration: m.Infra.Refactor.RuleConfigs.SignatureMigration,
+        migration: m.Infra.RuleConfigs.SignatureMigration,
         *,
         qualified_names: set[str],
         simple_name: str | None,
@@ -198,7 +198,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
 
     def _remove_keywords(
         self,
-        migration: m.Infra.Refactor.RuleConfigs.SignatureMigration,
+        migration: m.Infra.RuleConfigs.SignatureMigration,
     ) -> set[str]:
         return set(migration.remove_keywords)
 
@@ -222,7 +222,7 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
         migrations_raw = self.config.get("signature_migrations", [])
         try:
             parsed = TypeAdapter(
-                list[m.Infra.Refactor.RuleConfigs.SignatureMigration],
+                list[m.Infra.RuleConfigs.SignatureMigration],
             ).validate_python(migrations_raw)
         except ValidationError:
             return (tree, [])

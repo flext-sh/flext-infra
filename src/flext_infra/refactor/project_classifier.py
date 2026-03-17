@@ -19,7 +19,7 @@ class ProjectClassifier:
         self._pyproject_path = self._project_root / c.Infra.Files.PYPROJECT_FILENAME
         self._src_path = self._project_root / c.Infra.Paths.DEFAULT_SRC_DIR
 
-    def classify(self) -> m.Infra.Refactor.ProjectClassification:
+    def classify(self) -> m.Infra.ProjectClassification:
         """Return classification and family chains for this project."""
         project_name, dependencies = self._read_project_metadata()
         internal_dependencies = self._internal_dependencies(
@@ -35,7 +35,7 @@ class ProjectClassifier:
             internal_dependencies=internal_dependencies,
             local_facade_classes=local_facade_classes,
         )
-        return m.Infra.Refactor.ProjectClassification(
+        return m.Infra.ProjectClassification(
             project_kind=project_kind,
             family_chains=family_chains,
         )

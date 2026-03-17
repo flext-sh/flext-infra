@@ -72,7 +72,7 @@ class FlextInfraProtocols(FlextProtocols):
                 self,
                 project: str,
                 gates: Sequence[str],
-            ) -> r[list[m.Infra.Check.ProjectResult]]:
+            ) -> r[list[m.Infra.ProjectResult]]:
                 """Execute quality gates for a project."""
                 ...
 
@@ -84,9 +84,9 @@ class FlextInfraProtocols(FlextProtocols):
                 self,
                 workspace_root: Path,
                 *,
-                config: m.Infra.Basemk.BaseMkConfig | None = None,
+                config: m.Infra.BaseMkConfig | None = None,
                 canonical_root: Path | None = None,
-            ) -> r[m.Infra.Workspace.SyncResult]:
+            ) -> r[m.Infra.SyncResult]:
                 """Synchronize source and target paths."""
                 ...
 
@@ -96,7 +96,7 @@ class FlextInfraProtocols(FlextProtocols):
 
             def generate(
                 self,
-                config: m.Infra.Basemk.BaseMkConfig | object | None = None,
+                config: m.Infra.BaseMkConfig | object | None = None,
             ) -> r[str]:
                 """Generate text or artifacts from configuration."""
                 ...
@@ -105,7 +105,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Reporter(Protocol):
             """Contract for report writers that persist validation outputs."""
 
-            def report(self, results: Sequence[m.Infra.Check.ProjectResult]) -> r[Path]:
+            def report(self, results: Sequence[m.Infra.ProjectResult]) -> r[Path]:
                 """Write validation results to a report file."""
                 ...
 
@@ -125,7 +125,7 @@ class FlextInfraProtocols(FlextProtocols):
                 self,
                 projects: Sequence[str],
                 verb: str,
-            ) -> r[list[m.Infra.Core.CommandOutput]]:
+            ) -> r[list[m.Infra.CommandOutput]]:
                 """Orchestrate operations across multiple projects."""
                 ...
 
@@ -136,7 +136,7 @@ class FlextInfraProtocols(FlextProtocols):
             def discover_projects(
                 self,
                 workspace_root: Path,
-            ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
+            ) -> r[list[m.Infra.ProjectInfo]]:
                 """Discover projects in a workspace root."""
                 ...
 
@@ -158,7 +158,7 @@ class FlextInfraProtocols(FlextProtocols):
                 cwd: Path | None = None,
                 timeout: int | None = None,
                 env: Mapping[str, str] | None = None,
-            ) -> r[m.Infra.Core.CommandOutput]:
+            ) -> r[m.Infra.CommandOutput]:
                 """Execute a command and return output."""
                 ...
 
@@ -178,7 +178,7 @@ class FlextInfraProtocols(FlextProtocols):
                 cwd: Path | None = None,
                 timeout: int | None = None,
                 env: Mapping[str, str] | None = None,
-            ) -> r[m.Infra.Core.CommandOutput]:
+            ) -> r[m.Infra.CommandOutput]:
                 """Execute a command and return raw output, including non-zero exit codes."""
                 ...
 

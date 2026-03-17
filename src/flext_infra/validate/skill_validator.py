@@ -95,7 +95,7 @@ class FlextInfraSkillValidator:
         *,
         mode: str = c.Infra.Modes.BASELINE,
         _project_filter: list[str] | None = None,
-    ) -> r[m.Infra.Core.ValidationReport]:
+    ) -> r[m.Infra.ValidationReport]:
         """Validate a single skill across workspace projects.
 
         Args:
@@ -112,8 +112,8 @@ class FlextInfraSkillValidator:
             skills_dir = root / c.Infra.Core.SKILLS_DIR
             rules_path = skills_dir / skill_name / "rules.yml"
             if not rules_path.exists():
-                return r[m.Infra.Core.ValidationReport].ok(
-                    m.Infra.Core.ValidationReport(
+                return r[m.Infra.ValidationReport].ok(
+                    m.Infra.ValidationReport(
                         passed=False,
                         violations=[f"rules.yml not found for skill '{skill_name}'"],
                         summary=f"no rules.yml for {skill_name}",
@@ -123,7 +123,7 @@ class FlextInfraSkillValidator:
             scan_targets_raw = rules.get("scan_targets", {})
             scan_targets = self._normalize_str_object_mapping(scan_targets_raw)
             if not scan_targets and scan_targets_raw not in ({}, None):
-                return r[m.Infra.Core.ValidationReport].fail(
+                return r[m.Infra.ValidationReport].fail(
                     f"scan_targets must be a mapping: {rules_path}",
                 )
             include_globs = self._normalize_string_list(
@@ -136,7 +136,7 @@ class FlextInfraSkillValidator:
             )
             rules_list_obj = rules.get(c.Infra.ReportKeys.RULES, [])
             if not isinstance(rules_list_obj, list):
-                return r[m.Infra.Core.ValidationReport].fail("rules must be a list")
+                return r[m.Infra.ValidationReport].fail("rules must be a list")
             rules_list: list[JsonValue] = TypeAdapter(
                 list[JsonValue],
             ).validate_python(rules_list_obj)
@@ -215,15 +215,15 @@ class FlextInfraSkillValidator:
             summary = (
                 f"{skill_name}: {total} violations, {('PASS' if passed else 'FAIL')}"
             )
-            return r[m.Infra.Core.ValidationReport].ok(
-                m.Infra.Core.ValidationReport(
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
                     passed=passed,
                     violations=violations,
                     summary=summary,
                 ),
             )
         except (OSError, TypeError, ValueError, RuntimeError) as exc:
-            return r[m.Infra.Core.ValidationReport].fail(
+            return r[m.Infra.ValidationReport].fail(
                 f"skill validation failed: {exc}",
             )
 

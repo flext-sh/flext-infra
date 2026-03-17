@@ -108,9 +108,9 @@ class TestWorkspaceCheckerRunCommand:
             _self: FlextInfraUtilitiesSubprocess,
             _cmd: list[str],
             **_kw: t.Scalar,
-        ) -> r[m.Infra.Core.CommandOutput]:
-            return r[m.Infra.Core.CommandOutput].ok(
-                m.Infra.Core.CommandOutput(stdout="output", stderr="", exit_code=0),
+        ) -> r[m.Infra.CommandOutput]:
+            return r[m.Infra.CommandOutput].ok(
+                m.Infra.CommandOutput(stdout="output", stderr="", exit_code=0),
             )
 
         monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_raw", _fake_run)
@@ -129,8 +129,8 @@ class TestWorkspaceCheckerRunCommand:
             _self: FlextInfraUtilitiesSubprocess,
             _cmd: list[str],
             **_kw: t.Scalar,
-        ) -> r[m.Infra.Core.CommandOutput]:
-            return r[m.Infra.Core.CommandOutput].fail("execution failed")
+        ) -> r[m.Infra.CommandOutput]:
+            return r[m.Infra.CommandOutput].fail("execution failed")
 
         monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_raw", _fake_run)
         result = checker._run(["false"], tmp_path)

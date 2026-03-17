@@ -11,12 +11,12 @@ from tests.infra import m
 
 
 class _StubRunner:
-    def __init__(self, result: r[m.Infra.Core.CommandOutput]) -> None:
+    def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
         self._result = result
 
     def run_raw(
         self, *args: list[str], **kwargs: Path | int | dict[str, str],
-    ) -> r[m.Infra.Core.CommandOutput]:
+    ) -> r[m.Infra.CommandOutput]:
         _ = args
         _ = kwargs
         return self._result
@@ -36,11 +36,11 @@ class TestRunPipCheck:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "pip").write_text("")
-        out = m.Infra.Core.CommandOutput(
+        out = m.Infra.CommandOutput(
             exit_code=1, stdout="pkg1 has requirement\npkg2 conflict\n", stderr="",
         )
         monkeypatch.setattr(
-            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out)),
+            service, "runner", _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
         lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
         tm.that(len(lines), eq=2)
@@ -56,7 +56,7 @@ class TestRunPipCheck:
         monkeypatch.setattr(
             service,
             "runner",
-            _StubRunner(r[m.Infra.Core.CommandOutput].fail("pip failed")),
+            _StubRunner(r[m.Infra.CommandOutput].fail("pip failed")),
         )
         tm.fail(service.run_pip_check(tmp_path, venv_bin))
 
@@ -67,9 +67,9 @@ class TestRunPipCheck:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "pip").write_text("")
-        out = m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr="")
+        out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
-            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out)),
+            service, "runner", _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
         lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
         tm.that(lines, eq=[])

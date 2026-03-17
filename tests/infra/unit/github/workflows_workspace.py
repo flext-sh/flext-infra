@@ -20,7 +20,7 @@ from tests.infra.unit.github._stubs import (
 )
 
 
-def _as_project(info: m.Infra.Workspace.ProjectInfo) -> m.Infra.Workspace.ProjectInfo:
+def _as_project(info: m.Infra.ProjectInfo) -> m.Infra.ProjectInfo:
     return info
 
 
@@ -44,14 +44,14 @@ class TestSyncWorkspace:
         wf = tmp_path / ".github" / "workflows"
         wf.mkdir(parents=True)
         (wf / "ci.yml").write_text("name: CI\n")
-        proj = m.Infra.Workspace.ProjectInfo(
+        proj = m.Infra.ProjectInfo(
             name="my-proj",
             path=tmp_path / "my-proj",
             stack="python",
         )
         proj.path.mkdir()
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
+            resolve_returns=r[list[m.Infra.ProjectInfo]].ok([
                 _as_project(proj),
             ]),
         )
@@ -73,7 +73,7 @@ class TestSyncWorkspace:
         wf.mkdir(parents=True)
         (wf / "ci.yml").write_text("name: CI")
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].fail("no projects"),
+            resolve_returns=r[list[m.Infra.ProjectInfo]].fail("no projects"),
         )
         tm.fail(_syncer(selector=selector).sync_workspace(tmp_path))
 
@@ -83,7 +83,7 @@ class TestSyncWorkspace:
         wf.mkdir(parents=True)
         (wf / "ci.yml").write_text("name: CI\n")
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([]),
+            resolve_returns=r[list[m.Infra.ProjectInfo]].ok([]),
         )
         json_io = StubJsonIo()
         report = tmp_path / "report.json"

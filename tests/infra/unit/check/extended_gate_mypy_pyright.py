@@ -31,8 +31,8 @@ def _src_python_dirs(_project_dir: Path, _dirs: list[str]) -> list[str]:
     return ["src"]
 
 
-def _run_result(stdout: str, returncode: int) -> m.Infra.Core.CommandOutput:
-    return m.Infra.Core.CommandOutput(stdout=stdout, stderr="", exit_code=returncode)
+def _run_result(stdout: str, returncode: int) -> m.Infra.CommandOutput:
+    return m.Infra.CommandOutput(stdout=stdout, stderr="", exit_code=returncode)
 
 
 class TestWorkspaceCheckerRunMypy:
@@ -72,7 +72,7 @@ class TestWorkspaceCheckerRunMypy:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
             return _run_result(json_line, 1)
 
@@ -122,7 +122,7 @@ class TestWorkspaceCheckerRunPyright:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
             return _run_result(json_output, 1)
 
@@ -149,7 +149,7 @@ class TestWorkspaceCheckerRunPyright:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
             return _run_result("invalid json", 1)
 

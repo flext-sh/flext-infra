@@ -64,7 +64,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         except OSError as exc:
             return r[bool].fail(f"report dir creation failed: {exc}")
         targets = self._build_targets(workspace_root, project_names)
-        records: list[m.Infra.Release.BuildRecord] = []
+        records: list[m.Infra.BuildRecord] = []
         failures = 0
         for name, path in targets:
             make_result = self._run_make(path, c.Infra.Directories.BUILD)
@@ -78,7 +78,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             log = output_dir / f"build-{name}.log"
             u.write_file(log, output + "\n", encoding=c.Infra.Encoding.DEFAULT)
             records.append(
-                m.Infra.Release.BuildRecord(
+                m.Infra.BuildRecord(
                     project=name,
                     path=str(path),
                     exit_code=code,
@@ -88,7 +88,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             self.logger.info(
                 "release_phase_build_project", project=name, exit_code=code,
             )
-        report = m.Infra.Release.BuildReport(
+        report = m.Infra.BuildReport(
             version=version,
             total=len(records),
             failures=failures,
@@ -217,7 +217,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     ) -> r[bool]:
         """Run release workflow for the provided ordered phases."""
         names = project_names or []
-        spec = m.Infra.Release.ReleaseSpec(
+        spec = m.Infra.ReleaseSpec(
             version=version,
             tag=tag,
             bump_type=next_bump,
@@ -375,7 +375,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         changes_result = self._collect_changes(workspace_root, previous, tag)
         changes: str = str(changes_result.value) if changes_result.is_success else ""
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
-        project_list: list[m.Infra.Workspace.ProjectInfo] = (
+        project_list: list[m.Infra.ProjectInfo] = (
             projects_result.value if projects_result.is_success else []
         )
         return FlextInfraReleaseReporting.generate_notes(
@@ -405,7 +405,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         files: list[Path] = [workspace_root / c.Infra.Files.PYPROJECT_FILENAME]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:
-            projects: list[m.Infra.Workspace.ProjectInfo] = projects_result.value
+            projects: list[m.Infra.ProjectInfo] = projects_result.value
             for project in projects:
                 pyproject = project.path / c.Infra.Files.PYPROJECT_FILENAME
                 if pyproject.exists():

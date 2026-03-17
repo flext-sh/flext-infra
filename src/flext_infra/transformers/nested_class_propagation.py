@@ -181,7 +181,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
     def _policy_for_symbol(
         self,
         symbol_name: str,
-    ) -> m.Infra.Refactor.ClassNestingPolicy | None:
+    ) -> m.Infra.ClassNestingPolicy | None:
         return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,

@@ -19,29 +19,29 @@ from ...helpers import h
 from ...models import m
 
 RunCallable = Callable[
-    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput,
+    [list[str], Path, int, dict[str, str] | None], m.Infra.CommandOutput,
 ]
 
 
 def _as_command_output(
-    result: m.Infra.Core.CommandOutput | SimpleNamespace,
-) -> m.Infra.Core.CommandOutput:
-    if isinstance(result, m.Infra.Core.CommandOutput):
+    result: m.Infra.CommandOutput | SimpleNamespace,
+) -> m.Infra.CommandOutput:
+    if isinstance(result, m.Infra.CommandOutput):
         return result
-    return m.Infra.Core.CommandOutput(
+    return m.Infra.CommandOutput(
         stdout=result.stdout,
         stderr=result.stderr,
         exit_code=result.returncode,
     )
 
 
-def _stub_run(result: m.Infra.Core.CommandOutput | SimpleNamespace) -> RunCallable:
+def _stub_run(result: m.Infra.CommandOutput | SimpleNamespace) -> RunCallable:
     def _run(
         _cmd: list[str],
         _cwd: Path,
         _timeout: int = 120,
         _env: dict[str, str] | None = None,
-    ) -> m.Infra.Core.CommandOutput:
+    ) -> m.Infra.CommandOutput:
         del _cmd, _cwd, _timeout, _env
         return _as_command_output(result)
 

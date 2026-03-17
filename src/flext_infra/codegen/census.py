@@ -57,7 +57,7 @@ class FlextInfraCodegenCensus(s):
         return False
 
     @staticmethod
-    def _parse_violation(violation_str: str) -> m.Infra.Codegen.CensusViolation | None:
+    def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:
         """Parse a violation string into a CensusViolation model."""
         match = c.Infra.Codegen.VIOLATION_PATTERN.match(violation_str)
         if match is None:
@@ -68,7 +68,7 @@ class FlextInfraCodegenCensus(s):
             module=match.group("module"),
             message=match.group("message"),
         )
-        return m.Infra.Codegen.CensusViolation(
+        return m.Infra.CensusViolation(
             module=match.group("module"),
             rule=rule,
             line=int(match.group("line")),
@@ -89,7 +89,7 @@ class FlextInfraCodegenCensus(s):
         workspace_root: Path | None = None,
         *,
         output_format: str = "json",
-    ) -> list[m.Infra.Codegen.CensusReport]:
+    ) -> list[m.Infra.CensusReport]:
         """Run census on all projects in workspace.
 
         Returns:
@@ -104,7 +104,7 @@ class FlextInfraCodegenCensus(s):
         projects_result = discovery.discover_projects(workspace)
         if not projects_result.is_success:
             return []
-        reports: list[m.Infra.Codegen.CensusReport] = []
+        reports: list[m.Infra.CensusReport] = []
         discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
         for project in discovered:
             if project.name in c.Infra.Codegen.EXCLUDED_PROJECTS:
@@ -116,18 +116,18 @@ class FlextInfraCodegenCensus(s):
     def _census_project(
         self,
         project: p.Infra.ProjectInfo,
-    ) -> m.Infra.Codegen.CensusReport:
+    ) -> m.Infra.CensusReport:
         """Run census on a single project."""
         validator = FlextInfraNamespaceValidator()
         result = validator.validate(project.path, scan_tests=False)
-        violations: list[m.Infra.Codegen.CensusViolation] = []
+        violations: list[m.Infra.CensusViolation] = []
         if result.is_success:
-            report: m.Infra.Core.ValidationReport = result.unwrap()
+            report: m.Infra.ValidationReport = result.unwrap()
             for violation_str in report.violations:
                 violation = self._parse_violation(violation_str)
                 if violation is not None:
                     violations.append(violation)
-        return m.Infra.Codegen.CensusReport(
+        return m.Infra.CensusReport(
             project=project.name,
             violations=violations,
             total=len(violations),

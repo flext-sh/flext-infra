@@ -55,9 +55,9 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def discover_projects(
         workspace_root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
+    ) -> r[list[m.Infra.ProjectInfo]]:
         try:
-            projects: list[m.Infra.Workspace.ProjectInfo] = []
+            projects: list[m.Infra.ProjectInfo] = []
             submodules = FlextInfraUtilitiesDiscovery._submodule_names(workspace_root)
             for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name):
                 if (
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesDiscovery:
                 stack = c.Infra.Toml.PYTHON if has_pyproject else c.Infra.Gates.GO
                 kind = "submodule" if entry.name in submodules else "external"
                 projects.append(
-                    m.Infra.Workspace.ProjectInfo(
+                    m.Infra.ProjectInfo(
                         path=entry,
                         name=entry.name,
                         stack=f"{stack}/{kind}",
@@ -85,9 +85,9 @@ class FlextInfraUtilitiesDiscovery:
                         has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
                     ),
                 )
-            return r[list[m.Infra.Workspace.ProjectInfo]].ok(projects)
+            return r[list[m.Infra.ProjectInfo]].ok(projects)
         except OSError as exc:
-            return r[list[m.Infra.Workspace.ProjectInfo]].fail(
+            return r[list[m.Infra.ProjectInfo]].fail(
                 f"project discovery failed: {exc}",
             )
 

@@ -593,13 +593,13 @@ class FlextInfraUtilitiesRefactor:
     def build_mro_target(
         family: str,
         core_project: str = c.Infra.Refactor.Census.CORE_PROJECT,
-    ) -> m.Infra.Refactor.MROFamilyTarget:
+    ) -> m.Infra.MROFamilyTarget:
         """Create a generic target config object from a family code."""
         if family not in c.Infra.Refactor.MRO_FAMILIES:
             msg = f"Invalid MRO family {family}"
             raise ValueError(msg)
         sf = c.Infra.Refactor.FAMILY_SUFFIXES[family]
-        return m.Infra.Refactor.MROFamilyTarget(
+        return m.Infra.MROFamilyTarget(
             family=family,
             class_suffix=sf,
             package_dir=c.Infra.Refactor.MRO_FAMILY_PACKAGE_DIRS[family],
@@ -610,11 +610,11 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def aggregate_usage_metrics(
-        methods: dict[str, list[m.Infra.Refactor.CensusMethodInfo]],
-        records: list[m.Infra.Refactor.CensusUsageRecord],
+        methods: dict[str, list[m.Infra.CensusMethodInfo]],
+        records: list[m.Infra.CensusUsageRecord],
         files_scanned: int,
         parse_errors: int,
-    ) -> m.Infra.Refactor.CensusReport:
+    ) -> m.Infra.CensusReport:
         """Pivot raw AST method visit occurrences into a structured usage report."""
         cnt: Counter[tuple[str, str, str]] = Counter()
         pcnt: Counter[tuple[str, str, str, str]] = Counter()
@@ -623,10 +623,10 @@ class FlextInfraUtilitiesRefactor:
             cnt[rec.class_name, rec.method_name, rec.access_mode] += 1
             pcnt[rec.project, rec.class_name, rec.method_name, rec.access_mode] += 1
 
-        cls_sums: list[m.Infra.Refactor.CensusClassSummary] = []
+        cls_sums: list[m.Infra.CensusClassSummary] = []
         unused = 0
         for cls, items in sorted(methods.items()):
-            m_list: list[m.Infra.Refactor.CensusMethodSummary] = []
+            m_list: list[m.Infra.CensusMethodSummary] = []
             for m_info in items:
                 af = cnt.get(
                     (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_FLAT), 0,
@@ -639,7 +639,7 @@ class FlextInfraUtilitiesRefactor:
                 if tot == 0:
                     unused += 1
                 m_list.append(
-                    m.Infra.Refactor.CensusMethodSummary(
+                    m.Infra.CensusMethodSummary(
                         name=m_info.name,
                         method_type=m_info.method_type,
                         alias_flat=af,
@@ -649,19 +649,19 @@ class FlextInfraUtilitiesRefactor:
                     ),
                 )
             cls_sums.append(
-                m.Infra.Refactor.CensusClassSummary(
+                m.Infra.CensusClassSummary(
                     class_name=cls,
                     source_file=items[0].source_file if items else "",
                     methods=m_list,
                 ),
             )
 
-        pj_sums: dict[str, list[m.Infra.Refactor.CensusProjectMethodUsage]] = (
+        pj_sums: dict[str, list[m.Infra.CensusProjectMethodUsage]] = (
             defaultdict(list)
         )
         for (pj, cls, mx, mo), co in sorted(pcnt.items()):
             pj_sums[pj].append(
-                m.Infra.Refactor.CensusProjectMethodUsage(
+                m.Infra.CensusProjectMethodUsage(
                     class_name=cls,
                     method_name=mx,
                     access_mode=mo,
@@ -669,10 +669,10 @@ class FlextInfraUtilitiesRefactor:
                 ),
             )
 
-        return m.Infra.Refactor.CensusReport(
+        return m.Infra.CensusReport(
             classes=cls_sums,
             projects=[
-                m.Infra.Refactor.CensusProjectSummary(
+                m.Infra.CensusProjectSummary(
                     project_name=p, usages=us, total=sum(u.count for u in us),
                 )
                 for p, us in sorted(pj_sums.items())

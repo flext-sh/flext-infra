@@ -43,9 +43,19 @@ class FlextInfraConstants(FlextConstants):
         >>> c.Infra.Codegen.EXCLUDED_PROJECTS
     """
 
-    class Infra(FlextInfraSharedInfraConstants):
-        """Infrastructure domain constants."""
-
+    class Infra(
+        FlextInfraSharedInfraConstants,
+        FlextInfraBasemkConstants,
+        FlextInfraCheckConstants,
+        FlextInfraCodegenConstants,
+        FlextInfraCoreConstants,
+        FlextInfraDepsConstants,
+        FlextInfraDocsConstants,
+        FlextInfraGithubConstants,
+        FlextInfraRefactorConstants,
+        FlextInfraReleaseConstants,
+        FlextInfraWorkspaceConstants,
+    ):
         KNOWN_VERBS: Final[frozenset[str]] = frozenset({
             "build",
             "check",
@@ -57,8 +67,6 @@ class FlextInfraConstants(FlextConstants):
             "validate",
             "workspace",
         })
-        MIN_ARGV: Final[int] = 2
-        "Minimum argv length for CLI dispatch."
 
         class Toml:
             """TOML section/key names for pyproject.toml parsing."""
@@ -455,18 +463,7 @@ class FlextInfraConstants(FlextConstants):
             DEFAULT: Final[str] = "utf-8"
             "Default text encoding for file operations."
 
-        class Basemk(FlextInfraBasemkConstants):
-            """Basemk constants via MRO."""
-
-        class Codegen(FlextInfraCodegenConstants):
-            """Codegen constants via MRO."""
-
-        class Core(FlextInfraCoreConstants):
-            """Core constants via MRO."""
-
         class Check(FlextInfraCheckConstants):
-            """Check directory configuration."""
-
             DEFAULT_CHECK_DIRS: Final[tuple[str, ...]] = (
                 "src",
                 "tests",
@@ -477,25 +474,35 @@ class FlextInfraConstants(FlextConstants):
             CHECK_DIRS_SUBPROJECT: Final[tuple[str, ...]] = ("src", "tests", "examples")
             "Subprojects: type-check src/tests/examples only (scripts are workspace copies, run from root)."
 
-        class Deps(FlextInfraDepsConstants):
-            """Deps constants via MRO."""
-
-        class Docs(FlextInfraDocsConstants):
-            """Docs constants via MRO."""
-
         class Github(FlextInfraGithubConstants):
-            """GitHub repository constants."""
-
             GITHUB_REPO_URL: Final[str] = "https://github.com/flext-sh/flext"
             "Official GitHub repository URL for the FLEXT project."
             GITHUB_REPO_NAME: Final[str] = "flext-sh/flext"
             "GitHub repository name in owner/repo format."
 
+        class Basemk(FlextInfraBasemkConstants):
+            pass
+
+        class Codegen(FlextInfraCodegenConstants):
+            pass
+
+        class Core(FlextInfraCoreConstants):
+            pass
+
+        class Deps(FlextInfraDepsConstants):
+            pass
+
+        class Docs(FlextInfraDocsConstants):
+            pass
+
+        class Refactor(FlextInfraRefactorConstants):
+            pass
+
         class Release(FlextInfraReleaseConstants):
-            """Release constants via MRO."""
+            pass
 
         class Workspace(FlextInfraWorkspaceConstants):
-            """Workspace constants via MRO."""
+            pass
 
         class Versioning:
             """Semantic versioning constants for version management."""
@@ -522,9 +529,6 @@ class FlextInfraConstants(FlextConstants):
 
             REPORTS_DIR_NAME: Final[str] = ".reports"
             "Standard directory name for report output."
-
-        class Refactor(FlextInfraRefactorConstants):
-            """Refactor module constants via MRO."""
 
     @unique
     class FacadeFamily(StrEnum):

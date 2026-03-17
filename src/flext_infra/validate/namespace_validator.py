@@ -108,7 +108,7 @@ class FlextInfraNamespaceValidator:
         project_root: Path,
         *,
         scan_tests: bool = False,
-    ) -> r[m.Infra.Core.ValidationReport]:
+    ) -> r[m.Infra.ValidationReport]:
         """Validate namespace rules 0-2 for all discovered Python files.
 
         Args:
@@ -137,15 +137,15 @@ class FlextInfraNamespaceValidator:
                 if passed
                 else f"{len(violations)} namespace violation(s) found ({len(files)} files checked)"
             )
-            return r[m.Infra.Core.ValidationReport].ok(
-                m.Infra.Core.ValidationReport(
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
                     passed=passed,
                     violations=violations,
                     summary=summary,
                 ),
             )
         except (OSError, TypeError, ValueError, RuntimeError) as exc:
-            return r[m.Infra.Core.ValidationReport].fail(
+            return r[m.Infra.ValidationReport].fail(
                 f"Namespace validation failed: {exc}",
             )
 

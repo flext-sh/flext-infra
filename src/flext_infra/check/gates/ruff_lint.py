@@ -31,7 +31,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         _ = ctx
         started = time.monotonic()
         check_dirs = self._existing_check_dirs(project_dir)
@@ -49,7 +49,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             ],
             project_dir,
         )
-        issues: list[m.Infra.Check.Issue] = []
+        issues: list[m.Infra.Issue] = []
         ruff_parse_result = u.Infra.parse(result.stdout or "[]")
         ruff_data: t_infra.Infra.InfraValue = (
             ruff_parse_result.value if ruff_parse_result.is_success else []
@@ -57,7 +57,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
         try:
             if isinstance(ruff_data, list):
                 issues.extend(
-                    m.Infra.Check.Issue(
+                    m.Infra.Issue(
                         file=str(entry.get("filename", "?")),
                         line=self._nested_int(dict(entry.items()), "location", "row"),
                         column=self._nested_int(

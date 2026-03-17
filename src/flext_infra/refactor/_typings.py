@@ -8,7 +8,7 @@ from flext_infra import m
 
 
 class FlextInfraRectorTypes:
-    type PolicyContext = Mapping[str, m.Infra.Refactor.ClassNestingPolicy]
+    type PolicyContext = Mapping[str, m.Infra.ClassNestingPolicy]
     type ClassFamilyMap = Mapping[str, str]
 
 

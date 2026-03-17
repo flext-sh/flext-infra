@@ -32,7 +32,7 @@ class PostCheckGate:
 
     def validate(
         self,
-        result: m.Infra.Refactor.Result,
+        result: m.Infra.Result,
         expected: t.Infra.ContainerDict,
     ) -> tuple[bool, list[str]]:
         """Validate a refactor result against expected post-checks and gates."""
@@ -186,7 +186,7 @@ class FlextInfraRefactorCliSupport:
 
     @staticmethod
     def build_impact_map(
-        results: list[m.Infra.Refactor.Result],
+        results: list[m.Infra.Result],
     ) -> list[dict[str, str]]:
         """Build an impact map from refactor results for reporting."""
         impact_map: list[dict[str, str]] = []
@@ -251,7 +251,7 @@ class FlextInfraRefactorCliSupport:
 
     @staticmethod
     def write_impact_map(
-        results: list[m.Infra.Refactor.Result],
+        results: list[m.Infra.Result],
         output_path: Path,
     ) -> bool:
         """Write impact map to a JSON file."""
@@ -324,7 +324,7 @@ class FlextInfraRefactorCliSupport:
                 FlextInfraRefactorCliSupport.info(f"  - {rule['description']}")
 
     @staticmethod
-    def print_summary(results: list[m.Infra.Refactor.Result], *, dry_run: bool) -> None:
+    def print_summary(results: list[m.Infra.Result], *, dry_run: bool) -> None:
         """Print a summary of refactor results."""
         modified = sum(1 for item in results if item.modified)
         failed = sum(1 for item in results if not item.success)
@@ -343,7 +343,7 @@ class FlextInfraRefactorCliSupport:
 
     @staticmethod
     def print_violation_summary(
-        analysis: m.Infra.Refactor.ViolationAnalysisReport,
+        analysis: m.Infra.ViolationAnalysisReport,
     ) -> None:
         """Print a summary of violation analysis results."""
         FlextInfraRefactorCliSupport.header("Violation Analysis")
@@ -478,7 +478,7 @@ class FlextInfraRefactorCliSupport:
                     f"Analysis report written: {args.analysis_output}",
                 )
             sys.exit(0)
-        results: list[m.Infra.Refactor.Result] = []
+        results: list[m.Infra.Result] = []
         if args.project:
             results = engine.refactor_project(
                 args.project,

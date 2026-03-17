@@ -69,7 +69,7 @@ def test_run_raw_cases(
     result = runner.run_raw(command, cwd=cwd, timeout=timeout, env=env)
     if expect_success:
         output = tm.ok(result)
-        assert isinstance(output, m.Infra.Core.CommandOutput)
+        assert isinstance(output, m.Infra.CommandOutput)
         if stdout_has:
             tm.that(output.stdout, has=stdout_has)
         if stderr_has:

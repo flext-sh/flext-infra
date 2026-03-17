@@ -38,7 +38,7 @@ class FlextInfraUtilitiesSubprocess:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: Mapping[str, str] | None = None,
-    ) -> r[m.Infra.Core.CommandOutput]:
+    ) -> r[m.Infra.CommandOutput]:
         """Run a command without enforcing zero exit code."""
         try:
             result = subprocess.run(
@@ -50,19 +50,19 @@ class FlextInfraUtilitiesSubprocess:
                 timeout=timeout,
                 env=env,
             )
-            output = m.Infra.Core.CommandOutput(
+            output = m.Infra.CommandOutput(
                 stdout=result.stdout or "",
                 stderr=result.stderr or "",
                 exit_code=result.returncode,
             )
-            return r[m.Infra.Core.CommandOutput].ok(output)
+            return r[m.Infra.CommandOutput].ok(output)
         except subprocess.TimeoutExpired as exc:
             cmd_str = shlex.join(list(cmd))
-            return r[m.Infra.Core.CommandOutput].fail(
+            return r[m.Infra.CommandOutput].fail(
                 f"command timeout after {exc.timeout}s: {cmd_str}",
             )
         except (OSError, ValueError) as exc:
-            return r[m.Infra.Core.CommandOutput].fail(
+            return r[m.Infra.CommandOutput].fail(
                 f"command execution error: {exc}",
             )
 
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesSubprocess:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: Mapping[str, str] | None = None,
-    ) -> r[m.Infra.Core.CommandOutput]:
+    ) -> r[m.Infra.CommandOutput]:
         """Run a command and return structured output with zero-exit enforcement."""
         raw_result = FlextInfraUtilitiesSubprocess.run_raw(
             cmd,
@@ -81,17 +81,17 @@ class FlextInfraUtilitiesSubprocess:
             env=env,
         )
         if raw_result.is_failure:
-            return r[m.Infra.Core.CommandOutput].fail(
+            return r[m.Infra.CommandOutput].fail(
                 raw_result.error or "command execution error",
             )
         output = raw_result.value
         if output.exit_code != 0:
             cmd_str = shlex.join(list(cmd))
             detail = (output.stderr or output.stdout).strip()
-            return r[m.Infra.Core.CommandOutput].fail(
+            return r[m.Infra.CommandOutput].fail(
                 f"command failed ({output.exit_code}): {cmd_str}: {detail}",
             )
-        return r[m.Infra.Core.CommandOutput].ok(output)
+        return r[m.Infra.CommandOutput].ok(output)
 
     @staticmethod
     def run_checked(

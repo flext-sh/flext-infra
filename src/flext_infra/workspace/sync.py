@@ -22,7 +22,7 @@ from flext_infra._utilities.output import output
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
-class FlextInfraSyncService(s[m.Infra.Workspace.SyncResult]):
+class FlextInfraSyncService(s[m.Infra.SyncResult]):
     """Infrastructure service for workspace base.mk synchronization.
 
     Generates a fresh base.mk via ``FlextInfraBaseMkGenerator``, compares its SHA256
@@ -88,9 +88,9 @@ class FlextInfraSyncService(s[m.Infra.Workspace.SyncResult]):
         return hasher.hexdigest()
 
     @override
-    def execute(self) -> r[m.Infra.Workspace.SyncResult]:
+    def execute(self) -> r[m.Infra.SyncResult]:
         """Not used; call sync() directly instead."""
-        return r[m.Infra.Workspace.SyncResult].fail("Use sync() method directly")
+        return r[m.Infra.SyncResult].fail("Use sync() method directly")
 
     def sync(
         self,
@@ -98,9 +98,9 @@ class FlextInfraSyncService(s[m.Infra.Workspace.SyncResult]):
         _target: str | None = None,
         *,
         workspace_root: Path | None = None,
-        config: m.Infra.Basemk.BaseMkConfig | None = None,
+        config: m.Infra.BaseMkConfig | None = None,
         canonical_root: Path | None = None,
-    ) -> r[m.Infra.Workspace.SyncResult]:
+    ) -> r[m.Infra.SyncResult]:
         """Synchronize base.mk and .gitignore for a project.
 
         Copies base.mk from canonical root when available, otherwise
@@ -117,10 +117,10 @@ class FlextInfraSyncService(s[m.Infra.Workspace.SyncResult]):
 
         """
         if workspace_root is None:
-            return r[m.Infra.Workspace.SyncResult].fail("workspace_root is required")
+            return r[m.Infra.SyncResult].fail("workspace_root is required")
         resolved = workspace_root.resolve()
         if not resolved.is_dir():
-            return r[m.Infra.Workspace.SyncResult].fail(
+            return r[m.Infra.SyncResult].fail(
                 f"project root does not exist: {resolved}",
             )
         lock_path = resolved / ".sync.lock"
@@ -137,7 +137,7 @@ class FlextInfraSyncService(s[m.Infra.Workspace.SyncResult]):
                         canonical_root=effective_root,
                     )
                     if basemk_result.is_failure:
-                        return r[m.Infra.Workspace.SyncResult].fail(
+                        return r[m.Infra.SyncResult].fail(
                             basemk_result.error or "base.mk sync failed",
                         )
                     changed += 1 if basemk_result.value else 0
@@ -146,12 +146,12 @@ class FlextInfraSyncService(s[m.Infra.Workspace.SyncResult]):
                         c.Infra.Workspace.REQUIRED_GITIGNORE_ENTRIES,
                     )
                     if gitignore_result.is_failure:
-                        return r[m.Infra.Workspace.SyncResult].fail(
+                        return r[m.Infra.SyncResult].fail(
                             gitignore_result.error or ".gitignore sync failed",
                         )
                     changed += 1 if gitignore_result.value else 0
-                    return r[m.Infra.Workspace.SyncResult].ok(
-                        m.Infra.Workspace.SyncResult(
+                    return r[m.Infra.SyncResult].ok(
+                        m.Infra.SyncResult(
                             files_changed=changed,
                             source=resolved,
                             target=resolved,
@@ -160,7 +160,7 @@ class FlextInfraSyncService(s[m.Infra.Workspace.SyncResult]):
                 finally:
                     fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
         except OSError as exc:
-            return r[m.Infra.Workspace.SyncResult].fail(
+            return r[m.Infra.SyncResult].fail(
                 f"sync lock acquisition failed: {exc}",
             )
 
@@ -208,7 +208,7 @@ class FlextInfraSyncService(s[m.Infra.Workspace.SyncResult]):
     def _sync_basemk(
         self,
         workspace_root: Path,
-        config: m.Infra.Basemk.BaseMkConfig | None,
+        config: m.Infra.BaseMkConfig | None,
         *,
         canonical_root: Path | None = None,
     ) -> r[bool]:

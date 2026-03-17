@@ -12,7 +12,7 @@ from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 
 type RBool = r[bool]
 type RStr = r[str]
-type RCheckpoint = r[m.Infra.Refactor.Checkpoint]
+type RCheckpoint = r[m.Infra.Checkpoint]
 
 
 class FlextInfraRefactorSafetyManager:
@@ -152,7 +152,7 @@ class FlextInfraRefactorSafetyManager:
         out5: RBool = r[bool].ok(True)
         return out5
 
-    def save_checkpoint(self, checkpoint: m.Infra.Refactor.Checkpoint) -> RBool:
+    def save_checkpoint(self, checkpoint: m.Infra.Checkpoint) -> RBool:
         """Persist a checkpoint to disk as JSON."""
         payload = checkpoint.model_dump()
         payload["updated_at"] = u.generate_iso_timestamp()
@@ -171,7 +171,7 @@ class FlextInfraRefactorSafetyManager:
     ) -> RBool:
         """Build and persist a checkpoint from individual state components."""
         out: RBool = self.save_checkpoint(
-            m.Infra.Refactor.Checkpoint(
+            m.Infra.Checkpoint(
                 workspace_root=str(workspace_root),
                 status=status,
                 stash_ref=stash_ref,
@@ -183,19 +183,19 @@ class FlextInfraRefactorSafetyManager:
     def load_checkpoint(self) -> RCheckpoint:
         """Load a previously persisted checkpoint from disk."""
         if not self._checkpoint_path.exists():
-            out: RCheckpoint = r[m.Infra.Refactor.Checkpoint].fail(
+            out: RCheckpoint = r[m.Infra.Checkpoint].fail(
                 "checkpoint does not exist",
             )
             return out
         try:
             text = self._checkpoint_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            cp: m.Infra.Refactor.Checkpoint = (
-                m.Infra.Refactor.Checkpoint.model_validate_json(text)
+            cp: m.Infra.Checkpoint = (
+                m.Infra.Checkpoint.model_validate_json(text)
             )
-            out2: RCheckpoint = r[m.Infra.Refactor.Checkpoint].ok(cp)
+            out2: RCheckpoint = r[m.Infra.Checkpoint].ok(cp)
             return out2
         except (OSError, ValueError) as exc:
-            out3: RCheckpoint = r[m.Infra.Refactor.Checkpoint].fail(str(exc))
+            out3: RCheckpoint = r[m.Infra.Checkpoint].fail(str(exc))
             return out3
 
     def clear_checkpoint(self) -> RBool:

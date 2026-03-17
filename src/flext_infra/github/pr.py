@@ -47,7 +47,7 @@ class FlextInfraPrManager:
 
     def _run(
         self, command: list[str], repo_root: Path,
-    ) -> r[m.Infra.Core.CommandOutput]:
+    ) -> r[m.Infra.CommandOutput]:
         if self._runner is not None:
             return self._runner.run(command, cwd=repo_root)
         return u.Infra.run(command, cwd=repo_root)

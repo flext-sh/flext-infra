@@ -62,7 +62,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     @staticmethod
     def _parse_forbidden_rules(
         value: Sequence[JsonValue] | Sequence[Mapping[str, JsonValue]] | JsonValue,
-    ) -> list[m.Infra.Refactor.RuleConfigs.ImportModernizerRuleConfig]:
+    ) -> list[m.Infra.RuleConfigs.ImportModernizerRuleConfig]:
         try:
             raw_items = TypeAdapter(list[t.Infra.RuleConfig]).validate_python(value)
         except ValidationError:
@@ -76,7 +76,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         ]
         try:
             return TypeAdapter(
-                list[m.Infra.Refactor.RuleConfigs.ImportModernizerRuleConfig],
+                list[m.Infra.RuleConfigs.ImportModernizerRuleConfig],
             ).validate_python(normalized)
         except ValidationError:
             return []

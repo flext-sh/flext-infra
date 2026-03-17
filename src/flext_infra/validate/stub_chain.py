@@ -66,7 +66,7 @@ class FlextInfraStubSupplyChain:
         self,
         project_dir: Path,
         workspace_root: Path,
-    ) -> r[m.Infra.Core.StubAnalysisReport]:
+    ) -> r[m.Infra.StubAnalysisReport]:
         """Analyze a project for missing stubs and type packages.
 
         Runs mypy for hints and pyrefly for missing imports, then
@@ -90,16 +90,16 @@ class FlextInfraStubSupplyChain:
                 m for m in missing_imports if not self._is_internal(m, proj.name)
             ]
             unresolved = [m for m in external if not self._stub_exists(m, root)]
-            result = m.Infra.Core.StubAnalysisReport(
+            result = m.Infra.StubAnalysisReport(
                 project=proj.name,
                 mypy_hints=mypy_hints,
                 internal_missing=internal,
                 unresolved_missing=unresolved,
                 total_missing=len(missing_imports),
             )
-            return r[m.Infra.Core.StubAnalysisReport].ok(result)
+            return r[m.Infra.StubAnalysisReport].ok(result)
         except (OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.Core.StubAnalysisReport].fail(
+            return r[m.Infra.StubAnalysisReport].fail(
                 f"stub analysis failed for {project_dir.name}: {exc}",
             )
 
@@ -107,7 +107,7 @@ class FlextInfraStubSupplyChain:
         self,
         workspace_root: Path,
         project_dirs: list[Path] | None = None,
-    ) -> r[m.Infra.Core.ValidationReport]:
+    ) -> r[m.Infra.ValidationReport]:
         """Validate stub supply chain across projects.
 
         Args:
@@ -140,15 +140,15 @@ class FlextInfraStubSupplyChain:
                     )
             passed = len(violations) == 0
             summary = f"stub chain: {len(projects)} projects, {len(violations)} issues"
-            return r[m.Infra.Core.ValidationReport].ok(
-                m.Infra.Core.ValidationReport(
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
                     passed=passed,
                     violations=violations,
                     summary=summary,
                 ),
             )
         except (OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.Core.ValidationReport].fail(
+            return r[m.Infra.ValidationReport].fail(
                 f"stub validation failed: {exc}",
             )
 

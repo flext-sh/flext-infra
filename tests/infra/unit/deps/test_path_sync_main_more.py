@@ -15,8 +15,8 @@ def _workspace_root() -> Path:
     return FlextInfraDependencyPathSync.ROOT
 
 
-def _project(path: Path, name: str = "flext-core") -> m.Infra.Workspace.ProjectInfo:
-    return m.Infra.Workspace.ProjectInfo(
+def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
+    return m.Infra.ProjectInfo(
         path=path,
         name=name,
         stack="python",
@@ -44,8 +44,8 @@ def test_main_project_invalid_toml(
     def _discover_project(
         _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-        return r[list[m.Infra.Workspace.ProjectInfo]].ok([_project(project_dir)])
+    ) -> r[list[m.Infra.ProjectInfo]]:
+        return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(
@@ -65,8 +65,8 @@ def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     def _discover_project(
         _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-        return r[list[m.Infra.Workspace.ProjectInfo]].ok([_project(project_dir)])
+    ) -> r[list[m.Infra.ProjectInfo]]:
+        return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(
@@ -88,8 +88,8 @@ def test_main_project_non_string_name(
     def _discover_project(
         _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-        return r[list[m.Infra.Workspace.ProjectInfo]].ok([_project(project_dir)])
+    ) -> r[list[m.Infra.ProjectInfo]]:
+        return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(
@@ -104,8 +104,8 @@ def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def _discover_fail(
         _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-        return r[list[m.Infra.Workspace.ProjectInfo]].fail("discovery failed")
+    ) -> r[list[m.Infra.ProjectInfo]]:
+        return r[list[m.Infra.ProjectInfo]].fail("discovery failed")
 
     monkeypatch.setattr(
         "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
@@ -119,8 +119,8 @@ def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
     def _discover_none(
         _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-        return r[list[m.Infra.Workspace.ProjectInfo]].ok([])
+    ) -> r[list[m.Infra.ProjectInfo]]:
+        return r[list[m.Infra.ProjectInfo]].ok([])
 
     def _rewrite_ok(
         _self: FlextInfraDependencyPathSync,
@@ -162,8 +162,8 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     def _discover_none(
         _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-        return r[list[m.Infra.Workspace.ProjectInfo]].ok([])
+    ) -> r[list[m.Infra.ProjectInfo]]:
+        return r[list[m.Infra.ProjectInfo]].ok([])
 
     def _rewrite_changes(
         _self: FlextInfraDependencyPathSync,
@@ -196,8 +196,8 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     def _discover_none(
         _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
-    ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
-        return r[list[m.Infra.Workspace.ProjectInfo]].ok([])
+    ) -> r[list[m.Infra.ProjectInfo]]:
+        return r[list[m.Infra.ProjectInfo]].ok([])
 
     def _rewrite_changes(
         _self: FlextInfraDependencyPathSync,

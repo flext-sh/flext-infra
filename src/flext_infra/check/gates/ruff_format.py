@@ -27,7 +27,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         _ = ctx
         started = time.monotonic()
         check_dirs = self._existing_check_dirs(project_dir)
@@ -44,7 +44,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             ],
             project_dir,
         )
-        issues: list[m.Infra.Check.Issue] = []
+        issues: list[m.Infra.Issue] = []
         if self._result_exit_code(result) != 0 and result.stdout.strip():
             seen: set[str] = set()
             for line in result.stdout.strip().splitlines():
@@ -58,7 +58,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                         continue
                     seen.add(file_path)
                     issues.append(
-                        m.Infra.Check.Issue(
+                        m.Infra.Issue(
                             file=file_path,
                             line=0,
                             column=0,
@@ -73,7 +73,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                 ):
                     seen.add(path)
                     issues.append(
-                        m.Infra.Check.Issue(
+                        m.Infra.Issue(
                             file=path,
                             line=0,
                             column=0,
@@ -95,7 +95,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: FlextInfraGateContext,
-    ) -> m.Infra.Check.GateExecution:
+    ) -> m.Infra.GateExecution:
         _ = ctx
         started = time.monotonic()
         result = self._run(

@@ -25,65 +25,20 @@ from flext_infra.workspace._models import FlextInfraWorkspaceModels
 
 
 class FlextInfraModels(FlextModels):
-    """Pydantic model namespace for infrastructure services."""
-
-    class Infra:
-        """Infrastructure-domain models."""
-
-        # -- Workspace domain (via MRO) -------------------------------------------
-
-        class Workspace(FlextInfraWorkspaceModels):
-            """Workspace domain models via MRO."""
-
-        # -- Core domain (via MRO) ------------------------------------------------
-
-        class Core(FlextInfraCoreModels):
-            """Core domain models via MRO."""
-
-        # -- Basemk domain (via MRO) ----------------------------------------------
-
-        class Basemk(FlextInfraBasemkModels):
-            """Basemk domain models via MRO."""
-
-        # -- Release domain (via MRO) ---------------------------------------------
-
-        class Release(FlextInfraReleaseModels):
-            """Release domain models via MRO."""
-
-        # -- GitHub domain (via MRO) ----------------------------------------------
-
-        class Github(FlextInfraGithubModels):
-            """GitHub domain models via MRO."""
-
-        # -- Codegen domain (via MRO) ---------------------------------------------
-
-        class Codegen(FlextInfraCodegenModels):
-            """Codegen domain models via MRO."""
-
-        # -- Deps domain (via MRO) ------------------------------------------------
-
-        class Deps(FlextInfraDepsModels):
-            """Deps domain models via MRO."""
-
-        # -- Docs domain (via MRO) ------------------------------------------------
-
-        class Docs(FlextInfraDocsModels):
-            """Docs domain models via MRO."""
-
-        # -- Check domain (via MRO) -----------------------------------------------
-
-        class Check(FlextInfraCheckModels):
-            """Check domain models via MRO."""
-
-        # -- Refactor domain (via MRO) --------------------------------------------
-
-        class Refactor(FlextInfraRefactorModels):
-            """Refactor domain models via MRO."""
-
-        # -- Shared utilities domain (via MRO) ------------------------------------
-
-        class Utilities(FlextInfraUtilitiesModels):
-            """Shared utilities domain models via MRO."""
+    class Infra(
+        FlextInfraUtilitiesModels,
+        FlextInfraBasemkModels,
+        FlextInfraCheckModels,
+        FlextInfraCodegenModels,
+        FlextInfraDepsModels,
+        FlextInfraDocsModels,
+        FlextInfraGithubModels,
+        FlextInfraRefactorModels,
+        FlextInfraReleaseModels,
+        FlextInfraCoreModels,
+        FlextInfraWorkspaceModels,
+    ):
+        pass
 
 
 m = FlextInfraModels

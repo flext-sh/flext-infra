@@ -19,16 +19,16 @@ from tests.infra import m
 
 
 class _RunnerStub:
-    def __init__(self, output: m.Infra.Core.CommandOutput) -> None:
+    def __init__(self, output: m.Infra.CommandOutput) -> None:
         self._output = output
 
     def run_raw(
         self,
         command: list[str],
         cwd: Path,
-    ) -> r[m.Infra.Core.CommandOutput]:
+    ) -> r[m.Infra.CommandOutput]:
         _ = command, cwd
-        return r[m.Infra.Core.CommandOutput].ok(self._output)
+        return r[m.Infra.CommandOutput].ok(self._output)
 
 
 class TestBuilderScope:
@@ -95,7 +95,7 @@ class TestBuilderScope:
             name="test", path=tmp_path, report_dir=tmp_path / "reports",
         )
         mock_output = SimpleNamespace(exit_code=0, stdout="Build successful", stderr="")
-        command_output = m.Infra.Core.CommandOutput(
+        command_output = m.Infra.CommandOutput(
             exit_code=mock_output.exit_code,
             stdout=mock_output.stdout,
             stderr=mock_output.stderr,

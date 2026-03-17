@@ -19,8 +19,8 @@ from ...models import m
 
 def _run_stub(
     stdout: str = "", stderr: str = "", returncode: int = 0,
-) -> m.Infra.Core.CommandOutput:
-    return m.Infra.Core.CommandOutput(
+) -> m.Infra.CommandOutput:
+    return m.Infra.CommandOutput(
         stdout=stdout, stderr=stderr, exit_code=returncode,
     )
 
@@ -51,7 +51,7 @@ class TestWorkspaceCheckerRunBandit:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
             return _run_stub(stdout=json_output, returncode=1)
 
@@ -73,7 +73,7 @@ class TestWorkspaceCheckerRunBandit:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
             return _run_stub(stdout="invalid json", returncode=1)
 
@@ -104,7 +104,7 @@ class TestWorkspaceCheckerRunMarkdown:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
             return _run_stub(
                 stdout="README.md:1:1 error MD001 Heading level",
@@ -132,7 +132,7 @@ class TestWorkspaceCheckerRunMarkdown:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cwd, _timeout, _env
             captured_args.append(cmd)
             return _run_stub()
@@ -155,7 +155,7 @@ class TestWorkspaceCheckerRunMarkdown:
             _cwd: Path,
             _timeout: int = 120,
             _env: dict[str, str] | None = None,
-        ) -> m.Infra.Core.CommandOutput:
+        ) -> m.Infra.CommandOutput:
             del _cmd, _cwd, _timeout, _env
             return _run_stub(stderr="markdownlint failed", returncode=1)
 

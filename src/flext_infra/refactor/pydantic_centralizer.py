@@ -100,7 +100,7 @@ class FlextInfraRefactorPydanticCentralizer:
         return updated
 
     @staticmethod
-    def _alias_as_root_model(alias_move: m.Infra.Refactor.AliasMove) -> str:
+    def _alias_as_root_model(alias_move: m.Infra.AliasMove) -> str:
         return (
             f"class {alias_move.name}(RootModel[{alias_move.alias_expr}]):\n    pass\n"
         )
@@ -117,9 +117,9 @@ class FlextInfraRefactorPydanticCentralizer:
 
     @staticmethod
     def _filter_moves_for_necessity(
-        class_moves: list[m.Infra.Refactor.ClassMove],
-        alias_moves: list[m.Infra.Refactor.AliasMove],
-    ) -> tuple[list[m.Infra.Refactor.ClassMove], list[m.Infra.Refactor.AliasMove]]:
+        class_moves: list[m.Infra.ClassMove],
+        alias_moves: list[m.Infra.AliasMove],
+    ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]]:
         filtered_classes = [
             move
             for move in class_moves
@@ -147,7 +147,7 @@ class FlextInfraRefactorPydanticCentralizer:
         created_typings_files = 0
         skipped_nonpackage_apply = 0
         skipped_non_necessary_apply = 0
-        failure_stats = m.Infra.Refactor.CentralizerFailureStats()
+        failure_stats = m.Infra.CentralizerFailureStats()
         files_result = u.Infra.iter_python_files(workspace_root=workspace_root)
         if files_result.is_failure:
             return {

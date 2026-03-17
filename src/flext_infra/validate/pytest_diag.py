@@ -163,7 +163,7 @@ class FlextInfraPytestDiagExtractor:
         self,
         junit_path: Path,
         log_path: Path,
-    ) -> r[m.Infra.Core.PytestDiagnostics]:
+    ) -> r[m.Infra.PytestDiagnostics]:
         """Extract diagnostics from JUnit XML and pytest log.
 
         Args:
@@ -188,7 +188,7 @@ class FlextInfraPytestDiagExtractor:
             self._extract_warnings(lines, diag)
             if not diag.slow_entries:
                 self._extract_slow_from_log(lines, diag)
-            result = m.Infra.Core.PytestDiagnostics(
+            result = m.Infra.PytestDiagnostics(
                 failed_count=len(diag.failed_cases),
                 error_count=len(diag.error_traces),
                 warning_count=len(diag.warning_lines),
@@ -199,9 +199,9 @@ class FlextInfraPytestDiagExtractor:
                 skip_cases=diag.skip_cases,
                 slow_entries=diag.slow_entries,
             )
-            return r[m.Infra.Core.PytestDiagnostics].ok(result)
+            return r[m.Infra.PytestDiagnostics].ok(result)
         except (OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.Core.PytestDiagnostics].fail(
+            return r[m.Infra.PytestDiagnostics].fail(
                 f"pytest diagnostics extraction failed: {exc}",
             )
 

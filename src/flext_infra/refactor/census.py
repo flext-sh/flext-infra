@@ -23,19 +23,19 @@ from flext_infra import (
 )
 from flext_infra.refactor.output import FlextInfraRefactorOutputRenderer
 
-type RCensusReport = r[m.Infra.Refactor.CensusReport]
+type RCensusReport = r[m.Infra.CensusReport]
 
 
 class FlextInfraRefactorCensus:
     """Census execution engine resolving family usage patterns."""
 
     @staticmethod
-    def render_text(report: m.Infra.Refactor.CensusReport) -> str:
+    def render_text(report: m.Infra.CensusReport) -> str:
         """Render the census report cleanly."""
         return FlextInfraRefactorOutputRenderer.render_census_report(report)
 
     def run(
-        self, root: Path, *, target: m.Infra.Refactor.MROFamilyTarget | None = None,
+        self, root: Path, *, target: m.Infra.MROFamilyTarget | None = None,
     ) -> RCensusReport:
         """Execute the workspace census."""
         target = target or u.Infra.build_mro_target(
@@ -66,7 +66,7 @@ class FlextInfraRefactorCensus:
         )
         methods = {
             cls: [
-                m.Infra.Refactor.CensusMethodInfo(name=n, method_type=t, source_file=s)
+                m.Infra.CensusMethodInfo(name=n, method_type=t, source_file=s)
                 for n, t, s in lst
             ]
             for cls, lst in parsed.items()
@@ -83,14 +83,14 @@ class FlextInfraRefactorCensus:
             exclude_packages=frozenset({target.core_project}),
         )
         if files_result.is_failure:
-            return r[m.Infra.Refactor.CensusReport].fail(
+            return r[m.Infra.CensusReport].fail(
                 f"Failed to discover files: {files_result.error}",
             )
         modules = files_result.value
         files = [file_path for _, file_path in modules]
         roots = [project_root for project_root, _ in modules]
 
-        recs: list[m.Infra.Refactor.CensusUsageRecord] = []
+        recs: list[m.Infra.CensusUsageRecord] = []
         errs = usage = 0
         for i, fp in enumerate(files, 1):
             if i % 500 == 0:
@@ -131,7 +131,7 @@ class FlextInfraRefactorCensus:
             skipped=errs,
             elapsed=time.monotonic() - t0,
         )
-        return r[m.Infra.Refactor.CensusReport].ok(rep)
+        return r[m.Infra.CensusReport].ok(rep)
 
 
 __all__ = ["FlextInfraRefactorCensus"]

@@ -19,8 +19,8 @@ def _cli(workspace: Path) -> FlextInfraUtilitiesCli.CliArgs:
     return FlextInfraUtilitiesCli.CliArgs(workspace=workspace)
 
 
-def _cmd_out(code: int) -> m.Infra.Core.CommandOutput:
-    return m.Infra.Core.CommandOutput(
+def _cmd_out(code: int) -> m.Infra.CommandOutput:
+    return m.Infra.CommandOutput(
         stdout="", stderr="", exit_code=code, duration=0.0,
     )
 
@@ -56,8 +56,8 @@ class TestRunSync:
         ("result", "expected"),
         [
             (
-                r[m.Infra.Workspace.SyncResult].ok(
-                    m.Infra.Workspace.SyncResult(
+                r[m.Infra.SyncResult].ok(
+                    m.Infra.SyncResult(
                         files_changed=1,
                         source=Path(),
                         target=Path(),
@@ -65,14 +65,14 @@ class TestRunSync:
                 ),
                 0,
             ),
-            (r[m.Infra.Workspace.SyncResult].fail("Sync failed"), 1),
+            (r[m.Infra.SyncResult].fail("Sync failed"), 1),
         ],
     )
     def test_sync(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        result: r[m.Infra.Workspace.SyncResult],
+        result: r[m.Infra.SyncResult],
         expected: int,
     ) -> None:
         def _sync_stub(
@@ -81,9 +81,9 @@ class TestRunSync:
             _target: str | None = None,
             *,
             workspace_root: Path | None = None,
-            config: m.Infra.Basemk.BaseMkConfig | None = None,
+            config: m.Infra.BaseMkConfig | None = None,
             canonical_root: Path | None = None,
-        ) -> r[m.Infra.Workspace.SyncResult]:
+        ) -> r[m.Infra.SyncResult]:
             del _self, _source, _target, workspace_root, config, canonical_root
             return result
 
@@ -99,9 +99,9 @@ class TestRunOrchestrate:
             verb: str,
             fail_fast: bool = False,
             make_args: list[str] | None = None,
-        ) -> r[list[m.Infra.Core.CommandOutput]]:
+        ) -> r[list[m.Infra.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
-            return r[list[m.Infra.Core.CommandOutput]].ok([_cmd_out(0), _cmd_out(0)])
+            return r[list[m.Infra.CommandOutput]].ok([_cmd_out(0), _cmd_out(0)])
 
         monkeypatch.setattr(
             FlextInfraOrchestratorService,
@@ -136,9 +136,9 @@ class TestRunOrchestrate:
             verb: str,
             fail_fast: bool = False,
             make_args: list[str] | None = None,
-        ) -> r[list[m.Infra.Core.CommandOutput]]:
+        ) -> r[list[m.Infra.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
-            return r[list[m.Infra.Core.CommandOutput]].ok([_cmd_out(0), _cmd_out(1)])
+            return r[list[m.Infra.CommandOutput]].ok([_cmd_out(0), _cmd_out(1)])
 
         monkeypatch.setattr(
             FlextInfraOrchestratorService,
@@ -162,9 +162,9 @@ class TestRunOrchestrate:
             verb: str,
             fail_fast: bool = False,
             make_args: list[str] | None = None,
-        ) -> r[list[m.Infra.Core.CommandOutput]]:
+        ) -> r[list[m.Infra.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
-            return r[list[m.Infra.Core.CommandOutput]].fail("Orchestration failed")
+            return r[list[m.Infra.CommandOutput]].fail("Orchestration failed")
 
         monkeypatch.setattr(
             FlextInfraOrchestratorService,
@@ -187,28 +187,28 @@ class TestRunMigrate:
         ("result", "expected"),
         [
             (
-                r[list[m.Infra.Workspace.MigrationResult]].ok([
-                    m.Infra.Workspace.MigrationResult(
+                r[list[m.Infra.MigrationResult]].ok([
+                    m.Infra.MigrationResult(
                         project="test", errors=[], changes=[],
                     ),
                 ]),
                 0,
             ),
-            (r[list[m.Infra.Workspace.MigrationResult]].fail("Migration failed"), 1),
+            (r[list[m.Infra.MigrationResult]].fail("Migration failed"), 1),
         ],
     )
     def test_success_or_failure(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        result: r[list[m.Infra.Workspace.MigrationResult]],
+        result: r[list[m.Infra.MigrationResult]],
         expected: int,
     ) -> None:
         def _migrate_stub(
             _self: FlextInfraProjectMigrator,
             workspace_root: Path,
             dry_run: bool,
-        ) -> r[list[m.Infra.Workspace.MigrationResult]]:
+        ) -> r[list[m.Infra.MigrationResult]]:
             del _self, workspace_root, dry_run
             return result
 
@@ -225,20 +225,20 @@ class TestRunMigrate:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        mrs: list[m.Infra.Workspace.MigrationResult] = [
-            m.Infra.Workspace.MigrationResult(
+        mrs: list[m.Infra.MigrationResult] = [
+            m.Infra.MigrationResult(
                 project="p1", errors=["Error 1"], changes=[],
             ),
-            m.Infra.Workspace.MigrationResult(project="p2", errors=[], changes=[]),
+            m.Infra.MigrationResult(project="p2", errors=[], changes=[]),
         ]
 
         def _migrate_with_errors(
             _self: FlextInfraProjectMigrator,
             workspace_root: Path,
             dry_run: bool,
-        ) -> r[list[m.Infra.Workspace.MigrationResult]]:
+        ) -> r[list[m.Infra.MigrationResult]]:
             del _self, workspace_root, dry_run
-            return r[list[m.Infra.Workspace.MigrationResult]].ok(mrs)
+            return r[list[m.Infra.MigrationResult]].ok(mrs)
 
         monkeypatch.setattr(
             FlextInfraProjectMigrator,

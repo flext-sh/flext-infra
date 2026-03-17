@@ -23,7 +23,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
         """Initialize with rule order config and optional change callback."""
         try:
             self._order_config = TypeAdapter(
-                list[m.Infra.Refactor.RuleConfigs.MethodOrderRule],
+                list[m.Infra.RuleConfigs.MethodOrderRule],
             ).validate_python(order_config)
         except ValidationError:
             self._order_config = []
@@ -57,7 +57,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
             ):
                 block_end += 1
             method_indices = list(range(block_start, block_end))
-            methods: list[m.Infra.Refactor.MethodInfo] = []
+            methods: list[m.Infra.MethodInfo] = []
             for idx in method_indices:
                 block_item = body[idx]
                 if isinstance(block_item, cst.FunctionDef):
@@ -80,7 +80,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
             body=updated_node.body.with_changes(body=new_body),
         )
 
-    def _analyze_method(self, node: cst.FunctionDef) -> m.Infra.Refactor.MethodInfo:
+    def _analyze_method(self, node: cst.FunctionDef) -> m.Infra.MethodInfo:
         name = node.name.value
         decorators: list[str] = []
         for dec in node.decorators:
@@ -89,7 +89,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
             elif isinstance(dec.decorator, cst.Attribute):
                 decorators.append(dec.decorator.attr.value)
         category = self._categorize(name, decorators)
-        return m.Infra.Refactor.MethodInfo(
+        return m.Infra.MethodInfo(
             name=name,
             category=category,
             node=node,
@@ -121,12 +121,12 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
 
     def _sort_methods(
         self,
-        methods: list[m.Infra.Refactor.MethodInfo],
-    ) -> list[m.Infra.Refactor.MethodInfo]:
+        methods: list[m.Infra.MethodInfo],
+    ) -> list[m.Infra.MethodInfo]:
 
         def matches_rule(
-            method: m.Infra.Refactor.MethodInfo,
-            rule_config: m.Infra.Refactor.RuleConfigs.MethodOrderRule,
+            method: m.Infra.MethodInfo,
+            rule_config: m.Infra.RuleConfigs.MethodOrderRule,
         ) -> bool:
             decorators = set(method.decorators)
             exclude_decorators = set(rule_config.exclude_decorators)
@@ -156,7 +156,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
                     return False
             return True
 
-        def sort_key(method: m.Infra.Refactor.MethodInfo) -> tuple[int, int, str]:
+        def sort_key(method: m.Infra.MethodInfo) -> tuple[int, int, str]:
             for idx, rule_config in enumerate(self._order_config):
                 if rule_config.category == "class_attributes":
                     continue

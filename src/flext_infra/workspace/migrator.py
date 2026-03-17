@@ -110,14 +110,14 @@ class FlextInfraProjectMigrator(s):
     @staticmethod
     def _workspace_root_project(
         workspace_root: Path,
-    ) -> m.Infra.Workspace.ProjectInfo | None:
+    ) -> m.Infra.ProjectInfo | None:
         """Detect workspace root as a project if it has Makefile, pyproject.toml, and .git."""
         has_makefile = (workspace_root / c.Infra.Files.MAKEFILE_FILENAME).is_file()
         has_pyproject = (workspace_root / c.Infra.Files.PYPROJECT_FILENAME).is_file()
         has_git = (workspace_root / c.Infra.Git.DIR).exists()
         if not (has_makefile and has_pyproject and has_git):
             return None
-        return m.Infra.Workspace.ProjectInfo(
+        return m.Infra.ProjectInfo(
             name=workspace_root.name,
             path=workspace_root,
             stack="python/workspace",
@@ -140,11 +140,11 @@ class FlextInfraProjectMigrator(s):
         *,
         workspace_root: Path,
         dry_run: bool = False,
-    ) -> r[list[m.Infra.Workspace.MigrationResult]]:
+    ) -> r[list[m.Infra.MigrationResult]]:
         """Migrate all projects in workspace."""
         root = workspace_root.resolve()
         if not root.is_dir():
-            return r[list[m.Infra.Workspace.MigrationResult]].fail(
+            return r[list[m.Infra.MigrationResult]].fail(
                 f"workspace root does not exist: {root}",
             )
         if self._discovery is not None:
@@ -152,21 +152,21 @@ class FlextInfraProjectMigrator(s):
         else:
             discovered = u.Infra.discover_projects(root)
         if discovered.is_failure:
-            return r[list[m.Infra.Workspace.MigrationResult]].fail(
+            return r[list[m.Infra.MigrationResult]].fail(
                 discovered.error or "project discovery failed",
             )
-        discovered_projects: list[m.Infra.Workspace.ProjectInfo] = discovered.value
+        discovered_projects: list[m.Infra.ProjectInfo] = discovered.value
         projects = list(discovered_projects)
         workspace_project = self._workspace_root_project(root)
         if workspace_project is not None and all(
             existing.path != workspace_project.path for existing in projects
         ):
             projects.append(workspace_project)
-        results: list[m.Infra.Workspace.MigrationResult] = [
+        results: list[m.Infra.MigrationResult] = [
             self._migrate_project(project=project, dry_run=dry_run)
             for project in projects
         ]
-        return r[list[m.Infra.Workspace.MigrationResult]].ok(results)
+        return r[list[m.Infra.MigrationResult]].ok(results)
 
     def _migrate_basemk(self, project_root: Path, *, dry_run: bool) -> r[str]:
         generated = self._generator.generate()
@@ -278,7 +278,7 @@ class FlextInfraProjectMigrator(s):
         *,
         project: p.Infra.ProjectInfo,
         dry_run: bool,
-    ) -> m.Infra.Workspace.MigrationResult:
+    ) -> m.Infra.MigrationResult:
         changes: list[str] = []
         errors: list[str] = []
         self._append_result(
@@ -307,7 +307,7 @@ class FlextInfraProjectMigrator(s):
         )
         if not changes and (not errors):
             changes.append("no changes needed")
-        return m.Infra.Workspace.MigrationResult(
+        return m.Infra.MigrationResult(
             project=project.name,
             changes=changes,
             errors=errors,

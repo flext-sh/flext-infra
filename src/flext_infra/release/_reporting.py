@@ -19,7 +19,7 @@ class FlextInfraReleaseReporting:
     def generate_notes(
         version: str,
         tag: str,
-        project_list: list[m.Infra.Workspace.ProjectInfo],
+        project_list: list[m.Infra.ProjectInfo],
         changes: str,
         output_path: Path,
     ) -> r[bool]:

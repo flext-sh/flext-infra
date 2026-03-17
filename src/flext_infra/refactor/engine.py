@@ -68,14 +68,14 @@ class FlextInfraRefactorEngine:
 
     @staticmethod
     def build_impact_map(
-        results: list[m.Infra.Refactor.Result],
+        results: list[m.Infra.Result],
     ) -> list[dict[str, str]]:
         """Build a normalized impact-map payload from refactor results."""
         return FlextInfraRefactorCliSupport.build_impact_map(results)
 
     @staticmethod
     def write_impact_map(
-        results: list[m.Infra.Refactor.Result],
+        results: list[m.Infra.Result],
         output_path: Path,
     ) -> bool:
         """Write the impact-map payload to the target output path."""
@@ -195,11 +195,11 @@ class FlextInfraRefactorEngine:
         file_path: Path,
         *,
         dry_run: bool = False,
-    ) -> m.Infra.Refactor.Result:
+    ) -> m.Infra.Result:
         """Refactor one file with currently loaded rules."""
         try:
             if file_path.suffix != c.Infra.Extensions.PYTHON:
-                return m.Infra.Refactor.Result(
+                return m.Infra.Result(
                     file_path=file_path,
                     success=True,
                     modified=False,
@@ -213,7 +213,7 @@ class FlextInfraRefactorEngine:
             for file_rule in self.file_rules:
                 file_rule_result = file_rule.apply(file_path, dry_run=True)
                 if not file_rule_result.success:
-                    return m.Infra.Refactor.Result(
+                    return m.Infra.Result(
                         file_path=file_path,
                         success=False,
                         modified=False,
@@ -227,7 +227,7 @@ class FlextInfraRefactorEngine:
                 all_changes.extend(file_rule_result.changes)
             tree = u.Infra.parse_cst_from_source(source)
             if tree is None:
-                return m.Infra.Refactor.Result(
+                return m.Infra.Result(
                     file_path=file_path,
                     success=False,
                     modified=False,
@@ -243,7 +243,7 @@ class FlextInfraRefactorEngine:
             modified = file_rule_modified or result_code != original_source
             if not dry_run and modified:
                 u.write_file(file_path, result_code, encoding=c.Infra.Encoding.DEFAULT)
-            return m.Infra.Refactor.Result(
+            return m.Infra.Result(
                 file_path=file_path,
                 success=True,
                 modified=modified,
@@ -251,7 +251,7 @@ class FlextInfraRefactorEngine:
                 refactored_code=result_code,
             )
         except Exception as exc:
-            return m.Infra.Refactor.Result(
+            return m.Infra.Result(
                 file_path=file_path,
                 success=False,
                 modified=False,
@@ -265,16 +265,16 @@ class FlextInfraRefactorEngine:
         file_paths: list[Path],
         *,
         dry_run: bool = False,
-    ) -> list[m.Infra.Refactor.Result]:
+    ) -> list[m.Infra.Result]:
         """Refactor many files and collect individual results."""
-        results: list[m.Infra.Refactor.Result] = []
+        results: list[m.Infra.Result] = []
         for file_path in file_paths:
             if file_path.suffix != c.Infra.Extensions.PYTHON:
                 FlextInfraRefactorCliSupport.info(
                     f"Skipped non-Python file: {file_path.name}",
                 )
                 results.append(
-                    m.Infra.Refactor.Result(
+                    m.Infra.Result(
                         file_path=file_path,
                         success=True,
                         modified=False,
@@ -307,7 +307,7 @@ class FlextInfraRefactorEngine:
         dry_run: bool = False,
         pattern: str = c.Infra.Extensions.PYTHON_GLOB,
         apply_safety: bool = True,
-    ) -> list[m.Infra.Refactor.Result]:
+    ) -> list[m.Infra.Result]:
         """Refactor files under configured project directories matching the pattern."""
         stash_ref = ""
         if apply_safety and (not dry_run):
@@ -318,7 +318,7 @@ class FlextInfraRefactorEngine:
                 error_msg = stash_result.error or "pre-transformation stash failed"
                 FlextInfraRefactorCliSupport.error(error_msg)
                 return [
-                    m.Infra.Refactor.Result(
+                    m.Infra.Result(
                         file_path=project_path,
                         success=False,
                         modified=False,
@@ -341,7 +341,7 @@ class FlextInfraRefactorEngine:
             error_msg = iter_result.error or f"File iteration failed for {project_path}"
             FlextInfraRefactorCliSupport.error(error_msg)
             return [
-                m.Infra.Refactor.Result(
+                m.Infra.Result(
                     file_path=project_path,
                     success=False,
                     modified=False,
@@ -401,7 +401,7 @@ class FlextInfraRefactorEngine:
                         rollback_result.error or "rollback failed",
                     )
                 results.append(
-                    m.Infra.Refactor.Result(
+                    m.Infra.Result(
                         file_path=project_path,
                         success=False,
                         modified=False,
@@ -425,7 +425,7 @@ class FlextInfraRefactorEngine:
         dry_run: bool = False,
         pattern: str = c.Infra.Extensions.PYTHON_GLOB,
         apply_safety: bool = True,
-    ) -> list[m.Infra.Refactor.Result]:
+    ) -> list[m.Infra.Result]:
         """Refactor all discoverable workspace projects with one command."""
         root = workspace_root.resolve()
         if not root.exists() or not root.is_dir():
@@ -446,7 +446,7 @@ class FlextInfraRefactorEngine:
         FlextInfraRefactorCliSupport.info(
             f"Discovered {len(project_paths)} projects in workspace",
         )
-        results: list[m.Infra.Refactor.Result] = []
+        results: list[m.Infra.Result] = []
         processed_targets: list[str] = []
         stash_ref = ""
         if apply_safety and (not dry_run):
@@ -455,7 +455,7 @@ class FlextInfraRefactorEngine:
                 error_msg = stash_result.error or "pre-transformation stash failed"
                 FlextInfraRefactorCliSupport.error(error_msg)
                 return [
-                    m.Infra.Refactor.Result(
+                    m.Infra.Result(
                         file_path=root,
                         success=False,
                         modified=False,
@@ -500,7 +500,7 @@ class FlextInfraRefactorEngine:
                         rollback_result.error or "rollback failed",
                     )
                 results.append(
-                    m.Infra.Refactor.Result(
+                    m.Infra.Result(
                         file_path=root,
                         success=False,
                         modified=False,

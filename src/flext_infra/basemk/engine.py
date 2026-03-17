@@ -19,7 +19,7 @@ from flext_infra import c, m
 
 class _TemplateRenderer(Protocol):
     def render(
-        self, *, config: m.Infra.Basemk.BaseMkConfig, lint_gates_csv: str,
+        self, *, config: m.Infra.BaseMkConfig, lint_gates_csv: str,
     ) -> str: ...
 
 
@@ -52,14 +52,14 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         )
 
     @classmethod
-    def default_config(cls) -> m.Infra.Basemk.BaseMkConfig:
+    def default_config(cls) -> m.Infra.BaseMkConfig:
         """Return the default base.mk configuration."""
         return cls._default_config()
 
     @staticmethod
-    def _default_config() -> m.Infra.Basemk.BaseMkConfig:
+    def _default_config() -> m.Infra.BaseMkConfig:
         """Return the default base.mk configuration."""
-        return m.Infra.Basemk.BaseMkConfig(
+        return m.Infra.BaseMkConfig(
             project_name=c.Infra.Defaults.UNNAMED,
             python_version="3.13",
             core_stack=c.Infra.Toml.PYTHON,
@@ -79,7 +79,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     @staticmethod
     def _render_template(
         template: _TemplateRenderer,
-        config: m.Infra.Basemk.BaseMkConfig,
+        config: m.Infra.BaseMkConfig,
         lint_gates_csv: str,
     ) -> str:
         return template.render(config=config, lint_gates_csv=lint_gates_csv)
@@ -88,7 +88,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     def execute(self) -> r[str]:
         return self.render_all()
 
-    def render_all(self, config: m.Infra.Basemk.BaseMkConfig | None = None) -> r[str]:
+    def render_all(self, config: m.Infra.BaseMkConfig | None = None) -> r[str]:
         """Render all base.mk templates in order with the given configuration."""
         active_config = config or self._default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
