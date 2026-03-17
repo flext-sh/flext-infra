@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+try:
+    from flext_infra.refactor.dependency_analyzer import MROCompletenessDetector
+except ImportError as exc:
+    pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
+
+
+def _write_models_project(
+    *,
+    tmp_path: Path,
+    facade_bases: str,
+    candidate_class: str,
+) -> Path:
+    project_root = tmp_path / "flext-example"
+    package_dir = project_root / "src" / "flext_example"
+    package_dir.mkdir(parents=True)
+    (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    (package_dir / "models.py").write_text(
+        "from __future__ import annotations\n"
+        "class FlextExampleModelsBase:\n"
+        "    pass\n\n"
+        f"class FlextExampleModels({facade_bases}):\n"
+        "    pass\n\n"
+        "m = FlextExampleModels\n",
+        encoding="utf-8",
+    )
+    models_dir = package_dir / "_models"
+    models_dir.mkdir(parents=True)
+    (models_dir / "domain.py").write_text(
+        f"from __future__ import annotations\nclass {candidate_class}:\n    pass\n",
+        encoding="utf-8",
+    )
+    return package_dir / "models.py"
+
+
+def test_detects_missing_local_composition_base(tmp_path: Path) -> None:
+    facade_file = _write_models_project(
+        tmp_path=tmp_path,
+        facade_bases="FlextExampleModelsBase",
+        candidate_class="FlextExampleModelsDomain",
+    )
+
+    violations = MROCompletenessDetector.detect_file(file_path=facade_file)
+
+    assert len(violations) == 1
+    assert violations[0].facade_class == "FlextExampleModels"
+    assert violations[0].missing_base == "FlextExampleModelsDomain"
+    assert violations[0].family == "m"
+
+
+def test_skips_when_candidate_is_already_in_facade_bases(tmp_path: Path) -> None:
+    facade_file = _write_models_project(
+        tmp_path=tmp_path,
+        facade_bases="FlextExampleModelsBase, FlextExampleModelsDomain",
+        candidate_class="FlextExampleModelsDomain",
+    )
+
+    violations = MROCompletenessDetector.detect_file(file_path=facade_file)
+
+    assert violations == []
+
+
+def test_skips_non_facade_files(tmp_path: Path) -> None:
+    target = tmp_path / "consumer.py"
+    target.write_text("from __future__ import annotations\n", encoding="utf-8")
+
+    violations = MROCompletenessDetector.detect_file(file_path=target)
+
+    assert violations == []
+
+
+def test_skips_private_candidate_classes(tmp_path: Path) -> None:
+    facade_file = _write_models_project(
+        tmp_path=tmp_path,
+        facade_bases="FlextExampleModelsBase",
+        candidate_class="_FlextExampleModelsDomain",
+    )
+
+    violations = MROCompletenessDetector.detect_file(file_path=facade_file)
+
+    assert violations == []
