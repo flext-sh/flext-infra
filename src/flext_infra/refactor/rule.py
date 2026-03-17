@@ -11,8 +11,8 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import c, m, t, u
 from flext_infra.refactor._base_rule import FlextInfraRefactorRule
-from flext_infra.refactor.rules.class_nesting import ClassNestingRefactorRule
 from flext_infra.refactor.validation import FlextInfraRefactorRuleDefinitionValidator
+from flext_infra.rules.class_nesting import ClassNestingRefactorRule
 
 
 class FlextInfraRefactorRuleLoader:

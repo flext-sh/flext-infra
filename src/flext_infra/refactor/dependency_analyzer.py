@@ -522,6 +522,19 @@ class ImportAliasDetector(p.Infra.Scanner):
         "flext_core": "from flext_core import c, m, r, t, u, p",
         "flext_infra": "from flext_infra import c, m, t, u, p",
     }
+    RUNTIME_ALIAS_NAMES: ClassVar[frozenset[str]] = frozenset({
+        "c",
+        "m",
+        "r",
+        "t",
+        "u",
+        "p",
+        "d",
+        "e",
+        "h",
+        "s",
+        "x",
+    })
 
     def __init__(
         self,
@@ -590,6 +603,19 @@ class ImportAliasDetector(p.Infra.Scanner):
                 continue
             for prefix, suggestion in cls.ALIAS_MODULES.items():
                 if stmt.module.startswith(prefix + "."):
+                    if "._" in stmt.module:
+                        continue
+                    if any(alias.name == "*" for alias in stmt.names):
+                        continue
+                    if any(alias.asname is not None for alias in stmt.names):
+                        continue
+                    imported_names = [alias.name for alias in stmt.names]
+                    if len(imported_names) == 0:
+                        continue
+                    if not all(
+                        name in cls.RUNTIME_ALIAS_NAMES for name in imported_names
+                    ):
+                        continue
                     import_names = (
                         ", ".join(
                             alias.name for alias in stmt.names if alias.name != "*"

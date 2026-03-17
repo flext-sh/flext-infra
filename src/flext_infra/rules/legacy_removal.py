@@ -10,14 +10,14 @@ import libcst as cst
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, t
-from flext_infra.refactor.rule import FlextInfraRefactorRule
-from flext_infra.refactor.transformers.alias_remover import (
+from flext_infra.refactor._base_rule import FlextInfraRefactorRule
+from flext_infra.transformers.alias_remover import (
     FlextInfraRefactorAliasRemover,
 )
-from flext_infra.refactor.transformers.deprecated_remover import (
+from flext_infra.transformers.deprecated_remover import (
     FlextInfraRefactorDeprecatedRemover,
 )
-from flext_infra.refactor.transformers.import_bypass_remover import (
+from flext_infra.transformers.import_bypass_remover import (
     FlextInfraRefactorImportBypassRemover,
 )
 

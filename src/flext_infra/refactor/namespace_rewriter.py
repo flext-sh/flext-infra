@@ -127,12 +127,27 @@ class NamespaceEnforcementRewriter:
     def rewrite_import_alias_violations(*, py_files: list[Path]) -> None:
         """Rewrite deep import aliases to use facade shortcuts."""
         deep_import_re = re.compile(
-            r"^(\s*)from\s+(flext_core|flext_infra)\.\S+\s+import\s+.+$",
+            r"^(\s*)from\s+(flext_core|flext_infra)(\.\S+)\s+import\s+(.+)$",
         )
         alias_map: dict[str, str] = {
             "flext_core": "from flext_core import c, m, r, t, u, p",
             "flext_infra": "from flext_infra import c, m, t, u, p",
         }
+        runtime_alias_names = {"c", "m", "r", "t", "u", "p", "d", "e", "h", "s", "x"}
+
+        def _parse_imported_names(import_clause: str) -> list[str]:
+            no_comment = import_clause.split("#", maxsplit=1)[0].strip()
+            normalized_clause = no_comment.replace("(", "").replace(")", "")
+            names: list[str] = []
+            for part in normalized_clause.split(","):
+                token_text = part.strip()
+                if len(token_text) == 0:
+                    continue
+                if " as " in token_text:
+                    token_text = token_text.split(" as ", maxsplit=1)[0].strip()
+                names.append(token_text)
+            return names
+
         for file_path in py_files:
             if file_path.name == "__init__.py":
                 continue
@@ -143,12 +158,19 @@ class NamespaceEnforcementRewriter:
             lines = source.splitlines(keepends=True)
             changed = False
             seen_replacements: set[str] = set()
+            for replacement in alias_map.values():
+                if any(line.strip() == replacement for line in lines):
+                    seen_replacements.add(replacement)
             new_lines: list[str] = []
             for line in lines:
                 match = deep_import_re.match(line.rstrip())
                 if match:
                     indent = match.group(1)
                     if len(indent) > 0:
+                        new_lines.append(line)
+                        continue
+                    module_suffix = match.group(3)
+                    if "._" in module_suffix:
                         new_lines.append(line)
                         continue
                     stripped_line = line.strip()
@@ -158,6 +180,20 @@ class NamespaceEnforcementRewriter:
                         new_lines.append(line)
                         continue
                     pkg = match.group(2)
+                    import_clause = match.group(4)
+                    if " as " in import_clause:
+                        new_lines.append(line)
+                        continue
+                    imported_names = _parse_imported_names(import_clause)
+                    if len(imported_names) == 0:
+                        new_lines.append(line)
+                        continue
+                    if "*" in imported_names:
+                        new_lines.append(line)
+                        continue
+                    if not all(name in runtime_alias_names for name in imported_names):
+                        new_lines.append(line)
+                        continue
                     replacement = alias_map.get(pkg)
                     if replacement and replacement not in seen_replacements:
                         new_lines.append(f"{indent}{replacement}\n")

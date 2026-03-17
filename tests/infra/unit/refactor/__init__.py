@@ -63,6 +63,12 @@ if TYPE_CHECKING:
         test_legacy_wrapper_function_is_inlined_as_alias,
         test_legacy_wrapper_non_passthrough_is_not_inlined,
     )
+    from tests.infra.unit.refactor.test_infra_refactor_namespace_aliases import (
+        test_import_alias_detector_skips_nested_private_and_as_renames,
+        test_import_alias_detector_skips_private_and_class_imports,
+        test_namespace_rewriter_only_rewrites_runtime_alias_imports,
+        test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates,
+    )
     from tests.infra.unit.refactor.test_infra_refactor_pattern_corrections import (
         test_pattern_rule_converts_dict_annotations_to_mapping,
         test_pattern_rule_keeps_dict_param_when_copy_used,
@@ -114,6 +120,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_ensure_future_annotations_moves_existing_import_to_top": (
         "tests.infra.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_ensure_future_annotations_moves_existing_import_to_top",
+    ),
+    "test_import_alias_detector_skips_nested_private_and_as_renames": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_import_alias_detector_skips_nested_private_and_as_renames",
+    ),
+    "test_import_alias_detector_skips_private_and_class_imports": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_import_alias_detector_skips_private_and_class_imports",
     ),
     "test_import_modernizer_adds_c_when_existing_c_is_aliased": (
         "tests.infra.unit.refactor.test_infra_refactor_import_modernizer",
@@ -194,6 +208,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_mro_redundancy_checker_removes_nested_attribute_inheritance": (
         "tests.infra.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_mro_redundancy_checker_removes_nested_attribute_inheritance",
+    ),
+    "test_namespace_rewriter_only_rewrites_runtime_alias_imports": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
+    ),
+    "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
     ),
     "test_pattern_rule_converts_dict_annotations_to_mapping": (
         "tests.infra.unit.refactor.test_infra_refactor_pattern_corrections",
@@ -295,6 +317,8 @@ __all__ = [
     "test_engine_always_enables_class_nesting_file_rule",
     "test_ensure_future_annotations_after_docstring",
     "test_ensure_future_annotations_moves_existing_import_to_top",
+    "test_import_alias_detector_skips_nested_private_and_as_renames",
+    "test_import_alias_detector_skips_private_and_class_imports",
     "test_import_modernizer_adds_c_when_existing_c_is_aliased",
     "test_import_modernizer_does_not_rewrite_function_parameter_shadow",
     "test_import_modernizer_does_not_rewrite_rebound_local_name_usage",
@@ -315,6 +339,8 @@ __all__ = [
     "test_main_analyze_violations_writes_json_report",
     "test_mro_checker_keeps_external_attribute_base",
     "test_mro_redundancy_checker_removes_nested_attribute_inheritance",
+    "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
+    "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
     "test_pattern_rule_converts_dict_annotations_to_mapping",
     "test_pattern_rule_keeps_dict_param_when_copy_used",
     "test_pattern_rule_keeps_dict_param_when_subscript_mutated",

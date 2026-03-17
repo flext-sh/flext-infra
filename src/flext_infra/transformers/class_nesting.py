@@ -9,7 +9,7 @@ from typing import override
 import libcst as cst
 
 from flext_infra import m, t
-from flext_infra.refactor.transformers.policy import (
+from flext_infra.transformers.policy import (
     FlextInfraRefactorTransformerPolicyUtilities,
 )
 

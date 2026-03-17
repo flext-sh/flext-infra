@@ -55,9 +55,9 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPaths,
         FlextInfraUtilitiesReporting,
         FlextInfraUtilitiesSubprocess,
-        main,
     )
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+    from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer, main
     from flext_infra.deps.internal_sync import (
         FlextInfraInternalDependencySyncService,
         shutil,
@@ -110,6 +110,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "EnsureRuffConfigPhase": (
         "flext_infra.deps._phases.ensure_ruff",
         "EnsureRuffConfigPhase",
+    ),
+    "FlextInfraConfigFixer": (
+        "flext_infra.deps.fix_pyrefly_config",
+        "FlextInfraConfigFixer",
     ),
     "FlextInfraDependencyDetectionService": (
         "flext_infra.deps.detection",
@@ -167,7 +171,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "get_required_typings": ("flext_infra.deps.detection", "get_required_typings"),
     "load_dependency_limits": ("flext_infra.deps.detection", "load_dependency_limits"),
-    "main": ("flext_infra.deps.detector", "main"),
+    "main": ("flext_infra.deps.fix_pyrefly_config", "main"),
     "module_to_types_package": (
         "flext_infra.deps.detection",
         "module_to_types_package",
@@ -192,6 +196,7 @@ __all__ = [
     "EnsurePyrightConfigPhase",
     "EnsurePytestConfigPhase",
     "EnsureRuffConfigPhase",
+    "FlextInfraConfigFixer",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyPathSync",
     "FlextInfraDependencyToolConfig",

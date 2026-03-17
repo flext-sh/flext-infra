@@ -11,8 +11,8 @@ from libcst.metadata import MetadataWrapper, QualifiedNameProvider
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import m, t, u
-from flext_infra.refactor.rule import FlextInfraRefactorRule
-from flext_infra.refactor.transformers.symbol_propagator import (
+from flext_infra.refactor._base_rule import FlextInfraRefactorRule
+from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
 

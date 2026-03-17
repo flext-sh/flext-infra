@@ -8,17 +8,17 @@ import libcst as cst
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor.rules.class_reconstructor import (
+from flext_infra.refactor.validation import PostCheckGate
+from flext_infra.rules.class_reconstructor import (
     FlextInfraRefactorClassNestingReconstructor,
     PreCheckGate,
 )
-from flext_infra.refactor.transformers.class_nesting import (
+from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
-from flext_infra.refactor.transformers.helper_consolidation import (
+from flext_infra.transformers.helper_consolidation import (
     HelperConsolidationTransformer,
 )
-from flext_infra.refactor.validation import PostCheckGate
 
 
 class ClassNestingRefactorRule:

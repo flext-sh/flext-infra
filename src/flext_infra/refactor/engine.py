@@ -14,36 +14,36 @@ from flext_infra.refactor.rule import (
     FlextInfraRefactorRule,
     FlextInfraRefactorRuleLoader,
 )
-from flext_infra.refactor.rules.class_nesting import ClassNestingRefactorRule
-from flext_infra.refactor.rules.class_reconstructor import (
-    FlextInfraRefactorClassReconstructorRule,
-)
-from flext_infra.refactor.rules.ensure_future_annotations import (
-    FlextInfraRefactorEnsureFutureAnnotationsRule,
-)
-from flext_infra.refactor.rules.import_modernizer import (
-    FlextInfraRefactorImportModernizerRule,
-)
-from flext_infra.refactor.rules.legacy_removal import (
-    FlextInfraRefactorLegacyRemovalRule,
-)
-from flext_infra.refactor.rules.mro_class_migration import (
-    FlextInfraRefactorMROClassMigrationRule,
-)
-from flext_infra.refactor.rules.mro_redundancy_checker import (
-    FlextInfraRefactorMRORedundancyChecker,
-)
-from flext_infra.refactor.rules.pattern_corrections import (
-    FlextInfraRefactorPatternCorrectionsRule,
-)
-from flext_infra.refactor.rules.symbol_propagation import (
-    FlextInfraRefactorSignaturePropagationRule,
-    FlextInfraRefactorSymbolPropagationRule,
-)
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.validation import (
     FlextInfraRefactorCliSupport,
     FlextInfraRefactorRuleDefinitionValidator,
+)
+from flext_infra.rules.class_nesting import ClassNestingRefactorRule
+from flext_infra.rules.class_reconstructor import (
+    FlextInfraRefactorClassReconstructorRule,
+)
+from flext_infra.rules.ensure_future_annotations import (
+    FlextInfraRefactorEnsureFutureAnnotationsRule,
+)
+from flext_infra.rules.import_modernizer import (
+    FlextInfraRefactorImportModernizerRule,
+)
+from flext_infra.rules.legacy_removal import (
+    FlextInfraRefactorLegacyRemovalRule,
+)
+from flext_infra.rules.mro_class_migration import (
+    FlextInfraRefactorMROClassMigrationRule,
+)
+from flext_infra.rules.mro_redundancy_checker import (
+    FlextInfraRefactorMRORedundancyChecker,
+)
+from flext_infra.rules.pattern_corrections import (
+    FlextInfraRefactorPatternCorrectionsRule,
+)
+from flext_infra.rules.symbol_propagation import (
+    FlextInfraRefactorSignaturePropagationRule,
+    FlextInfraRefactorSymbolPropagationRule,
 )
 
 

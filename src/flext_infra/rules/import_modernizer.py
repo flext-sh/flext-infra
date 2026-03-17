@@ -11,11 +11,11 @@ from libcst.metadata import MetadataWrapper
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import c, m, t
-from flext_infra.refactor.rule import FlextInfraRefactorRule
-from flext_infra.refactor.transformers.import_modernizer import (
+from flext_infra.refactor._base_rule import FlextInfraRefactorRule
+from flext_infra.transformers.import_modernizer import (
     FlextInfraRefactorImportModernizer,
 )
-from flext_infra.refactor.transformers.lazy_import_fixer import (
+from flext_infra.transformers.lazy_import_fixer import (
     FlextInfraRefactorLazyImportFixer,
 )
 

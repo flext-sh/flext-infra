@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor.transformers.mro_reference_rewriter import (
+from flext_infra.transformers.mro_reference_rewriter import (
     FlextInfraRefactorMROReferenceRewriter,
 )
 

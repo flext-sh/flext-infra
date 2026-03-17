@@ -19,9 +19,14 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
+    from flext_infra.workspace import maintenance
     from flext_infra.workspace.detector import (
         FlextInfraWorkspaceDetector,
         WorkspaceMode,
+    )
+    from flext_infra.workspace.maintenance.python_version import (
+        FlextInfraPythonVersionEnforcer,
+        logger,
     )
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import (
@@ -39,23 +44,32 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.workspace.migrator",
         "FlextInfraProjectMigrator",
     ),
+    "FlextInfraPythonVersionEnforcer": (
+        "flext_infra.workspace.maintenance.python_version",
+        "FlextInfraPythonVersionEnforcer",
+    ),
     "FlextInfraSyncService": ("flext_infra.workspace.sync", "FlextInfraSyncService"),
     "FlextInfraWorkspaceDetector": (
         "flext_infra.workspace.detector",
         "FlextInfraWorkspaceDetector",
     ),
     "WorkspaceMode": ("flext_infra.workspace.detector", "WorkspaceMode"),
+    "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "main": ("flext_infra.workspace.sync", "main"),
+    "maintenance": ("flext_infra.workspace.maintenance", ""),
     "s": ("flext_infra.workspace.orchestrator", "FlextInfraOrchestratorService"),
 }
 
 __all__ = [
     "FlextInfraOrchestratorService",
     "FlextInfraProjectMigrator",
+    "FlextInfraPythonVersionEnforcer",
     "FlextInfraSyncService",
     "FlextInfraWorkspaceDetector",
     "WorkspaceMode",
+    "logger",
     "main",
+    "maintenance",
     "s",
 ]
 

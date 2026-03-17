@@ -11,10 +11,10 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import c, m, t, u
 from flext_infra.refactor._base_rule import FlextInfraRefactorRule
-from flext_infra.refactor.transformers.class_reconstructor import (
+from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
 )
-from flext_infra.refactor.transformers.nested_class_propagation import (
+from flext_infra.transformers.nested_class_propagation import (
     NestedClassPropagationTransformer,
 )
 

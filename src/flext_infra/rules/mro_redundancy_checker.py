@@ -7,8 +7,8 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.refactor.rule import FlextInfraRefactorRule
-from flext_infra.refactor.transformers.mro_remover import FlextInfraRefactorMRORemover
+from flext_infra.refactor._base_rule import FlextInfraRefactorRule
+from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
 
 
 class FlextInfraRefactorMRORedundancyChecker(FlextInfraRefactorRule):

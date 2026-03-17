@@ -12,7 +12,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from flext_infra.refactor import rules, transformers
     from flext_infra.refactor.analysis import (
         FlextInfraRefactorClassNestingAnalyzer,
         FlextInfraRefactorViolationAnalyzer,
@@ -55,85 +54,8 @@ if TYPE_CHECKING:
         FlextInfraRefactorRule,
         FlextInfraRefactorRuleLoader,
     )
-    from flext_infra.refactor.rules.class_nesting import ClassNestingRefactorRule
-    from flext_infra.refactor.rules.class_reconstructor import (
-        FlextInfraRefactorClassNestingReconstructor,
-        FlextInfraRefactorClassReconstructorRule,
-        PreCheckGate,
-    )
-    from flext_infra.refactor.rules.ensure_future_annotations import (
-        FlextInfraRefactorEnsureFutureAnnotationsRule,
-    )
-    from flext_infra.refactor.rules.import_modernizer import (
-        FlextInfraRefactorImportModernizerRule,
-    )
-    from flext_infra.refactor.rules.legacy_removal import (
-        FlextInfraRefactorLegacyRemovalRule,
-    )
-    from flext_infra.refactor.rules.mro_class_migration import (
-        FlextInfraRefactorMROClassMigrationRule,
-    )
-    from flext_infra.refactor.rules.mro_redundancy_checker import (
-        FlextInfraRefactorMRORedundancyChecker,
-    )
-    from flext_infra.refactor.rules.pattern_corrections import (
-        FlextInfraRefactorPatternCorrectionsRule,
-    )
-    from flext_infra.refactor.rules.symbol_propagation import (
-        FlextInfraRefactorSignaturePropagationRule,
-        FlextInfraRefactorSignaturePropagator,
-        FlextInfraRefactorSymbolPropagationRule,
-    )
     from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
     from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
-    from flext_infra.refactor.transformers.alias_remover import (
-        FlextInfraRefactorAliasRemover,
-    )
-    from flext_infra.refactor.transformers.census_visitors import (
-        CensusImportDiscoveryVisitor,
-        CensusUsageCollector,
-    )
-    from flext_infra.refactor.transformers.class_nesting import (
-        FlextInfraRefactorClassNestingTransformer,
-    )
-    from flext_infra.refactor.transformers.class_reconstructor import (
-        FlextInfraRefactorClassReconstructor,
-    )
-    from flext_infra.refactor.transformers.deprecated_remover import (
-        FlextInfraRefactorDeprecatedRemover,
-    )
-    from flext_infra.refactor.transformers.helper_consolidation import (
-        HelperConsolidationTransformer,
-    )
-    from flext_infra.refactor.transformers.import_bypass_remover import (
-        FlextInfraRefactorImportBypassRemover,
-    )
-    from flext_infra.refactor.transformers.import_modernizer import (
-        FlextInfraRefactorImportModernizer,
-    )
-    from flext_infra.refactor.transformers.lazy_import_fixer import (
-        FlextInfraRefactorLazyImportFixer,
-    )
-    from flext_infra.refactor.transformers.mro_private_inline import (
-        FlextInfraRefactorMROPrivateInlineTransformer,
-        FlextInfraRefactorMROQualifiedReferenceTransformer,
-    )
-    from flext_infra.refactor.transformers.mro_reference_rewriter import (
-        FlextInfraRefactorMROReferenceRewriter,
-    )
-    from flext_infra.refactor.transformers.mro_remover import (
-        FlextInfraRefactorMRORemover,
-    )
-    from flext_infra.refactor.transformers.nested_class_propagation import (
-        NestedClassPropagationTransformer,
-    )
-    from flext_infra.refactor.transformers.policy import (
-        FlextInfraRefactorTransformerPolicyUtilities,
-        FlextInfraRefactorTransformerPolicyUtilities as u,
-    )
-    from flext_infra.refactor.transformers.symbol_propagator import (
-        FlextInfraRefactorSymbolPropagator,
-    )
     from flext_infra.refactor.validation import (
         FlextInfraRefactorCliSupport,
         FlextInfraRefactorMROMigrationValidator,
@@ -142,18 +64,6 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "CensusImportDiscoveryVisitor": (
-        "flext_infra.refactor.transformers.census_visitors",
-        "CensusImportDiscoveryVisitor",
-    ),
-    "CensusUsageCollector": (
-        "flext_infra.refactor.transformers.census_visitors",
-        "CensusUsageCollector",
-    ),
-    "ClassNestingRefactorRule": (
-        "flext_infra.refactor.rules.class_nesting",
-        "ClassNestingRefactorRule",
-    ),
     "CompatibilityAliasDetector": (
         "flext_infra.refactor.dependency_analyzer",
         "CompatibilityAliasDetector",
@@ -170,10 +80,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.namespace_enforcer",
         "FlextInfraNamespaceEnforcer",
     ),
-    "FlextInfraRefactorAliasRemover": (
-        "flext_infra.refactor.transformers.alias_remover",
-        "FlextInfraRefactorAliasRemover",
-    ),
     "FlextInfraRefactorCensus": (
         "flext_infra.refactor.census",
         "FlextInfraRefactorCensus",
@@ -181,22 +87,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraRefactorClassNestingAnalyzer": (
         "flext_infra.refactor.analysis",
         "FlextInfraRefactorClassNestingAnalyzer",
-    ),
-    "FlextInfraRefactorClassNestingReconstructor": (
-        "flext_infra.refactor.rules.class_reconstructor",
-        "FlextInfraRefactorClassNestingReconstructor",
-    ),
-    "FlextInfraRefactorClassNestingTransformer": (
-        "flext_infra.refactor.transformers.class_nesting",
-        "FlextInfraRefactorClassNestingTransformer",
-    ),
-    "FlextInfraRefactorClassReconstructor": (
-        "flext_infra.refactor.transformers.class_reconstructor",
-        "FlextInfraRefactorClassReconstructor",
-    ),
-    "FlextInfraRefactorClassReconstructorRule": (
-        "flext_infra.refactor.rules.class_reconstructor",
-        "FlextInfraRefactorClassReconstructorRule",
     ),
     "FlextInfraRefactorCliSupport": (
         "flext_infra.refactor.validation",
@@ -206,45 +96,13 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "FlextInfraRefactorDependencyAnalyzerFacade",
     ),
-    "FlextInfraRefactorDeprecatedRemover": (
-        "flext_infra.refactor.transformers.deprecated_remover",
-        "FlextInfraRefactorDeprecatedRemover",
-    ),
     "FlextInfraRefactorEngine": (
         "flext_infra.refactor.engine",
         "FlextInfraRefactorEngine",
     ),
-    "FlextInfraRefactorEnsureFutureAnnotationsRule": (
-        "flext_infra.refactor.rules.ensure_future_annotations",
-        "FlextInfraRefactorEnsureFutureAnnotationsRule",
-    ),
-    "FlextInfraRefactorImportBypassRemover": (
-        "flext_infra.refactor.transformers.import_bypass_remover",
-        "FlextInfraRefactorImportBypassRemover",
-    ),
-    "FlextInfraRefactorImportModernizer": (
-        "flext_infra.refactor.transformers.import_modernizer",
-        "FlextInfraRefactorImportModernizer",
-    ),
-    "FlextInfraRefactorImportModernizerRule": (
-        "flext_infra.refactor.rules.import_modernizer",
-        "FlextInfraRefactorImportModernizerRule",
-    ),
-    "FlextInfraRefactorLazyImportFixer": (
-        "flext_infra.refactor.transformers.lazy_import_fixer",
-        "FlextInfraRefactorLazyImportFixer",
-    ),
-    "FlextInfraRefactorLegacyRemovalRule": (
-        "flext_infra.refactor.rules.legacy_removal",
-        "FlextInfraRefactorLegacyRemovalRule",
-    ),
     "FlextInfraRefactorLooseClassScanner": (
         "flext_infra.refactor.scanner",
         "FlextInfraRefactorLooseClassScanner",
-    ),
-    "FlextInfraRefactorMROClassMigrationRule": (
-        "flext_infra.refactor.rules.mro_class_migration",
-        "FlextInfraRefactorMROClassMigrationRule",
     ),
     "FlextInfraRefactorMROImportRewriter": (
         "flext_infra.refactor.mro_resolver",
@@ -262,26 +120,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.validation",
         "FlextInfraRefactorMROMigrationValidator",
     ),
-    "FlextInfraRefactorMROPrivateInlineTransformer": (
-        "flext_infra.refactor.transformers.mro_private_inline",
-        "FlextInfraRefactorMROPrivateInlineTransformer",
-    ),
-    "FlextInfraRefactorMROQualifiedReferenceTransformer": (
-        "flext_infra.refactor.transformers.mro_private_inline",
-        "FlextInfraRefactorMROQualifiedReferenceTransformer",
-    ),
-    "FlextInfraRefactorMRORedundancyChecker": (
-        "flext_infra.refactor.rules.mro_redundancy_checker",
-        "FlextInfraRefactorMRORedundancyChecker",
-    ),
-    "FlextInfraRefactorMROReferenceRewriter": (
-        "flext_infra.refactor.transformers.mro_reference_rewriter",
-        "FlextInfraRefactorMROReferenceRewriter",
-    ),
-    "FlextInfraRefactorMRORemover": (
-        "flext_infra.refactor.transformers.mro_remover",
-        "FlextInfraRefactorMRORemover",
-    ),
     "FlextInfraRefactorMROResolver": (
         "flext_infra.refactor.mro_resolver",
         "FlextInfraRefactorMROResolver",
@@ -293,10 +131,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraRefactorOutputRenderer": (
         "flext_infra.refactor.output",
         "FlextInfraRefactorOutputRenderer",
-    ),
-    "FlextInfraRefactorPatternCorrectionsRule": (
-        "flext_infra.refactor.rules.pattern_corrections",
-        "FlextInfraRefactorPatternCorrectionsRule",
     ),
     "FlextInfraRefactorPydanticCentralizer": (
         "flext_infra.refactor.pydantic_centralizer",
@@ -315,26 +149,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.safety",
         "FlextInfraRefactorSafetyManager",
     ),
-    "FlextInfraRefactorSignaturePropagationRule": (
-        "flext_infra.refactor.rules.symbol_propagation",
-        "FlextInfraRefactorSignaturePropagationRule",
-    ),
-    "FlextInfraRefactorSignaturePropagator": (
-        "flext_infra.refactor.rules.symbol_propagation",
-        "FlextInfraRefactorSignaturePropagator",
-    ),
-    "FlextInfraRefactorSymbolPropagationRule": (
-        "flext_infra.refactor.rules.symbol_propagation",
-        "FlextInfraRefactorSymbolPropagationRule",
-    ),
-    "FlextInfraRefactorSymbolPropagator": (
-        "flext_infra.refactor.transformers.symbol_propagator",
-        "FlextInfraRefactorSymbolPropagator",
-    ),
-    "FlextInfraRefactorTransformerPolicyUtilities": (
-        "flext_infra.refactor.transformers.policy",
-        "FlextInfraRefactorTransformerPolicyUtilities",
-    ),
     "FlextInfraRefactorViolationAnalyzer": (
         "flext_infra.refactor.analysis",
         "FlextInfraRefactorViolationAnalyzer",
@@ -342,10 +156,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FutureAnnotationsDetector": (
         "flext_infra.refactor.dependency_analyzer",
         "FutureAnnotationsDetector",
-    ),
-    "HelperConsolidationTransformer": (
-        "flext_infra.refactor.transformers.helper_consolidation",
-        "HelperConsolidationTransformer",
     ),
     "ImportAliasDetector": (
         "flext_infra.refactor.dependency_analyzer",
@@ -375,12 +185,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "NamespaceFacadeScanner",
     ),
-    "NestedClassPropagationTransformer": (
-        "flext_infra.refactor.transformers.nested_class_propagation",
-        "NestedClassPropagationTransformer",
-    ),
     "PostCheckGate": ("flext_infra.refactor.validation", "PostCheckGate"),
-    "PreCheckGate": ("flext_infra.refactor.rules.class_reconstructor", "PreCheckGate"),
     "ProjectClassifier": (
         "flext_infra.refactor.project_classifier",
         "ProjectClassifier",
@@ -389,67 +194,33 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "RuntimeAliasDetector",
     ),
-    "rules": ("flext_infra.refactor.rules", ""),
-    "transformers": ("flext_infra.refactor.transformers", ""),
-    "u": (
-        "flext_infra.refactor.transformers.policy",
-        "FlextInfraRefactorTransformerPolicyUtilities",
-    ),
 }
 
 __all__ = [
-    "CensusImportDiscoveryVisitor",
-    "CensusUsageCollector",
-    "ClassNestingRefactorRule",
     "CompatibilityAliasDetector",
     "CyclicImportDetector",
     "DependencyAnalyzer",
     "FlextInfraNamespaceEnforcer",
-    "FlextInfraRefactorAliasRemover",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
-    "FlextInfraRefactorClassNestingReconstructor",
-    "FlextInfraRefactorClassNestingTransformer",
-    "FlextInfraRefactorClassReconstructor",
-    "FlextInfraRefactorClassReconstructorRule",
     "FlextInfraRefactorCliSupport",
     "FlextInfraRefactorDependencyAnalyzerFacade",
-    "FlextInfraRefactorDeprecatedRemover",
     "FlextInfraRefactorEngine",
-    "FlextInfraRefactorEnsureFutureAnnotationsRule",
-    "FlextInfraRefactorImportBypassRemover",
-    "FlextInfraRefactorImportModernizer",
-    "FlextInfraRefactorImportModernizerRule",
-    "FlextInfraRefactorLazyImportFixer",
-    "FlextInfraRefactorLegacyRemovalRule",
     "FlextInfraRefactorLooseClassScanner",
-    "FlextInfraRefactorMROClassMigrationRule",
     "FlextInfraRefactorMROImportRewriter",
     "FlextInfraRefactorMROMigrationScanner",
     "FlextInfraRefactorMROMigrationTransformer",
     "FlextInfraRefactorMROMigrationValidator",
-    "FlextInfraRefactorMROPrivateInlineTransformer",
-    "FlextInfraRefactorMROQualifiedReferenceTransformer",
-    "FlextInfraRefactorMRORedundancyChecker",
-    "FlextInfraRefactorMROReferenceRewriter",
-    "FlextInfraRefactorMRORemover",
     "FlextInfraRefactorMROResolver",
     "FlextInfraRefactorMigrateToClassMRO",
     "FlextInfraRefactorOutputRenderer",
-    "FlextInfraRefactorPatternCorrectionsRule",
     "FlextInfraRefactorPydanticCentralizer",
     "FlextInfraRefactorRule",
     "FlextInfraRefactorRuleDefinitionValidator",
     "FlextInfraRefactorRuleLoader",
     "FlextInfraRefactorSafetyManager",
-    "FlextInfraRefactorSignaturePropagationRule",
-    "FlextInfraRefactorSignaturePropagator",
-    "FlextInfraRefactorSymbolPropagationRule",
-    "FlextInfraRefactorSymbolPropagator",
-    "FlextInfraRefactorTransformerPolicyUtilities",
     "FlextInfraRefactorViolationAnalyzer",
     "FutureAnnotationsDetector",
-    "HelperConsolidationTransformer",
     "ImportAliasDetector",
     "InternalImportDetector",
     "LooseObjectDetector",
@@ -457,14 +228,9 @@ __all__ = [
     "ManualTypingAliasDetector",
     "NamespaceEnforcementRewriter",
     "NamespaceFacadeScanner",
-    "NestedClassPropagationTransformer",
     "PostCheckGate",
-    "PreCheckGate",
     "ProjectClassifier",
     "RuntimeAliasDetector",
-    "rules",
-    "transformers",
-    "u",
 ]
 
 

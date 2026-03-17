@@ -9,7 +9,7 @@ import libcst as cst
 from libcst.metadata import ParentNodeProvider
 
 from flext_infra import m, t
-from flext_infra.refactor.transformers.policy import (
+from flext_infra.transformers.policy import (
     FlextInfraRefactorTransformerPolicyUtilities,
 )
 

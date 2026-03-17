@@ -9,7 +9,7 @@ rules:
     fix_action: propagate_symbol_renames
     target_modules:
       - "flext_infra.refactor"
-      - "flext_infra.refactor.rules"
+      - "flext_infra.rules"
     import_symbol_renames:
       LegacyRemovalRule: "FlextInfraRefactorLegacyRemovalRule"
       ImportModernizerRule: "FlextInfraRefactorImportModernizerRule"

@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from importlib.metadata import PackageMetadata, PackageNotFoundError, metadata
 
-from flext_infra import c
+from flext_infra.constants import c
 
 
 class FlextInfraVersion:

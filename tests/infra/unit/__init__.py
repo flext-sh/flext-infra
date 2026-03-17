@@ -18,7 +18,6 @@ if TYPE_CHECKING:
         check,
         codegen,
         container,
-        core,
         deps,
         discovery,
         docs,
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
         io,
         refactor,
         release,
+        validate,
     )
     from tests.infra.unit._utilities.test_discovery_consolidated import (
         TestDiscoveryDiscoverProjects,
@@ -724,6 +724,12 @@ if TYPE_CHECKING:
         test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias,
         test_legacy_wrapper_function_is_inlined_as_alias,
         test_legacy_wrapper_non_passthrough_is_not_inlined,
+    )
+    from tests.infra.unit.refactor.test_infra_refactor_namespace_aliases import (
+        test_import_alias_detector_skips_nested_private_and_as_renames,
+        test_import_alias_detector_skips_private_and_class_imports,
+        test_namespace_rewriter_only_rewrites_runtime_alias_imports,
+        test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates,
     )
     from tests.infra.unit.refactor.test_infra_refactor_pattern_corrections import (
         test_pattern_rule_converts_dict_annotations_to_mapping,
@@ -2341,7 +2347,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "check": ("tests.infra.unit.check", ""),
     "codegen": ("tests.infra.unit.codegen", ""),
     "container": ("tests.infra.unit.container", ""),
-    "validate": ("tests.infra.unit.validate", ""),
     "dedupe_specs": ("tests.infra.unit.deps.test_modernizer_helpers", "dedupe_specs"),
     "dep_name": ("tests.infra.unit.deps.test_modernizer_helpers", "dep_name"),
     "deps": ("tests.infra.unit.deps", ""),
@@ -2789,6 +2794,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_path_sync_main_project_obj",
         "test_helpers_alias_is_reachable_project_obj",
     ),
+    "test_import_alias_detector_skips_nested_private_and_as_renames": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_import_alias_detector_skips_nested_private_and_as_renames",
+    ),
+    "test_import_alias_detector_skips_private_and_class_imports": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_import_alias_detector_skips_private_and_class_imports",
+    ),
     "test_import_modernizer_adds_c_when_existing_c_is_aliased": (
         "tests.infra.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_adds_c_when_existing_c_is_aliased",
@@ -3032,6 +3045,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_mro_redundancy_checker_removes_nested_attribute_inheritance": (
         "tests.infra.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_mro_redundancy_checker_removes_nested_attribute_inheritance",
+    ),
+    "test_namespace_rewriter_only_rewrites_runtime_alias_imports": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
+    ),
+    "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
+        "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
     ),
     "test_parse_semver_invalid": (
         "tests.infra.unit.test_infra_versioning",
@@ -3352,6 +3373,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "unwrap_item": ("tests.infra.unit.deps.test_modernizer_helpers", "unwrap_item"),
     "v": ("tests.infra.unit.validate.basemk_validator", "v"),
+    "validate": ("tests.infra.unit.validate", ""),
     "validator": ("tests.infra.unit.docs.validator_internals", "validator"),
     "workspace_root": (
         "tests.infra.unit.release.orchestrator_publish",
@@ -3765,7 +3787,6 @@ __all__ = [
     "check",
     "codegen",
     "container",
-    "core",
     "dedupe_specs",
     "dep_name",
     "deps",
@@ -3898,6 +3919,8 @@ __all__ = [
     "test_helpers_alias_is_reachable_helpers",
     "test_helpers_alias_is_reachable_main",
     "test_helpers_alias_is_reachable_project_obj",
+    "test_import_alias_detector_skips_nested_private_and_as_renames",
+    "test_import_alias_detector_skips_private_and_class_imports",
     "test_import_modernizer_adds_c_when_existing_c_is_aliased",
     "test_import_modernizer_does_not_rewrite_function_parameter_shadow",
     "test_import_modernizer_does_not_rewrite_rebound_local_name_usage",
@@ -3959,6 +3982,8 @@ __all__ = [
     "test_migrator_workspace_root_project_detection",
     "test_mro_checker_keeps_external_attribute_base",
     "test_mro_redundancy_checker_removes_nested_attribute_inheritance",
+    "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
+    "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
     "test_parse_semver_invalid",
     "test_parse_semver_result_type",
     "test_parse_semver_valid",
@@ -4041,6 +4066,7 @@ __all__ = [
     "test_workspace_root_fallback",
     "unwrap_item",
     "v",
+    "validate",
     "validator",
     "workspace_root",
 ]
