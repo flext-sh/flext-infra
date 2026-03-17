@@ -76,6 +76,7 @@ if TYPE_CHECKING:
     )
     from .test_infra_refactor_mro_completeness import (
         test_detects_missing_local_composition_base,
+        test_rewriter_adds_missing_base_and_formats,
         test_skips_non_facade_files,
         test_skips_private_candidate_classes,
         test_skips_when_candidate_is_already_in_facade_bases,
@@ -97,6 +98,7 @@ if TYPE_CHECKING:
         test_detects_wrong_source_m_import,
         test_detects_wrong_source_u_import,
         test_project_without_alias_facade_has_no_violation,
+        test_rewriter_namespace_source_is_idempotent_with_ruff,
         test_rewriter_preserves_non_alias_symbols,
         test_rewriter_splits_mixed_imports_correctly,
         test_skips_facade_declaration_files,
@@ -359,6 +361,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_engine",
         "test_refactor_project_scans_tests_and_scripts_dirs",
     ),
+    "test_rewriter_adds_missing_base_and_formats": (
+        "tests.infra.unit.refactor.test_infra_refactor_mro_completeness",
+        "test_rewriter_adds_missing_base_and_formats",
+    ),
+    "test_rewriter_namespace_source_is_idempotent_with_ruff": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_source",
+        "test_rewriter_namespace_source_is_idempotent_with_ruff",
+    ),
     "test_rewriter_preserves_non_alias_symbols": (
         "tests.infra.unit.refactor.test_infra_refactor_namespace_source",
         "test_rewriter_preserves_non_alias_symbols",
@@ -533,6 +543,8 @@ __all__ = [
     "test_refactor_files_skips_non_python_inputs",
     "test_refactor_project_integrates_safety_manager",
     "test_refactor_project_scans_tests_and_scripts_dirs",
+    "test_rewriter_adds_missing_base_and_formats",
+    "test_rewriter_namespace_source_is_idempotent_with_ruff",
     "test_rewriter_preserves_non_alias_symbols",
     "test_rewriter_splits_mixed_imports_correctly",
     "test_rule_dispatch_fails_on_invalid_pattern_rule_config",

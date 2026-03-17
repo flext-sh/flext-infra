@@ -12,7 +12,7 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra.constants import c
-from flext_infra.models import FlextInfraModels
+from flext_infra.codegen._models import FlextInfraCodegenModels
 
 
 class TestExcludedProjects:
@@ -33,8 +33,8 @@ class TestViolationPattern:
         assert set(match.groupdict().keys()) == {"rule", "module", "line", "message"}
 
 
-_CV = FlextInfraModels.Infra.Codegen.CensusViolation
-_CR = FlextInfraModels.Infra.Codegen.CensusReport
+_CV = FlextInfraCodegenModels.CensusViolation
+_CR = FlextInfraCodegenModels.CensusReport
 
 
 class TestCensusViolationModel:

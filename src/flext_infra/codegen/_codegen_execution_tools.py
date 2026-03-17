@@ -14,11 +14,10 @@ import shutil
 import sys
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, m, t
 from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_infra.codegen._codegen_metrics_checks import FlextInfraCodegenMetricsChecks
-from flext_infra.validate._models import FlextInfraCoreModels
 
 
 class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
@@ -36,7 +35,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         if result.is_failure:
             return []
         output = result.value
-        if not isinstance(output, FlextInfraCoreModels.CommandOutput):
+        if not isinstance(output, m.Infra.CommandOutput):
             return []
         if output.exit_code != 0:
             return []
@@ -110,7 +109,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
                 "exit_code": 127,
             }
         command_output = result.value
-        if not isinstance(command_output, FlextInfraCoreModels.CommandOutput):
+        if not isinstance(command_output, m.Infra.CommandOutput):
             return {
                 "passed": False,
                 "detail": "unexpected result type",

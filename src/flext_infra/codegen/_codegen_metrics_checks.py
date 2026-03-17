@@ -4,10 +4,9 @@ import ast
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, m, t
 from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra.codegen._codegen_metrics import FlextInfraCodegenMetrics
-from flext_infra.codegen._models import FlextInfraCodegenModels
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 
 
@@ -24,7 +23,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         before_available: bool,
         before_load_error: str,
     ) -> list[dict[str, t.Infra.InfraValue]]:
-        checks: list[FlextInfraCodegenModels.QualityGateCheck] = []
+        checks: list[m.Infra.QualityGateCheck] = []
         violations_total = FlextInfraCodegenMetricsChecks.as_int(
             after_metrics.get("total_violations"),
         )
@@ -32,7 +31,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
             improvement.get("violations_delta"),
         )
         checks.append(
-            FlextInfraCodegenModels.QualityGateCheck(
+            m.Infra.QualityGateCheck(
                 name=c.Infra.Codegen.QualityGate.CHECK_NAMESPACE_COMPLIANCE,
                 passed=(
                     violations_total == 0 or (before_available and violations_delta < 0)
@@ -68,13 +67,13 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
             improvement.get("duplicates_delta"),
         )
         checks.extend([
-            FlextInfraCodegenModels.QualityGateCheck(
+            m.Infra.QualityGateCheck(
                 name=c.Infra.Codegen.QualityGate.CHECK_MRO_VALIDITY,
                 passed=mro_failures == 0,
                 detail=f"mro_failures={mro_failures}",
                 critical=True,
             ),
-            FlextInfraCodegenModels.QualityGateCheck(
+            m.Infra.QualityGateCheck(
                 name=c.Infra.Codegen.QualityGate.CHECK_IMPORT_RESOLUTION,
                 passed=cross_ref == 0
                 and import_parse == 0
@@ -85,13 +84,13 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
                 ),
                 critical=True,
             ),
-            FlextInfraCodegenModels.QualityGateCheck(
+            m.Infra.QualityGateCheck(
                 name=c.Infra.Codegen.QualityGate.CHECK_LAYER_COMPLIANCE,
                 passed=layer_violations == 0,
                 detail=f"layer_violations={layer_violations}",
                 critical=True,
             ),
-            FlextInfraCodegenModels.QualityGateCheck(
+            m.Infra.QualityGateCheck(
                 name=c.Infra.Codegen.QualityGate.CHECK_DUPLICATION_REDUCTION,
                 passed=(
                     duplicate_groups == 0 or (before_available and duplicates_delta < 0)
@@ -104,13 +103,13 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
                 ),
                 critical=False,
             ),
-            FlextInfraCodegenModels.QualityGateCheck(
+            m.Infra.QualityGateCheck(
                 name=c.Infra.Codegen.QualityGate.CHECK_TYPE_SAFETY,
                 passed=bool(pyrefly_check.get("passed")),
                 detail=str(pyrefly_check.get("detail", "")),
                 critical=True,
             ),
-            FlextInfraCodegenModels.QualityGateCheck(
+            m.Infra.QualityGateCheck(
                 name=c.Infra.Codegen.QualityGate.CHECK_LINT_CLEAN,
                 passed=bool(ruff_check.get("passed")),
                 detail=str(ruff_check.get("detail", "")),
@@ -119,7 +118,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         ])
         if before_load_error:
             checks.append(
-                FlextInfraCodegenModels.QualityGateCheck(
+                m.Infra.QualityGateCheck(
                     name=c.Infra.Codegen.QualityGate.CHECK_BASELINE_LOAD,
                     passed=False,
                     detail=before_load_error,
@@ -177,10 +176,10 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
 
     @staticmethod
     def quality_gate_project_findings(
-        census_reports: Sequence[FlextInfraCodegenModels.CensusReport],
+        census_reports: Sequence[m.Infra.CensusReport],
     ) -> list[dict[str, t.Infra.InfraValue]]:
-        findings: list[FlextInfraCodegenModels.QualityGateProjectFinding] = [
-            FlextInfraCodegenModels.QualityGateProjectFinding(
+        findings: list[m.Infra.QualityGateProjectFinding] = [
+            m.Infra.QualityGateProjectFinding(
                 project=entry.project,
                 violations_total=len(tuple(entry.violations)),
                 fixable_violations=int(entry.fixable),

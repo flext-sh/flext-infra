@@ -13,7 +13,6 @@ from pydantic import ValidationError
 
 from flext_infra import c, m, t as t_infra, u
 from flext_infra.check._base_gate import FlextInfraGate, FlextInfraGateContext
-from flext_infra.check._constants import FlextInfraCheckConstants
 
 
 class FlextInfraPyreflyGate(FlextInfraGate):
@@ -24,8 +23,8 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     gate_id = c.Infra.Gates.PYREFLY
     gate_name = "Pyrefly"
     can_fix = False
-    tool_name = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.PYREFLY][0]
-    tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.PYREFLY][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.PYREFLY][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.PYREFLY][1]
 
     @override
     @override

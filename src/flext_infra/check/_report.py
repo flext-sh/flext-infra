@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from pydantic import JsonValue
 
 from flext_infra import c, m
-from flext_infra.check._constants import FlextInfraCheckConstants
 
 
 class FlextInfraCheckReporter:
@@ -21,7 +20,7 @@ class FlextInfraCheckReporter:
         """Generate a SARIF 2.1.0 payload from gate results."""
         sarif_runs: list[m.Infra.Sarif.Run] = []
         for gate in gates:
-            tool_name, tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO.get(
+            tool_name, tool_url = c.Infra.SARIF_TOOL_INFO.get(
                 gate,
                 (gate, ""),
             )

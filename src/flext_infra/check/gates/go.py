@@ -8,7 +8,6 @@ from typing import override
 
 from flext_infra import c, m
 from flext_infra.check._base_gate import FlextInfraGate, FlextInfraGateContext
-from flext_infra.check._constants import FlextInfraCheckConstants
 
 
 class FlextInfraGoGate(FlextInfraGate):
@@ -19,8 +18,8 @@ class FlextInfraGoGate(FlextInfraGate):
     gate_id = c.Infra.Gates.GO
     gate_name = "Go"
     can_fix = False
-    tool_name = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.GO][0]
-    tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.GO][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.GO][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.GO][1]
 
     @override
     @override
@@ -50,7 +49,7 @@ class FlextInfraGoGate(FlextInfraGate):
             part for part in (vet_result.stdout, vet_result.stderr) if part
         )
         for line in (vet_result.stdout + "\n" + vet_result.stderr).splitlines():
-            match = FlextInfraCheckConstants.GO_VET_RE.match(line.strip())
+            match = c.Infra.GO_VET_RE.match(line.strip())
             if not match:
                 continue
             issues.append(

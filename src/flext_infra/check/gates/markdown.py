@@ -8,7 +8,6 @@ from typing import override
 
 from flext_infra import c, m
 from flext_infra.check._base_gate import FlextInfraGate, FlextInfraGateContext
-from flext_infra.check._constants import FlextInfraCheckConstants
 
 
 class FlextInfraMarkdownGate(FlextInfraGate):
@@ -19,8 +18,8 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     gate_id = c.Infra.Gates.MARKDOWN
     gate_name = "Markdown"
     can_fix = True
-    tool_name = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.MARKDOWN][0]
-    tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.MARKDOWN][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.MARKDOWN][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.MARKDOWN][1]
 
     def _collect_markdown_files(self, project_dir: Path) -> list[Path]:
         files: list[Path] = []
@@ -60,7 +59,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         issues: list[m.Infra.Issue] = []
         if not fix:
             for line in (result.stdout + "\n" + result.stderr).splitlines():
-                match = FlextInfraCheckConstants.MARKDOWN_RE.match(line.strip())
+                match = c.Infra.MARKDOWN_RE.match(line.strip())
                 if not match:
                     continue
                 issues.append(

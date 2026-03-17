@@ -19,7 +19,6 @@ from flext_infra import (
     u,
 )
 from flext_infra.check._base_gate import FlextInfraGateContext
-from flext_infra.check._constants import FlextInfraCheckConstants
 from flext_infra.check._gate_registry import FlextInfraGateRegistry
 from flext_infra.check._report import FlextInfraCheckReporter
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
@@ -82,7 +81,7 @@ class FlextInfraWorkspaceChecker(s):
             if not name:
                 continue
             mapped = c.Infra.Gates.PYREFLY if name == c.Infra.Gates.TYPE_ALIAS else name
-            if mapped not in FlextInfraCheckConstants.ALLOWED_GATES:
+            if mapped not in c.Infra.ALLOWED_GATES:
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
             if mapped not in resolved:
                 resolved.append(mapped)

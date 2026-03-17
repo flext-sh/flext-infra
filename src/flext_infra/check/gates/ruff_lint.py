@@ -12,7 +12,6 @@ from pydantic import ValidationError
 
 from flext_infra import c, m, t as t_infra, u
 from flext_infra.check._base_gate import FlextInfraGate, FlextInfraGateContext
-from flext_infra.check._constants import FlextInfraCheckConstants
 
 
 class FlextInfraRuffLintGate(FlextInfraGate):
@@ -22,8 +21,8 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     gate_id = c.Infra.Gates.LINT
     gate_name = "Ruff Lint"
     can_fix = False
-    tool_name = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.LINT][0]
-    tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.LINT][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.LINT][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.LINT][1]
 
     @override
     @override

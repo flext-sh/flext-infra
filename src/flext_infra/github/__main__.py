@@ -9,7 +9,6 @@ from pathlib import Path
 from flext_core import r
 
 from flext_infra import c, m, u
-from flext_infra.github._models import FlextInfraGithubModels
 from flext_infra.github.linter import FlextInfraWorkflowLinter
 from flext_infra.github.pr import main as pr_main
 from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
@@ -54,7 +53,7 @@ def _run_pr(argv: list[str]) -> int:
 
 def _run_pr_workspace(
     cli: u.Infra.CliArgs,
-    pr_args: FlextInfraGithubModels.PrWorkspaceArgs,
+    pr_args: m.Infra.PrWorkspaceArgs,
 ) -> int:
     pr_mapping: dict[str, str] = {
         c.Infra.ReportKeys.ACTION: pr_args.pr_action,
@@ -116,7 +115,7 @@ def _main_impl(argv: list[str] | None = None) -> int:
     if args.command == c.Infra.Cli.GhCmd.PR:
         return _run_pr(argv[2:] if argv is not None else sys.argv[2:])
     if args.command == "pr-workspace":
-        pr_args = FlextInfraGithubModels.PrWorkspaceArgs(
+        pr_args = m.Infra.PrWorkspaceArgs(
             include_root=args.include_root == 1,
             branch=args.branch,
             checkpoint=args.checkpoint == 1,

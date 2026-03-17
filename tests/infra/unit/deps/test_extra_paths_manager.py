@@ -10,8 +10,7 @@ from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import FlextInfraExtraPathsManager
 from flext_infra.deps import extra_paths
-from flext_infra.deps._constants import FlextInfraDepsConstants
-from tests.infra import t
+from tests.infra import c, t
 
 
 def _manager() -> FlextInfraExtraPathsManager:
@@ -172,13 +171,13 @@ class TestSyncOne:
 
 class TestConstants:
     def test_base_constants(self) -> None:
-        tm.that(len(FlextInfraDepsConstants.PYRIGHT_BASE_ROOT) > 0, eq=True)
-        tm.that("scripts" in FlextInfraDepsConstants.PYRIGHT_BASE_ROOT, eq=True)
-        tm.that("src" in FlextInfraDepsConstants.PYRIGHT_BASE_ROOT, eq=True)
-        tm.that(len(FlextInfraDepsConstants.MYPY_BASE_ROOT) > 0, eq=True)
-        tm.that("src" in FlextInfraDepsConstants.MYPY_BASE_ROOT, eq=True)
-        tm.that(len(FlextInfraDepsConstants.PYRIGHT_BASE_PROJECT) > 0, eq=True)
-        tm.that("." in FlextInfraDepsConstants.PYRIGHT_BASE_PROJECT, eq=True)
-        tm.that("src" in FlextInfraDepsConstants.PYRIGHT_BASE_PROJECT, eq=True)
-        tm.that(len(FlextInfraDepsConstants.MYPY_BASE_PROJECT) > 0, eq=True)
-        tm.that("." in FlextInfraDepsConstants.MYPY_BASE_PROJECT, eq=True)
+        tm.that(len(c.Infra.PYRIGHT_BASE_ROOT) > 0, eq=True)
+        tm.that("scripts" in c.Infra.PYRIGHT_BASE_ROOT, eq=True)
+        tm.that("src" in c.Infra.PYRIGHT_BASE_ROOT, eq=True)
+        tm.that(len(c.Infra.MYPY_BASE_ROOT) > 0, eq=True)
+        tm.that("src" in c.Infra.MYPY_BASE_ROOT, eq=True)
+        tm.that(len(c.Infra.PYRIGHT_BASE_PROJECT) > 0, eq=True)
+        tm.that("." in c.Infra.PYRIGHT_BASE_PROJECT, eq=True)
+        tm.that("src" in c.Infra.PYRIGHT_BASE_PROJECT, eq=True)
+        tm.that(len(c.Infra.MYPY_BASE_PROJECT) > 0, eq=True)
+        tm.that("." in c.Infra.MYPY_BASE_PROJECT, eq=True)

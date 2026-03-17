@@ -5,9 +5,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_infra import c, t
+from flext_infra import c, m, t
 from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
-from flext_infra.codegen._models import FlextInfraCodegenModels
 
 
 class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
@@ -77,7 +76,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
     @staticmethod
     def quality_gate_after_metrics(
         *,
-        census_reports: Sequence[FlextInfraCodegenModels.CensusReport],
+        census_reports: Sequence[m.Infra.CensusReport],
         duplicate_groups: int,
         import_scan: dict[str, t.Infra.InfraValue],
         modified_files: list[str],
@@ -91,7 +90,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
             violations = tuple(report.violations)
             total_violations += len(violations)
             for raw_violation in violations:
-                parsed = FlextInfraCodegenModels.CensusViolation.model_validate(
+                parsed = m.Infra.CensusViolation.model_validate(
                     raw_violation,
                 )
                 if parsed.rule in by_rule:

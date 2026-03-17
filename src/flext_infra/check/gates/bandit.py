@@ -11,7 +11,6 @@ from pydantic import ValidationError
 
 from flext_infra import c, m, u
 from flext_infra.check._base_gate import FlextInfraGate, FlextInfraGateContext
-from flext_infra.check._constants import FlextInfraCheckConstants
 
 
 class FlextInfraBanditGate(FlextInfraGate):
@@ -22,8 +21,8 @@ class FlextInfraBanditGate(FlextInfraGate):
     gate_id = c.Infra.Gates.SECURITY
     gate_name = "Bandit"
     can_fix = False
-    tool_name = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.SECURITY][0]
-    tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.SECURITY][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.SECURITY][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.SECURITY][1]
 
     @override
     def check(

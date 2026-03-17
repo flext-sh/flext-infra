@@ -14,11 +14,10 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, t
+from flext_infra import c, m, t
 from flext_infra.codegen._codegen_execution_tools import (
     FlextInfraCodegenExecutionTools,
 )
-from flext_infra.codegen._models import FlextInfraCodegenModels
 
 
 class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
@@ -30,7 +29,7 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
         workspace_root: Path,
         report: dict[str, t.Infra.InfraValue],
         render_text: str,
-        census_reports: Sequence[FlextInfraCodegenModels.CensusReport],
+        census_reports: Sequence[m.Infra.CensusReport],
         duplicate_groups: int,
         before_payload: dict[str, t.Infra.InfraValue] | None,
     ) -> dict[str, t.Infra.InfraValue]:

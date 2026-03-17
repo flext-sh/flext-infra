@@ -9,7 +9,6 @@ from typing import override
 
 from flext_infra import c, m
 from flext_infra.check._base_gate import FlextInfraGate, FlextInfraGateContext
-from flext_infra.check._constants import FlextInfraCheckConstants
 
 
 class FlextInfraRuffFormatGate(FlextInfraGate):
@@ -18,8 +17,8 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     gate_id = c.Infra.Gates.FORMAT
     gate_name = "Ruff Format"
     can_fix = True
-    tool_name = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.FORMAT][0]
-    tool_url = FlextInfraCheckConstants.SARIF_TOOL_INFO[c.Infra.Gates.FORMAT][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.FORMAT][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.FORMAT][1]
 
     @override
     @override
