@@ -157,7 +157,7 @@ class FlextInfraRefactorSafetyManager:
         payload = checkpoint.model_dump()
         payload["updated_at"] = u.generate_iso_timestamp()
         out: RBool = u.Infra.write_json(
-            self._checkpoint_path, payload, ensure_ascii=True
+            self._checkpoint_path, payload, ensure_ascii=True,
         )
         return out
 
@@ -184,7 +184,7 @@ class FlextInfraRefactorSafetyManager:
         """Load a previously persisted checkpoint from disk."""
         if not self._checkpoint_path.exists():
             out: RCheckpoint = r[m.Infra.Refactor.Checkpoint].fail(
-                "checkpoint does not exist"
+                "checkpoint does not exist",
             )
             return out
         try:
@@ -218,7 +218,7 @@ class FlextInfraRefactorSafetyManager:
 
     def _rollback_to_stash(self, workspace_root: Path, stash_ref: str) -> RBool:
         return FlextInfraUtilitiesSafety.rollback_to_checkpoint(
-            workspace_root, stash_ref
+            workspace_root, stash_ref,
         )
 
 

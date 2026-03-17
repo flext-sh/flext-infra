@@ -231,7 +231,7 @@ class DependencyAnalyzer:
         try:
             json_raw: str | bytes | bytearray = capture.value
             envelopes: list[m.Infra.Refactor.AstGrepMatchEnvelope] = TypeAdapter(
-                list[m.Infra.Refactor.AstGrepMatchEnvelope]
+                list[m.Infra.Refactor.AstGrepMatchEnvelope],
             ).validate_json(
                 json_raw,
             )
@@ -518,23 +518,37 @@ class LooseObjectDetector(p.Infra.Scanner):
 class ImportAliasDetector(p.Infra.Scanner):
     """Detect deep import paths that should use top-level aliases."""
 
-    ALIAS_MODULES: ClassVar[dict[str, str]] = {
-        "flext_core": "from flext_core import c, m, r, t, u, p",
-        "flext_infra": "from flext_infra import c, m, t, u, p",
+    RUNTIME_ALIAS_NAMES_BY_PACKAGE: ClassVar[dict[str, tuple[str, ...]]] = {
+        "flext_core": ("c", "m", "r", "t", "u", "p", "d", "e", "h", "s", "x"),
+        "flext_infra": ("c", "m", "t", "u", "p"),
     }
-    RUNTIME_ALIAS_NAMES: ClassVar[frozenset[str]] = frozenset({
-        "c",
-        "m",
-        "r",
-        "t",
-        "u",
-        "p",
-        "d",
-        "e",
-        "h",
-        "s",
-        "x",
-    })
+
+    @classmethod
+    def _suggest_alias_import(cls, *, package: str, imported_names: list[str]) -> str:
+        allowed = cls.RUNTIME_ALIAS_NAMES_BY_PACKAGE.get(package, ())
+        allowed_set = set(allowed)
+        unique_names = {name for name in imported_names if name in allowed_set}
+        ordered_names = [name for name in allowed if name in unique_names]
+        return f"from {package} import {', '.join(ordered_names)}"
+
+    @staticmethod
+    def _is_facade_or_subclass_file(*, file_path: Path, tree: ast.Module) -> bool:
+        family_file_names = set(c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY)
+        family_file_names.update(c.Infra.Refactor.NAMESPACE_PROTECTED_FILES)
+        if file_path.name in family_file_names:
+            return True
+        suffixes = tuple(c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES.values())
+        for stmt in tree.body:
+            if not isinstance(stmt, ast.ClassDef):
+                continue
+            if stmt.name.endswith(suffixes):
+                return True
+            for base in stmt.bases:
+                if isinstance(base, ast.Name) and base.id.endswith(suffixes):
+                    return True
+                if isinstance(base, ast.Attribute) and base.attr.endswith(suffixes):
+                    return True
+        return False
 
     def __init__(
         self,
@@ -593,6 +607,8 @@ class ImportAliasDetector(p.Infra.Scanner):
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
             return []
+        if cls._is_facade_or_subclass_file(file_path=file_path, tree=tree):
+            return []
         violations: list[nem.ImportAliasViolation] = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.ImportFrom):
@@ -601,7 +617,7 @@ class ImportAliasDetector(p.Infra.Scanner):
                 continue
             if file_path.name == "__init__.py":
                 continue
-            for prefix, suggestion in cls.ALIAS_MODULES.items():
+            for prefix in cls.RUNTIME_ALIAS_NAMES_BY_PACKAGE:
                 if stmt.module.startswith(prefix + "."):
                     if "._" in stmt.module:
                         continue
@@ -612,10 +628,15 @@ class ImportAliasDetector(p.Infra.Scanner):
                     imported_names = [alias.name for alias in stmt.names]
                     if len(imported_names) == 0:
                         continue
-                    if not all(
-                        name in cls.RUNTIME_ALIAS_NAMES for name in imported_names
-                    ):
+                    allowed_names = set(
+                        cls.RUNTIME_ALIAS_NAMES_BY_PACKAGE.get(prefix, ()),
+                    )
+                    if not all(name in allowed_names for name in imported_names):
                         continue
+                    suggestion = cls._suggest_alias_import(
+                        package=prefix,
+                        imported_names=imported_names,
+                    )
                     import_names = (
                         ", ".join(
                             alias.name for alias in stmt.names if alias.name != "*"
@@ -633,6 +654,203 @@ class ImportAliasDetector(p.Infra.Scanner):
                         ),
                     )
         return violations
+
+
+class NamespaceSourceDetector(p.Infra.Scanner):
+    _PROJECT_ALIAS_MAP_CACHE: ClassVar[dict[Path, dict[str, str]]] = {}
+
+    def __init__(
+        self,
+        *,
+        project_name: str,
+        project_root: Path,
+        parse_failures: list[nem.ParseFailureViolation] | None = None,
+    ) -> None:
+        """Initialize scanner with project configuration."""
+        super().__init__()
+        self._project_name = project_name
+        self._project_root = project_root
+        self._parse_failures = parse_failures
+
+    @override
+    def scan_file(self, *, file_path: Path) -> m.Infra.Utilities.ScanResult:
+        """Scan a file and return protocol-standardized scan output."""
+        violations = type(self).scan_file_impl(
+            file_path=file_path,
+            project_name=self._project_name,
+            project_root=self._project_root,
+            _parse_failures=self._parse_failures,
+        )
+        return m.Infra.Utilities.ScanResult(
+            file_path=file_path,
+            violations=[
+                m.Infra.Utilities.ScanViolation(
+                    line=violation.line,
+                    message=(
+                        f"Wrong source for alias '{violation.alias}': "
+                        f"'{violation.current_source}' -> '{violation.correct_source}'"
+                    ),
+                    severity="error",
+                    rule_id="namespace.source_alias",
+                )
+                for violation in violations
+            ],
+            detector_name=self.__class__.__name__,
+        )
+
+    @classmethod
+    def detect_file(
+        cls,
+        *,
+        file_path: Path,
+        project_name: str,
+        project_root: Path,
+        parse_failures: list[nem.ParseFailureViolation] | None = None,
+    ) -> list[nem.NamespaceSourceViolation]:
+        """Scan a file and return typed namespace violations."""
+        return cls.scan_file_impl(
+            file_path=file_path,
+            project_name=project_name,
+            project_root=project_root,
+            _parse_failures=parse_failures,
+        )
+
+    @classmethod
+    def scan_file_impl(
+        cls,
+        *,
+        file_path: Path,
+        project_name: str,
+        project_root: Path,
+        _parse_failures: list[nem.ParseFailureViolation] | None = None,
+    ) -> list[nem.NamespaceSourceViolation]:
+        if file_path.name == "__init__.py":
+            return []
+        if file_path.name in c.Infra.Refactor.NAMESPACE_PROTECTED_FILES:
+            return []
+        if file_path.name in c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY:
+            return []
+        parsed = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module(
+            file_path,
+            stage="namespace-source-scan",
+            parse_failures=_parse_failures,
+        )
+        if parsed is None:
+            return []
+        _ = project_name
+        project_alias_map = cls._build_project_alias_map(
+            project_root=project_root,
+            _parse_failures=_parse_failures,
+        )
+        if len(project_alias_map) == 0:
+            return []
+        violations: list[nem.NamespaceSourceViolation] = []
+        for stmt in ast.walk(parsed.tree):
+            if not isinstance(stmt, ast.ImportFrom):
+                continue
+            if stmt.module is None or stmt.level != 0:
+                continue
+            current_source = stmt.module.split(".", maxsplit=1)[0]
+            imported_names = [alias.name for alias in stmt.names if alias.name != "*"]
+            current_import = (
+                f"from {stmt.module} import {', '.join(imported_names) or '*'}"
+            )
+            for alias in stmt.names:
+                if alias.name == "*":
+                    continue
+                if alias.asname is not None:
+                    continue
+                if alias.name not in c.Infra.Refactor.RUNTIME_ALIAS_NAMES:
+                    continue
+                if alias.name in c.Infra.Refactor.NAMESPACE_SOURCE_UNIVERSAL_ALIASES:
+                    continue
+                correct_source = project_alias_map.get(alias.name)
+                if correct_source is None:
+                    continue
+                if current_source == correct_source:
+                    continue
+                suggested = f"from {correct_source} import {alias.name}"
+                violations.append(
+                    nem.NamespaceSourceViolation.create(
+                        file=str(file_path),
+                        line=stmt.lineno,
+                        alias=alias.name,
+                        current_source=current_source,
+                        correct_source=correct_source,
+                        current_import=current_import,
+                        suggested_import=suggested,
+                    ),
+                )
+        return violations
+
+    @classmethod
+    def _build_project_alias_map(
+        cls,
+        *,
+        project_root: Path,
+        _parse_failures: list[nem.ParseFailureViolation] | None,
+    ) -> dict[str, str]:
+        cached = cls._PROJECT_ALIAS_MAP_CACHE.get(project_root)
+        if cached is not None:
+            return cached
+        package_name = cls._discover_project_package_name(
+            project_root=project_root,
+        )
+        if len(package_name) == 0:
+            cls._PROJECT_ALIAS_MAP_CACHE[project_root] = {}
+            return {}
+        package_dir = (
+            project_root / c.Infra.Paths.DEFAULT_SRC_DIR / package_name
+        ).resolve()
+        alias_map: dict[str, str] = {}
+        family_to_file_name: dict[str, str] = {
+            family: file_name
+            for file_name, family in c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY.items()
+        }
+        for family in c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES:
+            file_name = family_to_file_name.get(family)
+            if file_name is None:
+                continue
+            facade_file = package_dir / file_name
+            if not facade_file.is_file():
+                continue
+            parsed = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module(
+                facade_file,
+                stage="namespace-source-map",
+                parse_failures=_parse_failures,
+            )
+            if parsed is None:
+                continue
+            if cls._has_alias_assignment(tree=parsed.tree, alias=family):
+                alias_map[family] = package_name
+        cls._PROJECT_ALIAS_MAP_CACHE[project_root] = alias_map
+        return alias_map
+
+    @staticmethod
+    def _discover_project_package_name(*, project_root: Path) -> str:
+        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        if not src_dir.is_dir():
+            return ""
+        package_dirs = [
+            entry
+            for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
+            if entry.is_dir() and (entry / "__init__.py").is_file()
+        ]
+        if len(package_dirs) == 0:
+            return ""
+        return package_dirs[0].name
+
+    @staticmethod
+    def _has_alias_assignment(*, tree: ast.Module, alias: str) -> bool:
+        for stmt in tree.body:
+            if not isinstance(stmt, ast.Assign):
+                continue
+            if not isinstance(stmt.value, ast.Name):
+                continue
+            for target in stmt.targets:
+                if isinstance(target, ast.Name) and target.id == alias:
+                    return True
+        return False
 
 
 class InternalImportDetector(p.Infra.Scanner):
@@ -855,7 +1073,7 @@ class CyclicImportDetector:
         for scan_dir in scan_dirs:
             for py_file in u.Infra.iter_directory_python_files(scan_dir):
                 base_module_name = cls._file_to_module(
-                    file_path=py_file, src_dir=scan_dir
+                    file_path=py_file, src_dir=scan_dir,
                 )
                 module_name = cls._module_name_for_scan_dir(
                     scan_dir=scan_dir,
@@ -1383,6 +1601,7 @@ class FlextInfraRefactorDependencyAnalyzerFacade:
     NamespaceFacadeScanner = NamespaceFacadeScanner
     LooseObjectDetector = LooseObjectDetector
     ImportAliasDetector = ImportAliasDetector
+    NamespaceSourceDetector = NamespaceSourceDetector
     InternalImportDetector = InternalImportDetector
     ManualProtocolDetector = ManualProtocolDetector
     CyclicImportDetector = CyclicImportDetector
@@ -1404,5 +1623,6 @@ __all__ = [
     "ManualProtocolDetector",
     "ManualTypingAliasDetector",
     "NamespaceFacadeScanner",
+    "NamespaceSourceDetector",
     "RuntimeAliasDetector",
 ]

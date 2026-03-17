@@ -66,7 +66,7 @@ def real_python_package(tmp_path: Path) -> Path:
     src_dir.mkdir(parents=True)
     (src_dir / "__init__.py").write_text('"""Test package."""\n__version__ = "0.1.0"\n')
     (project_root / "pyproject.toml").write_text(
-        '[project]\nname = "test-pkg"\nversion = "0.1.0"\n'
+        '[project]\nname = "test-pkg"\nversion = "0.1.0"\n',
     )
     return project_root
 
@@ -77,16 +77,16 @@ def real_workspace(tmp_path: Path) -> Path:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
     (workspace_root / "Makefile").write_text(
-        ".PHONY: help\nhelp:\n\t@echo 'Workspace'\n"
+        ".PHONY: help\nhelp:\n\t@echo 'Workspace'\n",
     )
     (workspace_root / "pyproject.toml").write_text(
-        '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+        '[project]\nname = "workspace"\nversion = "0.1.0"\n',
     )
     for i in range(1, 4):
         project_dir = workspace_root / f"project_{i}"
         project_dir.mkdir()
         (project_dir / "pyproject.toml").write_text(
-            f'[project]\nname = "project-{i}"\nversion = "0.1.0"\n'
+            f'[project]\nname = "project-{i}"\nversion = "0.1.0"\n',
         )
         src_dir = project_dir / "src" / f"project_{i}"
         src_dir.mkdir(parents=True)
@@ -105,7 +105,7 @@ def real_docs_project(tmp_path: Path) -> Path:
     (docs_dir / "index.md").write_text("# Index\n")
     (project_root / "README.md").write_text("# Project\n")
     (project_root / "pyproject.toml").write_text(
-        '[project]\nname = "docs-project"\nversion = "0.1.0"\n'
+        '[project]\nname = "docs-project"\nversion = "0.1.0"\n',
     )
     return project_root
 

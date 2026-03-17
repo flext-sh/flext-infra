@@ -28,7 +28,7 @@ class EnsureNamespaceToolingPhase:
         deptry = u.Infra.ensure_table(tool, c.Infra.Toml.DEPTRY)
         current_deptry = sorted(
             u.Infra.as_string_list(
-                u.Infra.get(deptry, c.Infra.Toml.KNOWN_FIRST_PARTY_UNDERSCORE)
+                u.Infra.get(deptry, c.Infra.Toml.KNOWN_FIRST_PARTY_UNDERSCORE),
             ),
         )
         if current_deptry != detected:

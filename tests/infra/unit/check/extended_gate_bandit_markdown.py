@@ -18,10 +18,10 @@ from ...models import m
 
 
 def _run_stub(
-    stdout: str = "", stderr: str = "", returncode: int = 0
+    stdout: str = "", stderr: str = "", returncode: int = 0,
 ) -> m.Infra.Core.CommandOutput:
     return m.Infra.Core.CommandOutput(
-        stdout=stdout, stderr=stderr, exit_code=returncode
+        stdout=stdout, stderr=stderr, exit_code=returncode,
     )
 
 

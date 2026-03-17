@@ -54,7 +54,7 @@ def _main_impl(argv: list[str] | None = None) -> int:
     generated_result = generator.generate(config)
     if generated_result.is_failure:
         return u.Infra.exit_code(
-            generated_result, failure_msg="base.mk generation failed"
+            generated_result, failure_msg="base.mk generation failed",
         )
     write_result = generator.write(
         generated_result.value,

@@ -23,7 +23,7 @@ class FlextInfraUtilitiesModels:
 
         line: Annotated[int, Field(description="Line number of the violation")]
         message: Annotated[
-            str, Field(description="Human-readable violation description")
+            str, Field(description="Human-readable violation description"),
         ]
         severity: Annotated[str, Field(description="Violation severity level")]
         rule_id: Annotated[

@@ -11,7 +11,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
     def test_detector_initialization(self) -> None:
         detector = FlextInfraRuntimeDevDependencyDetector()
         tm.that(
-            detector.__class__.__name__, eq="FlextInfraRuntimeDevDependencyDetector"
+            detector.__class__.__name__, eq="FlextInfraRuntimeDevDependencyDetector",
         )
 
     def test_detector_has_required_services(self) -> None:
@@ -62,7 +62,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
     def test_project_filter_with_multiple_projects(self, tmp_path: Path) -> None:
         parser = FlextInfraRuntimeDevDependencyDetector.parser(tmp_path / "limits.toml")
         args = u.Infra.resolve(
-            parser.parse_args(["--projects", "proj-a,proj-b,proj-c"])
+            parser.parse_args(["--projects", "proj-a,proj-b,proj-c"]),
         )
         tm.that(
             FlextInfraRuntimeDevDependencyDetector.project_filter(args),

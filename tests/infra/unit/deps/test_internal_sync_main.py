@@ -14,7 +14,7 @@ from tests.infra import h, u
 
 class TestMain:
     def test_main_success(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         cli_args = u.Infra.CliArgs(workspace=tmp_path)
 
@@ -32,7 +32,7 @@ class TestMain:
         tm.that(main(), eq=0)
 
     def test_main_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         cli_args = u.Infra.CliArgs(workspace=tmp_path)
 

@@ -65,7 +65,7 @@ class FlextInfraDocAuditor:
         if isinstance(by_scope_raw_value, Mapping):
             try:
                 by_scope_raw = TypeAdapter(
-                    dict[str, t.Infra.InfraValue]
+                    dict[str, t.Infra.InfraValue],
                 ).validate_python(
                     by_scope_raw_value,
                     strict=True,

@@ -56,7 +56,7 @@ class FlextInfraExtraPathsManager:
             return []
         try:
             return FlextInfraExtraPathsManager._STRING_LIST_ADAPTER.validate_python(
-                value
+                value,
             )
         except ValidationError:
             return []
@@ -91,7 +91,7 @@ class FlextInfraExtraPathsManager:
         if poetry_table is None:
             return []
         deps_table = self._as_table(
-            self._table_get(poetry_table, c.Infra.Toml.DEPENDENCIES)
+            self._table_get(poetry_table, c.Infra.Toml.DEPENDENCIES),
         )
         if deps_table is None:
             return []
@@ -112,7 +112,7 @@ class FlextInfraExtraPathsManager:
     def path_dep_paths(self, doc: TOMLDocument) -> list[str]:
         """Combine PEP 621 and Poetry path dependencies."""
         return sorted(
-            set(self.path_dep_paths_pep621(doc) + self.path_dep_paths_poetry(doc))
+            set(self.path_dep_paths_pep621(doc) + self.path_dep_paths_poetry(doc)),
         )
 
     def get_dep_paths(self, doc: TOMLDocument, *, is_root: bool = False) -> list[str]:
@@ -158,24 +158,24 @@ class FlextInfraExtraPathsManager:
         if tool_table is None:
             return r[bool].fail(f"no [tool] section in {pyproject_path}")
         pyright_table = self._as_table(
-            self._table_get(tool_table, c.Infra.Toml.PYRIGHT)
+            self._table_get(tool_table, c.Infra.Toml.PYRIGHT),
         )
         if pyright_table is None:
             return r[bool].fail(f"no [tool.pyright] section in {pyproject_path}")
         mypy_table = self._as_table(self._table_get(tool_table, c.Infra.Toml.MYPY))
         pyrefly_table = self._as_table(
-            self._table_get(tool_table, c.Infra.Toml.PYREFLY)
+            self._table_get(tool_table, c.Infra.Toml.PYREFLY),
         )
         changed = False
         current_pyright = self._as_string_list(
-            self._table_get(pyright_table, "extraPaths")
+            self._table_get(pyright_table, "extraPaths"),
         )
         if current_pyright != pyright_extra:
             pyright_table["extraPaths"] = pyright_extra
             changed = True
         if mypy_table is not None:
             current_mypy = self._as_string_list(
-                self._table_get(mypy_table, "mypy_path")
+                self._table_get(mypy_table, "mypy_path"),
             )
             if current_mypy != mypy_path:
                 mypy_table["mypy_path"] = mypy_path
@@ -184,7 +184,7 @@ class FlextInfraExtraPathsManager:
         if not is_root and pyrefly_table is not None:
             base_search: list[str] = ["."] + dep_paths
             current_search = self._as_string_list(
-                self._table_get(pyrefly_table, c.Infra.Toml.SEARCH_PATH)
+                self._table_get(pyrefly_table, c.Infra.Toml.SEARCH_PATH),
             )
             seen: set[str] = set(base_search)
             for path_value in current_search:
@@ -233,7 +233,7 @@ class FlextInfraExtraPathsManager:
                 )
                 if sync_result.is_failure:
                     return r[int].fail(
-                        sync_result.error or f"sync failed for {pyproject}"
+                        sync_result.error or f"sync failed for {pyproject}",
                     )
                 if sync_result.value and (not dry_run):
                     u.Infra.info(f"Updated {pyproject}")

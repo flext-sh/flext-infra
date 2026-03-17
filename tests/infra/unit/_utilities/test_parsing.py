@@ -11,7 +11,7 @@ from flext_infra import c, u
 
 class TestParsingModuleAst:
     def test_parse_module_ast_returns_module_on_valid_python(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         file_path = tmp_path / "valid.py"
         file_path.write_text("value = 1\n", encoding=c.Infra.Encoding.DEFAULT)
@@ -22,11 +22,11 @@ class TestParsingModuleAst:
         assert isinstance(parsed, ast.Module)
 
     def test_parse_module_ast_returns_none_on_syntax_error(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         file_path = tmp_path / "invalid.py"
         file_path.write_text(
-            "def broken(:\n    pass\n", encoding=c.Infra.Encoding.DEFAULT
+            "def broken(:\n    pass\n", encoding=c.Infra.Encoding.DEFAULT,
         )
 
         parsed = u.Infra.parse_module_ast(file_path)
@@ -34,7 +34,7 @@ class TestParsingModuleAst:
         assert parsed is None
 
     def test_parse_module_ast_returns_none_for_nonexistent_file(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         parsed = u.Infra.parse_module_ast(tmp_path / "missing.py")
 
@@ -61,7 +61,7 @@ class TestParsingModuleAst:
 
 class TestParsingModuleCst:
     def test_parse_module_cst_returns_module_on_valid_python(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         file_path = tmp_path / "valid.py"
         file_path.write_text("value = 1\n", encoding=c.Infra.Encoding.DEFAULT)
@@ -72,11 +72,11 @@ class TestParsingModuleCst:
         assert isinstance(parsed, cst.Module)
 
     def test_parse_module_cst_returns_none_on_syntax_error(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         file_path = tmp_path / "invalid.py"
         file_path.write_text(
-            "def broken(:\n    pass\n", encoding=c.Infra.Encoding.DEFAULT
+            "def broken(:\n    pass\n", encoding=c.Infra.Encoding.DEFAULT,
         )
 
         parsed = u.Infra.parse_module_cst(file_path)
@@ -84,7 +84,7 @@ class TestParsingModuleCst:
         assert parsed is None
 
     def test_parse_module_cst_returns_none_for_nonexistent_file(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         parsed = u.Infra.parse_module_cst(tmp_path / "missing.py")
 

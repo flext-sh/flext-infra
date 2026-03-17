@@ -57,7 +57,7 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
         def _emit_module(mod: str) -> None:
             items = groups[mod]
             alias_items = sorted(
-                (item for item in items if not item[1]), key=operator.itemgetter(0)
+                (item for item in items if not item[1]), key=operator.itemgetter(0),
             )
             sorted_items = sorted(
                 (item for item in items if item[1]),
@@ -165,7 +165,7 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
             FlextInfraCodegenGeneration.generate_type_checking(
                 groups,
                 include_flext_types=not is_l0_typings,
-            )
+            ),
         )
         out.append("")
         for name, value in sorted(inline_constants.items()):

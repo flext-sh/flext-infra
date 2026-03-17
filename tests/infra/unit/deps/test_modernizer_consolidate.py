@@ -25,7 +25,7 @@ class TestConsolidateGroupsPhase:
             "[project.optional-dependencies]\n"
             'dev = ["pytest"]\n'
             'docs = ["sphinx"]\n'
-            'test = ["coverage"]\n'
+            'test = ["coverage"]\n',
         )
         changes = ConsolidateGroupsPhase().apply(doc, ["pytest"])
         tm.that(any("removed" in change for change in changes), eq=True)

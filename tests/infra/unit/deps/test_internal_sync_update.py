@@ -55,7 +55,7 @@ class TestEnsureSymlinkEdgeCases:
         tm.that(target.is_symlink(), eq=True)
 
     def test_ensure_symlink_permission_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         source = tmp_path / "source"
         source.mkdir()
@@ -71,14 +71,14 @@ class TestEnsureSymlinkEdgeCases:
 
         monkeypatch.setattr(Path, "symlink_to", _raise_symlink_to)
         error = tm.fail(
-            FlextInfraInternalDependencySyncService.ensure_symlink(target, source)
+            FlextInfraInternalDependencySyncService.ensure_symlink(target, source),
         )
         tm.that(error, contains="failed to ensure symlink")
 
 
 class TestEnsureCheckout:
     def test_clone_success(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         def _git_run_checked(_cmd: list[str]) -> r[bool]:
             return r[bool].ok(True)
@@ -96,7 +96,7 @@ class TestEnsureCheckout:
         tm.ok(result)
 
     def test_clone_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         def _git_run_checked(_cmd: list[str]) -> r[bool]:
             return r[bool].fail("fatal: repo not found")
@@ -114,7 +114,7 @@ class TestEnsureCheckout:
         tm.fail(result)
 
     def test_fetch_and_checkout_existing(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         dep_path = tmp_path / "dep"
         dep_path.mkdir(parents=True)
@@ -162,11 +162,11 @@ class TestEnsureCheckout:
                 tmp_path / "dep-b",
                 "https://github.com/flext-sh/flext.git",
                 "invalid@ref!",
-            )
+            ),
         )
 
     def test_fetch_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         dep_path = tmp_path / "dep"
         dep_path.mkdir(parents=True)
@@ -189,7 +189,7 @@ class TestEnsureCheckout:
         )
 
     def test_checkout_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         dep_path = tmp_path / "dep"
         dep_path.mkdir(parents=True)
@@ -220,7 +220,7 @@ class TestEnsureCheckout:
         )
 
     def test_clone_replaces_existing_symlink_and_dir(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         def _git_run_checked(_cmd: list[str]) -> r[bool]:
             return r[bool].ok(True)
@@ -240,11 +240,11 @@ class TestEnsureCheckout:
         service = FlextInfraInternalDependencySyncService()
         tm.ok(
             service.ensure_checkout(
-                dep_symlink, "https://github.com/flext-sh/flext.git", "main"
-            )
+                dep_symlink, "https://github.com/flext-sh/flext.git", "main",
+            ),
         )
         tm.ok(
             service.ensure_checkout(
-                dep_dir, "https://github.com/flext-sh/flext.git", "main"
-            )
+                dep_dir, "https://github.com/flext-sh/flext.git", "main",
+            ),
         )

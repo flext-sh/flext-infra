@@ -26,7 +26,7 @@ def test_migrator_has_flext_core_dependency_in_poetry(tmp_path: Path) -> None:
     (project_root / "base.mk").write_text("base.mk", encoding="utf-8")
     (project_root / "Makefile").write_text("content", encoding="utf-8")
     (project_root / "pyproject.toml").write_text(
-        '[tool.poetry.dependencies]\nflext-core = "^0.1.0"\n', encoding="utf-8"
+        '[tool.poetry.dependencies]\nflext-core = "^0.1.0"\n', encoding="utf-8",
     )
     (project_root / ".gitignore").write_text("", encoding="utf-8")
     migrator = _build_migrator(_project(project_root), "base.mk")
@@ -60,7 +60,7 @@ def test_migrator_has_flext_core_dependency_poetry_deps_not_table(
     (project_root / "base.mk").write_text("base", encoding="utf-8")
     (project_root / "Makefile").write_text("content", encoding="utf-8")
     (project_root / "pyproject.toml").write_text(
-        "[tool.poetry]\ndependencies = []\n", encoding="utf-8"
+        "[tool.poetry]\ndependencies = []\n", encoding="utf-8",
     )
     (project_root / ".gitignore").write_text("", encoding="utf-8")
     migrator = _build_migrator(_project(project_root), "base")
@@ -114,7 +114,7 @@ def test_workspace_migrator_pyproject_write_error(
 
     monkeypatch.setattr(Path, "write_text", _write_fail)
     result = migrator._migrate_pyproject(
-        tmp_path, project_name="test-proj", dry_run=False
+        tmp_path, project_name="test-proj", dry_run=False,
     )
     tm.that(result.is_failure or result.is_success, eq=True)
 
@@ -134,11 +134,11 @@ def test_migrate_pyproject_flext_core_non_dry_run(tmp_path: Path) -> None:
     project_root.mkdir(parents=True)
     (project_root / ".git").mkdir()
     (project_root / "pyproject.toml").write_text(
-        '[project]\nname = "flext-core"\nversion = "0.1.0"\n', encoding="utf-8"
+        '[project]\nname = "flext-core"\nversion = "0.1.0"\n', encoding="utf-8",
     )
     migrator = _build_migrator(_project(project_root, name="flext-core"), "base")
     result = migrator._migrate_pyproject(
-        project_root, project_name="flext-core", dry_run=False
+        project_root, project_name="flext-core", dry_run=False,
     )
     value = tm.ok(result)
     tm.that(value, eq="")

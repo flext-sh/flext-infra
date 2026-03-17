@@ -119,7 +119,7 @@ class FlextInfraUtilitiesDiscovery:
             [
                 entry
                 for entry in sorted(
-                    workspace_root.iterdir(), key=lambda item: item.name
+                    workspace_root.iterdir(), key=lambda item: item.name,
                 )
                 if entry.is_dir()
                 and (not entry.name.startswith("."))
@@ -145,7 +145,7 @@ class FlextInfraUtilitiesDiscovery:
         Returns list of (project_root, python_file) tuples.
         """
         project_roots = FlextInfraUtilitiesDiscovery.discover_project_roots(
-            workspace_root
+            workspace_root,
         )
         files_result = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root,

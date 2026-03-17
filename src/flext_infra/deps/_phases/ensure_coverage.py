@@ -50,14 +50,14 @@ class EnsureCoverageConfigPhase:
             changes.append(f"tool.coverage.report.fail_under set to {fail_under}")
 
         current_show_missing = u.Infra.unwrap_item(
-            u.Infra.get(report_tbl, "show_missing")
+            u.Infra.get(report_tbl, "show_missing"),
         )
         if current_show_missing is not True:
             report_tbl["show_missing"] = True
             changes.append("tool.coverage.report.show_missing set to true")
 
         current_skip_covered = u.Infra.unwrap_item(
-            u.Infra.get(report_tbl, "skip_covered")
+            u.Infra.get(report_tbl, "skip_covered"),
         )
         if current_skip_covered is not False:
             report_tbl["skip_covered"] = False
@@ -67,7 +67,7 @@ class EnsureCoverageConfigPhase:
         if current_precision != cov_config.precision:
             report_tbl["precision"] = cov_config.precision
             changes.append(
-                f"tool.coverage.report.precision set to {cov_config.precision}"
+                f"tool.coverage.report.precision set to {cov_config.precision}",
             )
 
         return changes

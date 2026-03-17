@@ -179,7 +179,7 @@ class FlextInfraRefactorLooseClassScanner:
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             out: RListClassOccurrence = r[list[m.Infra.Refactor.ClassOccurrence]].fail(
-                f"{file_path}: parse_failed"
+                f"{file_path}: parse_failed",
             )
             return out
         col = TopLevelClassCollector()

@@ -79,7 +79,7 @@ class FlextInfraCodegenConstantsQualityGate:
         verdict = u.Infra.quality_gate_compute_verdict(checks, improvement)
         checks_infra: list[t.Infra.InfraValue] = list(checks)
         projects_infra: list[t.Infra.InfraValue] = list(
-            u.Infra.quality_gate_project_findings(census_reports)
+            u.Infra.quality_gate_project_findings(census_reports),
         )
         report: dict[str, t.Infra.InfraValue] = {
             "workspace": str(self._workspace_root),

@@ -39,7 +39,7 @@ class TestEnsurePytestConfigPhase:
         doc = tomlkit.document()
         doc["tool"] = {
             "pytest": {
-                "ini_options": {"minversion": "8.0", "python_classes": ["Test*"]}
+                "ini_options": {"minversion": "8.0", "python_classes": ["Test*"]},
             },
         }
         _ = EnsurePytestConfigPhase(_test_tool_config()).apply(doc)

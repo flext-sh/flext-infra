@@ -26,7 +26,7 @@ class FlextInfraMypyGate(FlextInfraGate):
     @override
     @override
     def check(
-        self, project_dir: Path, ctx: FlextInfraGateContext
+        self, project_dir: Path, ctx: FlextInfraGateContext,
     ) -> m.Infra.Check.GateExecution:
         _ = u
         started = time.monotonic()
@@ -77,7 +77,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                 continue
             try:
                 line_data = TypeAdapter(
-                    dict[str, t_infra.Infra.InfraValue]
+                    dict[str, t_infra.Infra.InfraValue],
                 ).validate_json(stripped)
             except ValidationError:
                 continue

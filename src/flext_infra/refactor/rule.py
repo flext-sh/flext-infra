@@ -27,7 +27,7 @@ class FlextInfraRefactorRuleLoader:
         try:
             loaded = u.Infra.safe_load_yaml(self.config_path)
             normalized: dict[str, t.Infra.InfraValue] = TypeAdapter(
-                dict[str, t.Infra.InfraValue]
+                dict[str, t.Infra.InfraValue],
             ).validate_python(dict(loaded.items()))
             scope_raw = normalized.get("refactor_engine")
             scope_map = self._normalize_str_object_mapping(scope_raw)
@@ -69,7 +69,7 @@ class FlextInfraRefactorRuleLoader:
             for rule_file in sorted(rules_dir.glob("*.yml")):
                 try:
                     rule_config: dict[str, t.Infra.InfraValue] = TypeAdapter(
-                        dict[str, t.Infra.InfraValue]
+                        dict[str, t.Infra.InfraValue],
                     ).validate_python(dict(u.Infra.safe_load_yaml(rule_file).items()))
                 except (OSError, TypeError):
                     continue
@@ -156,7 +156,7 @@ class FlextInfraRefactorRuleLoader:
         definitions: list[dict[str, t.Infra.InfraValue]] = []
         for item in entries:
             normalized = FlextInfraRefactorRuleLoader._normalize_str_object_mapping(
-                item
+                item,
             )
             if not normalized:
                 continue
@@ -169,7 +169,7 @@ class FlextInfraRefactorRuleLoader:
     ) -> dict[str, t.Infra.InfraValue]:
         try:
             adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                dict[str, t.Infra.InfraValue]
+                dict[str, t.Infra.InfraValue],
             )
             return adapter.validate_python(value)
         except ValidationError:

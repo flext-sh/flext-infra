@@ -12,7 +12,7 @@ from tests.infra import h
 
 class TestEnsureCheckoutEdgeCases:
     def test_ensure_checkout_cleanup_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         dep_path = tmp_path / "dep"
         dep_path.mkdir()

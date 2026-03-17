@@ -29,7 +29,7 @@ class _StubRunner:
         self.last_kwargs: dict[str, str | int | Path | dict[str, str]] = {}
 
     def run_raw(
-        self, *args: t.Infra.TomlValue, **kwargs: str | int | Path | dict[str, str]
+        self, *args: t.Infra.TomlValue, **kwargs: str | int | Path | dict[str, str],
     ) -> r[m.Infra.Core.CommandOutput]:
         _ = args
         self.last_kwargs = kwargs
@@ -58,7 +58,7 @@ class TestLoadDependencyLimits:
         tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), eq={})
 
     def test_unconvertible_values_skipped(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         monkeypatch.setattr(
@@ -90,7 +90,7 @@ class TestRunMypyStubHints:
         tm.that(tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin)), eq=([], []))
 
     def test_runner_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
@@ -104,7 +104,7 @@ class TestRunMypyStubHints:
         tm.fail(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
     def test_parses_hints(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
@@ -116,12 +116,12 @@ class TestRunMypyStubHints:
             stderr='error: Library stubs not installed for "requests"',
         )
         monkeypatch.setattr(
-            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out))
+            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out)),
         )
         tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
     def test_run_mypy_stub_hints_with_timeout(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"

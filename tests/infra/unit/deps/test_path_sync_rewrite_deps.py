@@ -96,7 +96,7 @@ class TestRewriteDepPaths:
             return r[bool].fail("write failed")
 
         monkeypatch.setattr(
-            "flext_infra.FlextInfraUtilitiesToml.write_document", fail_write
+            "flext_infra.FlextInfraUtilitiesToml.write_document", fail_write,
         )
         tm.fail(
             rewrite_dep_paths(
@@ -104,14 +104,14 @@ class TestRewriteDepPaths:
                 mode="workspace",
                 internal_names={"flext-core"},
                 is_root=True,
-            )
+            ),
         )
 
 
 def test_rewrite_dep_paths_with_internal_names(tmp_path: Path) -> None:
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
-        '[project]\ndependencies = ["flext-core @ file:.flext-deps/flext-core"]\n'
+        '[project]\ndependencies = ["flext-core @ file:.flext-deps/flext-core"]\n',
     )
     result = rewrite_dep_paths(
         pyproject,
@@ -135,7 +135,7 @@ def test_rewrite_dep_paths_dry_run(tmp_path: Path) -> None:
             internal_names={"flext-core"},
             is_root=False,
             dry_run=True,
-        )
+        ),
     )
     tm.that(pyproject.read_text(), eq=original)
 
@@ -148,7 +148,7 @@ def test_rewrite_dep_paths_read_failure(tmp_path: Path) -> None:
             internal_names={"flext-core"},
             is_root=False,
             dry_run=False,
-        )
+        ),
     )
 
 
@@ -161,5 +161,5 @@ def test_rewrite_dep_paths_with_no_deps(tmp_path: Path) -> None:
             mode="poetry",
             internal_names=set(),
             dry_run=True,
-        )
+        ),
     )

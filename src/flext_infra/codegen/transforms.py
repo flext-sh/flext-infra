@@ -34,7 +34,7 @@ class FlextInfraCodegenTransforms:
 
     @staticmethod
     def add_import_to_tree(
-        tree: ast.Module, pkg_name: str, module_name: str, name: str
+        tree: ast.Module, pkg_name: str, module_name: str, name: str,
     ) -> None:
         """Add a from-import to the tree when it is missing."""
         full_module = f"{pkg_name}.{module_name}"

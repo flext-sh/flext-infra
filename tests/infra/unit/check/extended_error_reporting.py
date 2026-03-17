@@ -23,13 +23,13 @@ from ._stubs import make_gate_exec, make_issue
 
 CheckProjectStub = Callable[[Path, list[str], Path], ProjectResult]
 RunStub = Callable[
-    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput
+    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput,
 ]
 
 
 def _check_project_stub(project: ProjectResult) -> CheckProjectStub:
     def _fake_check(
-        _project_dir: Path, _gates: list[str], _reports_dir: Path
+        _project_dir: Path, _gates: list[str], _reports_dir: Path,
     ) -> ProjectResult:
         return project
 
@@ -40,7 +40,7 @@ def _iter_check_project_stub(projects: list[ProjectResult]) -> CheckProjectStub:
     project_iter = iter(projects)
 
     def _fake_check(
-        _project_dir: Path, _gates: list[str], _reports_dir: Path
+        _project_dir: Path, _gates: list[str], _reports_dir: Path,
     ) -> ProjectResult:
         return next(project_iter)
 
@@ -70,7 +70,7 @@ class TestErrorReporting:
         tm.that(result.value[0].total_errors, eq=1)
 
     def test_skips_projects_with_no_errors(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         reports_dir = tmp_path / "reports"
@@ -97,7 +97,7 @@ class TestMarkdownReportEmptyGates:
     """Test markdown report skips empty gates in run_projects."""
 
     def test_skips_empty_gates(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         reports_dir = tmp_path / "reports"
@@ -105,12 +105,12 @@ class TestMarkdownReportEmptyGates:
         exec_with = make_gate_exec(issues=[issue])
         exec_without = make_gate_exec(issues=[])
         project = ProjectResult(
-            project="p1", gates={"lint": exec_with, "format": exec_without}
+            project="p1", gates={"lint": exec_with, "format": exec_without},
         )
         monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
         h.mk_project(tmp_path, "p1")
         result = checker.run_projects(
-            ["p1"], ["lint", "format"], reports_dir=reports_dir
+            ["p1"], ["lint", "format"], reports_dir=reports_dir,
         )
         tm.ok(result)
         md_path = reports_dir / "check-report.md"
@@ -122,7 +122,7 @@ class TestMypyEmptyLinesInOutput:
     """Test _run_mypy with empty lines in output."""
 
     def test_skips_empty_lines(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -164,7 +164,7 @@ class TestGoFmtEmptyLinesInOutput:
     """Test _run_go with empty lines in output."""
 
     def test_skips_empty_lines(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -201,7 +201,7 @@ class TestRuffFormatDuplicateFiles:
     """Test _run_ruff_format with duplicate files."""
 
     def test_deduplicates_files(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")

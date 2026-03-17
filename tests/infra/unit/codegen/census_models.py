@@ -26,7 +26,7 @@ class TestExcludedProjects:
 class TestViolationPattern:
     def test_named_groups_present(self) -> None:
         match = c.Infra.Codegen.VIOLATION_PATTERN.match(
-            "[NS-001-001] src/file.py:10 — msg"
+            "[NS-001-001] src/file.py:10 — msg",
         )
         tm.that(match is not None, eq=True)
         assert match is not None

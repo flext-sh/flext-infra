@@ -34,13 +34,13 @@ def _set_toml_stub(
 
 class TestSyncMethodEdgeCasesMore:
     def test_sync_checkout_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n'
+            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
         )
         (tmp_path / "flext-repo-map.toml").write_text(
-            '[repo.flext-core]\nssh_url = "git@github.com:flext-sh/flext-core.git"\nhttps_url = "https://github.com/flext-sh/flext-core.git"\n'
+            '[repo.flext-core]\nssh_url = "git@github.com:flext-sh/flext-core.git"\nhttps_url = "https://github.com/flext-sh/flext-core.git"\n',
         )
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
@@ -49,8 +49,8 @@ class TestSyncMethodEdgeCasesMore:
                 r[t.Infra.TomlConfig].ok({
                     "tool": {
                         "poetry": {
-                            "dependencies": {"flext-core": {"path": "../flext-core"}}
-                        }
+                            "dependencies": {"flext-core": {"path": "../flext-core"}},
+                        },
                     },
                     "project": {},
                 }),
@@ -59,8 +59,8 @@ class TestSyncMethodEdgeCasesMore:
                         "flext-core": {
                             "ssh_url": "git@github.com:flext-sh/flext-core.git",
                             "https_url": "https://github.com/flext-sh/flext-core.git",
-                        }
-                    }
+                        },
+                    },
                 }),
             ],
         )

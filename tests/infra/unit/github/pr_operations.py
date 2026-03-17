@@ -47,7 +47,7 @@ class TestChecks:
 
     def test_checks_fail_non_strict(self, tmp_path: Path) -> None:
         runner = StubRunner(
-            run_returns=[r[m.Infra.Core.CommandOutput].fail("checks failed")]
+            run_returns=[r[m.Infra.Core.CommandOutput].fail("checks failed")],
         )
         result = _mgr(runner=runner).checks(tmp_path, "42")
         tm.ok(result)
@@ -55,7 +55,7 @@ class TestChecks:
 
     def test_checks_fail_strict(self, tmp_path: Path) -> None:
         runner = StubRunner(
-            run_returns=[r[m.Infra.Core.CommandOutput].fail("checks failed")]
+            run_returns=[r[m.Infra.Core.CommandOutput].fail("checks failed")],
         )
         tm.fail(_mgr(runner=runner).checks(tmp_path, "42", strict=True))
 
@@ -64,14 +64,14 @@ class TestMerge:
     def test_merge_success(self, tmp_path: Path) -> None:
         runner = StubRunner(run_returns=[_ok_cmd()])
         result = _mgr(runner=runner).merge(
-            tmp_path, "42", "feature", release_on_merge=False
+            tmp_path, "42", "feature", release_on_merge=False,
         )
         tm.ok(result)
         tm.that(result.value["status"], eq="merged")
 
     def test_merge_failure(self, tmp_path: Path) -> None:
         runner = StubRunner(
-            run_returns=[r[m.Infra.Core.CommandOutput].fail("merge conflict")]
+            run_returns=[r[m.Infra.Core.CommandOutput].fail("merge conflict")],
         )
         tm.fail(_mgr(runner=runner).merge(tmp_path, "42", "feature"))
 
@@ -81,10 +81,10 @@ class TestMerge:
                 r[m.Infra.Core.CommandOutput].fail("not mergeable"),
                 _ok_cmd(),
                 _ok_cmd(),
-            ]
+            ],
         )
         tm.ok(
-            _mgr(runner=runner).merge(tmp_path, "42", "feature", release_on_merge=False)
+            _mgr(runner=runner).merge(tmp_path, "42", "feature", release_on_merge=False),
         )
 
     def test_merge_selector_same_as_head_no_pr(self, tmp_path: Path) -> None:
@@ -104,7 +104,7 @@ class TestMerge:
                 "42",
                 "release/1.0",
                 release_on_merge=True,
-            )
+            ),
         )
 
     def test_merge_auto_and_delete_branch(self, tmp_path: Path) -> None:
@@ -158,7 +158,7 @@ class TestTriggerRelease:
         self._release_setup(tmp_path)
         versioning = StubVersioning(release_tag_returns=r[str].fail("no tag"))
         result = _mgr(versioning=versioning)._trigger_release_if_needed(
-            tmp_path, "feature"
+            tmp_path, "feature",
         )
         tm.ok(result)
         tm.that(result.value["status"], eq="no-release-tag")
@@ -178,7 +178,7 @@ class TestTriggerRelease:
         self._release_setup(tmp_path)
         versioning = StubVersioning(release_tag_returns=r[str].ok("v1.0.0"))
         runner = StubRunner(
-            run_returns=[r[m.Infra.Core.CommandOutput].fail("not found"), _ok_cmd()]
+            run_returns=[r[m.Infra.Core.CommandOutput].fail("not found"), _ok_cmd()],
         )
         result = _mgr(runner=runner, versioning=versioning)._trigger_release_if_needed(
             tmp_path,

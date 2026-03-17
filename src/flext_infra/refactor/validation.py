@@ -417,7 +417,7 @@ class FlextInfraRefactorCliSupport:
                 if iter_result.is_failure:
                     FlextInfraRefactorCliSupport.error(
                         iter_result.error
-                        or f"File iteration failed for project: {args.project}"
+                        or f"File iteration failed for project: {args.project}",
                     )
                     return 1
                 ignore_items, extension_items = (
@@ -432,7 +432,7 @@ class FlextInfraRefactorCliSupport:
                     for file_path in iter_result.value
                     if (
                         fnmatch.fnmatch(
-                            str(file_path.relative_to(args.project)), args.pattern
+                            str(file_path.relative_to(args.project)), args.pattern,
                         )
                         or fnmatch.fnmatch(file_path.name, args.pattern)
                     )

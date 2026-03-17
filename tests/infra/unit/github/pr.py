@@ -110,7 +110,7 @@ class TestCreate:
             capture_returns=[
                 r[str].ok("[]"),
                 r[str].ok("https://github.com/o/r/pull/99"),
-            ]
+            ],
         )
         result = _mgr(runner=runner).create(
             tmp_path,
@@ -140,7 +140,7 @@ class TestCreate:
             capture_returns=[
                 r[str].ok("[]"),
                 r[str].fail("create failed"),
-            ]
+            ],
         )
         result = _mgr(runner=runner).create(
             tmp_path,
@@ -156,7 +156,7 @@ class TestCreate:
             capture_returns=[
                 r[str].ok("[]"),
                 r[str].ok("https://github.com/o/r/pull/100"),
-            ]
+            ],
         )
         result = _mgr(runner=runner).create(
             tmp_path,

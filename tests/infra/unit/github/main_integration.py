@@ -47,7 +47,7 @@ class TestMain:
             sys.argv = original
 
     def test_workflows_subcommand(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         syncer = StubSyncer(sync_returns=r[list[SyncOperation]].ok([]))
         monkeypatch.setattr(github_main, "FlextInfraWorkflowSyncer", lambda: syncer)
@@ -59,12 +59,12 @@ class TestMain:
             sys.argv = original
 
     def test_lint_subcommand(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         linter = StubLinter(
             lint_returns=r[m.Infra.Github.WorkflowLintResult].ok(
                 m.Infra.Github.WorkflowLintResult(status="ok"),
-            )
+            ),
         )
         monkeypatch.setattr(github_main, "FlextInfraWorkflowLinter", lambda: linter)
         original = sys.argv.copy()
@@ -75,7 +75,7 @@ class TestMain:
             sys.argv = original
 
     def test_pr_subcommand(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(github_main, "pr_main", lambda: 0)
         original = sys.argv.copy()
@@ -99,7 +99,7 @@ class TestMain:
     ) -> None:
         mgr = StubWorkspaceManager(
             orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
-                _orch(fail=0)
+                _orch(fail=0),
             ),
         )
         monkeypatch.setattr(github_main, "FlextInfraPrWorkspaceManager", lambda: mgr)
@@ -137,7 +137,7 @@ class TestMain:
                 (),
                 {
                     "ensure_structlog_configured": staticmethod(
-                        lambda: called.append(True)
+                        lambda: called.append(True),
                     ),
                 },
             ),
@@ -145,7 +145,7 @@ class TestMain:
         linter = StubLinter(
             lint_returns=r[m.Infra.Github.WorkflowLintResult].ok(
                 m.Infra.Github.WorkflowLintResult(status="ok"),
-            )
+            ),
         )
         monkeypatch.setattr(github_main, "FlextInfraWorkflowLinter", lambda: linter)
         original = sys.argv.copy()

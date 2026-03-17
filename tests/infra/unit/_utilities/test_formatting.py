@@ -19,7 +19,7 @@ class TestFormattingRunRuffFix:
         calls: list[list[str]] = []
 
         def _fake_run_checked(
-            _self: FlextInfraUtilitiesSubprocess, cmd: list[str]
+            _self: FlextInfraUtilitiesSubprocess, cmd: list[str],
         ) -> object:
             calls.append(cmd)
             return object()
@@ -53,7 +53,7 @@ class TestFormattingRunRuffFix:
         calls: list[list[str]] = []
 
         def _raise_missing(
-            _self: FlextInfraUtilitiesSubprocess, cmd: list[str]
+            _self: FlextInfraUtilitiesSubprocess, cmd: list[str],
         ) -> None:
             calls.append(cmd)
             msg = "ruff not found"
@@ -73,5 +73,5 @@ class TestFormattingRunRuffFix:
                 "--fix",
                 "--quiet",
                 str(target),
-            ]
+            ],
         ]

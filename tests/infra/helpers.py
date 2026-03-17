@@ -142,7 +142,7 @@ class FlextInfraTestHelpers:
 
     @staticmethod
     def assert_toml_valid(
-        path: Path, msg: str | None = None
+        path: Path, msg: str | None = None,
     ) -> dict[str, t.Infra.InfraValue]:
         """Assert TOML file is valid and return parsed content.
 
@@ -160,7 +160,7 @@ class FlextInfraTestHelpers:
         FlextInfraTestHelpers.assert_file_exists(path, msg)
         try:
             content: dict[str, t.Infra.InfraValue] = tomllib.loads(
-                path.read_text(encoding="utf-8")
+                path.read_text(encoding="utf-8"),
             )
         except tomllib.TOMLDecodeError as exc:
             raise AssertionError(msg or f"Invalid TOML in {path}: {exc}") from exc
@@ -168,7 +168,7 @@ class FlextInfraTestHelpers:
 
     @staticmethod
     def assert_toml_has_section(
-        path: Path, section: str, msg: str | None = None
+        path: Path, section: str, msg: str | None = None,
     ) -> dict[str, t.Infra.InfraValue]:
         """Assert TOML file has specific section.
 

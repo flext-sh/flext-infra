@@ -65,13 +65,13 @@ def _stub_full_publish(mp: MonkeyPatch, root: Path) -> None:
 
 class TestPhasePublish:
     def test_generates_notes(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_publish(monkeypatch, workspace_root)
         tm.ok(_CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=True))
 
     def test_dry_run_skips_changelog(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         changelog_called = False
 
@@ -86,11 +86,11 @@ class TestPhasePublish:
         tm.that(changelog_called, eq=False)
 
     def test_updates_changelog(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_full_publish(monkeypatch, workspace_root)
         tm.ok(
-            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False)
+            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
         )
 
     def test_with_push(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
@@ -105,13 +105,13 @@ class TestPhasePublish:
         monkeypatch.setattr(_CLS, "_push_release", fake_push)
         tm.ok(
             _CLS().phase_publish(
-                workspace_root, "1.0.0", "v1.0.0", [], dry_run=False, push=True
-            )
+                workspace_root, "1.0.0", "v1.0.0", [], dry_run=False, push=True,
+            ),
         )
         tm.that(push_called, eq=True)
 
     def test_notes_generation_failure(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         def _generate_notes(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
             del a, kw
@@ -123,11 +123,11 @@ class TestPhasePublish:
             _generate_notes,
         )
         tm.fail(
-            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False)
+            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
         )
 
     def test_changelog_update_failure(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_publish(monkeypatch, workspace_root)
 
@@ -141,11 +141,11 @@ class TestPhasePublish:
             _update_changelog,
         )
         tm.fail(
-            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False)
+            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
         )
 
     def test_tag_creation_failure(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_publish(monkeypatch, workspace_root)
 
@@ -164,5 +164,5 @@ class TestPhasePublish:
             _create_tag,
         )
         tm.fail(
-            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False)
+            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
         )

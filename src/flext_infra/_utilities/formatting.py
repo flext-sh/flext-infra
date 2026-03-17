@@ -24,7 +24,7 @@ class FlextInfraUtilitiesFormatting:
 
     @staticmethod
     def run_ruff_fix(
-        path: Path, *, include_format: bool = True, quiet: bool = False
+        path: Path, *, include_format: bool = True, quiet: bool = False,
     ) -> None:
         """Run ruff check --fix and optionally ruff format on a file.
 

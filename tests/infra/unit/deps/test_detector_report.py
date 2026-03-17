@@ -35,14 +35,14 @@ class _DepsStub:
         return r[list[Path]].ok([self._project])
 
     def run_deptry(
-        self, project_path: Path, venv_bin: Path
+        self, project_path: Path, venv_bin: Path,
     ) -> r[tuple[list[dict[str, str]], int]]:
         _ = project_path
         _ = venv_bin
         return r[tuple[list[dict[str, str]], int]].ok(([], 0))
 
     def build_project_report(
-        self, project_name: str, issues: list[dict[str, str]]
+        self, project_name: str, issues: list[dict[str, str]],
     ) -> _ReportStub:
         _ = project_name
         _ = issues
@@ -85,14 +85,14 @@ def _setup(
     paths = types.SimpleNamespace(workspace_root_from_file=_workspace_root_from_file)
     monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", _paths_factory)
     monkeypatch.setattr(
-        detector_module, "FlextInfraDependencyDetectionService", _deps_factory
+        detector_module, "FlextInfraDependencyDetectionService", _deps_factory,
     )
     monkeypatch.setattr(Path, "exists", _exists)
     if json_service is not None:
         monkeypatch.setattr(detector_module, "FlextInfraUtilitiesIo", _json_factory)
     if reporting_service is not None:
         monkeypatch.setattr(
-            detector_module, "FlextInfraUtilitiesReporting", _reporting_factory
+            detector_module, "FlextInfraUtilitiesReporting", _reporting_factory,
         )
     return detector_module.FlextInfraRuntimeDevDependencyDetector()
 
@@ -106,7 +106,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
         call_paths: list[str] = []
 
         def _write_json(
-            path: Path, payload: dict[str, dict[str, dict[str, int]]]
+            path: Path, payload: dict[str, dict[str, dict[str, int]]],
         ) -> r[bool]:
             _ = payload
             call_paths.append(str(path))
@@ -125,7 +125,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
                 str(custom_output),
                 "--no-pip-check",
                 "--apply",
-            ])
+            ]),
         )
         tm.that(len(call_paths), eq=1)
         tm.that(call_paths[0], eq=str(custom_output))
@@ -144,7 +144,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
         reporting = types.SimpleNamespace(get_report_dir=_report_dir)
 
         def _mkdir_fail(
-            path: Path, *, parents: bool = False, exist_ok: bool = False
+            path: Path, *, parents: bool = False, exist_ok: bool = False,
         ) -> None:
             del path
             del parents
@@ -185,7 +185,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
             return tmp_path / "reports"
 
         def _mkdir_ok(
-            path: Path, *, parents: bool = False, exist_ok: bool = False
+            path: Path, *, parents: bool = False, exist_ok: bool = False,
         ) -> None:
             del path
             del parents

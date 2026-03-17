@@ -47,7 +47,7 @@ class WorkspaceFactory(m.Config):
         docs_dir = project_root / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (project_root / "AGENTS.md").write_text(
-            "# AGENTS\n\nProject rules.\n", encoding=self.encoding
+            "# AGENTS\n\nProject rules.\n", encoding=self.encoding,
         )
         (project_root / "README.md").write_text(
             f"# {name}\n\nGenerated full project fixture.\n",

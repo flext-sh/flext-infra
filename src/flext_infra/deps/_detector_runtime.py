@@ -163,7 +163,7 @@ class FlextInfraDependencyDetectorRuntime:
             return r[int].ok(2)
         if not (venv_bin / c.Infra.Toml.DEPTRY).exists():
             detector.log.error(
-                "deps_deptry_missing", path=str(venv_bin / c.Infra.Toml.DEPTRY)
+                "deps_deptry_missing", path=str(venv_bin / c.Infra.Toml.DEPTRY),
             )
             return r[int].ok(3)
         apply_typings = bool(args.apply_typings)
@@ -208,11 +208,11 @@ class FlextInfraDependencyDetectorRuntime:
             if do_typings and (project_path / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():
                 if typing_deps is None:
                     return r[int].fail(
-                        "typing dependency detection service unavailable"
+                        "typing dependency detection service unavailable",
                     )
                 if not args.quiet:
                     detector.log.info(
-                        "deps_typings_detect_running", project=project_name
+                        "deps_typings_detect_running", project=project_name,
                     )
                 typings_result = typing_deps.get_required_typings(
                     project_path,
@@ -302,7 +302,7 @@ class FlextInfraDependencyDetectorRuntime:
             if isinstance(deptry_obj, dict):
                 try:
                     deptry_payload = TypeAdapter(
-                        dict[str, t.Infra.InfraValue]
+                        dict[str, t.Infra.InfraValue],
                     ).validate_python(deptry_obj)
                 except ValidationError:
                     continue

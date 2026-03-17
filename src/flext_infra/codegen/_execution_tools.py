@@ -51,7 +51,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         result = FlextInfraCodegenExecutionTools.run_external_check(workspace_root, cmd)
         detail = str(result.get("detail", "")).strip()
         if not bool(result.get("passed", False)) and detail.startswith(
-            "WARN PYTHONPATH"
+            "WARN PYTHONPATH",
         ):
             result["passed"] = True
         return result

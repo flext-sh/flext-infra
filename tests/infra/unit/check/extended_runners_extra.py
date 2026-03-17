@@ -21,7 +21,7 @@ from tests.infra import h
 from ...models import m
 
 RunCallable = Callable[
-    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput
+    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput,
 ]
 
 
@@ -71,7 +71,7 @@ class TestRunPyright:
     """Test FlextInfraWorkspaceChecker._run_pyright method."""
 
     def test_run_pyright_no_python_dirs(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -82,7 +82,7 @@ class TestRunPyright:
         tm.that(len(result.issues), eq=0)
 
     def test_run_pyright_with_json_output(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1", with_src=True)
@@ -100,7 +100,7 @@ class TestRunPyright:
         tm.that(len(result.issues), eq=1)
 
     def test_run_pyright_with_invalid_json(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1", with_src=True)
@@ -127,7 +127,7 @@ class TestRunBandit:
         tm.that(len(result.issues), eq=0)
 
     def test_run_bandit_with_json_output(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1", with_src=True)
@@ -142,7 +142,7 @@ class TestRunBandit:
         tm.that(len(result.issues), eq=1)
 
     def test_run_bandit_with_invalid_json(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1", with_src=True)
@@ -166,7 +166,7 @@ class TestRunMarkdown:
         tm.that(len(result.issues), eq=0)
 
     def test_run_markdown_with_errors(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -178,7 +178,7 @@ class TestRunMarkdown:
                 h.stub_run(
                     stdout="README.md:1:1 error MD001 Heading level",
                     returncode=1,
-                )
+                ),
             ),
         )
         result = checker._run_markdown(proj_dir)
@@ -186,7 +186,7 @@ class TestRunMarkdown:
         tm.that(len(result.issues), eq=1)
 
     def test_run_markdown_fallback_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")

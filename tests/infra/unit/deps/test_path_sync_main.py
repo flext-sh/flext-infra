@@ -30,7 +30,7 @@ class TestMain:
     ) -> None:
         (tmp_path / ".gitmodules").touch()
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--mode", "auto"])
@@ -42,7 +42,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--mode", "workspace"])
@@ -54,17 +54,17 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--mode", "standalone"])
         tm.that(path_sync_module.main(), eq=0)
 
     def test_main_dry_run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--dry-run"])
@@ -76,7 +76,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
@@ -91,7 +91,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
 
         def _discover_fail(
@@ -113,7 +113,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
 
         def _rewrite_fail(
@@ -130,7 +130,7 @@ class TestMain:
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
-            FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_fail
+            FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_fail,
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
         tm.that(path_sync_module.main(), eq=1)
@@ -141,7 +141,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
@@ -175,7 +175,7 @@ class TestMain:
             return r[list[str]].fail("project rewrite failed")
 
         monkeypatch.setattr(
-            FlextInfraDependencyPathSync, "rewrite_dep_paths", rewrite_stub
+            FlextInfraDependencyPathSync, "rewrite_dep_paths", rewrite_stub,
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
         tm.that(path_sync_module.main(), eq=1)

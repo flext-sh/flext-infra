@@ -46,7 +46,7 @@ class FlextInfraPrManager:
         self._versioning: FlextInfraUtilitiesVersioning | None = versioning
 
     def _run(
-        self, command: list[str], repo_root: Path
+        self, command: list[str], repo_root: Path,
     ) -> r[m.Infra.Core.CommandOutput]:
         if self._runner is not None:
             return self._runner.run(command, cwd=repo_root)
@@ -171,7 +171,7 @@ class FlextInfraPrManager:
         result: r[str] = self._capture(command, repo_root)
         return result.fold(
             on_failure=lambda e: r[Mapping[str, t.Scalar]].fail(
-                e or "PR creation failed"
+                e or "PR creation failed",
             ),
             on_success=lambda v: r[Mapping[str, t.Scalar]].ok({
                 c.Infra.ReportKeys.STATUS: "created",

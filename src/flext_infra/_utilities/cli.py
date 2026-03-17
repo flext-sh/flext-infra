@@ -87,7 +87,7 @@ class FlextInfraUtilitiesCli:
         if include_apply:
             mode = base.add_mutually_exclusive_group(required=False)
             _ = mode.add_argument(
-                "--dry-run", action="store_true", help="Plan/Scan only"
+                "--dry-run", action="store_true", help="Plan/Scan only",
             )
             _ = mode.add_argument("--apply", action="store_true", help="Apply changes")
         if include_format:
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesCli:
             )
         if include_check:
             _ = base.add_argument(
-                "--check", action="store_true", help="Run in check mode"
+                "--check", action="store_true", help="Run in check mode",
             )
         if include_project:
             _ = base.add_argument(
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesCli:
         if include_apply:
             mode = parser.add_mutually_exclusive_group(required=False)
             _ = mode.add_argument(
-                "--dry-run", action="store_true", help="Plan/Scan only"
+                "--dry-run", action="store_true", help="Plan/Scan only",
             )
             _ = mode.add_argument("--apply", action="store_true", help="Apply changes")
 
@@ -200,7 +200,7 @@ class FlextInfraUtilitiesCli:
         # Add check flag if requested
         if include_check:
             _ = parser.add_argument(
-                "--check", action="store_true", help="Run in check mode"
+                "--check", action="store_true", help="Run in check mode",
             )
 
         # Add project selection flags if requested
@@ -353,12 +353,12 @@ class FlextInfraUtilitiesCli:
         if project_names is not None:
             filtered = [p for p in projects if p.name in project_names]
             return r[list[m.Infra.Workspace.ProjectInfo]].ok(
-                sorted(filtered, key=lambda p: p.name)
+                sorted(filtered, key=lambda p: p.name),
             )
 
         # Return all projects sorted
         return r[list[m.Infra.Workspace.ProjectInfo]].ok(
-            sorted(projects, key=lambda p: p.name)
+            sorted(projects, key=lambda p: p.name),
         )
 
     @staticmethod

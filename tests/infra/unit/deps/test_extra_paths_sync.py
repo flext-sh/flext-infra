@@ -67,7 +67,7 @@ def test_sync_extra_paths_success_modes(
         pyproject = _create_pyproject(project, content)
         project_dirs_arg = [project] if project_dirs else []
         result = _manager().sync_extra_paths(
-            dry_run=dry_run, project_dirs=project_dirs_arg
+            dry_run=dry_run, project_dirs=project_dirs_arg,
         )
         tm.ok(result)
         if expect_has:
@@ -79,7 +79,7 @@ def test_sync_extra_paths_success_modes(
         tm.ok(_manager().sync_extra_paths())
         return
     result = _manager().sync_extra_paths(
-        dry_run=dry_run, project_dirs=[] if project_dirs == [] else None
+        dry_run=dry_run, project_dirs=[] if project_dirs == [] else None,
     )
     if expect_fail:
         tm.fail(result)
@@ -88,14 +88,14 @@ def test_sync_extra_paths_success_modes(
 
 
 def test_sync_extra_paths_missing_root_pyproject(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(FlextInfraExtraPathsManager, "ROOT", tmp_path)
     tm.fail(_manager().sync_extra_paths(), has="Missing")
 
 
 def test_sync_extra_paths_sync_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project = tmp_path / "proj"
     project.mkdir()

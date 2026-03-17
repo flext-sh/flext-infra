@@ -52,7 +52,7 @@ class TestSyncWorkspace:
         proj.path.mkdir()
         selector = StubSelector(
             resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
-                _as_project(proj)
+                _as_project(proj),
             ]),
         )
         json_io = StubJsonIo()
@@ -60,7 +60,7 @@ class TestSyncWorkspace:
             _syncer(selector=selector, json_io=json_io).sync_workspace(
                 tmp_path,
                 apply=True,
-            )
+            ),
         )
 
     def test_source_resolution_failure(self, tmp_path: Path) -> None:
@@ -91,7 +91,7 @@ class TestSyncWorkspace:
             _syncer(selector=selector, json_io=json_io).sync_workspace(
                 tmp_path,
                 report_path=report,
-            )
+            ),
         )
         tm.that(len(json_io.write_json_calls), eq=1)
 

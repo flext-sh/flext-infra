@@ -22,7 +22,7 @@ _SUBCOMMAND_MODULES: Mapping[str, str] = MappingProxyType({
 })
 
 
-def _main_impl(_argv: list[str] | None = None) -> int:
+def _main_impl(argv: list[str] | None = None) -> int:
     """Dispatch to the appropriate deps subcommand."""
     parser, _ = u.Infra.create_subcommand_parser(
         "flext-infra deps",
@@ -37,16 +37,16 @@ def _main_impl(_argv: list[str] | None = None) -> int:
         include_apply=True,
         include_project=True,
     )
-    min_deps_argv = 3
-    if len(sys.argv) < min_deps_argv or sys.argv[1] in {"-h", "--help"}:
-        parser.parse_args()
+    args, remaining = parser.parse_known_args(argv)
+    subcommand: str = str(args.command) if args.command else ""
+    if not subcommand:
+        parser.print_help()
         return 0
-    subcommand = sys.argv[1]
     if subcommand not in _SUBCOMMAND_MODULES:
         output.error(f"flext-infra deps: unknown subcommand '{subcommand}'")
         parser.print_help()
         return 1
-    sys.argv = [f"flext-infra deps {subcommand}"] + sys.argv[2:]
+    sys.argv = [f"flext-infra deps {subcommand}", *remaining]
     module = importlib.import_module(_SUBCOMMAND_MODULES[subcommand])
     exit_code = module.main()
     return int(exit_code) if exit_code is not None else 0

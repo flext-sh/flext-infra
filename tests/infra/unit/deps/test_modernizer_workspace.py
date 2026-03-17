@@ -23,7 +23,7 @@ class TestReadDoc:
         tm.that(result is None, eq=False)
         if result is not None:
             tm.that(
-                cast("t.Tests.Matcher.MatcherKwargValue", result["key"]), eq="value"
+                cast("t.Tests.Matcher.MatcherKwargValue", result["key"]), eq="value",
             )
 
     def testread_doc_nonexistent_file(self, tmp_path: Path) -> None:

@@ -29,7 +29,7 @@ def _make_gate_exec(
 ) -> GateExecution:
     return GateExecution(
         result=m.Infra.Check.GateResult(
-            gate=gate, project=project, passed=passed, errors=[], duration=0.0
+            gate=gate, project=project, passed=passed, errors=[], duration=0.0,
         ),
         issues=issues or [],
         raw_output="",
@@ -38,7 +38,7 @@ def _make_gate_exec(
 
 class TestLintAndFormatPublicMethods:
     def test_lint_public_method(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "pyproject.toml").touch()
@@ -57,7 +57,7 @@ class TestLintAndFormatPublicMethods:
         tm.that(result.value.gate, eq="lint")
 
     def test_format_public_method(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "pyproject.toml").touch()
@@ -78,7 +78,7 @@ class TestLintAndFormatPublicMethods:
 
 class TestCheckProjectRunners:
     def test_check_project_runner_execution(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "src").mkdir()
@@ -96,7 +96,7 @@ class TestCheckProjectRunners:
             return _make_gate_exec(gate="format", passed=True)
 
         def _fake_pyrefly(
-            _project_dir: Path, _reports_dir: Path | None = None
+            _project_dir: Path, _reports_dir: Path | None = None,
         ) -> GateExecution:
             del _project_dir, _reports_dir
             call_log.append("pyrefly")

@@ -79,16 +79,16 @@ class TestReleaseMainFlow:
 
     def test_main_success(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(
-            sys, "argv", _argv(tmp_path, "--phase", "validate", "--interactive", "0")
+            sys, "argv", _argv(tmp_path, "--phase", "validate", "--interactive", "0"),
         )
         _patch_main_deps(monkeypatch, tmp_path)
         tm.that(main(), eq=0)
 
     def test_main_workspace_root_failure(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
-            sys, "argv", _argv(tmp_path, "--phase", "validate", "--interactive", "0")
+            sys, "argv", _argv(tmp_path, "--phase", "validate", "--interactive", "0"),
         )
         errors: list[str] = []
         _patch_main_deps(
@@ -101,10 +101,10 @@ class TestReleaseMainFlow:
         tm.that(len(errors), eq=1)
 
     def test_main_version_resolution_failure(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
-            sys, "argv", _argv(tmp_path, "--phase", "version", "--version", "invalid")
+            sys, "argv", _argv(tmp_path, "--phase", "version", "--version", "invalid"),
         )
 
         class _FailVs:
@@ -127,10 +127,10 @@ class TestReleaseMainFlow:
         tm.that(len(errors), eq=1)
 
     def test_main_release_failure(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
-            sys, "argv", _argv(tmp_path, "--phase", "validate", "--interactive", "0")
+            sys, "argv", _argv(tmp_path, "--phase", "validate", "--interactive", "0"),
         )
         errors: list[str] = []
         _patch_main_deps(
@@ -144,7 +144,7 @@ class TestReleaseMainFlow:
 
     def test_main_all_phases(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(
-            sys, "argv", _argv(tmp_path, "--phase", "all", "--interactive", "0")
+            sys, "argv", _argv(tmp_path, "--phase", "all", "--interactive", "0"),
         )
         calls: list[SimpleNamespace] = []
         _patch_main_deps(monkeypatch, tmp_path, capture=calls)

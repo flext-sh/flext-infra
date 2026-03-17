@@ -24,7 +24,7 @@ class TestFlextInfraDependencyDetectionModels:
 
     def test_deptry_report_creation(self) -> None:
         report = dm.DeptryReport(
-            missing=[], unused=[], transitive=[], dev_in_runtime=[], raw_count=0
+            missing=[], unused=[], transitive=[], dev_in_runtime=[], raw_count=0,
         )
         tm.that(report.missing, eq=[])
         tm.that(report.unused, eq=[])
@@ -34,7 +34,7 @@ class TestFlextInfraDependencyDetectionModels:
 
     def test_project_dependency_report_creation(self) -> None:
         deptry = dm.DeptryReport(
-            missing=[], unused=[], transitive=[], dev_in_runtime=[], raw_count=0
+            missing=[], unused=[], transitive=[], dev_in_runtime=[], raw_count=0,
         )
         report = dm.ProjectDependencyReport(project="test-project", deptry=deptry)
         tm.that(report.project, eq="test-project")
@@ -96,7 +96,7 @@ class TestToInfraValue:
     def test_list_with_unconvertible(self) -> None:
         assert (
             FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", [Path("/tmp")])
+                cast("t.Infra.InfraValue", [Path("/tmp")]),
             )
             is None
         )
@@ -112,7 +112,7 @@ class TestToInfraValue:
     def test_mapping_with_unconvertible(self) -> None:
         assert (
             FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", {"key": Path("/tmp")})
+                cast("t.Infra.InfraValue", {"key": Path("/tmp")}),
             )
             is None
         )
@@ -120,7 +120,7 @@ class TestToInfraValue:
     def test_unsupported_type(self) -> None:
         assert (
             FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", Path("/tmp"))
+                cast("t.Infra.InfraValue", Path("/tmp")),
             )
             is None
         )

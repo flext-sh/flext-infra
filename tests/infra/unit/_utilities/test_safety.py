@@ -27,7 +27,7 @@ def _init_git_repo(repo: Path) -> None:
 
 class TestSafetyCheckpoint:
     def test_create_checkpoint_returns_empty_for_clean_repo(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         _init_git_repo(tmp_path)
 
@@ -37,7 +37,7 @@ class TestSafetyCheckpoint:
         assert result.value == ""
 
     def test_create_checkpoint_creates_stash_for_dirty_repo(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         _init_git_repo(tmp_path)
         (tmp_path / "notes.txt").write_text("dirty\n", encoding="utf-8")
@@ -49,7 +49,7 @@ class TestSafetyCheckpoint:
         assert "test-checkpoint:" in result.value
 
     def test_create_checkpoint_returns_empty_for_non_git_folder(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         result = u.Infra.create_checkpoint(tmp_path)
 
@@ -59,7 +59,7 @@ class TestSafetyCheckpoint:
 
 class TestSafetyRollback:
     def test_rollback_to_checkpoint_invalid_stash_ref_fails(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         _init_git_repo(tmp_path)
 
@@ -84,7 +84,7 @@ class TestSafetyWorkspaceValidation:
         assert result.value is True
 
     def test_validate_workspace_clean_false_for_dirty_repo(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         _init_git_repo(tmp_path)
         (tmp_path / "dirty.txt").write_text("dirty\n", encoding="utf-8")

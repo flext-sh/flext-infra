@@ -21,7 +21,7 @@ class _StubService:
         self.called: dict[str, tuple[object, ...]] = {}
 
     def discover_project_paths(
-        self, workspace_root: Path, projects_filter: list[str] | None = None
+        self, workspace_root: Path, projects_filter: list[str] | None = None,
     ) -> r[list[Path]]:
         self.called["discover_project_paths"] = (workspace_root, projects_filter)
         return r[list[Path]].ok([workspace_root])
@@ -45,13 +45,13 @@ class _StubService:
         return r[tuple[list[dict[str, str]], int]].ok(([], 0))
 
     def run_pip_check(
-        self, workspace_root: Path, venv_bin: Path
+        self, workspace_root: Path, venv_bin: Path,
     ) -> r[tuple[list[str], int]]:
         self.called["run_pip_check"] = (workspace_root, venv_bin)
         return r[tuple[list[str], int]].ok(([], 0))
 
     def run_mypy_stub_hints(
-        self, project_path: Path, venv_bin: Path, *, timeout: int = 300
+        self, project_path: Path, venv_bin: Path, *, timeout: int = 300,
     ) -> r[tuple[list[str], list[str]]]:
         self.called["run_mypy_stub_hints"] = (project_path, venv_bin, timeout)
         return r[tuple[list[str], list[str]]].ok(([], []))
@@ -82,7 +82,7 @@ class _StubService:
                 current=[],
                 to_add=[],
                 to_remove=[],
-            )
+            ),
         )
 
     def load_dependency_limits(self, limits_path: Path | None = None) -> dict[str, str]:
@@ -101,14 +101,14 @@ class TestModuleLevelWrappers:
         tm.that(module_to_types_package("yaml", {}), eq="types-pyyaml")
 
     def test_load_dependency_limits_wrapper(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(detection, "_service", _StubService())
         assert load_dependency_limits() == {}
 
 
 def test_discover_projects_wrapper(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _StubService()
     monkeypatch.setattr(detection, "_service", stub)
@@ -136,7 +136,7 @@ def test_run_pip_check_wrapper(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_run_mypy_stub_hints_wrapper(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _StubService()
     monkeypatch.setattr(detection, "_service", stub)
@@ -147,18 +147,18 @@ def test_run_mypy_stub_hints_wrapper(
 
 
 def test_get_current_typings_from_pyproject_wrapper(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _StubService()
     monkeypatch.setattr(detection, "_service", stub)
     tm.that(
-        detection.get_current_typings_from_pyproject(tmp_path), eq=["types-requests"]
+        detection.get_current_typings_from_pyproject(tmp_path), eq=["types-requests"],
     )
     tm.that(str(stub.called["get_current_typings_from_pyproject"][0]), eq=str(tmp_path))
 
 
 def test_get_required_typings_wrapper(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stub = _StubService()
     monkeypatch.setattr(detection, "_service", stub)

@@ -113,7 +113,7 @@ class FlextInfraPyprojectModernizer:
         changes.extend(ConsolidateGroupsPhase().apply(doc, canonical_dev))
         changes.extend(EnsurePytestConfigPhase(self._tool_config).apply(doc))
         changes.extend(
-            EnsurePyreflyConfigPhase(self._tool_config).apply(doc, is_root=is_root)
+            EnsurePyreflyConfigPhase(self._tool_config).apply(doc, is_root=is_root),
         )
         changes.extend(EnsureMypyConfigPhase(self._tool_config).apply(doc))
         changes.extend(EnsurePydanticMypyConfigPhase(self._tool_config).apply(doc))
@@ -132,13 +132,13 @@ class FlextInfraPyprojectModernizer:
                 is_root=is_root,
                 workspace_root=self.root,
                 project_kind=project_kind,
-            )
+            ),
         )
         changes.extend(
             EnsureCoverageConfigPhase(self._tool_config).apply(
                 doc,
                 project_kind=project_kind,
-            )
+            ),
         )
         changes.extend(
             EnsureExtraPathsPhase().apply(
@@ -146,7 +146,7 @@ class FlextInfraPyprojectModernizer:
                 path=path,
                 is_root=is_root,
                 dry_run=dry_run,
-            )
+            ),
         )
         rendered = doc.as_string()
         if not skip_comments:

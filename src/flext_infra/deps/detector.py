@@ -41,19 +41,19 @@ class FlextInfraRuntimeDevDependencyDetector:
         """Initialize detector runtime services."""
         super().__init__()
         paths_factory = self._resolve_factory(
-            "FlextInfraUtilitiesPaths", FlextInfraUtilitiesPaths
+            "FlextInfraUtilitiesPaths", FlextInfraUtilitiesPaths,
         )
         reporting_factory = self._resolve_factory(
-            "FlextInfraUtilitiesReporting", FlextInfraUtilitiesReporting
+            "FlextInfraUtilitiesReporting", FlextInfraUtilitiesReporting,
         )
         json_factory = self._resolve_factory(
-            "FlextInfraUtilitiesIo", FlextInfraUtilitiesIo
+            "FlextInfraUtilitiesIo", FlextInfraUtilitiesIo,
         )
         deps_factory = self._resolve_factory(
-            "FlextInfraDependencyDetectionService", FlextInfraDependencyDetectionService
+            "FlextInfraDependencyDetectionService", FlextInfraDependencyDetectionService,
         )
         runner_factory = self._resolve_factory(
-            "FlextInfraUtilitiesSubprocess", FlextInfraUtilitiesSubprocess
+            "FlextInfraUtilitiesSubprocess", FlextInfraUtilitiesSubprocess,
         )
         paths_obj = paths_factory()
         reporting_obj = reporting_factory()
@@ -117,10 +117,10 @@ class FlextInfraRuntimeDevDependencyDetector:
             help="Write report to this path (default: .reports/dependencies/detect-runtime-dev-latest.json).",
         )
         _ = parser.add_argument(
-            "-q", "--quiet", action="store_true", help="Minimal output (summary only)."
+            "-q", "--quiet", action="store_true", help="Minimal output (summary only).",
         )
         _ = parser.add_argument(
-            "--no-fail", action="store_true", help="Always exit 0 (report only)."
+            "--no-fail", action="store_true", help="Always exit 0 (report only).",
         )
         _ = parser.add_argument(
             "--typings",

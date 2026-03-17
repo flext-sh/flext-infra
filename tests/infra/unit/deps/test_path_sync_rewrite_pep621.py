@@ -37,7 +37,7 @@ class TestRewritePep621:
     def test_rewrite_pep621_rewrite_path_dep(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {
-            "dependencies": ["flext-core @ file://.flext-deps/flext-core"]
+            "dependencies": ["flext-core @ file://.flext-deps/flext-core"],
         }
         changes = _rewrite_pep621(
             doc,
@@ -88,7 +88,7 @@ class TestRewritePep621:
     def test_rewrite_pep621_non_string_item(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {
-            "dependencies": [123, "flext-core @ file://.flext-deps/flext-core"]
+            "dependencies": [123, "flext-core @ file://.flext-deps/flext-core"],
         }
         changes = _rewrite_pep621(
             doc,
@@ -101,7 +101,7 @@ class TestRewritePep621:
     def test_rewrite_pep621_subproject_mode(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {
-            "dependencies": ["flext-core @ file://.flext-deps/flext-core"]
+            "dependencies": ["flext-core @ file://.flext-deps/flext-core"],
         }
         changes = _rewrite_pep621(
             doc,

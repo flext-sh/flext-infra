@@ -38,7 +38,7 @@ def _stub_import(mod: ModuleType) -> Callable[[str], ModuleType]:
 
 
 def _patch_dispatch(
-    mp: pytest.MonkeyPatch, argv: list[str], ret: t.Infra.TomlValue = 0
+    mp: pytest.MonkeyPatch, argv: list[str], ret: t.Infra.TomlValue = 0,
 ) -> None:
     """Patch sys.argv and importlib for dispatch tests."""
     mp.setattr(sys, "argv", argv)
@@ -96,7 +96,7 @@ class TestMainHelpAndErrors:
         tm.that(result, eq=0)
 
     def test_main_with_unknown_subcommand(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test main with unknown subcommand returns parser exit code."""
         monkeypatch.setattr(sys, "argv", ["prog", "unknown"])

@@ -47,12 +47,12 @@ class TestSync:
         tm.fail(service.sync(tmp_path))
 
     def test_sync_workspace_mode_symlink(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
         (workspace / ".gitmodules").write_text(
-            '[submodule "flext-api"]\n\tpath = flext-api\n\turl = git@github.com:flext-sh/flext-api.git\n'
+            '[submodule "flext-api"]\n\tpath = flext-api\n\turl = git@github.com:flext-sh/flext-api.git\n',
         )
         (workspace / "flext-api").mkdir()
         project = workspace / "project"
@@ -66,12 +66,12 @@ class TestSync:
                     "tool": {
                         "poetry": {
                             "dependencies": {
-                                "flext-api": {"path": ".flext-deps/flext-api"}
-                            }
-                        }
+                                "flext-api": {"path": ".flext-deps/flext-api"},
+                            },
+                        },
                     },
                     "project": {},
-                })
+                }),
             ],
         )
         monkeypatch.setenv("FLEXT_STANDALONE", "")
@@ -89,7 +89,7 @@ class TestSync:
         tm.ok(service.sync(project))
 
     def test_sync_missing_repo_mapping(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         project = tmp_path / "project"
         project.mkdir()
@@ -103,9 +103,9 @@ class TestSync:
                     "tool": {
                         "poetry": {
                             "dependencies": {
-                                "flext-api": {"path": ".flext-deps/flext-api"}
-                            }
-                        }
+                                "flext-api": {"path": ".flext-deps/flext-api"},
+                            },
+                        },
                     },
                     "project": {},
                 }),

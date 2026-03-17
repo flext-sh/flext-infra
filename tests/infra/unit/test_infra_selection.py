@@ -85,7 +85,7 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolving with mix of known and unknown projects."""
         result = selector.resolve_projects(
-            workspace_with_projects, ["alpha", "unknown", "beta"]
+            workspace_with_projects, ["alpha", "unknown", "beta"],
         )
         tm.fail(result, has="unknown projects")
 
@@ -104,7 +104,7 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test that resolved projects are sorted by name."""
         result = selector.resolve_projects(
-            workspace_with_projects, ["gamma", "alpha", "beta"]
+            workspace_with_projects, ["gamma", "alpha", "beta"],
         )
         projects = tm.ok(result)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])

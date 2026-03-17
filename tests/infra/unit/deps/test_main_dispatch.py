@@ -33,7 +33,7 @@ def _stub_import(mod: ModuleType) -> Callable[[str], ModuleType]:
 
 
 def _patch_dispatch(
-    mp: pytest.MonkeyPatch, argv: list[str], ret: t.Infra.TomlValue = 0
+    mp: pytest.MonkeyPatch, argv: list[str], ret: t.Infra.TomlValue = 0,
 ) -> None:
     mp.setattr(sys, "argv", argv)
     mp.setattr(

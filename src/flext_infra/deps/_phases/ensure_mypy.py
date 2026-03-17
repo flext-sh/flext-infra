@@ -27,14 +27,14 @@ class EnsureMypyConfigPhase:
         mypy = u.Infra.ensure_table(tool, c.Infra.Toml.MYPY)
         if (
             u.Infra.unwrap_item(
-                u.Infra.get(mypy, c.Infra.Toml.PYTHON_VERSION_UNDERSCORE)
+                u.Infra.get(mypy, c.Infra.Toml.PYTHON_VERSION_UNDERSCORE),
             )
             != "3.13"
         ):
             mypy[c.Infra.Toml.PYTHON_VERSION_UNDERSCORE] = "3.13"
             changes.append("tool.mypy.python_version set to 3.13")
         current_plugins = u.Infra.as_string_list(
-            u.Infra.get(mypy, c.Infra.Toml.PLUGINS)
+            u.Infra.get(mypy, c.Infra.Toml.PLUGINS),
         )
         needed_plugins = [
             plugin
@@ -44,7 +44,7 @@ class EnsureMypyConfigPhase:
         if needed_plugins:
             mypy[c.Infra.Toml.PLUGINS] = u.Infra.array(
                 sorted(
-                    set(current_plugins) | set(self._tool_config.tools.mypy.plugins)
+                    set(current_plugins) | set(self._tool_config.tools.mypy.plugins),
                 ),
             )
             changes.append(f"tool.mypy.plugins added {', '.join(needed_plugins)}")

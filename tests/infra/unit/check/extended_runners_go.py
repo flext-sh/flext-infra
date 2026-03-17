@@ -19,7 +19,7 @@ from tests.infra.models import m
 from ... import h
 
 RunCallable = Callable[
-    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput
+    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput,
 ]
 
 

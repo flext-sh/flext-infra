@@ -17,13 +17,13 @@ class FlextInfraBasemkModels:
         """Configuration model used to render base.mk templates."""
 
         project_name: Annotated[
-            str, Field(min_length=1, description="Project identifier")
+            str, Field(min_length=1, description="Project identifier"),
         ]
         python_version: Annotated[
-            str, Field(min_length=1, description="Target Python version")
+            str, Field(min_length=1, description="Target Python version"),
         ]
         core_stack: Annotated[
-            str, Field(min_length=1, description="Core stack classification")
+            str, Field(min_length=1, description="Core stack classification"),
         ]
         package_manager: Annotated[
             str,

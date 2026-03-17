@@ -47,7 +47,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
             ),
         )
         mro_failures = FlextInfraCodegenMetricsChecks.as_int(
-            after_metrics.get("mro_failures")
+            after_metrics.get("mro_failures"),
         )
         cross_ref = FlextInfraCodegenMetricsChecks.as_int(
             after_metrics.get("cross_project_reference_violations"),
@@ -142,11 +142,11 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
             return "FAIL"
         if (
             FlextInfraCodegenMetricsChecks.as_int(
-                improvement.get("violations_increased")
+                improvement.get("violations_increased"),
             )
             > 0
             or FlextInfraCodegenMetricsChecks.as_int(
-                improvement.get("duplicates_increased")
+                improvement.get("duplicates_increased"),
             )
             > 0
         ):
@@ -171,7 +171,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
                     target = node.targets[0]
                     if isinstance(target, ast.Name) and target.id.isupper():
                         name_to_projects.setdefault(target.id, set()).add(
-                            report.project
+                            report.project,
                         )
         return sum(1 for projects in name_to_projects.values() if len(projects) > 1)
 

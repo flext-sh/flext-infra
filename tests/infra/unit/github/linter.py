@@ -19,7 +19,7 @@ from tests.infra.unit.github._stubs import StubJsonIo, StubRunner
 
 
 def _ok_output(
-    *, exit_code: int = 0, stdout: str = "", stderr: str = ""
+    *, exit_code: int = 0, stdout: str = "", stderr: str = "",
 ) -> r[m.Infra.Core.CommandOutput]:
     return r[m.Infra.Core.CommandOutput].ok(
         m.Infra.Core.CommandOutput(
@@ -34,7 +34,7 @@ class TestFlextInfraWorkflowLinter:
     """Test suite for FlextInfraWorkflowLinter."""
 
     def test_lint_success_with_actionlint_installed(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test successful linting when actionlint is available."""
 
@@ -52,7 +52,7 @@ class TestFlextInfraWorkflowLinter:
         tm.that(value.exit_code, eq=0)
 
     def test_lint_skipped_when_actionlint_not_installed(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test linting skipped when actionlint is not available."""
 
@@ -71,7 +71,7 @@ class TestFlextInfraWorkflowLinter:
         tm.that(value.reason, contains="actionlint not installed")
 
     def test_lint_with_report_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test linting with JSON report output."""
 
@@ -89,7 +89,7 @@ class TestFlextInfraWorkflowLinter:
         tm.that(len(json_io.write_json_calls), eq=1)
 
     def test_lint_strict_mode_fails_on_issues(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test strict mode returns failure when actionlint finds issues."""
 
@@ -113,7 +113,7 @@ class TestFlextInfraWorkflowLinter:
         tm.that(getattr(linter, "_json", None) is not None, eq=True)
 
     def test_lint_skipped_with_report(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test linting skipped with report output."""
 

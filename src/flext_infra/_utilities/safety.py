@@ -62,7 +62,7 @@ class FlextInfraUtilitiesSafety:
             return r[str].fail(push_result.error or "git stash push failed")
 
         stash_list = FlextInfraUtilitiesGit.git_run(
-            ["stash", "list"], cwd=workspace_root
+            ["stash", "list"], cwd=workspace_root,
         )
         return stash_list.fold(
             on_failure=lambda e: r[str].fail(e or "git stash list failed"),

@@ -53,7 +53,7 @@ class FlextInfraSkillValidator:
 
     @staticmethod
     def _normalize_string_list(
-        value: t.Infra.InfraValue | None, field: str
+        value: t.Infra.InfraValue | None, field: str,
     ) -> list[str]:
         """Validate and normalize a list[str] config field; delegates to ``u.Infra``."""
         if value is None:
@@ -61,7 +61,7 @@ class FlextInfraSkillValidator:
         if isinstance(value, list):
             try:
                 typed_items: list[JsonValue] = TypeAdapter(
-                    list[JsonValue]
+                    list[JsonValue],
                 ).validate_python(value)
             except ValidationError as exc:
                 msg = f"{field} must be list[str]: {exc}"
@@ -82,7 +82,7 @@ class FlextInfraSkillValidator:
     ) -> dict[str, t.Infra.InfraValue]:
         try:
             adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                dict[str, t.Infra.InfraValue]
+                dict[str, t.Infra.InfraValue],
             )
             return adapter.validate_python(value)
         except ValidationError:
@@ -196,7 +196,7 @@ class FlextInfraSkillValidator:
                         bl_data_result = u.Infra.read_json(baseline_path)
                         if bl_data_result.is_success:
                             bl_data = self._normalize_str_object_mapping(
-                                bl_data_result.value
+                                bl_data_result.value,
                             )
                             bl_counts_raw_map = self._normalize_str_object_mapping(
                                 bl_data.get("counts", {}),

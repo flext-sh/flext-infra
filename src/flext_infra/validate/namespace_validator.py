@@ -324,7 +324,7 @@ class FlextInfraNamespaceValidator:
             result.extend(
                 py_file
                 for py_file in FlextInfraUtilitiesIteration.iter_directory_python_files(
-                    base_dir
+                    base_dir,
                 )
                 if not self._is_exempt_file(py_file)
             )

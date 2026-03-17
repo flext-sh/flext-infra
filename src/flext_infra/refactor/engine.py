@@ -117,7 +117,7 @@ class FlextInfraRefactorEngine:
             )
             if iter_result.is_failure:
                 FlextInfraRefactorCliSupport.error(
-                    iter_result.error or f"File iteration failed for {project}"
+                    iter_result.error or f"File iteration failed for {project}",
                 )
                 continue
             for py_file in iter_result.value:
@@ -160,7 +160,7 @@ class FlextInfraRefactorEngine:
         result = self.rule_loader.load_config()
         if result.is_success:
             config_dict: dict[str, t.Infra.InfraValue] = TypeAdapter(
-                dict[str, t.Infra.InfraValue]
+                dict[str, t.Infra.InfraValue],
             ).validate_python(dict(result.value.items()))
             self.config = config_dict
             FlextInfraRefactorCliSupport.info(f"Loaded config from {self.config_path}")
@@ -182,11 +182,11 @@ class FlextInfraRefactorEngine:
         FlextInfraRefactorCliSupport.info(f"Loaded {len(self.rules)} rules")
         if self.file_rules:
             FlextInfraRefactorCliSupport.info(
-                f"Loaded {len(self.file_rules)} file rules"
+                f"Loaded {len(self.file_rules)} file rules",
             )
         if self.rule_filters:
             FlextInfraRefactorCliSupport.info(
-                f"Active filters: {', '.join(self.rule_filters)}"
+                f"Active filters: {', '.join(self.rule_filters)}",
             )
         return r[list[FlextInfraRefactorRule]].ok(loaded_rules)
 
@@ -271,7 +271,7 @@ class FlextInfraRefactorEngine:
         for file_path in file_paths:
             if file_path.suffix != c.Infra.Extensions.PYTHON:
                 FlextInfraRefactorCliSupport.info(
-                    f"Skipped non-Python file: {file_path.name}"
+                    f"Skipped non-Python file: {file_path.name}",
                 )
                 results.append(
                     m.Infra.Refactor.Result(
@@ -296,7 +296,7 @@ class FlextInfraRefactorEngine:
                     FlextInfraRefactorCliSupport.debug(f"Unchanged: {file_path.name}")
             else:
                 FlextInfraRefactorCliSupport.error(
-                    f"Failed: {file_path.name} - {result.error}"
+                    f"Failed: {file_path.name} - {result.error}",
                 )
         return results
 
@@ -370,7 +370,7 @@ class FlextInfraRefactorEngine:
             )
             and not any(
                 fnmatch.fnmatch(
-                    str(file_path.relative_to(project_path)), ignore_pattern
+                    str(file_path.relative_to(project_path)), ignore_pattern,
                 )
                 for ignore_pattern in ignore_patterns
             )
@@ -386,7 +386,7 @@ class FlextInfraRefactorEngine:
             )
             if checkpoint_result.is_failure:
                 FlextInfraRefactorCliSupport.error(
-                    checkpoint_result.error or "checkpoint save failed"
+                    checkpoint_result.error or "checkpoint save failed",
                 )
             validation_result = self.safety_manager.run_semantic_validation(
                 project_path,
@@ -398,7 +398,7 @@ class FlextInfraRefactorEngine:
                 rollback_result = self.safety_manager.rollback(project_path, stash_ref)
                 if rollback_result.is_failure:
                     FlextInfraRefactorCliSupport.error(
-                        rollback_result.error or "rollback failed"
+                        rollback_result.error or "rollback failed",
                     )
                 results.append(
                     m.Infra.Refactor.Result(
@@ -414,7 +414,7 @@ class FlextInfraRefactorEngine:
                 clear_result = self.safety_manager.clear_checkpoint()
                 if clear_result.is_failure:
                     FlextInfraRefactorCliSupport.error(
-                        clear_result.error or "checkpoint clear failed"
+                        clear_result.error or "checkpoint clear failed",
                     )
         return results
 
@@ -430,7 +430,7 @@ class FlextInfraRefactorEngine:
         root = workspace_root.resolve()
         if not root.exists() or not root.is_dir():
             FlextInfraRefactorCliSupport.error(
-                f"Invalid workspace root: {workspace_root}"
+                f"Invalid workspace root: {workspace_root}",
             )
             return []
         scan_dirs = frozenset(self.rule_loader.extract_project_scan_dirs(self.config))
@@ -444,7 +444,7 @@ class FlextInfraRefactorEngine:
             )
             return []
         FlextInfraRefactorCliSupport.info(
-            f"Discovered {len(project_paths)} projects in workspace"
+            f"Discovered {len(project_paths)} projects in workspace",
         )
         results: list[m.Infra.Refactor.Result] = []
         processed_targets: list[str] = []
@@ -486,7 +486,7 @@ class FlextInfraRefactorEngine:
                 )
                 if checkpoint_result.is_failure:
                     FlextInfraRefactorCliSupport.error(
-                        checkpoint_result.error or "checkpoint save failed"
+                        checkpoint_result.error or "checkpoint save failed",
                     )
         if apply_safety and (not dry_run):
             validation_result = self.safety_manager.run_semantic_validation(root)
@@ -497,7 +497,7 @@ class FlextInfraRefactorEngine:
                 rollback_result = self.safety_manager.rollback(root, stash_ref)
                 if rollback_result.is_failure:
                     FlextInfraRefactorCliSupport.error(
-                        rollback_result.error or "rollback failed"
+                        rollback_result.error or "rollback failed",
                     )
                 results.append(
                     m.Infra.Refactor.Result(
@@ -513,7 +513,7 @@ class FlextInfraRefactorEngine:
                 clear_result = self.safety_manager.clear_checkpoint()
                 if clear_result.is_failure:
                     FlextInfraRefactorCliSupport.error(
-                        clear_result.error or "checkpoint clear failed"
+                        clear_result.error or "checkpoint clear failed",
                     )
         return results
 

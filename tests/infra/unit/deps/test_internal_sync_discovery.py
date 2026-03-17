@@ -58,7 +58,7 @@ class TestParseGitmodules:
         tm.that("flext-core" in result, eq=True)
         tm.that("flext-api" in result, eq=True)
         tm.that(
-            result["flext-core"].ssh_url, eq="git@github.com:flext-sh/flext-core.git"
+            result["flext-core"].ssh_url, eq="git@github.com:flext-sh/flext-core.git",
         )
         tm.that(result["flext-core"].https_url.startswith("https://"), eq=True)
 
@@ -88,8 +88,8 @@ class TestParseRepoMap:
                     "flext-core": {
                         "ssh_url": "git@github.com:flext-sh/flext-core.git",
                         "https_url": "https://github.com/flext-sh/flext-core.git",
-                    }
-                }
+                    },
+                },
             }),
         )
         result = service.parse_repo_map(Path("/fake/map.toml"))
@@ -133,8 +133,8 @@ class TestParseRepoMap:
             service,
             r[t.Infra.TomlConfig].ok({
                 "repo": {
-                    "flext-core": {"ssh_url": "git@github.com:flext-sh/flext-core.git"}
-                }
+                    "flext-core": {"ssh_url": "git@github.com:flext-sh/flext-core.git"},
+                },
             }),
         )
         result = service.parse_repo_map(Path("/fake/map.toml"))
@@ -159,8 +159,8 @@ class TestCollectInternalDeps:
                         "dependencies": {
                             "flext-core": {"path": ".flext-deps/flext-core"},
                             "requests": "^2.28",
-                        }
-                    }
+                        },
+                    },
                 },
                 "project": {},
             }),
@@ -180,7 +180,7 @@ class TestCollectInternalDeps:
                     "dependencies": [
                         "flext-core @ file:.flext-deps/flext-core",
                         "requests>=2.28",
-                    ]
+                    ],
                 },
             }),
         )

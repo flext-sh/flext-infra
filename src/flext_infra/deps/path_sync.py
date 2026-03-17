@@ -99,7 +99,7 @@ class FlextInfraDependencyPathSync:
 
     @staticmethod
     def _mapping_str_value(
-        mapping: Table | Mapping[str, JsonValue], key: str
+        mapping: Table | Mapping[str, JsonValue], key: str,
     ) -> str | None:
         if key not in mapping:
             return None
@@ -143,7 +143,7 @@ class FlextInfraDependencyPathSync:
             return []
         project_section: Table = project_raw
         deps: list[str] = u.Infra.as_string_list(
-            self._table_get(project_section, c.Infra.Toml.DEPENDENCIES)
+            self._table_get(project_section, c.Infra.Toml.DEPENDENCIES),
         )
         if not deps:
             return []
@@ -186,13 +186,13 @@ class FlextInfraDependencyPathSync:
             return []
         tool_section: Table = tool_raw
         poetry_raw = FlextInfraDependencyPathSync._table_get(
-            tool_section, c.Infra.Toml.POETRY
+            tool_section, c.Infra.Toml.POETRY,
         )
         if not isinstance(poetry_raw, Table):
             return []
         poetry_section: Table = poetry_raw
         deps_raw = FlextInfraDependencyPathSync._table_get(
-            poetry_section, c.Infra.Toml.DEPENDENCIES
+            poetry_section, c.Infra.Toml.DEPENDENCIES,
         )
         if not isinstance(deps_raw, Table):
             return []
@@ -209,11 +209,11 @@ class FlextInfraDependencyPathSync:
                 continue
             dep_name = FlextInfraDependencyPathSync.extract_dep_name(raw_path)
             new_path = FlextInfraDependencyPathSync._target_path(
-                dep_name, is_root=is_root, mode=mode
+                dep_name, is_root=is_root, mode=mode,
             )
             if raw_path != new_path:
                 changes.append(
-                    f"  Poetry: {dep_key}.path = {raw_path!r} -> {new_path!r}"
+                    f"  Poetry: {dep_key}.path = {raw_path!r} -> {new_path!r}",
                 )
                 value_map[c.Infra.Toml.PATH] = new_path
         return changes
@@ -354,7 +354,7 @@ class FlextInfraDependencyPathSync:
 
         if total_changes == 0:
             output.info(
-                "[sync-dep-paths] No changes needed - all paths already match target mode."
+                "[sync-dep-paths] No changes needed - all paths already match target mode.",
             )
         else:
             action = "would change" if dry_run else "changed"

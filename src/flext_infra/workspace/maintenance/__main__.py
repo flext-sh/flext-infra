@@ -35,19 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     cli = u.Infra.resolve(args)
-    service = FlextInfraPythonVersionEnforcer(
-        config_type=None,
-        config_overrides=None,
-        initial_context=None,
-        subproject=None,
-        services=None,
-        factories=None,
-        resources=None,
-        container_overrides=None,
-        wire_modules=None,
-        wire_packages=None,
-        wire_classes=None,
-    )
+    service = FlextInfraPythonVersionEnforcer()
     result: r[int] = service.execute(check_only=cli.check, verbose=args.verbose)
     if result.is_success:
         return result.unwrap()

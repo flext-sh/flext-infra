@@ -19,13 +19,13 @@ _scan_ast_public_defs: Callable[[ast.Module, str, dict[str, tuple[str, str]]], N
     getattr(FlextInfraCodegenLazyInit, "_scan_ast_public_defs")
 )
 _should_bubble_up: Callable[[str], bool] = getattr(
-    FlextInfraCodegenLazyInit, "_should_bubble_up"
+    FlextInfraCodegenLazyInit, "_should_bubble_up",
 )
 _merge_child_exports: Callable[
-    [Path, dict[str, tuple[str, str]], Mapping[str, dict[str, tuple[str, str]]]], None
+    [Path, dict[str, tuple[str, str]], Mapping[str, dict[str, tuple[str, str]]]], None,
 ] = getattr(FlextInfraCodegenLazyInit, "_merge_child_exports")
 _extract_version_exports: Callable[
-    [Path, str], tuple[dict[str, str], dict[str, tuple[str, str]]]
+    [Path, str], tuple[dict[str, str], dict[str, tuple[str, str]]],
 ] = getattr(FlextInfraCodegenLazyInit, "_extract_version_exports")
 
 

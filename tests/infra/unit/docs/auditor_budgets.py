@@ -28,8 +28,8 @@ class TestLoadAuditBudgets:
                 "audit_gate": {
                     "max_issues_default": 5,
                     "max_issues_by_scope": {"test-project": 3},
-                }
-            }
+                },
+            },
         }
         (arch_dir / "architecture_config.json").write_text(json.dumps(config_data))
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
@@ -52,8 +52,8 @@ class TestLoadAuditBudgets:
                 "audit_gate": {
                     "max_issues_default": 5.5,
                     "max_issues_by_scope": {"test-project": 3.7},
-                }
-            }
+                },
+            },
         }
         (arch_dir / "architecture_config.json").write_text(json.dumps(config_data))
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
@@ -65,8 +65,8 @@ class TestLoadAuditBudgets:
         arch_dir.mkdir(parents=True, exist_ok=True)
         config_data = {
             "docs_validation": {
-                "audit_gate": {"max_issues_by_scope": {"test-project": 3}}
-            }
+                "audit_gate": {"max_issues_by_scope": {"test-project": 3}},
+            },
         }
         (arch_dir / "architecture_config.json").write_text(json.dumps(config_data))
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)

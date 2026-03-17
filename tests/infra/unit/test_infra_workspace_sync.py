@@ -67,7 +67,7 @@ def svc(tmp_path: Path) -> _S:
     ids=["empty", "existing-base-mk", "existing-gitignore"],
 )
 def test_sync_success_scenarios(
-    svc: _S, tmp_path: Path, base_mk: str, gitignore: str
+    svc: _S, tmp_path: Path, base_mk: str, gitignore: str,
 ) -> None:
     if base_mk:
         tf.create_in(base_mk, "base.mk", tmp_path)
@@ -98,10 +98,10 @@ def test_sync_root_validation(project_root: Path | None, expected_error: str) ->
     ids=["cli-success", "cli-failure"],
 )
 def test_cli_result_by_project_root(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str], expected: int
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str], expected: int,
 ) -> None:
     monkeypatch.setattr(
-        sys, "argv", [str(tmp_path) if part == "{tmp}" else part for part in argv]
+        sys, "argv", [str(tmp_path) if part == "{tmp}" else part for part in argv],
     )
     tm.that(main(), eq=expected)
 
@@ -127,7 +127,7 @@ def test_sync_error_scenarios(
 
 
 def test_gitignore_sync_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     service = _S()
 
@@ -170,7 +170,7 @@ def test_atomic_write_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     ids=["no-change", "generation-failure"],
 )
 def test_sync_basemk_scenarios(
-    tmp_path: Path, generated: str, ok_result: bool, expected: bool | str
+    tmp_path: Path, generated: str, ok_result: bool, expected: bool | str,
 ) -> None:
     service = _S()
     tf.create_in("# Same content\n", "base.mk", tmp_path)
@@ -191,7 +191,7 @@ def test_sync_basemk_scenarios(
     ids=["missing-entries", "entries-present"],
 )
 def test_gitignore_entry_scenarios(
-    tmp_path: Path, initial_content: str, entries: list[str], expected: bool
+    tmp_path: Path, initial_content: str, entries: list[str], expected: bool,
 ) -> None:
     tf.create_in(initial_content, ".gitignore", tmp_path)
     tm.ok(_S()._ensure_gitignore_entries(tmp_path, entries), eq=expected)
@@ -201,7 +201,7 @@ def test_gitignore_entry_scenarios(
 
 
 def test_gitignore_write_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     tf.create_in("*.pyc\n", ".gitignore", tmp_path)
 

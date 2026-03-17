@@ -19,7 +19,7 @@ from flext_infra.release.__main__ import _resolve_tag, _resolve_version
 
 
 def _args(
-    version: str | None, bump: str | None, interactive: int, tag: str = ""
+    version: str | None, bump: str | None, interactive: int, tag: str = "",
 ) -> Namespace:
     return Namespace(version=version, bump=bump, interactive=interactive, tag=tag)
 
@@ -66,7 +66,7 @@ class TestReleaseMainVersionResolution:
     """Test version resolution logic."""
 
     def test_resolve_version_explicit(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -77,7 +77,7 @@ class TestReleaseMainVersionResolution:
         tm.that(_resolve_version(args, tmp_path), eq="1.0.0")
 
     def test_resolve_version_invalid_explicit(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -89,7 +89,7 @@ class TestReleaseMainVersionResolution:
             _resolve_version(args, tmp_path)
 
     def test_resolve_version_from_current(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -100,7 +100,7 @@ class TestReleaseMainVersionResolution:
         tm.that(_resolve_version(args, tmp_path), eq="0.9.0")
 
     def test_resolve_version_current_read_failure(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -112,7 +112,7 @@ class TestReleaseMainVersionResolution:
             _resolve_version(args, tmp_path)
 
     def test_resolve_version_with_bump(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -123,7 +123,7 @@ class TestReleaseMainVersionResolution:
         tm.that(_resolve_version(args, tmp_path), eq="1.1.0")
 
     def test_resolve_version_bump_failure(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -135,7 +135,7 @@ class TestReleaseMainVersionResolution:
             _resolve_version(args, tmp_path)
 
     def test_resolve_version_interactive_input(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -147,7 +147,7 @@ class TestReleaseMainVersionResolution:
         tm.that(_resolve_version(args, tmp_path), eq="1.1.0")
 
     def test_resolve_version_interactive_invalid_input(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -160,7 +160,7 @@ class TestReleaseMainVersionResolution:
             _resolve_version(args, tmp_path)
 
     def test_resolve_version_non_interactive(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -175,7 +175,7 @@ class TestResolveVersionInteractive:
     """Test _resolve_version with interactive mode edge cases."""
 
     def test_resolve_version_interactive_invalid_bump(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -188,7 +188,7 @@ class TestResolveVersionInteractive:
             _resolve_version(args, tmp_path)
 
     def test_resolve_version_interactive_bump_failure(
-        self, tmp_path: Path, monkeypatch: MonkeyPatch
+        self, tmp_path: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             _main_mod,
@@ -207,7 +207,7 @@ class TestReleaseMainTagResolution:
     def test_resolve_tag_explicit(self) -> None:
         tm.that(
             _resolve_tag(
-                _args(version="", bump="", interactive=0, tag="v1.0.0"), "1.0.0"
+                _args(version="", bump="", interactive=0, tag="v1.0.0"), "1.0.0",
             ),
             eq="v1.0.0",
         )
@@ -215,7 +215,7 @@ class TestReleaseMainTagResolution:
     def test_resolve_tag_invalid_prefix(self) -> None:
         with pytest.raises(RuntimeError):
             _resolve_tag(
-                _args(version="", bump="", interactive=0, tag="1.0.0"), "1.0.0"
+                _args(version="", bump="", interactive=0, tag="1.0.0"), "1.0.0",
             )
 
     def test_resolve_tag_auto_generated(self) -> None:

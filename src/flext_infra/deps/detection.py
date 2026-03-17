@@ -79,7 +79,7 @@ class FlextInfraDependencyDetectionService:
             converted: list[t.Infra.InfraValue] = []
             for item in sequence:
                 converted_item = FlextInfraDependencyDetectionService.to_infra_value(
-                    item
+                    item,
                 )
                 if converted_item is None and item is not None:
                     return None
@@ -89,7 +89,7 @@ class FlextInfraDependencyDetectionService:
             return converted
         try:
             mapping_value = TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(
-                value
+                value,
             )
         except ValidationError:
             return None
@@ -144,7 +144,7 @@ class FlextInfraDependencyDetectionService:
                 continue
             try:
                 error_data = TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(
-                    error_obj
+                    error_obj,
                 )
             except ValidationError:
                 continue
@@ -258,7 +258,7 @@ class FlextInfraDependencyDetectionService:
         names.update(str(key) for key in deps)
         project = self._mapping_from_value(data.get(c.Infra.Toml.PROJECT))
         optional = self._mapping_from_value(
-            project.get(c.Infra.Toml.OPTIONAL_DEPENDENCIES)
+            project.get(c.Infra.Toml.OPTIONAL_DEPENDENCIES),
         )
         typings = optional.get(c.Infra.Directories.TYPINGS)
         if isinstance(typings, list):
@@ -445,7 +445,7 @@ class FlextInfraDependencyDetectionService:
                     valid = True
                     for key, value in item.items():
                         converted = FlextInfraDependencyDetectionService.to_infra_value(
-                            value
+                            value,
                         )
                         if converted is None and value is not None:
                             valid = False
@@ -536,7 +536,7 @@ def discover_project_paths(
 ) -> r[list[Path]]:
     """Discover project paths with pyproject.toml in workspace."""
     return _service.discover_project_paths(
-        workspace_root, projects_filter=projects_filter
+        workspace_root, projects_filter=projects_filter,
     )
 
 

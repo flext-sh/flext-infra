@@ -121,7 +121,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
             return []
         try:
             items: list[t.Infra.InfraValue] = TypeAdapter(
-                list[t.Infra.InfraValue]
+                list[t.Infra.InfraValue],
             ).validate_python(value)
         except ValidationError:
             return []
@@ -241,7 +241,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     def _remove_aliases(self, tree: cst.Module) -> tuple[cst.Module, list[str]]:
         typed_config = self._typed_config()
         allow_aliases = set(
-            self._normalize_string_items(typed_config.get("allow_aliases", []))
+            self._normalize_string_items(typed_config.get("allow_aliases", [])),
         )
         allow_target_suffixes = tuple(
             self._normalize_string_items(typed_config.get("allow_target_suffixes", [])),

@@ -16,7 +16,7 @@ from flext_infra.codegen._utilities import FlextInfraUtilitiesCodegen
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 _read_existing_docstring: Callable[[Path], str] = getattr(
-    FlextInfraCodegenLazyInit, "_read_existing_docstring"
+    FlextInfraCodegenLazyInit, "_read_existing_docstring",
 )
 _build_sibling_export_index: Callable[[Path, str], dict[str, tuple[str, str]]] = (
     getattr(FlextInfraCodegenLazyInit, "_build_sibling_export_index")

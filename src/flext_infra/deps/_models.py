@@ -119,7 +119,7 @@ class FlextInfraDepsModels:
         ]
         fix: Annotated[bool, Field(description="Enable automatic ruff fixes")]
         line_length: Annotated[
-            int, Field(alias="line-length", description="Maximum line length.")
+            int, Field(alias="line-length", description="Maximum line length."),
         ]
         preview: Annotated[bool, Field(description="Enable preview ruff behavior.")]
         respect_gitignore: Annotated[
@@ -279,10 +279,10 @@ class FlextInfraDepsModels:
         model_config = ConfigDict(extra="forbid")
         line_length: Annotated[int, Field(description="Maximum YAML line length.")]
         preserve_quotes: Annotated[
-            bool, Field(description="Preserve quote style in YAML output.")
+            bool, Field(description="Preserve quote style in YAML output."),
         ]
         whitelines: Annotated[
-            int, Field(description="Blank line count between YAML entries.")
+            int, Field(description="Blank line count between YAML entries."),
         ]
         section_whitelines: Annotated[
             int,
@@ -291,7 +291,7 @@ class FlextInfraDepsModels:
             ),
         ]
         explicit_start: Annotated[
-            bool, Field(description="Emit explicit YAML start marker.")
+            bool, Field(description="Emit explicit YAML start marker."),
         ]
 
     class CoverageFailUnderConfig(m.ArbitraryTypesModel):
@@ -309,13 +309,13 @@ class FlextInfraDepsModels:
         platform: Annotated[
             int,
             Field(
-                description="Minimum coverage percentage required for platform layer."
+                description="Minimum coverage percentage required for platform layer.",
             ),
         ]
         integration: Annotated[
             int,
             Field(
-                description="Minimum coverage percentage required for integration layer."
+                description="Minimum coverage percentage required for integration layer.",
             ),
         ]
         app: Annotated[
@@ -400,31 +400,31 @@ class FlextInfraDepsModels:
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
         ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig()
+            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
         )
         domain: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
         ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig()
+            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
         )
         platform: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
         ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig()
+            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
         )
         integration: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
         ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig()
+            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
         )
         app: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
         ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig()
+            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
         )
 
     class DependencyLimitsInfo(m.ArbitraryTypesModel):
@@ -486,7 +486,7 @@ class FlextInfraDepsModels:
 
         file: Annotated[str, Field(min_length=1, description="Relative pyproject path")]
         changes: Annotated[
-            list[str], Field(default_factory=list, description="Applied changes")
+            list[str], Field(default_factory=list, description="Applied changes"),
         ]
 
     class DeptryIssueGroups(m.ArbitraryTypesModel):

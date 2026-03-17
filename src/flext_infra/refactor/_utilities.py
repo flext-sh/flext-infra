@@ -167,7 +167,7 @@ class FlextInfraUtilitiesRefactor:
         if isinstance(value, list):
             try:
                 value_items: list[t.Infra.InfraValue] = TypeAdapter(
-                    list[t.Infra.InfraValue]
+                    list[t.Infra.InfraValue],
                 ).validate_python(value)
             except ValidationError as exc:
                 msg = "expected list[str] value"
@@ -192,7 +192,7 @@ class FlextInfraUtilitiesRefactor:
         if isinstance(value, list):
             try:
                 value_items: list[t.Infra.InfraValue] = TypeAdapter(
-                    list[t.Infra.InfraValue]
+                    list[t.Infra.InfraValue],
                 ).validate_python(value)
             except ValidationError as exc:
                 msg = "expected list[dict[str, t.Infra.InfraValue]] value"
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesRefactor:
                 if not isinstance(item, dict):
                     continue
                 normalized.append(
-                    TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(item)
+                    TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(item),
                 )
             return normalized
         msg = "expected list[dict[str, t.Infra.InfraValue]] value"
@@ -268,13 +268,13 @@ class FlextInfraUtilitiesRefactor:
             return True
         current_module = FlextInfraUtilitiesRefactor.normalize_module_path(current_file)
         candidate_module = FlextInfraUtilitiesRefactor.normalize_module_path(
-            candidate_file
+            candidate_file,
         )
         if rewrite_scope == c.Infra.ReportKeys.FILE:
             return current_module == candidate_module
         current_tokens = FlextInfraUtilitiesRefactor.project_scope_tokens(current_file)
         candidate_tokens = FlextInfraUtilitiesRefactor.project_scope_tokens(
-            candidate_file
+            candidate_file,
         )
         if current_tokens and candidate_tokens:
             return bool(current_tokens & candidate_tokens)
@@ -291,7 +291,7 @@ class FlextInfraUtilitiesRefactor:
         raw_schema: Mapping[str, JsonValue] = schema_result.value
         schema: dict[str, t.Infra.InfraValue] = dict(raw_schema.items())
         top_required = FlextInfraUtilitiesRefactor.string_list(
-            schema.get("required", [])
+            schema.get("required", []),
         )
         if not FlextInfraUtilitiesRefactor.has_required_fields(loaded, top_required):
             return False
@@ -300,7 +300,7 @@ class FlextInfraUtilitiesRefactor:
             return False
         try:
             definitions = TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(
-                definitions_raw
+                definitions_raw,
             )
         except ValidationError:
             return False
@@ -311,10 +311,10 @@ class FlextInfraUtilitiesRefactor:
         if not isinstance(class_rule_raw, dict):
             return False
         policy_entry = TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(
-            policy_entry_raw
+            policy_entry_raw,
         )
         class_rule = TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(
-            class_rule_raw
+            class_rule_raw,
         )
         policy_entry_required = FlextInfraUtilitiesRefactor.string_list(
             policy_entry.get("required", []),
@@ -323,7 +323,7 @@ class FlextInfraUtilitiesRefactor:
             class_rule.get("required", []),
         )
         for entry in FlextInfraUtilitiesRefactor.mapping_list(
-            loaded.get("policy_matrix")
+            loaded.get("policy_matrix"),
         ):
             if not FlextInfraUtilitiesRefactor.has_required_fields(
                 entry,
@@ -334,7 +334,7 @@ class FlextInfraUtilitiesRefactor:
             loaded.get(c.Infra.ReportKeys.RULES),
         ):
             if not FlextInfraUtilitiesRefactor.has_required_fields(
-                rule, class_rule_required
+                rule, class_rule_required,
             ):
                 return False
         return True
@@ -349,7 +349,7 @@ class FlextInfraUtilitiesRefactor:
         raw_dict: dict[str, t.Infra.InfraValue] = dict(loaded.items())
         loaded_dict: t.Infra.ContainerDict = (
             FlextInfraUtilitiesRefactor._get_container_dict_adapter().validate_python(
-                raw_dict
+                raw_dict,
             )
         )
         schema_path = policy_path.with_name("class-policy-v2.schema.json")
@@ -492,7 +492,7 @@ class FlextInfraUtilitiesRefactor:
                 elif isinstance(item, ast.ClassDef) and not item.name.startswith("_"):
                     for inner in ast.iter_child_nodes(item):
                         if isinstance(
-                            inner, ast.FunctionDef
+                            inner, ast.FunctionDef,
                         ) and not inner.name.startswith("_"):
                             entry = (
                                 f"{item.name}.{inner.name}",
@@ -527,7 +527,7 @@ class FlextInfraUtilitiesRefactor:
                     continue
                 for target in item.targets:
                     if not isinstance(target, ast.Name) or not isinstance(
-                        item.value, ast.Call
+                        item.value, ast.Call,
                     ):
                         continue
                     call = item.value
@@ -542,7 +542,7 @@ class FlextInfraUtilitiesRefactor:
                         if isinstance(arg.value, ast.Name):
                             alias_map[target.id] = (arg.value.id, arg.attr)
                         elif isinstance(arg.value, ast.Attribute) and isinstance(
-                            arg.value.value, ast.Name
+                            arg.value.value, ast.Name,
                         ):
                             alias_map[target.id] = (
                                 arg.value.value.id,
@@ -629,10 +629,10 @@ class FlextInfraUtilitiesRefactor:
             m_list: list[m.Infra.Refactor.CensusMethodSummary] = []
             for m_info in items:
                 af = cnt.get(
-                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_FLAT), 0
+                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_FLAT), 0,
                 )
                 an = cnt.get(
-                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_NS), 0
+                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_NS), 0,
                 )
                 dr = cnt.get((cls, m_info.name, c.Infra.Refactor.Census.MODE_DIRECT), 0)
                 tot = af + an + dr
@@ -646,14 +646,14 @@ class FlextInfraUtilitiesRefactor:
                         alias_namespaced=an,
                         direct=dr,
                         total=tot,
-                    )
+                    ),
                 )
             cls_sums.append(
                 m.Infra.Refactor.CensusClassSummary(
                     class_name=cls,
                     source_file=items[0].source_file if items else "",
                     methods=m_list,
-                )
+                ),
             )
 
         pj_sums: dict[str, list[m.Infra.Refactor.CensusProjectMethodUsage]] = (
@@ -666,14 +666,14 @@ class FlextInfraUtilitiesRefactor:
                     method_name=mx,
                     access_mode=mo,
                     count=co,
-                )
+                ),
             )
 
         return m.Infra.Refactor.CensusReport(
             classes=cls_sums,
             projects=[
                 m.Infra.Refactor.CensusProjectSummary(
-                    project_name=p, usages=us, total=sum(u.count for u in us)
+                    project_name=p, usages=us, total=sum(u.count for u in us),
                 )
                 for p, us in sorted(pj_sums.items())
             ],

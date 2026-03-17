@@ -14,7 +14,7 @@ class InjectCommentsPhase:
         existing_text = rendered
         out: list[str] = []
         has_banner = bool(
-            lines and "[MANAGED] FLEXT pyproject standardization" in lines[0]
+            lines and "[MANAGED] FLEXT pyproject standardization" in lines[0],
         )
         if not has_banner:
             out.extend(c.Infra.Deps.BANNER.splitlines())

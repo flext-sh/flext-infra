@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import sys
 from argparse import ArgumentParser
-from collections.abc import Mapping
 from pathlib import Path
 
 from flext_core import r
 
 from flext_infra import c, m, u
+from flext_infra.github._models import FlextInfraGithubModels
 from flext_infra.github.linter import FlextInfraWorkflowLinter
 from flext_infra.github.pr import main as pr_main
 from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
@@ -29,11 +29,7 @@ def _run_workflows(
         prune=prune,
         report_path=report,
     )
-    if result.is_failure:
-        return u.Infra.exit_code(result, failure_msg="workflow sync failed")
-    for _op in result.value:
-        pass
-    return 0
+    return u.Infra.exit_code(result, failure_msg="workflow sync failed")
 
 
 def _run_lint(
@@ -48,60 +44,41 @@ def _run_lint(
         report_path=report,
         strict=strict,
     )
-    if lint_result.is_failure:
-        return u.Infra.exit_code(lint_result, failure_msg="lint failed")
-    _ = lint_result.value.status
-    return 0
+    return u.Infra.exit_code(lint_result, failure_msg="lint failed")
 
 
 def _run_pr(argv: list[str]) -> int:
-    sys.argv = ["flext-infra github pr"] + argv
+    sys.argv = ["flext-infra github pr", *argv]
     return pr_main()
 
 
 def _run_pr_workspace(
     cli: u.Infra.CliArgs,
-    *,
-    include_root: int,
-    branch: str,
-    checkpoint: int,
-    fail_fast: int,
-    pr_action: str,
-    pr_base: str,
-    pr_head: str,
-    pr_number: str,
-    pr_title: str,
-    pr_body: str,
-    pr_draft: int,
-    pr_merge_method: str,
-    pr_auto: int,
-    pr_delete_branch: int,
-    pr_checks_strict: int,
-    pr_release_on_merge: int,
+    pr_args: FlextInfraGithubModels.PrWorkspaceArgs,
 ) -> int:
-    pr_args: Mapping[str, str] = {
-        c.Infra.ReportKeys.ACTION: pr_action,
-        "base": pr_base,
-        "head": pr_head,
-        "number": pr_number,
-        "title": pr_title,
-        "body": pr_body,
-        "draft": str(pr_draft),
-        "merge_method": pr_merge_method,
-        "auto": str(pr_auto),
-        "delete_branch": str(pr_delete_branch),
-        "checks_strict": str(pr_checks_strict),
-        "release_on_merge": str(pr_release_on_merge),
+    pr_mapping: dict[str, str] = {
+        c.Infra.ReportKeys.ACTION: pr_args.pr_action,
+        "base": pr_args.pr_base,
+        "head": pr_args.pr_head,
+        "number": pr_args.pr_number,
+        "title": pr_args.pr_title,
+        "body": pr_args.pr_body,
+        "draft": str(int(pr_args.pr_draft)),
+        "merge_method": pr_args.pr_merge_method,
+        "auto": str(int(pr_args.pr_auto)),
+        "delete_branch": str(int(pr_args.pr_delete_branch)),
+        "checks_strict": str(int(pr_args.pr_checks_strict)),
+        "release_on_merge": str(int(pr_args.pr_release_on_merge)),
     }
     manager = FlextInfraPrWorkspaceManager()
     orch_result = manager.orchestrate(
         workspace_root=cli.workspace,
         projects=cli.project_names(),
-        include_root=include_root == 1,
-        branch=branch,
-        checkpoint=checkpoint == 1,
-        fail_fast=fail_fast == 1,
-        pr_args=pr_args,
+        include_root=pr_args.include_root,
+        branch=pr_args.branch,
+        checkpoint=pr_args.checkpoint,
+        fail_fast=pr_args.fail_fast,
+        pr_args=pr_mapping,
     )
     if orch_result.is_failure:
         return u.Infra.exit_code(orch_result, failure_msg="pr-workspace failed")
@@ -111,8 +88,6 @@ def _run_pr_workspace(
 
 def _main_impl(argv: list[str] | None = None) -> int:
     """Dispatch to the appropriate github subcommand."""
-    if argv is not None:
-        sys.argv = ["flext-infra github"] + argv
     parser, subs = u.Infra.create_subcommand_parser(
         "flext-infra github",
         "GitHub integration services",
@@ -129,7 +104,7 @@ def _main_impl(argv: list[str] | None = None) -> int:
     _configure_lint_parser(subs[c.Infra.Toml.LINT_SECTION])
     _configure_pr_workspace_parser(subs["pr-workspace"])
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if not args.command:
         parser.print_help()
         return 1
@@ -139,27 +114,27 @@ def _main_impl(argv: list[str] | None = None) -> int:
     if args.command == c.Infra.Toml.LINT_SECTION:
         return _run_lint(cli, report=args.report, strict=args.strict)
     if args.command == c.Infra.Cli.GhCmd.PR:
-        return _run_pr(sys.argv[2:])
+        return _run_pr(argv[2:] if argv is not None else sys.argv[2:])
     if args.command == "pr-workspace":
-        return _run_pr_workspace(
-            cli,
-            include_root=args.include_root,
+        pr_args = FlextInfraGithubModels.PrWorkspaceArgs(
+            include_root=args.include_root == 1,
             branch=args.branch,
-            checkpoint=args.checkpoint,
-            fail_fast=args.fail_fast,
+            checkpoint=args.checkpoint == 1,
+            fail_fast=args.fail_fast == 1,
             pr_action=args.pr_action,
             pr_base=args.pr_base,
             pr_head=args.pr_head,
             pr_number=args.pr_number,
             pr_title=args.pr_title,
             pr_body=args.pr_body,
-            pr_draft=args.pr_draft,
+            pr_draft=args.pr_draft == 1,
             pr_merge_method=args.pr_merge_method,
-            pr_auto=args.pr_auto,
-            pr_delete_branch=args.pr_delete_branch,
-            pr_checks_strict=args.pr_checks_strict,
-            pr_release_on_merge=args.pr_release_on_merge,
+            pr_auto=args.pr_auto == 1,
+            pr_delete_branch=args.pr_delete_branch == 1,
+            pr_checks_strict=args.pr_checks_strict == 1,
+            pr_release_on_merge=args.pr_release_on_merge == 1,
         )
+        return _run_pr_workspace(cli, pr_args)
     parser.print_help()
     return 1
 

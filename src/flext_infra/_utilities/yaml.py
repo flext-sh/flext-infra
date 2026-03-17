@@ -42,7 +42,7 @@ class FlextInfraUtilitiesYaml:
     def _get_mapping_adapter() -> TypeAdapter[dict[str, t.Infra.InfraValue]]:
         if FlextInfraUtilitiesYaml._MAPPING_ADAPTER is None:
             FlextInfraUtilitiesYaml._MAPPING_ADAPTER = TypeAdapter(
-                dict[str, t.Infra.InfraValue]
+                dict[str, t.Infra.InfraValue],
             )
         return FlextInfraUtilitiesYaml._MAPPING_ADAPTER
 
@@ -69,7 +69,7 @@ class FlextInfraUtilitiesYaml:
             raise TypeError(msg)
         try:
             return FlextInfraUtilitiesYaml._get_mapping_adapter().validate_python(
-                parsed
+                parsed,
             )
         except ValidationError as exc:
             msg = f"rules.yml must be a mapping: {path}: {exc}"

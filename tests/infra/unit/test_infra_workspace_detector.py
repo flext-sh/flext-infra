@@ -54,20 +54,20 @@ class TestDetectorBasicDetection:
     """Tests for basic workspace detection scenarios."""
 
     def test_detects_with_parent_git(
-        self, detector: FlextInfraWorkspaceDetector, tmp_path: Path
+        self, detector: FlextInfraWorkspaceDetector, tmp_path: Path,
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
         tm.ok(detector.detect(project_root))
 
     def test_standalone_without_parent_git(
-        self, detector: FlextInfraWorkspaceDetector, tmp_path: Path
+        self, detector: FlextInfraWorkspaceDetector, tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
         tm.ok(detector.detect(project_root), eq=WorkspaceMode.STANDALONE)
 
     def test_handles_git_command_errors(
-        self, detector: FlextInfraWorkspaceDetector, tmp_path: Path
+        self, detector: FlextInfraWorkspaceDetector, tmp_path: Path,
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
         tm.ok(detector.detect(project_root))
@@ -81,19 +81,19 @@ class TestDetectorRepoNameExtraction:
 
     def test_https_url(self) -> None:
         name = FlextInfraWorkspaceDetector._repo_name_from_url(
-            "https://github.com/flext-sh/flext.git"
+            "https://github.com/flext-sh/flext.git",
         )
         tm.that(name, eq="flext")
 
     def test_ssh_url(self) -> None:
         name = FlextInfraWorkspaceDetector._repo_name_from_url(
-            "git@github.com:flext-sh/flext.git"
+            "git@github.com:flext-sh/flext.git",
         )
         tm.that(name, eq="flext")
 
     def test_without_git_suffix(self) -> None:
         name = FlextInfraWorkspaceDetector._repo_name_from_url(
-            "https://github.com/flext-sh/flext"
+            "https://github.com/flext-sh/flext",
         )
         tm.that(name, eq="flext")
 

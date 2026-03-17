@@ -86,7 +86,7 @@ class NamespaceEnforcementRewriter:
             return
         primary_package = package_dirs[0]
         stem = FlextInfraRefactorDependencyAnalyzerFacade.NamespaceFacadeScanner.project_class_stem(
-            project_name=project_name
+            project_name=project_name,
         )
         for status in facade_statuses:
             if status.exists:
@@ -129,11 +129,10 @@ class NamespaceEnforcementRewriter:
         deep_import_re = re.compile(
             r"^(\s*)from\s+(flext_core|flext_infra)(\.\S+)\s+import\s+(.+)$",
         )
-        alias_map: dict[str, str] = {
-            "flext_core": "from flext_core import c, m, r, t, u, p",
-            "flext_infra": "from flext_infra import c, m, t, u, p",
+        runtime_alias_names_by_package: dict[str, tuple[str, ...]] = {
+            "flext_core": ("c", "m", "r", "t", "u", "p", "d", "e", "h", "s", "x"),
+            "flext_infra": ("c", "m", "t", "u", "p"),
         }
-        runtime_alias_names = {"c", "m", "r", "t", "u", "p", "d", "e", "h", "s", "x"}
 
         def _parse_imported_names(import_clause: str) -> list[str]:
             no_comment = import_clause.split("#", maxsplit=1)[0].strip()
@@ -148,8 +147,38 @@ class NamespaceEnforcementRewriter:
                 names.append(token_text)
             return names
 
+        def _build_replacement(*, package: str, imported_names: list[str]) -> str:
+            ordered_aliases = runtime_alias_names_by_package.get(package, ())
+            ordered = [
+                alias for alias in ordered_aliases if alias in set(imported_names)
+            ]
+            return f"from {package} import {', '.join(ordered)}"
+
+        def _is_facade_or_subclass_file(*, file_path: Path, tree: ast.Module) -> bool:
+            family_file_names = set(c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY)
+            family_file_names.update(c.Infra.Refactor.NAMESPACE_PROTECTED_FILES)
+            if file_path.name in family_file_names:
+                return True
+            suffixes = tuple(c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES.values())
+            for stmt in tree.body:
+                if not isinstance(stmt, ast.ClassDef):
+                    continue
+                if stmt.name.endswith(suffixes):
+                    return True
+                for base in stmt.bases:
+                    if isinstance(base, ast.Name) and base.id.endswith(suffixes):
+                        return True
+                    if isinstance(base, ast.Attribute) and base.attr.endswith(suffixes):
+                        return True
+            return False
+
         for file_path in py_files:
             if file_path.name == "__init__.py":
+                continue
+            parsed_file = load_python_module(file_path)
+            if parsed_file is None:
+                continue
+            if _is_facade_or_subclass_file(file_path=file_path, tree=parsed_file.tree):
                 continue
             try:
                 source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -158,9 +187,25 @@ class NamespaceEnforcementRewriter:
             lines = source.splitlines(keepends=True)
             changed = False
             seen_replacements: set[str] = set()
-            for replacement in alias_map.values():
-                if any(line.strip() == replacement for line in lines):
+            seen_aliases_by_package: dict[str, list[set[str]]] = {
+                package: [] for package in runtime_alias_names_by_package
+            }
+            for line in lines:
+                stripped = line.strip()
+                for package in runtime_alias_names_by_package:
+                    prefix = f"from {package} import "
+                    if not stripped.startswith(prefix):
+                        continue
+                    candidate_clause = stripped.removeprefix(prefix)
+                    candidate_names = _parse_imported_names(candidate_clause)
+                    if len(candidate_names) == 0:
+                        continue
+                    replacement = _build_replacement(
+                        package=package,
+                        imported_names=candidate_names,
+                    )
                     seen_replacements.add(replacement)
+                    seen_aliases_by_package[package].append(set(candidate_names))
             new_lines: list[str] = []
             for line in lines:
                 match = deep_import_re.match(line.rstrip())
@@ -191,13 +236,26 @@ class NamespaceEnforcementRewriter:
                     if "*" in imported_names:
                         new_lines.append(line)
                         continue
-                    if not all(name in runtime_alias_names for name in imported_names):
+                    allowed_aliases = set(runtime_alias_names_by_package.get(pkg, ()))
+                    if not all(name in allowed_aliases for name in imported_names):
                         new_lines.append(line)
                         continue
-                    replacement = alias_map.get(pkg)
+                    replacement = _build_replacement(
+                        package=pkg,
+                        imported_names=imported_names,
+                    )
+                    target_names = set(imported_names)
+                    has_superset = any(
+                        target_names.issubset(existing)
+                        for existing in seen_aliases_by_package.get(pkg, [])
+                    )
+                    if has_superset:
+                        changed = True
+                        continue
                     if replacement and replacement not in seen_replacements:
                         new_lines.append(f"{indent}{replacement}\n")
                         seen_replacements.add(replacement)
+                        seen_aliases_by_package[pkg].append(target_names)
                         changed = True
                         continue
                     if replacement and replacement in seen_replacements:
@@ -209,6 +267,141 @@ class NamespaceEnforcementRewriter:
                     "".join(new_lines),
                     encoding=c.Infra.Encoding.DEFAULT,
                 )
+
+    @classmethod
+    def rewrite_namespace_source_violations(
+        cls,
+        *,
+        violations: list[nem.NamespaceSourceViolation],
+        parse_failures: list[nem.ParseFailureViolation],
+    ) -> None:
+        violations_by_file: dict[Path, list[nem.NamespaceSourceViolation]] = (
+            defaultdict(
+                list,
+            )
+        )
+        for violation in violations:
+            violations_by_file[Path(violation.file)].append(violation)
+        for file_path, file_violations in violations_by_file.items():
+            parsed = load_python_module(
+                file_path,
+                stage="namespace-source-rewrite",
+                parse_failures=parse_failures,
+            )
+            if parsed is None:
+                continue
+            source = parsed.source
+            tree = parsed.tree
+            line_map: dict[int, ast.ImportFrom] = {
+                stmt.lineno: stmt
+                for stmt in tree.body
+                if isinstance(stmt, ast.ImportFrom)
+                and stmt.module is not None
+                and stmt.level == 0
+                and stmt.end_lineno is not None
+            }
+            violations_by_line: dict[int, list[nem.NamespaceSourceViolation]] = (
+                defaultdict(
+                    list,
+                )
+            )
+            for violation in file_violations:
+                violations_by_line[violation.line].append(violation)
+            lines = source.splitlines(keepends=True)
+            moved_by_source: dict[str, list[str]] = defaultdict(list)
+            changed = False
+            for line_no in sorted(violations_by_line, reverse=True):
+                stmt = line_map.get(line_no)
+                if stmt is None or stmt.module is None or stmt.end_lineno is None:
+                    continue
+                alias_to_source = {
+                    violation.alias: violation.correct_source
+                    for violation in violations_by_line[line_no]
+                }
+                kept_names: list[str] = []
+                for alias in stmt.names:
+                    if alias.name == "*":
+                        continue
+                    alias_text = alias.name
+                    if alias.asname is not None:
+                        alias_text = f"{alias.name} as {alias.asname}"
+                    correct_source = alias_to_source.get(alias.name)
+                    if correct_source is None or alias.asname is not None:
+                        kept_names.append(alias_text)
+                        continue
+                    if alias.name not in moved_by_source[correct_source]:
+                        moved_by_source[correct_source].append(alias.name)
+                    changed = True
+                replacement_lines: list[str] = []
+                if len(kept_names) > 0:
+                    replacement_lines.append(
+                        f"from {stmt.module} import {', '.join(kept_names)}\n",
+                    )
+                start = stmt.lineno - 1
+                end = stmt.end_lineno
+                lines[start:end] = replacement_lines
+            if not changed:
+                continue
+            rewritten_source = "".join(lines)
+            try:
+                rewritten_tree: ast.Module = ast.parse(rewritten_source)
+            except SyntaxError:
+                continue
+            final_lines = rewritten_source.splitlines(keepends=True)
+            existing_imports_by_source: dict[str, ast.ImportFrom] = {}
+            for stmt in rewritten_tree.body:
+                if not isinstance(stmt, ast.ImportFrom):
+                    continue
+                if stmt.module is None or stmt.level != 0:
+                    continue
+                if stmt.module in moved_by_source:
+                    existing_imports_by_source[stmt.module] = stmt
+            for source_name, moved_aliases in moved_by_source.items():
+                existing_stmt = existing_imports_by_source.get(source_name)
+                if existing_stmt is not None and existing_stmt.end_lineno is not None:
+                    existing_names = [
+                        alias.name
+                        for alias in existing_stmt.names
+                        if alias.name != "*" and alias.asname is None
+                    ]
+                    if len(existing_names) == 0:
+                        continue
+                    merged_names = list(existing_names)
+                    for alias_name in moved_aliases:
+                        if alias_name not in merged_names:
+                            merged_names.append(alias_name)
+                    start = existing_stmt.lineno - 1
+                    end = existing_stmt.end_lineno
+                    final_lines[start:end] = [
+                        f"from {source_name} import {', '.join(merged_names)}\n",
+                    ]
+                    continue
+                insert_at = cls._namespace_source_import_insert_index(lines=final_lines)
+                final_lines[insert_at:insert_at] = [
+                    f"from {source_name} import {', '.join(moved_aliases)}\n",
+                ]
+            _ = file_path.write_text(
+                "".join(final_lines),
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+
+    @staticmethod
+    def _namespace_source_import_insert_index(*, lines: list[str]) -> int:
+        insert_at = 0
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            if len(stripped) == 0:
+                if index <= insert_at:
+                    insert_at = index + 1
+                continue
+            if stripped.startswith("from __future__ import "):
+                insert_at = index + 1
+                continue
+            if stripped.startswith(("import ", "from ")):
+                insert_at = index + 1
+                continue
+            break
+        return insert_at
 
     @staticmethod
     def rewrite_runtime_alias_violations(*, py_files: list[Path]) -> None:
@@ -262,7 +455,7 @@ class NamespaceEnforcementRewriter:
             if lines[0].startswith("#!"):
                 insert_idx = 1
             if insert_idx < len(lines) and re.match(
-                r"^#.*coding[:=]", lines[insert_idx]
+                r"^#.*coding[:=]", lines[insert_idx],
             ):
                 insert_idx += 1
             if insert_idx < len(lines) and (
@@ -339,7 +532,7 @@ class NamespaceEnforcementRewriter:
             if stmt.name not in protocol_names:
                 continue
             if not FlextInfraRefactorDependencyAnalyzerFacade.ManualProtocolDetector.is_protocol_class(
-                stmt
+                stmt,
             ):
                 continue
             block = ast.get_source_segment(source, stmt)

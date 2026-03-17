@@ -18,7 +18,7 @@ from pydantic import TypeAdapter, ValidationError
 from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, u
 
 type _ClassNestingMappingIndex = dict[
-    tuple[str, str], m.Infra.Refactor.ClassNestingMapping
+    tuple[str, str], m.Infra.Refactor.ClassNestingMapping,
 ]
 
 
@@ -103,7 +103,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         if not isinstance(node, ast.ClassDef):
             return False
         base_names = FlextInfraRefactorPydanticCentralizerAnalysis._class_base_names(
-            node
+            node,
         )
         return any(
             FlextInfraRefactorPydanticCentralizerAnalysis._is_model_like_base_name(
@@ -333,7 +333,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         for stmt in tree.body:
             typed_dict_factory_move = (
                 FlextInfraRefactorPydanticCentralizerAnalysis._typed_dict_factory_model(
-                    stmt
+                    stmt,
                 )
                 if isinstance(stmt, ast.Assign)
                 else None
@@ -342,7 +342,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                 class_moves.append(typed_dict_factory_move)
                 continue
             if FlextInfraRefactorPydanticCentralizerAnalysis.is_top_level_model_class(
-                stmt
+                stmt,
             ):
                 if not isinstance(stmt, ast.ClassDef):
                     continue
@@ -351,7 +351,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                 snippet = "\n".join(lines[start - 1 : end])
                 base_names = (
                     FlextInfraRefactorPydanticCentralizerAnalysis._class_base_names(
-                        stmt
+                        stmt,
                     )
                 )
                 kind = "typed_dict" if "TypedDict" in base_names else "base_model"
@@ -391,7 +391,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
     ):
         try:
             return FlextInfraRefactorPydanticCentralizerAnalysis.collect_moves(
-                file_path
+                file_path,
             )
         except SyntaxError:
             failure_stats.parse_syntax_errors += 1
@@ -504,7 +504,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                     TypeAdapter(
                         list[m.Infra.Refactor.LooseClassViolation],
                     ).validate_python(
-                        scan_result.value.get(c.Infra.ReportKeys.VIOLATIONS, [])
+                        scan_result.value.get(c.Infra.ReportKeys.VIOLATIONS, []),
                     )
                 )
             except ValidationError:

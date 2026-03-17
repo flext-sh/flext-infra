@@ -31,7 +31,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         return files
 
     def _run_markdown(
-        self, project_dir: Path, *, fix: bool
+        self, project_dir: Path, *, fix: bool,
     ) -> m.Infra.Check.GateExecution:
         started = time.monotonic()
         md_files = self._collect_markdown_files(project_dir)
@@ -97,7 +97,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     @override
     @override
     def check(
-        self, project_dir: Path, ctx: FlextInfraGateContext
+        self, project_dir: Path, ctx: FlextInfraGateContext,
     ) -> m.Infra.Check.GateExecution:
         _ = ctx
         return self._run_markdown(project_dir, fix=False)
@@ -105,7 +105,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     @override
     @override
     def fix(
-        self, project_dir: Path, ctx: FlextInfraGateContext
+        self, project_dir: Path, ctx: FlextInfraGateContext,
     ) -> m.Infra.Check.GateExecution:
         _ = ctx
         return self._run_markdown(project_dir, fix=True)

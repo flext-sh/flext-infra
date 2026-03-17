@@ -25,7 +25,7 @@ class PreCheckGate:
     def __init__(self, policy_path: Path | None = None) -> None:
         """Initialize with optional custom policy path."""
         self._policy_path = policy_path or Path(__file__).with_name(
-            "class-policy-v2.yml"
+            "class-policy-v2.yml",
         )
         self._schema_path = self._policy_path.with_name("class-policy-v2.schema.json")
         self._policy_by_family: dict[str, m.Infra.Refactor.ClassNestingPolicy] = (
@@ -104,7 +104,7 @@ class PreCheckGate:
         except (OSError, TypeError):
             return {}
         loaded_dict: dict[str, t.Infra.InfraValue] = TypeAdapter(
-            dict[str, t.Infra.InfraValue]
+            dict[str, t.Infra.InfraValue],
         ).validate_python(dict(loaded.items()))
         if not self._schema_valid(loaded_dict):
             return {}

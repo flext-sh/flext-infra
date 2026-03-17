@@ -356,7 +356,7 @@ class FlextInfraProjectMigrator(s):
         dependencies: list[str] = []
         if isinstance(dependencies_raw, list):
             dependency_items: list[JsonValue] = _OBJECT_LIST_ADAPTER.validate_python(
-                dependencies_raw
+                dependencies_raw,
             )
             dependencies = [str(dep_raw) for dep_raw in dependency_items]
         dependency_spec = "flext-core @ ../flext-core"

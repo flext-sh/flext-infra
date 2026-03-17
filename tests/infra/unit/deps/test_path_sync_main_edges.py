@@ -24,10 +24,10 @@ def _project(path: Path, name: str = "flext-core") -> m.Infra.Workspace.ProjectI
 
 class TestMainEdgeCases:
     def test_main_no_changes(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
 
         def _discover_none(
@@ -44,10 +44,10 @@ class TestMainEdgeCases:
         tm.that(path_sync_module.main(), eq=0)
 
     def test_main_with_changes(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
@@ -81,7 +81,7 @@ class TestMainEdgeCases:
             return r[list[str]].ok(["change1"])
 
         monkeypatch.setattr(
-            FlextInfraDependencyPathSync, "rewrite_dep_paths", rewrite_stub
+            FlextInfraDependencyPathSync, "rewrite_dep_paths", rewrite_stub,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(path_sync_module.main(), eq=0)
@@ -92,7 +92,7 @@ class TestMainEdgeCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
 
         def _discover_none(
@@ -114,7 +114,7 @@ class TestMainEdgeCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
@@ -144,13 +144,13 @@ class TestMainEdgeCases:
             return r[list[str]].ok([])
 
         monkeypatch.setattr(
-            FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_ok
+            FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_ok,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(path_sync_module.main(), eq=0)
 
     def test_main_invalid_project_toml(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text("invalid toml [[[")
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
@@ -182,7 +182,7 @@ class TestMainEdgeCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "flext-workspace"\n'
+            '[project]\nname = "flext-workspace"\n',
         )
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()

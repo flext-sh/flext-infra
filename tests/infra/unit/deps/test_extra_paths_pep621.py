@@ -93,8 +93,8 @@ class TestPathDepPathsPoetry:
                 "dependencies": {
                     "flext-core": {"path": "../flext-core"},
                     "flext-api": {"path": "../flext-api"},
-                }
-            }
+                },
+            },
         }
         result = _manager().path_dep_paths_poetry(doc)
         tm.that(any("flext-core" in item for item in result), eq=True)
@@ -103,7 +103,7 @@ class TestPathDepPathsPoetry:
     def test_poetry_with_relative_paths(self) -> None:
         doc = tomlkit.document()
         doc["tool"] = {
-            "poetry": {"dependencies": {"flext-core": {"path": "./flext-core"}}}
+            "poetry": {"dependencies": {"flext-core": {"path": "./flext-core"}}},
         }
         result = _manager().path_dep_paths_poetry(doc)
         tm.that(any("flext-core" in item for item in result), eq=True)
@@ -116,8 +116,8 @@ class TestPathDepPathsPoetry:
                     "requests": "^2.0",
                     "flext-core": {"path": "../flext-core"},
                     "pydantic": "^2.0",
-                }
-            }
+                },
+            },
         }
         result = _manager().path_dep_paths_poetry(doc)
         tm.that(any("flext-core" in item for item in result), eq=True)
@@ -126,7 +126,7 @@ class TestPathDepPathsPoetry:
     def test_poetry_with_path(self) -> None:
         doc = tomlkit.document()
         doc["tool"] = {
-            "poetry": {"dependencies": {"flext-core": {"path": "../flext-core"}}}
+            "poetry": {"dependencies": {"flext-core": {"path": "../flext-core"}}},
         }
         result = _manager().path_dep_paths_poetry(doc)
         tm.that(any("flext-core" in item for item in result), eq=True)

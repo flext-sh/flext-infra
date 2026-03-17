@@ -16,7 +16,7 @@ class _StubRunner:
         self._result = result
 
     def run_raw(
-        self, *args: t.Infra.TomlValue, **kwargs: t.Infra.TomlValue
+        self, *args: t.Infra.TomlValue, **kwargs: t.Infra.TomlValue,
     ) -> r[m.Infra.Core.CommandOutput]:
         _ = args
         _ = kwargs
@@ -25,7 +25,7 @@ class _StubRunner:
 
 class TestDetectionUncoveredLines:
     def test_run_deptry_with_non_dict_issue(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
@@ -37,15 +37,15 @@ class TestDetectionUncoveredLines:
         out_file.write_text(json.dumps(["not_a_dict", {"error": {"code": "DEP001"}}]))
         out = m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
-            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out))
+            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out)),
         )
         issues, _ = tm.ok(
-            service.run_deptry(project, venv_bin, json_output_path=out_file)
+            service.run_deptry(project, venv_bin, json_output_path=out_file),
         )
         tm.that(len(issues), eq=1)
 
     def test_run_pip_check_with_empty_output(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
@@ -53,14 +53,14 @@ class TestDetectionUncoveredLines:
         (venv_bin / "pip").write_text("")
         out = m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
-            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out))
+            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out)),
         )
         lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
         tm.that(lines, eq=[])
         tm.that(exit_code, eq=0)
 
     def test_get_required_typings_with_limits_applied(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
@@ -68,7 +68,7 @@ class TestDetectionUncoveredLines:
         (venv_bin / "mypy").write_text("")
         out = m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr="")
         monkeypatch.setattr(
-            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out))
+            service, "runner", _StubRunner(r[m.Infra.Core.CommandOutput].ok(out)),
         )
 
         class _Toml:

@@ -33,7 +33,7 @@ def _make_gate_exec(
     """Helper to create a _GateExecution."""
     return GateExecution(
         result=m.Infra.Check.GateResult(
-            gate=gate, project=project, passed=passed, errors=[], duration=0.0
+            gate=gate, project=project, passed=passed, errors=[], duration=0.0,
         ),
         issues=issues or [],
         raw_output="",
@@ -50,7 +50,7 @@ def _setup_project(tmp_path: Path, name: str) -> Path:
 
 def _check_project_stub(project: ProjectResult) -> CheckProjectStub:
     def _fake_check(
-        _project_dir: Path, _gates: list[str], _reports_dir: Path
+        _project_dir: Path, _gates: list[str], _reports_dir: Path,
     ) -> ProjectResult:
         return project
 
@@ -61,7 +61,7 @@ def _iter_check_project_stub(projects: list[ProjectResult]) -> CheckProjectStub:
     project_iter = iter(projects)
 
     def _fake_check(
-        _project_dir: Path, _gates: list[str], _reports_dir: Path
+        _project_dir: Path, _gates: list[str], _reports_dir: Path,
     ) -> ProjectResult:
         return next(project_iter)
 
@@ -74,14 +74,14 @@ class TestRunProjectsValidation:
     def test_invalid_gates(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         result = checker.run_projects(
-            ["p1"], ["invalid_gate"], reports_dir=tmp_path / "reports"
+            ["p1"], ["invalid_gate"], reports_dir=tmp_path / "reports",
         )
         tm.fail(result)
 
     def test_skips_missing_projects(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         result = checker.run_projects(
-            ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports"
+            ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports",
         )
         tm.ok(result)
         tm.that(len(result.value), eq=0)
@@ -91,7 +91,7 @@ class TestRunProjectsReports:
     """Test run_projects report generation."""
 
     def test_creates_markdown_report(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         reports_dir = tmp_path / "reports"
@@ -106,7 +106,7 @@ class TestRunProjectsReports:
         tm.that((reports_dir / "check-report.md").exists(), eq=True)
 
     def test_creates_sarif_report(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         reports_dir = tmp_path / "reports"
@@ -125,7 +125,7 @@ class TestRunProjectsBehavior:
     """Test run_projects fail_fast and error reporting."""
 
     def test_fail_fast_stops_on_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         call_count = [0]
@@ -155,7 +155,7 @@ class TestRunProjectsBehavior:
         tm.that(call_count[0], eq=1)
 
     def test_reports_errors(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         issue = CheckIssue(
@@ -171,14 +171,14 @@ class TestRunProjectsBehavior:
         monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
         _setup_project(tmp_path, "p1")
         result = checker.run_projects(
-            ["p1"], ["lint"], reports_dir=tmp_path / "reports"
+            ["p1"], ["lint"], reports_dir=tmp_path / "reports",
         )
         tm.ok(result)
         tm.that(len(result.value), eq=1)
         tm.that(result.value[0].total_errors, eq=1)
 
     def test_multiple_with_mixed_errors(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         issue = CheckIssue(
@@ -201,7 +201,7 @@ class TestRunProjectsBehavior:
         for name in ["p1", "p2"]:
             _setup_project(tmp_path, name)
         result = checker.run_projects(
-            ["p1", "p2"], ["lint"], reports_dir=tmp_path / "reports"
+            ["p1", "p2"], ["lint"], reports_dir=tmp_path / "reports",
         )
         tm.ok(result)
         tm.that(len(result.value), eq=2)
@@ -213,7 +213,7 @@ class TestRunSingleProject:
     """Test FlextInfraWorkspaceChecker.run method."""
 
     def test_run_single_project_success(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         _setup_project(tmp_path, "p1")

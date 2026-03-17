@@ -115,7 +115,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
 
         source_result = "\n".join(source_lines)
         re_export = f"from {pkg_name}.{target_module} import " + ", ".join(
-            sorted(moved_names)
+            sorted(moved_names),
         )
         source_result = FlextInfraUtilitiesRefactor.insert_import_statement(
             source_result,

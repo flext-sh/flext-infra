@@ -21,7 +21,7 @@ class MockScanner:
                     message=f"checked {file_path.name}",
                     severity="low",
                     rule_id="demo-rule",
-                )
+                ),
             ],
         )
 

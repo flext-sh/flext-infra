@@ -30,7 +30,7 @@ class EnsurePytestConfigPhase:
             ini[c.Infra.Toml.MINVERSION] = "8.0"
             changes.append("tool.pytest.ini_options.minversion set to 8.0")
         current_classes = u.Infra.as_string_list(
-            u.Infra.get(ini, c.Infra.Toml.PYTHON_CLASSES)
+            u.Infra.get(ini, c.Infra.Toml.PYTHON_CLASSES),
         )
         if "Test*" not in current_classes:
             ini[c.Infra.Toml.PYTHON_CLASSES] = u.Infra.array(
@@ -39,7 +39,7 @@ class EnsurePytestConfigPhase:
             changes.append("tool.pytest.ini_options.python_classes updated")
         standard_files = {"*_test.py", "*_tests.py", "test_*.py"}
         current_files = set(
-            u.Infra.as_string_list(u.Infra.get(ini, c.Infra.Toml.PYTHON_FILES))
+            u.Infra.as_string_list(u.Infra.get(ini, c.Infra.Toml.PYTHON_FILES)),
         )
         if not standard_files.issubset(current_files):
             ini[c.Infra.Toml.PYTHON_FILES] = u.Infra.array(
@@ -47,12 +47,12 @@ class EnsurePytestConfigPhase:
             )
             changes.append("tool.pytest.ini_options.python_files updated")
         current_addopts = set(
-            u.Infra.as_string_list(u.Infra.get(ini, c.Infra.Toml.ADDOPTS))
+            u.Infra.as_string_list(u.Infra.get(ini, c.Infra.Toml.ADDOPTS)),
         )
         needed_addopts = set(self._tool_config.tools.pytest.standard_addopts)
         if not needed_addopts.issubset(current_addopts):
             ini[c.Infra.Toml.ADDOPTS] = u.Infra.array(
-                sorted(current_addopts | needed_addopts)
+                sorted(current_addopts | needed_addopts),
             )
             changes.append("tool.pytest.ini_options.addopts updated")
         current_markers = u.Infra.as_string_list(u.Infra.get(ini, c.Infra.Toml.MARKERS))
@@ -64,7 +64,7 @@ class EnsurePytestConfigPhase:
                 added.append(marker)
         if added:
             ini[c.Infra.Toml.MARKERS] = u.Infra.array(
-                sorted([*current_markers, *added])
+                sorted([*current_markers, *added]),
             )
             names = ", ".join(m.split(":")[0].strip() for m in added)
             changes.append(f"tool.pytest.ini_options.markers: added {names}")

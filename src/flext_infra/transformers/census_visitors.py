@@ -120,7 +120,7 @@ class CensusUsageCollector(cst.CSTVisitor):
                 and method_name in self.method_index[base_class]
             ):
                 self._record(
-                    base_class, method_name, c.Infra.Refactor.Census.MODE_ALIAS_NS
+                    base_class, method_name, c.Infra.Refactor.Census.MODE_ALIAS_NS,
                 )
 
         if isinstance(value, cst.Name):

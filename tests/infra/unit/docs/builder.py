@@ -24,14 +24,14 @@ class TestBuilderCore:
     """Core build invocation tests."""
 
     def test_build_returns_flext_result(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path
+        self, builder: FlextInfraDocBuilder, tmp_path: Path,
     ) -> None:
         """Test that build returns r."""
         result = builder.build(tmp_path)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_build_with_valid_scope_returns_success(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path
+        self, builder: FlextInfraDocBuilder, tmp_path: Path,
     ) -> None:
         """Test build with valid scope returns success."""
         result = builder.build(tmp_path)
@@ -39,7 +39,7 @@ class TestBuilderCore:
         tm.that(len(result.value) >= 0, eq=True)
 
     def test_build_report_structure(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path
+        self, builder: FlextInfraDocBuilder, tmp_path: Path,
     ) -> None:
         """Test BuildReport has required fields."""
         result = builder.build(tmp_path)
@@ -98,7 +98,7 @@ class TestBuilderCore:
         tm.that(report.site_dir, eq="/path/to/site")
 
     def test_build_with_multiple_projects_returns_list(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path
+        self, builder: FlextInfraDocBuilder, tmp_path: Path,
     ) -> None:
         """Test build with multiple projects returns list of reports."""
         result = builder.build(tmp_path, projects="proj1,proj2")

@@ -63,7 +63,7 @@ class TestMaintenanceMainEnforcer:
 
     def test_enforcer_check_only_success(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
-            tmp_path / "ws", python_minor=sys.version_info.minor
+            tmp_path / "ws", python_minor=sys.version_info.minor,
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=False)
@@ -71,7 +71,7 @@ class TestMaintenanceMainEnforcer:
 
     def test_enforcer_enforce_mode(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
-            tmp_path / "ws", python_minor=sys.version_info.minor
+            tmp_path / "ws", python_minor=sys.version_info.minor,
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=False, verbose=False)
@@ -79,7 +79,7 @@ class TestMaintenanceMainEnforcer:
 
     def test_enforcer_verbose_mode(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
-            tmp_path / "ws", python_minor=sys.version_info.minor
+            tmp_path / "ws", python_minor=sys.version_info.minor,
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=True)
@@ -95,7 +95,7 @@ class TestMaintenanceMainEnforcer:
 
     def test_enforcer_check_only_flag_stored(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
-            tmp_path / "ws", python_minor=sys.version_info.minor
+            tmp_path / "ws", python_minor=sys.version_info.minor,
         )
         enforcer = _make_enforcer(workspace)
         enforcer.execute(check_only=True, verbose=False)
@@ -103,7 +103,7 @@ class TestMaintenanceMainEnforcer:
 
     def test_enforcer_verbose_flag_stored(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
-            tmp_path / "ws", python_minor=sys.version_info.minor
+            tmp_path / "ws", python_minor=sys.version_info.minor,
         )
         enforcer = _make_enforcer(workspace)
         enforcer.execute(check_only=False, verbose=True)
@@ -111,7 +111,7 @@ class TestMaintenanceMainEnforcer:
 
     def test_enforcer_both_flags(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
-            tmp_path / "ws", python_minor=sys.version_info.minor
+            tmp_path / "ws", python_minor=sys.version_info.minor,
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=True)
@@ -121,7 +121,7 @@ class TestMaintenanceMainEnforcer:
 
     def test_enforcer_empty_workspace(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
-            tmp_path / "ws", python_minor=sys.version_info.minor
+            tmp_path / "ws", python_minor=sys.version_info.minor,
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True)
@@ -129,7 +129,7 @@ class TestMaintenanceMainEnforcer:
 
     def test_enforcer_project_mismatch(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
-            tmp_path / "ws", python_minor=sys.version_info.minor
+            tmp_path / "ws", python_minor=sys.version_info.minor,
         )
         project = workspace / "project-a"
         project.mkdir()
@@ -138,7 +138,7 @@ class TestMaintenanceMainEnforcer:
         (project / "src").mkdir()
         mismatched = sys.version_info.minor + 1
         (project / "pyproject.toml").write_text(
-            f'requires-python = ">=3.{mismatched}"\n', encoding="utf-8"
+            f'requires-python = ">=3.{mismatched}"\n', encoding="utf-8",
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=False)

@@ -100,7 +100,7 @@ class FlextInfraConfigFixer(s):
             return r[list[str]].ok([])
         try:
             pyrefly: MutableMapping[str, t.Infra.InfraValue] = TypeAdapter(
-                dict[str, t.Infra.InfraValue]
+                dict[str, t.Infra.InfraValue],
             ).validate_python(pyrefly_data)
         except ValidationError:
             return r[list[str]].ok([])
@@ -259,7 +259,7 @@ class FlextInfraConfigFixer(s):
             if isinstance(conf, Mapping):
                 try:
                     conf_map: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-                        dict[str, t.Infra.InfraValue]
+                        dict[str, t.Infra.InfraValue],
                     ).validate_python(conf)
                     conf_out = dict(conf_map.items())
                 except ValidationError:

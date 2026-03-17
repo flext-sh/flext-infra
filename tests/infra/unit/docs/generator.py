@@ -26,14 +26,14 @@ class TestGeneratorCore:
         return FlextInfraDocGenerator()
 
     def test_generate_returns_flext_result(
-        self, gen: FlextInfraDocGenerator, tmp_path: Path
+        self, gen: FlextInfraDocGenerator, tmp_path: Path,
     ) -> None:
         """Test that generate returns r."""
         result = gen.generate(tmp_path)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_valid_scope_returns_success(
-        self, gen: FlextInfraDocGenerator, tmp_path: Path
+        self, gen: FlextInfraDocGenerator, tmp_path: Path,
     ) -> None:
         """Test generate with valid scope returns success."""
         result = gen.generate(tmp_path)
@@ -41,7 +41,7 @@ class TestGeneratorCore:
         tm.that(len(result.value) >= 0, eq=True)
 
     def test_generate_report_structure(
-        self, gen: FlextInfraDocGenerator, tmp_path: Path
+        self, gen: FlextInfraDocGenerator, tmp_path: Path,
     ) -> None:
         """Test GenerateReport has required fields."""
         result = gen.generate(tmp_path)
@@ -68,35 +68,35 @@ class TestGeneratorCore:
         tm.that(m.Infra.Docs.GeneratedFile.model_config.get("frozen"), eq=True)
 
     def test_generate_with_project_filter(
-        self, gen: FlextInfraDocGenerator, tmp_path: Path
+        self, gen: FlextInfraDocGenerator, tmp_path: Path,
     ) -> None:
         """Test generate with single project filter."""
         result = gen.generate(tmp_path, project="test-project")
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_projects_filter(
-        self, gen: FlextInfraDocGenerator, tmp_path: Path
+        self, gen: FlextInfraDocGenerator, tmp_path: Path,
     ) -> None:
         """Test generate with multiple projects filter."""
         result = gen.generate(tmp_path, projects="proj1,proj2")
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_apply_false_dry_run(
-        self, gen: FlextInfraDocGenerator, tmp_path: Path
+        self, gen: FlextInfraDocGenerator, tmp_path: Path,
     ) -> None:
         """Test generate with apply=False (dry-run mode)."""
         result = gen.generate(tmp_path, apply=False)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_apply_true_writes_files(
-        self, gen: FlextInfraDocGenerator, tmp_path: Path
+        self, gen: FlextInfraDocGenerator, tmp_path: Path,
     ) -> None:
         """Test generate with apply=True writes files."""
         result = gen.generate(tmp_path, apply=True)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_custom_output_dir(
-        self, gen: FlextInfraDocGenerator, tmp_path: Path
+        self, gen: FlextInfraDocGenerator, tmp_path: Path,
     ) -> None:
         """Test generate with custom output directory."""
         result = gen.generate(tmp_path, output_dir=str(tmp_path / "custom_output"))
@@ -140,7 +140,7 @@ class TestGeneratorCore:
         items = [
             m.Infra.Docs.DocsPhaseItem(phase="generate", path="file1.md", written=True),
             m.Infra.Docs.DocsPhaseItem(
-                phase="generate", path="file2.md", written=False
+                phase="generate", path="file2.md", written=False,
             ),
         ]
         report = m.Infra.Docs.DocsPhaseReport(
@@ -157,10 +157,10 @@ class TestGeneratorCore:
     def test_generated_file_written_field(self) -> None:
         """Test GeneratedFile written field."""
         tm.that(
-            m.Infra.Docs.GeneratedFile(path="test.md", written=True).written, eq=True
+            m.Infra.Docs.GeneratedFile(path="test.md", written=True).written, eq=True,
         )
         tm.that(
-            m.Infra.Docs.GeneratedFile(path="test2.md", written=False).written, eq=False
+            m.Infra.Docs.GeneratedFile(path="test2.md", written=False).written, eq=False,
         )
 
     def test_generate_with_scope_failure_returns_failure(
@@ -172,7 +172,7 @@ class TestGeneratorCore:
         """Test generate returns failure when scope building fails."""
 
         def mock_build_scopes(
-            *args: t.Scalar, **kwargs: t.Scalar
+            *args: t.Scalar, **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
             return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("Scope error")
 

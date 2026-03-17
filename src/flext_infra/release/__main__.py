@@ -19,7 +19,7 @@ from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 
 
 def _resolve_version(
-    version_arg: str, bump_arg: str, interactive: int, root_path: Path
+    version_arg: str, bump_arg: str, interactive: int, root_path: Path,
 ) -> str:
     """Determine the target release version based on arguments."""
     if version_arg:
@@ -115,19 +115,7 @@ def _main_impl(argv: list[str] | None = None) -> int:
     else:
         version = args.version or "0.0.0"
     tag = _resolve_tag(args.tag, version)
-    service = FlextInfraReleaseOrchestrator(
-        config_type=None,
-        config_overrides=None,
-        initial_context=None,
-        subproject=None,
-        services=None,
-        factories=None,
-        resources=None,
-        container_overrides=None,
-        wire_modules=None,
-        wire_packages=None,
-        wire_classes=None,
-    )
+    service = FlextInfraReleaseOrchestrator()
     result = service.run_release(
         workspace_root=root,
         version=version,

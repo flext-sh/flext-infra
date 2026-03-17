@@ -61,7 +61,7 @@ class FlextInfraUtilitiesToml:
         try:
             normalized_value = (
                 FlextInfraUtilitiesToml._get_container_dict_adapter().validate_python(
-                    value
+                    value,
                 )
             )
         except ValidationError:
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesToml:
         try:
             return (
                 FlextInfraUtilitiesToml._get_container_list_adapter().validate_python(
-                    normalized
+                    normalized,
                 )
             )
         except ValidationError:
@@ -122,7 +122,7 @@ class FlextInfraUtilitiesToml:
         if isinstance(normalized, list):
             try:
                 typed_items = FlextInfraUtilitiesToml._get_container_list_adapter().validate_python(
-                    normalized
+                    normalized,
                 )
             except ValidationError:
                 return []
@@ -186,14 +186,14 @@ class FlextInfraUtilitiesToml:
         if isinstance(raw_value, dict):
             try:
                 return FlextInfraUtilitiesToml._get_container_dict_adapter().validate_python(
-                    raw_value
+                    raw_value,
                 )
             except ValidationError:
                 return None
         try:
             return (
                 FlextInfraUtilitiesToml._get_container_list_adapter().validate_python(
-                    raw_value
+                    raw_value,
                 )
             )
         except ValidationError:

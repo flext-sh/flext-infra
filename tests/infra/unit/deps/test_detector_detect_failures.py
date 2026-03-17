@@ -21,7 +21,7 @@ class TestDetectorRunFailures:
             return r[Path].fail("root not found")
 
         paths = types.SimpleNamespace(
-            workspace_root_from_file=_workspace_root_from_file
+            workspace_root_from_file=_workspace_root_from_file,
         )
         monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", lambda: paths)
         result = detector_module.FlextInfraRuntimeDevDependencyDetector().run([])
@@ -36,7 +36,7 @@ class TestDetectorRunFailures:
         deps.discovery_failure = "discovery failed"
         error = tm.fail(_setup_detector(monkeypatch, tmp_path, deps).run([]))
         tm.that(
-            "discovery failed" in error or "project discovery failed" in error, eq=True
+            "discovery failed" in error or "project discovery failed" in error, eq=True,
         )
 
     def test_run_with_deptry_failure(
@@ -47,7 +47,7 @@ class TestDetectorRunFailures:
         deps = _DepsStub([tmp_path / "proj-a"])
         deps.deptry_failure = "deptry failed"
         error = tm.fail(
-            _setup_detector(monkeypatch, tmp_path, deps).run(["--no-pip-check"])
+            _setup_detector(monkeypatch, tmp_path, deps).run(["--no-pip-check"]),
         )
         tm.that("deptry failed" in error or "deptry run failed" in error, eq=True)
 
@@ -63,7 +63,7 @@ class TestDetectorRunFailures:
             _setup_detector(monkeypatch, tmp_path, deps).run([
                 "--typings",
                 "--no-pip-check",
-            ])
+            ]),
         )
         tm.that(
             "typing detection failed" in error

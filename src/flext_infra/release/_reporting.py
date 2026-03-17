@@ -68,7 +68,7 @@ class FlextInfraReleaseReporting:
 
     @staticmethod
     def update_changelog(
-        root: Path, version: str, tag: str, notes_path: Path
+        root: Path, version: str, tag: str, notes_path: Path,
     ) -> r[bool]:
         """Update docs/changelog and docs/releases entries."""
         changelog_path = root / c.Infra.Directories.DOCS / "CHANGELOG.md"

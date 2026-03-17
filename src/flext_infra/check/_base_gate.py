@@ -16,7 +16,7 @@ class FlextInfraGateContext(FlextModels.FrozenStrictModel):
     workspace_root: Annotated[Path, Field(description="Workspace root directory")]
     reports_dir: Annotated[Path, Field(description="Reports output directory")]
     fail_fast: Annotated[
-        bool, Field(default=False, description="Stop on first gate failure")
+        bool, Field(default=False, description="Stop on first gate failure"),
     ] = False
 
 
@@ -27,7 +27,7 @@ class FlextInfraGateProtocol(Protocol):
     @property
     def can_fix(self) -> bool: ...
     def check(
-        self, project_dir: Path, ctx: FlextInfraGateContext
+        self, project_dir: Path, ctx: FlextInfraGateContext,
     ) -> m.Infra.Check.GateExecution: ...
 
 
@@ -43,11 +43,11 @@ class FlextInfraGate(ABC):
 
     @abstractmethod
     def check(
-        self, project_dir: Path, ctx: FlextInfraGateContext
+        self, project_dir: Path, ctx: FlextInfraGateContext,
     ) -> m.Infra.Check.GateExecution: ...
 
     def fix(
-        self, project_dir: Path, ctx: FlextInfraGateContext
+        self, project_dir: Path, ctx: FlextInfraGateContext,
     ) -> m.Infra.Check.GateExecution:
         _ = ctx
         return self._build_gate_result(
@@ -91,7 +91,7 @@ class FlextInfraGate(ABC):
             duration=round(duration, 3),
         )
         return m.Infra.Check.GateExecution(
-            result=model, issues=issues, raw_output=raw_output
+            result=model, issues=issues, raw_output=raw_output,
         )
 
     def _result_exit_code(self, result: m.Infra.Core.CommandOutput) -> int:
@@ -113,7 +113,7 @@ class FlextInfraGate(ABC):
             if not path.is_dir():
                 continue
             if next(path.rglob(c.Infra.Extensions.PYTHON_GLOB), None) or next(
-                path.rglob("*.pyi"), None
+                path.rglob("*.pyi"), None,
             ):
                 out.append(directory)
         return out
@@ -128,7 +128,7 @@ class FlextInfraGate(ABC):
 
     @classmethod
     def _to_mapping_list(
-        cls, value: t_infra.Infra.InfraValue
+        cls, value: t_infra.Infra.InfraValue,
     ) -> list[dict[str, t_infra.Infra.InfraValue]]:
         if not isinstance(value, list):
             return []
@@ -137,7 +137,7 @@ class FlextInfraGate(ABC):
         for raw_item in typed_items:
             try:
                 typed_item = TypeAdapter(
-                    dict[str, t_infra.Infra.InfraValue]
+                    dict[str, t_infra.Infra.InfraValue],
                 ).validate_python(raw_item)
             except ValidationError:
                 continue
@@ -163,14 +163,14 @@ class FlextInfraGate(ABC):
 
     @staticmethod
     def _nested_mapping(
-        data: dict[str, t_infra.Infra.InfraValue], *keys: str
+        data: dict[str, t_infra.Infra.InfraValue], *keys: str,
     ) -> dict[str, t_infra.Infra.InfraValue]:
         current: t_infra.Infra.InfraValue = data
         for key in keys:
             if not isinstance(current, Mapping):
                 return {}
             typed_current = TypeAdapter(
-                dict[str, t_infra.Infra.InfraValue]
+                dict[str, t_infra.Infra.InfraValue],
             ).validate_python(current)
             if key not in typed_current:
                 return {}
@@ -184,7 +184,7 @@ class FlextInfraGate(ABC):
 
     @classmethod
     def _nested_int(
-        cls, data: dict[str, t_infra.Infra.InfraValue], *keys: str, default: int = 0
+        cls, data: dict[str, t_infra.Infra.InfraValue], *keys: str, default: int = 0,
     ) -> int:
         target = cls._nested_mapping(data, *keys[:-1])
         raw: t_infra.Infra.InfraValue = target.get(keys[-1])

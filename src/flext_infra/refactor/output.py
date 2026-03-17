@@ -70,7 +70,7 @@ class FlextInfraRefactorOutputRenderer:
                 )
                 if len(proj.loose_objects) > max_loose:
                     lines.append(
-                        f"    ... and {len(proj.loose_objects) - max_loose} more"
+                        f"    ... and {len(proj.loose_objects) - max_loose} more",
                     )
             if proj.import_violations:
                 lines.append(f"  Import violations: {len(proj.import_violations)}")
@@ -84,7 +84,7 @@ class FlextInfraRefactorOutputRenderer:
                     )
             if proj.internal_import_violations:
                 lines.append(
-                    f"  Internal imports: {len(proj.internal_import_violations)}"
+                    f"  Internal imports: {len(proj.internal_import_violations)}",
                 )
                 lines.extend(
                     f"    {iv.file}:{iv.line} {iv.current_import} ({iv.detail})"
@@ -120,7 +120,7 @@ class FlextInfraRefactorOutputRenderer:
                     )
             if proj.manual_protocol_violations:
                 lines.append(
-                    f"  Manual protocols: {len(proj.manual_protocol_violations)}"
+                    f"  Manual protocols: {len(proj.manual_protocol_violations)}",
                 )
                 lines.extend(
                     f"    {pv.file}:{pv.line} {pv.name}"
@@ -162,7 +162,7 @@ class FlextInfraRefactorOutputRenderer:
                 )
                 if len(proj.parse_failures) > max_loose:
                     lines.append(
-                        f"    ... and {len(proj.parse_failures) - max_loose} more"
+                        f"    ... and {len(proj.parse_failures) - max_loose} more",
                     )
             lines.append("")
         return "\n".join(lines) + "\n"
@@ -196,13 +196,13 @@ class FlextInfraRefactorOutputRenderer:
                 lines.append(
                     f"{marker} {cs.class_name:<38} {ms.name:<30}"
                     f" {ms.alias_flat:<8} {ms.alias_namespaced:<8}"
-                    f" {ms.direct:<8} {ms.total:<8}"
+                    f" {ms.direct:<8} {ms.total:<8}",
                 )
             lines.append("-" * 110)
 
         grand_total = grand_af + grand_an + grand_dr
         lines.append(
-            f"\n{'GRAND TOTAL':<71} {grand_af:<8} {grand_an:<8} {grand_dr:<8} {grand_total:<8}"
+            f"\n{'GRAND TOTAL':<71} {grand_af:<8} {grand_an:<8} {grand_dr:<8} {grand_total:<8}",
         )
 
         lines.extend([f"\n\n{sep}", "PER-PROJECT BREAKDOWN", sep])
@@ -219,7 +219,7 @@ class FlextInfraRefactorOutputRenderer:
             )
             lines.append(
                 f"\n📦 {ps.project_name}"
-                f" (alias: {alias_total}, direct: {direct_total}, total: {ps.total})"
+                f" (alias: {alias_total}, direct: {direct_total}, total: {ps.total})",
             )
             lines.extend(
                 f"  {pu.class_name}.{pu.method_name}: {pu.access_mode}={pu.count}"

@@ -45,7 +45,7 @@ def test_parse_semver_valid(
     ids=["invalid-format", "non-numeric", "unsupported-suffix"],
 )
 def test_parse_semver_invalid(
-    service: FlextInfraUtilitiesVersioning, version: str
+    service: FlextInfraUtilitiesVersioning, version: str,
 ) -> None:
     tm.fail(service.parse_semver(version), has="invalid semver")
 
@@ -117,7 +117,7 @@ def test_release_tag_from_branch_invalid(
     branch: str,
 ) -> None:
     tm.fail(
-        service.release_tag_from_branch(branch), has="does not match release pattern"
+        service.release_tag_from_branch(branch), has="does not match release pattern",
     )
 
 

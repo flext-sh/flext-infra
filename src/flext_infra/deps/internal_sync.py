@@ -273,7 +273,7 @@ class FlextInfraInternalDependencySyncService:
     def infer_owner_from_origin(self, project_root: Path) -> str | None:
         """Infer GitHub owner from remote origin URL."""
         remote = u.Infra.git_run(
-            ["config", "--get", "remote.origin.url"], cwd=project_root
+            ["config", "--get", "remote.origin.url"], cwd=project_root,
         )
         if remote.is_failure:
             return None
@@ -351,7 +351,7 @@ class FlextInfraInternalDependencySyncService:
     ) -> dict[str, t.Infra.InfraValue]:
         try:
             adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                dict[str, t.Infra.InfraValue]
+                dict[str, t.Infra.InfraValue],
             )
             return adapter.validate_python(value)
         except ValidationError:

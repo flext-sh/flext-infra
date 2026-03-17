@@ -204,7 +204,7 @@ class ClassNestingRefactorRule:
         if isinstance(class_nesting_raw, list):
             try:
                 typed_class_nesting: list[t.Infra.InfraValue] = TypeAdapter(
-                    list[t.Infra.InfraValue]
+                    list[t.Infra.InfraValue],
                 ).validate_python(class_nesting_raw)
                 coerced_nesting: list[t.Infra.InfraValue] = [
                     dict(e)
@@ -219,7 +219,7 @@ class ClassNestingRefactorRule:
         if isinstance(helper_raw, list):
             try:
                 typed_helper_entries: list[t.Infra.InfraValue] = TypeAdapter(
-                    list[t.Infra.InfraValue]
+                    list[t.Infra.InfraValue],
                 ).validate_python(helper_raw)
                 coerced_helpers: list[t.Infra.InfraValue] = [
                     dict(e)
@@ -437,7 +437,7 @@ class ClassNestingRefactorRule:
             base_chain: list[t.Infra.InfraValue] = list(
                 u.Infra.string_list(
                     rule.get("expected_base_chain"),
-                )
+                ),
             )
             payload["expected_base_chain"] = base_chain
             post_checks_raw = rule.get(c.Infra.ReportKeys.POST_CHECKS, [])
@@ -445,7 +445,7 @@ class ClassNestingRefactorRule:
             if not isinstance(post_checks_raw, list):
                 continue
             typed_post_checks: list[t.Infra.InfraValue] = TypeAdapter(
-                list[t.Infra.InfraValue]
+                list[t.Infra.InfraValue],
             ).validate_python(post_checks_raw)
             checks = u.Infra.mapping_list(typed_post_checks)
             for check in checks:

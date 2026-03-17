@@ -86,7 +86,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
                 ),
             )
             self.logger.info(
-                "release_phase_build_project", project=name, exit_code=code
+                "release_phase_build_project", project=name, exit_code=code,
             )
         report = m.Infra.Release.BuildReport(
             version=version,
@@ -142,7 +142,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             return notes_result
         if not dry_run:
             changelog_result = FlextInfraReleaseReporting.update_changelog(
-                workspace_root, version, tag, notes_path
+                workspace_root, version, tag, notes_path,
             )
             if changelog_result.is_failure:
                 return changelog_result
@@ -193,7 +193,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             if not dry_run:
                 u.Infra.replace_project_version(path.parent, target)
             self.logger.info(
-                "release_version_file_updated", path=str(path), target=target
+                "release_version_file_updated", path=str(path), target=target,
             )
         if dry_run:
             self.logger.info("release_phase_version_checked", checked_version=target)
@@ -286,7 +286,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             return r[bool].fail(bump_result.error or "bump failed")
         next_version = bump_result.value
         result = self.phase_version(
-            workspace_root, next_version, project_names, dev_suffix=True
+            workspace_root, next_version, project_names, dev_suffix=True,
         )
         if result.is_success:
             self.logger.info("release_next_dev_version", version=f"{next_version}-dev")
@@ -389,17 +389,17 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     def _previous_tag(self, workspace_root: Path, tag: str) -> r[str]:
         """Find the tag immediately preceding the given tag."""
         return u.Infra.git_run(
-            ["describe", "--tags", "--abbrev=0", f"{tag}^"], cwd=workspace_root
+            ["describe", "--tags", "--abbrev=0", f"{tag}^"], cwd=workspace_root,
         )
 
     def _push_release(self, workspace_root: Path, tag: str) -> r[bool]:
         """Push branch and tag to remote origin."""
         return u.Infra.git_run_checked(
-            ["push", "origin", "HEAD", tag], cwd=workspace_root
+            ["push", "origin", "HEAD", tag], cwd=workspace_root,
         )
 
     def _version_files(
-        self, workspace_root: Path, project_names: list[str]
+        self, workspace_root: Path, project_names: list[str],
     ) -> list[Path]:
         """Discover pyproject.toml files that need version updates."""
         files: list[Path] = [workspace_root / c.Infra.Files.PYPROJECT_FILENAME]

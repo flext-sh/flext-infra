@@ -102,7 +102,7 @@ class FlextInfraBaseMkGenerator(s[str]):
             return r[m.Infra.Basemk.BaseMkConfig].ok(config)
         try:
             normalized = m.Infra.Basemk.BaseMkConfig.model_validate(
-                dict(config.items())
+                dict(config.items()),
             )
             return r[m.Infra.Basemk.BaseMkConfig].ok(normalized)
         except (TypeError, ValueError) as exc:

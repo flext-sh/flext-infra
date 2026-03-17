@@ -28,7 +28,7 @@ class EnsurePyreflyConfigPhase:
         pyrefly = u.Infra.ensure_table(tool, c.Infra.Toml.PYREFLY)
         if (
             u.Infra.unwrap_item(
-                u.Infra.get(pyrefly, c.Infra.Toml.PYTHON_VERSION_HYPHEN)
+                u.Infra.get(pyrefly, c.Infra.Toml.PYTHON_VERSION_HYPHEN),
             )
             != "3.13"
         ):
@@ -36,7 +36,7 @@ class EnsurePyreflyConfigPhase:
             changes.append("tool.pyrefly.python-version set to 3.13")
         if (
             u.Infra.unwrap_item(
-                u.Infra.get(pyrefly, c.Infra.Toml.IGNORE_ERRORS_IN_GENERATED)
+                u.Infra.get(pyrefly, c.Infra.Toml.IGNORE_ERRORS_IN_GENERATED),
             )
             is not True
         ):
@@ -44,7 +44,7 @@ class EnsurePyreflyConfigPhase:
             changes.append("tool.pyrefly.ignore-errors-in-generated-code enabled")
         expected_search = ["."]
         current_search = u.Infra.as_string_list(
-            u.Infra.get(pyrefly, c.Infra.Toml.SEARCH_PATH)
+            u.Infra.get(pyrefly, c.Infra.Toml.SEARCH_PATH),
         )
         if current_search != expected_search:
             pyrefly[c.Infra.Toml.SEARCH_PATH] = u.Infra.array(expected_search)

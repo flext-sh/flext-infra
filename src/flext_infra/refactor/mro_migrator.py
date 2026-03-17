@@ -211,7 +211,7 @@ class FlextInfraRefactorMROMigrationTransformer:
             )
             moved_statement = moved_by_symbol[symbol]
             use_core_namespace = is_types_facade and isinstance(
-                moved_statement, cst.TypeAlias
+                moved_statement, cst.TypeAlias,
             )
             map_target = f"Core.{target}" if use_core_namespace else target
             if map_target in added_targets:
@@ -306,7 +306,7 @@ class FlextInfraRefactorMROMigrationTransformer:
             )
             statement = moved_by_symbol[symbol]
             use_core_namespace = is_types_facade and isinstance(
-                statement, cst.TypeAlias
+                statement, cst.TypeAlias,
             )
             symbol_map[symbol] = f"Core.{target}" if use_core_namespace else target
             moved_node = FlextInfraRefactorMROMigrationTransformer._retarget_statement(

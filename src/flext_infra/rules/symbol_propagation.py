@@ -27,7 +27,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> tuple[cst.Module, list[str]]:
         typed_cfg: dict[str, t.Infra.InfraValue] = TypeAdapter(
-            dict[str, t.Infra.InfraValue]
+            dict[str, t.Infra.InfraValue],
         ).validate_python(self.config)
         target_modules_raw = typed_cfg.get("target_modules", [])
         module_renames_raw = typed_cfg.get("module_renames", {})

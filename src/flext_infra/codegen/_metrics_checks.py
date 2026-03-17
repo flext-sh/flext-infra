@@ -23,31 +23,31 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         before_load_error: str,
     ) -> list[dict[str, t.Infra.InfraValue]]:
         violations_total = FlextInfraCodegenMetrics.as_int(
-            after_metrics.get("total_violations")
+            after_metrics.get("total_violations"),
         )
         violations_delta = FlextInfraCodegenMetrics.as_int(
-            improvement.get("violations_delta")
+            improvement.get("violations_delta"),
         )
         mro_failures = FlextInfraCodegenMetrics.as_int(
-            after_metrics.get("mro_failures")
+            after_metrics.get("mro_failures"),
         )
         cross_ref = FlextInfraCodegenMetrics.as_int(
-            after_metrics.get("cross_project_reference_violations")
+            after_metrics.get("cross_project_reference_violations"),
         )
         import_parse = FlextInfraCodegenMetrics.as_int(
-            after_metrics.get("import_parse_violations")
+            after_metrics.get("import_parse_violations"),
         )
         import_parse_errors = FlextInfraCodegenMetrics.as_int(
-            after_metrics.get("import_parse_errors")
+            after_metrics.get("import_parse_errors"),
         )
         layer_violations = FlextInfraCodegenMetrics.as_int(
-            after_metrics.get("layer_violations")
+            after_metrics.get("layer_violations"),
         )
         duplicate_groups = FlextInfraCodegenMetrics.as_int(
-            after_metrics.get("duplicate_groups")
+            after_metrics.get("duplicate_groups"),
         )
         duplicates_delta = FlextInfraCodegenMetrics.as_int(
-            improvement.get("duplicates_delta")
+            improvement.get("duplicates_delta"),
         )
         checks: list[FlextInfraCodegenModels.QualityGateCheck] = [
             FlextInfraCodegenModels.QualityGateCheck(
@@ -158,7 +158,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
                     target = node.targets[0]
                     if isinstance(target, ast.Name) and target.id.isupper():
                         name_to_projects.setdefault(target.id, set()).add(
-                            report.project
+                            report.project,
                         )
         return sum(1 for projects in name_to_projects.values() if len(projects) > 1)
 

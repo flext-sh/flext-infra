@@ -35,11 +35,11 @@ class FlextInfraRefactorCensus:
         return FlextInfraRefactorOutputRenderer.render_census_report(report)
 
     def run(
-        self, root: Path, *, target: m.Infra.Refactor.MROFamilyTarget | None = None
+        self, root: Path, *, target: m.Infra.Refactor.MROFamilyTarget | None = None,
     ) -> RCensusReport:
         """Execute the workspace census."""
         target = target or u.Infra.build_mro_target(
-            c.Infra.Refactor.Census.DEFAULT_FAMILY
+            c.Infra.Refactor.Census.DEFAULT_FAMILY,
         )
         t0 = time.monotonic()
         output.header(f"Usage Census — family={target.family} ({target.class_suffix})")
@@ -84,7 +84,7 @@ class FlextInfraRefactorCensus:
         )
         if files_result.is_failure:
             return r[m.Infra.Refactor.CensusReport].fail(
-                f"Failed to discover files: {files_result.error}"
+                f"Failed to discover files: {files_result.error}",
             )
         modules = files_result.value
         files = [file_path for _, file_path in modules]

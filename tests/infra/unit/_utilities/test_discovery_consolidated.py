@@ -22,7 +22,7 @@ class TestDiscoveryProjectRoots:
         project = tmp_path / "demo-project"
         (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
         (project / c.Infra.Files.MAKEFILE_FILENAME).write_text(
-            "all:\n", encoding="utf-8"
+            "all:\n", encoding="utf-8",
         )
         (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
             "[tool.poetry]\nname='demo'\n",
@@ -140,7 +140,7 @@ class TestDiscoveryDiscoverProjects:
         (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
         (project / c.Infra.Directories.TESTS).mkdir(parents=True)
         (project / c.Infra.Files.MAKEFILE_FILENAME).write_text(
-            "all:\n", encoding="utf-8"
+            "all:\n", encoding="utf-8",
         )
         (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
             "[project]\nname='alpha'\n",

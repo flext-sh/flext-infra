@@ -44,11 +44,11 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
         validate_json = directory / "validate-after.json"
         baseline_json = directory / "baseline-used.json"
         report_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-            dict[str, t.Infra.InfraValue]
+            dict[str, t.Infra.InfraValue],
         )
         report_json.write_text(
             report_adapter.dump_json(report, by_alias=True).decode(
-                c.Infra.Encoding.DEFAULT
+                c.Infra.Encoding.DEFAULT,
             ),
             encoding=c.Infra.Encoding.DEFAULT,
         )
@@ -57,25 +57,25 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
             item.model_dump() for item in census_reports
         ]
         census_adapter: TypeAdapter[list[dict[str, t.Infra.InfraValue]]] = TypeAdapter(
-            list[dict[str, t.Infra.InfraValue]]
+            list[dict[str, t.Infra.InfraValue]],
         )
         census_json.write_text(
             census_adapter.dump_json(census_payload, by_alias=True).decode(
-                c.Infra.Encoding.DEFAULT
+                c.Infra.Encoding.DEFAULT,
             ),
             encoding=c.Infra.Encoding.DEFAULT,
         )
         inventory_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-            dict[str, t.Infra.InfraValue]
+            dict[str, t.Infra.InfraValue],
         )
         inventory_json.write_text(
             inventory_adapter.dump_json(
-                {"duplicate_groups": duplicate_groups}, by_alias=True
+                {"duplicate_groups": duplicate_groups}, by_alias=True,
             ).decode(c.Infra.Encoding.DEFAULT),
             encoding=c.Infra.Encoding.DEFAULT,
         )
         validate_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-            dict[str, t.Infra.InfraValue]
+            dict[str, t.Infra.InfraValue],
         )
         validate_json.write_text(
             validate_adapter.dump_json(
@@ -90,11 +90,11 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
         )
         if before_payload is not None:
             baseline_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                dict[str, t.Infra.InfraValue]
+                dict[str, t.Infra.InfraValue],
             )
             baseline_json.write_text(
                 baseline_adapter.dump_json(before_payload, by_alias=True).decode(
-                    c.Infra.Encoding.DEFAULT
+                    c.Infra.Encoding.DEFAULT,
                 ),
                 encoding=c.Infra.Encoding.DEFAULT,
             )
@@ -160,7 +160,7 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
             try:
                 text = fallback.read_text(encoding=c.Infra.Encoding.DEFAULT)
                 adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                    dict[str, t.Infra.InfraValue]
+                    dict[str, t.Infra.InfraValue],
                 )
                 payload = adapter.validate_json(text)
             except (OSError, UnicodeDecodeError, ValueError):

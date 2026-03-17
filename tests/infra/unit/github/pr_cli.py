@@ -54,13 +54,13 @@ class TestMainFunction:
         monkeypatch.setattr(pr_module, "_parse_args", _parse)
         monkeypatch.setattr(pr_module, "FlextInfraPrManager", _manager_factory)
         monkeypatch.setattr(
-            StubUtilities.Infra, "_git_branch_returns", r[str].ok("feature")
+            StubUtilities.Infra, "_git_branch_returns", r[str].ok("feature"),
         )
         monkeypatch.setattr(pr_module, "u", StubUtilities)
 
     def test_status_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
-            status_returns=[r[dict[str, t.Scalar]].ok({"status": "open"})]
+            status_returns=[r[dict[str, t.Scalar]].ok({"status": "open"})],
         )
         self._setup(monkeypatch, _args(action="status"), mgr)
         tm.that(main(), eq=0)
@@ -72,14 +72,14 @@ class TestMainFunction:
 
     def test_create_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
-            create_returns=[r[dict[str, t.Scalar]].ok({"status": "created"})]
+            create_returns=[r[dict[str, t.Scalar]].ok({"status": "created"})],
         )
         self._setup(monkeypatch, _args(action="create"), mgr)
         tm.that(main(), eq=0)
 
     def test_create_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
-            create_returns=[r[dict[str, t.Scalar]].fail("create failed")]
+            create_returns=[r[dict[str, t.Scalar]].fail("create failed")],
         )
         self._setup(monkeypatch, _args(action="create"), mgr)
         tm.that(main(), eq=1)
@@ -96,17 +96,17 @@ class TestMainFunction:
 
     def test_checks_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
-            checks_returns=[r[dict[str, t.Scalar]].ok({"status": "checks-passed"})]
+            checks_returns=[r[dict[str, t.Scalar]].ok({"status": "checks-passed"})],
         )
         self._setup(monkeypatch, _args(action="checks", number="42"), mgr)
         tm.that(main(), eq=0)
 
     def test_checks_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
-            checks_returns=[r[dict[str, t.Scalar]].fail("checks failed")]
+            checks_returns=[r[dict[str, t.Scalar]].fail("checks failed")],
         )
         self._setup(
-            monkeypatch, _args(action="checks", number="42", checks_strict=1), mgr
+            monkeypatch, _args(action="checks", number="42", checks_strict=1), mgr,
         )
         tm.that(main(), eq=1)
 

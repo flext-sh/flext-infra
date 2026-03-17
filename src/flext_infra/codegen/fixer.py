@@ -308,10 +308,10 @@ class FlextInfraCodegenFixer(s):
         before_snapshot = u.Infra.snapshot_files(file_paths=src_files)
         NamespaceEnforcementRewriter.rewrite_import_alias_violations(py_files=src_files)
         NamespaceEnforcementRewriter.rewrite_runtime_alias_violations(
-            py_files=src_files
+            py_files=src_files,
         )
         NamespaceEnforcementRewriter.rewrite_missing_future_annotations(
-            py_files=src_files
+            py_files=src_files,
         )
         changed_paths = u.Infra.detect_changed_files(
             before_snapshot=before_snapshot,

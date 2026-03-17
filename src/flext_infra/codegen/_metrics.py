@@ -30,13 +30,13 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
         try:
             text = resolved.read_text(encoding=c.Infra.Encoding.DEFAULT)
             payload = FlextInfraCodegenMetrics._container_mapping_adapter.validate_json(
-                text
+                text,
             )
         except (OSError, UnicodeDecodeError, ValueError):
             return (None, str(resolved), "baseline parse failed")
         try:
             raw = FlextInfraCodegenMetrics._container_mapping_adapter.validate_python(
-                payload
+                payload,
             )
         except ValidationError:
             return (None, str(resolved), "baseline payload is not a JSON object")
@@ -56,19 +56,19 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
             }
         return {
             "total_violations": FlextInfraCodegenMetrics.extract_total_violations(
-                before_payload
+                before_payload,
             ),
             "duplicate_groups": FlextInfraCodegenMetrics.extract_duplicate_groups(
-                before_payload
+                before_payload,
             ),
             "projects_total": FlextInfraCodegenMetrics.extract_projects_total(
-                before_payload
+                before_payload,
             ),
             "projects_passed": FlextInfraCodegenMetrics.extract_projects_passed(
-                before_payload
+                before_payload,
             ),
             "projects_failed": FlextInfraCodegenMetrics.extract_projects_failed(
-                before_payload
+                before_payload,
             ),
         }
 
@@ -81,7 +81,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
         modified_files: list[str],
     ) -> dict[str, t.Infra.InfraValue]:
         by_rule: dict[str, int] = dict.fromkeys(
-            c.Infra.Codegen.QualityGate.RULE_KEYS, 0
+            c.Infra.Codegen.QualityGate.RULE_KEYS, 0,
         )
         total_violations = 0
         for report in census_reports:
@@ -89,7 +89,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
             total_violations += len(violations)
             for raw_violation in violations:
                 parsed = FlextInfraCodegenModels.CensusViolation.model_validate(
-                    raw_violation
+                    raw_violation,
                 )
                 if parsed.rule in by_rule:
                     by_rule[parsed.rule] += 1
@@ -107,10 +107,10 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
             "layer_violations": 0,
             "cross_project_reference_violations": 0,
             "import_parse_violations": FlextInfraCodegenMetrics.as_int(
-                import_scan.get("invalid_import_from_count")
+                import_scan.get("invalid_import_from_count"),
             ),
             "import_parse_errors": FlextInfraCodegenMetrics.as_int(
-                import_scan.get("parse_error_count")
+                import_scan.get("parse_error_count"),
             ),
             "modified_python_files": list(modified_files),
         }
@@ -121,16 +121,16 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
         after_metrics: dict[str, t.Infra.InfraValue],
     ) -> dict[str, t.Infra.InfraValue]:
         before_violations = FlextInfraCodegenMetrics.as_int(
-            before_metrics.get("total_violations")
+            before_metrics.get("total_violations"),
         )
         before_duplicates = FlextInfraCodegenMetrics.as_int(
-            before_metrics.get("duplicate_groups")
+            before_metrics.get("duplicate_groups"),
         )
         after_violations = FlextInfraCodegenMetrics.as_int(
-            after_metrics.get("total_violations")
+            after_metrics.get("total_violations"),
         )
         after_duplicates = FlextInfraCodegenMetrics.as_int(
-            after_metrics.get("duplicate_groups")
+            after_metrics.get("duplicate_groups"),
         )
         violations_delta = (
             0 if before_violations < 0 else after_violations - before_violations

@@ -9,28 +9,28 @@ class TestClassifyIssues:
     def test_classify_dep001(self) -> None:
         service = FlextInfraDependencyDetectionService()
         issues: list[t.Infra.IssueMap] = [
-            {"error": {"code": "DEP001"}, "module": "foo"}
+            {"error": {"code": "DEP001"}, "module": "foo"},
         ]
         tm.that(len(service.classify_issues(issues).dep001), eq=1)
 
     def test_classify_dep002(self) -> None:
         service = FlextInfraDependencyDetectionService()
         issues: list[t.Infra.IssueMap] = [
-            {"error": {"code": "DEP002"}, "module": "bar"}
+            {"error": {"code": "DEP002"}, "module": "bar"},
         ]
         tm.that(len(service.classify_issues(issues).dep002), eq=1)
 
     def test_classify_dep003(self) -> None:
         service = FlextInfraDependencyDetectionService()
         issues: list[t.Infra.IssueMap] = [
-            {"error": {"code": "DEP003"}, "module": "baz"}
+            {"error": {"code": "DEP003"}, "module": "baz"},
         ]
         tm.that(len(service.classify_issues(issues).dep003), eq=1)
 
     def test_classify_dep004(self) -> None:
         service = FlextInfraDependencyDetectionService()
         issues: list[t.Infra.IssueMap] = [
-            {"error": {"code": "DEP004"}, "module": "qux"}
+            {"error": {"code": "DEP004"}, "module": "qux"},
         ]
         tm.that(len(service.classify_issues(issues).dep004), eq=1)
 
@@ -47,7 +47,7 @@ class TestClassifyIssues:
     def test_unknown_code_skipped(self) -> None:
         service = FlextInfraDependencyDetectionService()
         issues: list[t.Infra.IssueMap] = [
-            {"error": {"code": "DEP999"}, "module": "foo"}
+            {"error": {"code": "DEP999"}, "module": "foo"},
         ]
         groups = service.classify_issues(issues)
         assert groups.dep001 == []
@@ -95,5 +95,5 @@ class TestDetectionUncoveredLines:
             "typing_libraries": {"module_to_package": inner},
         }
         tm.that(
-            service.module_to_types_package("custom_module", limits), eq="types-custom"
+            service.module_to_types_package("custom_module", limits), eq="types-custom",
         )

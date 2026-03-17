@@ -46,45 +46,45 @@ class TestCollectInternalDepsEdgeCases:
             r[t.Infra.TomlConfig].ok({
                 "tool": {
                     "poetry": {
-                        "dependencies": {"flext-core": {"path": "../flext-core"}}
-                    }
+                        "dependencies": {"flext-core": {"path": "../flext-core"}},
+                    },
                 },
                 "project": {},
-            })
+            }),
         )
         two_result = _collect(
             r[t.Infra.TomlConfig].ok({
                 "tool": {},
                 "project": {"dependencies": ["flext-core @ file:../flext-core"]},
-            })
+            }),
         )
         three_result = _collect(
             r[t.Infra.TomlConfig].ok({
                 "tool": {
                     "poetry": {
-                        "dependencies": {"external-lib": {"path": "some/nested/path"}}
-                    }
+                        "dependencies": {"external-lib": {"path": "some/nested/path"}},
+                    },
                 },
                 "project": {},
-            })
+            }),
         )
         four_result = _collect(
             r[t.Infra.TomlConfig].ok({
                 "tool": {"poetry": {"dependencies": {"flext-core": {"path": 123}}}},
                 "project": {},
-            })
+            }),
         )
         five_result = _collect(
             r[t.Infra.TomlConfig].ok({
                 "tool": {},
                 "project": {"dependencies": ["flext-core @"]},
-            })
+            }),
         )
         six_result = _collect(
             r[t.Infra.TomlConfig].ok({
                 "tool": {},
                 "project": {"dependencies": ["flext-core @ file:///external/path"]},
-            })
+            }),
         )
         one = one_result.value
         two = two_result.value

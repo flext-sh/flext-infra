@@ -30,7 +30,7 @@ class TestAuditorScopeFailure:
         auditor = FlextInfraDocAuditor()
 
         def mock_build_scopes(
-            *args: t.Scalar, **kwargs: t.Scalar
+            *args: t.Scalar, **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
             return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("scope build error")
 
@@ -50,7 +50,7 @@ class TestAuditorMainCli:
         """Test main() CLI entry point with audit failure."""
 
         def mock_audit(
-            *args: t.Scalar, **kwargs: t.Scalar
+            *args: t.Scalar, **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
             return r[list[m.Infra.Docs.DocsPhaseReport]].fail("audit error")
 
@@ -75,7 +75,7 @@ class TestAuditorMainCli:
         )
 
         def mock_audit(
-            *args: t.Scalar, **kwargs: t.Scalar
+            *args: t.Scalar, **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
             return r[list[m.Infra.Docs.DocsPhaseReport]].ok([failed_report])
 
@@ -100,7 +100,7 @@ class TestAuditorMainCli:
         )
 
         def mock_audit(
-            *args: t.Scalar, **kwargs: t.Scalar
+            *args: t.Scalar, **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
             return r[list[m.Infra.Docs.DocsPhaseReport]].ok([passed_report])
 
@@ -125,7 +125,7 @@ class TestAuditorMainCli:
         )
 
         def mock_audit(
-            *args: t.Scalar, **kwargs: t.Scalar
+            *args: t.Scalar, **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
             return r[list[m.Infra.Docs.DocsPhaseReport]].ok([passed_report])
 
@@ -166,7 +166,7 @@ class TestAuditorMainCli:
         )
 
         def mock_audit(
-            *args: t.Scalar, **kwargs: t.Scalar
+            *args: t.Scalar, **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.DocsPhaseReport]]:
             return r[list[m.Infra.Docs.DocsPhaseReport]].ok([passed_report])
 

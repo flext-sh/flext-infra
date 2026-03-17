@@ -40,7 +40,7 @@ class EnsureRuffConfigPhase:
 
         ruff_cfg = self._tool_config.tools.ruff
         if sorted(
-            u.Infra.as_string_list(u.Infra.get(ruff, c.Infra.Toml.EXCLUDE))
+            u.Infra.as_string_list(u.Infra.get(ruff, c.Infra.Toml.EXCLUDE)),
         ) != sorted(ruff_cfg.exclude):
             ruff[c.Infra.Toml.EXCLUDE] = u.Infra.array(sorted(ruff_cfg.exclude))
             changes.append("tool.ruff.exclude set")
@@ -56,7 +56,7 @@ class EnsureRuffConfigPhase:
                 ruff[key] = value
                 changes.append(f"tool.ruff.{key} set")
         if sorted(u.Infra.as_string_list(u.Infra.get(ruff, "src"))) != sorted(
-            ruff_cfg.src
+            ruff_cfg.src,
         ):
             ruff["src"] = u.Infra.array(sorted(ruff_cfg.src))
             changes.append("tool.ruff.src set")
@@ -79,7 +79,7 @@ class EnsureRuffConfigPhase:
             lint["select"] = u.Infra.array(sorted(ruff_cfg.lint.select))
             changes.append("tool.ruff.lint.select set")
         if sorted(
-            u.Infra.as_string_list(u.Infra.get(lint, c.Infra.Toml.IGNORE))
+            u.Infra.as_string_list(u.Infra.get(lint, c.Infra.Toml.IGNORE)),
         ) != sorted(ruff_cfg.lint.ignore):
             lint[c.Infra.Toml.IGNORE] = u.Infra.array(sorted(ruff_cfg.lint.ignore))
             changes.append("tool.ruff.lint.ignore set")
@@ -101,7 +101,7 @@ class EnsureRuffConfigPhase:
                 changes.append(f"tool.ruff.lint.per-file-ignores.{pattern} removed")
         for pattern, rules in ruff_cfg.lint.per_file_ignores.items():
             if sorted(
-                u.Infra.as_string_list(u.Infra.get(per_file_ignores, pattern))
+                u.Infra.as_string_list(u.Infra.get(per_file_ignores, pattern)),
             ) != sorted(rules):
                 per_file_ignores[pattern] = u.Infra.array(sorted(rules))
                 changes.append(f"tool.ruff.lint.per-file-ignores.{pattern} set")
@@ -110,12 +110,12 @@ class EnsureRuffConfigPhase:
         if detected_packages:
             current_kfp = sorted(
                 u.Infra.as_string_list(
-                    u.Infra.get(isort, c.Infra.Toml.KNOWN_FIRST_PARTY_HYPHEN)
+                    u.Infra.get(isort, c.Infra.Toml.KNOWN_FIRST_PARTY_HYPHEN),
                 ),
             )
             if current_kfp != detected_packages:
                 isort[c.Infra.Toml.KNOWN_FIRST_PARTY_HYPHEN] = u.Infra.array(
-                    detected_packages
+                    detected_packages,
                 )
                 changes.append(
                     f"tool.ruff.lint.isort.known-first-party set to {detected_packages}",

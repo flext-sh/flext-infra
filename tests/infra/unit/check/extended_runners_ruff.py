@@ -23,7 +23,7 @@ from ...helpers import h
 from ...models import m
 
 RunCallable = Callable[
-    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput
+    [list[str], Path, int, dict[str, str] | None], m.Infra.Core.CommandOutput,
 ]
 
 
@@ -57,7 +57,7 @@ class TestRunRuffLint:
     """Test FlextInfraWorkspaceChecker._run_ruff_lint method."""
 
     def test_run_ruff_lint_with_errors(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -72,7 +72,7 @@ class TestRunRuffLint:
         tm.that(len(result.issues), eq=1)
 
     def test_run_ruff_lint_with_invalid_json(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -89,7 +89,7 @@ class TestRunRuffFormat:
     """Test FlextInfraWorkspaceChecker._run_ruff_format method."""
 
     def test_run_ruff_format_with_errors(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -103,7 +103,7 @@ class TestRunRuffFormat:
         tm.that(len(result.issues), eq=1)
 
     def test_run_ruff_format_with_simple_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -117,7 +117,7 @@ class TestRunRuffFormat:
         tm.that(len(result.issues), eq=1)
 
     def test_run_ruff_format_deduplicates_files(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -128,7 +128,7 @@ class TestRunRuffFormat:
                 h.stub_run(
                     stdout="--> src/file.py:1:1\n--> src/file.py:1:1\n--> src/other.py:1:1\n",
                     returncode=1,
-                )
+                ),
             ),
         )
         result = checker._run_ruff_format(proj_dir)
@@ -136,7 +136,7 @@ class TestRunRuffFormat:
         tm.that(len(result.issues), eq=2)
 
     def test_run_ruff_format_skips_empty_lines(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "pyproject.toml").touch()
@@ -153,15 +153,15 @@ class TestRunCommand:
     """Test FlextInfraWorkspaceChecker._run method."""
 
     def test_run_command_success(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
 
         def _fake_run_raw(
-            _self: FlextInfraUtilitiesSubprocess, _cmd: list[str], **_kw: t.Scalar
+            _self: FlextInfraUtilitiesSubprocess, _cmd: list[str], **_kw: t.Scalar,
         ) -> r[m.Infra.Core.CommandOutput]:
             return r[m.Infra.Core.CommandOutput].ok(
-                m.Infra.Core.CommandOutput(stdout="output", stderr="", exit_code=0)
+                m.Infra.Core.CommandOutput(stdout="output", stderr="", exit_code=0),
             )
 
         monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_raw", _fake_run_raw)
@@ -170,12 +170,12 @@ class TestRunCommand:
         tm.that(result.exit_code, eq=0)
 
     def test_run_command_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
 
         def _fake_run_raw(
-            _self: FlextInfraUtilitiesSubprocess, _cmd: list[str], **_kw: t.Scalar
+            _self: FlextInfraUtilitiesSubprocess, _cmd: list[str], **_kw: t.Scalar,
         ) -> r[m.Infra.Core.CommandOutput]:
             return r[m.Infra.Core.CommandOutput].fail("execution failed")
 

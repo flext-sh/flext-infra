@@ -27,12 +27,12 @@ class FlextInfraPyrightGate(FlextInfraGate):
     @override
     @override
     def check(
-        self, project_dir: Path, ctx: FlextInfraGateContext
+        self, project_dir: Path, ctx: FlextInfraGateContext,
     ) -> m.Infra.Check.GateExecution:
         _ = ctx
         started = time.monotonic()
         check_dirs = self._dirs_with_py(
-            project_dir, self._existing_check_dirs(project_dir)
+            project_dir, self._existing_check_dirs(project_dir),
         )
         if not check_dirs:
             return self._build_gate_result(

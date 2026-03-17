@@ -32,7 +32,7 @@ class _StubRunRaw:
         self._result = result
 
     def __call__(
-        self, *args: t.Infra.TomlValue, **kwargs: t.Infra.TomlValue
+        self, *args: t.Infra.TomlValue, **kwargs: t.Infra.TomlValue,
     ) -> r[m.Infra.Core.CommandOutput]:
         _ = args
         _ = kwargs
@@ -46,7 +46,7 @@ class TestModuleAndTypingsFlow:
         tm.that(service.module_to_types_package("flext_core", {}), eq=None)
         module_to_package: dict[str, t.Infra.InfraValue] = {"yaml": "custom-types-yaml"}
         typing_libraries: dict[str, t.Infra.InfraValue] = {
-            "module_to_package": module_to_package
+            "module_to_package": module_to_package,
         }
         limits: dict[str, t.Infra.TomlValue] = {"typing_libraries": typing_libraries}
         tm.that(service.module_to_types_package("yaml", limits), eq="custom-types-yaml")
@@ -54,7 +54,7 @@ class TestModuleAndTypingsFlow:
         tm.that(service.module_to_types_package("yaml.parser", {}), eq="types-pyyaml")
 
     def test_get_current_typings_from_pyproject(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         payload: dict[str, t.Infra.TomlValue] = {
@@ -65,11 +65,11 @@ class TestModuleAndTypingsFlow:
                             "dependencies": {
                                 "types-pyyaml": "^6.0",
                                 "types-requests": "^2.28",
-                            }
-                        }
-                    }
-                }
-            }
+                            },
+                        },
+                    },
+                },
+            },
         }
         monkeypatch.setattr(
             u.Infra,
@@ -80,21 +80,21 @@ class TestModuleAndTypingsFlow:
         tm.that(got, eq=[])
 
     def test_get_current_typings_from_pyproject_variants(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         values: list[r[dict[str, t.Infra.TomlValue]]] = [
             r[dict[str, t.Infra.TomlValue]].ok({
                 "project": {
                     "optional-dependencies": {
-                        "typings": ["types-pyyaml>=6.0", "types-requests[extra]==2.28"]
-                    }
-                }
+                        "typings": ["types-pyyaml>=6.0", "types-requests[extra]==2.28"],
+                    },
+                },
             }),
             r[dict[str, t.Infra.TomlValue]].ok({
                 "project": {
-                    "optional-dependencies": {"typings": {"types-pyyaml": ">=6.0"}}
-                }
+                    "optional-dependencies": {"typings": {"types-pyyaml": ">=6.0"}},
+                },
             }),
             r[dict[str, t.Infra.TomlValue]].fail("not found"),
             r[dict[str, t.Infra.TomlValue]].ok({}),
@@ -106,7 +106,7 @@ class TestModuleAndTypingsFlow:
         tm.that(service.get_current_typings_from_pyproject(tmp_path), eq=[])
 
     def test_get_required_typings_paths(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
@@ -114,7 +114,7 @@ class TestModuleAndTypingsFlow:
         out = m.Infra.Core.CommandOutput(exit_code=0, stdout="", stderr="")
         service = FlextInfraDependencyDetectionService()
         monkeypatch.setattr(
-            u.Infra, "run_raw", _StubRunRaw(r[m.Infra.Core.CommandOutput].ok(out))
+            u.Infra, "run_raw", _StubRunRaw(r[m.Infra.Core.CommandOutput].ok(out)),
         )
         monkeypatch.setattr(
             u.Infra,
@@ -122,7 +122,7 @@ class TestModuleAndTypingsFlow:
             _StubReadPlain([
                 r[dict[str, t.Infra.TomlValue]].ok({}),
                 r[dict[str, t.Infra.TomlValue]].ok({
-                    "project": {"optional-dependencies": {"typings": []}}
+                    "project": {"optional-dependencies": {"typings": []}},
                 }),
             ]),
         )

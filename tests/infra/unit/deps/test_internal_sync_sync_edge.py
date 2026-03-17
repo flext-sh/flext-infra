@@ -36,7 +36,7 @@ class TestSyncMethodEdgeCases:
     def test_sync_with_parsed_repo_map_failure(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(
-            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n'
+            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
         )
         (tmp_path / "flext-repo-map.toml").write_text("invalid toml {")
         service = FlextInfraInternalDependencySyncService()
@@ -46,16 +46,16 @@ class TestSyncMethodEdgeCases:
                 r[t.Infra.TomlConfig].ok({
                     "tool": {
                         "poetry": {
-                            "dependencies": {"flext-core": {"path": "../flext-core"}}
-                        }
+                            "dependencies": {"flext-core": {"path": "../flext-core"}},
+                        },
                     },
                     "project": {},
                 }),
                 r[t.Infra.TomlConfig].ok({
                     "tool": {
                         "poetry": {
-                            "dependencies": {"flext-core": {"path": "../flext-core"}}
-                        }
+                            "dependencies": {"flext-core": {"path": "../flext-core"}},
+                        },
                     },
                     "project": {},
                 }),
@@ -64,17 +64,17 @@ class TestSyncMethodEdgeCases:
         tm.fail(service.sync(tmp_path))
 
     def test_sync_with_workspace_mode_and_gitmodules(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
         (workspace / ".gitmodules").write_text(
-            '[submodule "flext-core"]\n\turl = git@github.com:flext-sh/flext-core.git\n'
+            '[submodule "flext-core"]\n\turl = git@github.com:flext-sh/flext-core.git\n',
         )
         project = workspace / "project"
         project.mkdir()
         (project / "pyproject.toml").write_text(
-            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n'
+            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
         )
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
@@ -83,11 +83,11 @@ class TestSyncMethodEdgeCases:
                 r[t.Infra.TomlConfig].ok({
                     "tool": {
                         "poetry": {
-                            "dependencies": {"flext-core": {"path": "../flext-core"}}
-                        }
+                            "dependencies": {"flext-core": {"path": "../flext-core"}},
+                        },
                     },
                     "project": {},
-                })
+                }),
             ],
         )
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", str(workspace))
@@ -107,10 +107,10 @@ class TestSyncMethodEdgeCases:
         tm.that(service.sync(project).is_success, eq=True)
 
     def test_sync_with_synthesized_repo_map(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n'
+            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
         )
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
@@ -119,11 +119,11 @@ class TestSyncMethodEdgeCases:
                 r[t.Infra.TomlConfig].ok({
                     "tool": {
                         "poetry": {
-                            "dependencies": {"flext-core": {"path": "../flext-core"}}
-                        }
+                            "dependencies": {"flext-core": {"path": "../flext-core"}},
+                        },
                     },
                     "project": {},
-                })
+                }),
             ],
         )
 
@@ -146,10 +146,10 @@ class TestSyncMethodEdgeCases:
         tm.that(service.sync(tmp_path).is_success, eq=True)
 
     def test_sync_missing_repo_mapping(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
-            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n'
+            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
         )
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
@@ -158,11 +158,11 @@ class TestSyncMethodEdgeCases:
                 r[t.Infra.TomlConfig].ok({
                     "tool": {
                         "poetry": {
-                            "dependencies": {"flext-core": {"path": "../flext-core"}}
-                        }
+                            "dependencies": {"flext-core": {"path": "../flext-core"}},
+                        },
                     },
                     "project": {},
-                })
+                }),
             ],
         )
 
@@ -173,18 +173,18 @@ class TestSyncMethodEdgeCases:
         tm.fail(service.sync(tmp_path))
 
     def test_sync_symlink_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
         (workspace / ".gitmodules").write_text(
-            '[submodule "flext-core"]\n\turl = git@github.com:flext-sh/flext-core.git\n'
+            '[submodule "flext-core"]\n\turl = git@github.com:flext-sh/flext-core.git\n',
         )
         (workspace / "flext-core").mkdir()
         project = workspace / "project"
         project.mkdir()
         (project / "pyproject.toml").write_text(
-            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n'
+            '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
         )
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
@@ -193,11 +193,11 @@ class TestSyncMethodEdgeCases:
                 r[t.Infra.TomlConfig].ok({
                     "tool": {
                         "poetry": {
-                            "dependencies": {"flext-core": {"path": "../flext-core"}}
-                        }
+                            "dependencies": {"flext-core": {"path": "../flext-core"}},
+                        },
                     },
                     "project": {},
-                })
+                }),
             ],
         )
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", str(workspace))

@@ -68,16 +68,16 @@ class TestReleaseOrchestratorExecute:
         tm.fail(result)
 
     def test_run_release_empty_phases(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_branches(monkeypatch)
         result = _CLS().run_release(
-            root=workspace_root, version="1.0.0", tag="v1.0.0", phases=[]
+            root=workspace_root, version="1.0.0", tag="v1.0.0", phases=[],
         )
         tm.ok(result)
 
     def test_run_release_with_project_filter(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
@@ -91,7 +91,7 @@ class TestReleaseOrchestratorExecute:
         tm.ok(result)
 
     def test_run_release_dry_run(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_dispatch(monkeypatch)
         result = _CLS().run_release(
@@ -104,7 +104,7 @@ class TestReleaseOrchestratorExecute:
         tm.ok(result)
 
     def test_run_release_with_push(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
@@ -118,7 +118,7 @@ class TestReleaseOrchestratorExecute:
         tm.ok(result)
 
     def test_run_release_with_dev_suffix(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
@@ -132,7 +132,7 @@ class TestReleaseOrchestratorExecute:
         tm.ok(result)
 
     def test_run_release_next_dev(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
@@ -148,7 +148,7 @@ class TestReleaseOrchestratorExecute:
         tm.ok(result)
 
     def test_run_release_phase_failure_stops(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         call_count = 0
 
@@ -176,7 +176,7 @@ class TestReleaseOrchestratorExecute:
         tm.that(call_count, eq=1)
 
     def test_run_release_create_branches_disabled(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_dispatch(monkeypatch)
         result = _CLS().run_release(

@@ -83,7 +83,7 @@ class TestScannerCore:
                 pattern="x",
                 includes=["*.txt"],
                 match_mode="invalid",
-            )
+            ),
         )
 
     def test_scan_invalid_regex(self, tmp_path: Path) -> None:
@@ -94,7 +94,7 @@ class TestScannerCore:
                 tmp_path,
                 pattern="[invalid",
                 includes=["*.txt"],
-            )
+            ),
         )
 
 

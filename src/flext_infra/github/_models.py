@@ -15,13 +15,13 @@ class FlextInfraGithubModels:
         """Base model for PR execution result typing."""
 
         display: Annotated[
-            str, Field(min_length=1, description="Repository display name")
+            str, Field(min_length=1, description="Repository display name"),
         ]
         status: Annotated[str, Field(min_length=1, description="Execution status")]
         elapsed: Annotated[int, Field(ge=0, description="Elapsed time in seconds")]
         exit_code: Annotated[int, Field(description="Process exit code")]
         log_path: Annotated[
-            str | None, Field(default=None, description="Log file path")
+            str | None, Field(default=None, description="Log file path"),
         ] = None
 
     class PrExecutionResult(_PrExecutionResultModel):
@@ -52,20 +52,56 @@ class FlextInfraGithubModels:
 
         status: Annotated[str, Field(min_length=1, description="Lint status")]
         reason: Annotated[
-            str | None, Field(default=None, description="Skip reason")
+            str | None, Field(default=None, description="Skip reason"),
         ] = None
         detail: Annotated[
-            str | None, Field(default=None, description="Failure detail")
+            str | None, Field(default=None, description="Failure detail"),
         ] = None
         exit_code: Annotated[
-            int | None, Field(default=None, description="Process exit code")
+            int | None, Field(default=None, description="Process exit code"),
         ] = None
         stdout: Annotated[
-            str | None, Field(default=None, description="Captured stdout")
+            str | None, Field(default=None, description="Captured stdout"),
         ] = None
         stderr: Annotated[
-            str | None, Field(default=None, description="Captured stderr")
+            str | None, Field(default=None, description="Captured stderr"),
         ] = None
+
+    class PrWorkspaceArgs(FlextModels.ArbitraryTypesModel):
+        """Parsed PR workspace arguments from CLI."""
+
+        model_config = ConfigDict(frozen=True, extra="forbid")
+
+        include_root: Annotated[
+            bool, Field(default=True, description="Include root project"),
+        ]
+        branch: Annotated[str, Field(default="", description="Branch name filter")]
+        checkpoint: Annotated[
+            bool, Field(default=True, description="Enable checkpoints"),
+        ]
+        fail_fast: Annotated[
+            bool, Field(default=False, description="Stop on first failure"),
+        ]
+        pr_action: Annotated[str, Field(default="status", description="PR action")]
+        pr_base: Annotated[str, Field(default="main", description="Base branch")]
+        pr_head: Annotated[str, Field(default="", description="Head branch")]
+        pr_number: Annotated[str, Field(default="", description="PR number")]
+        pr_title: Annotated[str, Field(default="", description="PR title")]
+        pr_body: Annotated[str, Field(default="", description="PR body")]
+        pr_draft: Annotated[bool, Field(default=False, description="Draft PR")]
+        pr_merge_method: Annotated[
+            str, Field(default="squash", description="Merge method"),
+        ]
+        pr_auto: Annotated[bool, Field(default=False, description="Auto-merge")]
+        pr_delete_branch: Annotated[
+            bool, Field(default=False, description="Delete branch on merge"),
+        ]
+        pr_checks_strict: Annotated[
+            bool, Field(default=False, description="Strict checks required"),
+        ]
+        pr_release_on_merge: Annotated[
+            bool, Field(default=True, description="Release on merge"),
+        ]
 
     class SyncOperation(FlextModels.ArbitraryTypesModel):
         """Describe one workflow synchronization operation."""
@@ -74,7 +110,7 @@ class FlextInfraGithubModels:
 
         project: Annotated[str, Field(..., description="Project name.")]
         path: Annotated[
-            str, Field(..., description="File path relative to project root.")
+            str, Field(..., description="File path relative to project root."),
         ]
         action: Annotated[
             str,

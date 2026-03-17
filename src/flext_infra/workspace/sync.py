@@ -261,7 +261,7 @@ def main() -> int:
     args = parser.parse_args()
     cli = u.Infra.resolve(args)
     service = FlextInfraSyncService(
-        canonical_root=getattr(args, "canonical_root", None)
+        canonical_root=getattr(args, "canonical_root", None),
     )
     result = service.sync(workspace_root=cli.workspace)
     if result.is_success:

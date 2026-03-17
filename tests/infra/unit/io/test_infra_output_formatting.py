@@ -75,7 +75,7 @@ class TestInfraOutputSummary:
         buf = io.StringIO()
         backend = _make_backend(use_unicode=False, stream=buf)
         backend.summary(
-            "check", total=33, success=30, failed=2, skipped=1, elapsed=12.34
+            "check", total=33, success=30, failed=2, skipped=1, elapsed=12.34,
         )
         text = buf.getvalue()
         tm.that(text, contains="check summary")

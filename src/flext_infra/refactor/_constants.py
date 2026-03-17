@@ -24,6 +24,7 @@ class FlextInfraRefactorConstants:
         "s",
         "x",
     })
+    NAMESPACE_SOURCE_UNIVERSAL_ALIASES: ClassVar[frozenset[str]] = frozenset({"r"})
     LEGACY_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "remove",
         "inline_and_remove",

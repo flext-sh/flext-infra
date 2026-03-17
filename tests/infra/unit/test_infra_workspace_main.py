@@ -21,7 +21,7 @@ def _cli(workspace: Path) -> FlextInfraUtilitiesCli.CliArgs:
 
 def _cmd_out(code: int) -> m.Infra.Core.CommandOutput:
     return m.Infra.Core.CommandOutput(
-        stdout="", stderr="", exit_code=code, duration=0.0
+        stdout="", stderr="", exit_code=code, duration=0.0,
     )
 
 
@@ -61,7 +61,7 @@ class TestRunSync:
                         files_changed=1,
                         source=Path(),
                         target=Path(),
-                    )
+                    ),
                 ),
                 0,
             ),
@@ -189,8 +189,8 @@ class TestRunMigrate:
             (
                 r[list[m.Infra.Workspace.MigrationResult]].ok([
                     m.Infra.Workspace.MigrationResult(
-                        project="test", errors=[], changes=[]
-                    )
+                        project="test", errors=[], changes=[],
+                    ),
                 ]),
                 0,
             ),
@@ -215,7 +215,7 @@ class TestRunMigrate:
         monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _migrate_stub)
         tm.that(
             workspace_main._run_migrate(
-                FlextInfraUtilitiesCli.CliArgs(workspace=tmp_path, apply=True)
+                FlextInfraUtilitiesCli.CliArgs(workspace=tmp_path, apply=True),
             ),
             eq=expected,
         )
@@ -227,7 +227,7 @@ class TestRunMigrate:
     ) -> None:
         mrs: list[m.Infra.Workspace.MigrationResult] = [
             m.Infra.Workspace.MigrationResult(
-                project="p1", errors=["Error 1"], changes=[]
+                project="p1", errors=["Error 1"], changes=[],
             ),
             m.Infra.Workspace.MigrationResult(project="p2", errors=[], changes=[]),
         ]
@@ -247,7 +247,7 @@ class TestRunMigrate:
         )
         tm.that(
             workspace_main._run_migrate(
-                FlextInfraUtilitiesCli.CliArgs(workspace=tmp_path, apply=True)
+                FlextInfraUtilitiesCli.CliArgs(workspace=tmp_path, apply=True),
             ),
             eq=1,
         )

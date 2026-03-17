@@ -82,7 +82,7 @@ class TestConstantsQualityGateVerdict:
         """is_success_verdict returns True for CONDITIONAL_PASS."""
         tm.that(
             FlextInfraCodegenConstantsQualityGate.is_success_verdict(
-                "CONDITIONAL_PASS"
+                "CONDITIONAL_PASS",
             ),
             eq=True,
         )

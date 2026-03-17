@@ -35,24 +35,24 @@ class TestOrchestrate:
         proj.path.mkdir()
         selector = StubSelector(
             resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
-                _as_project(proj)
-            ])
+                _as_project(proj),
+            ]),
         )
         manager = FlextInfraPrWorkspaceManager(
-            runner=runner, selector=selector, reporting=reporting
+            runner=runner, selector=selector, reporting=reporting,
         )
         result = manager.orchestrate(
-            tmp_path, include_root=False, checkpoint=False, branch=""
+            tmp_path, include_root=False, checkpoint=False, branch="",
         )
         value = tm.ok(result)
         tm.that(value.fail, eq=0)
 
     def test_project_resolution_failure(self, tmp_path: Path) -> None:
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].fail("no projects")
+            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].fail("no projects"),
         )
         manager = FlextInfraPrWorkspaceManager(
-            runner=StubRunner(), selector=selector, reporting=StubReporting()
+            runner=StubRunner(), selector=selector, reporting=StubReporting(),
         )
         result = manager.orchestrate(tmp_path)
         tm.fail(result)
@@ -68,13 +68,13 @@ class TestOrchestrate:
             resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
                 _as_project(p1),
                 _as_project(p2),
-            ])
+            ]),
         )
         manager = FlextInfraPrWorkspaceManager(
-            runner=runner, selector=selector, reporting=reporting
+            runner=runner, selector=selector, reporting=reporting,
         )
         result = manager.orchestrate(
-            tmp_path, include_root=False, fail_fast=True, checkpoint=False, branch=""
+            tmp_path, include_root=False, fail_fast=True, checkpoint=False, branch="",
         )
         value = tm.ok(result)
         tm.that(value.fail >= 1, eq=True)
@@ -83,19 +83,19 @@ class TestOrchestrate:
         runner = StubRunner(run_to_file_returns=[r[int].ok(0)])
         reporting = StubReporting(report_dir=tmp_path / "reports")
         selector = StubSelector(
-            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([])
+            resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([]),
         )
         manager = FlextInfraPrWorkspaceManager(
-            runner=runner, selector=selector, reporting=reporting
+            runner=runner, selector=selector, reporting=reporting,
         )
         result = manager.orchestrate(
-            tmp_path, include_root=True, checkpoint=False, branch=""
+            tmp_path, include_root=True, checkpoint=False, branch="",
         )
         value = tm.ok(result)
         tm.that(value.total, eq=1)
 
     def test_orchestrate_with_checkpoint(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         runner = StubRunner(run_to_file_returns=[r[int].ok(0)])
         reporting = StubReporting(report_dir=tmp_path / "reports")
@@ -103,8 +103,8 @@ class TestOrchestrate:
         proj.path.mkdir()
         selector = StubSelector(
             resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
-                _as_project(proj)
-            ])
+                _as_project(proj),
+            ]),
         )
         has_changes_calls: list[Path] = []
 
@@ -127,10 +127,10 @@ class TestOrchestrate:
             _git_checkout,
         )
         manager = FlextInfraPrWorkspaceManager(
-            runner=runner, selector=selector, reporting=reporting
+            runner=runner, selector=selector, reporting=reporting,
         )
         result = manager.orchestrate(
-            tmp_path, include_root=False, checkpoint=True, branch="test-branch"
+            tmp_path, include_root=False, checkpoint=True, branch="test-branch",
         )
         tm.ok(result)
         tm.that(len(has_changes_calls) >= 1, eq=True)
@@ -142,14 +142,14 @@ class TestOrchestrate:
         proj.path.mkdir()
         selector = StubSelector(
             resolve_returns=r[list[m.Infra.Workspace.ProjectInfo]].ok([
-                _as_project(proj)
-            ])
+                _as_project(proj),
+            ]),
         )
         manager = FlextInfraPrWorkspaceManager(
-            runner=runner, selector=selector, reporting=reporting
+            runner=runner, selector=selector, reporting=reporting,
         )
         result = manager.orchestrate(
-            tmp_path, include_root=False, fail_fast=True, checkpoint=False, branch=""
+            tmp_path, include_root=False, fail_fast=True, checkpoint=False, branch="",
         )
         value = tm.ok(result)
         tm.that(value.fail, eq=1)
@@ -170,10 +170,10 @@ class TestStaticMethods:
 
     def test_build_root_command(self, tmp_path: Path) -> None:
         build_root_command = getattr(
-            FlextInfraPrWorkspaceManager, "_build_root_command"
+            FlextInfraPrWorkspaceManager, "_build_root_command",
         )
         cmd = build_root_command(
-            tmp_path, {"action": "create", "head": "feature", "title": "Test"}
+            tmp_path, {"action": "create", "head": "feature", "title": "Test"},
         )
         tm.that("python" in cmd, eq=True)
         tm.that("--action" in cmd, eq=True)
@@ -181,7 +181,7 @@ class TestStaticMethods:
 
     def test_build_subproject_command(self, tmp_path: Path) -> None:
         build_subproject_command = getattr(
-            FlextInfraPrWorkspaceManager, "_build_subproject_command"
+            FlextInfraPrWorkspaceManager, "_build_subproject_command",
         )
         cmd = build_subproject_command(tmp_path, {"action": "status", "head": "feat"})
         tm.that("make" in cmd, eq=True)
@@ -190,7 +190,7 @@ class TestStaticMethods:
 
     def test_build_root_command_defaults(self, tmp_path: Path) -> None:
         build_root_command = getattr(
-            FlextInfraPrWorkspaceManager, "_build_root_command"
+            FlextInfraPrWorkspaceManager, "_build_root_command",
         )
         cmd = build_root_command(tmp_path, {})
         tm.that("--action" in cmd, eq=True)
@@ -198,7 +198,7 @@ class TestStaticMethods:
 
     def test_build_subproject_command_no_optional(self, tmp_path: Path) -> None:
         build_subproject_command = getattr(
-            FlextInfraPrWorkspaceManager, "_build_subproject_command"
+            FlextInfraPrWorkspaceManager, "_build_subproject_command",
         )
         cmd = build_subproject_command(tmp_path, {})
         tm.that("make" in cmd, eq=True)

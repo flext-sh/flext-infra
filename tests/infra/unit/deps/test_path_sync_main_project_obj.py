@@ -68,7 +68,7 @@ def test_main_project_obj_not_dict_second_loop(
         _root: Path,
     ) -> r[list[m.Infra.Workspace.ProjectInfo]]:
         return r[list[m.Infra.Workspace.ProjectInfo]].ok([
-            _project(tmp_path / "test-project")
+            _project(tmp_path / "test-project"),
         ])
 
     def _read_document(_self: t.Scalar, _path: Path) -> r[TOMLDocument]:

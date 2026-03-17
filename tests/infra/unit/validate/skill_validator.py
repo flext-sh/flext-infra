@@ -112,7 +112,7 @@ class TestSkillValidatorCore:
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
         tm.fail(
-            validator.validate(tmp_path, "test-skill"), has="skill validation failed"
+            validator.validate(tmp_path, "test-skill"), has="skill validation failed",
         )
 
 

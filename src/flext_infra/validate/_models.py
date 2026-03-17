@@ -20,12 +20,12 @@ class FlextInfraCoreModels:
         """Standardized subprocess output payload."""
 
         stdout: Annotated[
-            str, Field(default="", description="Captured standard output")
+            str, Field(default="", description="Captured standard output"),
         ]
         stderr: Annotated[str, Field(default="", description="Captured standard error")]
         exit_code: Annotated[int, Field(description="Command exit code")]
         duration: Annotated[
-            float, Field(default=0.0, ge=0.0, description="Duration in seconds")
+            float, Field(default=0.0, ge=0.0, description="Duration in seconds"),
         ] = 0.0
 
     class ValidationReport(FlextModels.ArbitraryTypesModel):
@@ -81,7 +81,7 @@ class FlextInfraCoreModels:
         error_count: Annotated[int, Field(ge=0, description="Error trace count")]
         warning_count: Annotated[int, Field(ge=0, description="Warning line count")]
         skipped_count: Annotated[
-            int, Field(ge=0, description="Skipped test case count")
+            int, Field(ge=0, description="Skipped test case count"),
         ]
         failed_cases: Annotated[
             list[str],
@@ -123,7 +123,7 @@ class FlextInfraCoreModels:
         """Summary of written inventory report artifacts."""
 
         total_scripts: Annotated[
-            int, Field(ge=0, description="Total discovered scripts")
+            int, Field(ge=0, description="Total discovered scripts"),
         ]
         reports_written: Annotated[
             list[str],

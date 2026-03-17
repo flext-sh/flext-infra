@@ -13,7 +13,7 @@ from tests.infra import h
 
 class TestResolveRef:
     def test_resolve_ref_github_actions_head_ref(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraInternalDependencySyncService()
         monkeypatch.setenv("GITHUB_ACTIONS", "true")
@@ -21,7 +21,7 @@ class TestResolveRef:
         tm.that(service.resolve_ref(Path("/fake")), eq="feature/test")
 
     def test_resolve_ref_github_actions_ref_name(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraInternalDependencySyncService()
         monkeypatch.setenv("GITHUB_ACTIONS", "true")
@@ -139,7 +139,7 @@ class TestSynthesizedRepoMap:
         tm.that("flext-api" in result, eq=True)
         tm.that("flext-core" in result, eq=True)
         tm.that(
-            result["flext-core"].ssh_url, eq="git@github.com:flext-sh/flext-core.git"
+            result["flext-core"].ssh_url, eq="git@github.com:flext-sh/flext-core.git",
         )
         tm.that(result["flext-core"].https_url.startswith("https://"), eq=True)
         tm.that(hasattr(h, "assert_ok"), eq=True)

@@ -84,5 +84,5 @@ class TestPathSyncEdgeCases:
                 mode="poetry",
                 internal_names=set(),
                 dry_run=True,
-            )
+            ),
         )

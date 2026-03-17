@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -112,11 +113,13 @@ def _handle_census(cli: u.Infra.CliArgs) -> int:
     census = FlextInfraCodegenCensus(workspace_root=cli.workspace)
     reports = census.run()
     if cli.output_format == "json":
-        _ = {
-            c.Infra.ReportKeys.PROJECTS: [rpt.model_dump() for rpt in reports],
-            "total_violations": sum(rpt.total for rpt in reports),
-            "total_fixable": sum(rpt.fixable for rpt in reports),
-        }
+        output.write(
+            json.dumps({
+                c.Infra.ReportKeys.PROJECTS: [rpt.model_dump() for rpt in reports],
+                "total_violations": sum(rpt.total for rpt in reports),
+                "total_fixable": sum(rpt.fixable for rpt in reports),
+            }),
+        )
     else:
         total_v = sum(rpt.total for rpt in reports)
         total_f = sum(rpt.fixable for rpt in reports)
@@ -183,24 +186,32 @@ def _handle_pipeline(cli: u.Infra.CliArgs) -> int:
     generator.run(check_only=cli.dry_run)
     reports_after = census.run()
     if cli.output_format == "json":
-        _ = {
-            "census_before": {
-                "total_violations": sum(r.total for r in reports_before),
-                "total_fixable": sum(r.fixable for r in reports_before),
-            },
-            "scaffold": {
-                "total_created": sum(len(r.files_created) for r in scaffold_results),
-                "total_skipped": sum(len(r.files_skipped) for r in scaffold_results),
-            },
-            "auto_fix": {
-                "total_fixed": sum(len(r.violations_fixed) for r in fix_results),
-                "total_skipped": sum(len(r.violations_skipped) for r in fix_results),
-            },
-            "census_after": {
-                "total_violations": sum(r.total for r in reports_after),
-                "total_fixable": sum(r.fixable for r in reports_after),
-            },
-        }
+        output.write(
+            json.dumps({
+                "census_before": {
+                    "total_violations": sum(r.total for r in reports_before),
+                    "total_fixable": sum(r.fixable for r in reports_before),
+                },
+                "scaffold": {
+                    "total_created": sum(
+                        len(r.files_created) for r in scaffold_results
+                    ),
+                    "total_skipped": sum(
+                        len(r.files_skipped) for r in scaffold_results
+                    ),
+                },
+                "auto_fix": {
+                    "total_fixed": sum(len(r.violations_fixed) for r in fix_results),
+                    "total_skipped": sum(
+                        len(r.violations_skipped) for r in fix_results
+                    ),
+                },
+                "census_after": {
+                    "total_violations": sum(r.total for r in reports_after),
+                    "total_fixable": sum(r.fixable for r in reports_after),
+                },
+            }),
+        )
     else:
         before_v = sum(r.total for r in reports_before)
         after_v = sum(r.total for r in reports_after)

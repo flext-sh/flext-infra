@@ -44,13 +44,13 @@ class TestFlextInfraTypesImport:
     def test_flext_infra_types_has_json_value_type(self) -> None:
         """Test that FlextInfraTypes has Serializable type."""
         assert hasattr(FlextTypes, "Serializable") or hasattr(
-            FlextInfraTypes, "Serializable"
+            FlextInfraTypes, "Serializable",
         )
 
     def test_flext_infra_types_has_json_dict_type(self) -> None:
         """Test that FlextInfraTypes has ConfigMap or ContainerDict type."""
         assert hasattr(FlextTypes, "ConfigMap") or hasattr(
-            FlextInfraTypes.Infra, "ContainerDict"
+            FlextInfraTypes.Infra, "ContainerDict",
         )
 
     def test_flext_infra_types_has_metadata_value_type(self) -> None:

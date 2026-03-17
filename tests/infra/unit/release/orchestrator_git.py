@@ -41,7 +41,7 @@ class TestCreateBranches:
     """Tests for _create_branches."""
 
     def test_workspace_only(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         FakeUtilsNamespace.Infra.reset()
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
@@ -56,7 +56,7 @@ class TestCreateBranches:
         tm.fail(orchestrator._create_branches(workspace_root, "1.0.0", []))
 
     def test_project_failure(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         FakeUtilsNamespace.Infra.reset()
         FakeUtilsNamespace.Infra._git_checkout_side_effects = [
@@ -85,7 +85,7 @@ class TestCreateTag:
     """Tests for _create_tag."""
 
     def test_creates_new_tag(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         FakeUtilsNamespace.Infra.reset()
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
@@ -93,7 +93,7 @@ class TestCreateTag:
         tm.ok(orchestrator._create_tag(workspace_root, "v1.0.0"))
 
     def test_skips_existing(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         FakeUtilsNamespace.Infra.reset()
         FakeUtilsNamespace.Infra._git_tag_exists_result = r[bool].ok(True)
@@ -102,11 +102,11 @@ class TestCreateTag:
         tm.ok(orchestrator._create_tag(workspace_root, "v1.0.0"))
 
     def test_check_failure(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         FakeUtilsNamespace.Infra.reset()
         FakeUtilsNamespace.Infra._git_tag_exists_result = r[bool].fail(
-            "tag check failed"
+            "tag check failed",
         )
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
@@ -117,7 +117,7 @@ class TestPushRelease:
     """Tests for _push_release."""
 
     def test_pushes_branch_and_tag(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         FakeUtilsNamespace.Infra.reset()
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
@@ -125,7 +125,7 @@ class TestPushRelease:
         tm.ok(orchestrator._push_release(workspace_root, "v1.0.0"))
 
     def test_branch_failure(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch
+        self, workspace_root: Path, monkeypatch: MonkeyPatch,
     ) -> None:
         FakeUtilsNamespace.Infra.reset()
         FakeUtilsNamespace.Infra._git_run_checked_result = r[bool].fail("push failed")
@@ -167,7 +167,7 @@ class TestCollectChanges:
     def test_with_tag(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         FakeUtilsNamespace.Infra.reset()
         FakeUtilsNamespace.Infra._git_run_result = r[str].ok(
-            "- abc1234 fix: bug (author)"
+            "- abc1234 fix: bug (author)",
         )
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()

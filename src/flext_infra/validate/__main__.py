@@ -20,8 +20,6 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-from pydantic import JsonValue, TypeAdapter, ValidationError
-
 from flext_infra import c, m, output, t, u
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.inventory import FlextInfraInventoryService
@@ -31,49 +29,16 @@ from flext_infra.validate.skill_validator import FlextInfraSkillValidator
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 
 
-def _extract_reports_written(
-    payload: m.Infra.Core.InventoryReport | Mapping[str, JsonValue],
-) -> list[str]:
-    if isinstance(payload, Mapping):
-        raw = payload.get("reports_written", [])
-        if isinstance(raw, list):
-            try:
-                typed_items: list[JsonValue] = TypeAdapter(
-                    list[JsonValue]
-                ).validate_python(raw)
-            except ValidationError:
-                return []
-            return [item for item in typed_items if isinstance(item, str)]
-        return []
-    return payload.reports_written
-
-
-def _extract_diag_entries(
-    payload: m.Infra.Core.PytestDiagnostics | Mapping[str, JsonValue],
-    key: str,
-) -> list[str]:
+def _list_str(payload: object, key: str) -> list[str]:
+    """Extract a named list of strings from a model or Mapping."""
     if isinstance(payload, Mapping):
         raw = payload.get(key, [])
-        if isinstance(raw, list):
-            try:
-                typed_items: list[JsonValue] = TypeAdapter(
-                    list[JsonValue]
-                ).validate_python(raw)
-            except ValidationError:
-                return []
-            return [item for item in typed_items if isinstance(item, str)]
-        return []
-    if key == "failed_cases":
-        return payload.failed_cases
-    if key == "error_traces":
-        return payload.error_traces
-    if key == "warning_lines":
-        return payload.warning_lines
-    if key == "slow_entries":
-        return payload.slow_entries
-    if key == "skip_cases":
-        return payload.skip_cases
-    return []
+        return (
+            [item for item in raw if isinstance(item, str)]
+            if isinstance(raw, list)
+            else []
+        )
+    return list(getattr(payload, key, []))
 
 
 def _run_basemk_validate(cli: u.Infra.CliArgs) -> int:
@@ -96,8 +61,7 @@ def _run_inventory(cli: u.Infra.CliArgs, output_dir: str | None) -> int:
     output_dir_path = Path(output_dir).resolve() if output_dir else None
     result = service.generate(cli.workspace, output_dir=output_dir_path)
     if result.is_success:
-        data = result.value
-        for path in _extract_reports_written(data):
+        for path in _list_str(result.value, "reports_written"):
             output.info(f"Wrote: {path}")
         return 0
     output.error(result.error or "unknown error")
@@ -116,46 +80,41 @@ def _run_pytest_diag(
     """Execute pytest diagnostics extraction."""
     extractor = FlextInfraPytestDiagExtractor()
     result = extractor.extract(Path(junit), Path(log))
-    if result.is_success:
-        data = result.value
-        if failed:
-            failed_cases = _extract_diag_entries(data, "failed_cases")
-            u.write_file(
-                Path(failed),
-                "\n\n".join(failed_cases) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if errors:
-            error_traces = _extract_diag_entries(data, "error_traces")
-            u.write_file(
-                Path(errors),
-                "\n\n".join(error_traces) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if warnings:
-            warning_lines = _extract_diag_entries(data, "warning_lines")
-            u.write_file(
-                Path(warnings),
-                "\n".join(warning_lines) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if slowest:
-            slow_entries = _extract_diag_entries(data, "slow_entries")
-            u.write_file(
-                Path(slowest),
-                "\n".join(slow_entries) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if skips:
-            skip_cases = _extract_diag_entries(data, "skip_cases")
-            u.write_file(
-                Path(skips),
-                "\n".join(skip_cases) + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        return 0
-    output.error(result.error or "unknown error")
-    return 1
+    if result.is_failure:
+        output.error(result.error or "unknown error")
+        return 1
+    data = result.value
+    if failed:
+        u.write_file(
+            Path(failed),
+            "\n\n".join(_list_str(data, "failed_cases")) + "\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+    if errors:
+        u.write_file(
+            Path(errors),
+            "\n\n".join(_list_str(data, "error_traces")) + "\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+    if warnings:
+        u.write_file(
+            Path(warnings),
+            "\n".join(_list_str(data, "warning_lines")) + "\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+    if slowest:
+        u.write_file(
+            Path(slowest),
+            "\n".join(_list_str(data, "slow_entries")) + "\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+    if skips:
+        u.write_file(
+            Path(skips),
+            "\n".join(_list_str(data, "skip_cases")) + "\n",
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+    return 0
 
 
 def _run_scan(
@@ -199,9 +158,9 @@ def _run_skill_validate(cli: u.Infra.CliArgs, skill: str, mode: str) -> int:
 def _run_stub_validate(cli: u.Infra.CliArgs, project: list[str] | None) -> int:
     """Execute stub supply chain validation."""
     chain = FlextInfraStubSupplyChain()
-    project_dirs: list[Path] | None = None
-    if project:
-        project_dirs = [cli.workspace / p for p in project]
+    project_dirs: list[Path] | None = (
+        [cli.workspace / p for p in project] if project else None
+    )
     result = chain.validate(cli.workspace, project_dirs=project_dirs)
     if result.is_success:
         report: m.Infra.Core.ValidationReport = result.value
@@ -215,78 +174,61 @@ def _run_stub_validate(cli: u.Infra.CliArgs, project: list[str] | None) -> int:
 
 def _main_inner(argv: list[str] | None = None) -> int:
     """Run core infrastructure services."""
-    parser = u.Infra.create_parser(
+    parser, subs = u.Infra.create_subcommand_parser(
         prog="flext_infra core",
         description="Core infrastructure services",
+        subcommands={
+            "basemk-validate": "Validate base.mk sync",
+            "inventory": "Generate scripts inventory",
+            "pytest-diag": "Extract pytest diagnostics",
+            "scan": "Scan text files for patterns",
+            "skill-validate": "Validate a skill",
+            "stub-validate": "Validate stub supply chain",
+        },
+        include_apply=False,
     )
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    bm = subparsers.add_parser("basemk-validate", help="Validate base.mk sync")
-    _ = bm.add_argument(
-        "--workspace",
-        type=Path,
-        default=Path.cwd(),
-        help="Workspace root directory (default: cwd)",
+    subs["inventory"].add_argument(
+        "--output-dir", default=None, help="Output directory",
     )
 
-    inv = subparsers.add_parser("inventory", help="Generate scripts inventory")
-    _ = inv.add_argument(
-        "--workspace",
-        type=Path,
-        default=Path.cwd(),
-        help="Workspace root directory (default: cwd)",
-    )
-    inv.add_argument("--output-dir", default=None, help="Output directory")
+    subs["pytest-diag"].add_argument("--junit", required=True, help="JUnit XML path")
+    subs["pytest-diag"].add_argument("--log", required=True, help="Pytest log path")
+    subs["pytest-diag"].add_argument("--failed", help="Path to write failed cases")
+    subs["pytest-diag"].add_argument("--errors", help="Path to write error traces")
+    subs["pytest-diag"].add_argument("--warnings", help="Path to write warnings")
+    subs["pytest-diag"].add_argument("--slowest", help="Path to write slowest entries")
+    subs["pytest-diag"].add_argument("--skips", help="Path to write skipped cases")
 
-    pd = subparsers.add_parser("pytest-diag", help="Extract pytest diagnostics")
-    pd.add_argument("--junit", required=True, help="JUnit XML path")
-    pd.add_argument("--log", required=True, help="Pytest log path")
-    pd.add_argument("--failed", help="Path to write failed cases")
-    pd.add_argument("--errors", help="Path to write error traces")
-    pd.add_argument("--warnings", help="Path to write warnings")
-    pd.add_argument("--slowest", help="Path to write slowest entries")
-    pd.add_argument("--skips", help="Path to write skipped cases")
-
-    sc = subparsers.add_parser("scan", help="Scan text files for patterns")
-    _ = sc.add_argument(
-        "--workspace",
-        type=Path,
-        default=Path.cwd(),
-        help="Workspace root directory (default: cwd)",
+    subs["scan"].add_argument("--pattern", required=True, help="Regex pattern")
+    subs["scan"].add_argument(
+        "--include", action="append", required=True, help="Include glob",
     )
-    sc.add_argument("--pattern", required=True, help="Regex pattern")
-    sc.add_argument("--include", action="append", required=True, help="Include glob")
-    sc.add_argument("--exclude", action="append", default=[], help="Exclude glob")
-    sc.add_argument(
+    subs["scan"].add_argument(
+        "--exclude", action="append", default=[], help="Exclude glob",
+    )
+    subs["scan"].add_argument(
         "--match",
         choices=("present", "absent"),
         default=c.Infra.MatchModes.PRESENT,
         help="Violation mode",
     )
 
-    sv = subparsers.add_parser("skill-validate", help="Validate a skill")
-    _ = sv.add_argument(
-        "--workspace",
-        type=Path,
-        default=Path.cwd(),
-        help="Workspace root directory (default: cwd)",
+    subs["skill-validate"].add_argument(
+        "--skill", required=True, help="Skill folder name",
     )
-    sv.add_argument("--skill", required=True, help="Skill folder name")
-    sv.add_argument(
+    subs["skill-validate"].add_argument(
         "--mode",
         choices=("baseline", "strict"),
         default=c.Infra.Modes.BASELINE,
     )
 
-    stv = subparsers.add_parser("stub-validate", help="Validate stub supply chain")
-    _ = stv.add_argument(
-        "--workspace",
-        type=Path,
-        default=Path.cwd(),
-        help="Workspace root directory (default: cwd)",
+    subs["stub-validate"].add_argument(
+        "--project", action="append", help="Project to validate",
     )
-    stv.add_argument("--project", action="append", help="Project to validate")
-    _ = stv.add_argument("--all", action="store_true", help="Validate all projects")
+    _ = subs["stub-validate"].add_argument(
+        "--all", action="store_true", help="Validate all projects",
+    )
 
     args = parser.parse_args(argv)
     cli = u.Infra.resolve(args)
@@ -311,10 +253,10 @@ def _main_inner(argv: list[str] | None = None) -> int:
             getattr(args, "match", "present"),
         ),
         "skill-validate": lambda: _run_skill_validate(
-            cli, getattr(args, "skill", ""), getattr(args, "mode", "baseline")
+            cli, getattr(args, "skill", ""), getattr(args, "mode", "baseline"),
         ),
         "stub-validate": lambda: _run_stub_validate(
-            cli, getattr(args, "project", None)
+            cli, getattr(args, "project", None),
         ),
     }
     handler = commands.get(args.command)
