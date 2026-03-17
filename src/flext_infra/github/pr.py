@@ -46,7 +46,9 @@ class FlextInfraPrManager:
         self._versioning: FlextInfraUtilitiesVersioning | None = versioning
 
     def _run(
-        self, command: list[str], repo_root: Path,
+        self,
+        command: list[str],
+        repo_root: Path,
     ) -> r[m.Infra.CommandOutput]:
         if self._runner is not None:
             return self._runner.run(command, cwd=repo_root)

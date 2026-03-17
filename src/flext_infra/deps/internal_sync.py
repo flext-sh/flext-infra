@@ -273,7 +273,8 @@ class FlextInfraInternalDependencySyncService:
     def infer_owner_from_origin(self, project_root: Path) -> str | None:
         """Infer GitHub owner from remote origin URL."""
         remote = u.Infra.git_run(
-            ["config", "--get", "remote.origin.url"], cwd=project_root,
+            ["config", "--get", "remote.origin.url"],
+            cwd=project_root,
         )
         if remote.is_failure:
             return None

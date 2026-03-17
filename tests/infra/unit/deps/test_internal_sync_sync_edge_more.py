@@ -34,7 +34,9 @@ def _set_toml_stub(
 
 class TestSyncMethodEdgeCasesMore:
     def test_sync_checkout_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
             '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',

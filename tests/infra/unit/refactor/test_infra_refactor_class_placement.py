@@ -68,7 +68,7 @@ def test_skips_models_directory(tmp_path: Path) -> None:
 
 
 def test_skips_settings_file(tmp_path: Path) -> None:
-    settings_file_name = sorted(c.Infra.Refactor.NAMESPACE_SETTINGS_FILE_NAMES)[0]
+    settings_file_name = min(c.Infra.Refactor.NAMESPACE_SETTINGS_FILE_NAMES)
     target = tmp_path / settings_file_name
     target.write_text(
         "from pydantic import BaseModel\nclass PublicModel(BaseModel):\n    pass\n",
@@ -81,7 +81,7 @@ def test_skips_settings_file(tmp_path: Path) -> None:
 
 
 def test_skips_protected_files(tmp_path: Path) -> None:
-    protected_file_name = sorted(c.Infra.Refactor.NAMESPACE_PROTECTED_FILES)[0]
+    protected_file_name = min(c.Infra.Refactor.NAMESPACE_PROTECTED_FILES)
     target = tmp_path / protected_file_name
     target.write_text(
         "from pydantic import BaseModel\nclass PublicModel(BaseModel):\n    pass\n",

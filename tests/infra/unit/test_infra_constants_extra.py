@@ -46,7 +46,8 @@ class TestFlextInfraConstantsGithubNamespace:
 
     def test_github_repo_url_constant(self) -> None:
         tm.that(
-            infra_c.Infra.Github.GITHUB_REPO_URL, eq="https://github.com/flext-sh/flext",
+            infra_c.Infra.Github.GITHUB_REPO_URL,
+            eq="https://github.com/flext-sh/flext",
         )
 
     def test_github_repo_name_constant(self) -> None:

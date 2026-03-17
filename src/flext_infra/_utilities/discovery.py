@@ -119,7 +119,8 @@ class FlextInfraUtilitiesDiscovery:
             [
                 entry
                 for entry in sorted(
-                    workspace_root.iterdir(), key=lambda item: item.name,
+                    workspace_root.iterdir(),
+                    key=lambda item: item.name,
                 )
                 if entry.is_dir()
                 and (not entry.name.startswith("."))

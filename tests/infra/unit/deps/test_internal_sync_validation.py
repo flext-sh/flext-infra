@@ -13,13 +13,15 @@ class TestFlextInfraInternalDependencySyncService:
     def test_service_initialization(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         tm.that(
-            service.__class__.__name__, eq="FlextInfraInternalDependencySyncService",
+            service.__class__.__name__,
+            eq="FlextInfraInternalDependencySyncService",
         )
         tm.that(hasattr(h, "assert_ok"), eq=True)
 
     def test_validate_git_ref_valid(self) -> None:
         tm.ok(
-            FlextInfraInternalDependencySyncService.validate_git_ref("main"), eq="main",
+            FlextInfraInternalDependencySyncService.validate_git_ref("main"),
+            eq="main",
         )
 
     def test_validate_git_ref_invalid(self) -> None:

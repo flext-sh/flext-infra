@@ -86,7 +86,12 @@ class TestInfraOutputEdgeCases:
         buf = io.StringIO()
         backend = _make_backend(use_unicode=False, stream=buf)
         backend.summary(
-            "check", total=1000, success=950, failed=40, skipped=10, elapsed=123.45,
+            "check",
+            total=1000,
+            success=950,
+            failed=40,
+            skipped=10,
+            elapsed=123.45,
         )
         text = buf.getvalue()
         tm.that(text, contains="Total: 1000")

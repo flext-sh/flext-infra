@@ -68,7 +68,9 @@ class TestModernizerUncoveredLines:
         tm.that(modernizer.run(_modernizer_args(), _default_cli(tmp_path)), eq=2)
 
     def test_run_with_no_changes(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[project]\nname = "test"\n')
@@ -116,11 +118,13 @@ def test_flext_infra_pyproject_modernizer_process_file_invalid_toml(
 def test_flext_infra_pyproject_modernizer_find_pyproject_files(tmp_path: Path) -> None:
     (tmp_path / "project1").mkdir()
     (tmp_path / "project1" / "pyproject.toml").write_text(
-        "[project]\n", encoding="utf-8",
+        "[project]\n",
+        encoding="utf-8",
     )
     (tmp_path / "project2").mkdir()
     (tmp_path / "project2" / "pyproject.toml").write_text(
-        "[project]\n", encoding="utf-8",
+        "[project]\n",
+        encoding="utf-8",
     )
     (tmp_path / ".venv").mkdir()
     (tmp_path / ".venv" / "pyproject.toml").write_text("[project]\n", encoding="utf-8")

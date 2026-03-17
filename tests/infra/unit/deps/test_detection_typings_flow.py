@@ -32,7 +32,9 @@ class _StubRunRaw:
         self._result = result
 
     def __call__(
-        self, *args: t.Infra.TomlValue, **kwargs: t.Infra.TomlValue,
+        self,
+        *args: t.Infra.TomlValue,
+        **kwargs: t.Infra.TomlValue,
     ) -> r[m.Infra.CommandOutput]:
         _ = args
         _ = kwargs
@@ -54,7 +56,9 @@ class TestModuleAndTypingsFlow:
         tm.that(service.module_to_types_package("yaml.parser", {}), eq="types-pyyaml")
 
     def test_get_current_typings_from_pyproject(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         payload: dict[str, t.Infra.TomlValue] = {
@@ -80,7 +84,9 @@ class TestModuleAndTypingsFlow:
         tm.that(got, eq=[])
 
     def test_get_current_typings_from_pyproject_variants(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
         values: list[r[dict[str, t.Infra.TomlValue]]] = [
@@ -106,7 +112,9 @@ class TestModuleAndTypingsFlow:
         tm.that(service.get_current_typings_from_pyproject(tmp_path), eq=[])
 
     def test_get_required_typings_paths(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
@@ -114,7 +122,9 @@ class TestModuleAndTypingsFlow:
         out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
         service = FlextInfraDependencyDetectionService()
         monkeypatch.setattr(
-            u.Infra, "run_raw", _StubRunRaw(r[m.Infra.CommandOutput].ok(out)),
+            u.Infra,
+            "run_raw",
+            _StubRunRaw(r[m.Infra.CommandOutput].ok(out)),
         )
         monkeypatch.setattr(
             u.Infra,

@@ -163,7 +163,8 @@ class FlextInfraDependencyDetectorRuntime:
             return r[int].ok(2)
         if not (venv_bin / c.Infra.Toml.DEPTRY).exists():
             detector.log.error(
-                "deps_deptry_missing", path=str(venv_bin / c.Infra.Toml.DEPTRY),
+                "deps_deptry_missing",
+                path=str(venv_bin / c.Infra.Toml.DEPTRY),
             )
             return r[int].ok(3)
         apply_typings = bool(args.apply_typings)
@@ -212,7 +213,8 @@ class FlextInfraDependencyDetectorRuntime:
                     )
                 if not args.quiet:
                     detector.log.info(
-                        "deps_typings_detect_running", project=project_name,
+                        "deps_typings_detect_running",
+                        project=project_name,
                     )
                 typings_result = typing_deps.get_required_typings(
                     project_path,

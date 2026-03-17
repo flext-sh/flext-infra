@@ -56,7 +56,8 @@ class FlextInfraDocsModels:
         name: Annotated[str, Field(min_length=1, description="Scope name")]
         path: Annotated[Path, Field(description="Absolute path to scope root")]
         report_dir: Annotated[
-            Path, Field(description="Report output directory for scope"),
+            Path,
+            Field(description="Report output directory for scope"),
         ]
 
     class AuditIssue(FlextModels.FrozenStrictModel):
@@ -72,7 +73,8 @@ class FlextInfraDocsModels:
 
         path: Annotated[str, Field(description="File path")]
         written: Annotated[
-            bool, Field(default=False, description="Whether file was written"),
+            bool,
+            Field(default=False, description="Whether file was written"),
         ] = False
 
     class DocsPhaseItem(_DocsPhaseItemModel):
@@ -91,28 +93,36 @@ class FlextInfraDocsModels:
         result: Annotated[str, Field(default="", description="Result status")] = ""
         reason: Annotated[str, Field(default="", description="Result reason")] = ""
         message: Annotated[
-            str, Field(default="", description="Human-readable summary message"),
+            str,
+            Field(default="", description="Human-readable summary message"),
         ] = ""
         site_dir: Annotated[
-            str, Field(default="", description="Built site directory path"),
+            str,
+            Field(default="", description="Built site directory path"),
         ] = ""
         checks: Annotated[
-            list[str], Field(default_factory=list, description="Executed checks"),
+            list[str],
+            Field(default_factory=list, description="Executed checks"),
         ] = Field(default_factory=list)
         strict: Annotated[
-            bool, Field(default=False, description="Strict-mode flag"),
+            bool,
+            Field(default=False, description="Strict-mode flag"),
         ] = False
         passed: Annotated[
-            bool, Field(default=False, description="Whether phase passed"),
+            bool,
+            Field(default=False, description="Whether phase passed"),
         ] = False
         changed_files: Annotated[
-            int, Field(default=0, ge=0, description="Changed files count"),
+            int,
+            Field(default=0, ge=0, description="Changed files count"),
         ] = 0
         applied: Annotated[
-            bool, Field(default=False, description="Apply mode flag"),
+            bool,
+            Field(default=False, description="Apply mode flag"),
         ] = False
         generated: Annotated[
-            int, Field(default=0, ge=0, description="Generated files count"),
+            int,
+            Field(default=0, ge=0, description="Generated files count"),
         ] = 0
         source: Annotated[
             str,

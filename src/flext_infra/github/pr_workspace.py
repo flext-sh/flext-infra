@@ -129,7 +129,8 @@ class FlextInfraPrWorkspaceManager:
         if staged_result.is_success and (not staged_result.value.strip()):
             return r[bool].ok(True)
         commit_result = u.Infra.git_commit(
-            repo_root, "chore: checkpoint pending changes",
+            repo_root,
+            "chore: checkpoint pending changes",
         )
         if commit_result.is_failure:
             return r[bool].fail(commit_result.error or "git commit failed")

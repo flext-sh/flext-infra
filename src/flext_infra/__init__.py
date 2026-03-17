@@ -164,6 +164,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.refactor.census import FlextInfraRefactorCensus
     from flext_infra.refactor.dependency_analyzer import (
+        ClassPlacementDetector,
         CompatibilityAliasDetector,
         CyclicImportDetector,
         DependencyAnalyzer,
@@ -175,6 +176,7 @@ if TYPE_CHECKING:
         ManualProtocolDetector,
         ManualTypingAliasDetector,
         NamespaceFacadeScanner,
+        NamespaceSourceDetector,
         RuntimeAliasDetector,
     )
     from flext_infra.refactor.engine import FlextInfraRefactorEngine
@@ -309,6 +311,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ClassNestingRefactorRule": (
         "flext_infra.rules.class_nesting",
         "ClassNestingRefactorRule",
+    ),
+    "ClassPlacementDetector": (
+        "flext_infra.refactor.dependency_analyzer",
+        "ClassPlacementDetector",
     ),
     "CompatibilityAliasDetector": (
         "flext_infra.refactor.dependency_analyzer",
@@ -817,6 +823,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "NamespaceFacadeScanner",
     ),
+    "NamespaceSourceDetector": (
+        "flext_infra.refactor.dependency_analyzer",
+        "NamespaceSourceDetector",
+    ),
     "NestedClassPropagationTransformer": (
         "flext_infra.transformers.nested_class_propagation",
         "NestedClassPropagationTransformer",
@@ -895,6 +905,7 @@ __all__ = [
     "CensusUsageCollector",
     "CheckIssue",
     "ClassNestingRefactorRule",
+    "ClassPlacementDetector",
     "CompatibilityAliasDetector",
     "ConsolidateGroupsPhase",
     "CyclicImportDetector",
@@ -1039,6 +1050,7 @@ __all__ = [
     "ManualTypingAliasDetector",
     "NamespaceEnforcementRewriter",
     "NamespaceFacadeScanner",
+    "NamespaceSourceDetector",
     "NestedClassPropagationTransformer",
     "OutputBackend",
     "PostCheckGate",

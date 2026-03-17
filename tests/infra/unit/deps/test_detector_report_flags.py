@@ -35,14 +35,18 @@ class _DepsStub:
         return r[list[Path]].ok([self._project])
 
     def run_deptry(
-        self, project_path: Path, venv_bin: Path,
+        self,
+        project_path: Path,
+        venv_bin: Path,
     ) -> r[tuple[list[dict[str, str]], int]]:
         del project_path
         del venv_bin
         return r[tuple[list[dict[str, str]], int]].ok(([], 0))
 
     def build_project_report(
-        self, project_name: str, issues: list[dict[str, str]],
+        self,
+        project_name: str,
+        issues: list[dict[str, str]],
     ) -> _ReportStub:
         del project_name
         del issues
@@ -77,7 +81,9 @@ def _setup(
 
     monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", _paths_factory)
     monkeypatch.setattr(
-        detector_module, "FlextInfraDependencyDetectionService", _deps_factory,
+        detector_module,
+        "FlextInfraDependencyDetectionService",
+        _deps_factory,
     )
     monkeypatch.setattr(Path, "exists", _exists)
     return detector_module.FlextInfraRuntimeDevDependencyDetector()

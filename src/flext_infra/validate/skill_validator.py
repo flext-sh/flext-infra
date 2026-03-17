@@ -53,7 +53,8 @@ class FlextInfraSkillValidator:
 
     @staticmethod
     def _normalize_string_list(
-        value: t.Infra.InfraValue | None, field: str,
+        value: t.Infra.InfraValue | None,
+        field: str,
     ) -> list[str]:
         """Validate and normalize a list[str] config field; delegates to ``u.Infra``."""
         if value is None:

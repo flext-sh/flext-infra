@@ -40,14 +40,18 @@ class _DepsStub:
         return r[list[Path]].ok([self._project])
 
     def run_deptry(
-        self, project_path: Path, venv_bin: Path,
+        self,
+        project_path: Path,
+        venv_bin: Path,
     ) -> r[tuple[list[dict[str, str]], int]]:
         _ = project_path
         _ = venv_bin
         return r[tuple[list[dict[str, str]], int]].ok(([], 0))
 
     def build_project_report(
-        self, project_name: str, issues: list[dict[str, str]],
+        self,
+        project_name: str,
+        issues: list[dict[str, str]],
     ) -> _ReportStub:
         _ = project_name
         _ = issues
@@ -81,7 +85,8 @@ def _setup_typings_detector(
     to_add: list[str | int | None],
     run_raw_result: r[types.SimpleNamespace],
 ) -> tuple[
-    detector_module.FlextInfraRuntimeDevDependencyDetector, list[list[str | int | None]],
+    detector_module.FlextInfraRuntimeDevDependencyDetector,
+    list[list[str | int | None]],
 ]:
     project_path = tmp_path / "proj-a"
     (project_path / "src").mkdir(parents=True)
@@ -113,10 +118,14 @@ def _setup_typings_detector(
     runner = types.SimpleNamespace(run_raw=_run_raw)
     monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", lambda: paths)
     monkeypatch.setattr(
-        detector_module, "FlextInfraDependencyDetectionService", lambda: deps,
+        detector_module,
+        "FlextInfraDependencyDetectionService",
+        lambda: deps,
     )
     monkeypatch.setattr(
-        detector_module, "FlextInfraUtilitiesSubprocess", lambda: runner,
+        detector_module,
+        "FlextInfraUtilitiesSubprocess",
+        lambda: runner,
     )
     monkeypatch.setattr(Path, "exists", _exists)
     return detector_module.FlextInfraRuntimeDevDependencyDetector(), captured_commands
@@ -130,7 +139,10 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
     ) -> None:
         run_result = r[types.SimpleNamespace].ok(types.SimpleNamespace(exit_code=0))
         detector, calls = _setup_typings_detector(
-            monkeypatch, tmp_path, ["types-requests"], run_result,
+            monkeypatch,
+            tmp_path,
+            ["types-requests"],
+            run_result,
         )
         tm.ok(
             detector.run([
@@ -175,7 +187,10 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
     ) -> None:
         run_result = r[types.SimpleNamespace].ok(types.SimpleNamespace(exit_code=1))
         detector, _ = _setup_typings_detector(
-            monkeypatch, tmp_path, ["types-requests"], run_result,
+            monkeypatch,
+            tmp_path,
+            ["types-requests"],
+            run_result,
         )
         tm.ok(detector.run(["--typings", "--apply-typings", "--no-pip-check"]))
 

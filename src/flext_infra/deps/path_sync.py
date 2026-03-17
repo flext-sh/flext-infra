@@ -99,7 +99,8 @@ class FlextInfraDependencyPathSync:
 
     @staticmethod
     def _mapping_str_value(
-        mapping: Table | Mapping[str, JsonValue], key: str,
+        mapping: Table | Mapping[str, JsonValue],
+        key: str,
     ) -> str | None:
         if key not in mapping:
             return None
@@ -186,13 +187,15 @@ class FlextInfraDependencyPathSync:
             return []
         tool_section: Table = tool_raw
         poetry_raw = FlextInfraDependencyPathSync._table_get(
-            tool_section, c.Infra.Toml.POETRY,
+            tool_section,
+            c.Infra.Toml.POETRY,
         )
         if not isinstance(poetry_raw, Table):
             return []
         poetry_section: Table = poetry_raw
         deps_raw = FlextInfraDependencyPathSync._table_get(
-            poetry_section, c.Infra.Toml.DEPENDENCIES,
+            poetry_section,
+            c.Infra.Toml.DEPENDENCIES,
         )
         if not isinstance(deps_raw, Table):
             return []
@@ -209,7 +212,9 @@ class FlextInfraDependencyPathSync:
                 continue
             dep_name = FlextInfraDependencyPathSync.extract_dep_name(raw_path)
             new_path = FlextInfraDependencyPathSync._target_path(
-                dep_name, is_root=is_root, mode=mode,
+                dep_name,
+                is_root=is_root,
+                mode=mode,
             )
             if raw_path != new_path:
                 changes.append(

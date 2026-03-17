@@ -157,7 +157,9 @@ class FlextInfraRefactorSafetyManager:
         payload = checkpoint.model_dump()
         payload["updated_at"] = u.generate_iso_timestamp()
         out: RBool = u.Infra.write_json(
-            self._checkpoint_path, payload, ensure_ascii=True,
+            self._checkpoint_path,
+            payload,
+            ensure_ascii=True,
         )
         return out
 
@@ -189,9 +191,7 @@ class FlextInfraRefactorSafetyManager:
             return out
         try:
             text = self._checkpoint_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            cp: m.Infra.Checkpoint = (
-                m.Infra.Checkpoint.model_validate_json(text)
-            )
+            cp: m.Infra.Checkpoint = m.Infra.Checkpoint.model_validate_json(text)
             out2: RCheckpoint = r[m.Infra.Checkpoint].ok(cp)
             return out2
         except (OSError, ValueError) as exc:
@@ -218,7 +218,8 @@ class FlextInfraRefactorSafetyManager:
 
     def _rollback_to_stash(self, workspace_root: Path, stash_ref: str) -> RBool:
         return FlextInfraUtilitiesSafety.rollback_to_checkpoint(
-            workspace_root, stash_ref,
+            workspace_root,
+            stash_ref,
         )
 
 

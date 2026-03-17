@@ -35,7 +35,10 @@ class FlextInfraRefactorCensus:
         return FlextInfraRefactorOutputRenderer.render_census_report(report)
 
     def run(
-        self, root: Path, *, target: m.Infra.MROFamilyTarget | None = None,
+        self,
+        root: Path,
+        *,
+        target: m.Infra.MROFamilyTarget | None = None,
     ) -> RCensusReport:
         """Execute the workspace census."""
         target = target or u.Infra.build_mro_target(

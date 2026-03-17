@@ -87,7 +87,9 @@ def _toml_item(value: str | int | list[str]) -> tomlkit.items.Item:
         return tomlkit.items.String.from_raw(value)
     if isinstance(value, int):
         return tomlkit.items.Integer(
-            value, trivia=tomlkit.items.Trivia(), raw=str(value),
+            value,
+            trivia=tomlkit.items.Trivia(),
+            raw=str(value),
         )
     # list[str] -> construct Array from String items
     str_items: list[tomlkit.items.Item] = [
@@ -214,7 +216,9 @@ def test_project_dev_groups_missing_sections(doc: TOMLDocument) -> None:
     ],
 )
 def test_canonical_dev_dependencies(
-    optional_deps: dict[str, list[str]], expected_length: int, expect_pytest: bool,
+    optional_deps: dict[str, list[str]],
+    expected_length: int,
+    expect_pytest: bool,
 ) -> None:
     result = canonical_dev_dependencies(_doc_with_optional_deps(optional_deps))
     tm.that(result, length=expected_length)

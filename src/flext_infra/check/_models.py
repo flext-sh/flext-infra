@@ -71,7 +71,8 @@ class FlextInfraCheckModels:
             ),
         ] = Field(default_factory=lambda: list[str]())
         duration: Annotated[
-            float, Field(default=0.0, ge=0.0, description="Duration in seconds"),
+            float,
+            Field(default=0.0, ge=0.0, description="Duration in seconds"),
         ]
 
     class CheckResult(GateResult):
@@ -85,7 +86,8 @@ class FlextInfraCheckModels:
             dict[str, FlextInfraCheckModels.GateExecution],
             Field(
                 default_factory=lambda: dict[
-                    str, FlextInfraCheckModels.GateExecution,
+                    str,
+                    FlextInfraCheckModels.GateExecution,
                 ](),
                 description="Gate name to execution mapping",
             ),
@@ -107,7 +109,8 @@ class FlextInfraCheckModels:
 
     class WorkspaceCheckReport(FlextModels.ArbitraryTypesModel):
         generated_at: Annotated[
-            str, Field(description="UTC timestamp for report generation"),
+            str,
+            Field(description="UTC timestamp for report generation"),
         ]
         gates: Annotated[
             list[str],
@@ -134,7 +137,8 @@ class FlextInfraCheckModels:
 
             id: Annotated[str, Field(description="Rule identifier")]
             short_description: Annotated[
-                str, Field(description="Rule short description"),
+                str,
+                Field(description="Rule short description"),
             ]
 
             @model_serializer(mode="plain")
@@ -257,7 +261,8 @@ class FlextInfraCheckModels:
                 ),
             ] = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json"
             version: Annotated[
-                str, Field(default="2.1.0", description="SARIF version"),
+                str,
+                Field(default="2.1.0", description="SARIF version"),
             ] = "2.1.0"
             runs: Annotated[
                 list[FlextInfraCheckModels.Sarif.Run],

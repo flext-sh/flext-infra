@@ -40,7 +40,8 @@ class TestEnsurePyreflyConfigPhase:
         doc = tomlkit.document()
         doc["tool"] = tomlkit.table()
         changes = EnsurePyreflyConfigPhase(_test_tool_config()).apply(
-            doc, is_root=False,
+            doc,
+            is_root=False,
         )
         tm.that(len(changes) > 0, eq=True)
 
@@ -74,7 +75,8 @@ def test_ensure_pyrefly_config_phase_apply_ignore_errors() -> None:
     tool["pyrefly"] = tomlkit.table()
     changes = EnsurePyreflyConfigPhase(_test_tool_config()).apply(doc, is_root=True)
     tm.that(
-        any("ignore-errors-in-generated-code enabled" in c for c in changes), eq=True,
+        any("ignore-errors-in-generated-code enabled" in c for c in changes),
+        eq=True,
     )
     pyrefly = tool["pyrefly"]
     tm.that(isinstance(pyrefly, MutableMapping), eq=True)

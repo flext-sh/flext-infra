@@ -18,7 +18,8 @@ from pydantic import TypeAdapter, ValidationError
 from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, u
 
 type _ClassNestingMappingIndex = dict[
-    tuple[str, str], m.Infra.ClassNestingMapping,
+    tuple[str, str],
+    m.Infra.ClassNestingMapping,
 ]
 
 
@@ -386,9 +387,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         file_path: Path,
         *,
         failure_stats: m.Infra.CentralizerFailureStats,
-    ) -> (
-        tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]] | None
-    ):
+    ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]] | None:
         try:
             return FlextInfraRefactorPydanticCentralizerAnalysis.collect_moves(
                 file_path,
@@ -500,12 +499,10 @@ class FlextInfraRefactorClassNestingAnalyzer:
             if scan_result.is_failure:
                 continue
             try:
-                parsed_violations: list[m.Infra.LooseClassViolation] = (
-                    TypeAdapter(
-                        list[m.Infra.LooseClassViolation],
-                    ).validate_python(
-                        scan_result.value.get(c.Infra.ReportKeys.VIOLATIONS, []),
-                    )
+                parsed_violations: list[m.Infra.LooseClassViolation] = TypeAdapter(
+                    list[m.Infra.LooseClassViolation],
+                ).validate_python(
+                    scan_result.value.get(c.Infra.ReportKeys.VIOLATIONS, []),
                 )
             except ValidationError:
                 continue

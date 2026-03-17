@@ -182,7 +182,8 @@ class TestValidateCore:
         """Test validate returns failure when scope building fails."""
 
         def mock_build_scopes(
-            *args: t.Scalar, **kwargs: t.Scalar,
+            *args: t.Scalar,
+            **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
             return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("Scope error")
 

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.refactor.census import FlextInfraRefactorCensus
     from flext_infra.refactor.dependency_analyzer import (
+        ClassPlacementDetector,
         CompatibilityAliasDetector,
         CyclicImportDetector,
         DependencyAnalyzer,
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
         ManualProtocolDetector,
         ManualTypingAliasDetector,
         NamespaceFacadeScanner,
+        NamespaceSourceDetector,
         RuntimeAliasDetector,
     )
     from flext_infra.refactor.engine import FlextInfraRefactorEngine
@@ -64,6 +66,10 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "ClassPlacementDetector": (
+        "flext_infra.refactor.dependency_analyzer",
+        "ClassPlacementDetector",
+    ),
     "CompatibilityAliasDetector": (
         "flext_infra.refactor.dependency_analyzer",
         "CompatibilityAliasDetector",
@@ -185,6 +191,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "NamespaceFacadeScanner",
     ),
+    "NamespaceSourceDetector": (
+        "flext_infra.refactor.dependency_analyzer",
+        "NamespaceSourceDetector",
+    ),
     "PostCheckGate": ("flext_infra.refactor.validation", "PostCheckGate"),
     "ProjectClassifier": (
         "flext_infra.refactor.project_classifier",
@@ -197,6 +207,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 }
 
 __all__ = [
+    "ClassPlacementDetector",
     "CompatibilityAliasDetector",
     "CyclicImportDetector",
     "DependencyAnalyzer",
@@ -228,6 +239,7 @@ __all__ = [
     "ManualTypingAliasDetector",
     "NamespaceEnforcementRewriter",
     "NamespaceFacadeScanner",
+    "NamespaceSourceDetector",
     "PostCheckGate",
     "ProjectClassifier",
     "RuntimeAliasDetector",

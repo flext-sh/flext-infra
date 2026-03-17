@@ -47,7 +47,9 @@ class TestSync:
         tm.fail(service.sync(tmp_path))
 
     def test_sync_workspace_mode_symlink(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -89,7 +91,9 @@ class TestSync:
         tm.ok(service.sync(project))
 
     def test_sync_missing_repo_mapping(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         project = tmp_path / "project"
         project.mkdir()

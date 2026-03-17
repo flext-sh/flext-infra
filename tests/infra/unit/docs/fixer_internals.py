@@ -87,7 +87,9 @@ class TestFixerMaybeFixLink:
         tm.that(fixer._maybe_fix_link(tmp_path / "README.md", link), eq=None)
 
     def test_maybe_fix_link_existing_file(
-        self, fixer: FlextInfraDocFixer, tmp_path: Path,
+        self,
+        fixer: FlextInfraDocFixer,
+        tmp_path: Path,
     ) -> None:
         _ = tf.create_in("# Existing", "existing.md", tmp_path)
         tm.that(fixer._maybe_fix_link(tmp_path / "test.md", "existing.md"), eq=None)

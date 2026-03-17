@@ -68,7 +68,8 @@ class TestEnsurePyrightConfigPhase:
     def test_apply_subproject_sets_execution_environments(self) -> None:
         doc = tomlkit.document()
         changes = EnsurePyrightConfigPhase(_test_tool_config()).apply(
-            doc, is_root=False,
+            doc,
+            is_root=False,
         )
         tool = u.Infra.unwrap_item(doc["tool"])
         tm.that(isinstance(tool, MutableMapping), eq=True)

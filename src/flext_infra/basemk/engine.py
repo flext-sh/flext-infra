@@ -19,7 +19,10 @@ from flext_infra import c, m
 
 class _TemplateRenderer(Protocol):
     def render(
-        self, *, config: m.Infra.BaseMkConfig, lint_gates_csv: str,
+        self,
+        *,
+        config: m.Infra.BaseMkConfig,
+        lint_gates_csv: str,
     ) -> str: ...
 
 

@@ -42,7 +42,9 @@ class Spy:
         )
 
     def __call__(
-        self, *args: t.Infra.InfraValue, **kwargs: t.Infra.InfraValue,
+        self,
+        *args: t.Infra.InfraValue,
+        **kwargs: t.Infra.InfraValue,
     ) -> t.Infra.InfraValue:
         self.called = True
         self.call_count += 1
@@ -90,7 +92,11 @@ def make_gate_exec(
     """Create a _GateExecution with defaults."""
     return GateExecution(
         result=m.Infra.GateResult(
-            gate=gate, project=project, passed=passed, errors=[], duration=0.0,
+            gate=gate,
+            project=project,
+            passed=passed,
+            errors=[],
+            duration=0.0,
         ),
         issues=issues or [],
         raw_output="",

@@ -26,14 +26,18 @@ class TestFixerCore:
         return FlextInfraDocFixer()
 
     def test_fix_returns_flext_result(
-        self, fixer: FlextInfraDocFixer, tmp_path: Path,
+        self,
+        fixer: FlextInfraDocFixer,
+        tmp_path: Path,
     ) -> None:
         """Test that fix returns r."""
         result = fixer.fix(tmp_path)
         tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_fix_with_valid_scope_returns_success(
-        self, fixer: FlextInfraDocFixer, tmp_path: Path,
+        self,
+        fixer: FlextInfraDocFixer,
+        tmp_path: Path,
     ) -> None:
         """Test fix with valid scope returns success."""
         result = fixer.fix(tmp_path)
@@ -41,7 +45,9 @@ class TestFixerCore:
         tm.that(len(result.value) >= 0, eq=True)
 
     def test_fix_report_structure(
-        self, fixer: FlextInfraDocFixer, tmp_path: Path,
+        self,
+        fixer: FlextInfraDocFixer,
+        tmp_path: Path,
     ) -> None:
         """Test FixReport has required fields."""
         result = fixer.fix(tmp_path)
@@ -103,7 +109,10 @@ class TestFixerCore:
     def test_fix_report_changed_files_count(self) -> None:
         """Test FixReport changed_files field."""
         report = m.Infra.Docs.DocsPhaseReport(
-            phase="fix", scope="test", changed_files=5, applied=True,
+            phase="fix",
+            scope="test",
+            changed_files=5,
+            applied=True,
         )
         tm.that(report.changed_files, eq=5)
 
@@ -128,7 +137,11 @@ class TestFixerCore:
             m.Infra.Docs.DocsPhaseItem(phase="fix", file="file2.md", links=0, toc=1),
         ]
         report = m.Infra.Docs.DocsPhaseReport(
-            phase="fix", scope="test", changed_files=2, applied=True, items=items,
+            phase="fix",
+            scope="test",
+            changed_files=2,
+            applied=True,
+            items=items,
         )
         tm.that(len(report.items), eq=2)
         tm.that(report.items[0].model_dump().get("file"), eq="file1.md")
@@ -142,7 +155,8 @@ class TestFixerCore:
         """Test fix returns failure when scope building fails."""
 
         def mock_build_scopes(
-            *args: t.Scalar, **kwargs: t.Scalar,
+            *args: t.Scalar,
+            **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
             return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("Scope error")
 

@@ -95,5 +95,6 @@ class TestDetectionUncoveredLines:
             "typing_libraries": {"module_to_package": inner},
         }
         tm.that(
-            service.module_to_types_package("custom_module", limits), eq="types-custom",
+            service.module_to_types_package("custom_module", limits),
+            eq="types-custom",
         )

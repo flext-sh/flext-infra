@@ -61,7 +61,9 @@ class TestMain:
         tm.that(path_sync_module.main(), eq=0)
 
     def test_main_dry_run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
             '[project]\nname = "flext-workspace"\n',
@@ -130,7 +132,9 @@ class TestMain:
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
-            FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_fail,
+            FlextInfraDependencyPathSync,
+            "rewrite_dep_paths",
+            _rewrite_fail,
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
         tm.that(path_sync_module.main(), eq=1)
@@ -175,7 +179,9 @@ class TestMain:
             return r[list[str]].fail("project rewrite failed")
 
         monkeypatch.setattr(
-            FlextInfraDependencyPathSync, "rewrite_dep_paths", rewrite_stub,
+            FlextInfraDependencyPathSync,
+            "rewrite_dep_paths",
+            rewrite_stub,
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
         tm.that(path_sync_module.main(), eq=1)

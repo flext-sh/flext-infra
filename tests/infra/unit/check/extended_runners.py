@@ -19,7 +19,8 @@ from ...helpers import h
 from ...models import m
 
 RunCallable = Callable[
-    [list[str], Path, int, dict[str, str] | None], m.Infra.CommandOutput,
+    [list[str], Path, int, dict[str, str] | None],
+    m.Infra.CommandOutput,
 ]
 
 
@@ -67,7 +68,9 @@ class TestRunPyrefly:
     """Test FlextInfraWorkspaceChecker._run_pyrefly method."""
 
     def test_run_pyrefly_with_json_output(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -81,7 +84,9 @@ class TestRunPyrefly:
         tm.that(result.result.passed, eq=True)
 
     def test_run_pyrefly_with_errors(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -98,7 +103,9 @@ class TestRunPyrefly:
         tm.that(len(result.issues), eq=1)
 
     def test_run_pyrefly_with_invalid_json(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -112,7 +119,9 @@ class TestRunPyrefly:
         tm.that(result.result.passed, eq=False)
 
     def test_run_pyrefly_with_error_count_fallback(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -129,7 +138,9 @@ class TestRunPyrefly:
         tm.that(len(result.issues), eq=3)
 
     def test_run_pyrefly_with_list_output(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -149,7 +160,9 @@ class TestRunMypy:
     """Test FlextInfraWorkspaceChecker._run_mypy method."""
 
     def test_run_mypy_no_python_dirs(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
@@ -160,7 +173,9 @@ class TestRunMypy:
         tm.that(len(result.issues), eq=0)
 
     def test_run_mypy_with_json_output(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1", with_src=True)
@@ -178,7 +193,9 @@ class TestRunMypy:
         tm.that(len(result.issues), eq=1)
 
     def test_run_mypy_skips_empty_lines(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1", with_src=True)

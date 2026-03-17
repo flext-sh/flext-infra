@@ -189,7 +189,9 @@ def _main_inner(argv: list[str] | None = None) -> int:
     )
 
     subs["inventory"].add_argument(
-        "--output-dir", default=None, help="Output directory",
+        "--output-dir",
+        default=None,
+        help="Output directory",
     )
 
     subs["pytest-diag"].add_argument("--junit", required=True, help="JUnit XML path")
@@ -202,10 +204,16 @@ def _main_inner(argv: list[str] | None = None) -> int:
 
     subs["scan"].add_argument("--pattern", required=True, help="Regex pattern")
     subs["scan"].add_argument(
-        "--include", action="append", required=True, help="Include glob",
+        "--include",
+        action="append",
+        required=True,
+        help="Include glob",
     )
     subs["scan"].add_argument(
-        "--exclude", action="append", default=[], help="Exclude glob",
+        "--exclude",
+        action="append",
+        default=[],
+        help="Exclude glob",
     )
     subs["scan"].add_argument(
         "--match",
@@ -215,7 +223,9 @@ def _main_inner(argv: list[str] | None = None) -> int:
     )
 
     subs["skill-validate"].add_argument(
-        "--skill", required=True, help="Skill folder name",
+        "--skill",
+        required=True,
+        help="Skill folder name",
     )
     subs["skill-validate"].add_argument(
         "--mode",
@@ -224,10 +234,14 @@ def _main_inner(argv: list[str] | None = None) -> int:
     )
 
     subs["stub-validate"].add_argument(
-        "--project", action="append", help="Project to validate",
+        "--project",
+        action="append",
+        help="Project to validate",
     )
     _ = subs["stub-validate"].add_argument(
-        "--all", action="store_true", help="Validate all projects",
+        "--all",
+        action="store_true",
+        help="Validate all projects",
     )
 
     args = parser.parse_args(argv)
@@ -253,10 +267,13 @@ def _main_inner(argv: list[str] | None = None) -> int:
             getattr(args, "match", "present"),
         ),
         "skill-validate": lambda: _run_skill_validate(
-            cli, getattr(args, "skill", ""), getattr(args, "mode", "baseline"),
+            cli,
+            getattr(args, "skill", ""),
+            getattr(args, "mode", "baseline"),
         ),
         "stub-validate": lambda: _run_stub_validate(
-            cli, getattr(args, "project", None),
+            cli,
+            getattr(args, "project", None),
         ),
     }
     handler = commands.get(args.command)

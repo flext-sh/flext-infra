@@ -142,7 +142,8 @@ class FlextInfraTestHelpers:
 
     @staticmethod
     def assert_toml_valid(
-        path: Path, msg: str | None = None,
+        path: Path,
+        msg: str | None = None,
     ) -> dict[str, t.Infra.InfraValue]:
         """Assert TOML file is valid and return parsed content.
 
@@ -168,7 +169,9 @@ class FlextInfraTestHelpers:
 
     @staticmethod
     def assert_toml_has_section(
-        path: Path, section: str, msg: str | None = None,
+        path: Path,
+        section: str,
+        msg: str | None = None,
     ) -> dict[str, t.Infra.InfraValue]:
         """Assert TOML file has specific section.
 

@@ -123,6 +123,9 @@ class TestGitPush:
 
     def test_push_to_nonexistent_remote_fails(self, git_repo: Path) -> None:
         result = FlextInfraUtilitiesGit.git_push(
-            git_repo, remote="origin", branch="main", set_upstream=True,
+            git_repo,
+            remote="origin",
+            branch="main",
+            set_upstream=True,
         )
         tm.fail(result)

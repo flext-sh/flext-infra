@@ -27,7 +27,8 @@ class _StubDiscovery:
         self._error = error
 
     def discover_projects(
-        self, workspace_root: Path,
+        self,
+        workspace_root: Path,
     ) -> r[list[im.Infra.Workspace.ProjectInfo]]:
         _ = workspace_root
         if self._error:

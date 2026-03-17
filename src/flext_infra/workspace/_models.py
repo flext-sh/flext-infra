@@ -24,20 +24,24 @@ class FlextInfraWorkspaceModels:
         name: Annotated[str, Field(min_length=1, description="Project name")]
         path: Annotated[Path, Field(description="Absolute or relative project path")]
         stack: Annotated[
-            str, Field(min_length=1, description="Primary technology stack"),
+            str,
+            Field(min_length=1, description="Primary technology stack"),
         ]
         has_tests: Annotated[
-            bool, Field(default=False, description="Project has test suite"),
+            bool,
+            Field(default=False, description="Project has test suite"),
         ] = False
         has_src: Annotated[
-            bool, Field(default=True, description="Project has source directory"),
+            bool,
+            Field(default=True, description="Project has source directory"),
         ] = True
 
     class SyncResult(FlextModels.ArbitraryTypesModel):
         """Result payload for sync operations."""
 
         files_changed: Annotated[
-            int, Field(default=0, ge=0, description="Total changed files"),
+            int,
+            Field(default=0, ge=0, description="Total changed files"),
         ] = 0
         source: Annotated[Path, Field(description="Sync source path")]
         target: Annotated[Path, Field(description="Sync target path")]
@@ -54,10 +58,12 @@ class FlextInfraWorkspaceModels:
 
         project: Annotated[str, Field(min_length=1, description="Project identifier")]
         changes: Annotated[
-            list[str], Field(default_factory=list, description="Applied changes"),
+            list[str],
+            Field(default_factory=list, description="Applied changes"),
         ] = Field(default_factory=list)
         errors: Annotated[
-            list[str], Field(default_factory=list, description="Migration errors"),
+            list[str],
+            Field(default_factory=list, description="Migration errors"),
         ] = Field(default_factory=list)
 
 

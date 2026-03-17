@@ -432,7 +432,8 @@ class FlextInfraRefactorCliSupport:
                     for file_path in iter_result.value
                     if (
                         fnmatch.fnmatch(
-                            str(file_path.relative_to(args.project)), args.pattern,
+                            str(file_path.relative_to(args.project)),
+                            args.pattern,
                         )
                         or fnmatch.fnmatch(file_path.name, args.pattern)
                     )

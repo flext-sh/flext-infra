@@ -334,7 +334,8 @@ class FlextInfraUtilitiesRefactor:
             loaded.get(c.Infra.ReportKeys.RULES),
         ):
             if not FlextInfraUtilitiesRefactor.has_required_fields(
-                rule, class_rule_required,
+                rule,
+                class_rule_required,
             ):
                 return False
         return True
@@ -492,7 +493,8 @@ class FlextInfraUtilitiesRefactor:
                 elif isinstance(item, ast.ClassDef) and not item.name.startswith("_"):
                     for inner in ast.iter_child_nodes(item):
                         if isinstance(
-                            inner, ast.FunctionDef,
+                            inner,
+                            ast.FunctionDef,
                         ) and not inner.name.startswith("_"):
                             entry = (
                                 f"{item.name}.{inner.name}",
@@ -527,7 +529,8 @@ class FlextInfraUtilitiesRefactor:
                     continue
                 for target in item.targets:
                     if not isinstance(target, ast.Name) or not isinstance(
-                        item.value, ast.Call,
+                        item.value,
+                        ast.Call,
                     ):
                         continue
                     call = item.value
@@ -542,7 +545,8 @@ class FlextInfraUtilitiesRefactor:
                         if isinstance(arg.value, ast.Name):
                             alias_map[target.id] = (arg.value.id, arg.attr)
                         elif isinstance(arg.value, ast.Attribute) and isinstance(
-                            arg.value.value, ast.Name,
+                            arg.value.value,
+                            ast.Name,
                         ):
                             alias_map[target.id] = (
                                 arg.value.value.id,
@@ -629,10 +633,12 @@ class FlextInfraUtilitiesRefactor:
             m_list: list[m.Infra.CensusMethodSummary] = []
             for m_info in items:
                 af = cnt.get(
-                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_FLAT), 0,
+                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_FLAT),
+                    0,
                 )
                 an = cnt.get(
-                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_NS), 0,
+                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_NS),
+                    0,
                 )
                 dr = cnt.get((cls, m_info.name, c.Infra.Refactor.Census.MODE_DIRECT), 0)
                 tot = af + an + dr
@@ -656,9 +662,7 @@ class FlextInfraUtilitiesRefactor:
                 ),
             )
 
-        pj_sums: dict[str, list[m.Infra.CensusProjectMethodUsage]] = (
-            defaultdict(list)
-        )
+        pj_sums: dict[str, list[m.Infra.CensusProjectMethodUsage]] = defaultdict(list)
         for (pj, cls, mx, mo), co in sorted(pcnt.items()):
             pj_sums[pj].append(
                 m.Infra.CensusProjectMethodUsage(
@@ -673,7 +677,9 @@ class FlextInfraUtilitiesRefactor:
             classes=cls_sums,
             projects=[
                 m.Infra.CensusProjectSummary(
-                    project_name=p, usages=us, total=sum(u.count for u in us),
+                    project_name=p,
+                    usages=us,
+                    total=sum(u.count for u in us),
                 )
                 for p, us in sorted(pj_sums.items())
             ],

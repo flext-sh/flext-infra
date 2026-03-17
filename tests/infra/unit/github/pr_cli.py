@@ -54,7 +54,9 @@ class TestMainFunction:
         monkeypatch.setattr(pr_module, "_parse_args", _parse)
         monkeypatch.setattr(pr_module, "FlextInfraPrManager", _manager_factory)
         monkeypatch.setattr(
-            StubUtilities.Infra, "_git_branch_returns", r[str].ok("feature"),
+            StubUtilities.Infra,
+            "_git_branch_returns",
+            r[str].ok("feature"),
         )
         monkeypatch.setattr(pr_module, "u", StubUtilities)
 
@@ -106,7 +108,9 @@ class TestMainFunction:
             checks_returns=[r[dict[str, t.Scalar]].fail("checks failed")],
         )
         self._setup(
-            monkeypatch, _args(action="checks", number="42", checks_strict=1), mgr,
+            monkeypatch,
+            _args(action="checks", number="42", checks_strict=1),
+            mgr,
         )
         tm.that(main(), eq=1)
 

@@ -24,7 +24,8 @@ def orchestrator() -> FlextInfraOrchestratorService:
 
 class TestOrchestratorBasic:
     def test_executes_verb_across_projects(
-        self, orchestrator: FlextInfraOrchestratorService,
+        self,
+        orchestrator: FlextInfraOrchestratorService,
     ) -> None:
         tm.ok(orchestrator.orchestrate(["project-a", "project-b"], "check"), len=2)
 
@@ -32,7 +33,8 @@ class TestOrchestratorBasic:
         tm.ok(orchestrator.orchestrate(["p-a", "p-b", "p-c"], "test", fail_fast=True))
 
     def test_continues_without_fail_fast(
-        self, orchestrator: FlextInfraOrchestratorService,
+        self,
+        orchestrator: FlextInfraOrchestratorService,
     ) -> None:
         tm.ok(orchestrator.orchestrate(["p-a", "p-b"], "test", fail_fast=False), len=2)
 
@@ -40,7 +42,8 @@ class TestOrchestratorBasic:
         tm.fail(FlextInfraOrchestratorService().execute())
 
     def test_empty_project_list(
-        self, orchestrator: FlextInfraOrchestratorService,
+        self,
+        orchestrator: FlextInfraOrchestratorService,
     ) -> None:
         tm.ok(orchestrator.orchestrate([], "check"), len=0)
 
@@ -62,7 +65,9 @@ class TestOrchestratorFailures:
             return r[m.Infra.CommandOutput].fail("Failed")
 
         monkeypatch.setattr(
-            FlextInfraOrchestratorService, "_run_project", _run_project_fail,
+            FlextInfraOrchestratorService,
+            "_run_project",
+            _run_project_fail,
         )
         tm.ok(
             orchestrator.orchestrate(["p-a", "p-b", "p-c"], "test", fail_fast=True),
@@ -86,7 +91,9 @@ class TestOrchestratorFailures:
             raise OSError(msg)
 
         monkeypatch.setattr(
-            FlextInfraOrchestratorService, "_run_project", _run_project_raise,
+            FlextInfraOrchestratorService,
+            "_run_project",
+            _run_project_raise,
         )
         tm.fail(orchestrator.orchestrate(["p-a"], "test"), has="Orchestration failed")
 
@@ -112,5 +119,6 @@ class TestOrchestratorFailures:
 
         monkeypatch.setattr(FlextInfraOrchestratorService, "_run_project", _run_project)
         tm.ok(
-            orchestrator.orchestrate(["p1", "p2", "p3"], "test", fail_fast=True), len=3,
+            orchestrator.orchestrate(["p1", "p2", "p3"], "test", fail_fast=True),
+            len=3,
         )

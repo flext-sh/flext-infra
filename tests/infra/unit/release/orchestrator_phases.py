@@ -51,7 +51,9 @@ class TestPhaseValidate:
         tm.ok(orchestrator.phase_validate(workspace_root, dry_run=True))
 
     def test_executes_make(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         fake_sp = FakeSubprocess()
 
@@ -73,7 +75,9 @@ class TestPhaseVersion:
     """Tests for phase_version."""
 
     def test_updates_files(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         def _fake_versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
             del a, kw
@@ -88,7 +92,9 @@ class TestPhaseVersion:
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=False))
 
     def test_invalid_semver(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         fake_vs = FakeVersioning()
         fake_vs._parse_result = r[str].fail("invalid version")
@@ -106,7 +112,9 @@ class TestPhaseVersion:
         tm.fail(orchestrator.phase_version(workspace_root, "invalid", []))
 
     def test_with_dev_suffix(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         def _fake_versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
             del a, kw
@@ -134,7 +142,9 @@ class TestPhaseVersion:
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=True))
 
     def test_skips_missing_files(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         orchestrator = FlextInfraReleaseOrchestrator()
 
@@ -154,7 +164,9 @@ class TestPhaseBuild:
     """Tests for phase_build."""
 
     def test_creates_report_dir(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         fake_rep = FakeReporting()
         fake_rep._report_dir = workspace_root / "reports"
@@ -181,7 +193,9 @@ class TestPhaseBuild:
         tm.ok(orchestrator.phase_build(workspace_root, "1.0.0", []))
 
     def test_report_dir_creation_fails(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         fake_rep = FakeReporting()
         fake_rep._report_dir = workspace_root / "reports"
@@ -205,7 +219,9 @@ class TestPhaseBuild:
         tm.fail(orchestrator.phase_build(workspace_root, "1.0.0", []))
 
     def test_with_make_failure(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         def _fake_build_targets(*a: t.Scalar, **kw: t.Scalar) -> list[tuple[str, Path]]:
             del a, kw

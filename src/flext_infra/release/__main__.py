@@ -19,7 +19,10 @@ from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 
 
 def _resolve_version(
-    version_arg: str, bump_arg: str, interactive: int, root_path: Path,
+    version_arg: str,
+    bump_arg: str,
+    interactive: int,
+    root_path: Path,
 ) -> str:
     """Determine the target release version based on arguments."""
     if version_arg:

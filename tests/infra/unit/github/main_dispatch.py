@@ -51,7 +51,9 @@ class TestRunPrWorkspace:
         assert run_pr_workspace(["--workspace-root", str(tmp_path)]) == 1
 
     def test_with_failures(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
             orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
@@ -62,7 +64,9 @@ class TestRunPrWorkspace:
         assert run_pr_workspace(["--workspace-root", str(tmp_path)]) == 1
 
     def test_with_projects(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
             orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
@@ -90,7 +94,9 @@ class TestRunPrWorkspace:
         assert mgr.orchestrate_calls[0]["branch"] == "feature/test"
 
     def test_with_checkpoint(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
             orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
@@ -102,7 +108,9 @@ class TestRunPrWorkspace:
         assert mgr.orchestrate_calls[0]["checkpoint"] is True
 
     def test_with_fail_fast(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
             orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(
@@ -114,7 +122,9 @@ class TestRunPrWorkspace:
         assert mgr.orchestrate_calls[0]["fail_fast"] is True
 
     def test_with_pr_args(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         mgr = self._stub(
             orchestrate_returns=r[m.Infra.Github.PrOrchestrationResult].ok(

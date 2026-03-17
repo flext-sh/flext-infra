@@ -11,7 +11,8 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
     def test_detector_initialization(self) -> None:
         detector = FlextInfraRuntimeDevDependencyDetector()
         tm.that(
-            detector.__class__.__name__, eq="FlextInfraRuntimeDevDependencyDetector",
+            detector.__class__.__name__,
+            eq="FlextInfraRuntimeDevDependencyDetector",
         )
 
     def test_detector_has_required_services(self) -> None:

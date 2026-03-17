@@ -26,7 +26,9 @@ class FlextInfraMypyGate(FlextInfraGate):
     @override
     @override
     def check(
-        self, project_dir: Path, ctx: FlextInfraGateContext,
+        self,
+        project_dir: Path,
+        ctx: FlextInfraGateContext,
     ) -> m.Infra.GateExecution:
         _ = u
         started = time.monotonic()

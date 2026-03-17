@@ -49,7 +49,8 @@ class FlextInfraUtilitiesPatterns:
     """Match markdown links capturing only the URL (group 1)."""
 
     HEADING_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE,
+        r"^#{1,6}\s+(.+?)\s*$",
+        re.MULTILINE,
     )
     """Match any markdown heading (h1-h6), capturing the text."""
 
@@ -86,7 +87,9 @@ class FlextInfraUtilitiesPatterns:
 
         """
         pattern_obj: re.Pattern[str] | None = getattr(
-            FlextInfraUtilitiesPatterns, pattern_name, None,
+            FlextInfraUtilitiesPatterns,
+            pattern_name,
+            None,
         )
         if not FlextInfraUtilitiesPatterns._is_str_pattern(pattern_obj):
             return False

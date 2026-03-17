@@ -40,44 +40,60 @@ class TestBuilderScope:
         return FlextInfraDocBuilder()
 
     def test_build_scope_with_mkdocs_config(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path,
+        self,
+        builder: FlextInfraDocBuilder,
+        tmp_path: Path,
     ) -> None:
         """Test _build_scope with mkdocs.yml present."""
         (tmp_path / "mkdocs.yml").write_text("site_name: Test\n")
         scope = m.Infra.Docs.FlextInfraDocScope(
-            name="test", path=tmp_path, report_dir=tmp_path / "reports",
+            name="test",
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
         )
         report = builder._build_scope(scope)
         tm.that(report.scope, eq="test")
 
     def test_build_scope_without_mkdocs_config(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path,
+        self,
+        builder: FlextInfraDocBuilder,
+        tmp_path: Path,
     ) -> None:
         """Test _build_scope without mkdocs.yml returns SKIP."""
         scope = m.Infra.Docs.FlextInfraDocScope(
-            name="test", path=tmp_path, report_dir=tmp_path / "reports",
+            name="test",
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
         )
         report = builder._build_scope(scope)
         tm.that(report.result, eq="SKIP")
 
     def test_run_mkdocs_no_config(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path,
+        self,
+        builder: FlextInfraDocBuilder,
+        tmp_path: Path,
     ) -> None:
         """Test _run_mkdocs returns SKIP when mkdocs.yml not found."""
         scope = m.Infra.Docs.FlextInfraDocScope(
-            name="test", path=tmp_path, report_dir=tmp_path / "reports",
+            name="test",
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
         )
         report = builder._run_mkdocs(scope)
         tm.that(report.result, eq="SKIP")
         tm.that("mkdocs.yml not found" in report.reason, eq=True)
 
     def test_run_mkdocs_with_command_failure(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path,
+        self,
+        builder: FlextInfraDocBuilder,
+        tmp_path: Path,
     ) -> None:
         """Test _run_mkdocs handles command failures."""
         (tmp_path / "mkdocs.yml").write_text("site_name: Test\n")
         scope = m.Infra.Docs.FlextInfraDocScope(
-            name="test", path=tmp_path, report_dir=tmp_path / "reports",
+            name="test",
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
         )
         report = builder._run_mkdocs(scope)
         tm.that(report.scope, eq="test")
@@ -92,7 +108,9 @@ class TestBuilderScope:
         """Test _run_mkdocs returns OK when exit_code is 0."""
         (tmp_path / "mkdocs.yml").write_text("site_name: Test\n")
         scope = m.Infra.Docs.FlextInfraDocScope(
-            name="test", path=tmp_path, report_dir=tmp_path / "reports",
+            name="test",
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
         )
         mock_output = SimpleNamespace(exit_code=0, stdout="Build successful", stderr="")
         command_output = m.Infra.CommandOutput(
@@ -107,13 +125,17 @@ class TestBuilderScope:
         tm.that("build succeeded" in report.reason, eq=True)
 
     def test_write_reports_creates_json_and_markdown(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path,
+        self,
+        builder: FlextInfraDocBuilder,
+        tmp_path: Path,
     ) -> None:
         """Test _write_reports creates both JSON and markdown files."""
         report_dir = tmp_path / "reports"
         report_dir.mkdir(parents=True, exist_ok=True)
         scope = m.Infra.Docs.FlextInfraDocScope(
-            name="test", path=tmp_path, report_dir=report_dir,
+            name="test",
+            path=tmp_path,
+            report_dir=report_dir,
         )
         report = m.Infra.Docs.DocsPhaseReport(
             phase="build",
@@ -135,7 +157,8 @@ class TestBuilderScope:
         """Test build returns failure when scope building fails."""
 
         def mock_build_scopes(
-            *args: t.Scalar, **kwargs: t.Scalar,
+            *args: t.Scalar,
+            **kwargs: t.Scalar,
         ) -> r[list[m.Infra.Docs.FlextInfraDocScope]]:
             return r[list[m.Infra.Docs.FlextInfraDocScope]].fail("Scope error")
 
@@ -144,7 +167,9 @@ class TestBuilderScope:
         tm.fail(result, has="Scope error")
 
     def test_build_multiple_scopes(
-        self, builder: FlextInfraDocBuilder, tmp_path: Path,
+        self,
+        builder: FlextInfraDocBuilder,
+        tmp_path: Path,
     ) -> None:
         """Test build returns multiple reports for multiple scopes."""
         result = builder.build(tmp_path, projects="proj1,proj2,proj3")

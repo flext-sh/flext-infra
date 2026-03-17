@@ -58,7 +58,8 @@ class TestParseGitmodules:
         tm.that("flext-core" in result, eq=True)
         tm.that("flext-api" in result, eq=True)
         tm.that(
-            result["flext-core"].ssh_url, eq="git@github.com:flext-sh/flext-core.git",
+            result["flext-core"].ssh_url,
+            eq="git@github.com:flext-sh/flext-core.git",
         )
         tm.that(result["flext-core"].https_url.startswith("https://"), eq=True)
 

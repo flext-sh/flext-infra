@@ -36,7 +36,8 @@ class TestDetectorRunFailures:
         deps.discovery_failure = "discovery failed"
         error = tm.fail(_setup_detector(monkeypatch, tmp_path, deps).run([]))
         tm.that(
-            "discovery failed" in error or "project discovery failed" in error, eq=True,
+            "discovery failed" in error or "project discovery failed" in error,
+            eq=True,
         )
 
     def test_run_with_deptry_failure(

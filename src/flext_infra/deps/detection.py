@@ -536,7 +536,8 @@ def discover_project_paths(
 ) -> r[list[Path]]:
     """Discover project paths with pyproject.toml in workspace."""
     return _service.discover_project_paths(
-        workspace_root, projects_filter=projects_filter,
+        workspace_root,
+        projects_filter=projects_filter,
     )
 
 

@@ -64,7 +64,9 @@ class TestSyncMethodEdgeCases:
         tm.fail(service.sync(tmp_path))
 
     def test_sync_with_workspace_mode_and_gitmodules(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -107,7 +109,9 @@ class TestSyncMethodEdgeCases:
         tm.that(service.sync(project).is_success, eq=True)
 
     def test_sync_with_synthesized_repo_map(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
             '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
@@ -146,7 +150,9 @@ class TestSyncMethodEdgeCases:
         tm.that(service.sync(tmp_path).is_success, eq=True)
 
     def test_sync_missing_repo_mapping(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
             '[tool.poetry.dependencies]\nflext-core = { path = "../flext-core" }\n',
@@ -173,7 +179,9 @@ class TestSyncMethodEdgeCases:
         tm.fail(service.sync(tmp_path))
 
     def test_sync_symlink_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()

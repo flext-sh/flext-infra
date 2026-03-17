@@ -147,7 +147,9 @@ class TestSyncOne:
         tm.that(pyproject.read_text(encoding="utf-8"), contains="old")
 
     def test_sync_one_write_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[tool.pyright]\nextraPaths = []\n", encoding="utf-8")
@@ -161,7 +163,9 @@ class TestSyncOne:
             return r[bool].fail("write error")
 
         monkeypatch.setattr(
-            extra_paths.FlextInfraUtilitiesToml, "write_document", _broken_write,
+            extra_paths.FlextInfraUtilitiesToml,
+            "write_document",
+            _broken_write,
         )
         tm.fail(_manager().sync_one(pyproject, is_root=True), has="write error")
 

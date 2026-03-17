@@ -370,7 +370,8 @@ class FlextInfraRefactorEngine:
             )
             and not any(
                 fnmatch.fnmatch(
-                    str(file_path.relative_to(project_path)), ignore_pattern,
+                    str(file_path.relative_to(project_path)),
+                    ignore_pattern,
                 )
                 for ignore_pattern in ignore_patterns
             )

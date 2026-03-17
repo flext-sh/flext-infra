@@ -34,7 +34,8 @@ class _OutputRecorder:
 
 
 def test_main_project_invalid_toml(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     (tmp_path / "pyproject.toml").write_text('[project]\nname = "flext-workspace"\n')
     project_dir = tmp_path / "flext-core"
@@ -78,7 +79,8 @@ def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_main_project_non_string_name(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     (tmp_path / "pyproject.toml").write_text('[project]\nname = "flext-workspace"\n')
     project_dir = tmp_path / "flext-core"
@@ -144,7 +146,8 @@ def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_workspace_root_fallback(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     deep = tmp_path / "a" / "b" / "c" / "d" / "e" / "f"
     deep.mkdir(parents=True)
@@ -183,7 +186,9 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         _discover_none,
     )
     monkeypatch.setattr(
-        FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_changes,
+        FlextInfraDependencyPathSync,
+        "rewrite_dep_paths",
+        _rewrite_changes,
     )
     monkeypatch.setattr(path_sync_module, "output", recorder)
     tm.that(path_sync_module.main(), eq=0)
@@ -217,7 +222,9 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         _discover_none,
     )
     monkeypatch.setattr(
-        FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_changes,
+        FlextInfraDependencyPathSync,
+        "rewrite_dep_paths",
+        _rewrite_changes,
     )
     monkeypatch.setattr(path_sync_module, "output", recorder)
     tm.that(path_sync_module.main(), eq=0)

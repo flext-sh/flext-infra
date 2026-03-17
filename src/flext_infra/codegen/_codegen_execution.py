@@ -70,7 +70,8 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
         )
         inventory_json.write_text(
             inventory_adapter.dump_json(
-                {"duplicate_groups": duplicate_groups}, by_alias=True,
+                {"duplicate_groups": duplicate_groups},
+                by_alias=True,
             ).decode(c.Infra.Encoding.DEFAULT),
             encoding=c.Infra.Encoding.DEFAULT,
         )

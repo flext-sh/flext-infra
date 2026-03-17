@@ -243,13 +243,16 @@ class StubProjectInfo(m.Infra.ProjectInfo):
         "test-project"
     )
     path: Annotated[
-        Path, Field(default=Path("/tmp/test-project"), description="Project path"),
+        Path,
+        Field(default=Path("/tmp/test-project"), description="Project path"),
     ] = Path("/tmp/test-project")
     stack: Annotated[
-        str, Field(default="python", description="Primary technology stack"),
+        str,
+        Field(default="python", description="Primary technology stack"),
     ] = "python"
     has_tests: Annotated[
-        bool, Field(default=False, description="Project has tests"),
+        bool,
+        Field(default=False, description="Project has tests"),
     ] = False
     has_src: Annotated[bool, Field(default=True, description="Project has source")] = (
         True

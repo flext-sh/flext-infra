@@ -121,7 +121,8 @@ class StubSyncer:
     """Stub for FlextInfraWorkflowSyncer used in CLI tests."""
 
     def __init__(
-        self, sync_returns: r[list[m.Infra.Github.SyncOperation]] | None = None,
+        self,
+        sync_returns: r[list[m.Infra.Github.SyncOperation]] | None = None,
     ) -> None:
         self._sync_returns = (
             sync_returns

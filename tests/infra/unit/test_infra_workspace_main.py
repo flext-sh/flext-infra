@@ -21,7 +21,10 @@ def _cli(workspace: Path) -> FlextInfraUtilitiesCli.CliArgs:
 
 def _cmd_out(code: int) -> m.Infra.CommandOutput:
     return m.Infra.CommandOutput(
-        stdout="", stderr="", exit_code=code, duration=0.0,
+        stdout="",
+        stderr="",
+        exit_code=code,
+        duration=0.0,
     )
 
 
@@ -189,7 +192,9 @@ class TestRunMigrate:
             (
                 r[list[m.Infra.MigrationResult]].ok([
                     m.Infra.MigrationResult(
-                        project="test", errors=[], changes=[],
+                        project="test",
+                        errors=[],
+                        changes=[],
                     ),
                 ]),
                 0,
@@ -227,7 +232,9 @@ class TestRunMigrate:
     ) -> None:
         mrs: list[m.Infra.MigrationResult] = [
             m.Infra.MigrationResult(
-                project="p1", errors=["Error 1"], changes=[],
+                project="p1",
+                errors=["Error 1"],
+                changes=[],
             ),
             m.Infra.MigrationResult(project="p2", errors=[], changes=[]),
         ]

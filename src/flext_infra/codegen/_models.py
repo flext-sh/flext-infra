@@ -31,7 +31,8 @@ class FlextInfraCodegenModels:
             ),
         ]
         fixable: Annotated[
-            bool, Field(description="Whether this violation can be auto-fixed"),
+            bool,
+            Field(description="Whether this violation can be auto-fixed"),
         ]
 
     class CensusReport(FlextModels.ArbitraryTypesModel):
@@ -47,7 +48,8 @@ class FlextInfraCodegenModels:
         ]
         total: Annotated[int, Field(ge=0, description="Total violation count")]
         fixable: Annotated[
-            int, Field(ge=0, description="Count of auto-fixable violations"),
+            int,
+            Field(ge=0, description="Count of auto-fixable violations"),
         ]
 
     class ScaffoldResult(FlextModels.ArbitraryTypesModel):
@@ -129,7 +131,8 @@ class FlextInfraCodegenModels:
         name: Annotated[str, Field(min_length=1, description="Check identifier")]
         passed: Annotated[bool, Field(description="Whether check passed")]
         detail: Annotated[
-            str, Field(default="", description="Human-readable check detail"),
+            str,
+            Field(default="", description="Human-readable check detail"),
         ]
         critical: Annotated[bool, Field(description="Whether failure is critical")]
 
@@ -139,12 +142,14 @@ class FlextInfraCodegenModels:
         project: Annotated[str, Field(min_length=1, description="Project name")]
         violations_total: Annotated[int, Field(ge=0, description="Total violations")]
         fixable_violations: Annotated[
-            int, Field(ge=0, description="Auto-fixable violations"),
+            int,
+            Field(ge=0, description="Auto-fixable violations"),
         ]
         validator_passed: Annotated[bool, Field(description="Whether validator passed")]
         mro_failures: Annotated[int, Field(ge=0, description="MRO failure count")]
         layer_violations: Annotated[
-            int, Field(ge=0, description="Layer violation count"),
+            int,
+            Field(ge=0, description="Layer violation count"),
         ]
         cross_project_reference_violations: Annotated[
             int,

@@ -54,20 +54,26 @@ class TestDetectorBasicDetection:
     """Tests for basic workspace detection scenarios."""
 
     def test_detects_with_parent_git(
-        self, detector: FlextInfraWorkspaceDetector, tmp_path: Path,
+        self,
+        detector: FlextInfraWorkspaceDetector,
+        tmp_path: Path,
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
         tm.ok(detector.detect(project_root))
 
     def test_standalone_without_parent_git(
-        self, detector: FlextInfraWorkspaceDetector, tmp_path: Path,
+        self,
+        detector: FlextInfraWorkspaceDetector,
+        tmp_path: Path,
     ) -> None:
         project_root = tmp_path / "project"
         project_root.mkdir()
         tm.ok(detector.detect(project_root), eq=WorkspaceMode.STANDALONE)
 
     def test_handles_git_command_errors(
-        self, detector: FlextInfraWorkspaceDetector, tmp_path: Path,
+        self,
+        detector: FlextInfraWorkspaceDetector,
+        tmp_path: Path,
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
         tm.ok(detector.detect(project_root))

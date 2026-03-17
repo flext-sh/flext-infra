@@ -38,7 +38,9 @@ class _DepsStub:
         return r[list[Path]].ok(self.project_paths)
 
     def run_deptry(
-        self, project_path: Path, venv_bin: Path,
+        self,
+        project_path: Path,
+        venv_bin: Path,
     ) -> r[tuple[list[dict[str, str]], int]]:
         _ = project_path
         _ = venv_bin
@@ -47,7 +49,9 @@ class _DepsStub:
         return r[tuple[list[dict[str, str]], int]].ok(([], 0))
 
     def build_project_report(
-        self, project_name: str, issues: list[dict[str, str]],
+        self,
+        project_name: str,
+        issues: list[dict[str, str]],
     ) -> _ReportStub:
         _ = project_name
         _ = issues
@@ -99,7 +103,9 @@ def _setup_detector(
     paths = types.SimpleNamespace(workspace_root_from_file=_workspace_root_from_file)
     monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", lambda: paths)
     monkeypatch.setattr(
-        detector_module, "FlextInfraDependencyDetectionService", lambda: deps,
+        detector_module,
+        "FlextInfraDependencyDetectionService",
+        lambda: deps,
     )
     _patch_deptry_exists(monkeypatch, deptry_exists)
     return detector_module.FlextInfraRuntimeDevDependencyDetector()
@@ -135,7 +141,9 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunDetect:
         tmp_path: Path,
     ) -> None:
         result = _setup_detector(
-            monkeypatch, tmp_path, _DepsStub([tmp_path / "proj-a"]),
+            monkeypatch,
+            tmp_path,
+            _DepsStub([tmp_path / "proj-a"]),
         ).run(
             ["--no-pip-check", "--dry-run"],
         )

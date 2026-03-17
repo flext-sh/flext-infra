@@ -18,7 +18,8 @@ class FlextInfraReleaseModels:
         project: Annotated[str, Field(min_length=1, description="Project name")]
         path: Annotated[str, Field(min_length=1, description="Project absolute path")]
         exit_code: Annotated[
-            int, Field(ge=0, description="Exit code returned by make build"),
+            int,
+            Field(ge=0, description="Exit code returned by make build"),
         ]
         log: Annotated[str, Field(min_length=1, description="Build log file path")]
 
@@ -26,7 +27,8 @@ class FlextInfraReleaseModels:
         """Release descriptor with version, tag, and bump metadata."""
 
         version: Annotated[
-            str, Field(min_length=1, description="Semantic version string"),
+            str,
+            Field(min_length=1, description="Semantic version string"),
         ]
         tag: Annotated[str, Field(min_length=1, description="Git tag for release")]
         bump_type: Annotated[str, Field(min_length=1, description="Release bump type")]
@@ -37,7 +39,8 @@ class FlextInfraReleaseModels:
         version: Annotated[str, Field(min_length=1, description="Release version")]
         total: Annotated[int, Field(ge=0, description="Total projects attempted")]
         failures: Annotated[
-            int, Field(ge=0, description="Total projects with non-zero exit"),
+            int,
+            Field(ge=0, description="Total projects with non-zero exit"),
         ]
         records: Annotated[
             Sequence[FlextInfraReleaseModels.BuildRecord],

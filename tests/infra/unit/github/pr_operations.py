@@ -64,7 +64,10 @@ class TestMerge:
     def test_merge_success(self, tmp_path: Path) -> None:
         runner = StubRunner(run_returns=[_ok_cmd()])
         result = _mgr(runner=runner).merge(
-            tmp_path, "42", "feature", release_on_merge=False,
+            tmp_path,
+            "42",
+            "feature",
+            release_on_merge=False,
         )
         tm.ok(result)
         tm.that(result.value["status"], eq="merged")
@@ -84,7 +87,9 @@ class TestMerge:
             ],
         )
         tm.ok(
-            _mgr(runner=runner).merge(tmp_path, "42", "feature", release_on_merge=False),
+            _mgr(runner=runner).merge(
+                tmp_path, "42", "feature", release_on_merge=False
+            ),
         )
 
     def test_merge_selector_same_as_head_no_pr(self, tmp_path: Path) -> None:
@@ -158,7 +163,8 @@ class TestTriggerRelease:
         self._release_setup(tmp_path)
         versioning = StubVersioning(release_tag_returns=r[str].fail("no tag"))
         result = _mgr(versioning=versioning)._trigger_release_if_needed(
-            tmp_path, "feature",
+            tmp_path,
+            "feature",
         )
         tm.ok(result)
         tm.that(result.value["status"], eq="no-release-tag")

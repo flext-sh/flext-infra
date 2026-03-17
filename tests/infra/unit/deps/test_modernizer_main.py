@@ -49,12 +49,18 @@ class TestFlextInfraPyprojectModernizer:
         pyproject.write_text('[project]\nname = "test"\n')
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
         changes = modernizer.process_file(
-            pyproject, canonical_dev=[], dry_run=True, skip_comments=False,
+            pyproject,
+            canonical_dev=[],
+            dry_run=True,
+            skip_comments=False,
         )
         tm.that(len(changes) >= 0, eq=True)
         pyproject.write_text("invalid [[[")
         invalid = modernizer.process_file(
-            pyproject, canonical_dev=[], dry_run=True, skip_comments=False,
+            pyproject,
+            canonical_dev=[],
+            dry_run=True,
+            skip_comments=False,
         )
         tm.that("invalid TOML" in invalid, eq=True)
 
@@ -64,11 +70,17 @@ class TestFlextInfraPyprojectModernizer:
         pyproject.write_text(original)
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
         _ = modernizer.process_file(
-            pyproject, canonical_dev=["pytest"], dry_run=True, skip_comments=False,
+            pyproject,
+            canonical_dev=["pytest"],
+            dry_run=True,
+            skip_comments=False,
         )
         tm.that(pyproject.read_text(), eq=original)
         changes = modernizer.process_file(
-            pyproject, canonical_dev=[], dry_run=True, skip_comments=True,
+            pyproject,
+            canonical_dev=[],
+            dry_run=True,
+            skip_comments=True,
         )
         tm.that(any("banner" in item for item in changes), eq=False)
 
@@ -79,7 +91,10 @@ class TestFlextInfraPyprojectModernizer:
         )
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
         changes = modernizer.process_file(
-            pyproject, canonical_dev=[], dry_run=True, skip_comments=False,
+            pyproject,
+            canonical_dev=[],
+            dry_run=True,
+            skip_comments=False,
         )
         tm.that(any("empty" in item for item in changes), eq=True)
 
@@ -88,14 +103,19 @@ class TestModernizerRunAndMain:
     """Tests run and CLI entrypoint behavior."""
 
     def test_run_with_audit_mode(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[project]\nname = "test"\n')
         doc = tomlkit.document()
         doc["project"] = {"name": "test"}
         args = argparse.Namespace(
-            dry_run=False, audit=True, skip_comments=False, skip_check=True,
+            dry_run=False,
+            audit=True,
+            skip_comments=False,
+            skip_check=True,
         )
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
 
@@ -113,14 +133,19 @@ class TestModernizerRunAndMain:
         )
 
     def test_run_with_poetry_check(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[project]\nname = "test"\n')
         doc = tomlkit.document()
         doc["project"] = {"name": "test"}
         args = argparse.Namespace(
-            dry_run=False, audit=False, skip_comments=False, skip_check=False,
+            dry_run=False,
+            audit=False,
+            skip_comments=False,
+            skip_check=False,
         )
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
 
@@ -145,7 +170,9 @@ class TestModernizerRunAndMain:
         )
 
     def test_run_poetry_check_paths(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[project]\nname = 'test'")

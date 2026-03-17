@@ -314,7 +314,8 @@ def build_parser() -> argparse.ArgumentParser:
         include_apply=True,
     )
     _ = subs[c.Infra.Verbs.RUN].add_argument(
-        "--gates", default=c.Infra.Gates.DEFAULT_CSV,
+        "--gates",
+        default=c.Infra.Gates.DEFAULT_CSV,
     )
     _ = subs[c.Infra.Verbs.RUN].add_argument(
         "--project",

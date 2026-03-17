@@ -40,7 +40,11 @@ def _run_sync(cli: u.Infra.CliArgs, canonical_root: str | None) -> int:
 
 
 def _run_orchestrate(
-    projects: list[str], verb: str, *, fail_fast: bool, make_args: list[str],
+    projects: list[str],
+    verb: str,
+    *,
+    fail_fast: bool,
+    make_args: list[str],
 ) -> int:
     """Execute multi-project orchestration."""
     projects = [p for p in projects if p]
@@ -110,7 +114,9 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     _ = subs["orchestrate"].add_argument(
-        "--verb", required=True, help="Make verb to execute",
+        "--verb",
+        required=True,
+        help="Make verb to execute",
     )
     _ = subs["orchestrate"].add_argument(
         "--fail-fast",

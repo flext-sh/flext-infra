@@ -74,7 +74,9 @@ class TestBuildTargets:
     """Tests for _build_targets."""
 
     def test_includes_root(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         _patch_sel(monkeypatch, FakeSelection())
         targets = _CLS()._build_targets(workspace_root, [])
@@ -83,7 +85,9 @@ class TestBuildTargets:
         tm.that(str(path), eq=str(workspace_root))
 
     def test_deduplication(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         fake_sel = FakeSelection()
         fake_sel._resolve_result = r[list[SimpleNamespace]].ok([
@@ -134,7 +138,11 @@ class TestGenerateNotes:
         _patch_sel(monkeypatch, FakeSelection())
         notes_path = workspace_root / "notes.md"
         result = _CLS()._generate_notes(
-            workspace_root, "1.0.0", "v1.0.0", [], notes_path,
+            workspace_root,
+            "1.0.0",
+            "v1.0.0",
+            [],
+            notes_path,
         )
         tm.ok(result)
         tm.that(notes_path.exists(), eq=True)
@@ -164,7 +172,9 @@ class TestBumpNextDev:
     """Tests for _bump_next_dev."""
 
     def test_bumps_version(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         def _versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
             del a, kw
@@ -203,7 +213,9 @@ class TestDispatchPhase:
 
     @staticmethod
     def _dispatch(
-        orch: FlextInfraReleaseOrchestrator, phase: str, root: Path,
+        orch: FlextInfraReleaseOrchestrator,
+        phase: str,
+        root: Path,
     ) -> r[bool]:
         return orch._dispatch_phase(
             phase,
@@ -222,7 +234,9 @@ class TestDispatchPhase:
         tm.that(result.error, contains="unknown phase")
 
     def test_routes_validate(
-        self, workspace_root: Path, monkeypatch: MonkeyPatch,
+        self,
+        workspace_root: Path,
+        monkeypatch: MonkeyPatch,
     ) -> None:
         def _phase_validate(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
             del a, kw

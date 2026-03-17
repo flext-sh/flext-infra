@@ -60,7 +60,9 @@ def _fake_fixer_cls(
             _ = _kw
 
         def run(
-            self, _projects: list[str] | None = None, **kw: t.Scalar,
+            self,
+            _projects: list[str] | None = None,
+            **kw: t.Scalar,
         ) -> r[list[str]]:
             _ = _projects, kw
             return run_result
@@ -169,10 +171,16 @@ class TestRunCLIExtended:
         tm.that(run_cli([]), eq=1)
 
     def test_with_relative_reports_dir(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         gate = m.Infra.GateResult(
-            gate="lint", project="p", passed=True, errors=[], duration=0.0,
+            gate="lint",
+            project="p",
+            passed=True,
+            errors=[],
+            duration=0.0,
         )
         gate_exec = GateExecution(result=gate, issues=[], raw_output="")
         project = ProjectResult(project="p", gates={"lint": gate_exec})

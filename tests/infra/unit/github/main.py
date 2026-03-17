@@ -35,7 +35,9 @@ class TestRunWorkflows:
         assert run_workflows(["--workspace-root", str(tmp_path)]) == 1
 
     def test_with_apply_flag(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         syncer = StubSyncer(sync_returns=r[list[SyncOperation]].ok([]))
         monkeypatch.setattr(github_main, "FlextInfraWorkflowSyncer", lambda: syncer)
@@ -43,7 +45,9 @@ class TestRunWorkflows:
         assert syncer.sync_workspace_calls[0]["apply"] is True
 
     def test_with_prune_flag(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         syncer = StubSyncer(sync_returns=r[list[SyncOperation]].ok([]))
         monkeypatch.setattr(github_main, "FlextInfraWorkflowSyncer", lambda: syncer)
@@ -86,7 +90,9 @@ class TestRunLint:
         assert linter.lint_calls[0]["report_path"] == report
 
     def test_with_strict_flag(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         linter = self._lint_ok()
         monkeypatch.setattr(github_main, "FlextInfraWorkflowLinter", lambda: linter)

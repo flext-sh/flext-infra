@@ -27,7 +27,9 @@ class FlextInfraBanditGate(FlextInfraGate):
 
     @override
     def check(
-        self, project_dir: Path, ctx: FlextInfraGateContext,
+        self,
+        project_dir: Path,
+        ctx: FlextInfraGateContext,
     ) -> m.Infra.GateExecution:
         _ = ctx
         started = time.monotonic()
@@ -65,7 +67,8 @@ class FlextInfraBanditGate(FlextInfraGate):
                     code=self._as_str(raw_item.get("test_id", "")),
                     message=self._as_str(raw_item.get("issue_text", "")),
                     severity=self._as_str(
-                        raw_item.get("issue_severity", "MEDIUM"), "MEDIUM",
+                        raw_item.get("issue_severity", "MEDIUM"),
+                        "MEDIUM",
                     ).lower(),
                 )
                 for raw_item in self._to_mapping_list(bandit_data.get("results", []))

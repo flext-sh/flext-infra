@@ -20,7 +20,9 @@ class TestWorkspaceRootFromEnv:
         )
 
     def test_env_set_valid(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         project = tmp_path / "project"
         project.mkdir()
@@ -31,7 +33,9 @@ class TestWorkspaceRootFromEnv:
         tm.that(str(result), eq=str(tmp_path))
 
     def test_env_set_nonexistent(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "/nonexistent/path")
         tm.that(
@@ -40,7 +44,9 @@ class TestWorkspaceRootFromEnv:
         )
 
     def test_env_set_not_parent(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -81,7 +87,9 @@ class TestWorkspaceRootFromParents:
 
 class TestIsWorkspaceMode:
     def test_standalone_mode(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("FLEXT_STANDALONE", "1")
         is_ws, root = FlextInfraInternalDependencySyncService().is_workspace_mode(
@@ -91,7 +99,9 @@ class TestIsWorkspaceMode:
         tm.that(root, eq=None)
 
     def test_env_workspace_root(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         project = tmp_path / "project"
         project.mkdir()
@@ -104,7 +114,9 @@ class TestIsWorkspaceMode:
         tm.that(str(root), eq=str(tmp_path))
 
     def test_git_superproject(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("FLEXT_STANDALONE", "")
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
@@ -123,7 +135,9 @@ class TestIsWorkspaceMode:
         tm.that(str(root), eq=str(tmp_path))
 
     def test_heuristic_gitmodules(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         (tmp_path / ".gitmodules").touch()
         project = tmp_path / "sub"
@@ -145,7 +159,9 @@ class TestIsWorkspaceMode:
         tm.that(str(root), eq=str(tmp_path))
 
     def test_no_workspace(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         project = tmp_path / "isolated"
         project.mkdir()

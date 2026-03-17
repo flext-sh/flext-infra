@@ -23,7 +23,8 @@ class TestFlextInfraTomlRead:
     def test_read_existing_file(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "test.toml"
         toml_file.write_text(
-            '[section]\nkey = "value"\nnumber = 42\n', encoding="utf-8",
+            '[section]\nkey = "value"\nnumber = 42\n',
+            encoding="utf-8",
         )
         service = FlextInfraUtilitiesToml()
         doc = service.read(toml_file)
@@ -138,7 +139,8 @@ class TestFlextInfraTomlDocument:
         assert isinstance(verify_section_obj, Table)
         verify_section = verify_section_obj
         tm.that(
-            cast("tt.Tests.Matcher.MatcherKwargValue", verify_section["key"]), eq="new",
+            cast("tt.Tests.Matcher.MatcherKwargValue", verify_section["key"]),
+            eq="new",
         )
 
 

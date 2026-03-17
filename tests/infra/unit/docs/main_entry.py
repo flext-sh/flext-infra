@@ -58,7 +58,8 @@ class TestMainRouting:
         tm.that(main(), eq=0)
 
     def test_main_with_no_command_prints_help(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["prog"])
         tm.that(main(), eq=1)

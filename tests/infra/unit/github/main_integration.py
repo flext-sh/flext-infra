@@ -47,7 +47,9 @@ class TestMain:
             sys.argv = original
 
     def test_workflows_subcommand(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         syncer = StubSyncer(sync_returns=r[list[SyncOperation]].ok([]))
         monkeypatch.setattr(github_main, "FlextInfraWorkflowSyncer", lambda: syncer)
@@ -59,7 +61,9 @@ class TestMain:
             sys.argv = original
 
     def test_lint_subcommand(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         linter = StubLinter(
             lint_returns=r[m.Infra.Github.WorkflowLintResult].ok(
@@ -75,7 +79,9 @@ class TestMain:
             sys.argv = original
 
     def test_pr_subcommand(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(github_main, "pr_main", lambda: 0)
         original = sys.argv.copy()
