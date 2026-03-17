@@ -3,24 +3,19 @@
 from __future__ import annotations
 
 import argparse
-import os
-import re
-import sys
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
 from flext_core import r, s, t
-from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
+from pydantic import BaseModel, JsonValue
 
 from flext_infra import (
     c,
     m,
     output,
-    p,
-    t as t_infra,
     u,
 )
 from flext_infra.check._base_gate import FlextInfraGateContext
@@ -66,20 +61,6 @@ class FlextInfraWorkspaceChecker(s):
             )
 
     @staticmethod
-    def _dirs_with_py(project_dir: Path, dirs: list[str]) -> list[str]:
-        out: list[str] = []
-        for directory in dirs:
-            path = project_dir / directory
-            if not path.is_dir():
-                continue
-            if next(path.rglob(c.Infra.Extensions.PYTHON_GLOB), None) or next(
-                path.rglob("*.pyi"),
-                None,
-            ):
-                out.append(directory)
-        return out
-
-    @staticmethod
     def generate_sarif_report(
         results: list[m.Infra.Check.ProjectResult],
         gates: list[str],
@@ -119,7 +100,9 @@ class FlextInfraWorkspaceChecker(s):
 
     def format(self, project_dir: Path) -> r[m.Infra.Check.GateResult]:
         """Run format checks for one project."""
-        return r[m.Infra.Check.GateResult].ok(self._run_ruff_format(project_dir).result)
+        return r[m.Infra.Check.GateResult].ok(
+            self._run_gate(c.Infra.Gates.FORMAT, project_dir).result,
+        )
 
     def generate_markdown_report(
         self,
@@ -132,7 +115,9 @@ class FlextInfraWorkspaceChecker(s):
 
     def lint(self, project_dir: Path) -> r[m.Infra.Check.GateResult]:
         """Run lint checks for one project."""
-        return r[m.Infra.Check.GateResult].ok(self._run_ruff_lint(project_dir).result)
+        return r[m.Infra.Check.GateResult].ok(
+            self._run_gate(c.Infra.Gates.LINT, project_dir).result,
+        )
 
     def run(
         self,
@@ -232,28 +217,32 @@ class FlextInfraWorkspaceChecker(s):
                 )
         return r[list[m.Infra.Check.ProjectResult]].ok(results)
 
-    def _build_gate_result(
+    def _gate_ctx(self, reports_dir: Path | None = None) -> FlextInfraGateContext:
+        return FlextInfraGateContext(
+            workspace_root=self._workspace_root,
+            reports_dir=reports_dir or self._default_reports_dir,
+        )
+
+    def _run_gate(
         self,
-        *,
-        gate: str,
-        project: str,
-        passed: bool,
-        issues: list[m.Infra.Check.Issue],
-        duration: float,
-        raw_output: str,
+        gate_id: str,
+        project_dir: Path,
+        reports_dir: Path | None = None,
     ) -> m.Infra.Check.GateExecution:
-        model = m.Infra.Check.GateResult(
-            gate=gate,
-            project=project,
-            passed=passed,
-            errors=[issue.formatted for issue in issues],
-            duration=round(duration, 3),
-        )
-        return m.Infra.Check.GateExecution(
-            result=model,
-            issues=issues,
-            raw_output=raw_output,
-        )
+        gate = self._registry.create(gate_id, self._workspace_root)
+        if gate is None:
+            return m.Infra.Check.GateExecution(
+                result=m.Infra.Check.GateResult(
+                    gate=gate_id,
+                    project=project_dir.name,
+                    passed=False,
+                    errors=[f"{gate_id} gate not registered"],
+                    duration=0.0,
+                ),
+                issues=[],
+                raw_output=f"{gate_id} gate not registered",
+            )
+        return gate.check(project_dir, self._gate_ctx(reports_dir))
 
     def _check_project(
         self,
@@ -262,29 +251,13 @@ class FlextInfraWorkspaceChecker(s):
         reports_dir: Path,
     ) -> m.Infra.Check.ProjectResult:
         result = m.Infra.Check.ProjectResult(project=project_dir.name)
-        ctx = FlextInfraGateContext(
-            workspace_root=self._workspace_root,
-            reports_dir=reports_dir,
-        )
-        runners: Mapping[str, Callable[[], m.Infra.Check.GateExecution]] = {
-            c.Infra.Gates.LINT: lambda: self._run_ruff_lint(project_dir),
-            c.Infra.Gates.FORMAT: lambda: self._run_ruff_format(project_dir),
-            c.Infra.Gates.PYREFLY: lambda: self._run_pyrefly(project_dir, reports_dir),
-            c.Infra.Gates.MYPY: lambda: self._run_mypy(project_dir),
-            c.Infra.Gates.PYRIGHT: lambda: self._run_pyright(project_dir),
-            c.Infra.Gates.SECURITY: lambda: self._run_bandit(project_dir),
-            c.Infra.Gates.MARKDOWN: lambda: self._run_markdown(project_dir),
-            c.Infra.Gates.GO: lambda: self._run_go(project_dir),
-        }
+        ctx = self._gate_ctx(reports_dir)
         for gate in gates:
             gate_instance = self._registry.create(gate, self._workspace_root)
             if gate_instance is not None:
                 execution = gate_instance.check(project_dir, ctx)
             else:
-                runner = runners.get(gate)
-                if runner is None:
-                    continue
-                execution = runner()
+                continue
             result.gates[gate] = execution
             output.gate_result(
                 gate,
@@ -294,666 +267,39 @@ class FlextInfraWorkspaceChecker(s):
             )
         return result
 
-    def _collect_markdown_files(self, project_dir: Path) -> list[Path]:
-        files: list[Path] = []
-        for path in project_dir.rglob("*.md"):
-            if any(part in c.Infra.Excluded.CHECK_EXCLUDED_DIRS for part in path.parts):
-                continue
-            files.append(path)
-        return files
-
-    def _existing_check_dirs(self, project_dir: Path) -> list[str]:
-        dirs = (
-            c.Infra.Check.DEFAULT_CHECK_DIRS
-            if project_dir.resolve() == self._workspace_root.resolve()
-            else c.Infra.Check.CHECK_DIRS_SUBPROJECT
-        )
-        return [directory for directory in dirs if (project_dir / directory).is_dir()]
-
     def _resolve_workspace_root(self, workspace_root: Path | None) -> Path:
         if workspace_root is not None:
             return workspace_root.resolve()
         result = u.Infra.workspace_root()
         return result.value if result.is_success else Path.cwd().resolve()
 
-    @staticmethod
-    def _to_mapping(
-        value: t_infra.Infra.InfraValue,
-    ) -> dict[str, t_infra.Infra.InfraValue]:
-        if not isinstance(value, Mapping):
-            return {}
-        return TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(value)
-
-    @classmethod
-    def _to_mapping_list(
-        cls,
-        value: t_infra.Infra.InfraValue,
-    ) -> list[dict[str, t_infra.Infra.InfraValue]]:
-        if not isinstance(value, list):
-            return []
-        typed_items = TypeAdapter(list[t_infra.Infra.InfraValue]).validate_python(value)
-        normalized: list[dict[str, t_infra.Infra.InfraValue]] = []
-        for raw_item in typed_items:
-            try:
-                typed_item = TypeAdapter(
-                    dict[str, t_infra.Infra.InfraValue]
-                ).validate_python(raw_item)
-            except ValidationError:
-                continue
-            normalized.append(typed_item)
-        return normalized
-
-    @staticmethod
-    def _as_int(value: t_infra.Infra.InfraValue, default: int = 0) -> int:
-        if isinstance(value, int):
-            return value
-        if isinstance(value, float):
-            return int(value)
-        if isinstance(value, str):
-            try:
-                return int(value)
-            except ValueError:
-                return default
-        return default
-
-    @staticmethod
-    def _as_str(value: t_infra.Infra.InfraValue, default: str = "") -> str:
-        return value if isinstance(value, str) else default
-
-    @staticmethod
-    def _nested_mapping(
-        data: dict[str, t_infra.Infra.InfraValue],
-        *keys: str,
-    ) -> dict[str, t_infra.Infra.InfraValue]:
-        current: t_infra.Infra.InfraValue = data
-        for key in keys:
-            if not isinstance(current, Mapping):
-                return {}
-            typed_current = TypeAdapter(
-                dict[str, t_infra.Infra.InfraValue]
-            ).validate_python(current)
-            if key not in typed_current:
-                return {}
-            child: t_infra.Infra.InfraValue = typed_current[key]
-            if child is None:
-                return {}
-            current = child
-        if not isinstance(current, Mapping):
-            return {}
-        return TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(current)
-
-    @classmethod
-    def _nested_int(
-        cls,
-        data: dict[str, t_infra.Infra.InfraValue],
-        *keys: str,
-        default: int = 0,
-    ) -> int:
-        target = cls._nested_mapping(data, *keys[:-1])
-        raw: t_infra.Infra.InfraValue = target.get(keys[-1])
-        if raw is None:
-            return default
-        return cls._as_int(raw, default)
-
-    @classmethod
-    def _result_exit_code(cls, result: p.Infra.CommandOutput) -> int:
-        try:
-            payload = TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(
-                vars(result),
-            )
-        except (TypeError, ValidationError, AttributeError):
-            return 1
-        code = payload.get("exit_code")
-        if code is None:
-            code = payload.get("returncode")
-        if code is None:
-            return 1
-        return cls._as_int(code, 1)
-
-    def _run(
-        self,
-        cmd: list[str],
-        cwd: Path,
-        timeout: int = c.Infra.Timeouts.DEFAULT,
-        env: Mapping[str, str] | None = None,
-    ) -> m.Infra.Core.CommandOutput:
-        result = u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-        if result.is_failure:
-            return m.Infra.Core.CommandOutput(
-                stdout="",
-                stderr=result.error or "command execution failed",
-                exit_code=1,
-            )
-        cmd_output: m.Infra.Core.CommandOutput = result.value
-        return m.Infra.Core.CommandOutput(
-            stdout=cmd_output.stdout,
-            stderr=cmd_output.stderr,
-            exit_code=cmd_output.exit_code,
-            duration=cmd_output.duration,
-        )
-
     def _run_bandit(self, project_dir: Path) -> m.Infra.Check.GateExecution:
-        started = time.monotonic()
-        src_path = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
-        if not src_path.exists():
-            return self._build_gate_result(
-                gate=c.Infra.Gates.SECURITY,
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
-        result = self._run(
-            [
-                sys.executable,
-                "-m",
-                c.Infra.Cli.BANDIT,
-                "-r",
-                c.Infra.Paths.DEFAULT_SRC_DIR,
-                "-f",
-                c.Infra.Cli.OUTPUT_JSON,
-                "-q",
-                "-ll",
-            ],
-            project_dir,
-        )
-        issues: list[m.Infra.Check.Issue] = []
-        bandit_data: dict[str, t_infra.Infra.InfraValue] = {}
-        try:
-            parsed = u.Infra.parse(result.stdout or "{}")
-            if parsed.is_success and isinstance(parsed.value, Mapping):
-                bandit_data = self._to_mapping(parsed.value)
-            raw_results: list[dict[str, t_infra.Infra.InfraValue]] = (
-                self._to_mapping_list(
-                    bandit_data.get("results", []),
-                )
-            )
-            issues.extend(
-                m.Infra.Check.Issue(
-                    file=self._as_str(raw_item.get("filename", "?"), "?"),
-                    line=self._as_int(raw_item.get("line_number", 0)),
-                    column=0,
-                    code=self._as_str(raw_item.get("test_id", "")),
-                    message=self._as_str(raw_item.get("issue_text", "")),
-                    severity=self._as_str(
-                        raw_item.get("issue_severity", "MEDIUM"),
-                        "MEDIUM",
-                    ).lower(),
-                )
-                for raw_item in raw_results
-            )
-        except (TypeError, ValidationError):
-            pass
-        return self._build_gate_result(
-            gate=c.Infra.Gates.SECURITY,
-            project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return self._run_gate(c.Infra.Gates.SECURITY, project_dir)
 
     def _run_go(self, project_dir: Path) -> m.Infra.Check.GateExecution:
-        started = time.monotonic()
-        if not (project_dir / c.Infra.Files.GO_MOD).exists():
-            return self._build_gate_result(
-                gate=c.Infra.Gates.GO,
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
-        issues: list[m.Infra.Check.Issue] = []
-        raw_output = ""
-        vet_result = self._run(
-            [c.Infra.Cli.GOVET, "vet", "./..."],
-            project_dir,
-            timeout=c.Infra.Timeouts.CI,
-        )
-        raw_output = "\n".join(
-            part for part in (vet_result.stdout, vet_result.stderr) if part
-        )
-        for line in (vet_result.stdout + "\n" + vet_result.stderr).splitlines():
-            match = c.Infra.Check.GO_VET_RE.match(line.strip())
-            if not match:
-                continue
-            issues.append(
-                m.Infra.Check.Issue(
-                    file=match.group("file"),
-                    line=int(match.group("line")),
-                    column=int(match.group("col") or 1),
-                    code=c.Infra.Gates.GOVET,
-                    message=match.group("msg"),
-                ),
-            )
-        if self._result_exit_code(vet_result) != 0 and (not issues):
-            issues.append(
-                m.Infra.Check.Issue(
-                    file=".",
-                    line=1,
-                    column=1,
-                    code=c.Infra.Gates.GOVET,
-                    message=(
-                        vet_result.stdout or vet_result.stderr or "go vet failed"
-                    ).strip(),
-                ),
-            )
-        go_files = list(project_dir.rglob("*.go"))
-        if go_files:
-            fmt_result = self._run(
-                [
-                    c.Infra.Cli.GOFMT,
-                    "-l",
-                    *[str(path.relative_to(project_dir)) for path in go_files],
-                ],
-                project_dir,
-                timeout=c.Infra.Timeouts.CI,
-            )
-            fmt_raw_output = "\n".join(
-                part for part in (fmt_result.stdout, fmt_result.stderr) if part
-            )
-            raw_output = "\n".join(
-                part for part in (raw_output, fmt_raw_output) if part
-            )
-            for file_name in fmt_result.stdout.splitlines():
-                cleaned = file_name.strip()
-                if not cleaned:
-                    continue
-                issues.append(
-                    m.Infra.Check.Issue(
-                        file=cleaned,
-                        line=1,
-                        column=1,
-                        code=c.Infra.Gates.GOFMT,
-                        message="File is not gofmt-formatted",
-                    ),
-                )
-        return self._build_gate_result(
-            gate=c.Infra.Gates.GO,
-            project=project_dir.name,
-            passed=len(issues) == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=raw_output,
-        )
+        return self._run_gate(c.Infra.Gates.GO, project_dir)
 
     def _run_markdown(self, project_dir: Path) -> m.Infra.Check.GateExecution:
-        started = time.monotonic()
-        md_files = self._collect_markdown_files(project_dir)
-        if not md_files:
-            return self._build_gate_result(
-                gate=c.Infra.Gates.MARKDOWN,
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
-        cmd = [c.Infra.Cli.MARKDOWNLINT]
-        root_config = self._workspace_root / ".markdownlint.json"
-        local_config = project_dir / ".markdownlint.json"
-        if root_config.exists():
-            cmd.extend(["--config", str(root_config)])
-        elif local_config.exists():
-            cmd.extend(["--config", str(local_config)])
-        cmd.extend(str(path.relative_to(project_dir)) for path in md_files)
-        result = self._run(cmd, project_dir)
-        issues: list[m.Infra.Check.Issue] = []
-        for line in (result.stdout + "\n" + result.stderr).splitlines():
-            match = c.Infra.Check.MARKDOWN_RE.match(line.strip())
-            if not match:
-                continue
-            issues.append(
-                m.Infra.Check.Issue(
-                    file=match.group("file"),
-                    line=int(match.group("line")),
-                    column=int(match.group("col") or 1),
-                    code=match.group("code"),
-                    message=match.group("msg"),
-                ),
-            )
-        if self._result_exit_code(result) != 0 and (not issues):
-            issues.append(
-                m.Infra.Check.Issue(
-                    file=".",
-                    line=1,
-                    column=1,
-                    code=c.Infra.Gates.MARKDOWNLINT,
-                    message=(
-                        result.stdout or result.stderr or "markdownlint failed"
-                    ).strip(),
-                ),
-            )
-        return self._build_gate_result(
-            gate=c.Infra.Gates.MARKDOWN,
-            project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return self._run_gate(c.Infra.Gates.MARKDOWN, project_dir)
 
     def _run_mypy(self, project_dir: Path) -> m.Infra.Check.GateExecution:
-        started = time.monotonic()
-        check_dirs = self._existing_check_dirs(project_dir)
-        mypy_dirs = self._dirs_with_py(project_dir, check_dirs)
-        if not mypy_dirs:
-            return self._build_gate_result(
-                gate=c.Infra.Gates.MYPY,
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
-        proj_py = project_dir / c.Infra.Files.PYPROJECT_FILENAME
-        cfg = (
-            proj_py
-            if proj_py.exists()
-            and "[tool.mypy]" in proj_py.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            else self._workspace_root / c.Infra.Files.PYPROJECT_FILENAME
-        )
-        typings_generated = (
-            self._workspace_root / c.Infra.Directories.TYPINGS / "generated"
-        )
-        mypy_env = os.environ.copy()
-        if typings_generated.is_dir():
-            existing = mypy_env.get("MYPYPATH", "")
-            mypy_env["MYPYPATH"] = str(typings_generated) + (
-                f":{existing}" if existing else ""
-            )
-        result = self._run(
-            [
-                sys.executable,
-                "-m",
-                c.Infra.Cli.MYPY,
-                *mypy_dirs,
-                "--config-file",
-                str(cfg),
-                "--output",
-                c.Infra.Cli.OUTPUT_JSON,
-            ],
-            project_dir,
-            env=mypy_env,
-        )
-        issues: list[m.Infra.Check.Issue] = []
-        for raw_line in (result.stdout or "").splitlines():
-            stripped = raw_line.strip()
-            if not stripped:
-                continue
-            try:
-                line_data = TypeAdapter(
-                    dict[str, t_infra.Infra.InfraValue]
-                ).validate_json(
-                    stripped,
-                )
-            except ValidationError:
-                continue
-            try:
-                severity = self._as_str(
-                    line_data.get("severity", c.Infra.Toml.ERROR),
-                    c.Infra.Toml.ERROR,
-                )
-                if severity in {"error", "warning", "note"}:
-                    issues.append(
-                        m.Infra.Check.Issue(
-                            file=self._as_str(line_data.get("file", "?"), "?"),
-                            line=self._as_int(line_data.get("line", 0)),
-                            column=self._as_int(line_data.get("column", 0)),
-                            code=self._as_str(line_data.get("code", "")),
-                            message=self._as_str(line_data.get("message", "")),
-                            severity=severity,
-                        ),
-                    )
-            except ValidationError:
-                continue
-        return self._build_gate_result(
-            gate=c.Infra.Gates.MYPY,
-            project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return self._run_gate(c.Infra.Gates.MYPY, project_dir)
 
     def _run_pyrefly(
         self,
         project_dir: Path,
         reports_dir: Path,
     ) -> m.Infra.Check.GateExecution:
-        started = time.monotonic()
-        check_dirs = self._existing_check_dirs(project_dir)
-        targets = check_dirs or [c.Infra.Paths.DEFAULT_SRC_DIR]
-        json_file = reports_dir / f"{project_dir.name}-pyrefly.json"
-        cmd = [
-            sys.executable,
-            "-m",
-            c.Infra.Cli.PYREFLY,
-            c.Infra.Cli.RuffCmd.CHECK,
-            *targets,
-            "--config",
-            c.Infra.Files.PYPROJECT_FILENAME,
-            "--output-format",
-            c.Infra.Cli.OUTPUT_JSON,
-            "-o",
-            str(json_file),
-            "--summary=none",
-        ]
-        result = self._run(cmd, project_dir)
-        issues: list[m.Infra.Check.Issue] = []
-        if json_file.exists():
-            try:
-                raw_text = json_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-                parsed = u.Infra.parse(raw_text)
-                if parsed.is_success and isinstance(parsed.value, Mapping):
-                    parsed_map = self._to_mapping(parsed.value)
-                    error_items: list[dict[str, t_infra.Infra.InfraValue]] = (
-                        self._to_mapping_list(parsed_map.get("errors", []))
-                    )
-                elif parsed.is_success and isinstance(parsed.value, list):
-                    error_items = self._to_mapping_list(parsed.value)
-                else:
-                    error_items = []
-                issues.extend(
-                    m.Infra.Check.Issue(
-                        file=self._as_str(item.get("path"), "?"),
-                        line=self._as_int(item.get("line"), 0),
-                        column=self._as_int(item.get("column"), 0),
-                        code=self._as_str(item.get("name"), ""),
-                        message=self._as_str(item.get("description"), ""),
-                        severity=self._as_str(item.get("severity"), c.Infra.Toml.ERROR),
-                    )
-                    for err in error_items
-                    for item in [dict(err)]
-                )
-            except (TypeError, ValidationError):
-                pass
-        if not issues and self._result_exit_code(result) != 0:
-            match = re.search(r"(\d+)\s+errors?", result.stderr + result.stdout)
-            if match:
-                count = int(match.group(1))
-                issues = [
-                    m.Infra.Check.Issue(
-                        file="?",
-                        line=0,
-                        column=0,
-                        code=c.Infra.Gates.PYREFLY,
-                        message=f"Pyrefly reported {count} error(s)",
-                    ),
-                ] * count
-        return self._build_gate_result(
-            gate=c.Infra.Gates.PYREFLY,
-            project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return self._run_gate(c.Infra.Gates.PYREFLY, project_dir, reports_dir)
 
     def _run_pyright(self, project_dir: Path) -> m.Infra.Check.GateExecution:
-        started = time.monotonic()
-        check_dirs = self._dirs_with_py(
-            project_dir,
-            self._existing_check_dirs(project_dir),
-        )
-        if not check_dirs:
-            return self._build_gate_result(
-                gate=c.Infra.Gates.PYRIGHT,
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
-        result = self._run(
-            [sys.executable, "-m", c.Infra.Cli.PYRIGHT, *check_dirs, "--outputjson"],
-            project_dir,
-            timeout=c.Infra.Timeouts.LONG,
-        )
-        issues: list[m.Infra.Check.Issue] = []
-        pyright_parse_result = u.Infra.parse(result.stdout or "{}")
-        pyright_data: dict[str, t_infra.Infra.InfraValue] = self._to_mapping(
-            pyright_parse_result.value if pyright_parse_result.is_success else {},
-        )
-        try:
-            raw_diagnostics: list[dict[str, t_infra.Infra.InfraValue]] = (
-                self._to_mapping_list(
-                    pyright_data.get("generalDiagnostics", []),
-                )
-            )
-            issues.extend(
-                m.Infra.Check.Issue(
-                    file=str(diag.get("file", "?")),
-                    line=self._nested_int(diag, "range", "start", "line") + 1,
-                    column=self._nested_int(diag, "range", "start", "character") + 1,
-                    code=str(diag.get("rule", "")),
-                    message=str(diag.get("message", "")),
-                    severity=str(diag.get("severity", c.Infra.Toml.ERROR)),
-                )
-                for diag in raw_diagnostics
-            )
-        except (TypeError, ValidationError):
-            pass
-        return self._build_gate_result(
-            gate=c.Infra.Gates.PYRIGHT,
-            project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return self._run_gate(c.Infra.Gates.PYRIGHT, project_dir)
 
     def _run_ruff_format(self, project_dir: Path) -> m.Infra.Check.GateExecution:
-        started = time.monotonic()
-        check_dirs = self._existing_check_dirs(project_dir)
-        targets = check_dirs or ["."]
-        result = self._run(
-            [
-                sys.executable,
-                "-m",
-                c.Infra.Cli.RUFF,
-                c.Infra.Cli.RuffCmd.FORMAT,
-                "--check",
-                *targets,
-                "--quiet",
-            ],
-            project_dir,
-        )
-        issues: list[m.Infra.Check.Issue] = []
-        if self._result_exit_code(result) != 0 and result.stdout.strip():
-            seen: set[str] = set()
-            for line in result.stdout.strip().splitlines():
-                path = line.strip()
-                if not path:
-                    continue
-                match = c.Infra.Check.RUFF_FORMAT_FILE_RE.match(path)
-                if match:
-                    file_path = match.group(1).strip()
-                    if file_path in seen:
-                        continue
-                    seen.add(file_path)
-                    issues.append(
-                        m.Infra.Check.Issue(
-                            file=file_path,
-                            line=0,
-                            column=0,
-                            code=c.Infra.Gates.FORMAT,
-                            message="Would be reformatted",
-                        ),
-                    )
-                elif (
-                    path.endswith(c.Infra.Extensions.PYTHON)
-                    and " " not in path
-                    and (path not in seen)
-                ):
-                    seen.add(path)
-                    issues.append(
-                        m.Infra.Check.Issue(
-                            file=path,
-                            line=0,
-                            column=0,
-                            code=c.Infra.Gates.FORMAT,
-                            message="Would be reformatted",
-                        ),
-                    )
-        return self._build_gate_result(
-            gate=c.Infra.Gates.FORMAT,
-            project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return self._run_gate(c.Infra.Gates.FORMAT, project_dir)
 
     def _run_ruff_lint(self, project_dir: Path) -> m.Infra.Check.GateExecution:
-        started = time.monotonic()
-        check_dirs = self._existing_check_dirs(project_dir)
-        targets = check_dirs or ["."]
-        result = self._run(
-            [
-                sys.executable,
-                "-m",
-                c.Infra.Toml.RUFF,
-                c.Infra.Verbs.CHECK,
-                *targets,
-                "--output-format",
-                c.Infra.Cli.OUTPUT_JSON,
-                "--quiet",
-            ],
-            project_dir,
-        )
-        issues: list[m.Infra.Check.Issue] = []
-        ruff_parse_result = u.Infra.parse(result.stdout or "[]")
-        ruff_data: t_infra.Infra.InfraValue = (
-            ruff_parse_result.value if ruff_parse_result.is_success else []
-        )
-        try:
-            if isinstance(ruff_data, list):
-                issues.extend(
-                    m.Infra.Check.Issue(
-                        file=str(entry.get("filename", "?")),
-                        line=self._nested_int(dict(entry.items()), "location", "row"),
-                        column=self._nested_int(
-                            dict(entry.items()), "location", "column"
-                        ),
-                        code=str(entry.get("code", "")),
-                        message=str(entry.get("message", "")),
-                    )
-                    for entry in ruff_data
-                    if isinstance(entry, Mapping)
-                )
-        except (TypeError, ValidationError):
-            pass
-        return self._build_gate_result(
-            gate=c.Infra.Gates.LINT,
-            project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
-            issues=issues,
-            duration=time.monotonic() - started,
-            raw_output=result.stderr,
-        )
+        return self._run_gate(c.Infra.Gates.LINT, project_dir)
 
 
 def build_parser() -> argparse.ArgumentParser:
