@@ -1,7 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make codegen
 #
-"""Check services for quality gate execution."""
+"""Quality gate implementations for the check library."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from flext_infra.check import gates
     from flext_infra.check.gates.bandit import FlextInfraBanditGate
     from flext_infra.check.gates.go import FlextInfraGoGate
     from flext_infra.check.gates.markdown import FlextInfraMarkdownGate
@@ -21,24 +20,9 @@ if TYPE_CHECKING:
     from flext_infra.check.gates.pyright import FlextInfraPyrightGate
     from flext_infra.check.gates.ruff_format import FlextInfraRuffFormatGate
     from flext_infra.check.gates.ruff_lint import FlextInfraRuffLintGate
-    from flext_infra.check.services import (
-        CheckIssue,
-        FlextInfraConfigFixer,
-        GateExecution,
-        ProjectResult,
-        ProjectResult as r,
-    )
-    from flext_infra.check.workspace_check import (
-        FlextInfraWorkspaceChecker,
-        build_parser,
-        main,
-        run_cli,
-    )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "CheckIssue": ("flext_infra.check.services", "CheckIssue"),
     "FlextInfraBanditGate": ("flext_infra.check.gates.bandit", "FlextInfraBanditGate"),
-    "FlextInfraConfigFixer": ("flext_infra.check.services", "FlextInfraConfigFixer"),
     "FlextInfraGoGate": ("flext_infra.check.gates.go", "FlextInfraGoGate"),
     "FlextInfraMarkdownGate": (
         "flext_infra.check.gates.markdown",
@@ -61,23 +45,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.check.gates.ruff_lint",
         "FlextInfraRuffLintGate",
     ),
-    "FlextInfraWorkspaceChecker": (
-        "flext_infra.check.workspace_check",
-        "FlextInfraWorkspaceChecker",
-    ),
-    "GateExecution": ("flext_infra.check.services", "GateExecution"),
-    "ProjectResult": ("flext_infra.check.services", "ProjectResult"),
-    "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
-    "gates": ("flext_infra.check.gates", ""),
-    "main": ("flext_infra.check.workspace_check", "main"),
-    "r": ("flext_infra.check.services", "ProjectResult"),
-    "run_cli": ("flext_infra.check.workspace_check", "run_cli"),
 }
 
 __all__ = [
-    "CheckIssue",
     "FlextInfraBanditGate",
-    "FlextInfraConfigFixer",
     "FlextInfraGoGate",
     "FlextInfraMarkdownGate",
     "FlextInfraMypyGate",
@@ -85,14 +56,6 @@ __all__ = [
     "FlextInfraPyrightGate",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
-    "FlextInfraWorkspaceChecker",
-    "GateExecution",
-    "ProjectResult",
-    "build_parser",
-    "gates",
-    "main",
-    "r",
-    "run_cli",
 ]
 
 
