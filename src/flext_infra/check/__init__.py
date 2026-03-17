@@ -12,15 +12,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from flext_infra.check import gates
-    from flext_infra.check.gates.bandit import FlextInfraBanditGate
-    from flext_infra.check.gates.go import FlextInfraGoGate
-    from flext_infra.check.gates.markdown import FlextInfraMarkdownGate
-    from flext_infra.check.gates.mypy import FlextInfraMypyGate
-    from flext_infra.check.gates.pyrefly import FlextInfraPyreflyGate
-    from flext_infra.check.gates.pyright import FlextInfraPyrightGate
-    from flext_infra.check.gates.ruff_format import FlextInfraRuffFormatGate
-    from flext_infra.check.gates.ruff_lint import FlextInfraRuffLintGate
     from flext_infra.check.services import (
         CheckIssue,
         FlextInfraConfigFixer,
@@ -37,30 +28,7 @@ if TYPE_CHECKING:
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "CheckIssue": ("flext_infra.check.services", "CheckIssue"),
-    "FlextInfraBanditGate": ("flext_infra.check.gates.bandit", "FlextInfraBanditGate"),
     "FlextInfraConfigFixer": ("flext_infra.check.services", "FlextInfraConfigFixer"),
-    "FlextInfraGoGate": ("flext_infra.check.gates.go", "FlextInfraGoGate"),
-    "FlextInfraMarkdownGate": (
-        "flext_infra.check.gates.markdown",
-        "FlextInfraMarkdownGate",
-    ),
-    "FlextInfraMypyGate": ("flext_infra.check.gates.mypy", "FlextInfraMypyGate"),
-    "FlextInfraPyreflyGate": (
-        "flext_infra.check.gates.pyrefly",
-        "FlextInfraPyreflyGate",
-    ),
-    "FlextInfraPyrightGate": (
-        "flext_infra.check.gates.pyright",
-        "FlextInfraPyrightGate",
-    ),
-    "FlextInfraRuffFormatGate": (
-        "flext_infra.check.gates.ruff_format",
-        "FlextInfraRuffFormatGate",
-    ),
-    "FlextInfraRuffLintGate": (
-        "flext_infra.check.gates.ruff_lint",
-        "FlextInfraRuffLintGate",
-    ),
     "FlextInfraWorkspaceChecker": (
         "flext_infra.check.workspace_check",
         "FlextInfraWorkspaceChecker",
@@ -68,7 +36,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "GateExecution": ("flext_infra.check.services", "GateExecution"),
     "ProjectResult": ("flext_infra.check.services", "ProjectResult"),
     "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
-    "gates": ("flext_infra.check.gates", ""),
     "main": ("flext_infra.check.workspace_check", "main"),
     "r": ("flext_infra.check.services", "ProjectResult"),
     "run_cli": ("flext_infra.check.workspace_check", "run_cli"),
@@ -76,20 +43,11 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 
 __all__ = [
     "CheckIssue",
-    "FlextInfraBanditGate",
     "FlextInfraConfigFixer",
-    "FlextInfraGoGate",
-    "FlextInfraMarkdownGate",
-    "FlextInfraMypyGate",
-    "FlextInfraPyreflyGate",
-    "FlextInfraPyrightGate",
-    "FlextInfraRuffFormatGate",
-    "FlextInfraRuffLintGate",
     "FlextInfraWorkspaceChecker",
     "GateExecution",
     "ProjectResult",
     "build_parser",
-    "gates",
     "main",
     "r",
     "run_cli",

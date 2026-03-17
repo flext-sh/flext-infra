@@ -5,17 +5,17 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-from flext_infra.check._base_gate import FlextInfraGate
+from flext_infra.gates._base_gate import FlextInfraGate
 
 _BUILTIN_GATES: tuple[tuple[str, str], ...] = (
-    ("flext_infra.check.gates.ruff_lint", "FlextInfraRuffLintGate"),
-    ("flext_infra.check.gates.ruff_format", "FlextInfraRuffFormatGate"),
-    ("flext_infra.check.gates.pyrefly", "FlextInfraPyreflyGate"),
-    ("flext_infra.check.gates.mypy", "FlextInfraMypyGate"),
-    ("flext_infra.check.gates.pyright", "FlextInfraPyrightGate"),
-    ("flext_infra.check.gates.bandit", "FlextInfraBanditGate"),
-    ("flext_infra.check.gates.markdown", "FlextInfraMarkdownGate"),
-    ("flext_infra.check.gates.go", "FlextInfraGoGate"),
+    ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
+    ("flext_infra.gates.ruff_format", "FlextInfraRuffFormatGate"),
+    ("flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"),
+    ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
+    ("flext_infra.gates.pyright", "FlextInfraPyrightGate"),
+    ("flext_infra.gates.bandit", "FlextInfraBanditGate"),
+    ("flext_infra.gates.markdown", "FlextInfraMarkdownGate"),
+    ("flext_infra.gates.go", "FlextInfraGoGate"),
 )
 
 

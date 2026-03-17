@@ -26,8 +26,8 @@ if TYPE_CHECKING:
         codegen,
         deps,
         docs,
+        gates,
         github,
-        maintenance,
         refactor,
         release,
         rules,
@@ -73,15 +73,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-    from flext_infra.check import gates
-    from flext_infra.check.gates.bandit import FlextInfraBanditGate
-    from flext_infra.check.gates.go import FlextInfraGoGate
-    from flext_infra.check.gates.markdown import FlextInfraMarkdownGate
-    from flext_infra.check.gates.mypy import FlextInfraMypyGate
-    from flext_infra.check.gates.pyrefly import FlextInfraPyreflyGate
-    from flext_infra.check.gates.pyright import FlextInfraPyrightGate
-    from flext_infra.check.gates.ruff_format import FlextInfraRuffFormatGate
-    from flext_infra.check.gates.ruff_lint import FlextInfraRuffLintGate
     from flext_infra.check.services import (
         CheckIssue,
         FlextInfraConfigFixer,
@@ -148,14 +139,18 @@ if TYPE_CHECKING:
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.shared import FlextInfraDocsShared
     from flext_infra.docs.validator import FlextInfraDocValidator
+    from flext_infra.gates.bandit import FlextInfraBanditGate
+    from flext_infra.gates.go import FlextInfraGoGate
+    from flext_infra.gates.markdown import FlextInfraMarkdownGate
+    from flext_infra.gates.mypy import FlextInfraMypyGate
+    from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
+    from flext_infra.gates.pyright import FlextInfraPyrightGate
+    from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
+    from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
     from flext_infra.github.linter import FlextInfraWorkflowLinter
     from flext_infra.github.pr import FlextInfraPrManager
     from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
     from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
-    from flext_infra.maintenance.python_version import (
-        FlextInfraPythonVersionEnforcer,
-        logger,
-    )
     from flext_infra.models import FlextInfraModels, m
     from flext_infra.protocols import FlextInfraProtocols, p
     from flext_infra.refactor.analysis import (
@@ -291,9 +286,14 @@ if TYPE_CHECKING:
     from flext_infra.validate.scanner import FlextInfraTextPatternScanner
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
+    from flext_infra.workspace import maintenance
     from flext_infra.workspace.detector import (
         FlextInfraWorkspaceDetector,
         WorkspaceMode,
+    )
+    from flext_infra.workspace.maintenance.python_version import (
+        FlextInfraPythonVersionEnforcer,
+        logger,
     )
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
@@ -373,7 +373,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.deps._phases.ensure_ruff",
         "EnsureRuffConfigPhase",
     ),
-    "FlextInfraBanditGate": ("flext_infra.check.gates.bandit", "FlextInfraBanditGate"),
+    "FlextInfraBanditGate": ("flext_infra.gates.bandit", "FlextInfraBanditGate"),
     "FlextInfraBaseMkGenerator": (
         "flext_infra.basemk.generator",
         "FlextInfraBaseMkGenerator",
@@ -435,7 +435,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.deps.extra_paths",
         "FlextInfraExtraPathsManager",
     ),
-    "FlextInfraGoGate": ("flext_infra.check.gates.go", "FlextInfraGoGate"),
+    "FlextInfraGoGate": ("flext_infra.gates.go", "FlextInfraGoGate"),
     "FlextInfraInternalDependencySyncService": (
         "flext_infra.deps.internal_sync",
         "FlextInfraInternalDependencySyncService",
@@ -444,12 +444,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.validate.inventory",
         "FlextInfraInventoryService",
     ),
-    "FlextInfraMarkdownGate": (
-        "flext_infra.check.gates.markdown",
-        "FlextInfraMarkdownGate",
-    ),
+    "FlextInfraMarkdownGate": ("flext_infra.gates.markdown", "FlextInfraMarkdownGate"),
     "FlextInfraModels": ("flext_infra.models", "FlextInfraModels"),
-    "FlextInfraMypyGate": ("flext_infra.check.gates.mypy", "FlextInfraMypyGate"),
+    "FlextInfraMypyGate": ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
     "FlextInfraNamespaceEnforcer": (
         "flext_infra.refactor.namespace_enforcer",
         "FlextInfraNamespaceEnforcer",
@@ -476,20 +473,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.deps.modernizer",
         "FlextInfraPyprojectModernizer",
     ),
-    "FlextInfraPyreflyGate": (
-        "flext_infra.check.gates.pyrefly",
-        "FlextInfraPyreflyGate",
-    ),
-    "FlextInfraPyrightGate": (
-        "flext_infra.check.gates.pyright",
-        "FlextInfraPyrightGate",
-    ),
+    "FlextInfraPyreflyGate": ("flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"),
+    "FlextInfraPyrightGate": ("flext_infra.gates.pyright", "FlextInfraPyrightGate"),
     "FlextInfraPytestDiagExtractor": (
         "flext_infra.validate.pytest_diag",
         "FlextInfraPytestDiagExtractor",
     ),
     "FlextInfraPythonVersionEnforcer": (
-        "flext_infra.maintenance.python_version",
+        "flext_infra.workspace.maintenance.python_version",
         "FlextInfraPythonVersionEnforcer",
     ),
     "FlextInfraRefactorAliasRemover": (
@@ -666,13 +657,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraReleaseOrchestrator",
     ),
     "FlextInfraRuffFormatGate": (
-        "flext_infra.check.gates.ruff_format",
+        "flext_infra.gates.ruff_format",
         "FlextInfraRuffFormatGate",
     ),
-    "FlextInfraRuffLintGate": (
-        "flext_infra.check.gates.ruff_lint",
-        "FlextInfraRuffLintGate",
-    ),
+    "FlextInfraRuffLintGate": ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
     "FlextInfraRuntimeDevDependencyDetector": (
         "flext_infra.deps.detector",
         "FlextInfraRuntimeDevDependencyDetector",
@@ -871,7 +859,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "discover_project_paths": ("flext_infra.deps.detection", "discover_project_paths"),
     "dm": ("flext_infra.deps.detection", "dm"),
     "docs": ("flext_infra.docs", ""),
-    "gates": ("flext_infra.check.gates", ""),
+    "gates": ("flext_infra.gates", ""),
     "get_current_typings_from_pyproject": (
         "flext_infra.deps.detection",
         "get_current_typings_from_pyproject",
@@ -879,9 +867,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "get_required_typings": ("flext_infra.deps.detection", "get_required_typings"),
     "github": ("flext_infra.github", ""),
     "load_dependency_limits": ("flext_infra.deps.detection", "load_dependency_limits"),
-    "logger": ("flext_infra.maintenance.python_version", "logger"),
+    "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "m": ("flext_infra.models", "m"),
-    "maintenance": ("flext_infra.maintenance", ""),
+    "maintenance": ("flext_infra.workspace.maintenance", ""),
     "module_to_types_package": (
         "flext_infra.deps.detection",
         "module_to_types_package",
