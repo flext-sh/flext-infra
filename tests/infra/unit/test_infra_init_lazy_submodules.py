@@ -11,13 +11,13 @@ import pytest
 import flext_infra.basemk
 import flext_infra.check
 import flext_infra.codegen
-import flext_infra.validate
 import flext_infra.deps
 import flext_infra.docs
 import flext_infra.github
-import flext_infra.workspace.maintenance
 import flext_infra.release
+import flext_infra.validate
 import flext_infra.workspace
+import flext_infra.workspace.maintenance
 
 
 class TestFlextInfraSubmoduleInitLazyLoading:

@@ -301,49 +301,6 @@ if TYPE_CHECKING:
         TestInfraMroPattern,
         TestInfraServiceRetrieval,
     )
-    from tests.infra.unit.validate.basemk_validator import (
-        TestBaseMkValidatorCore,
-        TestBaseMkValidatorEdgeCases,
-        TestBaseMkValidatorSha256,
-        v,
-    )
-    from tests.infra.unit.validate.init import TestCoreModuleInit
-    from tests.infra.unit.validate.inventory import (
-        TestInventoryServiceCore,
-        TestInventoryServiceReports,
-        TestInventoryServiceScripts,
-    )
-    from tests.infra.unit.validate.main import (
-        TestMainBaseMkValidate,
-        TestMainCliRouting,
-        TestMainInventory,
-        TestMainScan,
-    )
-    from tests.infra.unit.validate.pytest_diag import (
-        TestPytestDiagExtractorCore,
-        TestPytestDiagLogParsing,
-        TestPytestDiagParseXml,
-    )
-    from tests.infra.unit.validate.scanner import (
-        TestScannerCore,
-        TestScannerHelpers,
-        TestScannerMultiFile,
-    )
-    from tests.infra.unit.validate.skill_validator import (
-        TestNormalizeStringList,
-        TestSafeLoadYaml,
-        TestSkillValidatorAstGrepCount,
-        TestSkillValidatorCore,
-        TestSkillValidatorRenderTemplate,
-    )
-    from tests.infra.unit.validate.stub_chain import (
-        TestStubChainAnalyze,
-        TestStubChainCore,
-        TestStubChainDiscoverProjects,
-        TestStubChainIsInternal,
-        TestStubChainStubExists,
-        TestStubChainValidate,
-    )
     from tests.infra.unit.deps.test_detection_classify import (
         TestBuildProjectReport,
         TestClassifyIssues,
@@ -994,6 +951,49 @@ if TYPE_CHECKING:
         test_sync_error_scenarios,
         test_sync_root_validation,
         test_sync_success_scenarios,
+    )
+    from tests.infra.unit.validate.basemk_validator import (
+        TestBaseMkValidatorCore,
+        TestBaseMkValidatorEdgeCases,
+        TestBaseMkValidatorSha256,
+        v,
+    )
+    from tests.infra.unit.validate.init import TestCoreModuleInit
+    from tests.infra.unit.validate.inventory import (
+        TestInventoryServiceCore,
+        TestInventoryServiceReports,
+        TestInventoryServiceScripts,
+    )
+    from tests.infra.unit.validate.main import (
+        TestMainBaseMkValidate,
+        TestMainCliRouting,
+        TestMainInventory,
+        TestMainScan,
+    )
+    from tests.infra.unit.validate.pytest_diag import (
+        TestPytestDiagExtractorCore,
+        TestPytestDiagLogParsing,
+        TestPytestDiagParseXml,
+    )
+    from tests.infra.unit.validate.scanner import (
+        TestScannerCore,
+        TestScannerHelpers,
+        TestScannerMultiFile,
+    )
+    from tests.infra.unit.validate.skill_validator import (
+        TestNormalizeStringList,
+        TestSafeLoadYaml,
+        TestSkillValidatorAstGrepCount,
+        TestSkillValidatorCore,
+        TestSkillValidatorRenderTemplate,
+    )
+    from tests.infra.unit.validate.stub_chain import (
+        TestStubChainAnalyze,
+        TestStubChainCore,
+        TestStubChainDiscoverProjects,
+        TestStubChainIsInternal,
+        TestStubChainStubExists,
+        TestStubChainValidate,
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
@@ -1683,7 +1683,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "TestLoadDependencyLimits",
     ),
     "TestMain": ("tests.infra.unit.deps.test_path_sync_main", "TestMain"),
-    "TestMainBaseMkValidate": ("tests.infra.unit.validate.main", "TestMainBaseMkValidate"),
+    "TestMainBaseMkValidate": (
+        "tests.infra.unit.validate.main",
+        "TestMainBaseMkValidate",
+    ),
     "TestMainCli": ("tests.infra.unit.test_infra_workspace_main", "TestMainCli"),
     "TestMainCliRouting": ("tests.infra.unit.validate.main", "TestMainCliRouting"),
     "TestMainCommandDispatch": (
@@ -2054,7 +2057,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestRunSync": ("tests.infra.unit.test_infra_workspace_main", "TestRunSync"),
     "TestRunValidate": ("tests.infra.unit.docs.main_commands", "TestRunValidate"),
     "TestRunWorkflows": ("tests.infra.unit.github.main", "TestRunWorkflows"),
-    "TestSafeLoadYaml": ("tests.infra.unit.validate.skill_validator", "TestSafeLoadYaml"),
+    "TestSafeLoadYaml": (
+        "tests.infra.unit.validate.skill_validator",
+        "TestSafeLoadYaml",
+    ),
     "TestSafetyCheckpoint": (
         "tests.infra.unit._utilities.test_safety",
         "TestSafetyCheckpoint",
@@ -2094,7 +2100,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestScanModels": ("tests.infra.unit._utilities.test_scanning", "TestScanModels"),
     "TestScannerCore": ("tests.infra.unit.validate.scanner", "TestScannerCore"),
     "TestScannerHelpers": ("tests.infra.unit.validate.scanner", "TestScannerHelpers"),
-    "TestScannerMultiFile": ("tests.infra.unit.validate.scanner", "TestScannerMultiFile"),
+    "TestScannerMultiFile": (
+        "tests.infra.unit.validate.scanner",
+        "TestScannerMultiFile",
+    ),
     "TestSelectedProjectNames": (
         "tests.infra.unit.docs.shared_iter",
         "TestSelectedProjectNames",

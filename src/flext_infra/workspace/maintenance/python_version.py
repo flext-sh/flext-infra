@@ -11,7 +11,9 @@ pyenv / asdf / mise for interpreter selection.
 
 Usage::
 
-    from flext_infra.workspace.maintenance.python_version import FlextInfraPythonVersionEnforcer
+    from flext_infra.workspace.maintenance.python_version import (
+        FlextInfraPythonVersionEnforcer,
+    )
 
     service = FlextInfraPythonVersionEnforcer()
     result = service.execute(check_only=True, verbose=True)

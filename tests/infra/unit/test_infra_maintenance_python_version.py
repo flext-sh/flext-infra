@@ -15,7 +15,9 @@ from typing import override
 import pytest
 from flext_tests import tm
 
-from flext_infra.workspace.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_infra.workspace.maintenance.python_version import (
+    FlextInfraPythonVersionEnforcer,
+)
 
 _MINOR: int = sys.version_info.minor
 _BAD: int = _MINOR + 1

@@ -82,7 +82,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.validate.inventory",
         "TestInventoryServiceScripts",
     ),
-    "TestMainBaseMkValidate": ("tests.infra.unit.validate.main", "TestMainBaseMkValidate"),
+    "TestMainBaseMkValidate": (
+        "tests.infra.unit.validate.main",
+        "TestMainBaseMkValidate",
+    ),
     "TestMainCliRouting": ("tests.infra.unit.validate.main", "TestMainCliRouting"),
     "TestMainInventory": ("tests.infra.unit.validate.main", "TestMainInventory"),
     "TestMainScan": ("tests.infra.unit.validate.main", "TestMainScan"),
@@ -102,10 +105,16 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.validate.pytest_diag",
         "TestPytestDiagParseXml",
     ),
-    "TestSafeLoadYaml": ("tests.infra.unit.validate.skill_validator", "TestSafeLoadYaml"),
+    "TestSafeLoadYaml": (
+        "tests.infra.unit.validate.skill_validator",
+        "TestSafeLoadYaml",
+    ),
     "TestScannerCore": ("tests.infra.unit.validate.scanner", "TestScannerCore"),
     "TestScannerHelpers": ("tests.infra.unit.validate.scanner", "TestScannerHelpers"),
-    "TestScannerMultiFile": ("tests.infra.unit.validate.scanner", "TestScannerMultiFile"),
+    "TestScannerMultiFile": (
+        "tests.infra.unit.validate.scanner",
+        "TestScannerMultiFile",
+    ),
     "TestSkillValidatorAstGrepCount": (
         "tests.infra.unit.validate.skill_validator",
         "TestSkillValidatorAstGrepCount",
