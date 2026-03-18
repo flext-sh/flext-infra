@@ -48,12 +48,57 @@ class FlextInfraWorkspaceConstants:
         ".reports/",
         ".venv/",
         "__pycache__/",
+        "base.mk",
     )
     REQUIRED_GITIGNORE_ENTRIES: Final[list[str]] = [
         ".reports/",
         ".venv/",
         "__pycache__/",
+        "base.mk",
     ]
+
+    MAKEFILE_INCLUDE_OLD: Final[str] = (
+        'ifneq ("$(wildcard ../base.mk)", "")\n'
+        "include ../base.mk\n"
+        "else\n"
+        "include base.mk\n"
+        "endif"
+    )
+
+    MAKEFILE_BOOTSTRAP_TEMPLATE: Final[str] = "makefile_bootstrap.mk.j2"
+
+    MAKEFILE_INCLUDE_BOOTSTRAP: Final[str] = (
+        'ifneq ("$(wildcard ../base.mk)", "")\n'
+        "include ../base.mk\n"
+        "else\n"
+        "# === STANDALONE BOOTSTRAP (auto-generates base.mk via flext-infra) ===\n"
+        "-include base.mk\n"
+        "\n"
+        "base.mk: Makefile\n"
+        "\t@if python3 -c 'import flext_infra' 2>/dev/null; then \\\n"
+        "\t\tpython3 -m flext_infra basemk generate"
+        " --project-name $(PROJECT_NAME) --output $@; \\\n"
+        "\telif [ -d .venv ] && .venv/bin/python"
+        " -c 'import flext_infra' 2>/dev/null; then \\\n"
+        "\t\t.venv/bin/python -m flext_infra basemk generate"
+        " --project-name $(PROJECT_NAME) --output $@; \\\n"
+        "\telse \\\n"
+        '\t\techo "==> base.mk not found.'
+        ' Bootstrapping standalone environment..."; \\\n'
+        "\t\tpython3 -m venv .venv; \\\n"
+        "\t\t.venv/bin/pip install -q -U pip flext-infra; \\\n"
+        "\t\t.venv/bin/python -m flext_infra basemk generate"
+        " --project-name $(PROJECT_NAME) --output $@; \\\n"
+        "\tfi\n"
+        "\t@test -s $@ || { rm -f $@; exit 1; }\n"
+        "\n"
+        ".PHONY: venv\n"
+        "venv: ## Create standalone virtual environment\n"
+        "\t@python3 -m venv .venv\n"
+        "\t@.venv/bin/pip install -U pip\n"
+        '\t@echo "Virtual environment created at .venv"\n'
+        "endif"
+    )
 
 
 __all__ = ["FlextInfraWorkspaceConstants"]

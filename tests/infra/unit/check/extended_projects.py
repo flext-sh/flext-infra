@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_core import t
 from flext_tests import tm
 
 from flext_infra.check.services import (
@@ -41,6 +42,27 @@ def _make_gate_exec(
 
 
 class TestLintAndFormatPublicMethods:
+    @staticmethod
+    def _assert_gate_public_method(
+        *,
+        checker: FlextInfraWorkspaceChecker,
+        target_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        gate_name: str,
+    ) -> None:
+        def _fake_run_gate(
+            requested_gate_name: str,
+            _project_dir: Path,
+        ) -> GateExecution:
+            del _project_dir
+            return _make_gate_exec(gate=requested_gate_name, passed=True)
+
+        monkeypatch.setattr(checker, "_run_gate", _fake_run_gate)
+        run_public = checker.lint if gate_name == "lint" else checker.format
+        result = run_public(target_dir)
+        tm.ok(result)
+        tm.that(result.value.gate, eq=gate_name)
+
     def test_lint_public_method(
         self,
         tmp_path: Path,
@@ -48,19 +70,12 @@ class TestLintAndFormatPublicMethods:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "pyproject.toml").touch()
-
-        def _fake_lint(_project_dir: Path) -> GateExecution:
-            del _project_dir
-            return _make_gate_exec(gate="lint", passed=True)
-
-        monkeypatch.setattr(
-            checker,
-            "_run_ruff_lint",
-            _fake_lint,
+        self._assert_gate_public_method(
+            checker=checker,
+            target_dir=tmp_path,
+            monkeypatch=monkeypatch,
+            gate_name="lint",
         )
-        result = checker.lint(tmp_path)
-        tm.ok(result)
-        tm.that(result.value.gate, eq="lint")
 
     def test_format_public_method(
         self,
@@ -69,19 +84,12 @@ class TestLintAndFormatPublicMethods:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "pyproject.toml").touch()
-
-        def _fake_format(_project_dir: Path) -> GateExecution:
-            del _project_dir
-            return _make_gate_exec(gate="format", passed=True)
-
-        monkeypatch.setattr(
-            checker,
-            "_run_ruff_format",
-            _fake_format,
+        self._assert_gate_public_method(
+            checker=checker,
+            target_dir=tmp_path,
+            monkeypatch=monkeypatch,
+            gate_name="format",
         )
-        result = checker.format(tmp_path)
-        tm.ok(result)
-        tm.that(result.value.gate, eq="format")
 
 
 class TestCheckProjectRunners:
@@ -93,30 +101,32 @@ class TestCheckProjectRunners:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "test.py").touch()
-        call_log: list[str] = []
+        called: dict[str, bool] = {
+            "lint": False,
+            "format": False,
+            "pyrefly": False,
+        }
 
-        def _fake_lint(_project_dir: Path) -> GateExecution:
-            del _project_dir
-            call_log.append("lint")
-            return _make_gate_exec(gate="lint", passed=True)
+        class _FakeGate:
+            def __init__(self, gate_name: str) -> None:
+                self._gate_name = gate_name
 
-        def _fake_format(_project_dir: Path) -> GateExecution:
-            del _project_dir
-            call_log.append("format")
-            return _make_gate_exec(gate="format", passed=True)
+            def check(self, _project_dir: Path, _ctx: t.Scalar) -> GateExecution:
+                del _project_dir, _ctx
+                called[self._gate_name] = True
+                return _make_gate_exec(gate=self._gate_name, passed=True)
 
-        def _fake_pyrefly(
-            _project_dir: Path,
-            _reports_dir: Path | None = None,
-        ) -> GateExecution:
-            del _project_dir, _reports_dir
-            call_log.append("pyrefly")
-            return _make_gate_exec(gate="pyrefly", passed=True)
+        def _fake_create(gate_name: str, _workspace_root: Path) -> _FakeGate:
+            del _workspace_root
+            return _FakeGate(gate_name)
 
-        monkeypatch.setattr(checker, "_run_ruff_lint", _fake_lint)
-        monkeypatch.setattr(checker, "_run_ruff_format", _fake_format)
-        monkeypatch.setattr(checker, "_run_pyrefly", _fake_pyrefly)
-        _ = checker._check_project(tmp_path, ["lint", "format", "pyrefly"], tmp_path)
-        tm.that("lint" in call_log, eq=True)
-        tm.that("format" in call_log, eq=True)
-        tm.that("pyrefly" in call_log, eq=True)
+        monkeypatch.setattr(checker._registry, "create", _fake_create)
+        result = checker._check_project(
+            tmp_path, ["lint", "format", "pyrefly"], tmp_path
+        )
+        tm.that(called["lint"], eq=True)
+        tm.that(called["format"], eq=True)
+        tm.that(called["pyrefly"], eq=True)
+        tm.that("lint" in result.gates, eq=True)
+        tm.that("format" in result.gates, eq=True)
+        tm.that("pyrefly" in result.gates, eq=True)

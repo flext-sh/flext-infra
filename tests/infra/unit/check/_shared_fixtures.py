@@ -160,7 +160,11 @@ class RunProjectsMock:
             # Add failing gate to make passed=False (computed from gates dict)
             fail_gate = infra_models.Infra.GateExecution(
                 result=infra_models.Infra.GateResult(
-                    gate="test", project="test-project", passed=False, errors=[], duration=0.0
+                    gate="test",
+                    project="test-project",
+                    passed=False,
+                    errors=[],
+                    duration=0.0,
                 ),
                 issues=[],
                 raw_output="",

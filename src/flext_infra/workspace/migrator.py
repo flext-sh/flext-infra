@@ -168,12 +168,32 @@ class FlextInfraProjectMigrator(s):
         ]
         return r[list[m.Infra.MigrationResult]].ok(results)
 
-    def _migrate_basemk(self, project_root: Path, *, dry_run: bool) -> r[str]:
+    def _migrate_basemk(
+        self,
+        project_root: Path,
+        *,
+        dry_run: bool,
+        is_workspace_root: bool = False,
+    ) -> r[str]:
+        target = project_root / c.Infra.Files.BASE_MK
+        if not is_workspace_root:
+            if not target.exists():
+                return r[str].ok("")
+            if not dry_run:
+                try:
+                    target.unlink()
+                except OSError as exc:
+                    return r[str].fail(f"base.mk removal failed: {exc}")
+            return r[str].ok(
+                self._action_text(
+                    "base.mk removed (served by bootstrap now)",
+                    dry_run=dry_run,
+                ),
+            )
         generated = self._generator.generate()
         if generated.is_failure:
             return r[str].fail(generated.error or "base.mk generation failed")
         generated_text: str = generated.value
-        target = project_root / c.Infra.Files.BASE_MK
         current = (
             target.read_text(encoding=c.Infra.Encoding.DEFAULT)
             if target.exists()
@@ -258,6 +278,7 @@ class FlextInfraProjectMigrator(s):
         updated = original
         for before, after in c.Infra.MAKEFILE_REPLACEMENTS:
             updated = updated.replace(before, after)
+        updated = self._apply_bootstrap_include(updated)
         if updated == original:
             if dry_run:
                 return r[str].ok(
@@ -270,7 +291,20 @@ class FlextInfraProjectMigrator(s):
             except OSError as exc:
                 return r[str].fail(f"Makefile update failed: {exc}")
         return r[str].ok(
-            self._action_text("Makefile scripts/ references migrated", dry_run=dry_run),
+            self._action_text(
+                "Makefile migrated to bootstrap include", dry_run=dry_run
+            ),
+        )
+
+    def _apply_bootstrap_include(self, content: str) -> str:
+        if c.Infra.MAKEFILE_INCLUDE_OLD not in content:
+            return content
+        bootstrap_result = self._generator.render_bootstrap_include()
+        if bootstrap_result.is_failure:
+            return content
+        return content.replace(
+            c.Infra.MAKEFILE_INCLUDE_OLD,
+            bootstrap_result.value,
         )
 
     def _migrate_project(

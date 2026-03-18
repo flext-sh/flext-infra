@@ -9,16 +9,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests.models import FlextTestsModels
+from flext_tests.models import m
 
 from flext_infra import FlextInfraModels
 
 
-class FlextInfraTestModels(FlextTestsModels):
-    """Infra test models extending FlextTestsModels with infra-specific models.
+class FlextInfraTestModels(m):
+    """Infra test models extending m with infra-specific models.
 
-    Architecture: Extends FlextTestsModels with infra-specific model definitions.
-    All base models from FlextTestsModels are available through inheritance.
+    Architecture: Extends m with infra-specific model definitions.
+    All base models from m are available through inheritance.
     """
 
     class Infra(FlextInfraModels.Infra):
@@ -27,7 +27,7 @@ class FlextInfraTestModels(FlextTestsModels):
         class Tests:
             """Test-specific models namespace with infra extensions."""
 
-            class ProjectInfo(FlextTestsModels.Value):
+            class ProjectInfo(m.Value):
                 """Project information model for infra testing."""
 
                 name: str
@@ -35,7 +35,7 @@ class FlextInfraTestModels(FlextTestsModels):
                 version: str = "0.1.0"
                 is_active: bool = True
 
-            class InfraConfig(FlextTestsModels.Value):
+            class InfraConfig(m.Value):
                 """Infrastructure configuration model."""
 
                 project_name: str
@@ -43,7 +43,7 @@ class FlextInfraTestModels(FlextTestsModels):
                 test_timeout: int = 60
                 parallel_tests: bool = True
 
-            class TestResult(FlextTestsModels.Value):
+            class TestResult(m.Value):
                 """Test result model for infra tests."""
 
                 test_name: str

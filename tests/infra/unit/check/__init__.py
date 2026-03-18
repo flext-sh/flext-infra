@@ -43,16 +43,11 @@ if TYPE_CHECKING:
         TestProcessFileReadError,
     )
     from .extended_error_reporting import (
-        RunStub,
         TestErrorReporting,
         TestGoFmtEmptyLinesInOutput,
         TestMarkdownReportEmptyGates,
         TestMypyEmptyLinesInOutput,
         TestRuffFormatDuplicateFiles,
-    )
-    from .extended_gate_bandit_markdown import (
-        TestWorkspaceCheckerRunBandit,
-        TestWorkspaceCheckerRunMarkdown,
     )
     from .extended_gate_go_cmd import (
         TestWorkspaceCheckerCollectMarkdownFiles,
@@ -132,7 +127,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "GateClass": ("tests.infra.unit.check.extended_runners_extra", "GateClass"),
     "RunCallable": ("tests.infra.unit.check.extended_runners_go", "RunCallable"),
-    "RunStub": ("tests.infra.unit.check.extended_error_reporting", "RunStub"),
     "TestCheckIssueFormatted": (
         "tests.infra.unit.check.extended_models",
         "TestCheckIssueFormatted",
@@ -350,10 +344,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.check.extended_workspace_init",
         "TestWorkspaceCheckerResolveWorkspaceRootFallback",
     ),
-    "TestWorkspaceCheckerRunBandit": (
-        "tests.infra.unit.check.extended_gate_bandit_markdown",
-        "TestWorkspaceCheckerRunBandit",
-    ),
     "TestWorkspaceCheckerRunCommand": (
         "tests.infra.unit.check.extended_gate_go_cmd",
         "TestWorkspaceCheckerRunCommand",
@@ -361,10 +351,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestWorkspaceCheckerRunGo": (
         "tests.infra.unit.check.extended_gate_go_cmd",
         "TestWorkspaceCheckerRunGo",
-    ),
-    "TestWorkspaceCheckerRunMarkdown": (
-        "tests.infra.unit.check.extended_gate_bandit_markdown",
-        "TestWorkspaceCheckerRunMarkdown",
     ),
     "TestWorkspaceCheckerRunMypy": (
         "tests.infra.unit.check.extended_gate_mypy_pyright",
@@ -428,7 +414,6 @@ __all__ = [
     "CheckProjectStub",
     "GateClass",
     "RunCallable",
-    "RunStub",
     "TestCheckIssueFormatted",
     "TestCheckMainEntryPoint",
     "TestCheckProjectRunners",
@@ -487,10 +472,8 @@ __all__ = [
     "TestWorkspaceCheckerParseGateCSV",
     "TestWorkspaceCheckerResolveGates",
     "TestWorkspaceCheckerResolveWorkspaceRootFallback",
-    "TestWorkspaceCheckerRunBandit",
     "TestWorkspaceCheckerRunCommand",
     "TestWorkspaceCheckerRunGo",
-    "TestWorkspaceCheckerRunMarkdown",
     "TestWorkspaceCheckerRunMypy",
     "TestWorkspaceCheckerRunPyright",
     "TestWorkspaceCheckerSARIFReport",

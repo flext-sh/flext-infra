@@ -12,6 +12,8 @@ from flext_core import r, s
 from flext_infra import FlextInfraUtilitiesSubprocess, c, m, p, t
 from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
 
+_TEMPLATES_DIR: Path = Path(__file__).resolve().parent / "templates"
+
 
 class TemplateRenderer(Protocol):
     def render_all(
@@ -137,6 +139,16 @@ class FlextInfraBaseMkGenerator(s[str]):
         except OSError as exc:
             return r[str].fail(f"generated base.mk validation failed: {exc}")
         return r[str].ok(content)
+
+    @staticmethod
+    def render_bootstrap_include() -> r[str]:
+        """Render the Makefile bootstrap include block from template."""
+        template_path = _TEMPLATES_DIR / c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE
+        try:
+            content = template_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            return r[str].ok(content.rstrip("\n"))
+        except OSError as exc:
+            return r[str].fail(f"bootstrap template read failed: {exc}")
 
 
 __all__ = ["FlextInfraBaseMkGenerator"]

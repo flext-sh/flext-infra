@@ -6,18 +6,40 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra.check.services import FlextInfraWorkspaceChecker
+from flext_infra.gates.mypy import FlextInfraMypyGate
+from flext_infra.gates.pyright import FlextInfraPyrightGate
 
 from ...models import m
 
+type GateClass = type[FlextInfraMypyGate | FlextInfraPyrightGate]
 
-def _existing_dirs(_project_dir: Path) -> list[str]:
-    del _project_dir
+
+def _create_checker_project(
+    tmp_path: Path,
+    *,
+    project_name: str = "p1",
+    with_src: bool = False,
+) -> tuple[FlextInfraWorkspaceChecker, Path]:
+    checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+    project_dir = tmp_path / project_name
+    project_dir.mkdir(parents=True, exist_ok=True)
+    (project_dir / "pyproject.toml").write_text("[tool.poetry]\n")
+    if with_src:
+        src_dir = project_dir / "src"
+        src_dir.mkdir(exist_ok=True)
+        (src_dir / "main.py").write_text("# code")
+    return checker, project_dir
+
+
+def _existing_dirs(_self: GateClass, _project_dir: Path) -> list[str]:
+    del _self, _project_dir
     return ["src"]
 
 
@@ -35,6 +57,49 @@ def _run_result(stdout: str, returncode: int) -> m.Infra.CommandOutput:
     return m.Infra.CommandOutput(stdout=stdout, stderr="", exit_code=returncode)
 
 
+def _stub_gate_run(
+    output: m.Infra.CommandOutput,
+) -> Callable[
+    [object, list[str], Path, int, dict[str, str] | None], m.Infra.CommandOutput
+]:
+    def _run(
+        _self: object,
+        cmd: list[str],
+        cwd: Path,
+        timeout: int = 120,
+        env: dict[str, str] | None = None,
+    ) -> m.Infra.CommandOutput:
+        del _self, cmd, cwd, timeout, env
+        return output
+
+    return _run
+
+
+def _patch_gate_run(
+    monkeypatch: pytest.MonkeyPatch,
+    gate_class: GateClass,
+    *,
+    stdout: str,
+    returncode: int,
+) -> None:
+    monkeypatch.setattr(
+        gate_class,
+        "_run",
+        _stub_gate_run(_run_result(stdout, returncode)),
+    )
+
+
+def _patch_python_dir_detection(
+    monkeypatch: pytest.MonkeyPatch,
+    gate_class: GateClass,
+    *,
+    has_python_dirs: bool,
+) -> None:
+    monkeypatch.setattr(gate_class, "_existing_check_dirs", _existing_dirs)
+    dirs_with_py = _src_python_dirs if has_python_dirs else _no_python_dirs
+    monkeypatch.setattr(gate_class, "_dirs_with_py", staticmethod(dirs_with_py))
+
+
 class TestWorkspaceCheckerRunMypy:
     """Test FlextInfraWorkspaceChecker._run_mypy method."""
 
@@ -43,11 +108,12 @@ class TestWorkspaceCheckerRunMypy:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = tmp_path / "p1"
-        proj_dir.mkdir()
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
-        monkeypatch.setattr(checker, "_dirs_with_py", _no_python_dirs)
+        checker, proj_dir = _create_checker_project(tmp_path)
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraMypyGate,
+            has_python_dirs=False,
+        )
         result = checker._run_mypy(proj_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
@@ -57,28 +123,22 @@ class TestWorkspaceCheckerRunMypy:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = tmp_path / "p1"
-        proj_dir.mkdir()
-        (proj_dir / "src").mkdir()
-        (proj_dir / "src" / "main.py").write_text("# code")
+        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
         json_line = (
             '{"file": "a.py", "line": 1, "column": 0,'
             ' "code": "E001", "message": "Error", "severity": "error"}'
         )
-
-        def _fake_run(
-            _cmd: list[str],
-            _cwd: Path,
-            _timeout: int = 120,
-            _env: dict[str, str] | None = None,
-        ) -> m.Infra.CommandOutput:
-            del _cmd, _cwd, _timeout, _env
-            return _run_result(json_line, 1)
-
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
-        monkeypatch.setattr(checker, "_dirs_with_py", _src_python_dirs)
-        monkeypatch.setattr(checker, "_run", _fake_run)
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraMypyGate,
+            has_python_dirs=True,
+        )
+        _patch_gate_run(
+            monkeypatch,
+            FlextInfraMypyGate,
+            stdout=json_line,
+            returncode=1,
+        )
         result = checker._run_mypy(proj_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=1)
@@ -92,11 +152,12 @@ class TestWorkspaceCheckerRunPyright:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = tmp_path / "p1"
-        proj_dir.mkdir()
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
-        monkeypatch.setattr(checker, "_dirs_with_py", _no_python_dirs)
+        checker, proj_dir = _create_checker_project(tmp_path)
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraPyrightGate,
+            has_python_dirs=False,
+        )
         result = checker._run_pyright(proj_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
@@ -106,29 +167,23 @@ class TestWorkspaceCheckerRunPyright:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = tmp_path / "p1"
-        proj_dir.mkdir()
-        (proj_dir / "src").mkdir()
-        (proj_dir / "src" / "main.py").write_text("# code")
+        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
         json_output = (
             '{"generalDiagnostics": [{"file": "a.py",'
             ' "range": {"start": {"line": 0, "character": 0}},'
             ' "rule": "E001", "message": "Error", "severity": "error"}]}'
         )
-
-        def _fake_run(
-            _cmd: list[str],
-            _cwd: Path,
-            _timeout: int = 120,
-            _env: dict[str, str] | None = None,
-        ) -> m.Infra.CommandOutput:
-            del _cmd, _cwd, _timeout, _env
-            return _run_result(json_output, 1)
-
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
-        monkeypatch.setattr(checker, "_dirs_with_py", _src_python_dirs)
-        monkeypatch.setattr(checker, "_run", _fake_run)
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraPyrightGate,
+            has_python_dirs=True,
+        )
+        _patch_gate_run(
+            monkeypatch,
+            FlextInfraPyrightGate,
+            stdout=json_output,
+            returncode=1,
+        )
         result = checker._run_pyright(proj_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=1)
@@ -138,23 +193,17 @@ class TestWorkspaceCheckerRunPyright:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = tmp_path / "p1"
-        proj_dir.mkdir()
-        (proj_dir / "src").mkdir()
-        (proj_dir / "src" / "main.py").write_text("# code")
-
-        def _fake_run(
-            _cmd: list[str],
-            _cwd: Path,
-            _timeout: int = 120,
-            _env: dict[str, str] | None = None,
-        ) -> m.Infra.CommandOutput:
-            del _cmd, _cwd, _timeout, _env
-            return _run_result("invalid json", 1)
-
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
-        monkeypatch.setattr(checker, "_dirs_with_py", _src_python_dirs)
-        monkeypatch.setattr(checker, "_run", _fake_run)
+        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraPyrightGate,
+            has_python_dirs=True,
+        )
+        _patch_gate_run(
+            monkeypatch,
+            FlextInfraPyrightGate,
+            stdout="invalid json",
+            returncode=1,
+        )
         result = checker._run_pyright(proj_dir)
         tm.that(result.result.passed, eq=False)

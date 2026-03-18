@@ -39,7 +39,9 @@ class TestErrorReporting:
         gate_exec = make_gate_exec(issues=[issue])
         project = ProjectResult(project="p1", gates={"lint": gate_exec})
 
-        monkeypatch.setattr(checker, "_check_project", create_check_project_stub(project))
+        monkeypatch.setattr(
+            checker, "_check_project", create_check_project_stub(project)
+        )
         h.mk_project(tmp_path, "p1")
 
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
@@ -90,7 +92,9 @@ class TestMarkdownReportEmptyGates:
             project="p1",
             gates={"lint": exec_with, "format": exec_without},
         )
-        monkeypatch.setattr(checker, "_check_project", create_check_project_stub(project))
+        monkeypatch.setattr(
+            checker, "_check_project", create_check_project_stub(project)
+        )
         h.mk_project(tmp_path, "p1")
         result = checker.run_projects(
             ["p1"],

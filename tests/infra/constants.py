@@ -1,6 +1,6 @@
 """Constants for FLEXT infra tests.
 
-Provides FlextInfraTestConstants, extending FlextTestsConstants with infra-specific
+Provides FlextInfraTestConstants, extending c with infra-specific
 constants for infrastructure testing, project names, and test markers.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -11,17 +11,17 @@ from __future__ import annotations
 
 from typing import Final
 
-from flext_tests.constants import FlextTestsConstants
+from flext_tests.constants import c
 
 from flext_infra import FlextInfraConstants
 
 
-class FlextInfraTestConstants(FlextTestsConstants):
-    """Constants for FLEXT infra tests - extends FlextTestsConstants.
+class FlextInfraTestConstants(c):
+    """Constants for FLEXT infra tests - extends c.
 
     Architecture layer: Layer 0 foundation constants with infra test extensions.
-    Architecture: Extends FlextTestsConstants with infra-specific constants.
-    All base constants from FlextTestsConstants are available through inheritance.
+    Architecture: Extends c with infra-specific constants.
+    All base constants from c are available through inheritance.
     """
 
     class Infra(FlextInfraConstants.Infra):

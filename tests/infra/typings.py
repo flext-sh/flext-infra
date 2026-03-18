@@ -1,6 +1,6 @@
 """Type system for FLEXT infra tests.
 
-Provides FlextInfraTestTypes, extending FlextTestsTypes with infra-specific
+Provides FlextInfraTestTypes, extending t with infra-specific
 type definitions for infrastructure testing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -9,16 +9,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests.typings import FlextTestsTypes
+from flext_tests.typings import t
 
 from flext_infra import FlextInfraTypes
 
 
-class FlextInfraTestTypes(FlextTestsTypes):
-    """Type system for FLEXT infra tests - extends FlextTestsTypes.
+class FlextInfraTestTypes(t):
+    """Type system for FLEXT infra tests - extends t.
 
-    Architecture: Extends FlextTestsTypes with infra-specific type definitions.
-    All base types from FlextTestsTypes are available through inheritance.
+    Architecture: Extends t with infra-specific type definitions.
+    All base types from t are available through inheritance.
     """
 
     class Infra(FlextInfraTypes.Infra):

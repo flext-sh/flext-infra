@@ -1,6 +1,6 @@
 """Protocol definitions for FLEXT infra tests.
 
-Provides FlextInfraTestProtocols, extending FlextTestsProtocols with infra-specific
+Provides FlextInfraTestProtocols, extending p with infra-specific
 protocol definitions for infrastructure testing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -11,16 +11,16 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from flext_tests.protocols import FlextTestsProtocols
+from flext_tests.protocols import p
 
 from flext_infra import FlextInfraProtocols
 
 
-class FlextInfraTestProtocols(FlextTestsProtocols):
-    """Protocol definitions for FLEXT infra tests - extends FlextTestsProtocols.
+class FlextInfraTestProtocols(p):
+    """Protocol definitions for FLEXT infra tests - extends p.
 
-    Architecture: Extends FlextTestsProtocols with infra-specific protocol definitions.
-    All base protocols from FlextTestsProtocols are available through inheritance.
+    Architecture: Extends p with infra-specific protocol definitions.
+    All base protocols from p are available through inheritance.
     Protocols cannot import models - only other protocols and types.
     """
 

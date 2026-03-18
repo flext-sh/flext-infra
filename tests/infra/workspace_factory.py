@@ -1,7 +1,7 @@
 """Workspace factory for FLEXT infra tests.
 
 Creates real FLEXT project structures using flext_tests base classes.
-Uses m (FlextTestsModels), c (FlextTestsConstants), and u (FlextTestsUtilities).
+Uses m (m), c (c), and u (u).
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -22,7 +22,7 @@ from flext_infra.constants import FlextInfraConstants
 class WorkspaceFactory(m.Config):
     """Factory for creating test workspaces with real project structures.
 
-    Extends FlextTestsModels.Factory.Config for consistent test data generation.
+    Extends m.Factory.Config for consistent test data generation.
     Uses constants from c.Infra.Tests for version strings and paths.
     """
 

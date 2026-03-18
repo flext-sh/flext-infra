@@ -14,43 +14,58 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.check.services import FlextInfraWorkspaceChecker
+from flext_infra.gates.mypy import FlextInfraMypyGate
+from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 
 from ...helpers import h
-from ...models import m
 
-RunCallable = Callable[
-    [list[str], Path, int, dict[str, str] | None],
-    m.Infra.CommandOutput,
-]
+type GateClass = type[FlextInfraPyreflyGate | FlextInfraMypyGate]
 
 
-def _as_command_output(
-    result: m.Infra.CommandOutput | SimpleNamespace,
-) -> m.Infra.CommandOutput:
-    if isinstance(result, m.Infra.CommandOutput):
+def _as_command_output(result: SimpleNamespace) -> SimpleNamespace:
+    if hasattr(result, "exit_code"):
         return result
-    return m.Infra.CommandOutput(
+    return SimpleNamespace(
         stdout=result.stdout,
         stderr=result.stderr,
         exit_code=result.returncode,
     )
 
 
-def _stub_run(result: m.Infra.CommandOutput | SimpleNamespace) -> RunCallable:
+def _stub_run(
+    result: SimpleNamespace,
+) -> Callable[..., SimpleNamespace]:
     def _run(
-        _cmd: list[str],
-        _cwd: Path,
-        _timeout: int = 120,
-        _env: dict[str, str] | None = None,
-    ) -> m.Infra.CommandOutput:
-        del _cmd, _cwd, _timeout, _env
+        _self: object,
+        cmd: list[str],
+        cwd: Path,
+        timeout: int = 120,
+        env: dict[str, str] | None = None,
+    ) -> SimpleNamespace:
+        del _self, cmd, cwd, timeout, env
         return _as_command_output(result)
 
     return _run
 
 
-def _existing_dirs(_project_dir: Path) -> list[str]:
-    del _project_dir
+def _create_checker_project(
+    tmp_path: Path,
+    *,
+    project_name: str = "p1",
+    with_src: bool = False,
+) -> tuple[FlextInfraWorkspaceChecker, Path]:
+    checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+    project_dir = tmp_path / project_name
+    project_dir.mkdir(parents=True, exist_ok=True)
+    (project_dir / "pyproject.toml").write_text("[tool.poetry]\n")
+    if with_src:
+        src_dir = project_dir / "src"
+        src_dir.mkdir(exist_ok=True)
+    return checker, project_dir
+
+
+def _existing_dirs(_self: GateClass, _project_dir: Path) -> list[str]:
+    del _self, _project_dir
     return ["src"]
 
 
@@ -64,6 +79,25 @@ def _src_dirs_with_py(_project_dir: Path, _dirs: list[str]) -> list[str]:
     return ["src"]
 
 
+def _patch_gate_run(
+    monkeypatch: pytest.MonkeyPatch,
+    gate_class: GateClass,
+    result: SimpleNamespace,
+) -> None:
+    monkeypatch.setattr(gate_class, "_run", _stub_run(result))
+
+
+def _patch_python_dir_detection(
+    monkeypatch: pytest.MonkeyPatch,
+    gate_class: GateClass,
+    *,
+    has_python_dirs: bool,
+) -> None:
+    monkeypatch.setattr(gate_class, "_existing_check_dirs", _existing_dirs)
+    dirs_with_py = _src_dirs_with_py if has_python_dirs else _no_dirs_with_py
+    monkeypatch.setattr(gate_class, "_dirs_with_py", staticmethod(dirs_with_py))
+
+
 class TestRunPyrefly:
     """Test FlextInfraWorkspaceChecker._run_pyrefly method."""
 
@@ -72,14 +106,17 @@ class TestRunPyrefly:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
+        checker, proj_dir = _create_checker_project(tmp_path)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         json_file = reports_dir / "p1-pyrefly.json"
         json_file.write_text('{"errors": []}')
-        monkeypatch.setattr(checker, "_run", _stub_run(h.stub_run()))
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
+        _patch_gate_run(monkeypatch, FlextInfraPyreflyGate, h.stub_run())
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            has_python_dirs=True,
+        )
         result = checker._run_pyrefly(proj_dir, reports_dir)
         tm.that(result.result.passed, eq=True)
 
@@ -88,16 +125,23 @@ class TestRunPyrefly:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
+        checker, proj_dir = _create_checker_project(tmp_path)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         json_file = reports_dir / "p1-pyrefly.json"
         json_file.write_text(
             '{"errors": [{"path": "a.py", "line": 1, "column": 0, "name": "E001", "description": "Error", "severity": "error"}]}',
         )
-        monkeypatch.setattr(checker, "_run", _stub_run(h.stub_run(returncode=1)))
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
+        _patch_gate_run(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            h.stub_run(returncode=1),
+        )
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            has_python_dirs=True,
+        )
         result = checker._run_pyrefly(proj_dir, reports_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=1)
@@ -107,14 +151,21 @@ class TestRunPyrefly:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
+        checker, proj_dir = _create_checker_project(tmp_path)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         json_file = reports_dir / "p1-pyrefly.json"
         json_file.write_text("invalid json")
-        monkeypatch.setattr(checker, "_run", _stub_run(h.stub_run(returncode=1)))
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
+        _patch_gate_run(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            h.stub_run(returncode=1),
+        )
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            has_python_dirs=True,
+        )
         result = checker._run_pyrefly(proj_dir, reports_dir)
         tm.that(result.result.passed, eq=False)
 
@@ -123,16 +174,19 @@ class TestRunPyrefly:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
+        checker, proj_dir = _create_checker_project(tmp_path)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
-        monkeypatch.setattr(
-            checker,
-            "_run",
-            _stub_run(h.stub_run(stderr="Found 3 errors", returncode=1)),
+        _patch_gate_run(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            h.stub_run(stderr="Found 3 errors", returncode=1),
         )
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            has_python_dirs=True,
+        )
         result = checker._run_pyrefly(proj_dir, reports_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=3)
@@ -142,16 +196,23 @@ class TestRunPyrefly:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
+        checker, proj_dir = _create_checker_project(tmp_path)
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         json_file = reports_dir / "p1-pyrefly.json"
         json_file.write_text(
             '[{"path": "a.py", "line": 1, "column": 0, "name": "E001", "description": "Error", "severity": "error"}]',
         )
-        monkeypatch.setattr(checker, "_run", _stub_run(h.stub_run(returncode=1)))
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
+        _patch_gate_run(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            h.stub_run(returncode=1),
+        )
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraPyreflyGate,
+            has_python_dirs=True,
+        )
         result = checker._run_pyrefly(proj_dir, reports_dir)
         tm.that(len(result.issues), eq=1)
 
@@ -164,10 +225,12 @@ class TestRunMypy:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
-        monkeypatch.setattr(checker, "_dirs_with_py", staticmethod(_no_dirs_with_py))
+        checker, proj_dir = _create_checker_project(tmp_path)
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraMypyGate,
+            has_python_dirs=False,
+        )
         result = checker._run_mypy(proj_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
@@ -177,17 +240,19 @@ class TestRunMypy:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1", with_src=True)
+        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code")
         json_line = '{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}'
-        monkeypatch.setattr(
-            checker,
-            "_run",
-            _stub_run(h.stub_run(stdout=json_line, returncode=1)),
+        _patch_gate_run(
+            monkeypatch,
+            FlextInfraMypyGate,
+            h.stub_run(stdout=json_line, returncode=1),
         )
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
-        monkeypatch.setattr(checker, "_dirs_with_py", staticmethod(_src_dirs_with_py))
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraMypyGate,
+            has_python_dirs=True,
+        )
         result = checker._run_mypy(proj_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=1)
@@ -197,18 +262,20 @@ class TestRunMypy:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1", with_src=True)
+        checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code")
         line1 = '{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}'
         line2 = '{"file": "b.py", "line": 2, "column": 0, "code": "E002", "message": "Error", "severity": "error"}'
-        monkeypatch.setattr(
-            checker,
-            "_run",
-            _stub_run(h.stub_run(stdout=f"{line1}\n\n{line2}\n", returncode=1)),
+        _patch_gate_run(
+            monkeypatch,
+            FlextInfraMypyGate,
+            h.stub_run(stdout=f"{line1}\n\n{line2}\n", returncode=1),
         )
-        monkeypatch.setattr(checker, "_existing_check_dirs", _existing_dirs)
-        monkeypatch.setattr(checker, "_dirs_with_py", staticmethod(_src_dirs_with_py))
+        _patch_python_dir_detection(
+            monkeypatch,
+            FlextInfraMypyGate,
+            has_python_dirs=True,
+        )
         result = checker._run_mypy(proj_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=2)
