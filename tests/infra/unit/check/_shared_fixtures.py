@@ -9,7 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from flext_core import r, t
@@ -30,7 +32,7 @@ def create_gate_execution(
     project: str = "p",
     *,
     passed: bool = True,
-    issues: list | None = None,
+    issues: list[m.Infra.Issue] | None = None,
 ) -> GateExecution:
     """Factory for GateExecution with standard defaults.
 
@@ -77,10 +79,26 @@ def patch_gate_run(
     Eliminates duplication of: gate._run stub creation + monkeypatch.setattr() call.
     """
 
+    def _as_command_output(
+        output: m.Infra.CommandOutput | SimpleNamespace,
+    ) -> m.Infra.CommandOutput:
+        """Convert SimpleNamespace or CommandOutput to CommandOutput."""
+        if isinstance(output, m.Infra.CommandOutput):
+            return output
+        # Handle SimpleNamespace from h.stub_run
+        return m.Infra.CommandOutput(
+            stdout=getattr(output, "stdout", ""),
+            stderr=getattr(output, "stderr", ""),
+            exit_code=getattr(output, "exit_code", getattr(output, "returncode", 0)),
+        )
+
     def _stub_run(
-        result: m.Infra.CommandOutput,
-    ) -> callable:
-        """Create stub returning fixed result."""
+        result: m.Infra.CommandOutput | SimpleNamespace,
+    ) -> Callable[
+        [object, list[str], Path, int, dict[str, str] | None],
+        m.Infra.CommandOutput,
+    ]:
+        """Create stub returning fixed result or SimpleNamespace."""
 
         def _run(
             _self: object,
@@ -90,7 +108,7 @@ def patch_gate_run(
             _env: dict[str, str] | None = None,
         ) -> m.Infra.CommandOutput:
             del _self, _cmd, _cwd, _timeout, _env
-            return result
+            return _as_command_output(result)
 
         return _run
 
@@ -103,7 +121,7 @@ def patch_gate_run(
 
 def create_fake_run_raw(
     result: r[m.Infra.CommandOutput] | str,
-) -> callable:
+) -> Callable[[list[str]], r[m.Infra.CommandOutput]]:
     """Factory for _fake_run_raw that handles both success and failure.
 
     Single Responsibility: Encapsulate subprocess.run_raw mock creation.
@@ -148,13 +166,13 @@ class RunProjectsMock:
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
-    ) -> r[list]:
+    ) -> r[list[m.Infra.ProjectResult]]:
         """Mock run_projects method with captured argument state."""
         del gates, reports_dir  # Not used in mock, but required by signature
         self.captured_projects = projects
         self.captured_fail_fast = fail_fast
         if self.error_msg:
-            return r[list].fail(self.error_msg)
+            return r[list[m.Infra.ProjectResult]].fail(self.error_msg)
         result = infra_models.Infra.ProjectResult(project="test-project")
         if not self.passed:
             # Add failing gate to make passed=False (computed from gates dict)
@@ -170,7 +188,7 @@ class RunProjectsMock:
                 raw_output="",
             )
             result.gates["test"] = fail_gate
-        return r[list].ok([result])
+        return r[list[m.Infra.ProjectResult]].ok([result])
 
 
 def create_fake_run_projects(
@@ -196,7 +214,7 @@ def create_fake_run_projects(
 
 def create_check_project_stub(
     project: m.Infra.ProjectResult,
-) -> callable:
+) -> Callable[[Path, list[str], Path], m.Infra.ProjectResult]:
     """Factory for _check_project stub that returns fixed project result.
 
     Single Responsibility: Create consistent project checking mocks.
@@ -216,7 +234,7 @@ def create_check_project_stub(
 
 def create_check_project_iter_stub(
     projects: list[m.Infra.ProjectResult],
-) -> callable:
+) -> Callable[[Path, list[str], Path], m.Infra.ProjectResult]:
     """Factory for _check_project stub that iterates through project results.
 
     Single Responsibility: Create consistent project checking mocks with state.
