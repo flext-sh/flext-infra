@@ -12,33 +12,13 @@ import pytest
 from flext_core import r, t
 from flext_tests import tm
 
+from flext_infra import u
 from flext_infra.check.services import (
-    CheckIssue,
     FlextInfraWorkspaceChecker,
     GateExecution,
 )
 
-from ...models import m
-
-
-def _make_gate_exec(
-    gate: str = "lint",
-    project: str = "p",
-    *,
-    passed: bool = True,
-    issues: list[CheckIssue] | None = None,
-) -> GateExecution:
-    return GateExecution(
-        result=m.Infra.GateResult(
-            gate=gate,
-            project=project,
-            passed=passed,
-            errors=[],
-            duration=0.0,
-        ),
-        issues=issues or [],
-        raw_output="",
-    )
+from ._shared_fixtures import create_gate_execution
 
 
 class TestCheckProjectRunners:
@@ -52,25 +32,28 @@ class TestCheckProjectRunners:
         (tmp_path / "src" / "test.py").touch()
         called: dict[str, bool] = {"lint": False, "format": False, "pyrefly": False}
 
-        def _fake_lint(_p: Path) -> GateExecution:
-            called["lint"] = True
-            return _make_gate_exec(gate="lint")
+        class _FakeGate:
+            def __init__(self, gate_name: str) -> None:
+                self._gate_name = gate_name
 
-        def _fake_format(_p: Path) -> GateExecution:
-            called["format"] = True
-            return _make_gate_exec(gate="format")
+            def check(self, _project_dir: Path, _ctx: t.Scalar) -> GateExecution:
+                called[self._gate_name] = True
+                return create_gate_execution(gate=self._gate_name)
 
-        def _fake_pyrefly(_p: Path, _r: Path | None = None) -> GateExecution:
-            called["pyrefly"] = True
-            return _make_gate_exec(gate="pyrefly")
+        def _fake_create(gate_name: str, _workspace_root: Path) -> _FakeGate:
+            del _workspace_root
+            return _FakeGate(gate_name)
 
-        monkeypatch.setattr(checker, "_run_ruff_lint", _fake_lint)
-        monkeypatch.setattr(checker, "_run_ruff_format", _fake_format)
-        monkeypatch.setattr(checker, "_run_pyrefly", _fake_pyrefly)
-        _ = checker._check_project(tmp_path, ["lint", "format", "pyrefly"], tmp_path)
+        monkeypatch.setattr(checker._registry, "create", _fake_create)
+        result = checker._check_project(
+            tmp_path, ["lint", "format", "pyrefly"], tmp_path
+        )
         tm.that(called["lint"], eq=True)
         tm.that(called["format"], eq=True)
         tm.that(called["pyrefly"], eq=True)
+        tm.that("lint" in result.gates, eq=True)
+        tm.that("format" in result.gates, eq=True)
+        tm.that("pyrefly" in result.gates, eq=True)
 
 
 class TestJsonWriteFailure:
@@ -84,21 +67,17 @@ class TestJsonWriteFailure:
         proj_dir.mkdir()
         (proj_dir / "pyproject.toml").write_text("[tool.poetry]\n")
 
-        class _FakeJson:
-            def write_json(self, *_a: t.Scalar, **_kw: t.Scalar) -> r[bool]:
-                return r[bool].fail("write error")
+        def _fake_write_json(*_a: t.Scalar, **_kw: t.Scalar) -> r[bool]:
+            del _a, _kw
+            return r[bool].fail("write error")
 
-        monkeypatch.setattr(checker, "_json", _FakeJson())
+        monkeypatch.setattr(u.Infra, "write_json", _fake_write_json)
 
         def _fake_lint(_project_dir: Path) -> GateExecution:
             del _project_dir
-            return _make_gate_exec("lint", "p", passed=True)
+            return create_gate_execution("lint", "p", passed=True)
 
-        monkeypatch.setattr(
-            checker,
-            "_run_ruff_lint",
-            _fake_lint,
-        )
+        monkeypatch.setattr(checker, "_run_ruff_lint", _fake_lint)
         result = checker.run_projects(["test-project"], ["lint"])
         tm.fail(result, has="write error")
 
@@ -112,12 +91,13 @@ class TestLintAndFormatPublicMethods:
         monkeypatch: pytest.MonkeyPatch,
         gate_name: str,
     ) -> None:
-        def _fake_gate(_project_dir: Path) -> GateExecution:
-            del _project_dir
-            return _make_gate_exec(gate_name, "p", passed=True)
+        def _fake_run_gate(
+            requested_gate_name: str,
+            _project_dir: Path,
+        ) -> GateExecution:
+            return create_gate_execution(requested_gate_name, "p", passed=True)
 
-        runner_name = "_run_ruff_lint" if gate_name == "lint" else "_run_ruff_format"
-        monkeypatch.setattr(checker, runner_name, _fake_gate)
+        monkeypatch.setattr(checker, "_run_gate", _fake_run_gate)
         run_public = checker.lint if gate_name == "lint" else checker.format
         result = run_public(target_dir)
         tm.ok(result)

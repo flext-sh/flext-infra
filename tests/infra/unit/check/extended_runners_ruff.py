@@ -8,54 +8,26 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
-from flext_core import r, t
+from flext_core import r
 from flext_tests import tm
 
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_infra.check.services import FlextInfraWorkspaceChecker
+from flext_infra.gates._base_gate import FlextInfraGateContext
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
 from ...helpers import h
 from ...models import m
-
-RunCallable = Callable[
-    [object, list[str], Path, int, dict[str, str] | None],
-    m.Infra.CommandOutput,
-]
-
-
-def _stub_run(result: m.Infra.CommandOutput | SimpleNamespace) -> RunCallable:
-    """Create a stub _run method returning a fixed result."""
-
-    def _as_command_output(
-        output: m.Infra.CommandOutput | SimpleNamespace,
-    ) -> m.Infra.CommandOutput:
-        if isinstance(output, m.Infra.CommandOutput):
-            return output
-        return m.Infra.CommandOutput(
-            stdout=output.stdout,
-            stderr=output.stderr,
-            exit_code=output.returncode,
-        )
-
-    def _run(
-        _self: object,
-        _cmd: list[str],
-        _cwd: Path,
-        _timeout: int = 120,
-        _env: dict[str, str] | None = None,
-    ) -> m.Infra.CommandOutput:
-        del _self, _cmd, _cwd, _timeout, _env
-        return _as_command_output(result)
-
-    return _run
+from ._shared_fixtures import (
+    create_checker_project,
+    create_fake_run_raw,
+    patch_gate_run,
+)
 
 
 class TestRunRuffLint:
@@ -66,13 +38,13 @@ class TestRunRuffLint:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
+        checker, proj_dir = create_checker_project(tmp_path)
         json_output = '[{"filename": "a.py", "location": {"row": 1, "column": 0}, "code": "E001", "message": "Error"}]'
-        monkeypatch.setattr(
+        patch_gate_run(
+            monkeypatch,
             FlextInfraRuffLintGate,
-            "_run",
-            _stub_run(h.stub_run(stdout=json_output, returncode=1)),
+            stdout=json_output,
+            returncode=1,
         )
         result = checker._run_ruff_lint(proj_dir)
         tm.that(result.result.passed, eq=False)
@@ -83,12 +55,12 @@ class TestRunRuffLint:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
-        monkeypatch.setattr(
+        checker, proj_dir = create_checker_project(tmp_path)
+        patch_gate_run(
+            monkeypatch,
             FlextInfraRuffLintGate,
-            "_run",
-            _stub_run(h.stub_run(stdout="invalid json", returncode=1)),
+            stdout="invalid json",
+            returncode=1,
         )
         result = checker._run_ruff_lint(proj_dir)
         tm.that(result.result.passed, eq=False)
@@ -102,12 +74,12 @@ class TestRunRuffFormat:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
-        monkeypatch.setattr(
+        checker, proj_dir = create_checker_project(tmp_path)
+        patch_gate_run(
+            monkeypatch,
             FlextInfraRuffFormatGate,
-            "_run",
-            _stub_run(h.stub_run(stdout="  --> a.py:1:1", returncode=1)),
+            stdout="  --> a.py:1:1",
+            returncode=1,
         )
         result = checker._run_ruff_format(proj_dir)
         tm.that(result.result.passed, eq=False)
@@ -118,12 +90,12 @@ class TestRunRuffFormat:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
-        monkeypatch.setattr(
+        checker, proj_dir = create_checker_project(tmp_path)
+        patch_gate_run(
+            monkeypatch,
             FlextInfraRuffFormatGate,
-            "_run",
-            _stub_run(h.stub_run(stdout="a.py", returncode=1)),
+            stdout="a.py",
+            returncode=1,
         )
         result = checker._run_ruff_format(proj_dir)
         tm.that(result.result.passed, eq=False)
@@ -134,17 +106,12 @@ class TestRunRuffFormat:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        proj_dir = h.mk_project(tmp_path, "p1")
-        monkeypatch.setattr(
+        checker, proj_dir = create_checker_project(tmp_path)
+        patch_gate_run(
+            monkeypatch,
             FlextInfraRuffFormatGate,
-            "_run",
-            _stub_run(
-                h.stub_run(
-                    stdout="--> src/file.py:1:1\n--> src/file.py:1:1\n--> src/other.py:1:1\n",
-                    returncode=1,
-                ),
-            ),
+            stdout="--> src/file.py:1:1\n--> src/file.py:1:1\n--> src/other.py:1:1\n",
+            returncode=1,
         )
         result = checker._run_ruff_format(proj_dir)
         tm.that(result.result.passed, eq=False)
@@ -157,10 +124,11 @@ class TestRunRuffFormat:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "pyproject.toml").touch()
-        monkeypatch.setattr(
+        patch_gate_run(
+            monkeypatch,
             FlextInfraRuffFormatGate,
-            "_run",
-            _stub_run(h.stub_run(stdout="file1.py\n\nfile2.py\n", returncode=1)),
+            stdout="file1.py\n\nfile2.py\n",
+            returncode=1,
         )
         result = checker._run_ruff_format(tmp_path)
         tm.that(len(result.issues) >= 1, eq=True)
@@ -174,34 +142,40 @@ class TestRunCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _fake_run_raw(
-            _cmd: list[str],
-            **_kw: t.Scalar,
-        ) -> r[m.Infra.CommandOutput]:
-            return r[m.Infra.CommandOutput].ok(
-                m.Infra.CommandOutput(stdout="output", stderr="", exit_code=0),
-            )
-
-        monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_raw", _fake_run_raw)
-        result = FlextInfraRuffLintGate(tmp_path)._run(["echo", "test"], tmp_path)
-        tm.that(result.stdout, eq="output")
-        tm.that(result.exit_code, eq=0)
+        monkeypatch.setattr(
+            FlextInfraUtilitiesSubprocess,
+            "run_raw",
+            create_fake_run_raw(
+                r[m.Infra.CommandOutput].ok(
+                    m.Infra.CommandOutput(stdout="[]", stderr="", exit_code=0),
+                )
+            ),
+        )
+        gate = FlextInfraRuffLintGate(tmp_path)
+        result = gate.check(
+            tmp_path,
+            FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+        )
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.raw_output, eq="")
 
     def test_run_command_failure(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _fake_run_raw(
-            _cmd: list[str],
-            **_kw: t.Scalar,
-        ) -> r[m.Infra.CommandOutput]:
-            return r[m.Infra.CommandOutput].fail("execution failed")
-
-        monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_raw", _fake_run_raw)
-        result = FlextInfraRuffLintGate(tmp_path)._run(["false"], tmp_path)
-        tm.that(result.exit_code, eq=1)
-        tm.that(result.stderr, contains="execution failed")
+        monkeypatch.setattr(
+            FlextInfraUtilitiesSubprocess,
+            "run_raw",
+            create_fake_run_raw("execution failed"),
+        )
+        gate = FlextInfraRuffLintGate(tmp_path)
+        result = gate.check(
+            tmp_path,
+            FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+        )
+        tm.that(result.result.passed, eq=False)
+        tm.that(result.raw_output, contains="execution failed")
 
 
 class TestCollectMarkdownFiles:
