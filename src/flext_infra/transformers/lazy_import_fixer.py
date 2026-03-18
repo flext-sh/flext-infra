@@ -7,6 +7,10 @@ from typing import override
 
 import libcst as cst
 
+from flext_infra.transformers.import_insertion import (
+    FlextInfraTransformerImportInsertion,
+)
+
 
 class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
     """Hoist function-local imports to module top while preserving ordering."""
@@ -72,29 +76,8 @@ class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
         if not unique_hoisted:
             return updated_node
         body = list(updated_node.body)
-        insert_idx = 0
-        if (
-            body
-            and isinstance(body[0], cst.SimpleStatementLine)
-            and (len(body[0].body) == 1)
-            and isinstance(body[0].body[0], cst.Expr)
-            and isinstance(body[0].body[0].value, cst.SimpleString)
-        ):
-            insert_idx = 1
-        while insert_idx < len(body):
-            stmt = body[insert_idx]
-            if not isinstance(stmt, cst.SimpleStatementLine):
-                break
-            if len(stmt.body) != 1:
-                break
-            only_stmt = stmt.body[0]
-            if (
-                isinstance(only_stmt, cst.ImportFrom)
-                and isinstance(only_stmt.module, cst.Name)
-                and (only_stmt.module.value == "__future__")
-            ):
-                insert_idx += 1
-                continue
-            break
+        insert_idx = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
+            body,
+        )
         new_body = body[:insert_idx] + unique_hoisted + body[insert_idx:]
         return updated_node.with_changes(body=new_body)

@@ -32,6 +32,9 @@ if TYPE_CHECKING:
     from flext_infra.transformers.import_bypass_remover import (
         FlextInfraRefactorImportBypassRemover,
     )
+    from flext_infra.transformers.import_insertion import (
+        FlextInfraTransformerImportInsertion,
+    )
     from flext_infra.transformers.import_modernizer import (
         FlextInfraRefactorImportModernizer,
     )
@@ -118,6 +121,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.policy",
         "FlextInfraRefactorTransformerPolicyUtilities",
     ),
+    "FlextInfraTransformerImportInsertion": (
+        "flext_infra.transformers.import_insertion",
+        "FlextInfraTransformerImportInsertion",
+    ),
     "HelperConsolidationTransformer": (
         "flext_infra.transformers.helper_consolidation",
         "HelperConsolidationTransformer",
@@ -148,6 +155,7 @@ __all__ = [
     "FlextInfraRefactorMRORemover",
     "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTransformerPolicyUtilities",
+    "FlextInfraTransformerImportInsertion",
     "HelperConsolidationTransformer",
     "NestedClassPropagationTransformer",
     "u",

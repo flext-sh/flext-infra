@@ -5,13 +5,19 @@ import operator
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, p, u
+from flext_infra import c, m, p
+from flext_infra.refactor._detectors.python_module_loader_mixin import (
+    FlextInfraRefactorDetectorPythonModuleLoaderMixin,
+)
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
 
 
-class MROCompletenessDetector(p.Infra.Scanner):
+class MROCompletenessDetector(
+    FlextInfraRefactorDetectorPythonModuleLoaderMixin,
+    p.Infra.Scanner,
+):
     """Detect facade classes missing local MRO composition bases."""
 
     FAMILY_DIR_BY_ALIAS: ClassVar[dict[str, str]] = {
@@ -237,48 +243,3 @@ class MROCompletenessDetector(p.Infra.Scanner):
                 continue
             result.add((stmt.name, stmt.lineno))
         return result
-
-    @staticmethod
-    def _load_python_module(
-        file_path: Path,
-        *,
-        stage: str,
-        parse_failures: list[nem.ParseFailureViolation] | None,
-    ) -> m.Infra.ParsedPythonModule | None:
-        try:
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except UnicodeDecodeError as exc:
-            if parse_failures is not None:
-                parse_failures.append(
-                    nem.ParseFailureViolation.create(
-                        file=str(file_path),
-                        stage=stage,
-                        error_type=type(exc).__name__,
-                        detail=str(exc),
-                    ),
-                )
-            return None
-        except OSError as exc:
-            if parse_failures is not None:
-                parse_failures.append(
-                    nem.ParseFailureViolation.create(
-                        file=str(file_path),
-                        stage=stage,
-                        error_type=type(exc).__name__,
-                        detail=str(exc),
-                    ),
-                )
-            return None
-        tree = u.Infra.parse_ast_from_source(source)
-        if tree is None:
-            if parse_failures is not None:
-                parse_failures.append(
-                    nem.ParseFailureViolation.create(
-                        file=str(file_path),
-                        stage=stage,
-                        error_type="SyntaxError",
-                        detail="invalid python source",
-                    ),
-                )
-            return None
-        return m.Infra.ParsedPythonModule(source=source, tree=tree)

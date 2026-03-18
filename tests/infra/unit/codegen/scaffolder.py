@@ -14,31 +14,18 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-
-_SRC_MODULE_FILES = (
-    "constants.py",
-    "typings.py",
-    "protocols.py",
-    "models.py",
-    "utilities.py",
+from tests.infra.unit.codegen._project_factory import (
+    FlextInfraCodegenTestProjectFactory,
 )
+
+_SRC_MODULE_FILES = FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES
 
 
 def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Path:
-    project = tmp_path / "test-project"
-    project.mkdir()
-    (project / "Makefile").touch()
-    (project / "pyproject.toml").write_text("[project]\nname='test-project'\n")
-    (project / ".git").mkdir()
-    pkg = project / "src" / "test_project"
-    pkg.mkdir(parents=True)
-    (pkg / "__init__.py").touch()
-    if with_all_modules:
-        for mod in _SRC_MODULE_FILES:
-            (pkg / mod).write_text(
-                f"class TestProject{mod.split('.')[0].title()}:\n    pass\n",
-            )
-    return project
+    return FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
+        tmp_path=tmp_path,
+        with_all_modules=with_all_modules,
+    )
 
 
 class TestScaffoldProjectNoop:

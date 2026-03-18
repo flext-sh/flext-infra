@@ -5,15 +5,18 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m, p
-from flext_infra.refactor._detectors.module_loader import (
-    FlextInfraRefactorDetectorModuleLoader,
+from flext_infra.refactor._detectors.python_module_loader_mixin import (
+    FlextInfraRefactorDetectorPythonModuleLoaderMixin,
 )
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
 
 
-class NamespaceSourceDetector(p.Infra.Scanner):
+class NamespaceSourceDetector(
+    FlextInfraRefactorDetectorPythonModuleLoaderMixin,
+    p.Infra.Scanner,
+):
     """Detect alias imports from wrong source packages."""
 
     _PROJECT_ALIAS_MAP_CACHE: ClassVar[dict[Path, dict[str, str]]] = {}
@@ -213,19 +216,6 @@ class NamespaceSourceDetector(p.Infra.Scanner):
                 alias_map[family] = package_name
         cls._PROJECT_ALIAS_MAP_CACHE[project_root] = alias_map
         return alias_map
-
-    @staticmethod
-    def _load_python_module(
-        file_path: Path,
-        *,
-        stage: str,
-        parse_failures: list[nem.ParseFailureViolation] | None,
-    ) -> m.Infra.ParsedPythonModule | None:
-        return FlextInfraRefactorDetectorModuleLoader.load_python_module(
-            file_path,
-            stage=stage,
-            parse_failures=parse_failures,
-        )
 
     @staticmethod
     def _discover_project_package_name(*, project_root: Path) -> str:

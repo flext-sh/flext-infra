@@ -9,6 +9,9 @@ import libcst as cst
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
 from flext_infra import c
+from flext_infra.transformers.import_insertion import (
+    FlextInfraTransformerImportInsertion,
+)
 
 
 class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
@@ -120,30 +123,9 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
             ],
         )
         body = list(updated_node.body)
-        insert_idx = 0
-        if (
-            body
-            and isinstance(body[0], cst.SimpleStatementLine)
-            and (len(body[0].body) == 1)
-            and isinstance(body[0].body[0], cst.Expr)
-            and isinstance(body[0].body[0].value, cst.SimpleString)
-        ):
-            insert_idx = 1
-        while insert_idx < len(body):
-            stmt = body[insert_idx]
-            if not isinstance(stmt, cst.SimpleStatementLine):
-                break
-            if len(stmt.body) != 1:
-                break
-            only_stmt = stmt.body[0]
-            if (
-                isinstance(only_stmt, cst.ImportFrom)
-                and isinstance(only_stmt.module, cst.Name)
-                and (only_stmt.module.value == "__future__")
-            ):
-                insert_idx += 1
-                continue
-            break
+        insert_idx = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
+            body,
+        )
         self._record_change(
             f"Added: from flext_core import {', '.join(missing_aliases)}",
         )

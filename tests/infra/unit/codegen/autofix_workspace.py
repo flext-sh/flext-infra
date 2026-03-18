@@ -13,37 +13,9 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-
-
-def _to_pascal(snake: str) -> str:
-    return "".join(part.title() for part in snake.split("_"))
-
-
-def _create_project(
-    tmp_path: Path,
-    name: str,
-    pkg_name: str,
-    files: dict[str, str],
-) -> Path:
-    project = tmp_path / name
-    project.mkdir()
-    (project / "Makefile").touch()
-    (project / "pyproject.toml").write_text(f"[project]\nname='{name}'\n")
-    (project / ".git").mkdir()
-    pkg = project / "src" / pkg_name
-    pkg.mkdir(parents=True)
-    (pkg / "__init__.py").touch()
-    (pkg / "typings.py").write_text(
-        f"from flext_core import FlextTypes\n"
-        f"class {_to_pascal(pkg_name)}Types(FlextTypes):\n    pass\n",
-    )
-    (pkg / "constants.py").write_text(
-        f"from flext_core import FlextConstants\n"
-        f"class {_to_pascal(pkg_name)}Constants(FlextConstants):\n    pass\n",
-    )
-    for filename, content in files.items():
-        (pkg / filename).write_text(content)
-    return project
+from tests.infra.unit.codegen._project_factory import (
+    FlextInfraCodegenTestProjectFactory,
+)
 
 
 def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
@@ -58,8 +30,8 @@ def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
     (pkg / "typings.py").write_text("pass\n")
     (pkg / "constants.py").write_text("pass\n")
     (pkg / "base.py").write_text("import typing\nT = typing.TypeVar('T')\n")
-    _create_project(
-        tmp_path,
+    FlextInfraCodegenTestProjectFactory.create_project(
+        tmp_path=tmp_path,
         name="test-proj",
         pkg_name="test_proj",
         files={
@@ -89,8 +61,8 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
 
 
 def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
-    project = _create_project(
-        tmp_path,
+    project = FlextInfraCodegenTestProjectFactory.create_project(
+        tmp_path=tmp_path,
         name="test-proj",
         pkg_name="test_proj",
         files={
@@ -100,10 +72,12 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
     )
     fixer = FlextInfraCodegenFixer(tmp_path)
     result = fixer.fix_project(project)
-    tm.that(len(result.files_modified), eq=2)
+    tm.that(len(result.files_modified), eq=4)
     modified_str = " ".join(result.files_modified)
+    tm.that(modified_str, contains="__init__.py")
     tm.that(modified_str, contains="base.py")
     tm.that(modified_str, contains="constants.py")
+    tm.that(modified_str, contains="typings.py")
 
 
 __all__: list[str] = []

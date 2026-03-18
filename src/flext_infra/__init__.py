@@ -145,6 +145,12 @@ if TYPE_CHECKING:
     from flext_infra.models import FlextInfraModels, m
     from flext_infra.protocols import FlextInfraProtocols, p
     from flext_infra.refactor._detectors.import_collector import ImportCollector
+    from flext_infra.refactor._detectors.module_loader import (
+        FlextInfraRefactorDetectorModuleLoader,
+    )
+    from flext_infra.refactor._detectors.python_module_loader_mixin import (
+        FlextInfraRefactorDetectorPythonModuleLoaderMixin,
+    )
     from flext_infra.refactor.census import FlextInfraRefactorCensus
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer,
@@ -250,6 +256,9 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.import_bypass_remover import (
         FlextInfraRefactorImportBypassRemover,
+    )
+    from flext_infra.transformers.import_insertion import (
+        FlextInfraTransformerImportInsertion,
     )
     from flext_infra.transformers.import_modernizer import (
         FlextInfraRefactorImportModernizer,
@@ -524,6 +533,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.deprecated_remover",
         "FlextInfraRefactorDeprecatedRemover",
     ),
+    "FlextInfraRefactorDetectorModuleLoader": (
+        "flext_infra.refactor._detectors.module_loader",
+        "FlextInfraRefactorDetectorModuleLoader",
+    ),
+    "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
+        "flext_infra.refactor._detectors.python_module_loader_mixin",
+        "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
+    ),
     "FlextInfraRefactorEngine": (
         "flext_infra.refactor.engine",
         "FlextInfraRefactorEngine",
@@ -682,6 +699,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraTextPatternScanner": (
         "flext_infra.validate.scanner",
         "FlextInfraTextPatternScanner",
+    ),
+    "FlextInfraTransformerImportInsertion": (
+        "flext_infra.transformers.import_insertion",
+        "FlextInfraTransformerImportInsertion",
     ),
     "FlextInfraTypes": ("flext_infra.typings", "FlextInfraTypes"),
     "FlextInfraUtilities": ("flext_infra.utilities", "FlextInfraUtilities"),
@@ -958,6 +979,8 @@ __all__ = [
     "FlextInfraRefactorCliSupport",
     "FlextInfraRefactorDependencyAnalyzerFacade",
     "FlextInfraRefactorDeprecatedRemover",
+    "FlextInfraRefactorDetectorModuleLoader",
+    "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     "FlextInfraRefactorEngine",
     "FlextInfraRefactorEnsureFutureAnnotationsRule",
     "FlextInfraRefactorImportBypassRemover",
@@ -1000,6 +1023,7 @@ __all__ = [
     "FlextInfraStubSupplyChain",
     "FlextInfraSyncService",
     "FlextInfraTextPatternScanner",
+    "FlextInfraTransformerImportInsertion",
     "FlextInfraTypes",
     "FlextInfraUtilities",
     "FlextInfraUtilitiesCli",

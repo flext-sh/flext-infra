@@ -14,6 +14,12 @@ if TYPE_CHECKING:
 
     from flext_infra.refactor import _detectors
     from flext_infra.refactor._detectors.import_collector import ImportCollector
+    from flext_infra.refactor._detectors.module_loader import (
+        FlextInfraRefactorDetectorModuleLoader,
+    )
+    from flext_infra.refactor._detectors.python_module_loader_mixin import (
+        FlextInfraRefactorDetectorPythonModuleLoaderMixin,
+    )
     from flext_infra.refactor.census import FlextInfraRefactorCensus
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer,
@@ -109,6 +115,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraRefactorDependencyAnalyzerFacade": (
         "flext_infra.refactor.dependency_analyzer",
         "FlextInfraRefactorDependencyAnalyzerFacade",
+    ),
+    "FlextInfraRefactorDetectorModuleLoader": (
+        "flext_infra.refactor._detectors.module_loader",
+        "FlextInfraRefactorDetectorModuleLoader",
+    ),
+    "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
+        "flext_infra.refactor._detectors.python_module_loader_mixin",
+        "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     ),
     "FlextInfraRefactorEngine": (
         "flext_infra.refactor.engine",
@@ -237,6 +251,8 @@ __all__ = [
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorCliSupport",
     "FlextInfraRefactorDependencyAnalyzerFacade",
+    "FlextInfraRefactorDetectorModuleLoader",
+    "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     "FlextInfraRefactorEngine",
     "FlextInfraRefactorLooseClassScanner",
     "FlextInfraRefactorMROImportRewriter",
