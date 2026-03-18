@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 from flext_infra import c, m, u
-from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
+
+_CONSTANT_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
+_TYPE_CANDIDATE_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Za-z][A-Za-z0-9_]*$")
 
 
 class FlextInfraRefactorMROMigrationScanner:
@@ -87,7 +90,7 @@ class FlextInfraRefactorMROMigrationScanner:
         if isinstance(stmt, ast.AnnAssign):
             if not isinstance(stmt.target, ast.Name):
                 return None
-            if not FlextInfraRefactorMROResolver.CONSTANT_PATTERN.match(stmt.target.id):
+            if not _CONSTANT_PATTERN.match(stmt.target.id):
                 return None
             if not FlextInfraRefactorMROMigrationScanner._is_final_annotation(
                 annotation=stmt.annotation,
@@ -106,7 +109,7 @@ class FlextInfraRefactorMROMigrationScanner:
             target = stmt.targets[0]
             if not isinstance(target, ast.Name):
                 return None
-            if not FlextInfraRefactorMROResolver.CONSTANT_PATTERN.match(target.id):
+            if not _CONSTANT_PATTERN.match(target.id):
                 return None
             return m.Infra.MROSymbolCandidate(
                 symbol=target.id,
@@ -246,10 +249,7 @@ class FlextInfraRefactorMROMigrationScanner:
     ) -> m.Infra.MROSymbolCandidate | None:
         if isinstance(stmt, ast.TypeAlias):
             symbol = stmt.name.id
-            if (
-                FlextInfraRefactorMROResolver.TYPE_CANDIDATE_PATTERN.match(symbol)
-                is None
-            ):
+            if _TYPE_CANDIDATE_PATTERN.match(symbol) is None:
                 return None
             return m.Infra.MROSymbolCandidate(
                 symbol=symbol,
@@ -262,10 +262,7 @@ class FlextInfraRefactorMROMigrationScanner:
             if not isinstance(stmt.target, ast.Name):
                 return None
             symbol = stmt.target.id
-            if (
-                FlextInfraRefactorMROResolver.TYPE_CANDIDATE_PATTERN.match(symbol)
-                is None
-            ):
+            if _TYPE_CANDIDATE_PATTERN.match(symbol) is None:
                 return None
             if not FlextInfraRefactorMROMigrationScanner._is_type_alias_annotation(
                 annotation=stmt.annotation,
@@ -282,10 +279,7 @@ class FlextInfraRefactorMROMigrationScanner:
             if len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
                 return None
             symbol = stmt.targets[0].id
-            if (
-                FlextInfraRefactorMROResolver.TYPE_CANDIDATE_PATTERN.match(symbol)
-                is None
-            ):
+            if _TYPE_CANDIDATE_PATTERN.match(symbol) is None:
                 return None
             if not FlextInfraRefactorMROMigrationScanner._is_typing_factory_call(
                 expr=stmt.value,
