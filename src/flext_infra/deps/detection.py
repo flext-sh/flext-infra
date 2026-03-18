@@ -19,7 +19,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.deps._models import FlextInfraDepsModels
 
 
 class FlextInfraDependencyDetectionService:
@@ -528,7 +527,7 @@ class FlextInfraDependencyDetectionService:
 
 
 _service = FlextInfraDependencyDetectionService()
-dm = FlextInfraDepsModels
+dm = m.Infra
 
 
 class FlextInfraDependencyDetectionHelpers:
