@@ -41,7 +41,7 @@ def test_run_cli_run_returns_one_for_fail(monkeypatch: MonkeyPatch) -> None:
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
-        create_fake_run_projects((False, None)),
+        create_fake_run_projects(passed=False),
     )
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
@@ -55,22 +55,10 @@ def test_run_cli_run_returns_one_for_fail(monkeypatch: MonkeyPatch) -> None:
 
 def test_run_cli_run_returns_two_for_error(monkeypatch: MonkeyPatch) -> None:
     """Test that run_cli returns 2 when run_projects fails."""
-
-    def _fake_run_projects(
-        self: FlextInfraWorkspaceChecker,
-        projects: list[str],
-        gates: list[str],
-        *,
-        reports_dir: Path | None,
-        fail_fast: bool,
-    ) -> r[list[SimpleNamespace]]:
-        del self, projects, gates, reports_dir, fail_fast
-        return r[list[SimpleNamespace]].fail("test error")
-
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
-        _fake_run_projects,
+        create_fake_run_projects(error_msg="test error"),
     )
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
@@ -84,24 +72,11 @@ def test_run_cli_run_returns_two_for_error(monkeypatch: MonkeyPatch) -> None:
 
 def test_run_cli_with_multiple_projects(monkeypatch: MonkeyPatch) -> None:
     """Test that run_cli handles multiple projects."""
-    captured_projects: list[str] = []
-
-    def _fake_run_projects(
-        self: FlextInfraWorkspaceChecker,
-        projects: list[str],
-        gates: list[str],
-        *,
-        reports_dir: Path | None,
-        fail_fast: bool,
-    ) -> r[list[SimpleNamespace]]:
-        del self, gates, reports_dir, fail_fast
-        captured_projects.extend(projects)
-        return r[list[SimpleNamespace]].ok([SimpleNamespace(passed=True)])
-
+    mock = create_fake_run_projects()
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
-        _fake_run_projects,
+        mock,
     )
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
@@ -113,30 +88,17 @@ def test_run_cli_with_multiple_projects(monkeypatch: MonkeyPatch) -> None:
         "proj2",
     ])
     assert exit_code == 0
-    assert "proj1" in captured_projects
-    assert "proj2" in captured_projects
+    assert "proj1" in mock.captured_projects
+    assert "proj2" in mock.captured_projects
 
 
 def test_run_cli_with_fail_fast_flag(monkeypatch: MonkeyPatch) -> None:
     """Test that run_cli passes fail_fast flag to run_projects."""
-    captured_fail_fast: list[bool] = []
-
-    def _fake_run_projects(
-        self: FlextInfraWorkspaceChecker,
-        projects: list[str],
-        gates: list[str],
-        *,
-        reports_dir: Path | None,
-        fail_fast: bool,
-    ) -> r[list[SimpleNamespace]]:
-        del self, projects, gates, reports_dir
-        captured_fail_fast.append(fail_fast)
-        return r[list[SimpleNamespace]].ok([SimpleNamespace(passed=True)])
-
+    mock = create_fake_run_projects()
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
-        _fake_run_projects,
+        mock,
     )
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
@@ -147,4 +109,4 @@ def test_run_cli_with_fail_fast_flag(monkeypatch: MonkeyPatch) -> None:
         "flext-core",
     ])
     assert exit_code == 0
-    assert captured_fail_fast[0] is True
+    assert mock.captured_fail_fast is True

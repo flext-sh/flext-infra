@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 from flext_core import r, t
 
+from flext_infra import m as infra_models
 from flext_infra.check.services import FlextInfraWorkspaceChecker, GateExecution
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
@@ -124,43 +125,69 @@ def create_fake_run_raw(
     return _fake_run_raw
 
 
+class RunProjectsMock:
+    """Stateful mock for run_projects with captured arguments.
+
+    Single Responsibility: Encapsulate captured state for CLI test assertions.
+    """
+
+    def __init__(
+        self,
+        passed: bool | None = None,
+        error_msg: str | None = None,
+    ) -> None:
+        self.passed = True if passed is None else passed
+        self.error_msg = error_msg
+        self.captured_projects: list[str] = []
+        self.captured_fail_fast: bool = False
+
+    def __call__(
+        self,
+        projects: list[str],
+        gates: list[str],
+        *,
+        reports_dir: Path | None = None,
+        fail_fast: bool = False,
+    ) -> r[list]:
+        """Mock run_projects method with captured argument state."""
+        del gates, reports_dir  # Not used in mock, but required by signature
+        self.captured_projects = projects
+        self.captured_fail_fast = fail_fast
+        if self.error_msg:
+            return r[list].fail(self.error_msg)
+        result = infra_models.Infra.ProjectResult(project="test-project")
+        if not self.passed:
+            # Add failing gate to make passed=False (computed from gates dict)
+            fail_gate = infra_models.Infra.GateExecution(
+                result=infra_models.Infra.GateResult(
+                    gate="test", project="test-project", passed=False, errors=[], duration=0.0
+                ),
+                issues=[],
+                raw_output="",
+            )
+            result.gates["test"] = fail_gate
+        return r[list].ok([result])
+
+
 def create_fake_run_projects(
-    result: str | tuple[bool, list[str] | None] | None = None,
-    *,
-    capture_callback: callable | None = None,
-) -> callable:
-    """Factory for _fake_run_projects monkeypatch.
+    passed: bool | None = None,
+    error_msg: str | None = None,
+) -> RunProjectsMock:
+    """Factory for run_projects monkeypatch with state capture.
 
     Single Responsibility: Create consistent workspace checker CLI test mocks.
     Eliminates duplication: Identical monkeypatch setup across 5+ tests.
 
     Args:
-        result: None = success with [passed=True], (bool, list) = custom result,
-                str = error message for fail()
-        capture_callback: Optional callable(projects, gates, reports_dir, fail_fast)
-                         for test assertion checks
+        passed: True/False for success/failure result. Defaults to True if None and
+                error_msg is None.
+        error_msg: Error message - if set, overrides passed and returns fail()
+
+    Returns:
+        RunProjectsMock with captured_projects and captured_fail_fast attributes.
 
     """
-
-    def _fake_run_projects(
-        self: object,
-        projects: list[str],
-        gates: list[str],
-        *,
-        reports_dir: Path | None,
-        fail_fast: bool,
-    ) -> r[list]:
-        del self, gates, reports_dir
-        if capture_callback:
-            capture_callback(projects=projects, fail_fast=fail_fast)
-        if isinstance(result, str):
-            return r[list].fail(result)
-        if result is None:
-            return r[list].ok([{"passed": True}])
-        passed, _ = result
-        return r[list].ok([{"passed": passed}])
-
-    return _fake_run_projects
+    return RunProjectsMock(passed=passed, error_msg=error_msg)
 
 
 __all__ = [
