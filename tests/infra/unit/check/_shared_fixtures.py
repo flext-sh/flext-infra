@@ -190,7 +190,51 @@ def create_fake_run_projects(
     return RunProjectsMock(passed=passed, error_msg=error_msg)
 
 
+def create_check_project_stub(
+    project: m.Infra.ProjectResult,
+) -> callable:
+    """Factory for _check_project stub that returns fixed project result.
+
+    Single Responsibility: Create consistent project checking mocks.
+    Eliminates duplication: Identical _fake_check definitions.
+    """
+
+    def _fake_check(
+        _project_dir: Path,
+        _gates: list[str],
+        _reports_dir: Path,
+    ) -> m.Infra.ProjectResult:
+        del _project_dir, _gates, _reports_dir
+        return project
+
+    return _fake_check
+
+
+def create_check_project_iter_stub(
+    projects: list[m.Infra.ProjectResult],
+) -> callable:
+    """Factory for _check_project stub that iterates through project results.
+
+    Single Responsibility: Create consistent project checking mocks with state.
+    Eliminates duplication: Multiple _iter_check_project_stub definitions.
+    """
+    project_iter = iter(projects)
+
+    def _fake_check(
+        _project_dir: Path,
+        _gates: list[str],
+        _reports_dir: Path,
+    ) -> m.Infra.ProjectResult:
+        del _project_dir, _gates, _reports_dir
+        return next(project_iter)
+
+    return _fake_check
+
+
 __all__ = [
+    "RunProjectsMock",
+    "create_check_project_iter_stub",
+    "create_check_project_stub",
     "create_checker_project",
     "create_fake_run_projects",
     "create_fake_run_raw",

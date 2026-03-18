@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -19,37 +18,11 @@ from flext_infra.check.services import (
 
 from ... import h
 from ...models import m
+from ._shared_fixtures import (
+    create_check_project_iter_stub,
+    create_check_project_stub,
+)
 from ._stubs import make_gate_exec, make_issue
-
-CheckProjectStub = Callable[[Path, list[str], Path], ProjectResult]
-RunStub = Callable[
-    [list[str], Path, int, dict[str, str] | None],
-    m.Infra.CommandOutput,
-]
-
-
-def _check_project_stub(project: ProjectResult) -> CheckProjectStub:
-    def _fake_check(
-        _project_dir: Path,
-        _gates: list[str],
-        _reports_dir: Path,
-    ) -> ProjectResult:
-        return project
-
-    return _fake_check
-
-
-def _iter_check_project_stub(projects: list[ProjectResult]) -> CheckProjectStub:
-    project_iter = iter(projects)
-
-    def _fake_check(
-        _project_dir: Path,
-        _gates: list[str],
-        _reports_dir: Path,
-    ) -> ProjectResult:
-        return next(project_iter)
-
-    return _fake_check
 
 
 class TestErrorReporting:
@@ -66,7 +39,7 @@ class TestErrorReporting:
         gate_exec = make_gate_exec(issues=[issue])
         project = ProjectResult(project="p1", gates={"lint": gate_exec})
 
-        monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
+        monkeypatch.setattr(checker, "_check_project", create_check_project_stub(project))
         h.mk_project(tmp_path, "p1")
 
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
@@ -89,7 +62,7 @@ class TestErrorReporting:
         monkeypatch.setattr(
             checker,
             "_check_project",
-            _iter_check_project_stub([project1, project2]),
+            create_check_project_iter_stub([project1, project2]),
         )
         h.mk_project(tmp_path, "p1")
         h.mk_project(tmp_path, "p2")
@@ -117,7 +90,7 @@ class TestMarkdownReportEmptyGates:
             project="p1",
             gates={"lint": exec_with, "format": exec_without},
         )
-        monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
+        monkeypatch.setattr(checker, "_check_project", create_check_project_stub(project))
         h.mk_project(tmp_path, "p1")
         result = checker.run_projects(
             ["p1"],
