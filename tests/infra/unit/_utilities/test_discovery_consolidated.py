@@ -70,7 +70,7 @@ class TestDiscoveryIterPythonFiles:
 
         monkeypatch.setattr(
             FlextInfraUtilitiesIteration,
-            "_discover_project_roots",
+            "discover_project_roots",
             staticmethod(_raise_oserror),
         )
 

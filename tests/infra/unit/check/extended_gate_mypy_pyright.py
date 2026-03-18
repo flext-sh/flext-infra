@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -17,6 +16,7 @@ from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 
 from ...models import m
+from ._shared_fixtures import patch_python_dir_detection
 
 type GateClass = type[FlextInfraMypyGate | FlextInfraPyrightGate]
 
@@ -27,6 +27,7 @@ def _create_checker_project(
     project_name: str = "p1",
     with_src: bool = False,
 ) -> tuple[FlextInfraWorkspaceChecker, Path]:
+    """Create checker and minimal project structure for gate tests."""
     checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
     project_dir = tmp_path / project_name
     project_dir.mkdir(parents=True, exist_ok=True)
@@ -38,43 +39,6 @@ def _create_checker_project(
     return checker, project_dir
 
 
-def _existing_dirs(_self: GateClass, _project_dir: Path) -> list[str]:
-    del _self, _project_dir
-    return ["src"]
-
-
-def _no_python_dirs(_project_dir: Path, _dirs: list[str]) -> list[str]:
-    del _project_dir, _dirs
-    return []
-
-
-def _src_python_dirs(_project_dir: Path, _dirs: list[str]) -> list[str]:
-    del _project_dir, _dirs
-    return ["src"]
-
-
-def _run_result(stdout: str, returncode: int) -> m.Infra.CommandOutput:
-    return m.Infra.CommandOutput(stdout=stdout, stderr="", exit_code=returncode)
-
-
-def _stub_gate_run(
-    output: m.Infra.CommandOutput,
-) -> Callable[
-    [object, list[str], Path, int, dict[str, str] | None], m.Infra.CommandOutput
-]:
-    def _run(
-        _self: object,
-        cmd: list[str],
-        cwd: Path,
-        timeout: int = 120,
-        env: dict[str, str] | None = None,
-    ) -> m.Infra.CommandOutput:
-        del _self, cmd, cwd, timeout, env
-        return output
-
-    return _run
-
-
 def _patch_gate_run(
     monkeypatch: pytest.MonkeyPatch,
     gate_class: GateClass,
@@ -82,22 +46,19 @@ def _patch_gate_run(
     stdout: str,
     returncode: int,
 ) -> None:
-    monkeypatch.setattr(
-        gate_class,
-        "_run",
-        _stub_gate_run(_run_result(stdout, returncode)),
-    )
+    """Patch gate._run() to return fixed CommandOutput."""
 
+    def _stub_run(
+        _self: object,
+        _cmd: list[str],
+        _cwd: Path,
+        timeout: int = 120,
+        env: dict[str, str] | None = None,
+    ) -> m.Infra.CommandOutput:
+        del _self, _cmd, _cwd, timeout, env
+        return m.Infra.CommandOutput(stdout=stdout, stderr="", exit_code=returncode)
 
-def _patch_python_dir_detection(
-    monkeypatch: pytest.MonkeyPatch,
-    gate_class: GateClass,
-    *,
-    has_python_dirs: bool,
-) -> None:
-    monkeypatch.setattr(gate_class, "_existing_check_dirs", _existing_dirs)
-    dirs_with_py = _src_python_dirs if has_python_dirs else _no_python_dirs
-    monkeypatch.setattr(gate_class, "_dirs_with_py", staticmethod(dirs_with_py))
+    monkeypatch.setattr(gate_class, "_run", _stub_run)
 
 
 class TestWorkspaceCheckerRunMypy:
@@ -109,7 +70,7 @@ class TestWorkspaceCheckerRunMypy:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker, proj_dir = _create_checker_project(tmp_path)
-        _patch_python_dir_detection(
+        patch_python_dir_detection(
             monkeypatch,
             FlextInfraMypyGate,
             has_python_dirs=False,
@@ -128,7 +89,7 @@ class TestWorkspaceCheckerRunMypy:
             '{"file": "a.py", "line": 1, "column": 0,'
             ' "code": "E001", "message": "Error", "severity": "error"}'
         )
-        _patch_python_dir_detection(
+        patch_python_dir_detection(
             monkeypatch,
             FlextInfraMypyGate,
             has_python_dirs=True,
@@ -153,7 +114,7 @@ class TestWorkspaceCheckerRunPyright:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker, proj_dir = _create_checker_project(tmp_path)
-        _patch_python_dir_detection(
+        patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=False,
@@ -173,7 +134,7 @@ class TestWorkspaceCheckerRunPyright:
             ' "range": {"start": {"line": 0, "character": 0}},'
             ' "rule": "E001", "message": "Error", "severity": "error"}]}'
         )
-        _patch_python_dir_detection(
+        patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=True,
@@ -194,7 +155,7 @@ class TestWorkspaceCheckerRunPyright:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker, proj_dir = _create_checker_project(tmp_path, with_src=True)
-        _patch_python_dir_detection(
+        patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=True,

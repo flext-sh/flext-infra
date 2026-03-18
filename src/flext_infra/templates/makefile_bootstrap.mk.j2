@@ -1,5 +1,3 @@
-# flext-infra - Infrastructure Tooling
-PROJECT_NAME := flext-infra
 ifneq ("$(wildcard ../base.mk)", "")
 include ../base.mk
 else
@@ -82,11 +80,3 @@ help: ## Show available commands
 	@echo ""
 	@echo "Run 'make setup' first, then 'make help' for full verb list."
 endif
-
-# === PROJECT-SPECIFIC TARGETS ===
-.PHONY: docs-serve
-
-docs-serve: ## Serve documentation
-	$(Q)$(POETRY) run mkdocs serve
-
-.DEFAULT_GOAL := help

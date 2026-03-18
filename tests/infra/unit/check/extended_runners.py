@@ -19,6 +19,10 @@ from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 
 from ...helpers import h
+from ._shared_fixtures import patch_python_dir_detection
+
+# Local alias for backward compatibility
+_patch_python_dir_detection = patch_python_dir_detection
 
 type GateClass = type[
     FlextInfraPyreflyGate | FlextInfraMypyGate | FlextInfraPyrightGate
@@ -67,38 +71,12 @@ def _create_checker_project(
     return checker, project_dir
 
 
-def _existing_dirs(_self: GateClass, _project_dir: Path) -> list[str]:
-    del _self, _project_dir
-    return ["src"]
-
-
-def _no_dirs_with_py(_project_dir: Path, _dirs: list[str]) -> list[str]:
-    del _project_dir, _dirs
-    return []
-
-
-def _src_dirs_with_py(_project_dir: Path, _dirs: list[str]) -> list[str]:
-    del _project_dir, _dirs
-    return ["src"]
-
-
 def _patch_gate_run(
     monkeypatch: pytest.MonkeyPatch,
     gate_class: GateClass,
     result: SimpleNamespace,
 ) -> None:
     monkeypatch.setattr(gate_class, "_run", _stub_run(result))
-
-
-def _patch_python_dir_detection(
-    monkeypatch: pytest.MonkeyPatch,
-    gate_class: GateClass,
-    *,
-    has_python_dirs: bool,
-) -> None:
-    monkeypatch.setattr(gate_class, "_existing_check_dirs", _existing_dirs)
-    dirs_with_py = _src_dirs_with_py if has_python_dirs else _no_dirs_with_py
-    monkeypatch.setattr(gate_class, "_dirs_with_py", staticmethod(dirs_with_py))
 
 
 class TestRunPyrefly:

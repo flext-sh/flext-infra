@@ -46,7 +46,7 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         updated_node: cst.ImportFrom,
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
         """Replace forbidden imports and capture symbol replacement map."""
-        module_name = self._module_name_from_expr(original_node.module)
+        module_name = u.Infra.module_name_from_expr(original_node.module)
         if module_name == c.Infra.Packages.CORE_UNDERSCORE:
             imported_aliases = self._extract_import_aliases(original_node.names)
             for imported_alias in imported_aliases:
@@ -122,10 +122,10 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
                 ),
             ],
         )
-        body = list(updated_node.body)
         insert_idx = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
-            body,
+            updated_node.body,
         )
+        body = list(updated_node.body)
         self._record_change(
             f"Added: from flext_core import {', '.join(missing_aliases)}",
         )
@@ -168,11 +168,6 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         if isinstance(names, cst.ImportStar):
             return []
         return list(names)
-
-    def _module_name_from_expr(self, module: cst.BaseExpression | None) -> str:
-        if module is None:
-            return ""
-        return u.Infra.dotted_name(module)
 
     def _record_change(self, message: str) -> None:
         self.changes.append(message)

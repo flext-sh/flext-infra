@@ -18,14 +18,37 @@ from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 
-from .extended_runners import _patch_python_dir_detection
-from ._shared_fixtures import patch_gate_run
+from ...models import m
+from ._shared_fixtures import patch_python_dir_detection
 
 GateClass = (
     type[FlextInfraPyrightGate]
     | type[FlextInfraBanditGate]
     | type[FlextInfraMarkdownGate]
 )
+
+
+def _patch_gate_run(
+    monkeypatch: pytest.MonkeyPatch,
+    gate_class: GateClass,
+    *,
+    stdout: str = "",
+    stderr: str = "",
+    returncode: int = 0,
+) -> None:
+    """Patch gate._run() to return fixed CommandOutput."""
+
+    def _stub_run(
+        _self: object,
+        _cmd: list[str],
+        _cwd: Path,
+        timeout: int = 120,
+        env: dict[str, str] | None = None,
+    ) -> m.Infra.CommandOutput:
+        del _self, _cmd, _cwd, timeout, env
+        return m.Infra.CommandOutput(stdout=stdout, stderr=stderr, exit_code=returncode)
+
+    monkeypatch.setattr(gate_class, "_run", _stub_run)
 
 
 def _create_checker_project(
@@ -53,7 +76,7 @@ class TestRunPyright:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker, proj_dir = _create_checker_project(tmp_path)
-        _patch_python_dir_detection(
+        patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=False,
@@ -76,7 +99,7 @@ class TestRunPyright:
             stdout=json_output,
             returncode=1,
         )
-        _patch_python_dir_detection(
+        patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=True,
@@ -98,7 +121,7 @@ class TestRunPyright:
             stdout="invalid json",
             returncode=1,
         )
-        _patch_python_dir_detection(
+        patch_python_dir_detection(
             monkeypatch,
             FlextInfraPyrightGate,
             has_python_dirs=True,

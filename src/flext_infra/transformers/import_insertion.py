@@ -8,6 +8,8 @@ import libcst as cst
 
 
 class FlextInfraTransformerImportInsertion:
+    """Helper methods for safe import insertion positions."""
+
     @staticmethod
     def index_after_docstring_and_future_imports(
         body: Sequence[cst.BaseStatement],

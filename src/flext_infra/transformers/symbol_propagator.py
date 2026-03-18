@@ -38,10 +38,10 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.ImportFrom:
-        module_name = self._module_name_from_expr(original_node.module)
+        module_name = u.Infra.module_name_from_expr(original_node.module)
         next_node = updated_node
         if module_name in self._module_renames:
-            next_module = self._module_expr_from_dotted(
+            next_module = u.Infra.module_expr_from_dotted(
                 self._module_renames[module_name],
             )
             next_node = next_node.with_changes(module=next_module)
@@ -107,20 +107,6 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
             f"Propagated local symbol rename: {updated_node.value} -> {rename_to}",
         )
         return cst.Name(rename_to)
-
-    def _module_expr_from_dotted(self, dotted_name: str) -> cst.BaseExpression:
-        parts = [part for part in dotted_name.split(".") if part]
-        if not parts:
-            return cst.Name("")
-        expr: cst.BaseExpression = cst.Name(parts[0])
-        for part in parts[1:]:
-            expr = cst.Attribute(value=expr, attr=cst.Name(part))
-        return expr
-
-    def _module_name_from_expr(self, module: cst.BaseExpression | None) -> str:
-        if module is None:
-            return ""
-        return u.Infra.dotted_name(module)
 
     def _record_change(self, message: str) -> None:
         self.changes.append(message)

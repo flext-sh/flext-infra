@@ -13,32 +13,11 @@ from flext_core import t
 from flext_tests import tm
 
 from flext_infra.check.services import (
-    CheckIssue,
     FlextInfraWorkspaceChecker,
     GateExecution,
 )
 
-from ...models import m
-
-
-def _make_gate_exec(
-    gate: str = "lint",
-    project: str = "p",
-    *,
-    passed: bool = True,
-    issues: list[CheckIssue] | None = None,
-) -> GateExecution:
-    return GateExecution(
-        result=m.Infra.GateResult(
-            gate=gate,
-            project=project,
-            passed=passed,
-            errors=[],
-            duration=0.0,
-        ),
-        issues=issues or [],
-        raw_output="",
-    )
+from ._shared_fixtures import create_gate_execution
 
 
 class TestLintAndFormatPublicMethods:
@@ -55,7 +34,7 @@ class TestLintAndFormatPublicMethods:
             _project_dir: Path,
         ) -> GateExecution:
             del _project_dir
-            return _make_gate_exec(gate=requested_gate_name, passed=True)
+            return create_gate_execution(gate=requested_gate_name, passed=True)
 
         monkeypatch.setattr(checker, "_run_gate", _fake_run_gate)
         run_public = checker.lint if gate_name == "lint" else checker.format
@@ -114,7 +93,7 @@ class TestCheckProjectRunners:
             def check(self, _project_dir: Path, _ctx: t.Scalar) -> GateExecution:
                 del _project_dir, _ctx
                 called[self._gate_name] = True
-                return _make_gate_exec(gate=self._gate_name, passed=True)
+                return create_gate_execution(gate=self._gate_name, passed=True)
 
         def _fake_create(gate_name: str, _workspace_root: Path) -> _FakeGate:
             del _workspace_root

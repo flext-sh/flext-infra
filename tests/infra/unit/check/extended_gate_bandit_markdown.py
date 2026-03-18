@@ -17,10 +17,14 @@ from flext_infra.check.services import FlextInfraWorkspaceChecker, GateExecution
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 
-from ...helpers import h
+from ._shared_fixtures import create_checker_project, patch_gate_run
 
 GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
 _GateExecution = GateExecution
+
+# Local aliases for backward compatibility
+_create_checker_project = create_checker_project
+_patch_gate_run = patch_gate_run
 
 
 def _run_stub(
@@ -28,54 +32,11 @@ def _run_stub(
     stderr: str = "",
     returncode: int = 0,
 ) -> SimpleNamespace:
+    """Create SimpleNamespace mimicking subprocess output."""
     return SimpleNamespace(
         stdout=stdout,
         stderr=stderr,
         exit_code=returncode,
-    )
-
-
-def _create_checker_project(
-    tmp_path: Path,
-    *,
-    project_name: str = "p1",
-    with_src: bool = False,
-) -> tuple[FlextInfraWorkspaceChecker, Path]:
-    checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-    project_dir = h.mk_project(tmp_path, project_name, with_src=with_src)
-    return checker, project_dir
-
-
-def _stub_gate_run(
-    output: SimpleNamespace,
-) -> Callable[..., SimpleNamespace]:
-    def _run(
-        _self: FlextInfraBanditGate | FlextInfraMarkdownGate,
-        cmd: list[str],
-        cwd: Path,
-        timeout: int = 120,
-        env: dict[str, str] | None = None,
-    ) -> SimpleNamespace:
-        del _self, cmd, cwd, timeout, env
-        return output
-
-    return _run
-
-
-def _patch_gate_run(
-    monkeypatch: pytest.MonkeyPatch,
-    gate_class: GateClass,
-    *,
-    stdout: str = "",
-    stderr: str = "",
-    returncode: int = 0,
-) -> None:
-    monkeypatch.setattr(
-        gate_class,
-        "_run",
-        _stub_gate_run(
-            _run_stub(stdout=stdout, stderr=stderr, returncode=returncode),
-        ),
     )
 
 
@@ -89,7 +50,8 @@ def _run_failed_gate_check(
     stdout: str = "",
     stderr: str = "",
 ) -> _GateExecution:
-    _patch_gate_run(
+    """Helper to run gate check with failure setup."""
+    patch_gate_run(
         monkeypatch,
         gate_class,
         stdout=stdout,

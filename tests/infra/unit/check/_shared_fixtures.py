@@ -254,6 +254,34 @@ def create_check_project_iter_stub(
     return _fake_check
 
 
+def patch_python_dir_detection(
+    monkeypatch: pytest.MonkeyPatch,
+    gate_class: type,
+    *,
+    has_python_dirs: bool,
+) -> None:
+    """Patch gate python directory detection methods.
+
+    Single Responsibility: Mock python directory discovery for gate tests.
+    """
+
+    def _existing_dirs(_self: object, _project_dir: Path) -> list[str]:
+        del _self, _project_dir
+        return ["src"]
+
+    def _no_python_dirs(_project_dir: Path, _dirs: list[str]) -> list[str]:
+        del _project_dir, _dirs
+        return []
+
+    def _src_python_dirs(_project_dir: Path, _dirs: list[str]) -> list[str]:
+        del _project_dir, _dirs
+        return ["src"]
+
+    monkeypatch.setattr(gate_class, "_existing_check_dirs", _existing_dirs)
+    dirs_with_py = _src_python_dirs if has_python_dirs else _no_python_dirs
+    monkeypatch.setattr(gate_class, "_dirs_with_py", staticmethod(dirs_with_py))
+
+
 __all__ = [
     "RunProjectsMock",
     "create_check_project_iter_stub",
@@ -263,4 +291,5 @@ __all__ = [
     "create_fake_run_raw",
     "create_gate_execution",
     "patch_gate_run",
+    "patch_python_dir_detection",
 ]

@@ -111,7 +111,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
                 continue
             for small_stmt in stmt.body:
                 if isinstance(small_stmt, cst.ImportFrom):
-                    module_name = self._module_name_from_expr(small_stmt.module)
+                    module_name = u.Infra.module_name_from_expr(small_stmt.module)
                     if module_name == c.Infra.Packages.CORE_UNDERSCORE:
                         continue
                     if isinstance(small_stmt.names, cst.ImportStar):
@@ -207,11 +207,6 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         transformer = FlextInfraRefactorLazyImportFixer()
         new_tree = tree.visit(transformer)
         return (new_tree, transformer.changes)
-
-    def _module_name_from_expr(self, module: cst.BaseExpression | None) -> str:
-        if module is None:
-            return ""
-        return u.Infra.dotted_name(module)
 
 
 __all__ = ["FlextInfraRefactorImportModernizerRule"]
