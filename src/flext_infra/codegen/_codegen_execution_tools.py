@@ -14,7 +14,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, t
 from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_infra.codegen._codegen_metrics_checks import FlextInfraCodegenMetricsChecks
@@ -35,8 +35,6 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         if result.is_failure:
             return []
         output = result.value
-        if not isinstance(output, m.Infra.CommandOutput):
-            return []
         if output.exit_code != 0:
             return []
         return [line.strip() for line in output.stdout.splitlines() if line.strip()]
@@ -109,12 +107,6 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
                 "exit_code": 127,
             }
         command_output = result.value
-        if not isinstance(command_output, m.Infra.CommandOutput):
-            return {
-                "passed": False,
-                "detail": "unexpected result type",
-                "exit_code": 127,
-            }
         output = (command_output.stderr or command_output.stdout or "").strip()
         lines = [line for line in output.splitlines() if line.strip()]
         excerpt = " | ".join(lines[:5]) if lines else "ok"
