@@ -455,72 +455,77 @@ class FlextInfraPrManager:
         _ = parser.add_argument("--release-on-merge", type=int, default=1)
         return parser.parse_args()
 
+    @staticmethod
+    def main() -> int:
+        """Dispatch requested PR action and return its exit code."""
+        args = _parse_args()
+        repo_root = args.repo_root.resolve()
+        manager = _manager_factory()
+        head_result = u.Infra.git_current_branch(repo_root)
+        head = args.head or head_result.unwrap_or(c.Infra.Git.HEAD)
+        base = args.base
+        selector = FlextInfraPrManager.selector(args.number, head)
+        if args.action == c.Infra.ReportKeys.STATUS:
+            result = manager.status(repo_root, base, head)
+            if result.is_success:
+                return 0
+            output.error(result.error or "status failed")
+            return 1
+        if args.action == c.Infra.Cli.GhCmd.CREATE:
+            title = args.title or f"chore: sync {head}"
+            body = args.body or "Automated PR managed by flext_infra.github.pr"
+            result = manager.create(
+                repo_root,
+                base,
+                head,
+                title,
+                body,
+                draft=args.draft == 1,
+            )
+            if result.is_success:
+                return 0
+            output.error(result.error or "create failed")
+            return 1
+        if args.action == c.Infra.Cli.GhCmd.VIEW:
+            result_view = manager.view(repo_root, selector)
+            if result_view.is_success:
+                return 0
+            output.error(result_view.error or "view failed")
+            return 1
+        if args.action == c.Infra.Verbs.CHECKS:
+            result = manager.checks(repo_root, selector, strict=args.checks_strict == 1)
+            if result.is_success:
+                return 0
+            output.error(result.error or "checks failed")
+            return 1
+        if args.action == c.Infra.Cli.GhCmd.MERGE:
+            merge_result = manager.merge(
+                repo_root,
+                selector,
+                head,
+                method=args.merge_method,
+                auto=args.auto == 1,
+                delete_branch=args.delete_branch == 1,
+                release_on_merge=args.release_on_merge == 1,
+            )
+            if merge_result.is_success:
+                return 0
+            output.error(merge_result.error or "merge failed")
+            return 1
+        if args.action == c.Infra.Verbs.CLOSE:
+            result_close = manager.close(repo_root, selector)
+            if result_close.is_success:
+                return 0
+            output.error(result_close.error or "close failed")
+            return 1
+        msg = f"unknown action: {args.action}"
+        raise RuntimeError(msg)
 
-def main() -> int:
-    """Dispatch requested PR action and return its exit code."""
-    args = FlextInfraPrManager.parse_args()
-    repo_root = args.repo_root.resolve()
-    manager = FlextInfraPrManager()
-    head_result = u.Infra.git_current_branch(repo_root)
-    head = args.head or head_result.unwrap_or(c.Infra.Git.HEAD)
-    base = args.base
-    selector = FlextInfraPrManager.selector(args.number, head)
-    if args.action == c.Infra.ReportKeys.STATUS:
-        result = manager.status(repo_root, base, head)
-        if result.is_success:
-            return 0
-        output.error(result.error or "status failed")
-        return 1
-    if args.action == c.Infra.Cli.GhCmd.CREATE:
-        title = args.title or f"chore: sync {head}"
-        body = args.body or "Automated PR managed by flext_infra.github.pr"
-        result = manager.create(
-            repo_root,
-            base,
-            head,
-            title,
-            body,
-            draft=args.draft == 1,
-        )
-        if result.is_success:
-            return 0
-        output.error(result.error or "create failed")
-        return 1
-    if args.action == c.Infra.Cli.GhCmd.VIEW:
-        result_view = manager.view(repo_root, selector)
-        if result_view.is_success:
-            return 0
-        output.error(result_view.error or "view failed")
-        return 1
-    if args.action == c.Infra.Verbs.CHECKS:
-        result = manager.checks(repo_root, selector, strict=args.checks_strict == 1)
-        if result.is_success:
-            return 0
-        output.error(result.error or "checks failed")
-        return 1
-    if args.action == c.Infra.Cli.GhCmd.MERGE:
-        merge_result = manager.merge(
-            repo_root,
-            selector,
-            head,
-            method=args.merge_method,
-            auto=args.auto == 1,
-            delete_branch=args.delete_branch == 1,
-            release_on_merge=args.release_on_merge == 1,
-        )
-        if merge_result.is_success:
-            return 0
-        output.error(merge_result.error or "merge failed")
-        return 1
-    if args.action == c.Infra.Verbs.CLOSE:
-        result_close = manager.close(repo_root, selector)
-        if result_close.is_success:
-            return 0
-        output.error(result_close.error or "close failed")
-        return 1
-    msg = f"unknown action: {args.action}"
-    raise RuntimeError(msg)
+
+_parse_args = FlextInfraPrManager.parse_args
+_manager_factory = FlextInfraPrManager
+main = FlextInfraPrManager.main
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(FlextInfraPrManager.main())

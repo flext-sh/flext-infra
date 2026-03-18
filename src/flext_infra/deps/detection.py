@@ -532,8 +532,6 @@ dm = FlextInfraDepsModels
 
 
 class FlextInfraDependencyDetectionHelpers:
-    """Namespace wrappers exposing default dependency detection operations."""
-
     @staticmethod
     def discover_project_paths(
         workspace_root: Path,

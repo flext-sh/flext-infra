@@ -13,7 +13,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra.check.services import FlextInfraWorkspaceChecker, run_cli
+from flext_infra.check.services import FlextInfraWorkspaceChecker
 
 
 def test_resolve_gates_maps_type_alias() -> None:
@@ -40,7 +40,13 @@ def test_run_cli_run_returns_zero_for_pass(monkeypatch: MonkeyPatch) -> None:
         "run_projects",
         _fake_run_projects,
     )
-    exit_code = run_cli(["run", "--gates", "lint,type", "--project", "flext-core"])
+    exit_code = FlextInfraWorkspaceChecker.run_cli([
+        "run",
+        "--gates",
+        "lint,type",
+        "--project",
+        "flext-core",
+    ])
     assert exit_code == 0
 
 
@@ -63,7 +69,13 @@ def test_run_cli_run_returns_one_for_fail(monkeypatch: MonkeyPatch) -> None:
         "run_projects",
         _fake_run_projects,
     )
-    exit_code = run_cli(["run", "--gates", "lint", "--project", "flext-core"])
+    exit_code = FlextInfraWorkspaceChecker.run_cli([
+        "run",
+        "--gates",
+        "lint",
+        "--project",
+        "flext-core",
+    ])
     assert exit_code == 1
 
 
@@ -86,7 +98,13 @@ def test_run_cli_run_returns_two_for_error(monkeypatch: MonkeyPatch) -> None:
         "run_projects",
         _fake_run_projects,
     )
-    exit_code = run_cli(["run", "--gates", "lint", "--project", "flext-core"])
+    exit_code = FlextInfraWorkspaceChecker.run_cli([
+        "run",
+        "--gates",
+        "lint",
+        "--project",
+        "flext-core",
+    ])
     assert exit_code == 2
 
 
@@ -111,7 +129,7 @@ def test_run_cli_with_multiple_projects(monkeypatch: MonkeyPatch) -> None:
         "run_projects",
         _fake_run_projects,
     )
-    exit_code = run_cli([
+    exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
         "--gates",
         "lint",
@@ -146,7 +164,7 @@ def test_run_cli_with_fail_fast_flag(monkeypatch: MonkeyPatch) -> None:
         "run_projects",
         _fake_run_projects,
     )
-    exit_code = run_cli([
+    exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
         "--gates",
         "lint",

@@ -12,7 +12,6 @@ import tomlkit
 from flext_tests import tm
 
 from flext_infra import FlextInfraPyprojectModernizer, u
-from flext_infra.deps.modernizer import main
 
 
 class TestFlextInfraPyprojectModernizer:
@@ -241,9 +240,9 @@ class TestModernizerRunAndMain:
         )
         monkeypatch.setattr("sys.argv", ["modernizer", "--dry-run"])
         monkeypatch.setattr(_ModernizerAdapter, "run", _run_zero)
-        tm.that(main(), eq=0)
+        tm.that(FlextInfraPyprojectModernizer.main(), eq=0)
         monkeypatch.setattr("sys.argv", ["modernizer", "--audit"])
-        tm.that(main(), eq=0)
+        tm.that(FlextInfraPyprojectModernizer.main(), eq=0)
         monkeypatch.setattr("sys.argv", ["modernizer"])
         monkeypatch.setattr(_ModernizerAdapter, "run", _run_forty_two)
-        tm.that(main(), eq=42)
+        tm.that(FlextInfraPyprojectModernizer.main(), eq=42)

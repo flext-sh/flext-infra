@@ -13,7 +13,7 @@ import pytest
 from flext_core import r, t
 from flext_tests import tm
 
-from flext_infra.docs.auditor import FlextInfraDocAuditor, main
+from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.shared import FlextInfraDocsShared
 from tests.infra.models import m
 
@@ -58,7 +58,7 @@ class TestAuditorMainCli:
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
-        result = main()
+        result = FlextInfraDocAuditor.main()
         tm.that(result, eq=1)
 
     def test_main_with_failed_reports(
@@ -84,7 +84,7 @@ class TestAuditorMainCli:
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
-        result = main()
+        result = FlextInfraDocAuditor.main()
         tm.that(result, eq=1)
 
     def test_main_with_success_reports(
@@ -110,7 +110,7 @@ class TestAuditorMainCli:
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
-        result = main()
+        result = FlextInfraDocAuditor.main()
         tm.that(result, eq=0)
 
     def test_main_with_all_cli_arguments(
@@ -152,7 +152,7 @@ class TestAuditorMainCli:
                 "0",
             ],
         )
-        result = main()
+        result = FlextInfraDocAuditor.main()
         tm.that(result, eq=0)
 
     def test_main_entry_point_returns_zero(
@@ -178,5 +178,5 @@ class TestAuditorMainCli:
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
-        result = main()
+        result = FlextInfraDocAuditor.main()
         tm.that(result, eq=0)

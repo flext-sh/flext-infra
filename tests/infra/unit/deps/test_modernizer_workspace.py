@@ -10,7 +10,7 @@ import tomlkit
 from flext_tests import t, tm
 
 from flext_infra import u
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer, main
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 
 
 class TestReadDoc:
@@ -92,7 +92,7 @@ class TestParser:
                 return_value=0,
             ) as run_mock,
         ):
-            exit_code = main([
+            exit_code = FlextInfraPyprojectModernizer.main([
                 "--audit",
                 "--dry-run",
                 "--skip-comments",

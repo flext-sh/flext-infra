@@ -12,7 +12,6 @@ from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import FlextInfraExtraPathsManager
 from flext_infra.deps import extra_paths
-from flext_infra.deps.extra_paths import main
 
 
 @pytest.fixture
@@ -160,7 +159,7 @@ def test_main_success_modes(
         argv = ["prog", "--project", str(project), "--dry-run"]
     argv = [argv[0], "--workspace", str(tmp_path), *argv[1:]]
     monkeypatch.setattr(sys, "argv", argv)
-    tm.that(main(), eq=expected_exit)
+    tm.that(FlextInfraExtraPathsManager.main(), eq=expected_exit)
 
 
 def test_main_sync_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -177,7 +176,7 @@ def test_main_sync_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         return r[int].fail("sync error")
 
     monkeypatch.setattr(FlextInfraExtraPathsManager, "sync_extra_paths", _fail_sync)
-    tm.that(main(), eq=1)
+    tm.that(FlextInfraExtraPathsManager.main(), eq=1)
 
 
 @pytest.mark.parametrize(

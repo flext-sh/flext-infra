@@ -9,7 +9,7 @@ from flext_core import r
 from flext_tests import tm
 
 from flext_infra.github import pr as pr_module
-from flext_infra.github.pr import FlextInfraPrManager, main
+from flext_infra.github.pr import FlextInfraPrManager
 from tests.infra.helpers import h
 from tests.infra.typings import t
 from tests.infra.unit.github._stubs import StubPrManager, StubUtilities
@@ -52,7 +52,7 @@ class TestMainFunction:
             return manager
 
         monkeypatch.setattr(pr_module, "_parse_args", _parse)
-        monkeypatch.setattr(pr_module, "FlextInfraPrManager", _manager_factory)
+        monkeypatch.setattr(pr_module, "_manager_factory", _manager_factory)
         monkeypatch.setattr(
             StubUtilities.Infra,
             "_git_branch_returns",
@@ -65,43 +65,43 @@ class TestMainFunction:
             status_returns=[r[dict[str, t.Scalar]].ok({"status": "open"})],
         )
         self._setup(monkeypatch, _args(action="status"), mgr)
-        tm.that(main(), eq=0)
+        tm.that(FlextInfraPrManager.main(), eq=0)
 
     def test_status_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(status_returns=[r[dict[str, t.Scalar]].fail("error")])
         self._setup(monkeypatch, _args(action="status"), mgr)
-        tm.that(main(), eq=1)
+        tm.that(FlextInfraPrManager.main(), eq=1)
 
     def test_create_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
             create_returns=[r[dict[str, t.Scalar]].ok({"status": "created"})],
         )
         self._setup(monkeypatch, _args(action="create"), mgr)
-        tm.that(main(), eq=0)
+        tm.that(FlextInfraPrManager.main(), eq=0)
 
     def test_create_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
             create_returns=[r[dict[str, t.Scalar]].fail("create failed")],
         )
         self._setup(monkeypatch, _args(action="create"), mgr)
-        tm.that(main(), eq=1)
+        tm.that(FlextInfraPrManager.main(), eq=1)
 
     def test_view_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(view_returns=[r[str].ok("PR view output")])
         self._setup(monkeypatch, _args(action="view", number="42"), mgr)
-        tm.that(main(), eq=0)
+        tm.that(FlextInfraPrManager.main(), eq=0)
 
     def test_view_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(view_returns=[r[str].fail("not found")])
         self._setup(monkeypatch, _args(action="view", number="42"), mgr)
-        tm.that(main(), eq=1)
+        tm.that(FlextInfraPrManager.main(), eq=1)
 
     def test_checks_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
             checks_returns=[r[dict[str, t.Scalar]].ok({"status": "checks-passed"})],
         )
         self._setup(monkeypatch, _args(action="checks", number="42"), mgr)
-        tm.that(main(), eq=0)
+        tm.that(FlextInfraPrManager.main(), eq=0)
 
     def test_checks_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
@@ -112,17 +112,17 @@ class TestMainFunction:
             _args(action="checks", number="42", checks_strict=1),
             mgr,
         )
-        tm.that(main(), eq=1)
+        tm.that(FlextInfraPrManager.main(), eq=1)
 
     def test_merge_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(merge_returns=[r[t.Container].ok("merged")])
         self._setup(monkeypatch, _args(action="merge", number="42"), mgr)
-        tm.that(main(), eq=0)
+        tm.that(FlextInfraPrManager.main(), eq=0)
 
     def test_merge_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(merge_returns=[r[t.Container].fail("merge failed")])
         self._setup(monkeypatch, _args(action="merge", number="42"), mgr)
-        tm.that(main(), eq=1)
+        tm.that(FlextInfraPrManager.main(), eq=1)
 
     def test_close_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(close_returns=[r[bool].ok(True)])
@@ -137,7 +137,7 @@ class TestMainFunction:
     def test_unknown_action(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._setup(monkeypatch, _args(action="invalid_action"), StubPrManager())
         with pytest.raises(RuntimeError, match="unknown action"):
-            main()
+            FlextInfraPrManager.main()
 
 
 class TestParseArgs:

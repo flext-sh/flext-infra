@@ -244,32 +244,32 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
                 return r[bool].ok(False)
         return self._atomic_write(target_path, content)
 
-
-def main() -> int:
-    """CLI entry point for workspace sync."""
-    parser = u.Infra.create_parser(
-        "flext-infra workspace sync",
-        "Workspace base.mk sync",
-        include_apply=False,
-    )
-    _ = parser.add_argument(
-        "--canonical-root",
-        type=Path,
-        default=None,
-        help="Canonical workspace root",
-    )
-    args = parser.parse_args()
-    cli = u.Infra.resolve(args)
-    service = FlextInfraSyncService(
-        canonical_root=getattr(args, "canonical_root", None),
-    )
-    result = service.sync(workspace_root=cli.workspace)
-    if result.is_success:
-        return 0
-    output.error(result.error or "sync failed")
-    return 1
+    @staticmethod
+    def main() -> int:
+        """CLI entry point for workspace sync."""
+        parser = u.Infra.create_parser(
+            "flext-infra workspace sync",
+            "Workspace base.mk sync",
+            include_apply=False,
+        )
+        _ = parser.add_argument(
+            "--canonical-root",
+            type=Path,
+            default=None,
+            help="Canonical workspace root",
+        )
+        args = parser.parse_args()
+        cli = u.Infra.resolve(args)
+        service = FlextInfraSyncService(
+            canonical_root=getattr(args, "canonical_root", None),
+        )
+        result = service.sync(workspace_root=cli.workspace)
+        if result.is_success:
+            return 0
+        output.error(result.error or "sync failed")
+        return 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
-__all__ = ["FlextInfraSyncService", "main"]
+    raise SystemExit(FlextInfraSyncService.main())
+__all__ = ["FlextInfraSyncService"]

@@ -22,8 +22,8 @@ import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
 from flext_infra.check.services import (
     GateExecution,
     ProjectResult,
-    run_cli,
 )
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 from ...models import m
 
@@ -109,7 +109,7 @@ class TestFixPyrelfyCLI:
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[list[str]].ok([])),
         )
-        tm.that(fix_pyrefly_mod.main([]), eq=0)
+        tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=0)
 
     def test_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -117,7 +117,7 @@ class TestFixPyrelfyCLI:
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[list[str]].fail("error")),
         )
-        tm.that(fix_pyrefly_mod.main([]), eq=1)
+        tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=1)
 
 
 def _const_cli_result(code: int) -> Callable[[list[str] | None], int]:
@@ -157,7 +157,7 @@ class TestRunCLIExtended:
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[list[str]].ok([])),
         )
-        tm.that(run_cli(["fix-pyrefly-config"]), eq=0)
+        tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=0)
 
     def test_fix_pyrefly_config_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -165,10 +165,10 @@ class TestRunCLIExtended:
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[list[str]].fail("error")),
         )
-        tm.that(run_cli(["fix-pyrefly-config"]), eq=1)
+        tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=1)
 
     def test_no_command_prints_help(self) -> None:
-        tm.that(run_cli([]), eq=1)
+        tm.that(FlextInfraWorkspaceChecker.run_cli([]), eq=1)
 
     def test_with_relative_reports_dir(
         self,
@@ -191,7 +191,7 @@ class TestRunCLIExtended:
             _fake_checker_cls(["lint"], ok_result),
         )
         monkeypatch.setattr("pathlib.Path.cwd", lambda: tmp_path)
-        exit_code = run_cli([
+        exit_code = FlextInfraWorkspaceChecker.run_cli([
             "run",
             "--gates",
             "lint",

@@ -13,7 +13,7 @@ from flext_tests import tf, tm
 
 from flext_infra import m, t
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_infra.workspace.sync import FlextInfraSyncService, main
+from flext_infra.workspace.sync import FlextInfraSyncService
 
 _S = FlextInfraSyncService
 SetupFn = Callable[[_S, pytest.MonkeyPatch], None]
@@ -111,7 +111,7 @@ def test_cli_result_by_project_root(
         "argv",
         [str(tmp_path) if part == "{tmp}" else part for part in argv],
     )
-    tm.that(main(), eq=expected)
+    tm.that(FlextInfraSyncService.main(), eq=expected)
 
 
 @pytest.mark.parametrize(
