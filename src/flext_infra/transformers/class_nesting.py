@@ -8,10 +8,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import m, t
-from flext_infra.transformers.policy import (
-    FlextInfraRefactorTransformerPolicyUtilities,
-)
+from flext_infra import m, t, u
 
 
 class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
@@ -64,7 +61,7 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
         if policy is not None:
             if not policy.enable_class_nesting:
                 return updated_node
-            if not FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
+            if not u.Infra.target_allowed(
                 policy=policy,
                 target_namespace=target_namespace,
             ):
@@ -129,7 +126,7 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
         self,
         symbol_name: str,
     ) -> m.Infra.ClassNestingPolicy | None:
-        return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
+        return u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,
@@ -150,7 +147,7 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
                 return False
             if operation == "merge" and (not policy.allow_existing_namespace_merge):
                 return False
-            if not FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
+            if not u.Infra.target_allowed(
                 policy=policy,
                 target_namespace=target_namespace,
             ):

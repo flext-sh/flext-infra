@@ -8,10 +8,7 @@ from typing import override
 import libcst as cst
 from libcst.metadata import ParentNodeProvider
 
-from flext_infra import m, t
-from flext_infra.transformers.policy import (
-    FlextInfraRefactorTransformerPolicyUtilities,
-)
+from flext_infra import m, t, u
 
 
 class NestedClassPropagationTransformer(cst.CSTTransformer):
@@ -182,7 +179,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
         self,
         symbol_name: str,
     ) -> m.Infra.ClassNestingPolicy | None:
-        return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
+        return u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,

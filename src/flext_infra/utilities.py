@@ -34,6 +34,9 @@ from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
 from flext_infra.codegen._utilities import FlextInfraUtilitiesCodegen
 from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
+from flext_infra.transformers.policy import (
+    FlextInfraRefactorTransformerPolicyUtilities,
+)
 
 
 class FlextInfraUtilities(FlextUtilities):
@@ -50,6 +53,7 @@ class FlextInfraUtilities(FlextUtilities):
     """
 
     class Infra(
+        FlextInfraRefactorTransformerPolicyUtilities,
         FlextInfraUtilitiesCli,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesDiscovery,
