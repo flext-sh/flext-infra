@@ -14,7 +14,7 @@ import pytest
 from flext_tests import tm
 
 import flext_infra.codegen as mod
-from flext_infra.codegen._utilities import FlextInfraUtilitiesCodegen
+from flext_infra import u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 _resolve_aliases: Callable[[dict[str, tuple[str, str]]], None] = getattr(
@@ -72,14 +72,14 @@ class TestGenerateTypeChecking:
     def test_with_empty_groups(self) -> None:
         """Test with no imports returns header + FlextTypes only."""
         groups: dict[str, list[tuple[str, str]]] = {}
-        lines = FlextInfraUtilitiesCodegen.generate_type_checking(groups)
+        lines = u.Infra.generate_type_checking(groups)
         tm.that(lines, contains="if TYPE_CHECKING:")
         tm.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
         """Test with no imports and no FlextTypes returns empty list."""
         groups: dict[str, list[tuple[str, str]]] = {}
-        lines = FlextInfraUtilitiesCodegen.generate_type_checking(
+        lines = u.Infra.generate_type_checking(
             groups,
             include_flext_types=False,
         )
@@ -88,13 +88,13 @@ class TestGenerateTypeChecking:
     def test_with_single_module(self) -> None:
         """Test with single module."""
         groups = {"module": [("Test", "Test")]}
-        lines = FlextInfraUtilitiesCodegen.generate_type_checking(groups)
+        lines = u.Infra.generate_type_checking(groups)
         tm.that(" ".join(lines), contains="from module import")
 
     def test_with_aliased_imports(self) -> None:
         """Test with aliased imports."""
         groups = {"module": [("c", "FlextConstants"), ("m", "FlextModels")]}
-        lines = FlextInfraUtilitiesCodegen.generate_type_checking(groups)
+        lines = u.Infra.generate_type_checking(groups)
         joined = " ".join(lines)
         tm.that(joined, contains="as")
 
@@ -106,7 +106,7 @@ class TestGenerateTypeChecking:
             ("VeryLongClassName2", "VeryLongClassName2"),
             ("VeryLongClassName3", "VeryLongClassName3"),
         ]
-        lines = FlextInfraUtilitiesCodegen.generate_type_checking(groups)
+        lines = u.Infra.generate_type_checking(groups)
         tm.that(any("module" in line for line in lines), eq=True)
 
     def test_with_multiple_modules_spacing(self) -> None:
@@ -114,7 +114,7 @@ class TestGenerateTypeChecking:
         groups: dict[str, list[tuple[str, str]]] = defaultdict(list)
         groups["alpha_pkg.module"] = [("Test1", "Test1")]
         groups["beta_pkg.module"] = [("Test2", "Test2")]
-        lines = FlextInfraUtilitiesCodegen.generate_type_checking(groups)
+        lines = u.Infra.generate_type_checking(groups)
         tm.that(lines, contains="")
 
 
