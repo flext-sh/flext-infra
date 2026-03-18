@@ -1,3 +1,5 @@
+"""Scanner for identifying MRO migration symbol candidates."""
+
 from __future__ import annotations
 
 import ast
@@ -18,6 +20,7 @@ class FlextInfraRefactorMROMigrationScanner:
         workspace_root: Path,
         target: str,
     ) -> tuple[list[m.Infra.MROScanReport], int]:
+        """Scan workspace and collect migration reports for a target family."""
         if target not in c.Infra.MRO_TARGETS:
             return ([], 0)
         results: list[m.Infra.MROScanReport] = []
@@ -48,6 +51,7 @@ class FlextInfraRefactorMROMigrationScanner:
         project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
     ) -> m.Infra.MROScanReport | None:
+        """Scan one file and return migration candidates when found."""
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
             return None

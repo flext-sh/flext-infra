@@ -1,3 +1,5 @@
+"""Static analysis helpers for Pydantic centralization refactors."""
+
 from __future__ import annotations
 
 import ast
@@ -39,6 +41,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
 
     @staticmethod
     def is_top_level_model_class(node: ast.stmt) -> bool:
+        """Return True when statement is a top-level model-like class."""
         if not isinstance(node, ast.ClassDef):
             return False
         base_names = FlextInfraRefactorPydanticCentralizerAnalysis._class_base_names(
@@ -260,6 +263,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
     def collect_moves(
         file_path: Path,
     ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]]:
+        """Collect class and alias moves required for centralization."""
         source = file_path.read_text(encoding="utf-8")
         tree = u.Infra.parse_ast_from_source(source)
         if tree is None:
@@ -325,6 +329,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         *,
         failure_stats: m.Infra.CentralizerFailureStats,
     ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]] | None:
+        """Collect moves without raising, while recording parse failures."""
         try:
             return FlextInfraRefactorPydanticCentralizerAnalysis.collect_moves(
                 file_path,
@@ -341,6 +346,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
 
     @staticmethod
     def scan_file_violations(file_path: Path) -> tuple[int, int]:
+        """Return counts of model and dict-alias violations in one file."""
         try:
             source = file_path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
@@ -375,6 +381,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         *,
         import_statement: str,
     ) -> str:
+        """Rewrite source after extracting moved classes and aliases."""
         source = file_path.read_text(encoding="utf-8")
         lines = source.splitlines()
         ranges = sorted(
@@ -398,6 +405,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
 
     @staticmethod
     def insert_import(source: str, import_stmt: str) -> str:
+        """Insert import statement preserving canonical ordering."""
         return u.Infra.insert_import_statement(source, import_stmt)
 
 

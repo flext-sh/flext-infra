@@ -30,6 +30,12 @@ from flext_infra import (
     m,
     u,
 )
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
+from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 
 
 class FlextInfraCodegenFixer(s):
@@ -68,7 +74,10 @@ class FlextInfraCodegenFixer(s):
     # File system helpers
     # ------------------------------------------------------------------
 
-    _find_package_dir = staticmethod(u.Infra.find_package_dir)
+    @staticmethod
+    def _find_package_dir(project_root: Path) -> Path | None:
+        """Wrapper for find_package_dir with explicit type annotation."""
+        return FlextInfraCodegenSnapshot.find_package_dir(project_root)
 
     # ------------------------------------------------------------------
     # Entry points
@@ -305,7 +314,9 @@ class FlextInfraCodegenFixer(s):
             for file_path in py_files
             if c.Infra.Paths.DEFAULT_SRC_DIR in file_path.parts
         ]
-        before_snapshot = u.Infra.snapshot_files(file_paths=src_files)
+        before_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_files(
+            file_paths=src_files
+        )
         NamespaceEnforcementRewriter.rewrite_import_alias_violations(py_files=src_files)
         NamespaceEnforcementRewriter.rewrite_runtime_alias_violations(
             py_files=src_files,
@@ -313,7 +324,7 @@ class FlextInfraCodegenFixer(s):
         NamespaceEnforcementRewriter.rewrite_missing_future_annotations(
             py_files=src_files,
         )
-        changed_paths = u.Infra.detect_changed_files(
+        changed_paths: set[str] = FlextInfraCodegenSnapshot.detect_changed_files(
             before_snapshot=before_snapshot,
             file_paths=src_files,
         )
@@ -391,7 +402,7 @@ class FlextInfraCodegenFixer(s):
                 continue
             if path.name == c.Infra.Files.INIT_PY:
                 continue
-            if u.Infra.prune_stale_all_assignment(path=path):
+            if FlextInfraCodegenTransforms.prune_stale_all_assignment(path=path):
                 files_modified.add(str(path))
 
     def _normalize_rewritten_python_files(self, *, files_modified: set[str]) -> None:
@@ -407,12 +418,12 @@ class FlextInfraCodegenFixer(s):
         project_path: Path,
         files_modified: set[str],
     ) -> None:
-        before_snapshot = u.Infra.snapshot_init_files(
-            project_path=project_path,
+        before_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_init_files(
+            project_path=project_path
         )
         _ = FlextInfraCodegenLazyInit(workspace_root=project_path).run(check_only=False)
-        after_snapshot = u.Infra.snapshot_init_files(
-            project_path=project_path,
+        after_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_init_files(
+            project_path=project_path
         )
         for path_str, updated in after_snapshot.items():
             previous = before_snapshot.get(path_str)

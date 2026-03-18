@@ -1,3 +1,5 @@
+"""Violation analysis and helper classification for refactor reports."""
+
 from __future__ import annotations
 
 import sys
@@ -24,6 +26,7 @@ class FlextInfraRefactorViolationAnalyzer:
         cls,
         files: list[Path],
     ) -> m.Infra.ViolationAnalysisReport:
+        """Analyze files and return aggregated violation and helper metrics."""
         totals: Counter[str] = Counter()
         per_file: dict[str, dict[str, int]] = {}
         helper_suggestions: list[m.Infra.HelperClassification] = []

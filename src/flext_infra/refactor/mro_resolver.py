@@ -1,3 +1,5 @@
+"""MRO resolution helpers and migration rewrite orchestration."""
+
 from __future__ import annotations
 
 import inspect
@@ -25,6 +27,7 @@ class FlextInfraRefactorMROResolver:
             Sequence[t.Infra.ExpectedBase],
         ],
     ) -> tuple[m.Infra.FamilyMROResolution, ...]:
+        """Resolve expected and effective MRO data for all facade families."""
         resolutions: list[m.Infra.FamilyMROResolution] = []
         for family in (
             c.FacadeFamily.C,
@@ -51,6 +54,7 @@ class FlextInfraRefactorMROResolver:
         family_classes: Mapping[t.Infra.FacadeFamily, type],
         classification: m.Infra.ProjectClassification,
     ) -> tuple[m.Infra.FamilyMROResolution, ...]:
+        """Resolve family MRO expectations from project classification payload."""
         expected_base_chains = cls._normalize_classifier_chains(
             family_chains=classification.family_chains,
         )

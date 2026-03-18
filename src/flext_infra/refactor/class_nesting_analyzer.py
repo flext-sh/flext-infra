@@ -1,3 +1,5 @@
+"""Class-nesting analysis for refactor violation reporting."""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -18,6 +20,7 @@ type _ClassNestingMappingIndex = dict[
 class FlextInfraRefactorClassNestingAnalyzer:
     @classmethod
     def analyze_files(cls, files: list[Path]) -> m.Infra.ClassNestingReport:
+        """Analyze files and return aggregated class-nesting violations."""
         if not files:
             return m.Infra.ClassNestingReport(
                 violations_count=0,

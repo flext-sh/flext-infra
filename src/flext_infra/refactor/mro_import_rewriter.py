@@ -1,3 +1,5 @@
+"""AST import and reference rewriting for MRO migrations."""
+
 from __future__ import annotations
 
 import ast
@@ -19,6 +21,7 @@ class FlextInfraRefactorMROImportRewriter:
         module_facade_aliases: dict[str, str],
         apply: bool,
     ) -> list[m.Infra.MRORewriteResult]:
+        """Rewrite all eligible Python files inside a workspace."""
         results: list[m.Infra.MRORewriteResult] = []
         for file_path in cls._iter_workspace_python_files(
             workspace_root=workspace_root,
@@ -41,6 +44,7 @@ class FlextInfraRefactorMROImportRewriter:
         module_facade_aliases: dict[str, str],
         apply: bool,
     ) -> m.Infra.MRORewriteResult | None:
+        """Rewrite one file and return replacement statistics."""
         try:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except OSError:

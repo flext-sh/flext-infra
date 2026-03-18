@@ -1,3 +1,5 @@
+"""CLI support routines for refactor execution and reporting."""
+
 from __future__ import annotations
 
 import argparse
@@ -21,22 +23,27 @@ if TYPE_CHECKING:
 class FlextInfraRefactorCliSupport:
     @staticmethod
     def info(message: str) -> None:
+        """Write informational output to stdout."""
         _ = sys.stdout.write(f"{message}\n")
 
     @staticmethod
     def error(message: str) -> None:
+        """Write error output to stderr."""
         _ = sys.stderr.write(f"ERROR: {message}\n")
 
     @staticmethod
     def header(message: str) -> None:
+        """Write a section header to stdout."""
         _ = sys.stdout.write(f"\n{message}\n")
 
     @staticmethod
     def debug(message: str) -> None:
+        """Write debug output to stdout."""
         _ = sys.stdout.write(f"DEBUG: {message}\n")
 
     @staticmethod
     def project_name_from_path(file_path: Path) -> str:
+        """Infer project directory name from a file path."""
         for parent in file_path.parents:
             if (parent / c.Infra.Files.PYPROJECT_FILENAME).exists() and (
                 parent / c.Infra.Files.MAKEFILE_FILENAME
@@ -48,6 +55,7 @@ class FlextInfraRefactorCliSupport:
     def build_impact_map(
         results: list[m.Infra.Result],
     ) -> list[dict[str, str]]:
+        """Build normalized impact-map rows from refactor results."""
         impact_map: list[dict[str, str]] = []
         symbol_pattern = re.compile(r"^(.*):\s+(.+)\s+->\s+(.+?)(?:\s+\(|$)")
         added_pattern = re.compile(r"^\[(.+)\]\s+Added keyword:\s+(.+)$")
@@ -113,6 +121,7 @@ class FlextInfraRefactorCliSupport:
         results: list[m.Infra.Result],
         output_path: Path,
     ) -> bool:
+        """Persist impact-map JSON report to disk."""
         impact_map = FlextInfraRefactorCliSupport.build_impact_map(results)
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -131,6 +140,7 @@ class FlextInfraRefactorCliSupport:
 
     @staticmethod
     def print_diff(original: str, refactored: str, file_path: Path) -> None:
+        """Print unified diff for one file."""
         FlextInfraRefactorCliSupport.header(f"Diff for {file_path.name}")
         diff = difflib.unified_diff(
             original.splitlines(keepends=True),
@@ -147,6 +157,7 @@ class FlextInfraRefactorCliSupport:
 
     @staticmethod
     def print_rules_table(rules: list[dict[str, str | bool]]) -> None:
+        """Print configured rule table for interactive CLI output."""
         FlextInfraRefactorCliSupport.header("Available Rules")
         if not rules:
             FlextInfraRefactorCliSupport.info("No rules loaded.")
@@ -181,6 +192,7 @@ class FlextInfraRefactorCliSupport:
 
     @staticmethod
     def print_summary(results: list[m.Infra.Result], *, dry_run: bool) -> None:
+        """Print execution summary for processed files."""
         modified = sum(1 for item in results if item.modified)
         failed = sum(1 for item in results if not item.success)
         unchanged = sum(1 for item in results if item.success and (not item.modified))
@@ -200,6 +212,7 @@ class FlextInfraRefactorCliSupport:
     def print_violation_summary(
         analysis: m.Infra.ViolationAnalysisReport,
     ) -> None:
+        """Print violation aggregate totals and hotspot files."""
         FlextInfraRefactorCliSupport.header("Violation Analysis")
         FlextInfraRefactorCliSupport.info(f"Files scanned: {analysis.files_scanned}")
         if not analysis.totals:
@@ -217,6 +230,7 @@ class FlextInfraRefactorCliSupport:
 
     @staticmethod
     def run_cli(engine_cls: type[FlextInfraRefactorEngine]) -> int:
+        """Execute refactor CLI entry flow and return process exit code."""
         parser = argparse.ArgumentParser(
             description="Flext Refactor Engine - Declarative code transformation",
             formatter_class=argparse.RawDescriptionHelpFormatter,

@@ -21,6 +21,7 @@ from flext_infra import (
     m,
     u,
 )
+from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 
 __all__ = ["FlextInfraCodegenScaffolder"]
 
@@ -45,7 +46,15 @@ class FlextInfraCodegenScaffolder(s):
         )
         self._workspace_root = workspace_root
 
-    _find_package_dir = staticmethod(u.Infra.find_package_dir)
+    @staticmethod
+    def _find_package_dir(project_root: Path) -> Path | None:
+        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
+        if not src_dir.is_dir():
+            return None
+        for child in sorted(src_dir.iterdir()):
+            if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
+                return child
+        return None
 
     @override
     def execute(
@@ -140,7 +149,7 @@ class FlextInfraCodegenScaffolder(s):
                 continue
             class_name = f"{test_prefix}{prefix}{suffix}"
             docstring = f"{doc_suffix} for {prefix.lower()}."
-            content = u.Infra.generate_module_skeleton(
+            content = FlextInfraCodegenTransforms.generate_module_skeleton(
                 class_name=class_name,
                 base_class=base_class,
                 docstring=docstring,

@@ -1,3 +1,5 @@
+"""Public analysis exports for refactor diagnostics."""
+
 from __future__ import annotations
 
 from flext_infra.refactor.class_nesting_analyzer import (

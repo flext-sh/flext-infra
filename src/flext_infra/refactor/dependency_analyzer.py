@@ -1,3 +1,5 @@
+"""Facade for namespace dependency detectors used by refactor checks."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -49,6 +51,7 @@ class FlextInfraRefactorDependencyAnalyzerFacade:
         stage: str = "scan",
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> m.Infra.ParsedPythonModule | None:
+        """Load and parse a Python module while recording parse failures."""
         try:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except UnicodeDecodeError as exc:

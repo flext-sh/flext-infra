@@ -6,10 +6,9 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import c
-from flext_infra.codegen._codegen_templates import FlextInfraCodegenTemplates
 
 
-class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
+class FlextInfraCodegenGeneration:
     @staticmethod
     def resolve_unmapped(
         exports_set: set[str],
