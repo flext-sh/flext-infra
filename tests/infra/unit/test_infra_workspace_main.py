@@ -279,7 +279,7 @@ def _capture(
     return captured
 
 
-def _ok_main(*_args: object, **_kwargs: object) -> int:
+def _ok_main(*_args: t.Scalar, **_kwargs: t.Scalar) -> int:
     return 0
 
 

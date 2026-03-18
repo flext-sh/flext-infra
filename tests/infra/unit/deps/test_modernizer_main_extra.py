@@ -13,9 +13,9 @@ from flext_infra import FlextInfraPyprojectModernizer, FlextInfraUtilitiesCli
 from flext_infra.deps import modernizer as modernizer_module
 
 
-def _modernizer_args(**overrides: t.Tests.object) -> argparse.Namespace:
+def _modernizer_args(**overrides: t.NormalizedValue) -> argparse.Namespace:
     """Create standard modernizer args namespace with defaults."""
-    defaults: dict[str, t.Tests.object] = {
+    defaults: dict[str, t.NormalizedValue] = {
         "project": None,
         "dry_run": True,
         "verbose": False,
