@@ -31,7 +31,7 @@ class FlextInfraWorkspaceConstants:
         ),
         (
             '$(VENV_PYTHON) "$(BASE_MK_DIR)/scripts/core/pytest_diag_extract.py"',
-            "$(VENV_PYTHON) -m flext_infra core pytest-diag",
+            "$(VENV_PYTHON) -m flext_infra validate pytest-diag",
         ),
         (
             'python3 "$(WORKSPACE_ROOT)/scripts/github/pr_manager.py"',

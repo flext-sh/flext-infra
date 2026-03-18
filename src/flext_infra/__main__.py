@@ -7,7 +7,7 @@ Groups:
     basemk        Base.mk template generation
     check         Lint gates and pyrefly config management
     codegen       Code generation (lazy-init, standardization)
-    core          Infrastructure validators and diagnostics
+    validate      Infrastructure validators and diagnostics
     deps          Dependency detection, sync, and modernization
     docs          Documentation audit, fix, build, generate, validate
     github        GitHub workflows, linting, and PR automation

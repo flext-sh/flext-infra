@@ -1,14 +1,14 @@
 """CLI entry point for core infrastructure services.
 
 Usage:
-    python -m flext_infra core basemk-validate [--workspace PATH]
-    python -m flext_infra core inventory [--workspace PATH] [--output-dir PATH]
-    python -m flext_infra core pytest-diag --junit PATH --log PATH
-    python -m flext_infra core scan --workspace PATH --pattern REGEX
+    python -m flext_infra validate basemk-validate [--workspace PATH]
+    python -m flext_infra validate inventory [--workspace PATH] [--output-dir PATH]
+    python -m flext_infra validate pytest-diag --junit PATH --log PATH
+    python -m flext_infra validate scan --workspace PATH --pattern REGEX
         --include GLOB [--exclude GLOB] [--match present|absent]
-    python -m flext_infra core skill-validate --skill NAME [--workspace PATH]
+    python -m flext_infra validate skill-validate --skill NAME [--workspace PATH]
         [--mode baseline|strict]
-    python -m flext_infra core stub-validate [--workspace PATH]
+    python -m flext_infra validate stub-validate [--workspace PATH]
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -183,7 +183,7 @@ class FlextInfraValidateCommand:
     def run(argv: list[str] | None = None) -> int:
         """Run validation command dispatcher."""
         parser, subs = u.Infra.create_subcommand_parser(
-            prog="flext_infra core",
+            prog="flext_infra validate",
             description="Core infrastructure services",
             subcommands={
                 "basemk-validate": "Validate base.mk sync",

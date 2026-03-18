@@ -104,6 +104,25 @@ class TestJsonWriteFailure:
 
 
 class TestLintAndFormatPublicMethods:
+    @staticmethod
+    def _assert_gate_public_method(
+        *,
+        checker: FlextInfraWorkspaceChecker,
+        target_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        gate_name: str,
+    ) -> None:
+        def _fake_gate(_project_dir: Path) -> GateExecution:
+            del _project_dir
+            return _make_gate_exec(gate_name, "p", passed=True)
+
+        runner_name = "_run_ruff_lint" if gate_name == "lint" else "_run_ruff_format"
+        monkeypatch.setattr(checker, runner_name, _fake_gate)
+        run_public = checker.lint if gate_name == "lint" else checker.format
+        result = run_public(target_dir)
+        tm.ok(result)
+        tm.that(result.value.gate, eq=gate_name)
+
     def test_lint_public_method(
         self,
         tmp_path: Path,
@@ -111,19 +130,12 @@ class TestLintAndFormatPublicMethods:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "pyproject.toml").touch()
-
-        def _fake_lint(_project_dir: Path) -> GateExecution:
-            del _project_dir
-            return _make_gate_exec("lint", "p", passed=True)
-
-        monkeypatch.setattr(
-            checker,
-            "_run_ruff_lint",
-            _fake_lint,
+        self._assert_gate_public_method(
+            checker=checker,
+            target_dir=tmp_path,
+            monkeypatch=monkeypatch,
+            gate_name="lint",
         )
-        result = checker.lint(tmp_path)
-        tm.ok(result)
-        tm.that(result.value.gate, eq="lint")
 
     def test_format_public_method(
         self,
@@ -132,16 +144,9 @@ class TestLintAndFormatPublicMethods:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "pyproject.toml").touch()
-
-        def _fake_format(_project_dir: Path) -> GateExecution:
-            del _project_dir
-            return _make_gate_exec("format", "p", passed=True)
-
-        monkeypatch.setattr(
-            checker,
-            "_run_ruff_format",
-            _fake_format,
+        self._assert_gate_public_method(
+            checker=checker,
+            target_dir=tmp_path,
+            monkeypatch=monkeypatch,
+            gate_name="format",
         )
-        result = checker.format(tmp_path)
-        tm.ok(result)
-        tm.that(result.value.gate, eq="format")

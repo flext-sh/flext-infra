@@ -389,34 +389,11 @@ class FlextInfraRefactorEngine:
                 FlextInfraRefactorCliSupport.error(
                     checkpoint_result.error or "checkpoint save failed",
                 )
-            validation_result = self.safety_manager.run_semantic_validation(
-                project_path,
+            self._run_safety_validation_and_finalize(
+                target_path=project_path,
+                stash_ref=stash_ref,
+                results=results,
             )
-            if validation_result.is_failure:
-                error_msg = validation_result.error or "semantic validation failed"
-                self.safety_manager.request_emergency_stop(error_msg)
-                FlextInfraRefactorCliSupport.error(error_msg)
-                rollback_result = self.safety_manager.rollback(project_path, stash_ref)
-                if rollback_result.is_failure:
-                    FlextInfraRefactorCliSupport.error(
-                        rollback_result.error or "rollback failed",
-                    )
-                results.append(
-                    m.Infra.Result(
-                        file_path=project_path,
-                        success=False,
-                        modified=False,
-                        error=error_msg,
-                        changes=[],
-                        refactored_code=None,
-                    ),
-                )
-            else:
-                clear_result = self.safety_manager.clear_checkpoint()
-                if clear_result.is_failure:
-                    FlextInfraRefactorCliSupport.error(
-                        clear_result.error or "checkpoint clear failed",
-                    )
         return results
 
     def refactor_workspace(
@@ -490,33 +467,47 @@ class FlextInfraRefactorEngine:
                         checkpoint_result.error or "checkpoint save failed",
                     )
         if apply_safety and (not dry_run):
-            validation_result = self.safety_manager.run_semantic_validation(root)
-            if validation_result.is_failure:
-                error_msg = validation_result.error or "semantic validation failed"
-                self.safety_manager.request_emergency_stop(error_msg)
-                FlextInfraRefactorCliSupport.error(error_msg)
-                rollback_result = self.safety_manager.rollback(root, stash_ref)
-                if rollback_result.is_failure:
-                    FlextInfraRefactorCliSupport.error(
-                        rollback_result.error or "rollback failed",
-                    )
-                results.append(
-                    m.Infra.Result(
-                        file_path=root,
-                        success=False,
-                        modified=False,
-                        error=error_msg,
-                        changes=[],
-                        refactored_code=None,
-                    ),
-                )
-            else:
-                clear_result = self.safety_manager.clear_checkpoint()
-                if clear_result.is_failure:
-                    FlextInfraRefactorCliSupport.error(
-                        clear_result.error or "checkpoint clear failed",
-                    )
+            self._run_safety_validation_and_finalize(
+                target_path=root,
+                stash_ref=stash_ref,
+                results=results,
+            )
         return results
+
+    def _run_safety_validation_and_finalize(
+        self,
+        *,
+        target_path: Path,
+        stash_ref: str,
+        results: list[m.Infra.Result],
+    ) -> None:
+        validation_result = self.safety_manager.run_semantic_validation(target_path)
+        if validation_result.is_failure:
+            error_msg = validation_result.error or "semantic validation failed"
+            self.safety_manager.request_emergency_stop(error_msg)
+            FlextInfraRefactorCliSupport.error(error_msg)
+            rollback_result = self.safety_manager.rollback(target_path, stash_ref)
+            if rollback_result.is_failure:
+                FlextInfraRefactorCliSupport.error(
+                    rollback_result.error or "rollback failed",
+                )
+            results.append(
+                m.Infra.Result(
+                    file_path=target_path,
+                    success=False,
+                    modified=False,
+                    error=error_msg,
+                    changes=[],
+                    refactored_code=None,
+                ),
+            )
+            return
+
+        clear_result = self.safety_manager.clear_checkpoint()
+        if clear_result.is_failure:
+            FlextInfraRefactorCliSupport.error(
+                clear_result.error or "checkpoint clear failed",
+            )
 
     def set_rule_filters(self, filters: list[str]) -> None:
         """Set active rule filters using normalized lowercase rule ids."""
