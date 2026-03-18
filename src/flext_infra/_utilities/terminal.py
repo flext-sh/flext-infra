@@ -22,10 +22,11 @@ class FlextInfraUtilitiesTerminal:
 
     Usage via namespace::
 
-        from flext_infra import c, u
+        from flext_infra import c, u, FlextLogger
 
+        logger = FlextLogger(__name__)
         if u.Infra.terminal_should_use_color():
-            print(f"{c.Infra.Style.RED}Error{c.Infra.Style.RESET}")
+            logger.error(f"{c.Infra.Style.RED}Error{c.Infra.Style.RESET}")
     """
 
     @staticmethod
