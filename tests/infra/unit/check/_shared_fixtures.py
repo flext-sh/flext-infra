@@ -124,8 +124,48 @@ def create_fake_run_raw(
     return _fake_run_raw
 
 
+def create_fake_run_projects(
+    result: str | tuple[bool, list[str] | None] | None = None,
+    *,
+    capture_callback: callable | None = None,
+) -> callable:
+    """Factory for _fake_run_projects monkeypatch.
+
+    Single Responsibility: Create consistent workspace checker CLI test mocks.
+    Eliminates duplication: Identical monkeypatch setup across 5+ tests.
+
+    Args:
+        result: None = success with [passed=True], (bool, list) = custom result,
+                str = error message for fail()
+        capture_callback: Optional callable(projects, gates, reports_dir, fail_fast)
+                         for test assertion checks
+
+    """
+
+    def _fake_run_projects(
+        self: object,
+        projects: list[str],
+        gates: list[str],
+        *,
+        reports_dir: Path | None,
+        fail_fast: bool,
+    ) -> r[list]:
+        del self, gates, reports_dir
+        if capture_callback:
+            capture_callback(projects=projects, fail_fast=fail_fast)
+        if isinstance(result, str):
+            return r[list].fail(result)
+        if result is None:
+            return r[list].ok([{"passed": True}])
+        passed, _ = result
+        return r[list].ok([{"passed": passed}])
+
+    return _fake_run_projects
+
+
 __all__ = [
     "create_checker_project",
+    "create_fake_run_projects",
     "create_fake_run_raw",
     "create_gate_execution",
     "patch_gate_run",

@@ -97,42 +97,10 @@ class FlextInfraUtilitiesDiscovery:
         *,
         scan_dirs: frozenset[str] | None = None,
     ) -> list[Path]:
-        roots: list[Path] = []
-        effective_scan_dirs = scan_dirs or c.Infra.MRO_SCAN_DIRECTORIES
-
-        def _looks_like_project(path: Path) -> bool:
-            if (
-                not path.is_dir()
-                or not (path / c.Infra.Files.MAKEFILE_FILENAME).exists()
-            ):
-                return False
-            if (
-                not (path / c.Infra.Files.PYPROJECT_FILENAME).exists()
-                and not (path / c.Infra.Files.GO_MOD).exists()
-            ):
-                return False
-            return any((path / dir_name).is_dir() for dir_name in effective_scan_dirs)
-
-        if _looks_like_project(workspace_root):
-            roots.append(workspace_root)
-        roots.extend(
-            [
-                entry
-                for entry in sorted(
-                    workspace_root.iterdir(),
-                    key=lambda item: item.name,
-                )
-                if entry.is_dir()
-                and (not entry.name.startswith("."))
-                and _looks_like_project(entry)
-            ],
+        return FlextInfraUtilitiesIteration.discover_project_roots(
+            workspace_root=workspace_root,
+            scan_dirs=scan_dirs,
         )
-        if (
-            len(roots) == 0
-            and (workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir()
-        ):
-            return [workspace_root]
-        return roots
 
     @staticmethod
     def iter_workspace_python_modules(

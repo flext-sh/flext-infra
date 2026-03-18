@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import shutil
 
-from flext_tests import FlextTestsUtilities
+from flext_tests import u
 
 from flext_infra import FlextInfraUtilities
 

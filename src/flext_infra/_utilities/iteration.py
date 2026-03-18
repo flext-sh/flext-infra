@@ -15,7 +15,7 @@ from flext_infra.constants import FlextInfraConstants as c
 
 class FlextInfraUtilitiesIteration:
     @staticmethod
-    def _discover_project_roots(
+    def discover_project_roots(
         workspace_root: Path,
         *,
         scan_dirs: frozenset[str] | None = None,
@@ -56,6 +56,17 @@ class FlextInfraUtilitiesIteration:
         ):
             return [workspace_root]
         return roots
+
+    @staticmethod
+    def _discover_project_roots(
+        workspace_root: Path,
+        *,
+        scan_dirs: frozenset[str] | None = None,
+    ) -> list[Path]:
+        return FlextInfraUtilitiesIteration.discover_project_roots(
+            workspace_root=workspace_root,
+            scan_dirs=scan_dirs,
+        )
 
     @staticmethod
     def iter_directory_python_files(
@@ -100,7 +111,7 @@ class FlextInfraUtilitiesIteration:
         try:
             roots = (
                 project_roots
-                or FlextInfraUtilitiesIteration._discover_project_roots(
+                or FlextInfraUtilitiesIteration.discover_project_roots(
                     workspace_root=workspace_root,
                 )
             )

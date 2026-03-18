@@ -14,6 +14,7 @@ DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
 CORE_STACK ?= {{ config.core_stack }}
 PYTEST_ARGS ?=
+PYTEST_BASE_TARGET := $(if $(findstring tests/,$(PYTEST_ARGS)),,$(TESTS_DIR))
 DIAG ?= 0
 CHECK_GATES ?=
 VALIDATE_GATES ?=

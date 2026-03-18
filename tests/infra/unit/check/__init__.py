@@ -93,10 +93,14 @@ if TYPE_CHECKING:
         TestRunSingleProject,
     )
     from .extended_runners import TestRunMypy, TestRunPyrefly
-    from .extended_runners_extra import TestRunBandit, TestRunMarkdown, TestRunPyright
-    from .extended_runners_go import TestRunGo
+    from .extended_runners_extra import (
+        GateClass,
+        TestRunBandit,
+        TestRunMarkdown,
+        TestRunPyright,
+    )
+    from .extended_runners_go import RunCallable, TestRunGo
     from .extended_runners_ruff import (
-        RunCallable,
         TestCollectMarkdownFiles,
         TestRunCommand,
         TestRunRuffFormat,
@@ -126,7 +130,8 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.check.extended_run_projects",
         "CheckProjectStub",
     ),
-    "RunCallable": ("tests.infra.unit.check.extended_runners_ruff", "RunCallable"),
+    "GateClass": ("tests.infra.unit.check.extended_runners_extra", "GateClass"),
+    "RunCallable": ("tests.infra.unit.check.extended_runners_go", "RunCallable"),
     "RunStub": ("tests.infra.unit.check.extended_error_reporting", "RunStub"),
     "TestCheckIssueFormatted": (
         "tests.infra.unit.check.extended_models",
@@ -421,6 +426,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 
 __all__ = [
     "CheckProjectStub",
+    "GateClass",
     "RunCallable",
     "RunStub",
     "TestCheckIssueFormatted",

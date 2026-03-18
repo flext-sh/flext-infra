@@ -6,14 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from types import SimpleNamespace
-
 from _pytest.monkeypatch import MonkeyPatch
-from flext_core import r
 from flext_tests import tm
 
 from flext_infra.check.services import FlextInfraWorkspaceChecker
+
+from ._shared_fixtures import create_fake_run_projects
 
 
 def test_resolve_gates_maps_type_alias() -> None:
@@ -23,22 +21,10 @@ def test_resolve_gates_maps_type_alias() -> None:
 
 
 def test_run_cli_run_returns_zero_for_pass(monkeypatch: MonkeyPatch) -> None:
-
-    def _fake_run_projects(
-        self: FlextInfraWorkspaceChecker,
-        projects: list[str],
-        gates: list[str],
-        *,
-        reports_dir: Path | None,
-        fail_fast: bool,
-    ) -> r[list[SimpleNamespace]]:
-        del self, projects, gates, reports_dir, fail_fast
-        return r[list[SimpleNamespace]].ok([SimpleNamespace(passed=True)])
-
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
-        _fake_run_projects,
+        create_fake_run_projects(),
     )
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",
@@ -52,22 +38,10 @@ def test_run_cli_run_returns_zero_for_pass(monkeypatch: MonkeyPatch) -> None:
 
 def test_run_cli_run_returns_one_for_fail(monkeypatch: MonkeyPatch) -> None:
     """Test that run_cli returns 1 when projects fail checks."""
-
-    def _fake_run_projects(
-        self: FlextInfraWorkspaceChecker,
-        projects: list[str],
-        gates: list[str],
-        *,
-        reports_dir: Path | None,
-        fail_fast: bool,
-    ) -> r[list[SimpleNamespace]]:
-        del self, projects, gates, reports_dir, fail_fast
-        return r[list[SimpleNamespace]].ok([SimpleNamespace(passed=False)])
-
     _ = monkeypatch.setattr(
         FlextInfraWorkspaceChecker,
         "run_projects",
-        _fake_run_projects,
+        create_fake_run_projects((False, None)),
     )
     exit_code = FlextInfraWorkspaceChecker.run_cli([
         "run",

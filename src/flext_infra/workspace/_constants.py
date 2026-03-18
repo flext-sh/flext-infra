@@ -15,7 +15,7 @@ class FlextInfraWorkspaceConstants:
         ),
         (
             'python3 "$(WORKSPACE_ROOT)/scripts/sync.py"',
-            "python -m flext_infra workspace sync",
+            "python -m flext_infra workspace sync --apply",
         ),
         (
             'python3 "$(WORKSPACE_ROOT)/scripts/dependencies/sync_internal_deps.py"',

@@ -205,13 +205,13 @@ if TYPE_CHECKING:
     )
     from .unit.check.extended_runners import TestRunMypy, TestRunPyrefly
     from .unit.check.extended_runners_extra import (
+        GateClass,
         TestRunBandit,
         TestRunMarkdown,
         TestRunPyright,
     )
-    from .unit.check.extended_runners_go import TestRunGo
+    from .unit.check.extended_runners_go import RunCallable, TestRunGo
     from .unit.check.extended_runners_ruff import (
-        RunCallable,
         TestCollectMarkdownFiles,
         TestRunCommand,
         TestRunRuffFormat,
@@ -1029,13 +1029,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraTestTypes": ("tests.infra.typings", "FlextInfraTestTypes"),
     "FlextInfraTestUtilities": ("tests.infra.utilities", "FlextInfraTestUtilities"),
     "FullScenario": ("tests.infra.workspace_scenarios", "FullScenario"),
+    "GateClass": ("tests.infra.unit.check.extended_runners_extra", "GateClass"),
     "GitScenario": ("tests.infra.scenarios", "GitScenario"),
     "GitScenarios": ("tests.infra.scenarios", "GitScenarios"),
     "MinimalScenario": ("tests.infra.workspace_scenarios", "MinimalScenario"),
     "MockScanner": ("tests.infra.unit._utilities.test_scanning", "MockScanner"),
     "RealGitService": ("tests.infra.git_service", "RealGitService"),
     "RealSubprocessRunner": ("tests.infra.runner_service", "RealSubprocessRunner"),
-    "RunCallable": ("tests.infra.unit.check.extended_runners_ruff", "RunCallable"),
+    "RunCallable": ("tests.infra.unit.check.extended_runners_go", "RunCallable"),
     "RunStub": ("tests.infra.unit.check.extended_error_reporting", "RunStub"),
     "SampleModel": ("tests.infra.unit.io.test_infra_json_io", "SampleModel"),
     "SetupFn": ("tests.infra.unit.test_infra_workspace_sync", "SetupFn"),
@@ -3555,6 +3556,7 @@ __all__ = [
     "FlextInfraTestTypes",
     "FlextInfraTestUtilities",
     "FullScenario",
+    "GateClass",
     "GitScenario",
     "GitScenarios",
     "MinimalScenario",

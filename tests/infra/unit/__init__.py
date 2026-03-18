@@ -176,13 +176,13 @@ if TYPE_CHECKING:
     )
     from .check.extended_runners import TestRunMypy, TestRunPyrefly
     from .check.extended_runners_extra import (
+        GateClass,
         TestRunBandit,
         TestRunMarkdown,
         TestRunPyright,
     )
-    from .check.extended_runners_go import TestRunGo
+    from .check.extended_runners_go import RunCallable, TestRunGo
     from .check.extended_runners_ruff import (
-        RunCallable,
         TestCollectMarkdownFiles,
         TestRunCommand,
         TestRunRuffFormat,
@@ -968,8 +968,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_safety",
         "EngineSafetyStub",
     ),
+    "GateClass": ("tests.infra.unit.check.extended_runners_extra", "GateClass"),
     "MockScanner": ("tests.infra.unit._utilities.test_scanning", "MockScanner"),
-    "RunCallable": ("tests.infra.unit.check.extended_runners_ruff", "RunCallable"),
+    "RunCallable": ("tests.infra.unit.check.extended_runners_go", "RunCallable"),
     "RunStub": ("tests.infra.unit.check.extended_error_reporting", "RunStub"),
     "SampleModel": ("tests.infra.unit.io.test_infra_json_io", "SampleModel"),
     "SetupFn": ("tests.infra.unit.test_infra_workspace_sync", "SetupFn"),
@@ -3473,6 +3474,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 __all__ = [
     "CheckProjectStub",
     "EngineSafetyStub",
+    "GateClass",
     "MockScanner",
     "RunCallable",
     "RunStub",
