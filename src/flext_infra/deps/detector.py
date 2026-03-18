@@ -168,51 +168,53 @@ class FlextInfraRuntimeDevDependencyDetector:
         )
         return runtime.run(argv=argv)
 
+    @staticmethod
+    def main() -> int:
+        """Entry point for dependency detector CLI."""
+        detector_type: type[object] = FlextInfraRuntimeDevDependencyDetector
+        deps_module = sys.modules.get("flext_infra.deps")
+        if deps_module is not None:
+            deps_type = getattr(
+                deps_module,
+                "FlextInfraRuntimeDevDependencyDetector",
+                detector_type,
+            )
+            if isinstance(deps_type, type):
+                detector_type = deps_type
+        root_module = sys.modules.get("flext_infra")
+        if (
+            root_module is not None
+            and detector_type is FlextInfraRuntimeDevDependencyDetector
+        ):
+            root_type = getattr(
+                root_module,
+                "FlextInfraRuntimeDevDependencyDetector",
+                detector_type,
+            )
+            if isinstance(root_type, type):
+                detector_type = root_type
+        detector_obj = detector_type()
+        if not isinstance(detector_obj, RunnableDetector):
+            return 1
+        detector = detector_obj
+        result = detector.run()
+        if result.is_failure:
+            logger = getattr(detector, "log", None)
+            if logger is not None and hasattr(logger, "error"):
+                logger.error(
+                    "deps_detector_failed", error=result.error or "unknown error"
+                )
+            return 1
+        return result.value
+
 
 @runtime_checkable
 class RunnableDetector(Protocol):
     def run(self, argv: list[str] | None = None) -> r[int]: ...
 
 
-def main() -> int:
-    """Entry point for dependency detector CLI."""
-    detector_type: type[object] = FlextInfraRuntimeDevDependencyDetector
-    deps_module = sys.modules.get("flext_infra.deps")
-    if deps_module is not None:
-        deps_type = getattr(
-            deps_module,
-            "FlextInfraRuntimeDevDependencyDetector",
-            detector_type,
-        )
-        if isinstance(deps_type, type):
-            detector_type = deps_type
-    root_module = sys.modules.get("flext_infra")
-    if (
-        root_module is not None
-        and detector_type is FlextInfraRuntimeDevDependencyDetector
-    ):
-        root_type = getattr(
-            root_module,
-            "FlextInfraRuntimeDevDependencyDetector",
-            detector_type,
-        )
-        if isinstance(root_type, type):
-            detector_type = root_type
-    detector_obj = detector_type()
-    if not isinstance(detector_obj, RunnableDetector):
-        return 1
-    detector = detector_obj
-    result = detector.run()
-    if result.is_failure:
-        logger = getattr(detector, "log", None)
-        if logger is not None and hasattr(logger, "error"):
-            logger.error("deps_detector_failed", error=result.error or "unknown error")
-        return 1
-    return result.value
-
-
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(FlextInfraRuntimeDevDependencyDetector.main())
 
 
 __all__ = [
@@ -221,5 +223,4 @@ __all__ = [
     "FlextInfraUtilitiesPaths",
     "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesSubprocess",
-    "main",
 ]

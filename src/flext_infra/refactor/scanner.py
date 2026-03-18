@@ -5,42 +5,18 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
-from typing import override
 
-import libcst as cst
 from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, m, t, u
+from flext_infra.refactor._top_level_class_collector import TopLevelClassCollector
 
 type RConfigMapping = r[t.Infra.ContainerDict]
 type RListPath = r[list[Path]]
 type RPath = r[Path]
 type RListClassOccurrence = r[list[m.Infra.ClassOccurrence]]
 type RDictPathGrep = r[dict[Path, dict[str, int]]]
-
-
-class TopLevelClassCollector(cst.CSTVisitor):
-    def __init__(self) -> None:
-        self._depth = 0
-        self.classes: list[m.Infra.ClassOccurrence] = []
-
-    @override
-    def visit_ClassDef(self, node: cst.ClassDef) -> None:
-        is_top_level = self._depth == 0
-        self.classes.append(
-            m.Infra.ClassOccurrence(
-                name=node.name.value,
-                line=0,
-                is_top_level=is_top_level,
-            ),
-        )
-        self._depth += 1
-
-    @override
-    def leave_ClassDef(self, original_node: cst.ClassDef) -> None:
-        _ = original_node
-        self._depth -= 1
 
 
 class FlextInfraRefactorLooseClassScanner:

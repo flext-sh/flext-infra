@@ -10,15 +10,15 @@ from flext_core import r
 from pydantic import JsonValue, TypeAdapter
 
 from flext_infra import c, m, t, u
+from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
 from flext_infra.refactor.rule import (
     FlextInfraRefactorRule,
     FlextInfraRefactorRuleLoader,
 )
-from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-from flext_infra.refactor.validation import (
-    FlextInfraRefactorCliSupport,
+from flext_infra.refactor.rule_definition_validator import (
     FlextInfraRefactorRuleDefinitionValidator,
 )
+from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.rules.class_nesting import ClassNestingRefactorRule
 from flext_infra.rules.class_reconstructor import (
     FlextInfraRefactorClassReconstructorRule,
@@ -541,10 +541,7 @@ class FlextInfraRefactorEngine:
             .lower()
         )
         check = str(rule_def.get(c.Infra.Verbs.CHECK, "")).strip().lower()
-        if (
-            fix_action in c.Infra.FUTURE_FIX_ACTIONS
-            or check in c.Infra.FUTURE_CHECKS
-        ):
+        if fix_action in c.Infra.FUTURE_FIX_ACTIONS or check in c.Infra.FUTURE_CHECKS:
             return FlextInfraRefactorEnsureFutureAnnotationsRule(rule_def)
         if fix_action in c.Infra.LEGACY_FIX_ACTIONS:
             return FlextInfraRefactorLegacyRemovalRule(rule_def)

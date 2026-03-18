@@ -198,127 +198,124 @@ class FlextInfraRefactorAstGrepModels:
             ),
         ]
 
-    class RuleConfigs:
-        """Configuration schemas parsed by refactor rules at runtime."""
+    class MethodOrderRule(FlextModels.FrozenStrictModel):
+        """A declarative method ordering rule for class reconstruction."""
 
-        class MethodOrderRule(FlextModels.FrozenStrictModel):
-            """A declarative method ordering rule for class reconstruction."""
+        model_config = ConfigDict(extra="ignore")
 
-            model_config = ConfigDict(extra="ignore")
+        class PatternRule(FlextModels.FrozenStrictModel):
+            """Structured matcher entry for method pattern rules."""
 
-            class PatternRule(FlextModels.FrozenStrictModel):
-                """Structured matcher entry for method pattern rules."""
-
-                regex: Annotated[str, Field(default="", description="Regex matcher")]
-                decorators: Annotated[
-                    list[str],
-                    Field(
-                        default_factory=list,
-                        description="Required decorators for this pattern",
-                    ),
-                ]
-
-            category: Annotated[
-                str | None, Field(default=None, description="Method category")
-            ]
-            visibility: Annotated[
-                str | None,
-                Field(
-                    default=None,
-                    description="Visibility filter",
-                ),
-            ]
-            exclude_decorators: Annotated[
-                list[str],
-                Field(
-                    default_factory=list,
-                    description="Decorators to exclude",
-                ),
-            ]
+            regex: Annotated[str, Field(default="", description="Regex matcher")]
             decorators: Annotated[
                 list[str],
                 Field(
                     default_factory=list,
-                    description="Decorators to match",
-                ),
-            ]
-            patterns: Annotated[
-                list[str],
-                Field(
-                    default_factory=list,
-                    description="Pattern rules",
-                ),
-            ]
-            order: Annotated[
-                list[str],
-                Field(
-                    default_factory=list,
-                    description="Explicit method order",
+                    description="Required decorators for this pattern",
                 ),
             ]
 
-        class SignatureMigration(FlextModels.FrozenStrictModel):
-            """Declarative signature migration rule for callsite propagation."""
+        category: Annotated[
+            str | None, Field(default=None, description="Method category")
+        ]
+        visibility: Annotated[
+            str | None,
+            Field(
+                default=None,
+                description="Visibility filter",
+            ),
+        ]
+        exclude_decorators: Annotated[
+            list[str],
+            Field(
+                default_factory=list,
+                description="Decorators to exclude",
+            ),
+        ]
+        decorators: Annotated[
+            list[str],
+            Field(
+                default_factory=list,
+                description="Decorators to match",
+            ),
+        ]
+        patterns: Annotated[
+            list[str],
+            Field(
+                default_factory=list,
+                description="Pattern rules",
+            ),
+        ]
+        order: Annotated[
+            list[str],
+            Field(
+                default_factory=list,
+                description="Explicit method order",
+            ),
+        ]
 
-            id: Annotated[
-                str, Field(default="signature-migration", description="Migration ID")
-            ]
-            enabled: Annotated[
-                bool,
-                Field(
-                    default=True,
-                    description="Whether migration is active",
-                ),
-            ]
-            target_qualified_names: Annotated[
-                list[str],
-                Field(
-                    default_factory=list,
-                    description="Qualified names to match",
-                ),
-            ]
-            target_simple_names: Annotated[
-                list[str],
-                Field(
-                    default_factory=list,
-                    description="Simple names to match",
-                ),
-            ]
-            keyword_renames: Annotated[
-                dict[str, str],
-                Field(
-                    default_factory=dict,
-                    description="Keyword rename mapping",
-                ),
-            ]
-            remove_keywords: Annotated[
-                list[str],
-                Field(
-                    default_factory=list,
-                    description="Keywords to remove",
-                ),
-            ]
-            add_keywords: Annotated[
-                dict[str, str],
-                Field(
-                    default_factory=dict,
-                    description="Keywords to add",
-                ),
-            ]
+    class SignatureMigration(FlextModels.FrozenStrictModel):
+        """Declarative signature migration rule for callsite propagation."""
 
-        class ImportModernizerRuleConfig(FlextModels.FrozenStrictModel):
-            """Configuration for a single import modernizer rule."""
+        id: Annotated[
+            str, Field(default="signature-migration", description="Migration ID")
+        ]
+        enabled: Annotated[
+            bool,
+            Field(
+                default=True,
+                description="Whether migration is active",
+            ),
+        ]
+        target_qualified_names: Annotated[
+            list[str],
+            Field(
+                default_factory=list,
+                description="Qualified names to match",
+            ),
+        ]
+        target_simple_names: Annotated[
+            list[str],
+            Field(
+                default_factory=list,
+                description="Simple names to match",
+            ),
+        ]
+        keyword_renames: Annotated[
+            dict[str, str],
+            Field(
+                default_factory=dict,
+                description="Keyword rename mapping",
+            ),
+        ]
+        remove_keywords: Annotated[
+            list[str],
+            Field(
+                default_factory=list,
+                description="Keywords to remove",
+            ),
+        ]
+        add_keywords: Annotated[
+            dict[str, str],
+            Field(
+                default_factory=dict,
+                description="Keywords to add",
+            ),
+        ]
 
-            module: Annotated[
-                str, Field(default="", description="Module path to modernize")
-            ]
-            symbol_mapping: Annotated[
-                dict[str, str],
-                Field(
-                    default_factory=dict,
-                    description="Symbol-to-alias mapping",
-                ),
-            ]
+    class ImportModernizerRuleConfig(FlextModels.FrozenStrictModel):
+        """Configuration for a single import modernizer rule."""
+
+        module: Annotated[
+            str, Field(default="", description="Module path to modernize")
+        ]
+        symbol_mapping: Annotated[
+            dict[str, str],
+            Field(
+                default_factory=dict,
+                description="Symbol-to-alias mapping",
+            ),
+        ]
 
 
 __all__ = ["FlextInfraRefactorAstGrepModels"]

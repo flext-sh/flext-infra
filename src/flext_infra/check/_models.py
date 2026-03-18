@@ -129,148 +129,144 @@ class FlextInfraCheckModels:
 
     # -- SARIF 2.1.0 report models -----------------------------------------
 
-    class Sarif:
-        """SARIF 2.1.0 report models."""
+    class SarifRule(FlextModels.FrozenStrictModel):
+        """Compact SARIF rule descriptor."""
 
-        class Rule(FlextModels.FrozenStrictModel):
-            """Compact SARIF rule descriptor."""
+        id: Annotated[str, Field(description="Rule identifier")]
+        short_description: Annotated[
+            str,
+            Field(description="Rule short description"),
+        ]
 
-            id: Annotated[str, Field(description="Rule identifier")]
-            short_description: Annotated[
-                str,
-                Field(description="Rule short description"),
-            ]
+        @model_serializer(mode="plain")
+        def _serialize(self) -> dict[str, t.Infra.InfraValue]:
+            return {
+                "id": self.id,
+                "shortDescription": {"text": self.short_description},
+            }
 
-            @model_serializer(mode="plain")
-            def _serialize(self) -> dict[str, t.Infra.InfraValue]:
-                return {
-                    "id": self.id,
-                    "shortDescription": {"text": self.short_description},
-                }
+    class SarifLocation(FlextModels.FrozenStrictModel):
+        """Compact SARIF location source span."""
 
-        class Location(FlextModels.FrozenStrictModel):
-            """Compact SARIF location source span."""
+        uri: Annotated[str, Field(description="Artifact URI")]
+        start_line: Annotated[int, Field(description="Start line (1-based)")]
+        start_column: Annotated[int, Field(description="Start column (1-based)")]
+        uri_base_id: Annotated[
+            str,
+            Field(
+                default="%SRCROOT%",
+                description="URI base identifier",
+            ),
+        ] = "%SRCROOT%"
 
-            uri: Annotated[str, Field(description="Artifact URI")]
-            start_line: Annotated[int, Field(description="Start line (1-based)")]
-            start_column: Annotated[int, Field(description="Start column (1-based)")]
-            uri_base_id: Annotated[
-                str,
-                Field(
-                    default="%SRCROOT%",
-                    description="URI base identifier",
-                ),
-            ] = "%SRCROOT%"
-
-            @model_serializer(mode="plain")
-            def _serialize(self) -> dict[str, t.Infra.InfraValue]:
-                return {
-                    "physicalLocation": {
-                        "artifactLocation": {
-                            "uri": self.uri,
-                            "uriBaseId": self.uri_base_id,
-                        },
-                        "region": {
-                            "startLine": self.start_line,
-                            "startColumn": self.start_column,
-                        },
+        @model_serializer(mode="plain")
+        def _serialize(self) -> dict[str, t.Infra.InfraValue]:
+            return {
+                "physicalLocation": {
+                    "artifactLocation": {
+                        "uri": self.uri,
+                        "uriBaseId": self.uri_base_id,
                     },
-                }
-
-        class Result(FlextModels.FrozenStrictModel):
-            """SARIF result entry."""
-
-            rule_id: Annotated[str, Field(description="Rule identifier")]
-            level: Annotated[str, Field(description="Result level (error/warning)")]
-            message: Annotated[str, Field(description="Result message")]
-            locations: Annotated[
-                list[FlextInfraCheckModels.Sarif.Location],
-                Field(
-                    description="Result locations",
-                ),
-            ]
-
-            @model_serializer(mode="plain")
-            def _serialize(self) -> dict[str, t.Infra.InfraValue]:
-                return {
-                    "ruleId": self.rule_id,
-                    "level": self.level,
-                    "message": {"text": self.message},
-                    "locations": [
-                        location.model_dump(by_alias=True)
-                        for location in self.locations
-                    ],
-                }
-
-        class Run(FlextModels.FrozenStrictModel):
-            """SARIF run entry."""
-
-            tool_name: Annotated[str, Field(description="Tool name")]
-            information_uri: Annotated[
-                str,
-                Field(
-                    default="",
-                    description="Tool documentation URL",
-                ),
-            ] = ""
-            rules: Annotated[
-                list[FlextInfraCheckModels.Sarif.Rule],
-                Field(
-                    default_factory=lambda: list[FlextInfraCheckModels.Sarif.Rule](),
-                    description="Rule descriptors",
-                ),
-            ] = Field(default_factory=lambda: list[FlextInfraCheckModels.Sarif.Rule]())
-            results: Annotated[
-                list[FlextInfraCheckModels.Sarif.Result],
-                Field(
-                    default_factory=lambda: list[FlextInfraCheckModels.Sarif.Result](),
-                    description="Run results",
-                ),
-            ] = Field(
-                default_factory=lambda: list[FlextInfraCheckModels.Sarif.Result](),
-            )
-
-            @model_serializer(mode="plain")
-            def _serialize(self) -> dict[str, t.Infra.InfraValue]:
-                return {
-                    "tool": {
-                        "driver": {
-                            "name": self.tool_name,
-                            "informationUri": self.information_uri,
-                            "rules": [
-                                rule.model_dump(by_alias=True) for rule in self.rules
-                            ],
-                        },
+                    "region": {
+                        "startLine": self.start_line,
+                        "startColumn": self.start_column,
                     },
-                    "results": [
-                        result.model_dump(by_alias=True) for result in self.results
-                    ],
-                }
+                },
+            }
 
-        class Report(FlextModels.ArbitraryTypesModel):
-            """Complete SARIF 2.1.0 report."""
+    class SarifResult(FlextModels.FrozenStrictModel):
+        """SARIF result entry."""
 
-            model_config = ConfigDict(extra="forbid", populate_by_name=True)
+        rule_id: Annotated[str, Field(description="Rule identifier")]
+        level: Annotated[str, Field(description="Result level (error/warning)")]
+        message: Annotated[str, Field(description="Result message")]
+        locations: Annotated[
+            list[FlextInfraCheckModels.SarifLocation],
+            Field(
+                description="Result locations",
+            ),
+        ]
 
-            schema_uri: Annotated[
-                str,
-                Field(
-                    default="https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
-                    alias="$schema",
-                    description="SARIF schema URI",
-                ),
-            ] = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json"
-            version: Annotated[
-                str,
-                Field(default="2.1.0", description="SARIF version"),
-            ] = "2.1.0"
-            runs: Annotated[
-                list[FlextInfraCheckModels.Sarif.Run],
-                Field(
-                    default_factory=lambda: list[FlextInfraCheckModels.Sarif.Run](),
-                    description="SARIF runs",
-                ),
-            ] = Field(default_factory=lambda: list[FlextInfraCheckModels.Sarif.Run]())
+        @model_serializer(mode="plain")
+        def _serialize(self) -> dict[str, t.Infra.InfraValue]:
+            return {
+                "ruleId": self.rule_id,
+                "level": self.level,
+                "message": {"text": self.message},
+                "locations": [
+                    location.model_dump(by_alias=True) for location in self.locations
+                ],
+            }
+
+    class SarifRun(FlextModels.FrozenStrictModel):
+        """SARIF run entry."""
+
+        tool_name: Annotated[str, Field(description="Tool name")]
+        information_uri: Annotated[
+            str,
+            Field(
+                default="",
+                description="Tool documentation URL",
+            ),
+        ] = ""
+        rules: Annotated[
+            list[FlextInfraCheckModels.SarifRule],
+            Field(
+                default_factory=lambda: list[FlextInfraCheckModels.SarifRule](),
+                description="Rule descriptors",
+            ),
+        ] = Field(default_factory=lambda: list[FlextInfraCheckModels.SarifRule]())
+        results: Annotated[
+            list[FlextInfraCheckModels.SarifResult],
+            Field(
+                default_factory=lambda: list[FlextInfraCheckModels.SarifResult](),
+                description="Run results",
+            ),
+        ] = Field(
+            default_factory=lambda: list[FlextInfraCheckModels.SarifResult](),
+        )
+
+        @model_serializer(mode="plain")
+        def _serialize(self) -> dict[str, t.Infra.InfraValue]:
+            return {
+                "tool": {
+                    "driver": {
+                        "name": self.tool_name,
+                        "informationUri": self.information_uri,
+                        "rules": [
+                            rule.model_dump(by_alias=True) for rule in self.rules
+                        ],
+                    },
+                },
+                "results": [
+                    result.model_dump(by_alias=True) for result in self.results
+                ],
+            }
+
+    class SarifReport(FlextModels.ArbitraryTypesModel):
+        """Complete SARIF 2.1.0 report."""
+
+        model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+        schema_uri: Annotated[
+            str,
+            Field(
+                default="https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+                alias="$schema",
+                description="SARIF schema URI",
+            ),
+        ] = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json"
+        version: Annotated[
+            str,
+            Field(default="2.1.0", description="SARIF version"),
+        ] = "2.1.0"
+        runs: Annotated[
+            list[FlextInfraCheckModels.SarifRun],
+            Field(
+                default_factory=lambda: list[FlextInfraCheckModels.SarifRun](),
+                description="SARIF runs",
+            ),
+        ] = Field(default_factory=lambda: list[FlextInfraCheckModels.SarifRun]())
 
 
 __all__ = ["FlextInfraCheckModels"]

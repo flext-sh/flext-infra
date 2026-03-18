@@ -23,7 +23,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
         """Initialize with rule order config and optional change callback."""
         try:
             self._order_config = TypeAdapter(
-                list[m.Infra.RuleConfigs.MethodOrderRule],
+                list[m.Infra.MethodOrderRule],
             ).validate_python(order_config)
         except ValidationError:
             self._order_config = []
@@ -126,7 +126,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
 
         def matches_rule(
             method: m.Infra.MethodInfo,
-            rule_config: m.Infra.RuleConfigs.MethodOrderRule,
+            rule_config: m.Infra.MethodOrderRule,
         ) -> bool:
             decorators = set(method.decorators)
             exclude_decorators = set(rule_config.exclude_decorators)

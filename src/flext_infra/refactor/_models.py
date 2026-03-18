@@ -524,21 +524,21 @@ class FlextInfraRefactorModels(
             ),
         ]
 
+    class ViolationTopFileSection(FlextModels.ArbitraryTypesModel):
+        """One ranked hotspot entry in violation analysis output."""
+
+        file: Annotated[str, Field(min_length=1, description="File path")]
+        total: Annotated[int, Field(ge=0, description="Total violations in file")]
+        counts: Annotated[
+            dict[str, int],
+            Field(
+                default_factory=dict,
+                description="Per-pattern counts",
+            ),
+        ]
+
     class ViolationAnalysisReport(FlextModels.ArbitraryTypesModel):
         """Full violation analysis report for refactor diagnostics."""
-
-        class TopFileSection(FlextModels.ArbitraryTypesModel):
-            """One ranked hotspot entry in violation analysis output."""
-
-            file: Annotated[str, Field(min_length=1, description="File path")]
-            total: Annotated[int, Field(ge=0, description="Total violations in file")]
-            counts: Annotated[
-                dict[str, int],
-                Field(
-                    default_factory=dict,
-                    description="Per-pattern counts",
-                ),
-            ]
 
         totals: Annotated[
             dict[str, int],
@@ -554,11 +554,9 @@ class FlextInfraRefactorModels(
                 description="Per-file per-pattern counts",
             ),
         ]
-        top_files: list[
-            FlextInfraRefactorModels.ViolationAnalysisReport.TopFileSection
-        ] = Field(
+        top_files: list[FlextInfraRefactorModels.ViolationTopFileSection] = Field(
             default_factory=lambda: list[
-                FlextInfraRefactorModels.ViolationAnalysisReport.TopFileSection
+                FlextInfraRefactorModels.ViolationTopFileSection
             ](),
             description="Top hotspot files",
         )

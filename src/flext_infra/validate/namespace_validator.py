@@ -342,10 +342,7 @@ class FlextInfraNamespaceValidator:
             return True
         if isinstance(node, ast.Assign):
             for target in node.targets:
-                if (
-                    isinstance(target, ast.Name)
-                    and target.id in c.Infra.DUNDER_ALLOWED
-                ):
+                if isinstance(target, ast.Name) and target.id in c.Infra.DUNDER_ALLOWED:
                     return True
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             target = node.targets[0]

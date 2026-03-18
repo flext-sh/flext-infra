@@ -18,15 +18,15 @@ class FlextInfraCheckReporter:
         gates: Sequence[str],
     ) -> JsonValue:
         """Generate a SARIF 2.1.0 payload from gate results."""
-        sarif_runs: list[m.Infra.Sarif.Run] = []
+        sarif_runs: list[m.Infra.SarifRun] = []
         for gate in gates:
             tool_name, tool_url = c.Infra.SARIF_TOOL_INFO.get(
                 gate,
                 (gate, ""),
             )
-            sarif_results: list[m.Infra.Sarif.Result] = []
+            sarif_results: list[m.Infra.SarifResult] = []
             rules_seen: set[str] = set()
-            rules: list[m.Infra.Sarif.Rule] = []
+            rules: list[m.Infra.SarifRule] = []
             for project in results:
                 gate_result = project.gates.get(gate)
                 if not gate_result:
@@ -36,20 +36,20 @@ class FlextInfraCheckReporter:
                     if rule_id not in rules_seen:
                         rules_seen.add(rule_id)
                         rules.append(
-                            m.Infra.Sarif.Rule(
+                            m.Infra.SarifRule(
                                 id=rule_id,
                                 short_description=rule_id,
                             ),
                         )
                     sarif_results.append(
-                        m.Infra.Sarif.Result(
+                        m.Infra.SarifResult(
                             rule_id=rule_id,
                             level=c.Infra.Toml.ERROR
                             if issue.severity == c.Infra.Toml.ERROR
                             else c.Infra.Severity.WARNING,
                             message=issue.message,
                             locations=[
-                                m.Infra.Sarif.Location(
+                                m.Infra.SarifLocation(
                                     uri=issue.file,
                                     start_line=max(issue.line, 1),
                                     start_column=max(issue.column, 1),
@@ -58,14 +58,14 @@ class FlextInfraCheckReporter:
                         ),
                     )
             sarif_runs.append(
-                m.Infra.Sarif.Run(
+                m.Infra.SarifRun(
                     tool_name=tool_name,
                     information_uri=tool_url,
                     rules=rules,
                     results=sarif_results,
                 ),
             )
-        sarif_report = m.Infra.Sarif.Report(runs=sarif_runs)
+        sarif_report = m.Infra.SarifReport(runs=sarif_runs)
         sarif_dict: dict[str, JsonValue] = sarif_report.model_dump(by_alias=True)
         return sarif_dict
 

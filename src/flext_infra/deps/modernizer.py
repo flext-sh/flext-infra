@@ -210,25 +210,27 @@ class FlextInfraPyprojectModernizer:
                 has_warning = True
         return 1 if has_warning else 0
 
-
-def main(argv: list[str] | None = None) -> int:
-    """Run the pyproject modernizer CLI."""
-    parser = u.Infra.create_parser(
-        "flext-infra deps modernize",
-        "Modernize workspace pyproject files",
-        include_apply=True,
-        include_check=True,
-    )
-    _ = parser.add_argument("--audit", action="store_true")
-    _ = parser.add_argument("--skip-comments", action="store_true")
-    _ = parser.add_argument("--skip-check", action="store_true")
-    args = parser.parse_args(argv)
-    cli = u.Infra.resolve(args)
-    return FlextInfraPyprojectModernizer(workspace_root=cli.workspace).run(args, cli)
+    @staticmethod
+    def main(argv: list[str] | None = None) -> int:
+        """Run the pyproject modernizer CLI."""
+        parser = u.Infra.create_parser(
+            "flext-infra deps modernize",
+            "Modernize workspace pyproject files",
+            include_apply=True,
+            include_check=True,
+        )
+        _ = parser.add_argument("--audit", action="store_true")
+        _ = parser.add_argument("--skip-comments", action="store_true")
+        _ = parser.add_argument("--skip-check", action="store_true")
+        args = parser.parse_args(argv)
+        cli = u.Infra.resolve(args)
+        return FlextInfraPyprojectModernizer(workspace_root=cli.workspace).run(
+            args, cli
+        )
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(FlextInfraPyprojectModernizer.main())
 
 
 __all__ = ["FlextInfraPyprojectModernizer", "u"]

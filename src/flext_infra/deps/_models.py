@@ -13,8 +13,10 @@ from flext_infra.typings import t
 type _DeptryIssueMap = Mapping[str, t.Primitives | None]
 
 
-def _empty_deptry_issues() -> list[_DeptryIssueMap]:
-    return []
+class FlextInfraDepsModelHelpers:
+    @staticmethod
+    def empty_deptry_issues() -> list[_DeptryIssueMap]:
+        return []
 
 
 class FlextInfraDepsModels:
@@ -498,19 +500,19 @@ class FlextInfraDepsModels:
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 
         dep001: list[_DeptryIssueMap] = Field(
-            default_factory=_empty_deptry_issues,
+            default_factory=FlextInfraDepsModelHelpers.empty_deptry_issues,
             description="DEP001 issues",
         )
         dep002: list[_DeptryIssueMap] = Field(
-            default_factory=_empty_deptry_issues,
+            default_factory=FlextInfraDepsModelHelpers.empty_deptry_issues,
             description="DEP002 issues",
         )
         dep003: list[_DeptryIssueMap] = Field(
-            default_factory=_empty_deptry_issues,
+            default_factory=FlextInfraDepsModelHelpers.empty_deptry_issues,
             description="DEP003 issues",
         )
         dep004: list[_DeptryIssueMap] = Field(
-            default_factory=_empty_deptry_issues,
+            default_factory=FlextInfraDepsModelHelpers.empty_deptry_issues,
             description="DEP004 issues",
         )
 

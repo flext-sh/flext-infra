@@ -8,7 +8,7 @@ import libcst as cst
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor.validation import PostCheckGate
+from flext_infra.refactor._post_check_gate import PostCheckGate
 from flext_infra.rules.class_reconstructor import (
     FlextInfraRefactorClassNestingReconstructor,
     PreCheckGate,

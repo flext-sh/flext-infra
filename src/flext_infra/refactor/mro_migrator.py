@@ -62,9 +62,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         ordered_symbols = [symbol for symbol, _ in moved_statements]
         transformed_body: list[cst.CSTNode] = []
         symbol_map: dict[str, str] = {}
-        class_name = (
-            scan_result.constants_class or c.Infra.DEFAULT_CONSTANTS_CLASS
-        )
+        class_name = scan_result.constants_class or c.Infra.DEFAULT_CONSTANTS_CLASS
         class_found = False
         for retained_stmt in retained_module_body:
             if (

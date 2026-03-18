@@ -248,34 +248,34 @@ class FlextInfraExtraPathsManager:
             u.Infra.info("Updated extraPaths and mypy_path from path dependencies.")
         return r[int].ok(0)
 
+    @staticmethod
+    def _resolve_project_dirs(cli: u.Infra.CliArgs) -> list[Path] | None:
+        return cli.project_dirs()
 
-def _resolve_project_dirs(
-    cli: u.Infra.CliArgs,
-) -> list[Path] | None:
-    return cli.project_dirs()
-
-
-def main(argv: list[str] | None = None) -> int:
-    """Execute extra paths synchronization from command line."""
-    parser = u.Infra.create_parser(
-        "flext-infra deps extra-paths",
-        "Synchronize pyright and mypy extraPaths from path dependencies",
-        include_apply=True,
-        include_project=True,
-    )
-    args = parser.parse_args(argv)
-    cli = u.Infra.resolve(args)
-    manager = FlextInfraExtraPathsManager(workspace_root=cli.workspace)
-    project_dirs = _resolve_project_dirs(cli)
-    result = manager.sync_extra_paths(dry_run=cli.dry_run, project_dirs=project_dirs)
-    if result.is_success:
-        return result.value
-    u.Infra.error(result.error or "sync failed")
-    return 1
+    @staticmethod
+    def main(argv: list[str] | None = None) -> int:
+        """Execute extra paths synchronization from command line."""
+        parser = u.Infra.create_parser(
+            "flext-infra deps extra-paths",
+            "Synchronize pyright and mypy extraPaths from path dependencies",
+            include_apply=True,
+            include_project=True,
+        )
+        args = parser.parse_args(argv)
+        cli = u.Infra.resolve(args)
+        manager = FlextInfraExtraPathsManager(workspace_root=cli.workspace)
+        project_dirs = FlextInfraExtraPathsManager._resolve_project_dirs(cli)
+        result = manager.sync_extra_paths(
+            dry_run=cli.dry_run, project_dirs=project_dirs
+        )
+        if result.is_success:
+            return result.value
+        u.Infra.error(result.error or "sync failed")
+        return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(FlextInfraExtraPathsManager.main())
 
 
 __all__ = [

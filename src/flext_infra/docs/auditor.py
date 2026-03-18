@@ -318,39 +318,39 @@ class FlextInfraDocAuditor:
             )
         return issues
 
-
-def main() -> int:
-    """CLI entry point for the documentation auditor."""
-    parser = u.Infra.create_parser(
-        "flext-infra docs audit",
-        "Audit documentation for issues",
-        include_apply=True,
-        include_project=True,
-        include_check=True,
-    )
-    _ = parser.add_argument("--strict", action="store_true", help="Strict mode")
-    _ = parser.add_argument(
-        "--output-dir",
-        default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-    )
-    args = parser.parse_args()
-    cli = u.Infra.resolve(args)
-    auditor = FlextInfraDocAuditor()
-    result = auditor.audit(
-        workspace_root=cli.workspace,
-        project=cli.project,
-        projects=cli.projects,
-        output_dir=args.output_dir,
-        check="all" if cli.check else "none",
-        strict=bool(getattr(args, "strict", False)),
-    )
-    if result.is_failure:
-        output.error(result.error or "audit failed")
-        return 1
-    failures = sum(1 for report in result.value if not report.passed)
-    return 1 if failures else 0
+    @staticmethod
+    def main() -> int:
+        """CLI entry point for the documentation auditor."""
+        parser = u.Infra.create_parser(
+            "flext-infra docs audit",
+            "Audit documentation for issues",
+            include_apply=True,
+            include_project=True,
+            include_check=True,
+        )
+        _ = parser.add_argument("--strict", action="store_true", help="Strict mode")
+        _ = parser.add_argument(
+            "--output-dir",
+            default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+        )
+        args = parser.parse_args()
+        cli = u.Infra.resolve(args)
+        auditor = FlextInfraDocAuditor()
+        result = auditor.audit(
+            workspace_root=cli.workspace,
+            project=cli.project,
+            projects=cli.projects,
+            output_dir=args.output_dir,
+            check="all" if cli.check else "none",
+            strict=bool(getattr(args, "strict", False)),
+        )
+        if result.is_failure:
+            output.error(result.error or "audit failed")
+            return 1
+        failures = sum(1 for report in result.value if not report.passed)
+        return 1 if failures else 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(FlextInfraDocAuditor.main())
 __all__ = ["FlextInfraDocAuditor"]

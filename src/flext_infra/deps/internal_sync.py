@@ -417,26 +417,26 @@ class FlextInfraInternalDependencySyncService:
             return candidate
         return None
 
-
-def main() -> int:
-    """Entry point for internal dependency synchronization CLI."""
-    parser = u.Infra.create_parser(
-        prog="flext-infra deps internal-sync",
-        description="Synchronize internal FLEXT dependencies via git clone or workspace symlinks",
-        include_apply=False,
-    )
-    args = parser.parse_args()
-    cli_args = u.Infra.resolve(args)
-    service = FlextInfraInternalDependencySyncService()
-    result = service.sync(cli_args.workspace)
-    if result.is_success:
-        return result.value
-    sync_error = result.error or "sync_internal_deps_failed"
-    service.log.error("sync_internal_deps_failed", error_detail=sync_error)
-    u.Infra.error(f"[sync-deps] {sync_error}")
-    return 1
+    @staticmethod
+    def main() -> int:
+        """Entry point for internal dependency synchronization CLI."""
+        parser = u.Infra.create_parser(
+            prog="flext-infra deps internal-sync",
+            description="Synchronize internal FLEXT dependencies via git clone or workspace symlinks",
+            include_apply=False,
+        )
+        args = parser.parse_args()
+        cli_args = u.Infra.resolve(args)
+        service = FlextInfraInternalDependencySyncService()
+        result = service.sync(cli_args.workspace)
+        if result.is_success:
+            return result.value
+        sync_error = result.error or "sync_internal_deps_failed"
+        service.log.error("sync_internal_deps_failed", error_detail=sync_error)
+        u.Infra.error(f"[sync-deps] {sync_error}")
+        return 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(FlextInfraInternalDependencySyncService.main())
 __all__ = ["FlextInfraInternalDependencySyncService", "shutil"]

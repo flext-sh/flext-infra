@@ -287,28 +287,28 @@ class FlextInfraConfigFixer(s):
         result = u.Infra.workspace_root()
         return result.value if result.is_success else Path.cwd().resolve()
 
-
-def main(argv: list[str] | None = None) -> int:
-    """Run the pyrefly configuration fixer CLI."""
-    parser = argparse.ArgumentParser()
-    _ = parser.add_argument("projects", nargs="*")
-    _ = parser.add_argument("--dry-run", action="store_true")
-    _ = parser.add_argument("--verbose", action="store_true")
-    args = parser.parse_args(argv)
-    fixer = FlextInfraConfigFixer()
-    result = fixer.run(
-        projects=args.projects,
-        dry_run=args.dry_run,
-        verbose=args.verbose,
-    )
-    if result.is_failure:
-        output.error(result.error or "pyrefly config fix failed")
-        return 1
-    return 0
+    @staticmethod
+    def main(argv: list[str] | None = None) -> int:
+        """Run the pyrefly configuration fixer CLI."""
+        parser = argparse.ArgumentParser()
+        _ = parser.add_argument("projects", nargs="*")
+        _ = parser.add_argument("--dry-run", action="store_true")
+        _ = parser.add_argument("--verbose", action="store_true")
+        args = parser.parse_args(argv)
+        fixer = FlextInfraConfigFixer()
+        result = fixer.run(
+            projects=args.projects,
+            dry_run=args.dry_run,
+            verbose=args.verbose,
+        )
+        if result.is_failure:
+            output.error(result.error or "pyrefly config fix failed")
+            return 1
+        return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(FlextInfraConfigFixer.main())
 
 
-__all__ = ["FlextInfraConfigFixer", "main"]
+__all__ = ["FlextInfraConfigFixer"]

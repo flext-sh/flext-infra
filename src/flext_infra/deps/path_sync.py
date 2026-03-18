@@ -366,28 +366,28 @@ class FlextInfraDependencyPathSync:
             output.info(f"[sync-dep-paths] {action} {total_changes} path(s).")
         return 0
 
-
-def main(argv: list[str] | None = None) -> int:
-    """Entry point for path sync CLI."""
-    parser = u.Infra.create_parser(
-        "flext-infra deps path-sync",
-        "Rewrite internal FLEXT dependency paths for workspace/standalone mode.",
-        include_apply=True,
-        include_project=True,
-    )
-    _ = parser.add_argument(
-        "--mode",
-        choices=["workspace", "standalone", "auto"],
-        default="auto",
-        help="Target mode (default: auto-detect)",
-    )
-    args = parser.parse_args(argv)
-    cli = u.Infra.resolve(args)
-    return FlextInfraDependencyPathSync().run(cli=cli, mode=args.mode)
+    @staticmethod
+    def main(argv: list[str] | None = None) -> int:
+        """Entry point for path sync CLI."""
+        parser = u.Infra.create_parser(
+            "flext-infra deps path-sync",
+            "Rewrite internal FLEXT dependency paths for workspace/standalone mode.",
+            include_apply=True,
+            include_project=True,
+        )
+        _ = parser.add_argument(
+            "--mode",
+            choices=["workspace", "standalone", "auto"],
+            default="auto",
+            help="Target mode (default: auto-detect)",
+        )
+        args = parser.parse_args(argv)
+        cli = u.Infra.resolve(args)
+        return FlextInfraDependencyPathSync().run(cli=cli, mode=args.mode)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(FlextInfraDependencyPathSync.main())
 
 
 __all__ = ["FlextInfraDependencyPathSync"]
