@@ -1,0 +1,25 @@
+tests/infra/unit/release/orchestrator.py
+  7bcdb80403343b2c 15,28-54,92-93,102-103,113,118,127-128,138-139,149,156,167,173,197,201,211-212,216
+tests/infra/unit/release/orchestrator_helpers.py
+  7bcdb80403343b2c 233-238,243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "1419ba8c1cbf18b31a85c841a7a8667a6cc53265",
+  "prompts": {
+    "7bcdb80403343b2c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2fdc9841cffeEdS5BN4TVwssgL",
+        "model": "anthropic/claude-haiku-4-5"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 60,
+      "total_deletions": 50,
+      "accepted_lines": 56,
+      "overriden_lines": 0
+    }
+  }
+}
