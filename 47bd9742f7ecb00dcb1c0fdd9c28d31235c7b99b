@@ -1,0 +1,29 @@
+src/flext_infra/basemk/templates/makefile_bootstrap.mk.j2
+  9027e42e029f3d23 1-24
+src/flext_infra/workspace/_constants.py
+  9027e42e029f3d23 68-69
+src/flext_infra/basemk/generator.py
+  9027e42e029f3d23 15-16,143-152
+src/flext_infra/workspace/migrator.py
+  9027e42e029f3d23 175-192,299-304,307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "47bd9742f7ecb00dcb1c0fdd9c28d31235c7b99b",
+  "prompts": {
+    "9027e42e029f3d23": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2fe9479fdffeeo4oN8TM96s1da",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 70,
+      "total_deletions": 11,
+      "accepted_lines": 63,
+      "overriden_lines": 0
+    }
+  }
+}
