@@ -127,12 +127,12 @@ class TestMainFunction:
     def test_close_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(close_returns=[r[bool].ok(True)])
         self._setup(monkeypatch, _args(action="close", number="42"), mgr)
-        tm.that(main(), eq=0)
+        tm.that(FlextInfraPrManager.main(), eq=0)
 
     def test_close_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(close_returns=[r[bool].fail("close failed")])
         self._setup(monkeypatch, _args(action="close", number="42"), mgr)
-        tm.that(main(), eq=1)
+        tm.that(FlextInfraPrManager.main(), eq=1)
 
     def test_unknown_action(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._setup(monkeypatch, _args(action="invalid_action"), StubPrManager())

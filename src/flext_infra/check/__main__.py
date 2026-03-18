@@ -11,6 +11,7 @@ from flext_infra.check.workspace_check import run_cli
 class FlextInfraCheckCommand:
     @staticmethod
     def run(argv: list[str] | None = None) -> int:
+        """Execute check CLI."""
         _ = argv
         return run_cli()
 

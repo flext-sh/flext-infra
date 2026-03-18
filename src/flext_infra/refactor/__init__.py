@@ -12,11 +12,12 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from flext_infra.refactor.analysis import (
-        FlextInfraRefactorClassNestingAnalyzer,
-        FlextInfraRefactorViolationAnalyzer,
-    )
+    from flext_infra.refactor import _detectors
+    from flext_infra.refactor._detectors.import_collector import ImportCollector
     from flext_infra.refactor.census import FlextInfraRefactorCensus
+    from flext_infra.refactor.class_nesting_analyzer import (
+        FlextInfraRefactorClassNestingAnalyzer,
+    )
     from flext_infra.refactor.dependency_analyzer import (
         ClassPlacementDetector,
         CompatibilityAliasDetector,
@@ -53,6 +54,9 @@ if TYPE_CHECKING:
     from flext_infra.refactor.pydantic_centralizer import (
         FlextInfraRefactorPydanticCentralizer,
     )
+    from flext_infra.refactor.pydantic_centralizer_analysis import (
+        FlextInfraRefactorPydanticCentralizerAnalysis,
+    )
     from flext_infra.refactor.rule import (
         FlextInfraRefactorRule,
         FlextInfraRefactorRuleLoader,
@@ -64,6 +68,9 @@ if TYPE_CHECKING:
         FlextInfraRefactorMROMigrationValidator,
         FlextInfraRefactorRuleDefinitionValidator,
         PostCheckGate,
+    )
+    from flext_infra.refactor.violation_analyzer import (
+        FlextInfraRefactorViolationAnalyzer,
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
@@ -92,7 +99,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraRefactorCensus",
     ),
     "FlextInfraRefactorClassNestingAnalyzer": (
-        "flext_infra.refactor.analysis",
+        "flext_infra.refactor.class_nesting_analyzer",
         "FlextInfraRefactorClassNestingAnalyzer",
     ),
     "FlextInfraRefactorCliSupport": (
@@ -143,6 +150,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.pydantic_centralizer",
         "FlextInfraRefactorPydanticCentralizer",
     ),
+    "FlextInfraRefactorPydanticCentralizerAnalysis": (
+        "flext_infra.refactor.pydantic_centralizer_analysis",
+        "FlextInfraRefactorPydanticCentralizerAnalysis",
+    ),
     "FlextInfraRefactorRule": ("flext_infra.refactor.rule", "FlextInfraRefactorRule"),
     "FlextInfraRefactorRuleDefinitionValidator": (
         "flext_infra.refactor.validation",
@@ -157,7 +168,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraRefactorSafetyManager",
     ),
     "FlextInfraRefactorViolationAnalyzer": (
-        "flext_infra.refactor.analysis",
+        "flext_infra.refactor.violation_analyzer",
         "FlextInfraRefactorViolationAnalyzer",
     ),
     "FutureAnnotationsDetector": (
@@ -167,6 +178,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ImportAliasDetector": (
         "flext_infra.refactor.dependency_analyzer",
         "ImportAliasDetector",
+    ),
+    "ImportCollector": (
+        "flext_infra.refactor._detectors.import_collector",
+        "ImportCollector",
     ),
     "InternalImportDetector": (
         "flext_infra.refactor.dependency_analyzer",
@@ -209,6 +224,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "RuntimeAliasDetector",
     ),
+    "_detectors": ("flext_infra.refactor._detectors", ""),
 }
 
 __all__ = [
@@ -231,6 +247,7 @@ __all__ = [
     "FlextInfraRefactorMigrateToClassMRO",
     "FlextInfraRefactorOutputRenderer",
     "FlextInfraRefactorPydanticCentralizer",
+    "FlextInfraRefactorPydanticCentralizerAnalysis",
     "FlextInfraRefactorRule",
     "FlextInfraRefactorRuleDefinitionValidator",
     "FlextInfraRefactorRuleLoader",
@@ -238,6 +255,7 @@ __all__ = [
     "FlextInfraRefactorViolationAnalyzer",
     "FutureAnnotationsDetector",
     "ImportAliasDetector",
+    "ImportCollector",
     "InternalImportDetector",
     "LooseObjectDetector",
     "MROCompletenessDetector",
@@ -249,6 +267,7 @@ __all__ = [
     "PostCheckGate",
     "ProjectClassifier",
     "RuntimeAliasDetector",
+    "_detectors",
 ]
 
 

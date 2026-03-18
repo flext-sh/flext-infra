@@ -26,6 +26,7 @@ from typing import ClassVar, override
 from flext_core import r, s
 
 from flext_infra import c, output, u
+from flext_infra.codegen._codegen_ast_parsing import FlextInfraCodegenAstParsing
 
 # ---------------------------------------------------------------------------
 # Service class
@@ -159,7 +160,7 @@ class FlextInfraCodegenLazyInit(s[int]):
 
         """
         init_path = pkg_dir / "__init__.py"
-        current_pkg = u.Infra.infer_package(init_path)
+        current_pkg = FlextInfraCodegenAstParsing.infer_package(init_path)
         if not current_pkg:
             return (None, {})
 
@@ -335,7 +336,9 @@ class FlextInfraCodegenLazyInit(s[int]):
                 continue
 
             # Prefer __all__ when available
-            has_all, all_exports = u.Infra.extract_exports(sibling_tree)
+            has_all, all_exports = FlextInfraCodegenAstParsing.extract_exports(
+                sibling_tree,
+            )
             if has_all and all_exports:
                 for name in all_exports:
                     index[name] = (mod_path, name)
@@ -471,7 +474,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         if tree is None:
             return ({}, {})
 
-        inline = u.Infra.extract_inline_constants(tree)
+        inline = FlextInfraCodegenAstParsing.extract_inline_constants(tree)
         ver_mod = f"{current_pkg}.__version__" if current_pkg else "__version__"
 
         lazy: dict[str, tuple[str, str]] = {}

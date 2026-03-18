@@ -32,6 +32,7 @@ from flext_infra.codegen import (
 class FlextInfraCodegenCommand:
     @staticmethod
     def run(argv: list[str] | None) -> int:
+        """Run codegen command dispatcher."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext-infra codegen",
             "Code generation tools for workspace standardization",
@@ -89,6 +90,7 @@ class FlextInfraCodegenCommand:
 
     @staticmethod
     def handle_lazy_init(cli: u.Infra.CliArgs) -> int:
+        """Handle lazy-init code generation."""
         generator = FlextInfraCodegenLazyInit(workspace_root=cli.workspace)
         unmapped = generator.run(check_only=cli.check)
         if cli.check and unmapped > 0:
@@ -97,12 +99,14 @@ class FlextInfraCodegenCommand:
 
     @staticmethod
     def handle_py_typed(cli: u.Infra.CliArgs) -> int:
+        """Handle py.typed marker generation."""
         service = FlextInfraCodegenPyTyped(workspace_root=cli.workspace)
         service.run(check_only=cli.check)
         return 0
 
     @staticmethod
     def handle_census(cli: u.Infra.CliArgs) -> int:
+        """Handle namespace violation census."""
         census = FlextInfraCodegenCensus(workspace_root=cli.workspace)
         reports = census.run()
         if cli.output_format == "json":
@@ -128,6 +132,7 @@ class FlextInfraCodegenCommand:
 
     @staticmethod
     def handle_scaffold(cli: u.Infra.CliArgs) -> int:
+        """Handle module scaffolding."""
         scaffolder = FlextInfraCodegenScaffolder(workspace_root=cli.workspace)
         if cli.dry_run:
             output.info("Dry-run mode: no files will be created")
@@ -144,6 +149,7 @@ class FlextInfraCodegenCommand:
 
     @staticmethod
     def handle_auto_fix(cli: u.Infra.CliArgs) -> int:
+        """Handle namespace violation auto-fix."""
         fixer = FlextInfraCodegenFixer(
             workspace_root=cli.workspace,
             dry_run=cli.dry_run,
@@ -165,6 +171,7 @@ class FlextInfraCodegenCommand:
 
     @staticmethod
     def handle_pipeline(cli: u.Infra.CliArgs) -> int:
+        """Handle full codegen pipeline."""
         py_typed = FlextInfraCodegenPyTyped(workspace_root=cli.workspace)
         py_typed.run()
         census = FlextInfraCodegenCensus(workspace_root=cli.workspace)
@@ -228,6 +235,7 @@ class FlextInfraCodegenCommand:
         before_report: Path | None,
         baseline_file: Path | None,
     ) -> int:
+        """Handle constants migration quality gate."""
         gate = FlextInfraCodegenConstantsQualityGate(
             workspace_root=cli.workspace,
             before_report=before_report,

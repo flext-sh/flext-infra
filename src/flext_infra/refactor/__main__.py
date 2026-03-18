@@ -16,6 +16,7 @@ from .pydantic_centralizer import FlextInfraRefactorPydanticCentralizer
 class FlextInfraRefactorCommand:
     @staticmethod
     def run(argv: list[str] | None = None) -> int:
+        """Dispatch CLI command handlers and return process exit code."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext_infra refactor",
             "Refactor and modernization tools for flext workspace",
@@ -95,6 +96,7 @@ class FlextInfraRefactorCommand:
         *,
         normalize_remaining: bool,
     ) -> int:
+        """Run pydantic centralization workflow for the workspace."""
         summary = FlextInfraRefactorPydanticCentralizer.centralize_workspace(
             cli.workspace,
             apply=cli.apply,
@@ -111,6 +113,7 @@ class FlextInfraRefactorCommand:
 
     @staticmethod
     def run_migrate_to_mro(cli: u.Infra.CliArgs, *, target: str) -> int:
+        """Run MRO migration workflow for the selected target scope."""
         service = FlextInfraRefactorMigrateToClassMRO(workspace_root=cli.workspace)
         report = service.run(target=target, apply=cli.apply)
         output.write(FlextInfraRefactorMigrateToClassMRO.render_text(report))
@@ -122,6 +125,7 @@ class FlextInfraRefactorCommand:
 
     @staticmethod
     def run_namespace_enforce(cli: u.Infra.CliArgs) -> int:
+        """Run namespace enforcement checks and optionally apply fixes."""
         enforcer = FlextInfraNamespaceEnforcer(workspace_root=cli.workspace)
         report = enforcer.enforce(apply=cli.apply)
         sys.stdout.write(FlextInfraNamespaceEnforcer.render_text(report))
@@ -136,6 +140,7 @@ class FlextInfraRefactorCommand:
         *,
         normalize_remaining: bool,
     ) -> int:
+        """Run centralization, MRO migration, and namespace enforcement together."""
         centralize_summary = FlextInfraRefactorPydanticCentralizer.centralize_workspace(
             cli.workspace,
             apply=cli.apply,
@@ -187,6 +192,7 @@ class FlextInfraRefactorCommand:
         family: str,
         json_output: Path | None,
     ) -> int:
+        """Run method-usage census and optionally export JSON report."""
         census = FlextInfraRefactorCensus()
 
         target = u.Infra.build_mro_target(family)

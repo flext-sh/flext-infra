@@ -229,5 +229,51 @@ class FlextInfraCodegenGeneration:
             out.extend(FlextInfraCodegenGeneration._getattr_block_standard())
         return "\n".join(out)
 
+    @staticmethod
+    def _getattr_block_standard() -> list[str]:
+        return [
+            "def __getattr__(name: str) -> FlextTypes.ModuleExport:",
+            '    """Lazy-load module attributes on first access (PEP 562)."""',
+            "    return lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)",
+            "",
+            "",
+            "def __dir__() -> list[str]:",
+            '    """Return list of available attributes for dir() and autocomplete."""',
+            "    return sorted(__all__)",
+            "",
+            "",
+            "cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)",
+        ]
+
+    @staticmethod
+    def _getattr_block_l0() -> list[str]:
+        return [
+            "def __getattr__(name: str) -> type:",
+            "    if name in _LAZY_IMPORTS:",
+            "        module_path, attr_name = _LAZY_IMPORTS[name]",
+            "        module = importlib.import_module(module_path)",
+            "        value = getattr(module, attr_name)",
+            "        globals()[name] = value",
+            "        return value",
+            '    msg = f"module {__name__!r} has no attribute {name!r}"',
+            "    raise AttributeError(msg)",
+            "",
+            "",
+            "def __dir__() -> list[str]:",
+            "    return sorted(__all__)",
+            "",
+            "",
+            "_current = sys.modules.get(__name__)",
+            "if _current is not None:",
+            '    _parts = __name__.split(".")',
+            "    for _mod_path, _ in _LAZY_IMPORTS.values():",
+            "        if _mod_path:",
+            '            _mp = _mod_path.split(".")',
+            "            if len(_mp) > len(_parts) and _mp[: len(_parts)] == _parts:",
+            "                _sub = getattr(_current, _mp[len(_parts)], None)",
+            "                if _sub is not None and isinstance(_sub, type(sys)):",
+            "                    delattr(_current, _mp[len(_parts)])",
+        ]
+
 
 __all__ = ["FlextInfraCodegenGeneration"]

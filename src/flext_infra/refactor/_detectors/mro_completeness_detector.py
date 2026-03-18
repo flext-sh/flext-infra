@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import importlib
 import operator
 from pathlib import Path
 from typing import ClassVar, override
@@ -81,11 +82,12 @@ class MROCompletenessDetector(p.Infra.Scanner):
             return []
         if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
-        from flext_infra.refactor.dependency_analyzer import (
-            FlextInfraRefactorDependencyAnalyzerFacade,
+        analyzer_module = importlib.import_module(
+            "flext_infra.refactor.dependency_analyzer",
         )
+        analyzer_facade = analyzer_module.FlextInfraRefactorDependencyAnalyzerFacade
 
-        parsed = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module(
+        parsed = analyzer_facade.load_python_module(
             file_path,
             stage="mro-completeness-scan",
             parse_failures=_parse_failures,
@@ -222,11 +224,12 @@ class MROCompletenessDetector(p.Infra.Scanner):
         facade_name: str,
         _parse_failures: list[nem.ParseFailureViolation] | None,
     ) -> set[tuple[str, int]]:
-        from flext_infra.refactor.dependency_analyzer import (
-            FlextInfraRefactorDependencyAnalyzerFacade,
+        analyzer_module = importlib.import_module(
+            "flext_infra.refactor.dependency_analyzer",
         )
+        analyzer_facade = analyzer_module.FlextInfraRefactorDependencyAnalyzerFacade
 
-        parsed = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module(
+        parsed = analyzer_facade.load_python_module(
             file_path,
             stage="mro-completeness-candidates",
             parse_failures=_parse_failures,

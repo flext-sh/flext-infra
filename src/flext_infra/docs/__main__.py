@@ -30,6 +30,7 @@ from flext_infra import (
 class FlextInfraDocsCommand:
     @staticmethod
     def run(argv: list[str] | None = None) -> int:
+        """Run documentation command dispatcher."""
         parser_subs: tuple[ArgumentParser, dict[str, ArgumentParser]] = (
             u.Infra.create_subcommand_parser(
                 "flext-infra docs",
@@ -84,29 +85,29 @@ class FlextInfraDocsCommand:
             return 1
 
         if args.command == "audit":
-            return FlextInfraDocsCommand.run_audit(
+            return _run_audit(
                 cli,
                 check=cli.check,
                 strict=bool(getattr(args, "strict", False)),
                 output_dir=str(getattr(args, "output_dir", "")),
             )
         if args.command == "fix":
-            return FlextInfraDocsCommand.run_fix(
+            return _run_fix(
                 cli,
                 output_dir=str(getattr(args, "output_dir", "")),
             )
         if args.command == c.Infra.Directories.BUILD:
-            return FlextInfraDocsCommand.run_build(
+            return _run_build(
                 cli,
                 output_dir=str(getattr(args, "output_dir", "")),
             )
         if args.command == "generate":
-            return FlextInfraDocsCommand.run_generate(
+            return _run_generate(
                 cli,
                 output_dir=str(getattr(args, "output_dir", "")),
             )
         if args.command == c.Infra.Verbs.VALIDATE:
-            return FlextInfraDocsCommand.run_validate(
+            return _run_validate(
                 cli,
                 check=cli.check,
                 output_dir=str(getattr(args, "output_dir", "")),
@@ -122,6 +123,7 @@ class FlextInfraDocsCommand:
         strict: bool = False,
         output_dir: str = "",
     ) -> int:
+        """Audit documentation for issues."""
         auditor = FlextInfraDocAuditor()
         result = auditor.audit(
             workspace_root=cli.workspace,
@@ -138,6 +140,7 @@ class FlextInfraDocsCommand:
 
     @staticmethod
     def run_fix(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
+        """Fix documentation issues."""
         fixer = FlextInfraDocFixer()
         result = fixer.fix(
             workspace_root=cli.workspace,
@@ -152,6 +155,7 @@ class FlextInfraDocsCommand:
 
     @staticmethod
     def run_build(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
+        """Build documentation sites."""
         builder = FlextInfraDocBuilder()
         result = builder.build(
             workspace_root=cli.workspace,
@@ -168,6 +172,7 @@ class FlextInfraDocsCommand:
 
     @staticmethod
     def run_generate(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
+        """Generate documentation."""
         generator = FlextInfraDocGenerator()
         result = generator.generate(
             workspace_root=cli.workspace,
@@ -187,6 +192,7 @@ class FlextInfraDocsCommand:
         check: bool = False,
         output_dir: str = "",
     ) -> int:
+        """Validate documentation."""
         validator = FlextInfraDocValidator()
         result = validator.validate(
             workspace_root=cli.workspace,
@@ -204,9 +210,53 @@ class FlextInfraDocsCommand:
         return 1 if failures else 0
 
 
+def _run_audit(
+    cli: u.Infra.CliArgs,
+    *,
+    check: bool = False,
+    strict: bool = False,
+    output_dir: str = "",
+) -> int:
+    return FlextInfraDocsCommand.run_audit(
+        cli,
+        check=check,
+        strict=strict,
+        output_dir=output_dir,
+    )
+
+
+def _run_fix(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
+    return FlextInfraDocsCommand.run_fix(cli, output_dir=output_dir)
+
+
+def _run_build(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
+    return FlextInfraDocsCommand.run_build(cli, output_dir=output_dir)
+
+
+def _run_generate(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
+    return FlextInfraDocsCommand.run_generate(cli, output_dir=output_dir)
+
+
+def _run_validate(
+    cli: u.Infra.CliArgs,
+    *,
+    check: bool = False,
+    output_dir: str = "",
+) -> int:
+    return FlextInfraDocsCommand.run_validate(
+        cli,
+        check=check,
+        output_dir=output_dir,
+    )
+
+
+def _main_inner(argv: list[str] | None = None) -> int:
+    return FlextInfraDocsCommand.run(argv)
+
+
 def main() -> int:
     """Entry point for documentation CLI."""
-    return u.Infra.run_cli(FlextInfraDocsCommand.run)
+    return u.Infra.run_cli(_main_inner)
 
 
 if __name__ == "__main__":

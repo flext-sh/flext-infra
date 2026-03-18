@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import importlib
 from pathlib import Path
 from typing import override
 
@@ -70,11 +71,12 @@ class ManualTypingAliasDetector(p.Infra.Scanner):
             return []
         if c.Infra.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts:
             return []
-        from flext_infra.refactor.dependency_analyzer import (
-            FlextInfraRefactorDependencyAnalyzerFacade,
+        analyzer_module = importlib.import_module(
+            "flext_infra.refactor.dependency_analyzer",
         )
+        analyzer_facade = analyzer_module.FlextInfraRefactorDependencyAnalyzerFacade
 
-        parsed = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module(
+        parsed = analyzer_facade.load_python_module(
             file_path,
             stage="manual-typing-alias-scan",
             parse_failures=_parse_failures,

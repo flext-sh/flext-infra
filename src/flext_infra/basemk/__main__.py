@@ -13,6 +13,7 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 class FlextInfraBaseMkCommand:
     @staticmethod
     def build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
+        """Build base.mk configuration from project name."""
         if project_name is None:
             return None
         return FlextInfraBaseMkTemplateEngine.default_config().model_copy(
@@ -52,7 +53,7 @@ class FlextInfraBaseMkCommand:
             parser.print_help()
             return 1
         generator = FlextInfraBaseMkGenerator()
-        config = FlextInfraBaseMkCommand.build_config(args.project_name)
+        config = _build_config(args.project_name)
         generated_result = generator.generate(config)
         if generated_result.is_failure:
             return u.Infra.exit_code(
@@ -65,6 +66,10 @@ class FlextInfraBaseMkCommand:
             stream=sys.stdout,
         )
         return u.Infra.exit_code(write_result, failure_msg="base.mk write failed")
+
+
+def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
+    return FlextInfraBaseMkCommand.build_config(project_name)
 
 
 def main(argv: list[str] | None = None) -> int:

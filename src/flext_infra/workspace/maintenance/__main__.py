@@ -46,8 +46,8 @@ class FlextInfraWorkspaceMaintenanceCommand:
 
 def main(argv: list[str] | None = None) -> int:
     """Run maintenance service CLI."""
-    return u.Infra.run_cli(FlextInfraWorkspaceMaintenanceCommand.run, argv)
+    return FlextInfraWorkspaceMaintenanceCommand.run(argv)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(u.Infra.run_cli(main))

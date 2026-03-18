@@ -25,15 +25,12 @@ from flext_infra import (
     FlextInfraNamespaceValidator,
     FlextInfraRefactorEngine,
     FlextInfraRefactorMigrateToClassMRO,
+    FlextInfraUtilitiesParsing,
     NamespaceEnforcementRewriter,
     c,
     m,
     u,
 )
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
 from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 
@@ -466,16 +463,16 @@ class FlextInfraCodegenFixer(s):
         files_modified: set[str],
     ) -> None:
         """Fix Rule 1 — move loose Final constants to constants.py."""
-        tree = u.Infra.parse_module_ast(source_file)
+        tree = FlextInfraUtilitiesParsing.parse_module_ast(source_file)
         if tree is None:
             return
-        finals = u.Infra.find_standalone_finals(tree)
+        finals = FlextInfraCodegenTransforms.find_standalone_finals(tree)
         if not finals:
             return
         target_path = pkg_dir / "constants.py"
         if not target_path.exists():
             return
-        target_tree = u.Infra.parse_module_ast(target_path)
+        target_tree = FlextInfraUtilitiesParsing.parse_module_ast(target_path)
         if target_tree is None:
             return
         nodes_to_move: list[ast.AnnAssign] = []
@@ -504,7 +501,9 @@ class FlextInfraCodegenFixer(s):
             target_name = ""
             if isinstance(node.target, ast.Name):
                 target_name = node.target.id
-            if u.Infra.name_exists_in_module(target_name, target_tree):
+            if FlextInfraCodegenTransforms.name_exists_in_module(
+                target_name, target_tree
+            ):
                 violations_skipped.append(
                     m.Infra.CensusViolation(
                         module=str(source_file),
@@ -515,8 +514,8 @@ class FlextInfraCodegenFixer(s):
                     ),
                 )
                 continue
-            u.Infra.copy_required_imports(node, tree, target_tree)
-            if not u.Infra.all_deps_resolvable(node, target_tree):
+            FlextInfraCodegenTransforms.copy_required_imports(node, tree, target_tree)
+            if not FlextInfraCodegenTransforms.all_deps_resolvable(node, target_tree):
                 violations_skipped.append(
                     m.Infra.CensusViolation(
                         module=str(source_file),
@@ -528,7 +527,7 @@ class FlextInfraCodegenFixer(s):
                 )
                 continue
             # Insert into target_tree for analysis accumulation
-            insert_idx = u.Infra.find_insert_position(target_tree)
+            insert_idx = FlextInfraCodegenTransforms.find_insert_position(target_tree)
             target_tree.body.insert(insert_idx, node)
             violations_fixed.append(
                 m.Infra.CensusViolation(
@@ -542,7 +541,7 @@ class FlextInfraCodegenFixer(s):
             actually_moved.append(node)
             moved_names.append(target_name)
         if actually_moved:
-            u.Infra.write_changes(
+            FlextInfraCodegenSnapshot.write_changes(
                 source_path=source_file,
                 target_path=target_path,
                 nodes_moved=actually_moved,
@@ -565,17 +564,17 @@ class FlextInfraCodegenFixer(s):
         files_modified: set[str],
     ) -> None:
         """Fix Rule 2 — move loose TypeVars/TypeAliases to typings.py."""
-        tree = u.Infra.parse_module_ast(source_file)
+        tree = FlextInfraUtilitiesParsing.parse_module_ast(source_file)
         if tree is None:
             return
-        typevars = u.Infra.find_standalone_typevars(tree)
-        typealiases = u.Infra.find_standalone_typealiases(tree)
+        typevars = FlextInfraCodegenTransforms.find_standalone_typevars(tree)
+        typealiases = FlextInfraCodegenTransforms.find_standalone_typealiases(tree)
         if not typevars and not typealiases:
             return
         target_path = pkg_dir / "typings.py"
         if not target_path.exists():
             return
-        target_tree = u.Infra.parse_module_ast(target_path)
+        target_tree = FlextInfraUtilitiesParsing.parse_module_ast(target_path)
         if target_tree is None:
             return
         nodes_to_move: list[ast.stmt] = []
@@ -598,7 +597,7 @@ class FlextInfraCodegenFixer(s):
                 continue
             nodes_to_move.append(tv_node)
         for alias_node in typealiases:
-            target_name = u.Infra.get_node_name(alias_node)
+            target_name = FlextInfraCodegenTransforms.get_node_name(alias_node)
             if target_name.startswith("_"):
                 violations_skipped.append(
                     m.Infra.CensusViolation(
@@ -617,10 +616,12 @@ class FlextInfraCodegenFixer(s):
         actually_moved: list[ast.stmt] = []
         moved_names: list[str] = []
         for move_node in nodes_to_move:
-            target_name = u.Infra.get_node_name(move_node)
+            target_name = FlextInfraCodegenTransforms.get_node_name(move_node)
             if not target_name:
                 continue
-            if u.Infra.name_exists_in_module(target_name, target_tree):
+            if FlextInfraCodegenTransforms.name_exists_in_module(
+                target_name, target_tree
+            ):
                 violations_skipped.append(
                     m.Infra.CensusViolation(
                         module=str(source_file),
@@ -631,7 +632,7 @@ class FlextInfraCodegenFixer(s):
                     ),
                 )
                 continue
-            if u.Infra.needs_first_party_import(
+            if FlextInfraCodegenTransforms.needs_first_party_import(
                 move_node,
                 tree,
                 target_tree,
@@ -646,12 +647,12 @@ class FlextInfraCodegenFixer(s):
                     ),
                 )
                 continue
-            u.Infra.copy_required_imports(
+            FlextInfraCodegenTransforms.copy_required_imports(
                 move_node,
                 tree,
                 target_tree,
             )
-            if not u.Infra.all_deps_resolvable(
+            if not FlextInfraCodegenTransforms.all_deps_resolvable(
                 move_node,
                 target_tree,
             ):
@@ -666,7 +667,7 @@ class FlextInfraCodegenFixer(s):
                 )
                 continue
             # Insert into target_tree for analysis accumulation
-            insert_idx = u.Infra.find_insert_position(target_tree)
+            insert_idx = FlextInfraCodegenTransforms.find_insert_position(target_tree)
             target_tree.body.insert(insert_idx, move_node)
             kind = "TypeVar" if isinstance(move_node, ast.Assign) else "TypeAlias"
             violations_fixed.append(
@@ -681,7 +682,7 @@ class FlextInfraCodegenFixer(s):
             actually_moved.append(move_node)
             moved_names.append(target_name)
         if actually_moved:
-            u.Infra.write_changes(
+            FlextInfraCodegenSnapshot.write_changes(
                 source_path=source_file,
                 target_path=target_path,
                 nodes_moved=actually_moved,

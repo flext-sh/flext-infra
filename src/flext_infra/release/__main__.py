@@ -108,7 +108,7 @@ class FlextInfraReleaseCommand:
         )
         if needs_version:
             try:
-                version = FlextInfraReleaseCommand.resolve_version(
+                version = _resolve_version(
                     args.version,
                     args.bump,
                     args.interactive,
@@ -119,7 +119,7 @@ class FlextInfraReleaseCommand:
                 return 1
         else:
             version = args.version or "0.0.0"
-        tag = FlextInfraReleaseCommand.resolve_tag(args.tag, version)
+        tag = _resolve_tag(args.tag, version)
         service = FlextInfraReleaseOrchestrator()
         result = service.run_release(
             workspace_root=root,
@@ -135,6 +135,24 @@ class FlextInfraReleaseCommand:
             next_bump=args.next_bump,
         )
         return u.Infra.exit_code(result)
+
+
+def _resolve_version(
+    version_arg: str,
+    bump_arg: str,
+    interactive: int,
+    root_path: Path,
+) -> str:
+    return FlextInfraReleaseCommand.resolve_version(
+        version_arg,
+        bump_arg,
+        interactive,
+        root_path,
+    )
+
+
+def _resolve_tag(tag_arg: str, version: str) -> str:
+    return FlextInfraReleaseCommand.resolve_tag(tag_arg, version)
 
 
 def main() -> int:

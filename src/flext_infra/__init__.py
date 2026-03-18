@@ -89,6 +89,7 @@ if TYPE_CHECKING:
     from flext_infra.codegen.constants_quality_gate import (
         FlextInfraCodegenConstantsQualityGate,
     )
+    from flext_infra.codegen.fixer import FlextInfraCodegenFixer
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
@@ -390,6 +391,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.codegen.constants_quality_gate",
         "FlextInfraCodegenConstantsQualityGate",
     ),
+    "FlextInfraCodegenFixer": ("flext_infra.codegen.fixer", "FlextInfraCodegenFixer"),
     "FlextInfraCodegenLazyInit": (
         "flext_infra.codegen.lazy_init",
         "FlextInfraCodegenLazyInit",
@@ -910,6 +912,7 @@ __all__ = [
     "FlextInfraBaseMkValidator",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConstantsQualityGate",
+    "FlextInfraCodegenFixer",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",

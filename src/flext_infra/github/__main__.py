@@ -18,6 +18,7 @@ from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
 class FlextInfraGithubCommand:
     @staticmethod
     def run(argv: list[str] | None = None) -> int:
+        """Run GitHub command dispatcher."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext-infra github",
             "GitHub integration services",
@@ -85,6 +86,7 @@ class FlextInfraGithubCommand:
         prune: bool,
         report: Path | None,
     ) -> int:
+        """Sync GitHub workflow files."""
         syncer = FlextInfraWorkflowSyncer()
         result: r[list[SyncOperation]] = syncer.sync_workspace(
             workspace_root=cli.workspace,
@@ -101,6 +103,7 @@ class FlextInfraGithubCommand:
         report: Path | None,
         strict: bool,
     ) -> int:
+        """Lint GitHub workflow files."""
         linter = FlextInfraWorkflowLinter()
         lint_result: r[m.Infra.WorkflowLintResult] = linter.lint(
             root=cli.workspace,

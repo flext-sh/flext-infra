@@ -139,29 +139,60 @@ class FlextInfraWorkspaceCommand:
         cli = u.Infra.resolve(args)
 
         if args.command == "detect":
-            return FlextInfraWorkspaceCommand.run_detect(cli)
+            return _run_detect(cli)
         if args.command == "sync":
-            return FlextInfraWorkspaceCommand.run_sync(
+            return _run_sync(
                 cli,
                 getattr(args, "canonical_root", None),
             )
         if args.command == "orchestrate":
-            return FlextInfraWorkspaceCommand.run_orchestrate(
+            return _run_orchestrate(
                 args.projects,
                 args.verb,
                 fail_fast=args.fail_fast,
                 make_args=args.make_arg,
             )
         if args.command == "migrate":
-            return FlextInfraWorkspaceCommand.run_migrate(cli)
+            return _run_migrate(cli)
         parser.print_help()
         return 1
 
 
+def _run_detect(cli: u.Infra.CliArgs) -> int:
+    return FlextInfraWorkspaceCommand.run_detect(cli)
+
+
+def _run_sync(cli: u.Infra.CliArgs, canonical_root: str | None) -> int:
+    return FlextInfraWorkspaceCommand.run_sync(cli, canonical_root)
+
+
+def _run_orchestrate(
+    projects: list[str],
+    verb: str,
+    *,
+    fail_fast: bool,
+    make_args: list[str],
+) -> int:
+    return FlextInfraWorkspaceCommand.run_orchestrate(
+        projects,
+        verb,
+        fail_fast=fail_fast,
+        make_args=make_args,
+    )
+
+
+def _run_migrate(cli: u.Infra.CliArgs) -> int:
+    return FlextInfraWorkspaceCommand.run_migrate(cli)
+
+
+def _main_inner(argv: list[str] | None = None) -> int:
+    return FlextInfraWorkspaceCommand.run(argv)
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run workspace utilities: detect mode, sync base.mk, orchestrate projects."""
-    return u.Infra.run_cli(FlextInfraWorkspaceCommand.run, argv)
+    return u.Infra.run_cli(_main_inner, argv)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(u.Infra.run_cli(main))

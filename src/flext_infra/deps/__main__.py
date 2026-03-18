@@ -54,9 +54,13 @@ class FlextInfraDepsCommand:
         return int(exit_code) if exit_code is not None else 0
 
 
+def _main_impl(argv: list[str] | None = None) -> int:
+    return FlextInfraDepsCommand.run(argv)
+
+
 def main() -> int:
     """Dispatch to the appropriate deps subcommand."""
-    return u.Infra.run_cli(FlextInfraDepsCommand.run)
+    return u.Infra.run_cli(_main_impl)
 
 
 if __name__ == "__main__":
