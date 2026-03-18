@@ -1,0 +1,71 @@
+src/flext_infra/rules/import_modernizer.py
+  058da476ea5743f0 114
+tests/infra/unit/check/extended_projects.py
+  058da476ea5743f0 20,37,96
+tests/infra/unit/check/extended_runners_extra.py
+  41de24182e2f0106 45-46,48,52,79,102,124
+src/flext_infra/refactor/_utilities.py
+  058da476ea5743f0 77-112
+src/flext_infra/transformers/symbol_propagator.py
+  058da476ea5743f0 41,44
+tests/infra/unit/check/extended_gate_mypy_pyright.py
+  41de24182e2f0106 19,30,49,51-59,61,73,92,117,137,158
+tests/infra/unit/check/extended_gate_bandit_markdown.py
+  41de24182e2f0106 25-28,35
+tests/infra/unit/check/extended_error_reporting.py
+  41de24182e2f0106 128-129,131,146,179-180,182,187,209-210,212,219
+src/flext_infra/templates/makefile_bootstrap.mk.j2
+  9027e42e029f3d23 1-82
+src/flext_infra/transformers/import_modernizer.py
+  058da476ea5743f0 49,126,128
+tests/infra/unit/check/extended_runners.py
+  41de24182e2f0106 22-25
+tests/infra/unit/check/_shared_fixtures.py
+  41de24182e2f0106 257-284,294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "a0be0abdc7487f2d9877e5f1f50b798764033866",
+  "prompts": {
+    "058da476ea5743f0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_302224039ffese6vrnixnvIgr9",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 47,
+      "total_deletions": 55,
+      "accepted_lines": 46,
+      "overriden_lines": 0
+    },
+    "41de24182e2f0106": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fe7f911-8a72-4792-b2cb-f3c62ff8bbce",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 97,
+      "total_deletions": 106,
+      "accepted_lines": 87,
+      "overriden_lines": 0
+    },
+    "9027e42e029f3d23": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2fe9479fdffeeo4oN8TM96s1da",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 97,
+      "total_deletions": 15,
+      "accepted_lines": 82,
+      "overriden_lines": 0
+    }
+  }
+}
