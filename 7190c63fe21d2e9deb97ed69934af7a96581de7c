@@ -1,0 +1,33 @@
+src/flext_infra/codegen/fixer.py
+  7e95dfea5ab20cb4 37,83-84
+src/flext_infra/workspace/orchestrator.py
+  7e95dfea5ab20cb4 30,56,58
+src/flext_infra/codegen/census.py
+  7e95dfea5ab20cb4 27,79-80
+src/flext_infra/check/workspace_check.py
+  7e95dfea5ab20cb4 12,27,91-92
+src/flext_infra/codegen/scaffolder.py
+  7e95dfea5ab20cb4 28,59-60
+src/flext_infra/deps/fix_pyrefly_config.py
+  7e95dfea5ab20cb4 17,30,66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "7190c63fe21d2e9deb97ed69934af7a96581de7c",
+  "prompts": {
+    "7e95dfea5ab20cb4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2fe3ad47affebncQ373nCzCJvB",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 25,
+      "total_deletions": 57,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    }
+  }
+}
