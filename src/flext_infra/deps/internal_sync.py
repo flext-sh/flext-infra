@@ -437,6 +437,9 @@ class FlextInfraInternalDependencySyncService:
         return 1
 
 
+main = FlextInfraInternalDependencySyncService.main
+
+
 if __name__ == "__main__":
     raise SystemExit(FlextInfraInternalDependencySyncService.main())
 __all__ = ["FlextInfraInternalDependencySyncService", "shutil"]

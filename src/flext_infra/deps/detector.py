@@ -213,8 +213,14 @@ class RunnableDetector(Protocol):
     def run(self, argv: list[str] | None = None) -> r[int]: ...
 
 
+main = FlextInfraRuntimeDevDependencyDetector.main
+
+
 if __name__ == "__main__":
     raise SystemExit(FlextInfraRuntimeDevDependencyDetector.main())
+
+
+main = FlextInfraRuntimeDevDependencyDetector.main
 
 
 __all__ = [
@@ -223,4 +229,5 @@ __all__ = [
     "FlextInfraUtilitiesPaths",
     "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesSubprocess",
+    "main",
 ]

@@ -351,6 +351,9 @@ class FlextInfraDocAuditor:
         return 1 if failures else 0
 
 
+main = FlextInfraDocAuditor.main
+
+
 if __name__ == "__main__":
     raise SystemExit(FlextInfraDocAuditor.main())
-__all__ = ["FlextInfraDocAuditor"]
+__all__ = ["FlextInfraDocAuditor", "main"]

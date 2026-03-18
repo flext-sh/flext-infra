@@ -386,8 +386,14 @@ class FlextInfraDependencyPathSync:
         return FlextInfraDependencyPathSync().run(cli=cli, mode=args.mode)
 
 
+main = FlextInfraDependencyPathSync.main
+
+
 if __name__ == "__main__":
     sys.exit(FlextInfraDependencyPathSync.main())
+
+
+main = FlextInfraDependencyPathSync.main
 
 
 __all__ = ["FlextInfraDependencyPathSync"]
