@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import ast
-import importlib
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, p
+from flext_infra import c, m, p, u
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -88,12 +87,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
             return []
         if file_path.name in c.Infra.NAMESPACE_FILE_TO_FAMILY:
             return []
-        analyzer_module = importlib.import_module(
-            "flext_infra.refactor.dependency_analyzer",
-        )
-        analyzer_facade = analyzer_module.FlextInfraRefactorDependencyAnalyzerFacade
-
-        parsed = analyzer_facade.load_python_module(
+        parsed = cls._load_python_module(
             file_path,
             stage="namespace-source-scan",
             parse_failures=_parse_failures,
@@ -205,12 +199,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
             facade_file = package_dir / file_name
             if not facade_file.is_file():
                 continue
-            analyzer_module = importlib.import_module(
-                "flext_infra.refactor.dependency_analyzer",
-            )
-            analyzer_facade = analyzer_module.FlextInfraRefactorDependencyAnalyzerFacade
-
-            parsed = analyzer_facade.load_python_module(
+            parsed = cls._load_python_module(
                 facade_file,
                 stage="namespace-source-map",
                 parse_failures=_parse_failures,
@@ -221,6 +210,51 @@ class NamespaceSourceDetector(p.Infra.Scanner):
                 alias_map[family] = package_name
         cls._PROJECT_ALIAS_MAP_CACHE[project_root] = alias_map
         return alias_map
+
+    @staticmethod
+    def _load_python_module(
+        file_path: Path,
+        *,
+        stage: str,
+        parse_failures: list[nem.ParseFailureViolation] | None,
+    ) -> m.Infra.ParsedPythonModule | None:
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except UnicodeDecodeError as exc:
+            if parse_failures is not None:
+                parse_failures.append(
+                    nem.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type=type(exc).__name__,
+                        detail=str(exc),
+                    ),
+                )
+            return None
+        except OSError as exc:
+            if parse_failures is not None:
+                parse_failures.append(
+                    nem.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type=type(exc).__name__,
+                        detail=str(exc),
+                    ),
+                )
+            return None
+        tree = u.Infra.parse_ast_from_source(source)
+        if tree is None:
+            if parse_failures is not None:
+                parse_failures.append(
+                    nem.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type="SyntaxError",
+                        detail="invalid python source",
+                    ),
+                )
+            return None
+        return m.Infra.ParsedPythonModule(source=source, tree=tree)
 
     @staticmethod
     def _discover_project_package_name(*, project_root: Path) -> str:

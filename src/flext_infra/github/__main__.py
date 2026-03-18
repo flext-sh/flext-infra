@@ -114,6 +114,7 @@ class FlextInfraGithubCommand:
 
     @staticmethod
     def run_pr(argv: list[str]) -> int:
+        """Manage pull requests for single project."""
         sys.argv = ["flext-infra github pr", *argv]
         return pr_main()
 
@@ -122,6 +123,7 @@ class FlextInfraGithubCommand:
         cli: u.Infra.CliArgs,
         pr_args: m.Infra.PrWorkspaceArgs,
     ) -> int:
+        """Manage pull requests across workspace projects."""
         pr_mapping: dict[str, str] = {
             c.Infra.ReportKeys.ACTION: pr_args.pr_action,
             "base": pr_args.pr_base,
@@ -153,16 +155,19 @@ class FlextInfraGithubCommand:
 
     @staticmethod
     def configure_workflows_parser(parser: ArgumentParser) -> None:
+        """Configure workflows subcommand parser."""
         _ = parser.add_argument("--prune", action="store_true", default=False)
         _ = parser.add_argument("--report", type=Path, default=None)
 
     @staticmethod
     def configure_lint_parser(parser: ArgumentParser) -> None:
+        """Configure lint subcommand parser."""
         _ = parser.add_argument("--report", type=Path, default=None)
         _ = parser.add_argument("--strict", action="store_true", default=False)
 
     @staticmethod
     def configure_pr_workspace_parser(parser: ArgumentParser) -> None:
+        """Configure pr-workspace subcommand parser."""
         _ = parser.add_argument("--include-root", type=int, default=1)
         _ = parser.add_argument("--branch", default="")
         _ = parser.add_argument("--checkpoint", type=int, default=1)

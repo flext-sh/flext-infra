@@ -35,10 +35,12 @@ class FlextInfraValidateCommand:
         payload: m.Infra.InventoryReport | m.Infra.PytestDiagnostics,
         key: str,
     ) -> list[str]:
+        """Extract string list from payload attribute."""
         return [item for item in getattr(payload, key, []) if isinstance(item, str)]
 
     @staticmethod
     def run_basemk_validate(cli: u.Infra.CliArgs) -> int:
+        """Validate base.mk sync."""
         validator = FlextInfraBaseMkValidator()
         result = validator.validate(cli.workspace)
         if result.is_success:
@@ -52,6 +54,7 @@ class FlextInfraValidateCommand:
 
     @staticmethod
     def run_inventory(cli: u.Infra.CliArgs, output_dir: str | None) -> int:
+        """Generate scripts inventory."""
         service = FlextInfraInventoryService()
         output_dir_path = Path(output_dir).resolve() if output_dir else None
         result = service.generate(cli.workspace, output_dir=output_dir_path)
@@ -75,6 +78,7 @@ class FlextInfraValidateCommand:
         slowest: str | None,
         skips: str | None,
     ) -> int:
+        """Extract pytest diagnostics from JUnit and log files."""
         extractor = FlextInfraPytestDiagExtractor()
         result = extractor.extract(Path(junit), Path(log))
         if result.is_failure:

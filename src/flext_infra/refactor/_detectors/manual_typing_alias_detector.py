@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import ast
-import importlib
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p
+from flext_infra import c, m, p, u
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -71,12 +70,7 @@ class ManualTypingAliasDetector(p.Infra.Scanner):
             return []
         if c.Infra.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts:
             return []
-        analyzer_module = importlib.import_module(
-            "flext_infra.refactor.dependency_analyzer",
-        )
-        analyzer_facade = analyzer_module.FlextInfraRefactorDependencyAnalyzerFacade
-
-        parsed = analyzer_facade.load_python_module(
+        parsed = cls._load_python_module(
             file_path,
             stage="manual-typing-alias-scan",
             parse_failures=_parse_failures,
@@ -110,3 +104,48 @@ class ManualTypingAliasDetector(p.Infra.Scanner):
                         ),
                     )
         return violations
+
+    @staticmethod
+    def _load_python_module(
+        file_path: Path,
+        *,
+        stage: str,
+        parse_failures: list[nem.ParseFailureViolation] | None,
+    ) -> m.Infra.ParsedPythonModule | None:
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except UnicodeDecodeError as exc:
+            if parse_failures is not None:
+                parse_failures.append(
+                    nem.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type=type(exc).__name__,
+                        detail=str(exc),
+                    ),
+                )
+            return None
+        except OSError as exc:
+            if parse_failures is not None:
+                parse_failures.append(
+                    nem.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type=type(exc).__name__,
+                        detail=str(exc),
+                    ),
+                )
+            return None
+        tree = u.Infra.parse_ast_from_source(source)
+        if tree is None:
+            if parse_failures is not None:
+                parse_failures.append(
+                    nem.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type="SyntaxError",
+                        detail="invalid python source",
+                    ),
+                )
+            return None
+        return m.Infra.ParsedPythonModule(source=source, tree=tree)
