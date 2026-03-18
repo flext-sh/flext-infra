@@ -1,0 +1,23 @@
+src/flext_infra/validate/__main__.py
+  36fcd5c3d527b600 133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "024489d105529516fb0fc8bbd2eef4a9b2e576f5",
+  "prompts": {
+    "36fcd5c3d527b600": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2fed7bcf5ffeXgjueMgGpY3lTg",
+        "model": "anthropic/claude-haiku-4-5"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
