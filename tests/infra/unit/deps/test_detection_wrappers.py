@@ -8,7 +8,7 @@ from flext_tests import tm
 
 from flext_infra.deps import detection
 from flext_infra.deps.detection import (
-    FlextInfraDependencyDetectionHelpers,
+    FlextInfraDependencyDetectionHelpers as hdep,
     dm,
 )
 
@@ -97,19 +97,17 @@ class _StubService:
 
 class TestModuleLevelWrappers:
     def test_classify_issues_wrapper(self) -> None:
-        assert FlextInfraDependencyDetectionHelpers.classify_issues([]).dep001 == []
+        assert hdep.classify_issues([]).dep001 == []
 
     def test_build_project_report_wrapper(self) -> None:
         tm.that(
-            FlextInfraDependencyDetectionHelpers.build_project_report(
-                "proj", []
-            ).project,
+            hdep.build_project_report("proj", []).project,
             eq="proj",
         )
 
     def test_module_to_types_package_wrapper(self) -> None:
         tm.that(
-            FlextInfraDependencyDetectionHelpers.module_to_types_package("yaml", {}),
+            hdep.module_to_types_package("yaml", {}),
             eq="types-pyyaml",
         )
 
@@ -118,7 +116,7 @@ class TestModuleLevelWrappers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(detection, "_service", _StubService())
-        assert FlextInfraDependencyDetectionHelpers.load_dependency_limits() == {}
+        assert hdep.load_dependency_limits() == {}
 
 
 def test_discover_projects_wrapper(
@@ -127,7 +125,7 @@ def test_discover_projects_wrapper(
 ) -> None:
     stub = _StubService()
     monkeypatch.setattr(detection, "_service", stub)
-    result = FlextInfraDependencyDetectionHelpers.discover_project_paths(tmp_path)
+    result = hdep.discover_project_paths(tmp_path)
     tm.that(result.is_success, eq=True)
     assert stub.called["discover_project_paths"][1] is None
 
@@ -138,7 +136,7 @@ def test_run_deptry_wrapper(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     venv_bin = tmp_path / "venv" / "bin"
     venv_bin.mkdir(parents=True)
     tm.that(
-        FlextInfraDependencyDetectionHelpers.run_deptry(tmp_path, venv_bin).is_success,
+        hdep.run_deptry(tmp_path, venv_bin).is_success,
         eq=True,
     )
     tm.that(str(stub.called["run_deptry"][0]), eq=str(tmp_path))
@@ -150,9 +148,7 @@ def test_run_pip_check_wrapper(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     venv_bin = tmp_path / "venv" / "bin"
     venv_bin.mkdir(parents=True)
     tm.that(
-        FlextInfraDependencyDetectionHelpers.run_pip_check(
-            tmp_path, venv_bin
-        ).is_success,
+        hdep.run_pip_check(tmp_path, venv_bin).is_success,
         eq=True,
     )
     tm.that(str(stub.called["run_pip_check"][0]), eq=str(tmp_path))
@@ -167,7 +163,7 @@ def test_run_mypy_stub_hints_wrapper(
     venv_bin = tmp_path / "venv" / "bin"
     venv_bin.mkdir(parents=True)
     tm.that(
-        FlextInfraDependencyDetectionHelpers.run_mypy_stub_hints(
+        hdep.run_mypy_stub_hints(
             tmp_path,
             venv_bin,
         ).is_success,
@@ -183,9 +179,7 @@ def test_get_current_typings_from_pyproject_wrapper(
     stub = _StubService()
     monkeypatch.setattr(detection, "_service", stub)
     tm.that(
-        FlextInfraDependencyDetectionHelpers.get_current_typings_from_pyproject(
-            tmp_path
-        ),
+        hdep.get_current_typings_from_pyproject(tmp_path),
         eq=["types-requests"],
     )
     tm.that(str(stub.called["get_current_typings_from_pyproject"][0]), eq=str(tmp_path))
@@ -200,7 +194,7 @@ def test_get_required_typings_wrapper(
     venv_bin = tmp_path / "venv" / "bin"
     venv_bin.mkdir(parents=True)
     tm.that(
-        FlextInfraDependencyDetectionHelpers.get_required_typings(
+        hdep.get_required_typings(
             tmp_path,
             venv_bin,
         ).is_success,

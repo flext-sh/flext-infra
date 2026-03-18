@@ -118,8 +118,13 @@ class FlextInfraTestHelpers:
         tm.that(path.is_dir(), eq=True, msg=msg or f"Path is not a directory: {path}")
         return path
 
-    @staticmethod
-    def assert_file_contains(path: Path, content: str, msg: str | None = None) -> Path:
+    @classmethod
+    def assert_file_contains(
+        cls,
+        path: Path,
+        content: str,
+        msg: str | None = None,
+    ) -> Path:
         """Assert file exists and contains substring.
 
         Args:
@@ -131,7 +136,7 @@ class FlextInfraTestHelpers:
             The path (for chaining)
 
         """
-        FlextInfraTestHelpers.assert_file_exists(path, msg)
+        cls.assert_file_exists(path, msg)
         file_content = path.read_text(encoding="utf-8")
         tm.that(
             file_content,
@@ -140,8 +145,9 @@ class FlextInfraTestHelpers:
         )
         return path
 
-    @staticmethod
+    @classmethod
     def assert_toml_valid(
+        cls,
         path: Path,
         msg: str | None = None,
     ) -> dict[str, t.Infra.InfraValue]:
@@ -158,7 +164,7 @@ class FlextInfraTestHelpers:
             AssertionError: If file doesn't exist or TOML is invalid
 
         """
-        FlextInfraTestHelpers.assert_file_exists(path, msg)
+        cls.assert_file_exists(path, msg)
         try:
             content: dict[str, t.Infra.InfraValue] = tomllib.loads(
                 path.read_text(encoding="utf-8"),
@@ -167,8 +173,9 @@ class FlextInfraTestHelpers:
             raise AssertionError(msg or f"Invalid TOML in {path}: {exc}") from exc
         return content
 
-    @staticmethod
+    @classmethod
     def assert_toml_has_section(
+        cls,
         path: Path,
         section: str,
         msg: str | None = None,
@@ -184,7 +191,7 @@ class FlextInfraTestHelpers:
             Parsed TOML content
 
         """
-        content = FlextInfraTestHelpers.assert_toml_valid(path, msg)
+        content = cls.assert_toml_valid(path, msg)
         parts = section.split(".")
         current: dict[str, t.Infra.InfraValue] | t.Infra.InfraValue = content
         for part in parts:
