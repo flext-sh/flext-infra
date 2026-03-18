@@ -585,7 +585,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @classmethod
     def _load_mapping_index(cls) -> r[_ClassNestingMappingIndex]:
         mapping_path = (
-            Path(__file__).resolve().parent / c.Infra.Refactor.MAPPINGS_RELATIVE_PATH
+            Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         )
         try:
             typed_doc = u.Infra.safe_load_yaml(mapping_path)
@@ -667,7 +667,7 @@ class FlextInfraRefactorViolationAnalyzer:
             helper_totals.update(helper_analysis.totals)
             helper_manual_review.extend(helper_analysis.manual_review)
             file_counts: dict[str, int] = {}
-            for name, pattern in c.Infra.Refactor.VIOLATION_PATTERNS.items():
+            for name, pattern in c.Infra.VIOLATION_PATTERNS.items():
                 count = len(pattern.findall(content))
                 if count <= 0:
                     continue
@@ -777,7 +777,7 @@ class FlextInfraRefactorViolationAnalyzer:
             dependencies=dependencies,
             matched_categories=matched_categories,
         )
-        namespace_root = c.Infra.Refactor.NAMESPACE_PREFIXES[category]
+        namespace_root = c.Infra.NAMESPACE_PREFIXES[category]
         return m.Infra.HelperClassification(
             file=str(file_path),
             function=function.name.value,
@@ -798,11 +798,11 @@ class FlextInfraRefactorViolationAnalyzer:
         matched: set[str] = set()
         for dependency in dependencies:
             lowered = dependency.lower()
-            if any(token in lowered for token in c.Infra.Refactor.MODEL_TOKENS):
+            if any(token in lowered for token in c.Infra.MODEL_TOKENS):
                 matched.add("models")
-            if any(token in lowered for token in c.Infra.Refactor.DECORATOR_TOKENS):
+            if any(token in lowered for token in c.Infra.DECORATOR_TOKENS):
                 matched.add("decorators")
-            if any(token in lowered for token in c.Infra.Refactor.DISPATCHER_TOKENS):
+            if any(token in lowered for token in c.Infra.DISPATCHER_TOKENS):
                 matched.add("dispatcher")
         if has_decorators:
             matched.add("decorators")
@@ -818,7 +818,7 @@ class FlextInfraRefactorViolationAnalyzer:
         if len(matched_categories) > 1:
             ordered = [
                 category
-                for category in c.Infra.Refactor.CLASSIFICATION_PRIORITY
+                for category in c.Infra.CLASSIFICATION_PRIORITY
                 if category in matched_categories
             ]
             cats = ", ".join(sorted(matched_categories))

@@ -116,7 +116,7 @@ class FlextInfraRefactorMigrateToClassMRO:
     @staticmethod
     def _normalize_target(*, target: str) -> str:
         value = target.strip().lower()
-        if value in c.Infra.Refactor.MRO_TARGETS:
+        if value in c.Infra.MRO_TARGETS:
             return value
         msg = f"unsupported target: {target}"
         raise ValueError(msg)

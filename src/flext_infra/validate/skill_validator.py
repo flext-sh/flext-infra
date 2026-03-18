@@ -110,7 +110,7 @@ class FlextInfraSkillValidator:
         """
         try:
             root = workspace_root.resolve()
-            skills_dir = root / c.Infra.Core.SKILLS_DIR
+            skills_dir = root / c.Infra.SKILLS_DIR
             rules_path = skills_dir / skill_name / "rules.yml"
             if not rules_path.exists():
                 return r[m.Infra.ValidationReport].ok(
@@ -188,7 +188,7 @@ class FlextInfraSkillValidator:
                         str(
                             baseline_obj.get(
                                 c.Infra.ReportKeys.FILE,
-                                c.Infra.Core.BASELINE_DEFAULT,
+                                c.Infra.BASELINE_DEFAULT,
                             ),
                         ),
                         skill_name,

@@ -59,7 +59,7 @@ class FlextInfraCodegenCensus(s):
     @staticmethod
     def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:
         """Parse a violation string into a CensusViolation model."""
-        match = c.Infra.Codegen.VIOLATION_PATTERN.match(violation_str)
+        match = c.Infra.VIOLATION_PATTERN.match(violation_str)
         if match is None:
             return None
         rule = match.group("rule")
@@ -107,7 +107,7 @@ class FlextInfraCodegenCensus(s):
         reports: list[m.Infra.CensusReport] = []
         discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
         for project in discovered:
-            if project.name in c.Infra.Codegen.EXCLUDED_PROJECTS:
+            if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue
             report = self._census_project(project)
             reports.append(report)

@@ -60,7 +60,7 @@ class FlextInfraRefactorLooseClassScanner:
             grep_result.value if grep_result.is_success else {}
         )
         violations: list[m.Infra.LooseClassViolation] = []
-        targets_found = dict.fromkeys(c.Infra.Refactor.REQUIRED_CLASS_TARGETS, False)
+        targets_found = dict.fromkeys(c.Infra.REQUIRED_CLASS_TARGETS, False)
         classes_scanned = 0
         for fp in discovered_files:
             parsed = self._scan_file_with_libcst(fp)
@@ -109,7 +109,7 @@ class FlextInfraRefactorLooseClassScanner:
         if prefix and occ.name.startswith(prefix):
             return None
         confidence = self._confidence_from_location(rel_path)
-        score = c.Infra.Refactor.CONFIDENCE_TO_SCORE[confidence]
+        score = c.Infra.CONFIDENCE_TO_SCORE[confidence]
         line = occ.line
         if occ.name in grep_hits:
             score = min(score + 0.02, 0.99)
@@ -148,7 +148,7 @@ class FlextInfraRefactorLooseClassScanner:
 
     def _expected_prefix_for_module(self, rel_path: Path) -> str:
         parts = rel_path.parts
-        if len(parts) < c.Infra.Refactor.MIN_PATH_DEPTH:
+        if len(parts) < c.Infra.MIN_PATH_DEPTH:
             return ""
         pc = self._pascal_case
         proj = pc(parts[0].split("_", maxsplit=1)[0])
@@ -159,7 +159,7 @@ class FlextInfraRefactorLooseClassScanner:
         return any(p.startswith("_") for p in rel_path.parent.parts[1:])
 
     def _pascal_case(self, value: str) -> str:
-        norm = c.Infra.Refactor.CLASS_PATTERN.sub(" ", value.replace("_", " "))
+        norm = c.Infra.CLASS_PATTERN.sub(" ", value.replace("_", " "))
         return "".join(w.capitalize() for w in norm.split())
 
     def _relative_module_path(self, project_root: Path, file_path: Path) -> RPath:

@@ -124,7 +124,7 @@ class FlextInfraDocAuditor:
         *,
         project: str | None = None,
         projects: str | None = None,
-        output_dir: str = c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR,
+        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         check: str = "all",
         strict: bool = True,
     ) -> r[list[m.Infra.DocsPhaseReport]]:
@@ -331,7 +331,7 @@ def main() -> int:
     _ = parser.add_argument("--strict", action="store_true", help="Strict mode")
     _ = parser.add_argument(
         "--output-dir",
-        default=c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR,
+        default=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     )
     args = parser.parse_args()
     cli = u.Infra.resolve(args)

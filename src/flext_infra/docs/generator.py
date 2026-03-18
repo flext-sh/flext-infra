@@ -71,7 +71,7 @@ class FlextInfraDocGenerator:
         *,
         project: str | None = None,
         projects: str | None = None,
-        output_dir: str = c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR,
+        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         apply: bool = False,
     ) -> r[list[m.Infra.DocsPhaseReport]]:
         """Generate docs across project scopes.
@@ -162,12 +162,12 @@ class FlextInfraDocGenerator:
             "\n".join([
                 f"site_name: {site_name}",
                 f"site_description: Standard guides for {scope.name}",
-                f"site_url: {c.Infra.Github.GITHUB_REPO_URL}",
-                f"repo_name: {c.Infra.Github.GITHUB_REPO_NAME}",
-                f"repo_url: {c.Infra.Github.GITHUB_REPO_URL}",
+                f"site_url: {c.Infra.GITHUB_REPO_URL}",
+                f"repo_name: {c.Infra.GITHUB_REPO_NAME}",
+                f"repo_url: {c.Infra.GITHUB_REPO_URL}",
                 f"edit_uri: edit/main/{scope.name}/docs/guides/",
                 "docs_dir: docs/guides",
-                f"site_dir: {c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR}/site",
+                f"site_dir: {c.Infra.DEFAULT_DOCS_OUTPUT_DIR}/site",
                 "",
                 "theme:",
                 "  name: mkdocs",

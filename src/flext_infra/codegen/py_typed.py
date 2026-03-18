@@ -55,7 +55,7 @@ class FlextInfraCodegenPyTyped(s[int]):
 
         """
         dirs_to_scan: list[Path] = []
-        for pattern in c.Infra.Codegen.ALL_SCAN_PATTERNS:
+        for pattern in c.Infra.ALL_SCAN_PATTERNS:
             base = pattern.split("/*")[0]
             base_dir = self._root / base
             if base_dir.is_dir():

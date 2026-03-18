@@ -98,7 +98,7 @@ class FlextInfraUtilitiesDiscovery:
         scan_dirs: frozenset[str] | None = None,
     ) -> list[Path]:
         roots: list[Path] = []
-        effective_scan_dirs = scan_dirs or c.Infra.Refactor.MRO_SCAN_DIRECTORIES
+        effective_scan_dirs = scan_dirs or c.Infra.MRO_SCAN_DIRECTORIES
 
         def _looks_like_project(path: Path) -> bool:
             if (

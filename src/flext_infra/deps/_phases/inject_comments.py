@@ -17,9 +17,9 @@ class InjectCommentsPhase:
             lines and "[MANAGED] FLEXT pyproject standardization" in lines[0],
         )
         if not has_banner:
-            out.extend(c.Infra.Deps.BANNER.splitlines())
+            out.extend(c.Infra.BANNER.splitlines())
             changes.append("managed banner injected")
-        marker_map = dict(c.Infra.Deps.COMMENT_MARKERS)
+        marker_map = dict(c.Infra.COMMENT_MARKERS)
         skip_broken_group_section = False
         for line in lines:
             if line.strip() == "[group.dev.dependencies]":
@@ -33,8 +33,8 @@ class InjectCommentsPhase:
             marker = marker_map.get(line.strip())
             if marker:
                 recent = (
-                    out[-c.Infra.Deps.RECENT_LINES_FOR_MARKER :]
-                    if len(out) >= c.Infra.Deps.RECENT_LINES_FOR_MARKER
+                    out[-c.Infra.RECENT_LINES_FOR_MARKER :]
+                    if len(out) >= c.Infra.RECENT_LINES_FOR_MARKER
                     else out
                 )
                 if marker not in recent and marker not in existing_text:
@@ -42,8 +42,8 @@ class InjectCommentsPhase:
                     changes.append(f"marker injected for {line.strip()}")
             if line.strip().startswith("optional-dependencies.dev"):
                 recent = (
-                    out[-c.Infra.Deps.RECENT_LINES_FOR_DEV_DEP :]
-                    if len(out) >= c.Infra.Deps.RECENT_LINES_FOR_DEV_DEP
+                    out[-c.Infra.RECENT_LINES_FOR_DEV_DEP :]
+                    if len(out) >= c.Infra.RECENT_LINES_FOR_DEV_DEP
                     else out
                 )
                 marker = "# [MANAGED] consolidated development dependencies"

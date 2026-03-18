@@ -224,12 +224,12 @@ class FlextInfraNamespaceValidator:
                         )
                 if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
                     func_name = self._get_call_name(node.value.func)
-                    if func_name in c.Infra.Core.COLLECTION_CALLS:
+                    if func_name in c.Infra.COLLECTION_CALLS:
                         target_name = self._get_assign_target_name(node)
                         if (
                             target_name
-                            and target_name not in c.Infra.Core.DUNDER_ALLOWED
-                            and (target_name not in c.Infra.Core.ALIAS_NAMES)
+                            and target_name not in c.Infra.DUNDER_ALLOWED
+                            and (target_name not in c.Infra.ALIAS_NAMES)
                         ):
                             seq += 1
                             violations.append(
@@ -241,7 +241,7 @@ class FlextInfraNamespaceValidator:
                     if isinstance(inner, ast.ClassDef) and any(
                         self._base_contains(b, base)
                         for b in inner.bases
-                        for base in c.Infra.Core.ENUM_BASES
+                        for base in c.Infra.ENUM_BASES
                     ):
                         seq += 1
                         violations.append(
@@ -284,7 +284,7 @@ class FlextInfraNamespaceValidator:
             for node in tree.body:
                 if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
                     func_name = self._get_call_name(node.value.func)
-                    if func_name in c.Infra.Core.TYPEVAR_CALLABLES:
+                    if func_name in c.Infra.TYPEVAR_CALLABLES:
                         target_name = self._get_assign_target_name(node)
                         seq += 1
                         violations.append(
@@ -344,17 +344,17 @@ class FlextInfraNamespaceValidator:
             for target in node.targets:
                 if (
                     isinstance(target, ast.Name)
-                    and target.id in c.Infra.Core.DUNDER_ALLOWED
+                    and target.id in c.Infra.DUNDER_ALLOWED
                 ):
                     return True
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             target = node.targets[0]
-            if isinstance(target, ast.Name) and target.id in c.Infra.Core.ALIAS_NAMES:
+            if isinstance(target, ast.Name) and target.id in c.Infra.ALIAS_NAMES:
                 return True
         if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
             func = node.value.func
             func_name = self._get_call_name(func)
-            if func_name in c.Infra.Core.TYPEVAR_CALLABLES:
+            if func_name in c.Infra.TYPEVAR_CALLABLES:
                 return filepath.name == "typings.py"
         if isinstance(node, ast.TypeAlias):
             return filepath.name == "typings.py"
@@ -375,9 +375,9 @@ class FlextInfraNamespaceValidator:
     def _is_exempt_file(self, filepath: Path) -> bool:
         """Check whether a file should be skipped from validation."""
         name = filepath.name
-        if name in c.Infra.Core.EXEMPT_FILENAMES:
+        if name in c.Infra.EXEMPT_FILENAMES:
             return True
-        return any(name.startswith(pfx) for pfx in c.Infra.Core.EXEMPT_PREFIXES)
+        return any(name.startswith(pfx) for pfx in c.Infra.EXEMPT_PREFIXES)
 
     def _parse_file(self, path: Path) -> ast.Module | None:
         """Parse a Python file into an AST, returning None on failure."""

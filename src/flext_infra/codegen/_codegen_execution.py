@@ -34,7 +34,7 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
         before_payload: dict[str, t.Infra.InfraValue] | None,
     ) -> dict[str, t.Infra.InfraValue]:
         """Write quality gate artifacts to disk."""
-        directory = workspace_root / c.Infra.Codegen.QualityGate.REPORT_DIR
+        directory = workspace_root / c.Infra.QualityGate.REPORT_DIR
         directory.mkdir(parents=True, exist_ok=True)
         report_json = directory / "latest.json"
         report_text = directory / "latest.txt"

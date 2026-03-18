@@ -13,37 +13,37 @@ import pytest
 from flext_core import r, t
 from flext_tests import tm
 
+from flext_infra import u
 from flext_infra.docs import __main__ as docs_main
 from flext_infra.docs.__main__ import _run_audit, _run_fix
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.fixer import FlextInfraDocFixer
-from tests.infra.helpers import h
-from tests.infra.models import m
+
+from ...models import m
 
 
-def _audit_args(**overrides: t.Scalar | None) -> argparse.Namespace:
+def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
     defaults: dict[str, t.Scalar | None] = {
-        "root": ".",
+        "workspace": ".",
         "project": None,
         "projects": None,
-        "output_dir": ".reports/docs",
-        "check": "all",
-        "strict": 1,
-    }
-    defaults.update(overrides)
-    return h.ns(**defaults)
-
-
-def _fix_args(**overrides: t.Scalar | None) -> argparse.Namespace:
-    defaults: dict[str, t.Scalar | None] = {
-        "root": ".",
-        "project": None,
-        "projects": None,
-        "output_dir": ".reports/docs",
         "apply": False,
+        "check": False,
     }
     defaults.update(overrides)
-    return h.ns(**defaults)
+    return u.Infra.resolve(argparse.Namespace(**defaults))
+
+
+def _fix_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
+    defaults: dict[str, t.Scalar | None] = {
+        "workspace": ".",
+        "project": None,
+        "projects": None,
+        "apply": False,
+        "check": False,
+    }
+    defaults.update(overrides)
+    return u.Infra.resolve(argparse.Namespace(**defaults))
 
 
 def _ok(
@@ -136,19 +136,19 @@ class TestRunAudit:
             passed=passed,
         )
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _ok([report]))
-        tm.that(_run_audit(_audit_args()), eq=expected)
+        tm.that(_run_audit(_audit_args(), check=True, strict=True), eq=expected)
 
     def test_run_audit_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _fail_report("audit error"))
         monkeypatch.setattr(docs_main, "output", _SILENT)
-        tm.that(_run_audit(_audit_args()), eq=1)
+        tm.that(_run_audit(_audit_args(), check=True, strict=True), eq=1)
 
     @pytest.mark.parametrize(
         ("kwargs", "field", "expected"),
         [
             ({"project": "test-project"}, "project", "test-project"),
             ({"projects": "proj1,proj2"}, "projects", "proj1,proj2"),
-            ({"check": "links"}, "check", "links"),
+            ({"check": True}, "check", "all"),
             ({"strict": 0}, "strict", False),
         ],
     )
@@ -161,7 +161,11 @@ class TestRunAudit:
     ) -> None:
         captured_kwargs: dict[str, t.Scalar] = {}
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capturing(captured_kwargs))
-        _run_audit(_audit_args(**kwargs))
+        _run_audit(
+            _audit_args(**kwargs),
+            check=bool(kwargs.get("check")),
+            strict=bool(kwargs.get("strict")),
+        )
         tm.that(captured_kwargs.get(field), eq=expected)
 
 

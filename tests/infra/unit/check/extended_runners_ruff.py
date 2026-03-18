@@ -18,12 +18,15 @@ from flext_tests import tm
 
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_infra.check.services import FlextInfraWorkspaceChecker
+from flext_infra.gates.markdown import FlextInfraMarkdownGate
+from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
+from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
 from ...helpers import h
 from ...models import m
 
 RunCallable = Callable[
-    [list[str], Path, int, dict[str, str] | None],
+    [object, list[str], Path, int, dict[str, str] | None],
     m.Infra.CommandOutput,
 ]
 
@@ -43,12 +46,13 @@ def _stub_run(result: m.Infra.CommandOutput | SimpleNamespace) -> RunCallable:
         )
 
     def _run(
+        _self: object,
         _cmd: list[str],
         _cwd: Path,
         _timeout: int = 120,
         _env: dict[str, str] | None = None,
     ) -> m.Infra.CommandOutput:
-        del _cmd, _cwd, _timeout, _env
+        del _self, _cmd, _cwd, _timeout, _env
         return _as_command_output(result)
 
     return _run
@@ -66,7 +70,7 @@ class TestRunRuffLint:
         proj_dir = h.mk_project(tmp_path, "p1")
         json_output = '[{"filename": "a.py", "location": {"row": 1, "column": 0}, "code": "E001", "message": "Error"}]'
         monkeypatch.setattr(
-            checker,
+            FlextInfraRuffLintGate,
             "_run",
             _stub_run(h.stub_run(stdout=json_output, returncode=1)),
         )
@@ -82,7 +86,7 @@ class TestRunRuffLint:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
         monkeypatch.setattr(
-            checker,
+            FlextInfraRuffLintGate,
             "_run",
             _stub_run(h.stub_run(stdout="invalid json", returncode=1)),
         )
@@ -101,7 +105,7 @@ class TestRunRuffFormat:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
         monkeypatch.setattr(
-            checker,
+            FlextInfraRuffFormatGate,
             "_run",
             _stub_run(h.stub_run(stdout="  --> a.py:1:1", returncode=1)),
         )
@@ -117,7 +121,7 @@ class TestRunRuffFormat:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
         monkeypatch.setattr(
-            checker,
+            FlextInfraRuffFormatGate,
             "_run",
             _stub_run(h.stub_run(stdout="a.py", returncode=1)),
         )
@@ -133,7 +137,7 @@ class TestRunRuffFormat:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
         monkeypatch.setattr(
-            checker,
+            FlextInfraRuffFormatGate,
             "_run",
             _stub_run(
                 h.stub_run(
@@ -154,7 +158,7 @@ class TestRunRuffFormat:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "pyproject.toml").touch()
         monkeypatch.setattr(
-            checker,
+            FlextInfraRuffFormatGate,
             "_run",
             _stub_run(h.stub_run(stdout="file1.py\n\nfile2.py\n", returncode=1)),
         )
@@ -170,10 +174,7 @@ class TestRunCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-
         def _fake_run_raw(
-            _self: FlextInfraUtilitiesSubprocess,
             _cmd: list[str],
             **_kw: t.Scalar,
         ) -> r[m.Infra.CommandOutput]:
@@ -182,7 +183,7 @@ class TestRunCommand:
             )
 
         monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_raw", _fake_run_raw)
-        result = checker._run(["echo", "test"], tmp_path)
+        result = FlextInfraRuffLintGate(tmp_path)._run(["echo", "test"], tmp_path)
         tm.that(result.stdout, eq="output")
         tm.that(result.exit_code, eq=0)
 
@@ -191,17 +192,14 @@ class TestRunCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-
         def _fake_run_raw(
-            _self: FlextInfraUtilitiesSubprocess,
             _cmd: list[str],
             **_kw: t.Scalar,
         ) -> r[m.Infra.CommandOutput]:
             return r[m.Infra.CommandOutput].fail("execution failed")
 
         monkeypatch.setattr(FlextInfraUtilitiesSubprocess, "run_raw", _fake_run_raw)
-        result = checker._run(["false"], tmp_path)
+        result = FlextInfraRuffLintGate(tmp_path)._run(["false"], tmp_path)
         tm.that(result.exit_code, eq=1)
         tm.that(result.stderr, contains="execution failed")
 
@@ -210,18 +208,16 @@ class TestCollectMarkdownFiles:
     """Test FlextInfraWorkspaceChecker._collect_markdown_files method."""
 
     def test_collect_markdown_files_finds_files(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / "docs").mkdir()
         (proj_dir / "docs" / "guide.md").write_text("# Guide")
-        files = checker._collect_markdown_files(proj_dir)
+        files = FlextInfraMarkdownGate(tmp_path)._collect_markdown_files(proj_dir)
         tm.that(len(files), eq=2)
 
     def test_collect_markdown_files_excludes_dirs(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1", with_git=True)
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / ".git" / "README.md").write_text("# Git")
-        files = checker._collect_markdown_files(proj_dir)
+        files = FlextInfraMarkdownGate(tmp_path)._collect_markdown_files(proj_dir)
         tm.that(len(files), eq=1)

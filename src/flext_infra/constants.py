@@ -40,7 +40,7 @@ class FlextInfraConstants(FlextConstants):
         >>> from flext_infra import c
         >>> c.Infra.Status.PASS
         >>> c.Infra.Paths.VENV_BIN_REL
-        >>> c.Infra.Codegen.EXCLUDED_PROJECTS
+        >>> c.Infra.EXCLUDED_PROJECTS
     """
 
     class Infra(
@@ -463,46 +463,23 @@ class FlextInfraConstants(FlextConstants):
             DEFAULT: Final[str] = "utf-8"
             "Default text encoding for file operations."
 
-        class Check(FlextInfraCheckConstants):
-            DEFAULT_CHECK_DIRS: Final[tuple[str, ...]] = (
-                "src",
-                "tests",
-                "examples",
-                "scripts",
-            )
-            "Default directories to check in a project (root only uses scripts)."
-            CHECK_DIRS_SUBPROJECT: Final[tuple[str, ...]] = ("src", "tests", "examples")
-            "Subprojects: type-check src/tests/examples only (scripts are workspace copies, run from root)."
+        DEFAULT_CHECK_DIRS: Final[tuple[str, ...]] = (
+            "src",
+            "tests",
+            "examples",
+            "scripts",
+        )
+        "Default directories to check in a project (root only uses scripts)."
+        CHECK_DIRS_SUBPROJECT: Final[tuple[str, ...]] = ("src", "tests", "examples")
+        "Subprojects: type-check src/tests/examples only (scripts are workspace copies, run from root)."
 
-        class Github(FlextInfraGithubConstants):
-            GITHUB_REPO_URL: Final[str] = "https://github.com/flext-sh/flext"
-            "Official GitHub repository URL for the FLEXT project."
-            GITHUB_REPO_NAME: Final[str] = "flext-sh/flext"
-            "GitHub repository name in owner/repo format."
+        GITHUB_REPO_URL: Final[str] = "https://github.com/flext-sh/flext"
+        "Official GitHub repository URL for the FLEXT project."
+        GITHUB_REPO_NAME: Final[str] = "flext-sh/flext"
+        "GitHub repository name in owner/repo format."
 
-        class Basemk(FlextInfraBasemkConstants):
-            pass
-
-        class Codegen(FlextInfraCodegenConstants):
-            pass
-
-        class Core(FlextInfraCoreConstants):
-            pass
-
-        class Deps(FlextInfraDepsConstants):
-            pass
-
-        class Docs(FlextInfraDocsConstants):
-            pass
-
-        class Refactor(FlextInfraRefactorConstants):
-            pass
-
-        class Release(FlextInfraReleaseConstants):
-            pass
-
-        class Workspace(FlextInfraWorkspaceConstants):
-            pass
+        Check = FlextInfraCheckConstants
+        Github = FlextInfraGithubConstants
 
         class Versioning:
             """Semantic versioning constants for version management."""

@@ -101,18 +101,18 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
             decorator_name in decorators
             for decorator_name in ["property", "cached_property", "computed_field"]
         ):
-            return c.Infra.Refactor.MethodCategory.PROPERTY
+            return c.Infra.MethodCategory.PROPERTY
         if "staticmethod" in decorators:
-            return c.Infra.Refactor.MethodCategory.STATIC
+            return c.Infra.MethodCategory.STATIC
         if "classmethod" in decorators:
-            return c.Infra.Refactor.MethodCategory.CLASS
+            return c.Infra.MethodCategory.CLASS
         if name.startswith("__") and name.endswith("__"):
-            return c.Infra.Refactor.MethodCategory.MAGIC
+            return c.Infra.MethodCategory.MAGIC
         if name.startswith("__"):
-            return c.Infra.Refactor.MethodCategory.PRIVATE
+            return c.Infra.MethodCategory.PRIVATE
         if name.startswith("_"):
-            return c.Infra.Refactor.MethodCategory.PROTECTED
-        return c.Infra.Refactor.MethodCategory.PUBLIC
+            return c.Infra.MethodCategory.PROTECTED
+        return c.Infra.MethodCategory.PUBLIC
 
     def _record_change(self, message: str) -> None:
         self.changes.append(message)

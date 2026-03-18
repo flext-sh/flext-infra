@@ -21,8 +21,8 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
         if not unmapped:
             return
         for alias in sorted(unmapped):
-            if alias in c.Infra.Codegen.ALIAS_TO_SUFFIX:
-                suffix = c.Infra.Codegen.ALIAS_TO_SUFFIX[alias]
+            if alias in c.Infra.ALIAS_TO_SUFFIX:
+                suffix = c.Infra.ALIAS_TO_SUFFIX[alias]
                 for name, (mod, _) in filtered.items():
                     if name.endswith(suffix) and len(name) > 1:
                         filtered[alias] = (mod, name)
@@ -116,7 +116,7 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
                     parts.append(f"{attr_name} as {export_name}")
             joined = ", ".join(parts)
             line = f"    from {rendered_mod} import {joined}"
-            if len(line) > c.Infra.Codegen.MAX_LINE_LENGTH:
+            if len(line) > c.Infra.MAX_LINE_LENGTH:
                 lines.append(f"    from {rendered_mod} import (")
                 lines.extend(f"        {part}," for part in parts)
                 lines.append("    )")
@@ -151,7 +151,7 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
         for export_name in sorted(lazy_filtered):
             mod, attr = lazy_filtered[export_name]
             groups[mod].append((export_name, attr))
-        out: list[str] = [c.Infra.Codegen.AUTOGEN_HEADER]
+        out: list[str] = [c.Infra.AUTOGEN_HEADER]
         if docstring_source:
             out.extend([docstring_source, ""])
         is_core_internal = current_pkg.startswith(
@@ -194,7 +194,7 @@ class FlextInfraCodegenGeneration(FlextInfraCodegenTemplates):
             typings_mod = f"{current_pkg}.typings"
             sorted_tvars = sorted(eager_typevar_names)
             eager_line = f"from {typings_mod} import " + ", ".join(sorted_tvars)
-            if len(eager_line) > c.Infra.Codegen.MAX_LINE_LENGTH:
+            if len(eager_line) > c.Infra.MAX_LINE_LENGTH:
                 out.append(f"from {typings_mod} import (")
                 out.extend(f"    {tv}," for tv in sorted_tvars)
                 out.append(")")

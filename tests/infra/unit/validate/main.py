@@ -15,6 +15,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra import u
 from flext_infra.validate.__main__ import (
     _run_basemk_validate,
     _run_inventory,
@@ -27,6 +28,10 @@ _CWD = "/home/marlonsc/flext/flext-core"
 def _ns(**kwargs: str | list[str] | None) -> argparse.Namespace:
     """Create a simple namespace from keyword arguments."""
     return argparse.Namespace(**kwargs)
+
+
+def _cli_args(root: Path) -> u.Infra.CliArgs:
+    return u.Infra.resolve(_ns(workspace=str(root)))
 
 
 def _cli(*args: str) -> subprocess.CompletedProcess[str]:
@@ -46,7 +51,7 @@ class TestMainBaseMkValidate:
     def test_success(self, tmp_path: Path) -> None:
         """basemk-validate succeeds with matching base.mk."""
         (tmp_path / "base.mk").write_text("# root")
-        tm.that(_run_basemk_validate(_ns(root=str(tmp_path))), eq=0)
+        tm.that(_run_basemk_validate(_cli_args(tmp_path)), eq=0)
 
     def test_with_violations(self, tmp_path: Path) -> None:
         """basemk-validate returns 1 with mismatched base.mk."""
@@ -55,11 +60,11 @@ class TestMainBaseMkValidate:
         proj.mkdir()
         (proj / "pyproject.toml").write_text("")
         (proj / "base.mk").write_text("# different")
-        tm.that(_run_basemk_validate(_ns(root=str(tmp_path))), eq=1)
+        tm.that(_run_basemk_validate(_cli_args(tmp_path)), eq=1)
 
     def test_missing_root_basemk(self, tmp_path: Path) -> None:
         """basemk-validate returns 1 when root base.mk missing."""
-        tm.that(_run_basemk_validate(_ns(root=str(tmp_path))), eq=1)
+        tm.that(_run_basemk_validate(_cli_args(tmp_path)), eq=1)
 
 
 class TestMainInventory:
@@ -67,13 +72,13 @@ class TestMainInventory:
 
     def test_success(self, tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
-        tm.that(_run_inventory(_ns(root=str(tmp_path), output_dir=None)), eq=0)
+        tm.that(_run_inventory(_cli_args(tmp_path), output_dir=None), eq=0)
 
     def test_with_output_dir(self, tmp_path: Path) -> None:
         """Inventory succeeds with output directory."""
         output = tmp_path / "output"
         output.mkdir()
-        tm.that(_run_inventory(_ns(root=str(tmp_path), output_dir=str(output))), eq=0)
+        tm.that(_run_inventory(_cli_args(tmp_path), output_dir=str(output)), eq=0)
 
 
 class TestMainScan:
@@ -82,26 +87,30 @@ class TestMainScan:
     def test_no_violations(self, tmp_path: Path) -> None:
         """Scan returns 0 when no violations found."""
         (tmp_path / "test.txt").write_text("hello world")
-        args = _ns(
-            root=str(tmp_path),
-            pattern="NONEXISTENT_PATTERN",
-            include=["*.txt"],
-            exclude=[],
-            match="present",
+        tm.that(
+            _run_scan(
+                _cli_args(tmp_path),
+                pattern="NONEXISTENT_PATTERN",
+                include=["*.txt"],
+                exclude=[],
+                match="present",
+            ),
+            eq=0,
         )
-        tm.that(_run_scan(args), eq=0)
 
     def test_with_violations(self, tmp_path: Path) -> None:
         """Scan returns 1 when violations found."""
         (tmp_path / "test.txt").write_text("TODO fix this")
-        args = _ns(
-            root=str(tmp_path),
-            pattern="TODO",
-            include=["*.txt"],
-            exclude=[],
-            match="present",
+        tm.that(
+            _run_scan(
+                _cli_args(tmp_path),
+                pattern="TODO",
+                include=["*.txt"],
+                exclude=[],
+                match="present",
+            ),
+            eq=1,
         )
-        tm.that(_run_scan(args), eq=1)
 
 
 class TestMainCliRouting:

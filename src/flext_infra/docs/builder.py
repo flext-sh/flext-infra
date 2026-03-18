@@ -57,7 +57,7 @@ class FlextInfraDocBuilder:
         *,
         project: str | None = None,
         projects: str | None = None,
-        output_dir: str = c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR,
+        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     ) -> r[list[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes.
 
@@ -119,7 +119,7 @@ class FlextInfraDocBuilder:
                 passed=True,
             )
         site_dir = (
-            scope.path / c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR / c.Infra.Directories.SITE
+            scope.path / c.Infra.DEFAULT_DOCS_OUTPUT_DIR / c.Infra.Directories.SITE
         ).resolve()
         site_dir.parent.mkdir(parents=True, exist_ok=True)
         cmd = [

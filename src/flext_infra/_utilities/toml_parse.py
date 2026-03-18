@@ -36,7 +36,7 @@ class FlextInfraUtilitiesTomlParse:
     def dep_name(spec: str) -> str:
         """Extract normalized dependency name from requirement specification."""
         base = spec.strip().split("@", 1)[0].strip()
-        match = c.Infra.Deps.DEP_NAME_RE.match(base)
+        match = c.Infra.DEP_NAME_RE.match(base)
         if match:
             return match.group(1).lower().replace("_", "-")
         return base.lower().replace("_", "-")

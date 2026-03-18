@@ -69,7 +69,7 @@ class FlextInfraCodegenScaffolder(s):
         discovered: list[m.Infra.ProjectInfo] = projects_result.unwrap()
         projects = discovered
         for project in projects:
-            if project.name in c.Infra.Codegen.EXCLUDED_PROJECTS:
+            if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue
             if (project.path / c.Infra.Files.GO_MOD).exists():
                 continue
@@ -101,7 +101,7 @@ class FlextInfraCodegenScaffolder(s):
             self._scaffold_dir(
                 target_dir=pkg_dir,
                 prefix=prefix,
-                modules=c.Infra.Codegen.SRC_MODULES,
+                modules=c.Infra.SRC_MODULES,
                 test_prefix="",
                 files_created=files_created,
                 files_skipped=files_skipped,
@@ -111,7 +111,7 @@ class FlextInfraCodegenScaffolder(s):
             self._scaffold_dir(
                 target_dir=tests_dir,
                 prefix=prefix,
-                modules=c.Infra.Codegen.TESTS_MODULES,
+                modules=c.Infra.TESTS_MODULES,
                 test_prefix="Tests",
                 files_created=files_created,
                 files_skipped=files_skipped,

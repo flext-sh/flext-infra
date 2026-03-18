@@ -596,18 +596,18 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def build_mro_target(
         family: str,
-        core_project: str = c.Infra.Refactor.Census.CORE_PROJECT,
+        core_project: str = c.Infra.Census.CORE_PROJECT,
     ) -> m.Infra.MROFamilyTarget:
         """Create a generic target config object from a family code."""
-        if family not in c.Infra.Refactor.MRO_FAMILIES:
+        if family not in c.Infra.MRO_FAMILIES:
             msg = f"Invalid MRO family {family}"
             raise ValueError(msg)
-        sf = c.Infra.Refactor.FAMILY_SUFFIXES[family]
+        sf = c.Infra.FAMILY_SUFFIXES[family]
         return m.Infra.MROFamilyTarget(
             family=family,
             class_suffix=sf,
-            package_dir=c.Infra.Refactor.MRO_FAMILY_PACKAGE_DIRS[family],
-            facade_module=c.Infra.Refactor.MRO_FAMILY_FACADE_MODULES[family],
+            package_dir=c.Infra.MRO_FAMILY_PACKAGE_DIRS[family],
+            facade_module=c.Infra.MRO_FAMILY_FACADE_MODULES[family],
             facade_class_prefix=f"Flext{sf}",
             core_project=core_project,
         )
@@ -633,14 +633,14 @@ class FlextInfraUtilitiesRefactor:
             m_list: list[m.Infra.CensusMethodSummary] = []
             for m_info in items:
                 af = cnt.get(
-                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_FLAT),
+                    (cls, m_info.name, c.Infra.Census.MODE_ALIAS_FLAT),
                     0,
                 )
                 an = cnt.get(
-                    (cls, m_info.name, c.Infra.Refactor.Census.MODE_ALIAS_NS),
+                    (cls, m_info.name, c.Infra.Census.MODE_ALIAS_NS),
                     0,
                 )
-                dr = cnt.get((cls, m_info.name, c.Infra.Refactor.Census.MODE_DIRECT), 0)
+                dr = cnt.get((cls, m_info.name, c.Infra.Census.MODE_DIRECT), 0)
                 tot = af + an + dr
                 if tot == 0:
                     unused += 1

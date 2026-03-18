@@ -217,7 +217,7 @@ class FlextInfraRefactorMROResolver:
         class_name: str,
         family: t.Infra.FacadeFamily,
     ) -> str | None:
-        suffix = c.Infra.Refactor.FAMILY_SUFFIXES[family]
+        suffix = c.Infra.FAMILY_SUFFIXES[family]
         if not class_name.endswith(suffix):
             return None
         root = class_name[: -len(suffix)]
@@ -243,7 +243,7 @@ class FlextInfraRefactorMROMigrationScanner:
         target: str,
     ) -> tuple[list[m.Infra.MROScanReport], int]:
         """Scan workspace and return candidate files with counts."""
-        if target not in c.Infra.Refactor.MRO_TARGETS:
+        if target not in c.Infra.MRO_TARGETS:
             return ([], 0)
         results: list[m.Infra.MROScanReport] = []
         scanned = 0
@@ -352,35 +352,34 @@ class FlextInfraRefactorMROMigrationScanner:
 
     @staticmethod
     def _target_specs(*, target: str) -> tuple[m.Infra.MROTargetSpec, ...]:
-        ref_c: type[c.Infra.Refactor] = c.Infra.Refactor
         constants_spec = m.Infra.MROTargetSpec(
             family_alias="c",
-            file_names=ref_c.MRO_CONSTANTS_FILE_NAMES,
-            package_directory=ref_c.MRO_CONSTANTS_DIRECTORY,
-            class_suffix=ref_c.CONSTANTS_CLASS_SUFFIX,
+            file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,
+            package_directory=c.Infra.MRO_CONSTANTS_DIRECTORY,
+            class_suffix=c.Infra.CONSTANTS_CLASS_SUFFIX,
         )
         typings_spec = m.Infra.MROTargetSpec(
             family_alias="t",
-            file_names=ref_c.MRO_TYPINGS_FILE_NAMES,
-            package_directory=ref_c.MRO_TYPINGS_DIRECTORY,
+            file_names=c.Infra.MRO_TYPINGS_FILE_NAMES,
+            package_directory=c.Infra.MRO_TYPINGS_DIRECTORY,
             class_suffix="Types",
         )
         protocols_spec = m.Infra.MROTargetSpec(
             family_alias="p",
-            file_names=ref_c.MRO_PROTOCOLS_FILE_NAMES,
-            package_directory=ref_c.MRO_PROTOCOLS_DIRECTORY,
+            file_names=c.Infra.MRO_PROTOCOLS_FILE_NAMES,
+            package_directory=c.Infra.MRO_PROTOCOLS_DIRECTORY,
             class_suffix="Protocols",
         )
         models_spec = m.Infra.MROTargetSpec(
             family_alias="m",
-            file_names=ref_c.MRO_MODELS_FILE_NAMES,
-            package_directory=ref_c.MRO_MODELS_DIRECTORY,
+            file_names=c.Infra.MRO_MODELS_FILE_NAMES,
+            package_directory=c.Infra.MRO_MODELS_DIRECTORY,
             class_suffix="Models",
         )
         utilities_spec = m.Infra.MROTargetSpec(
             family_alias="u",
-            file_names=ref_c.MRO_UTILITIES_FILE_NAMES,
-            package_directory=ref_c.MRO_UTILITIES_DIRECTORY,
+            file_names=c.Infra.MRO_UTILITIES_FILE_NAMES,
+            package_directory=c.Infra.MRO_UTILITIES_DIRECTORY,
             class_suffix="Utilities",
         )
         if target == "constants":
@@ -403,12 +402,11 @@ class FlextInfraRefactorMROMigrationScanner:
 
     @staticmethod
     def _iter_constants_files(*, project_root: Path) -> list[Path]:
-        ref_c: type[c.Infra.Refactor] = c.Infra.Refactor
         constants_spec = m.Infra.MROTargetSpec(
             family_alias="c",
-            file_names=ref_c.MRO_CONSTANTS_FILE_NAMES,
-            package_directory=ref_c.MRO_CONSTANTS_DIRECTORY,
-            class_suffix=ref_c.CONSTANTS_CLASS_SUFFIX,
+            file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,
+            package_directory=c.Infra.MRO_CONSTANTS_DIRECTORY,
+            class_suffix=c.Infra.CONSTANTS_CLASS_SUFFIX,
         )
         return FlextInfraRefactorMROMigrationScanner._iter_target_files(
             project_root=project_root,
@@ -421,9 +419,8 @@ class FlextInfraRefactorMROMigrationScanner:
         project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
     ) -> list[Path]:
-        ref_c: type[c.Infra.Refactor] = c.Infra.Refactor
         candidates: set[Path] = set()
-        for directory_name in ref_c.MRO_SCAN_DIRECTORIES:
+        for directory_name in c.Infra.MRO_SCAN_DIRECTORIES:
             root: Path = project_root / directory_name
             if not root.is_dir():
                 continue
@@ -570,7 +567,7 @@ class FlextInfraRefactorMROMigrationScanner:
 
     @staticmethod
     def _is_final_annotation(*, annotation: ast.expr) -> bool:
-        final_name = c.Infra.Refactor.FINAL_ANNOTATION_NAME
+        final_name = c.Infra.FINAL_ANNOTATION_NAME
         if isinstance(annotation, ast.Name):
             return annotation.id == final_name
         if isinstance(annotation, ast.Attribute):
@@ -671,7 +668,7 @@ class FlextInfraRefactorMROImportRewriter:
                 for alias in stmt.names:
                     default_facade_alias = module_facade_aliases.get(
                         module_name,
-                        c.Infra.Refactor.DEFAULT_FACADE_ALIAS,
+                        c.Infra.DEFAULT_FACADE_ALIAS,
                     )
                     if alias.name == default_facade_alias:
                         facade_local_name = default_facade_alias

@@ -60,7 +60,7 @@ class TestReleaseOrchestratorExecute:
 
     def test_run_release_invalid_phase(self, workspace_root: Path) -> None:
         result = _CLS().run_release(
-            root=workspace_root,
+            workspace_root=workspace_root,
             version="1.0.0",
             tag="v1.0.0",
             phases=["invalid_phase"],
@@ -74,7 +74,7 @@ class TestReleaseOrchestratorExecute:
     ) -> None:
         _stub_branches(monkeypatch)
         result = _CLS().run_release(
-            root=workspace_root,
+            workspace_root=workspace_root,
             version="1.0.0",
             tag="v1.0.0",
             phases=[],
@@ -89,7 +89,7 @@ class TestReleaseOrchestratorExecute:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
         result = _CLS().run_release(
-            root=workspace_root,
+            workspace_root=workspace_root,
             version="1.0.0",
             tag="v1.0.0",
             phases=["validate"],
@@ -104,7 +104,7 @@ class TestReleaseOrchestratorExecute:
     ) -> None:
         _stub_dispatch(monkeypatch)
         result = _CLS().run_release(
-            root=workspace_root,
+            workspace_root=workspace_root,
             version="1.0.0",
             tag="v1.0.0",
             phases=["validate"],
@@ -120,7 +120,7 @@ class TestReleaseOrchestratorExecute:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
         result = _CLS().run_release(
-            root=workspace_root,
+            workspace_root=workspace_root,
             version="1.0.0",
             tag="v1.0.0",
             phases=["validate"],
@@ -136,7 +136,7 @@ class TestReleaseOrchestratorExecute:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
         result = _CLS().run_release(
-            root=workspace_root,
+            workspace_root=workspace_root,
             version="1.0.0-dev",
             tag="v1.0.0-dev",
             phases=["version"],
@@ -153,7 +153,7 @@ class TestReleaseOrchestratorExecute:
         _stub_dispatch(monkeypatch)
         monkeypatch.setattr(_CLS, "_bump_next_dev", _noop_bump)
         result = _CLS().run_release(
-            root=workspace_root,
+            workspace_root=workspace_root,
             version="1.0.0",
             tag="v1.0.0",
             phases=["version"],
@@ -184,7 +184,7 @@ class TestReleaseOrchestratorExecute:
         _stub_branches(monkeypatch)
         monkeypatch.setattr(_CLS, "_dispatch_phase", fake_dispatch)
         result = _CLS().run_release(
-            root=workspace_root,
+            workspace_root=workspace_root,
             version="1.0.0",
             tag="v1.0.0",
             phases=["validate", "version"],
@@ -199,7 +199,7 @@ class TestReleaseOrchestratorExecute:
     ) -> None:
         _stub_dispatch(monkeypatch)
         result = _CLS().run_release(
-            root=workspace_root,
+            workspace_root=workspace_root,
             version="1.0.0",
             tag="v1.0.0",
             phases=["validate"],

@@ -210,12 +210,12 @@ class FlextInfraProjectMigrator(s):
         filtered = [
             line
             for line in existing_lines
-            if line.strip() not in c.Infra.Workspace.GITIGNORE_REMOVE_EXACT
+            if line.strip() not in c.Infra.GITIGNORE_REMOVE_EXACT
         ]
         existing_patterns = {line.strip() for line in filtered if line.strip()}
         missing = [
             pattern
-            for pattern in c.Infra.Workspace.GITIGNORE_REQUIRED_PATTERNS
+            for pattern in c.Infra.GITIGNORE_REQUIRED_PATTERNS
             if pattern not in existing_patterns
         ]
         if not missing and len(filtered) == len(existing_lines):
@@ -256,7 +256,7 @@ class FlextInfraProjectMigrator(s):
         except OSError as exc:
             return r[str].fail(f"Makefile read failed: {exc}")
         updated = original
-        for before, after in c.Infra.Workspace.MAKEFILE_REPLACEMENTS:
+        for before, after in c.Infra.MAKEFILE_REPLACEMENTS:
             updated = updated.replace(before, after)
         if updated == original:
             if dry_run:

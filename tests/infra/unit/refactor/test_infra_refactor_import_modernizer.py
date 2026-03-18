@@ -3,14 +3,8 @@
 from __future__ import annotations
 
 import libcst as cst
-import pytest
 
-try:
-    from flext_infra.refactor import (
-        FlextInfraRefactorImportModernizerRule,
-    )
-except ImportError as exc:
-    pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
+from flext_infra.rules.import_modernizer import FlextInfraRefactorImportModernizerRule
 
 
 def test_import_modernizer_partial_import_keeps_unmapped_symbols() -> None:

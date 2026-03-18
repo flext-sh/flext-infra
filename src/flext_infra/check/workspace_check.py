@@ -18,10 +18,10 @@ from flext_infra import (
     output,
     u,
 )
+from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.gates._base_gate import FlextInfraGateContext
 from flext_infra.gates._gate_registry import FlextInfraGateRegistry
 from flext_infra.gates._report import FlextInfraCheckReporter
-from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 
 
 class FlextInfraWorkspaceChecker(s):

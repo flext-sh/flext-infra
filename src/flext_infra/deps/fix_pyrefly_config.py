@@ -181,7 +181,7 @@ class FlextInfraConfigFixer(s):
                 exclude_items = TypeAdapter(list[JsonValue]).validate_python(excludes)
             current = [str(value) for value in exclude_items]
         stripped_to_add: list[str] = []
-        for glob in c.Infra.Check.REQUIRED_EXCLUDES:
+        for glob in c.Infra.REQUIRED_EXCLUDES:
             clean_glob = glob.strip('"').strip("'")
             if clean_glob not in current and glob not in current:
                 stripped_to_add.append(clean_glob)

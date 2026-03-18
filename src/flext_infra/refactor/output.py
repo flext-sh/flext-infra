@@ -18,8 +18,8 @@ class FlextInfraRefactorOutputRenderer:
         report: nem.WorkspaceEnforcementReport,
     ) -> str:
         """Render a human-readable namespace enforcement report."""
-        max_loose = c.Infra.Refactor.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS
-        max_imports = c.Infra.Refactor.NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS
+        max_loose = c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS
+        max_imports = c.Infra.NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS
         lines: list[str] = [
             f"Workspace: {report.workspace}",
             f"Projects scanned: {len(report.projects)}",
@@ -58,7 +58,7 @@ class FlextInfraRefactorOutputRenderer:
                 lines.append(
                     "  Missing facades: "
                     + ", ".join(
-                        f"{s.family} ({c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES[s.family]})"
+                        f"{s.family} ({c.Infra.NAMESPACE_FACADE_FAMILIES[s.family]})"
                         for s in missing
                     ),
                 )
@@ -210,12 +210,12 @@ class FlextInfraRefactorOutputRenderer:
             alias_total = sum(
                 pu.count
                 for pu in ps.usages
-                if pu.access_mode != c.Infra.Refactor.Census.MODE_DIRECT
+                if pu.access_mode != c.Infra.Census.MODE_DIRECT
             )
             direct_total = sum(
                 pu.count
                 for pu in ps.usages
-                if pu.access_mode == c.Infra.Refactor.Census.MODE_DIRECT
+                if pu.access_mode == c.Infra.Census.MODE_DIRECT
             )
             lines.append(
                 f"\n📦 {ps.project_name}"

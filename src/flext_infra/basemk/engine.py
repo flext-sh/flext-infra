@@ -97,7 +97,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         lint_gates_csv = ",".join(active_config.lint_gates)
         sections: list[str] = []
         try:
-            for template_name in c.Infra.Basemk.TEMPLATE_ORDER:
+            for template_name in c.Infra.TEMPLATE_ORDER:
                 template: _TemplateRenderer = self._environment.get_template(
                     template_name,
                 )

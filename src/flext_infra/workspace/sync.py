@@ -143,7 +143,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
                     changed += 1 if basemk_result.value else 0
                     gitignore_result = self._ensure_gitignore_entries(
                         resolved,
-                        c.Infra.Workspace.REQUIRED_GITIGNORE_ENTRIES,
+                        c.Infra.REQUIRED_GITIGNORE_ENTRIES,
                     )
                     if gitignore_result.is_failure:
                         return r[m.Infra.SyncResult].fail(

@@ -25,7 +25,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
     ) -> tuple[cst.Module, list[str]]:
         if _file_path is None:
             return (tree, [])
-        if _file_path.name != c.Infra.Refactor.CONSTANTS_FILE_GLOB:
+        if _file_path.name != c.Infra.CONSTANTS_FILE_GLOB:
             return (tree, [])
         source = tree.code
         # given source is in-memory CST output, parse from string is required
@@ -74,7 +74,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
     def _first_constants_class_name(tree: ast.Module) -> str:
         for stmt in tree.body:
             if isinstance(stmt, ast.ClassDef) and stmt.name.endswith(
-                c.Infra.Refactor.CONSTANTS_CLASS_SUFFIX,
+                c.Infra.CONSTANTS_CLASS_SUFFIX,
             ):
                 return stmt.name
         return ""
@@ -85,7 +85,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
 
     @staticmethod
     def _is_final_annotation(annotation: ast.expr) -> bool:
-        final_name = c.Infra.Refactor.FINAL_ANNOTATION_NAME
+        final_name = c.Infra.FINAL_ANNOTATION_NAME
         if isinstance(annotation, ast.Name):
             return annotation.id == final_name
         if isinstance(annotation, ast.Attribute):

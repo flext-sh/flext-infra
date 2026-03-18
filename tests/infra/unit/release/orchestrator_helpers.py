@@ -11,8 +11,9 @@ from flext_tests import tm
 
 from flext_infra.release import orchestrator as _orch_mod
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.infra.models import m as _m
-from tests.infra.unit.release._stubs import (
+
+from ...models import m as _m
+from ._stubs import (
     FakeSelection,
     FakeSubprocess,
     FakeUtilsNamespace,
@@ -154,7 +155,12 @@ class TestUpdateChangelog:
     def test_creates_files(self, workspace_root: Path) -> None:
         notes = workspace_root / "notes.md"
         notes.write_text("# Release v1.0.0\n")
-        result = _CLS()._update_changelog(workspace_root, "1.0.0", "v1.0.0", notes)
+        result = _orch_mod.FlextInfraReleaseReporting.update_changelog(
+            workspace_root,
+            "1.0.0",
+            "v1.0.0",
+            notes,
+        )
         tm.ok(result)
         tm.that((workspace_root / "docs" / "CHANGELOG.md").exists(), eq=True)
 
@@ -164,7 +170,14 @@ class TestUpdateChangelog:
         changelog.write_text("# Changelog\n\n## 0.9.0 - 2025-01-01\n")
         notes = workspace_root / "notes.md"
         notes.write_text("# Release v1.0.0\n")
-        tm.ok(_CLS()._update_changelog(workspace_root, "1.0.0", "v1.0.0", notes))
+        tm.ok(
+            _orch_mod.FlextInfraReleaseReporting.update_changelog(
+                workspace_root,
+                "1.0.0",
+                "v1.0.0",
+                notes,
+            ),
+        )
         tm.that(changelog.read_text(), contains="1.0.0")
 
 

@@ -12,10 +12,12 @@ import pytest
 from flext_core import t
 from flext_tests import tm
 
+from flext_infra import c
 from flext_infra.check.services import (
     CheckIssue,
     FlextInfraWorkspaceChecker,
 )
+from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
 
 class TestWorkspaceCheckerInitialization:
@@ -39,24 +41,21 @@ class TestWorkspaceCheckerExistingCheckDirs:
     """Test FlextInfraWorkspaceChecker._existing_check_dirs method."""
 
     def test_existing_check_dirs_workspace_root(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "tests").mkdir()
-        dirs = checker._existing_check_dirs(tmp_path)
+        dirs = FlextInfraRuffLintGate(tmp_path)._existing_check_dirs(tmp_path)
         tm.that(len(dirs) >= 0, eq=True)
 
     def test_existing_check_dirs_subproject(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         subproj = tmp_path / "subproj"
         subproj.mkdir()
         (subproj / "src").mkdir()
-        dirs = checker._existing_check_dirs(subproj)
+        dirs = FlextInfraRuffLintGate(tmp_path)._existing_check_dirs(subproj)
         tm.that(len(dirs) >= 0, eq=True)
 
     def test_existing_check_dirs_filters_nonexistent(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "src").mkdir()
-        dirs = checker._existing_check_dirs(tmp_path)
+        dirs = FlextInfraRuffLintGate(tmp_path)._existing_check_dirs(tmp_path)
         tm.that(all((tmp_path / d).is_dir() for d in dirs), eq=True)
 
 
@@ -67,24 +66,24 @@ class TestWorkspaceCheckerDirsWithPy:
         src = tmp_path / "src"
         src.mkdir()
         (src / "main.py").write_text("# code")
-        result = FlextInfraWorkspaceChecker._dirs_with_py(tmp_path, ["src"])
+        result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["src"])
         tm.that("src" in result, eq=True)
 
     def test_dirs_with_py_finds_pyi_files(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         src.mkdir()
         (src / "main.pyi").write_text("# stub")
-        result = FlextInfraWorkspaceChecker._dirs_with_py(tmp_path, ["src"])
+        result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["src"])
         tm.that("src" in result, eq=True)
 
     def test_dirs_with_py_skips_empty_dirs(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         src.mkdir()
-        result = FlextInfraWorkspaceChecker._dirs_with_py(tmp_path, ["src"])
+        result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["src"])
         tm.that("src" not in result, eq=True)
 
     def test_dirs_with_py_skips_nonexistent_dirs(self, tmp_path: Path) -> None:
-        result = FlextInfraWorkspaceChecker._dirs_with_py(tmp_path, ["nonexistent"])
+        result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["nonexistent"])
         tm.that("nonexistent" not in result, eq=True)
 
 
@@ -118,7 +117,7 @@ class TestWorkspaceCheckerBuildGateResult:
     """Test FlextInfraWorkspaceChecker._build_gate_result method."""
 
     def test_build_gate_result_success(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        gate = FlextInfraRuffLintGate(tmp_path)
         issue = CheckIssue(
             file="a.py",
             line=1,
@@ -127,8 +126,7 @@ class TestWorkspaceCheckerBuildGateResult:
             message="Error",
             severity="error",
         )
-        result = checker._build_gate_result(
-            gate="lint",
+        result = gate._build_gate_result(
             project="p1",
             passed=True,
             issues=[issue],
@@ -136,5 +134,5 @@ class TestWorkspaceCheckerBuildGateResult:
             raw_output="",
         )
         tm.that(result.result.passed, eq=True)
-        tm.that(result.result.gate, eq="lint")
+        tm.that(result.result.gate, eq=c.Infra.Gates.LINT)
         tm.that(len(result.issues), eq=1)

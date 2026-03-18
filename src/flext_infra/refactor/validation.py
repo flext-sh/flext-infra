@@ -135,7 +135,7 @@ class FlextInfraRefactorRuleDefinitionValidator:
         )
         if not fix_action:
             return None
-        if fix_action in c.Infra.Refactor.PROPAGATION_FIX_ACTIONS:
+        if fix_action in c.Infra.PROPAGATION_FIX_ACTIONS:
             if fix_action == "propagate_symbol_renames" and (
                 not isinstance(rule_def.get("import_symbol_renames"), dict)
             ):

@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import libcst as cst
-import pytest
 
-try:
-    from flext_infra.refactor import (
-        FlextInfraRefactorClassReconstructorRule,
-        FlextInfraRefactorMRORedundancyChecker,
-        FlextInfraRefactorSignaturePropagationRule,
-        FlextInfraRefactorSymbolPropagationRule,
-    )
-except ImportError as exc:
-    pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
+from flext_infra.rules.class_reconstructor import (
+    FlextInfraRefactorClassReconstructorRule,
+)
+from flext_infra.rules.mro_redundancy_checker import (
+    FlextInfraRefactorMRORedundancyChecker,
+)
+from flext_infra.rules.symbol_propagation import (
+    FlextInfraRefactorSignaturePropagationRule,
+    FlextInfraRefactorSymbolPropagationRule,
+)
 
 
 def test_class_reconstructor_reorders_methods_by_config() -> None:

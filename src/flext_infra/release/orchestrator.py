@@ -191,7 +191,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             if not path.exists():
                 continue
             content = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            match = c.Infra.Release.VERSION_RE.search(content)
+            match = c.Infra.VERSION_RE.search(content)
             if match and match.group(1) == target:
                 continue
             changed += 1
@@ -230,7 +230,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             bump_type=next_bump,
         )
         for phase in phases:
-            if phase not in c.Infra.Release.VALID_PHASES:
+            if phase not in c.Infra.VALID_PHASES:
                 return r[bool].fail(f"invalid phase: {phase}")
         self.logger.info(
             "release_run_started",

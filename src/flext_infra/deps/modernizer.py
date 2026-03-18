@@ -59,7 +59,7 @@ class FlextInfraPyprojectModernizer:
         """Find all workspace pyproject.toml files."""
         result = u.Infra.find_all_pyproject_files(
             self.root,
-            skip_dirs=c.Infra.Deps.SKIP_DIRS,
+            skip_dirs=c.Infra.SKIP_DIRS,
         )
         return result.fold(
             on_failure=lambda _: [],

@@ -29,7 +29,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
     @staticmethod
     def _snapshot_init_files(*, project_path: Path) -> dict[str, str]:
         snapshot: dict[str, str] = {}
-        for root_name in c.Infra.Refactor.MRO_SCAN_DIRECTORIES:
+        for root_name in c.Infra.MRO_SCAN_DIRECTORIES:
             root = project_path / root_name
             if not root.is_dir():
                 continue

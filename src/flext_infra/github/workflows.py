@@ -170,7 +170,7 @@ class FlextInfraWorkflowSyncer:
                     workflows_dir.glob("*.yaml"),
                 )
                 for path in candidates:
-                    if path.name in c.Infra.Github.MANAGED_FILES:
+                    if path.name in c.Infra.MANAGED_FILES:
                         continue
                     if apply:
                         path.unlink()

@@ -99,14 +99,14 @@ class FlextInfraInternalDependencySyncService:
     @staticmethod
     def validate_git_ref(ref_name: str) -> r[str]:
         """Validate git reference name using project-safe regex."""
-        if not c.Infra.Deps.GIT_REF_RE.fullmatch(ref_name):
+        if not c.Infra.GIT_REF_RE.fullmatch(ref_name):
             return r[str].fail(f"invalid git ref: {ref_name!r}")
         return r[str].ok(ref_name)
 
     @staticmethod
     def validate_repo_url(repo_url: str) -> r[str]:
         """Validate repository URL against allowed GitHub format."""
-        if not c.Infra.Deps.GITHUB_REPO_URL_RE.fullmatch(repo_url):
+        if not c.Infra.GITHUB_REPO_URL_RE.fullmatch(repo_url):
             return r[str].fail(f"invalid repository URL: {repo_url!r}")
         return r[str].ok(repo_url)
 
@@ -218,7 +218,7 @@ class FlextInfraInternalDependencySyncService:
         for dep in project_deps:
             if " @ " not in dep:
                 continue
-            match = c.Infra.Deps.PEP621_PATH_RE.search(dep)
+            match = c.Infra.PEP621_PATH_RE.search(dep)
             if not match:
                 continue
             repo_name = self.is_internal_path_dep(match.group("path"))

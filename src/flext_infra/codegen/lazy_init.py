@@ -496,7 +496,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         ``e``, ``h``, ``s``, ``x``), find a class in the lazy_map whose name
         ends with the corresponding suffix and create a mapping.
         """
-        for alias, suffix in c.Infra.Codegen.ALIAS_TO_SUFFIX.items():
+        for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
             if alias in lazy_map:
                 continue
             for name, (mod, _attr) in list(lazy_map.items()):

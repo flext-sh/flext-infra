@@ -32,7 +32,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         )
         checks.append(
             m.Infra.QualityGateCheck(
-                name=c.Infra.Codegen.QualityGate.CHECK_NAMESPACE_COMPLIANCE,
+                name=c.Infra.QualityGate.CHECK_NAMESPACE_COMPLIANCE,
                 passed=(
                     violations_total == 0 or (before_available and violations_delta < 0)
                 )
@@ -68,13 +68,13 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         )
         checks.extend([
             m.Infra.QualityGateCheck(
-                name=c.Infra.Codegen.QualityGate.CHECK_MRO_VALIDITY,
+                name=c.Infra.QualityGate.CHECK_MRO_VALIDITY,
                 passed=mro_failures == 0,
                 detail=f"mro_failures={mro_failures}",
                 critical=True,
             ),
             m.Infra.QualityGateCheck(
-                name=c.Infra.Codegen.QualityGate.CHECK_IMPORT_RESOLUTION,
+                name=c.Infra.QualityGate.CHECK_IMPORT_RESOLUTION,
                 passed=cross_ref == 0
                 and import_parse == 0
                 and (import_parse_errors == 0),
@@ -85,13 +85,13 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
                 critical=True,
             ),
             m.Infra.QualityGateCheck(
-                name=c.Infra.Codegen.QualityGate.CHECK_LAYER_COMPLIANCE,
+                name=c.Infra.QualityGate.CHECK_LAYER_COMPLIANCE,
                 passed=layer_violations == 0,
                 detail=f"layer_violations={layer_violations}",
                 critical=True,
             ),
             m.Infra.QualityGateCheck(
-                name=c.Infra.Codegen.QualityGate.CHECK_DUPLICATION_REDUCTION,
+                name=c.Infra.QualityGate.CHECK_DUPLICATION_REDUCTION,
                 passed=(
                     duplicate_groups == 0 or (before_available and duplicates_delta < 0)
                 )
@@ -104,13 +104,13 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
                 critical=False,
             ),
             m.Infra.QualityGateCheck(
-                name=c.Infra.Codegen.QualityGate.CHECK_TYPE_SAFETY,
+                name=c.Infra.QualityGate.CHECK_TYPE_SAFETY,
                 passed=bool(pyrefly_check.get("passed")),
                 detail=str(pyrefly_check.get("detail", "")),
                 critical=True,
             ),
             m.Infra.QualityGateCheck(
-                name=c.Infra.Codegen.QualityGate.CHECK_LINT_CLEAN,
+                name=c.Infra.QualityGate.CHECK_LINT_CLEAN,
                 passed=bool(ruff_check.get("passed")),
                 detail=str(ruff_check.get("detail", "")),
                 critical=True,
@@ -119,7 +119,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         if before_load_error:
             checks.append(
                 m.Infra.QualityGateCheck(
-                    name=c.Infra.Codegen.QualityGate.CHECK_BASELINE_LOAD,
+                    name=c.Infra.QualityGate.CHECK_BASELINE_LOAD,
                     passed=False,
                     detail=before_load_error,
                     critical=False,

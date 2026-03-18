@@ -96,13 +96,13 @@ class ProjectClassifier:
 
     def _discover_facade_inheritance(self) -> tuple[dict[str, set[str]], set[str]]:
         family_bases: dict[str, set[str]] = {
-            family: set() for family in c.Infra.Refactor.FAMILY_SUFFIXES
+            family: set() for family in c.Infra.FAMILY_SUFFIXES
         }
         local_facade_classes: set[str] = set()
         if not self._src_path.is_dir():
             return (family_bases, local_facade_classes)
-        for family, suffix in c.Infra.Refactor.FAMILY_SUFFIXES.items():
-            file_pattern = c.Infra.Refactor.FAMILY_FILES[family]
+        for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
+            file_pattern = c.Infra.FAMILY_FILES[family]
             for file_path in self._src_path.rglob(file_pattern):
                 class_bases, class_names = self._parse_family_file(file_path, suffix)
                 family_bases[family].update(class_bases)
@@ -147,7 +147,7 @@ class ProjectClassifier:
         family_bases: dict[str, set[str]],
     ) -> dict[str, list[str]]:
         family_chains: dict[str, list[str]] = {}
-        for family, suffix in c.Infra.Refactor.FAMILY_SUFFIXES.items():
+        for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_parents = self._expected_parents_for_family(
                 family_suffix=suffix,
                 internal_dependencies=internal_dependencies,
@@ -202,11 +202,11 @@ class ProjectClassifier:
         if not internal_dependencies:
             return "core"
         has_domain_dependency = any(
-            dependency in c.Infra.Refactor.DOMAIN_PACKAGES
+            dependency in c.Infra.DOMAIN_PACKAGES
             for dependency in internal_dependencies
         )
         has_platform_dependency = any(
-            dependency in c.Infra.Refactor.PLATFORM_PACKAGES
+            dependency in c.Infra.PLATFORM_PACKAGES
             for dependency in internal_dependencies
         )
         dependency_kind = "app"
@@ -217,7 +217,7 @@ class ProjectClassifier:
         elif has_platform_dependency:
             dependency_kind = "platform"
         has_integration_facade = any(
-            class_name.startswith(c.Infra.Refactor.INTEGRATION_CLASS_PREFIXES)
+            class_name.startswith(c.Infra.INTEGRATION_CLASS_PREFIXES)
             for class_name in local_facade_classes
         )
         if dependency_kind == "integration" and (not has_integration_facade):

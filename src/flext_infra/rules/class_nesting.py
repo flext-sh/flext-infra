@@ -239,17 +239,17 @@ class ClassNestingRefactorRule:
             msg = "confidence_threshold must be a string"
             raise TypeError(msg)
         candidate = raw.strip().lower()
-        if candidate in c.Infra.Refactor.CONFIDENCE_RANKS:
+        if candidate in c.Infra.CONFIDENCE_RANKS:
             return candidate
         msg = f"unsupported confidence_threshold: {raw}"
         raise ValueError(msg)
 
     def _confidence_allowed(self, confidence: str, threshold: str) -> bool:
-        confidence_rank = c.Infra.Refactor.CONFIDENCE_RANKS.get(
+        confidence_rank = c.Infra.CONFIDENCE_RANKS.get(
             confidence.strip().lower(),
             0,
         )
-        threshold_rank = c.Infra.Refactor.CONFIDENCE_RANKS.get(threshold, 0)
+        threshold_rank = c.Infra.CONFIDENCE_RANKS.get(threshold, 0)
         return confidence_rank >= threshold_rank
 
     def _class_nesting_mappings(

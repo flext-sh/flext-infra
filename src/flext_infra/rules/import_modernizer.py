@@ -35,7 +35,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         )
         if "lazy-import" in self.rule_id or fix_action == "hoist_to_module_top":
             return self._fix_lazy_imports(tree)
-        runtime_aliases = set(c.Infra.Refactor.RUNTIME_ALIAS_NAMES)
+        runtime_aliases = set(c.Infra.RUNTIME_ALIAS_NAMES)
         blocked_aliases = self._collect_blocked_aliases(tree, runtime_aliases)
         blocked_aliases.update(
             self._collect_function_shadowed_aliases(tree, runtime_aliases),

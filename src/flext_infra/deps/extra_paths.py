@@ -145,14 +145,14 @@ class FlextInfraExtraPathsManager:
         doc: TOMLDocument = doc_result.value
         dep_paths = self.get_dep_paths(doc, is_root=is_root)
         pyright_extra = (
-            c.Infra.Deps.PYRIGHT_BASE_ROOT + dep_paths
+            c.Infra.PYRIGHT_BASE_ROOT + dep_paths
             if is_root
-            else c.Infra.Deps.PYRIGHT_BASE_PROJECT + dep_paths
+            else c.Infra.PYRIGHT_BASE_PROJECT + dep_paths
         )
         mypy_path = (
-            c.Infra.Deps.MYPY_BASE_ROOT + dep_paths
+            c.Infra.MYPY_BASE_ROOT + dep_paths
             if is_root
-            else c.Infra.Deps.MYPY_BASE_PROJECT + dep_paths
+            else c.Infra.MYPY_BASE_PROJECT + dep_paths
         )
         tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
         if tool_table is None:

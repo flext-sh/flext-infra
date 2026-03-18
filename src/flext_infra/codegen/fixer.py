@@ -295,7 +295,7 @@ class FlextInfraCodegenFixer(s):
         py_files_result = u.Infra.iter_python_files(
             workspace_root=project_path,
             project_roots=[project_path],
-            src_dirs=frozenset(c.Infra.Refactor.MRO_SCAN_DIRECTORIES),
+            src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
         )
         if py_files_result.is_failure:
             return
@@ -433,7 +433,7 @@ class FlextInfraCodegenFixer(s):
         results: list[m.Infra.AutoFixResult] = []
         discovered: list[m.Infra.ProjectInfo] = projects_result.unwrap()
         for project in discovered:
-            if project.name in c.Infra.Codegen.EXCLUDED_PROJECTS:
+            if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue
             if (project.path / c.Infra.Files.GO_MOD).exists():
                 continue

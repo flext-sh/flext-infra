@@ -108,9 +108,9 @@ class FlextInfraGate(ABC):
 
     def _existing_check_dirs(self, project_dir: Path) -> list[str]:
         dirs = (
-            c.Infra.Check.DEFAULT_CHECK_DIRS
+            c.Infra.DEFAULT_CHECK_DIRS
             if project_dir.resolve() == self._workspace_root.resolve()
-            else c.Infra.Check.CHECK_DIRS_SUBPROJECT
+            else c.Infra.CHECK_DIRS_SUBPROJECT
         )
         return [d for d in dirs if (project_dir / d).is_dir()]
 

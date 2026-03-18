@@ -75,7 +75,7 @@ class TestParseViolationValid:
         result = FlextInfraCodegenCensus._parse_violation(violation_str)
         tm.that(result is not None, eq=True)
         tm.that(
-            isinstance(result, FlextInfraModels.Infra.Codegen.CensusViolation),
+            isinstance(result, FlextInfraModels.Infra.CensusViolation),
             eq=True,
         )
         assert result is not None

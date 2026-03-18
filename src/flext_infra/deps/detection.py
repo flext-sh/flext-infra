@@ -28,7 +28,7 @@ class FlextInfraDependencyDetectionService:
     _log = FlextLogger.create_module_logger(__name__)
 
     DEFAULT_MODULE_TO_TYPES_PACKAGE: Mapping[str, str] = (
-        c.Infra.Deps.DEFAULT_MODULE_TO_TYPES_PACKAGE
+        c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE
     )
 
     def __init__(self) -> None:

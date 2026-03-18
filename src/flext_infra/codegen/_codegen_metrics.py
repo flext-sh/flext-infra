@@ -82,7 +82,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
         modified_files: list[str],
     ) -> dict[str, t.Infra.InfraValue]:
         by_rule: dict[str, int] = dict.fromkeys(
-            c.Infra.Codegen.QualityGate.RULE_KEYS,
+            c.Infra.QualityGate.RULE_KEYS,
             0,
         )
         total_violations = 0

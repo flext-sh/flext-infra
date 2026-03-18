@@ -222,11 +222,11 @@ class StubReporting(FlextInfraUtilitiesReporting):
     @staticmethod
     @override
     def get_report_dir(
-        root: Path | str,
+        workspace_root: Path | str,
         scope: str,
         verb: str,
     ) -> Path:
-        _ = root, scope, verb
+        _ = workspace_root, scope, verb
         return StubReporting._report_dir
 
 

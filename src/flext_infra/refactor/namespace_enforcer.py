@@ -117,7 +117,7 @@ class FlextInfraNamespaceEnforcer:
         py_files_result = u.Infra.iter_python_files(
             workspace_root=project_root,
             project_roots=[project_root],
-            src_dirs=frozenset(c.Infra.Refactor.MRO_SCAN_DIRECTORIES),
+            src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
         )
         py_files = [] if py_files_result.is_failure else py_files_result.value
         loose_objects: list[m.Infra.LooseObjectViolation] = []

@@ -7,12 +7,33 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from argparse import Namespace
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
-from flext_infra.release.__main__ import _parse_args
+from flext_infra import u
+
+
+def _parse_args(argv: list[str] | None = None) -> Namespace:
+    parser = u.Infra.create_parser(
+        prog="release",
+        description="Release orchestration",
+        include_apply=True,
+    )
+    _ = parser.add_argument("--phase", default="all")
+    _ = parser.add_argument("--version", default="")
+    _ = parser.add_argument("--tag", default="")
+    _ = parser.add_argument("--bump", default="")
+    _ = parser.add_argument("--interactive", type=int, default=1)
+    _ = parser.add_argument("--push", action="store_true", default=False)
+    _ = parser.add_argument("--dev-suffix", action="store_true", default=False)
+    _ = parser.add_argument("--next-dev", action="store_true", default=False)
+    _ = parser.add_argument("--next-bump", default="minor")
+    _ = parser.add_argument("--create-branches", type=int, default=1)
+    _ = parser.add_argument("--projects", nargs="*", default=[])
+    return parser.parse_args(argv)
 
 
 class TestReleaseMainParsing:
@@ -21,7 +42,7 @@ class TestReleaseMainParsing:
     def test_parse_args_defaults(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(sys, "argv", ["prog"])
         args = _parse_args()
-        tm.that(str(args.root), eq=str(Path()))
+        tm.that(str(args.workspace), eq=str(Path.cwd()))
         tm.that(args.phase, eq="all")
         tm.that(args.version, eq="")
         tm.that(args.tag, eq="")
@@ -30,9 +51,9 @@ class TestReleaseMainParsing:
         tm.that(args.dry_run, eq=False)
 
     def test_parse_args_with_root(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(sys, "argv", ["prog", "--root", "/tmp/workspace"])
+        monkeypatch.setattr(sys, "argv", ["prog", "--workspace", "/tmp/workspace"])
         args = _parse_args()
-        tm.that(str(args.root), eq="/tmp/workspace")
+        tm.that(str(args.workspace), eq="/tmp/workspace")
 
     def test_parse_args_with_phase(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", "--phase", "validate"])

@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 import libcst as cst
-import pytest
 
-try:
-    from flext_infra.refactor import (
-        FlextInfraRefactorPatternCorrectionsRule,
-    )
-except ImportError as exc:
-    pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
+from flext_infra.rules.pattern_corrections import (
+    FlextInfraRefactorPatternCorrectionsRule,
+)
 
 
 def test_pattern_rule_converts_dict_annotations_to_mapping() -> None:

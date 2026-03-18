@@ -14,9 +14,10 @@ from flext_tests import tm
 
 from flext_infra.constants import c
 from flext_infra.docs.shared import FlextInfraDocsShared
-from tests.infra.models import m
 
-_OUT = c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR
+from ...models import m
+
+_OUT = c.Infra.DEFAULT_DOCS_OUTPUT_DIR
 
 
 class TestFlextInfraDocScope:
@@ -72,7 +73,7 @@ class TestBuildScopes:
         output_dir: str = _OUT,
     ) -> r[list[m.Infra.FlextInfraDocScope]]:
         return FlextInfraDocsShared.build_scopes(
-            root=root,
+            workspace_root=root,
             project=project,
             projects=projects,
             output_dir=output_dir,

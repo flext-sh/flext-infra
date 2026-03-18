@@ -240,7 +240,7 @@ class RedundantCastRemover(cst.CSTTransformer):
         func = updated_node.func
         if not isinstance(func, cst.Name) or func.value != "cast":
             return updated_node
-        if len(updated_node.args) != c.Infra.Refactor.CAST_ARITY:
+        if len(updated_node.args) != c.Infra.CAST_ARITY:
             return updated_node
         type_arg, value_arg = updated_node.args
         if type_arg.keyword is not None or value_arg.keyword is not None:
@@ -276,7 +276,7 @@ class RedundantCastRemover(cst.CSTTransformer):
             return None
         if not isinstance(node.func, cst.Name) or node.func.value != "cast":
             return None
-        if len(node.args) != c.Infra.Refactor.CAST_ARITY:
+        if len(node.args) != c.Infra.CAST_ARITY:
             return None
         type_arg, value_arg = node.args
         if type_arg.keyword is not None or value_arg.keyword is not None:

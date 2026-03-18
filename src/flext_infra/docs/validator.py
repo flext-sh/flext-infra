@@ -55,7 +55,7 @@ class FlextInfraDocValidator:
         *,
         project: str | None = None,
         projects: str | None = None,
-        output_dir: str = c.Infra.Docs.DEFAULT_DOCS_OUTPUT_DIR,
+        output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         check: str = "all",
         apply: bool = False,
     ) -> r[list[m.Infra.DocsPhaseReport]]:

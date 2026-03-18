@@ -542,25 +542,25 @@ class FlextInfraRefactorEngine:
         )
         check = str(rule_def.get(c.Infra.Verbs.CHECK, "")).strip().lower()
         if (
-            fix_action in c.Infra.Refactor.FUTURE_FIX_ACTIONS
-            or check in c.Infra.Refactor.FUTURE_CHECKS
+            fix_action in c.Infra.FUTURE_FIX_ACTIONS
+            or check in c.Infra.FUTURE_CHECKS
         ):
             return FlextInfraRefactorEnsureFutureAnnotationsRule(rule_def)
-        if fix_action in c.Infra.Refactor.LEGACY_FIX_ACTIONS:
+        if fix_action in c.Infra.LEGACY_FIX_ACTIONS:
             return FlextInfraRefactorLegacyRemovalRule(rule_def)
-        if fix_action in c.Infra.Refactor.IMPORT_FIX_ACTIONS:
+        if fix_action in c.Infra.IMPORT_FIX_ACTIONS:
             return FlextInfraRefactorImportModernizerRule(rule_def)
-        if fix_action in c.Infra.Refactor.CLASS_FIX_ACTIONS:
+        if fix_action in c.Infra.CLASS_FIX_ACTIONS:
             return FlextInfraRefactorClassReconstructorRule(rule_def)
-        if fix_action in c.Infra.Refactor.MRO_FIX_ACTIONS:
+        if fix_action in c.Infra.MRO_FIX_ACTIONS:
             if fix_action == "migrate_to_class_mro":
                 return FlextInfraRefactorMROClassMigrationRule(rule_def)
             return FlextInfraRefactorMRORedundancyChecker(rule_def)
-        if fix_action in c.Infra.Refactor.PROPAGATION_FIX_ACTIONS:
+        if fix_action in c.Infra.PROPAGATION_FIX_ACTIONS:
             if fix_action == "propagate_signature_migrations":
                 return FlextInfraRefactorSignaturePropagationRule(rule_def)
             return FlextInfraRefactorSymbolPropagationRule(rule_def)
-        if fix_action in c.Infra.Refactor.PATTERN_FIX_ACTIONS:
+        if fix_action in c.Infra.PATTERN_FIX_ACTIONS:
             return FlextInfraRefactorPatternCorrectionsRule(rule_def)
         rule_id_lower = rule_id.lower()
         if "ensure-future" in rule_id_lower or "future-annotations" in rule_id_lower:

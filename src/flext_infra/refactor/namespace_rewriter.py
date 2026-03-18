@@ -24,7 +24,7 @@ class NamespaceEnforcementRewriter:
 
     @staticmethod
     def _preferred_file_name(*, family: str) -> str:
-        pattern = c.Infra.Refactor.NAMESPACE_FACADE_FILE_PATTERNS.get(
+        pattern = c.Infra.NAMESPACE_FACADE_FILE_PATTERNS.get(
             family,
             "utilities.py",
         )
@@ -32,12 +32,12 @@ class NamespaceEnforcementRewriter:
 
     @staticmethod
     def _base_import_for_family(*, family: str) -> str:
-        class_name = f"Flext{c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES.get(family, 'Utilities')}"
+        class_name = f"Flext{c.Infra.NAMESPACE_FACADE_FAMILIES.get(family, 'Utilities')}"
         return f"from flext_core import {class_name}"
 
     @staticmethod
     def _base_class_for_family(*, family: str) -> str:
-        return f"Flext{c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES.get(family, 'Utilities')}"
+        return f"Flext{c.Infra.NAMESPACE_FACADE_FAMILIES.get(family, 'Utilities')}"
 
     @staticmethod
     def _write_missing_facade_file(
@@ -88,7 +88,7 @@ class NamespaceEnforcementRewriter:
         for status in facade_statuses:
             if status.exists:
                 continue
-            suffix = c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES[status.family]
+            suffix = c.Infra.NAMESPACE_FACADE_FAMILIES[status.family]
             class_name = f"{stem}{suffix}"
             file_name = cls._preferred_file_name(family=status.family)
             target_path = primary_package / file_name
@@ -152,11 +152,11 @@ class NamespaceEnforcementRewriter:
             return f"from {package} import {', '.join(ordered)}"
 
         def _is_facade_or_subclass_file(*, file_path: Path, tree: ast.Module) -> bool:
-            family_file_names = set(c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY)
-            family_file_names.update(c.Infra.Refactor.NAMESPACE_PROTECTED_FILES)
+            family_file_names = set(c.Infra.NAMESPACE_FILE_TO_FAMILY)
+            family_file_names.update(c.Infra.NAMESPACE_PROTECTED_FILES)
             if file_path.name in family_file_names:
                 return True
-            suffixes = tuple(c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES.values())
+            suffixes = tuple(c.Infra.NAMESPACE_FACADE_FAMILIES.values())
             for stmt in tree.body:
                 if not isinstance(stmt, ast.ClassDef):
                     continue
@@ -490,7 +490,7 @@ class NamespaceEnforcementRewriter:
     def rewrite_runtime_alias_violations(*, py_files: list[Path]) -> None:
         """Rewrite runtime alias statements to match expected patterns."""
         for file_path in py_files:
-            expected = c.Infra.Refactor.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(
+            expected = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(
                 file_path.name,
             )
             if expected is None:

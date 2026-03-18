@@ -268,7 +268,7 @@ class NamespaceFacadeScanner:
         """Scan a project for namespace facade classes and return their status."""
         results: list[nem.FacadeStatus] = []
         class_stem = cls.project_class_stem(project_name=project_name)
-        for family, suffix in c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES.items():
+        for family, suffix in c.Infra.NAMESPACE_FACADE_FAMILIES.items():
             expected_class = f"{class_stem}{suffix}"
             found_class, found_file, symbol_count = cls._find_facade_class(
                 project_root=project_root,
@@ -298,7 +298,7 @@ class NamespaceFacadeScanner:
         suffix: str,
         _parse_failures: list[nem.ParseFailureViolation] | None,
     ) -> tuple[str, str, int]:
-        file_pattern = c.Infra.Refactor.NAMESPACE_FACADE_FILE_PATTERNS[family]
+        file_pattern = c.Infra.NAMESPACE_FACADE_FILE_PATTERNS[family]
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return ("", "", 0)
@@ -405,9 +405,9 @@ class LooseObjectDetector(p.Infra.Scanner):
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.LooseObjectViolation]:
         """Scan a file for loose top-level objects outside namespace classes."""
-        if file_path.name in c.Infra.Refactor.NAMESPACE_PROTECTED_FILES:
+        if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
-        if file_path.name in c.Infra.Refactor.NAMESPACE_SETTINGS_FILE_NAMES:
+        if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
             return []
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
@@ -465,7 +465,7 @@ class LooseObjectDetector(p.Infra.Scanner):
                 return None
             if name.startswith("_"):
                 return None
-            if c.Infra.Refactor.NAMESPACE_CONSTANT_PATTERN.match(name):
+            if c.Infra.NAMESPACE_CONSTANT_PATTERN.match(name):
                 return nem.LooseObjectViolation.create(
                     file=str(file_path),
                     line=stmt.lineno,
@@ -480,11 +480,11 @@ class LooseObjectDetector(p.Infra.Scanner):
                 name = target.id
                 if name in cls.ALLOWED_TOP_LEVEL:
                     return None
-                if len(name) <= c.Infra.Refactor.NAMESPACE_MIN_ALIAS_LENGTH:
+                if len(name) <= c.Infra.NAMESPACE_MIN_ALIAS_LENGTH:
                     return None
                 if name.startswith("_"):
                     return None
-                if c.Infra.Refactor.NAMESPACE_CONSTANT_PATTERN.match(name):
+                if c.Infra.NAMESPACE_CONSTANT_PATTERN.match(name):
                     return nem.LooseObjectViolation.create(
                         file=str(file_path),
                         line=stmt.lineno,
@@ -509,7 +509,7 @@ class LooseObjectDetector(p.Infra.Scanner):
         classes: set[str] = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
-                for suffix in c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES.values():
+                for suffix in c.Infra.NAMESPACE_FACADE_FAMILIES.values():
                     if node.name.endswith(suffix):
                         classes.add(node.name)
                         break
@@ -534,11 +534,11 @@ class ImportAliasDetector(p.Infra.Scanner):
 
     @staticmethod
     def _is_facade_or_subclass_file(*, file_path: Path, tree: ast.Module) -> bool:
-        family_file_names = set(c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY)
-        family_file_names.update(c.Infra.Refactor.NAMESPACE_PROTECTED_FILES)
+        family_file_names = set(c.Infra.NAMESPACE_FILE_TO_FAMILY)
+        family_file_names.update(c.Infra.NAMESPACE_PROTECTED_FILES)
         if file_path.name in family_file_names:
             return True
-        suffixes = tuple(c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES.values())
+        suffixes = tuple(c.Infra.NAMESPACE_FACADE_FAMILIES.values())
         for stmt in tree.body:
             if not isinstance(stmt, ast.ClassDef):
                 continue
@@ -730,9 +730,9 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         """Scan a file for wrong-source alias imports."""
         if file_path.name == "__init__.py":
             return []
-        if file_path.name in c.Infra.Refactor.NAMESPACE_PROTECTED_FILES:
+        if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
-        if file_path.name in c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY:
+        if file_path.name in c.Infra.NAMESPACE_FILE_TO_FAMILY:
             return []
         parsed = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module(
             file_path,
@@ -764,9 +764,9 @@ class NamespaceSourceDetector(p.Infra.Scanner):
                     continue
                 if alias.asname is not None:
                     continue
-                if alias.name not in c.Infra.Refactor.RUNTIME_ALIAS_NAMES:
+                if alias.name not in c.Infra.RUNTIME_ALIAS_NAMES:
                     continue
-                if alias.name in c.Infra.Refactor.NAMESPACE_SOURCE_UNIVERSAL_ALIASES:
+                if alias.name in c.Infra.NAMESPACE_SOURCE_UNIVERSAL_ALIASES:
                     continue
                 correct_source = project_alias_map.get(alias.name)
                 if correct_source is None:
@@ -837,9 +837,9 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         alias_map: dict[str, str] = {}
         family_to_file_name: dict[str, str] = {
             family: file_name
-            for file_name, family in c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY.items()
+            for file_name, family in c.Infra.NAMESPACE_FILE_TO_FAMILY.items()
         }
-        for family in c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES:
+        for family in c.Infra.NAMESPACE_FACADE_FAMILIES:
             file_name = family_to_file_name.get(family)
             if file_name is None:
                 continue
@@ -979,8 +979,8 @@ class InternalImportDetector(p.Infra.Scanner):
 class ManualProtocolDetector(p.Infra.Scanner):
     """Detect Protocol classes defined outside canonical protocol files."""
 
-    CANONICAL_FILE_NAMES = c.Infra.Refactor.NAMESPACE_CANONICAL_PROTOCOL_FILES
-    CANONICAL_DIR_NAME = c.Infra.Refactor.NAMESPACE_CANONICAL_PROTOCOL_DIR
+    CANONICAL_FILE_NAMES = c.Infra.NAMESPACE_CANONICAL_PROTOCOL_FILES
+    CANONICAL_DIR_NAME = c.Infra.NAMESPACE_CANONICAL_PROTOCOL_DIR
 
     def __init__(
         self,
@@ -1040,7 +1040,7 @@ class ManualProtocolDetector(p.Infra.Scanner):
         in_canonical_dir = cls.CANONICAL_DIR_NAME in file_path.parts
         if in_canonical_file or in_canonical_dir:
             return []
-        if file_path.name in c.Infra.Refactor.NAMESPACE_PROTECTED_FILES:
+        if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
@@ -1155,9 +1155,9 @@ class ClassPlacementDetector(p.Infra.Scanner):
             return []
         if cls.CANONICAL_MODEL_DIR in file_path.parts:
             return []
-        if file_path.name in c.Infra.Refactor.NAMESPACE_PROTECTED_FILES:
+        if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
-        if file_path.name in c.Infra.Refactor.NAMESPACE_SETTINGS_FILE_NAMES:
+        if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
             return []
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
@@ -1276,10 +1276,10 @@ class MROCompletenessDetector(p.Infra.Scanner):
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.MROCompletenessViolation]:
         """Scan a facade file for missing local composition bases."""
-        family = c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
+        family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None:
             return []
-        if file_path.name in c.Infra.Refactor.NAMESPACE_PROTECTED_FILES:
+        if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
         parsed = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module(
             file_path,
@@ -1339,7 +1339,7 @@ class MROCompletenessDetector(p.Infra.Scanner):
             for target in stmt.targets:
                 if isinstance(target, ast.Name) and target.id == family:
                     return stmt.value.id
-        suffix = c.Infra.Refactor.NAMESPACE_FACADE_FAMILIES.get(family, "")
+        suffix = c.Infra.NAMESPACE_FACADE_FAMILIES.get(family, "")
         if len(suffix) == 0:
             return None
         for stmt in tree.body:
@@ -1454,7 +1454,7 @@ class CyclicImportDetector:
         """Scan a project for cyclic import dependencies."""
         scan_dirs = [
             project_root / directory_name
-            for directory_name in c.Infra.Refactor.MRO_SCAN_DIRECTORIES
+            for directory_name in c.Infra.MRO_SCAN_DIRECTORIES
             if (project_root / directory_name).is_dir()
         ]
         if len(scan_dirs) == 0:
@@ -1619,9 +1619,9 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.RuntimeAliasViolation]:
         """Scan a file for missing or duplicate runtime alias assignments."""
-        if file_path.name not in c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY:
+        if file_path.name not in c.Infra.NAMESPACE_FILE_TO_FAMILY:
             return []
-        if file_path.name in c.Infra.Refactor.NAMESPACE_PROTECTED_FILES:
+        if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
@@ -1665,7 +1665,7 @@ class RuntimeAliasDetector(p.Infra.Scanner):
 
     @staticmethod
     def _family_for_file(*, file_name: str) -> str:
-        return c.Infra.Refactor.NAMESPACE_FILE_TO_FAMILY.get(file_name, "")
+        return c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_name, "")
 
 
 class FutureAnnotationsDetector(p.Infra.Scanner):
@@ -1807,9 +1807,9 @@ class ManualTypingAliasDetector(p.Infra.Scanner):
         """Scan a file for type aliases outside canonical locations."""
         if file_path.suffix != ".py":
             return []
-        if file_path.name in c.Infra.Refactor.NAMESPACE_CANONICAL_TYPINGS_FILES:
+        if file_path.name in c.Infra.NAMESPACE_CANONICAL_TYPINGS_FILES:
             return []
-        if c.Infra.Refactor.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts:
+        if c.Infra.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts:
             return []
         parsed = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module(
             file_path,

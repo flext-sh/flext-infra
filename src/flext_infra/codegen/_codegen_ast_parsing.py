@@ -122,7 +122,7 @@ class FlextInfraCodegenAstParsing(FlextInfraCodegenSnapshot):
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 raw_module = node.module or ""
-                if raw_module in c.Infra.Codegen.SKIP_MODULES:
+                if raw_module in c.Infra.SKIP_MODULES:
                     continue
                 module_path = FlextInfraCodegenAstParsing.resolve_module(
                     raw_module,
@@ -139,7 +139,7 @@ class FlextInfraCodegenAstParsing(FlextInfraCodegenSnapshot):
                 for alias in node.names:
                     name = alias.name
                     asname = alias.asname or name
-                    if name in c.Infra.Codegen.SKIP_STDLIB:
+                    if name in c.Infra.SKIP_STDLIB:
                         continue
                     lazy_map[asname] = (name, "")
         for node in tree.body:
@@ -150,7 +150,7 @@ class FlextInfraCodegenAstParsing(FlextInfraCodegenSnapshot):
                     for target in node.targets:
                         if isinstance(target, ast.Name):
                             lazy_map[target.id] = (mod, attr)
-        for a_name, suffix in c.Infra.Codegen.ALIAS_TO_SUFFIX.items():
+        for a_name, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
             if a_name not in lazy_map:
                 continue
             alias_mod, alias_attr = lazy_map[a_name]

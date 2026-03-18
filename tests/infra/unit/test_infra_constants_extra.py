@@ -15,29 +15,29 @@ class TestFlextInfraConstantsCheckNamespace:
     """Tests for Check namespace constants."""
 
     def test_default_check_dirs_is_list(self) -> None:
-        tm.that(infra_c.Infra.Check.DEFAULT_CHECK_DIRS, is_=list)
+        tm.that(infra_c.Infra.DEFAULT_CHECK_DIRS, is_=list)
 
     def test_default_check_dirs_contains_standard_dirs(self) -> None:
-        dirs = infra_c.Infra.Check.DEFAULT_CHECK_DIRS
+        dirs = infra_c.Infra.DEFAULT_CHECK_DIRS
         tm.that(dirs, contains="src")
         tm.that(dirs, contains="tests")
         tm.that(dirs, contains="examples")
         tm.that(dirs, contains="scripts")
 
     def test_check_dirs_subproject_is_list(self) -> None:
-        tm.that(infra_c.Infra.Check.CHECK_DIRS_SUBPROJECT, is_=list)
+        tm.that(infra_c.Infra.CHECK_DIRS_SUBPROJECT, is_=list)
 
     def test_check_dirs_subproject_excludes_scripts(self) -> None:
-        dirs = infra_c.Infra.Check.CHECK_DIRS_SUBPROJECT
+        dirs = infra_c.Infra.CHECK_DIRS_SUBPROJECT
         tm.that(dirs, contains="src")
         tm.that(dirs, contains="tests")
         tm.that(dirs, contains="examples")
         assert "scripts" not in dirs
 
     def test_check_dirs_are_strings(self) -> None:
-        for d in infra_c.Infra.Check.DEFAULT_CHECK_DIRS:
+        for d in infra_c.Infra.DEFAULT_CHECK_DIRS:
             tm.that(d, is_=str)
-        for d in infra_c.Infra.Check.CHECK_DIRS_SUBPROJECT:
+        for d in infra_c.Infra.CHECK_DIRS_SUBPROJECT:
             tm.that(d, is_=str)
 
 
@@ -46,16 +46,16 @@ class TestFlextInfraConstantsGithubNamespace:
 
     def test_github_repo_url_constant(self) -> None:
         tm.that(
-            infra_c.Infra.Github.GITHUB_REPO_URL,
+            infra_c.Infra.GITHUB_REPO_URL,
             eq="https://github.com/flext-sh/flext",
         )
 
     def test_github_repo_name_constant(self) -> None:
-        tm.that(infra_c.Infra.Github.GITHUB_REPO_NAME, eq="flext-sh/flext")
+        tm.that(infra_c.Infra.GITHUB_REPO_NAME, eq="flext-sh/flext")
 
     def test_github_constants_are_strings(self) -> None:
-        tm.that(infra_c.Infra.Github.GITHUB_REPO_URL, is_=str)
-        tm.that(infra_c.Infra.Github.GITHUB_REPO_NAME, is_=str)
+        tm.that(infra_c.Infra.GITHUB_REPO_URL, is_=str)
+        tm.that(infra_c.Infra.GITHUB_REPO_NAME, is_=str)
 
 
 class TestFlextInfraConstantsEncodingNamespace:
@@ -99,7 +99,7 @@ class TestFlextInfraConstantsImmutability:
         tm.that(hasattr(excluded, "add"), eq=False)
 
     def test_check_dirs_are_immutable(self) -> None:
-        dirs = infra_c.Infra.Check.DEFAULT_CHECK_DIRS
+        dirs = infra_c.Infra.DEFAULT_CHECK_DIRS
         tm.that(hasattr(dirs, "append"), eq=False)
 
 

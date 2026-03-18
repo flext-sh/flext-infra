@@ -132,11 +132,11 @@ class FlextInfraCheckReporter:
                 ])
                 lines.extend(
                     issue.formatted
-                    for issue in gate_result.issues[: c.Infra.Check.MAX_DISPLAY_ISSUES]
+                    for issue in gate_result.issues[: c.Infra.MAX_DISPLAY_ISSUES]
                 )
-                if len(gate_result.issues) > c.Infra.Check.MAX_DISPLAY_ISSUES:
+                if len(gate_result.issues) > c.Infra.MAX_DISPLAY_ISSUES:
                     lines.append(
-                        f"... and {len(gate_result.issues) - c.Infra.Check.MAX_DISPLAY_ISSUES} more errors",
+                        f"... and {len(gate_result.issues) - c.Infra.MAX_DISPLAY_ISSUES} more errors",
                     )
                 lines.extend(["```", ""])
         return "\n".join(lines)

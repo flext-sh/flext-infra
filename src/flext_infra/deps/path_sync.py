@@ -86,7 +86,7 @@ class FlextInfraDependencyPathSync:
     def extract_dep_name(raw_path: str) -> str:
         """Extract dependency name from path string."""
         normalized = raw_path.strip().lstrip("/").removeprefix("./")
-        for prefix in (f"{c.Infra.Deps.FLEXT_DEPS_DIR}/", "../"):
+        for prefix in (f"{c.Infra.FLEXT_DEPS_DIR}/", "../"):
             normalized = normalized.removeprefix(prefix)
         return normalized
 
@@ -95,7 +95,7 @@ class FlextInfraDependencyPathSync:
         """Compute target path for dependency based on mode and location."""
         if mode == c.Infra.ReportKeys.WORKSPACE:
             return dep_name if is_root else f"../{dep_name}"
-        return f"{c.Infra.Deps.FLEXT_DEPS_DIR}/{dep_name}"
+        return f"{c.Infra.FLEXT_DEPS_DIR}/{dep_name}"
 
     @staticmethod
     def _mapping_str_value(
@@ -113,10 +113,10 @@ class FlextInfraDependencyPathSync:
     def _extract_requirement_name(entry: str) -> str | None:
         """Extract requirement name from PEP 621 dependency entry."""
         if " @ " in entry:
-            match = c.Infra.Deps.PEP621_PATH_DEP_RE.match(entry)
+            match = c.Infra.PEP621_PATH_DEP_RE.match(entry)
             if match:
                 return match.group("name")
-        match = c.Infra.Deps.PEP621_NAME_RE.match(entry)
+        match = c.Infra.PEP621_NAME_RE.match(entry)
         if not match:
             return None
         return match.group("name")
@@ -162,7 +162,7 @@ class FlextInfraDependencyPathSync:
                 updated_deps.append(item)
                 continue
             if " @ " in requirement_part:
-                match = c.Infra.Deps.PEP621_PATH_DEP_RE.match(requirement_part)
+                match = c.Infra.PEP621_PATH_DEP_RE.match(requirement_part)
                 if not match:
                     updated_deps.append(item)
                     continue

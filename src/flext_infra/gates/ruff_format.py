@@ -50,7 +50,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                 path = line.strip()
                 if not path:
                     continue
-                match = c.Infra.Check.RUFF_FORMAT_FILE_RE.match(path)
+                match = c.Infra.RUFF_FORMAT_FILE_RE.match(path)
                 if match:
                     file_path = match.group(1).strip()
                     if file_path in seen:

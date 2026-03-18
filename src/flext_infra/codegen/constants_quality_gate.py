@@ -11,8 +11,8 @@ from flext_infra import FlextInfraCodegenCensus, c, t, u
 class FlextInfraCodegenConstantsQualityGate:
     """Run final constants migration checks with before/after comparison."""
 
-    _REPORT_DIR: Path = Path(c.Infra.Codegen.QualityGate.REPORT_DIR)
-    _PASS_VERDICTS: tuple[str, ...] = c.Infra.Codegen.QualityGate.PASS_VERDICTS
+    _REPORT_DIR: Path = Path(c.Infra.QualityGate.REPORT_DIR)
+    _PASS_VERDICTS: tuple[str, ...] = c.Infra.QualityGate.PASS_VERDICTS
 
     def __init__(
         self,

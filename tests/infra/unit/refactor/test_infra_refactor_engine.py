@@ -4,24 +4,30 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-try:
-    from flext_infra.refactor import (
-        FlextInfraRefactorClassReconstructorRule,
-        FlextInfraRefactorEngine,
-        FlextInfraRefactorEnsureFutureAnnotationsRule,
-        FlextInfraRefactorImportModernizerRule,
-        FlextInfraRefactorLegacyRemovalRule,
-        FlextInfraRefactorMROClassMigrationRule,
-        FlextInfraRefactorMRORedundancyChecker,
-        FlextInfraRefactorPatternCorrectionsRule,
-        FlextInfraRefactorSignaturePropagationRule,
-        FlextInfraRefactorSymbolPropagationRule,
-    )
-except ImportError as exc:
-    pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 from flext_tests import tm
+
+from flext_infra.refactor.engine import FlextInfraRefactorEngine
+from flext_infra.rules.class_reconstructor import (
+    FlextInfraRefactorClassReconstructorRule,
+)
+from flext_infra.rules.ensure_future_annotations import (
+    FlextInfraRefactorEnsureFutureAnnotationsRule,
+)
+from flext_infra.rules.import_modernizer import FlextInfraRefactorImportModernizerRule
+from flext_infra.rules.legacy_removal import FlextInfraRefactorLegacyRemovalRule
+from flext_infra.rules.mro_class_migration import (
+    FlextInfraRefactorMROClassMigrationRule,
+)
+from flext_infra.rules.mro_redundancy_checker import (
+    FlextInfraRefactorMRORedundancyChecker,
+)
+from flext_infra.rules.pattern_corrections import (
+    FlextInfraRefactorPatternCorrectionsRule,
+)
+from flext_infra.rules.symbol_propagation import (
+    FlextInfraRefactorSignaturePropagationRule,
+    FlextInfraRefactorSymbolPropagationRule,
+)
 
 
 def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:

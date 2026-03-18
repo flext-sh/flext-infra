@@ -45,7 +45,7 @@ class FlextInfraStubSupplyChain:
         _ = self
         root_mod = module_name.split(".", 1)[0]
         project_root = project_name.replace("-", "_")
-        if root_mod.startswith(c.Infra.Core.INTERNAL_PREFIXES):
+        if root_mod.startswith(c.Infra.INTERNAL_PREFIXES):
             return True
         return root_mod == project_root
 
@@ -172,7 +172,7 @@ class FlextInfraStubSupplyChain:
             output = cmd_output.stdout
         return sorted({
             m.group(1).strip()
-            for m in c.Infra.Core.MYPY_HINT_RE.finditer(output)
+            for m in c.Infra.MYPY_HINT_RE.finditer(output)
             if m.group(1).strip()
         })
 
@@ -196,7 +196,7 @@ class FlextInfraStubSupplyChain:
             output = cmd_output.stdout
         seen: set[str] = set()
         ordered: list[str] = []
-        for match in c.Infra.Core.MISSING_IMPORT_RE.finditer(output):
+        for match in c.Infra.MISSING_IMPORT_RE.finditer(output):
             name = match.group(1).strip()
             if name and name not in seen:
                 seen.add(name)

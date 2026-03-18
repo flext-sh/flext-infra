@@ -107,7 +107,7 @@ class CensusUsageCollector(cst.CSTVisitor):
             and method_name in self.flat_aliases
         ):
             cls, orig = self.flat_aliases[method_name]
-            self._record(cls, orig, c.Infra.Refactor.Census.MODE_ALIAS_FLAT)
+            self._record(cls, orig, c.Infra.Census.MODE_ALIAS_FLAT)
 
         if (
             isinstance(value, cst.Attribute)
@@ -122,13 +122,13 @@ class CensusUsageCollector(cst.CSTVisitor):
                 self._record(
                     base_class,
                     method_name,
-                    c.Infra.Refactor.Census.MODE_ALIAS_NS,
+                    c.Infra.Census.MODE_ALIAS_NS,
                 )
 
         if isinstance(value, cst.Name):
             actual = self.direct_imports.get(value.value, value.value)
             if actual in self.method_index and method_name in self.method_index[actual]:
-                self._record(actual, method_name, c.Infra.Refactor.Census.MODE_DIRECT)
+                self._record(actual, method_name, c.Infra.Census.MODE_DIRECT)
 
     def _record(self, class_name: str, method_name: str, mode: str) -> None:
         self.records.append(
