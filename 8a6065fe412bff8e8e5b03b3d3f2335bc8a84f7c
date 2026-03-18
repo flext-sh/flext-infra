@@ -1,0 +1,25 @@
+src/flext_infra/workspace/__main__.py
+  36fcd5c3d527b600 30,37,53,75
+src/flext_infra/validate/__main__.py
+  36fcd5c3d527b600 151,165,184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "8a6065fe412bff8e8e5b03b3d3f2335bc8a84f7c",
+  "prompts": {
+    "36fcd5c3d527b600": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2fed7bcf5ffeXgjueMgGpY3lTg",
+        "model": "anthropic/claude-haiku-4-5"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 0,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  }
+}
