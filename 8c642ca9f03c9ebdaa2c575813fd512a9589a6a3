@@ -1,0 +1,42 @@
+src/flext_infra/basemk/engine.py
+  9027e42e029f3d23 47
+tests/infra/unit/check/_shared_fixtures.py
+  41de24182e2f0106 73-74,119
+tests/infra/unit/check/extended_runners_extra.py
+  41de24182e2f0106 22,37
+src/flext_infra/basemk/generator.py
+  9027e42e029f3d23 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "8c642ca9f03c9ebdaa2c575813fd512a9589a6a3",
+  "prompts": {
+    "41de24182e2f0106": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fe7f911-8a72-4792-b2cb-f3c62ff8bbce",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 25,
+      "total_deletions": 63,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    },
+    "9027e42e029f3d23": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2fe9479fdffeeo4oN8TM96s1da",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
