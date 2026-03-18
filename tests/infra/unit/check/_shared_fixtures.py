@@ -18,13 +18,20 @@ from flext_core import r, t
 
 from flext_infra import m as infra_models
 from flext_infra.check.services import FlextInfraWorkspaceChecker, GateExecution
+from flext_infra.gates.bandit import FlextInfraBanditGate
+from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
 from ...helpers import h
 from ...models import m
 
-type RuffGateClass = type[FlextInfraRuffLintGate | FlextInfraRuffFormatGate]
+type GateClass = type[
+    FlextInfraRuffLintGate
+    | FlextInfraRuffFormatGate
+    | FlextInfraBanditGate
+    | FlextInfraMarkdownGate
+]
 
 
 def create_gate_execution(
@@ -55,6 +62,7 @@ def create_checker_project(
     tmp_path: Path,
     *,
     project_name: str = "p1",
+    with_src: bool = False,
 ) -> tuple[FlextInfraWorkspaceChecker, Path]:
     """Factory for checker + project directory pair.
 
@@ -63,12 +71,14 @@ def create_checker_project(
     """
     checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
     project_dir = h.mk_project(tmp_path, project_name)
+    if with_src:
+        (project_dir / "src").mkdir(parents=True, exist_ok=True)
     return checker, project_dir
 
 
 def patch_gate_run(
     monkeypatch: pytest.MonkeyPatch,
-    gate_class: RuffGateClass,
+    gate_class: GateClass,
     *,
     stdout: str = "",
     stderr: str = "",
