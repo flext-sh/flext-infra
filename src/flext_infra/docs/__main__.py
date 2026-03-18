@@ -50,7 +50,9 @@ class FlextInfraDocsCommand:
         parser, subs = parser_subs
 
         _ = subs["audit"].add_argument(
-            "--strict", action="store_true", help="Strict mode"
+            "--strict",
+            action="store_true",
+            help="Strict mode",
         )
         _ = subs["audit"].add_argument(
             "--output-dir",

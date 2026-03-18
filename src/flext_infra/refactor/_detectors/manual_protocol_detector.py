@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c, m, p, u
+from flext_infra.refactor._detectors.module_loader import (
+    DetectorScanResultBuilder,
+)
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -32,21 +35,15 @@ class ManualProtocolDetector(p.Infra.Scanner):
             file_path=file_path,
             _parse_failures=self._parse_failures,
         )
-        return m.Infra.ScanResult(
+        return DetectorScanResultBuilder.build(
             file_path=file_path,
-            violations=[
-                m.Infra.ScanViolation(
-                    line=violation.line,
-                    message=(
-                        f"Protocol class '{violation.name}' must be centralized "
-                        f"({violation.suggestion})"
-                    ),
-                    severity="error",
-                    rule_id="namespace.manual_protocol",
-                )
-                for violation in violations
-            ],
             detector_name=self.__class__.__name__,
+            rule_id="namespace.manual_protocol",
+            violations=violations,
+            message_builder=lambda violation: (
+                f"Protocol class '{violation.name}' must be centralized "
+                f"({violation.suggestion})"
+            ),
         )
 
     @classmethod

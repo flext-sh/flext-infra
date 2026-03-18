@@ -42,13 +42,16 @@ class FlextInfraRefactorAstGrepModels:
         symbol: Annotated[str, Field(min_length=1, description="Symbol name")]
         line: Annotated[int, Field(ge=1, description="Source line number")]
         kind: Annotated[
-            str, Field(default="constant", description="constant|typevar|typealias")
+            str,
+            Field(default="constant", description="constant|typevar|typealias"),
         ] = "constant"
         class_name: Annotated[
-            str, Field(default="", description="Target class name")
+            str,
+            Field(default="", description="Target class name"),
         ] = ""
         facade_name: Annotated[
-            str, Field(default="", description="Facade alias/import name")
+            str,
+            Field(default="", description="Facade alias/import name"),
         ] = ""
 
     class MROImportRewrite(FlextModels.ArbitraryTypesModel):
@@ -58,16 +61,20 @@ class FlextInfraRefactorAstGrepModels:
 
         module: Annotated[str, Field(min_length=1, description="Import module path")]
         import_name: Annotated[
-            str, Field(min_length=1, description="Imported symbol name")
+            str,
+            Field(min_length=1, description="Imported symbol name"),
         ]
         as_name: Annotated[
-            str | None, Field(default=None, description="Optional alias")
+            str | None,
+            Field(default=None, description="Optional alias"),
         ] = None
         symbol: Annotated[
-            str, Field(default="", description="Resolved symbol in facade")
+            str,
+            Field(default="", description="Resolved symbol in facade"),
         ] = ""
         facade_name: Annotated[
-            str, Field(default="", description="Facade alias/import name")
+            str,
+            Field(default="", description="Facade alias/import name"),
         ] = ""
 
     class MROScanReport(FlextModels.ArbitraryTypesModel):
@@ -85,7 +92,8 @@ class FlextInfraRefactorAstGrepModels:
             ),
         ] = ""
         facade_alias: Annotated[
-            str, Field(default="c", description="Facade alias letter")
+            str,
+            Field(default="c", description="Facade alias letter"),
         ] = "c"
         candidates: Annotated[
             tuple[FlextInfraRefactorAstGrepModels.MROSymbolCandidate, ...],
@@ -120,19 +128,22 @@ class FlextInfraRefactorAstGrepModels:
 
         file: Annotated[str, Field(min_length=1, description="Absolute file path")]
         replacements: Annotated[
-            int, Field(ge=0, description="Reference replacements applied")
+            int,
+            Field(ge=0, description="Reference replacements applied"),
         ]
 
     class MROMigrationReport(FlextModels.ArbitraryTypesModel):
         """End-to-end report for migrate-to-mro command execution."""
 
         workspace: Annotated[
-            str, Field(min_length=1, description="Workspace root path")
+            str,
+            Field(min_length=1, description="Workspace root path"),
         ]
         target: Annotated[str, Field(min_length=1, description="constants|typings|all")]
         dry_run: Annotated[bool, Field(description="Dry-run indicator")]
         files_scanned: Annotated[
-            int, Field(ge=0, description="Total scanned Python files")
+            int,
+            Field(ge=0, description="Total scanned Python files"),
         ]
         files_with_candidates: Annotated[
             int,
@@ -164,13 +175,16 @@ class FlextInfraRefactorAstGrepModels:
         ]
         mro_failures: Annotated[int, Field(ge=0, description="MRO validation failures")]
         stash_ref: Annotated[
-            str, Field(default="", description="Git stash rollback ref")
+            str,
+            Field(default="", description="Git stash rollback ref"),
         ]
         warnings: Annotated[
-            tuple[str, ...], Field(default_factory=tuple, description="Warnings")
+            tuple[str, ...],
+            Field(default_factory=tuple, description="Warnings"),
         ]
         errors: Annotated[
-            tuple[str, ...], Field(default_factory=tuple, description="Errors")
+            tuple[str, ...],
+            Field(default_factory=tuple, description="Errors"),
         ]
 
     class EngineConfig(FlextModels.FrozenStrictModel):
@@ -216,7 +230,8 @@ class FlextInfraRefactorAstGrepModels:
             ]
 
         category: Annotated[
-            str | None, Field(default=None, description="Method category")
+            str | None,
+            Field(default=None, description="Method category"),
         ]
         visibility: Annotated[
             str | None,
@@ -258,7 +273,8 @@ class FlextInfraRefactorAstGrepModels:
         """Declarative signature migration rule for callsite propagation."""
 
         id: Annotated[
-            str, Field(default="signature-migration", description="Migration ID")
+            str,
+            Field(default="signature-migration", description="Migration ID"),
         ]
         enabled: Annotated[
             bool,
@@ -307,7 +323,8 @@ class FlextInfraRefactorAstGrepModels:
         """Configuration for a single import modernizer rule."""
 
         module: Annotated[
-            str, Field(default="", description="Module path to modernize")
+            str,
+            Field(default="", description="Module path to modernize"),
         ]
         symbol_mapping: Annotated[
             dict[str, str],

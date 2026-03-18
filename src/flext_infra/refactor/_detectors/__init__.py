@@ -44,6 +44,7 @@ if TYPE_CHECKING:
         ManualTypingAliasDetector,
     )
     from flext_infra.refactor._detectors.module_loader import (
+        DetectorScanResultBuilder,
         FlextInfraRefactorDetectorModuleLoader,
     )
     from flext_infra.refactor._detectors.mro_completeness_detector import (
@@ -78,6 +79,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "DependencyAnalyzer": (
         "flext_infra.refactor._detectors.dependency_analyzer_base",
         "DependencyAnalyzer",
+    ),
+    "DetectorScanResultBuilder": (
+        "flext_infra.refactor._detectors.module_loader",
+        "DetectorScanResultBuilder",
     ),
     "FlextInfraRefactorDetectorModuleLoader": (
         "flext_infra.refactor._detectors.module_loader",
@@ -138,6 +143,7 @@ __all__ = [
     "CompatibilityAliasDetector",
     "CyclicImportDetector",
     "DependencyAnalyzer",
+    "DetectorScanResultBuilder",
     "FlextInfraRefactorDetectorModuleLoader",
     "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     "FutureAnnotationsDetector",

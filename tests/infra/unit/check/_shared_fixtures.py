@@ -70,7 +70,8 @@ def patch_gate_run(
     monkeypatch: pytest.MonkeyPatch,
     gate_class: RuffGateClass,
     *,
-    stdout: str,
+    stdout: str = "",
+    stderr: str = "",
     returncode: int,
 ) -> None:
     """Patch gate._run() with controlled output.
@@ -115,7 +116,7 @@ def patch_gate_run(
     monkeypatch.setattr(
         gate_class,
         "_run",
-        _stub_run(h.stub_run(stdout=stdout, returncode=returncode)),
+        _stub_run(h.stub_run(stdout=stdout, stderr=stderr, returncode=returncode)),
     )
 
 

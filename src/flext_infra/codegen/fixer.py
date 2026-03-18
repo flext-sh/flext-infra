@@ -312,7 +312,7 @@ class FlextInfraCodegenFixer(s):
             if c.Infra.Paths.DEFAULT_SRC_DIR in file_path.parts
         ]
         before_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_files(
-            file_paths=src_files
+            file_paths=src_files,
         )
         NamespaceEnforcementRewriter.rewrite_import_alias_violations(py_files=src_files)
         NamespaceEnforcementRewriter.rewrite_runtime_alias_violations(
@@ -416,11 +416,11 @@ class FlextInfraCodegenFixer(s):
         files_modified: set[str],
     ) -> None:
         before_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_init_files(
-            project_path=project_path
+            project_path=project_path,
         )
         _ = FlextInfraCodegenLazyInit(workspace_root=project_path).run(check_only=False)
         after_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_init_files(
-            project_path=project_path
+            project_path=project_path,
         )
         for path_str, updated in after_snapshot.items():
             previous = before_snapshot.get(path_str)
@@ -502,7 +502,8 @@ class FlextInfraCodegenFixer(s):
             if isinstance(node.target, ast.Name):
                 target_name = node.target.id
             if FlextInfraCodegenTransforms.name_exists_in_module(
-                target_name, target_tree
+                target_name,
+                target_tree,
             ):
                 violations_skipped.append(
                     m.Infra.CensusViolation(
@@ -620,7 +621,8 @@ class FlextInfraCodegenFixer(s):
             if not target_name:
                 continue
             if FlextInfraCodegenTransforms.name_exists_in_module(
-                target_name, target_tree
+                target_name,
+                target_tree,
             ):
                 violations_skipped.append(
                     m.Infra.CensusViolation(

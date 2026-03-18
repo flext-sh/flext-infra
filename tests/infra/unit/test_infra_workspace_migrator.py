@@ -98,7 +98,7 @@ def test_migrator_apply_updates_project_files(tmp_path: Path) -> None:
     result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
     migrations = tm.ok(result)
     tm.that(migrations[0].errors, eq=[])
-    tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
+    tm.that((project_root / "base.mk").exists(), eq=False)
     makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
     tm.that("scripts/check/workspace_check.py" not in makefile_text, eq=True)
     tm.that("python -m flext_infra check run" in makefile_text, eq=True)
@@ -113,7 +113,7 @@ def test_migrator_handles_missing_pyproject_gracefully(tmp_path: Path) -> None:
     migrator = _build_migrator(_project(project_root), "NEW_BASE\n")
     result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
     tm.ok(result)
-    tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
+    tm.that((project_root / "base.mk").exists(), eq=False)
 
 
 def test_migrator_preserves_custom_makefile_content(tmp_path: Path) -> None:
@@ -165,14 +165,13 @@ def test_migrator_no_changes_needed(tmp_path: Path) -> None:
     project_root = tmp_path / "project-a"
     project_root.mkdir(parents=True)
     (project_root / ".git").mkdir()
-    (project_root / "base.mk").write_text("base.mk", encoding="utf-8")
     (project_root / "Makefile").write_text("migrated", encoding="utf-8")
     (project_root / "pyproject.toml").write_text(
         '[project]\ndependencies = ["flext-core @ ../flext-core"]\n',
         encoding="utf-8",
     )
     (project_root / ".gitignore").write_text(
-        ".reports/\n.venv/\n__pycache__/\n",
+        ".reports/\n.venv/\n__pycache__/\nbase.mk\n",
         encoding="utf-8",
     )
     migrator = _build_migrator(_project(project_root), "base.mk")

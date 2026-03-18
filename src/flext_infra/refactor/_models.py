@@ -34,10 +34,12 @@ class FlextInfraRefactorModels(
         file_path: Annotated[Path, Field(description="Target file path")]
         success: Annotated[bool, Field(description="Whether the operation succeeded")]
         modified: Annotated[
-            bool, Field(description="Whether the file was actually modified")
+            bool,
+            Field(description="Whether the file was actually modified"),
         ]
         error: Annotated[
-            str | None, Field(default=None, description="Error message on failure")
+            str | None,
+            Field(default=None, description="Error message on failure"),
         ] = None
         changes: Annotated[
             list[str],
@@ -106,13 +108,16 @@ class FlextInfraRefactorModels(
         """Serialisable checkpoint state for refactor safety recovery."""
 
         workspace_root: Annotated[
-            str, Field(min_length=1, description="Workspace root path")
+            str,
+            Field(min_length=1, description="Workspace root path"),
         ]
         status: Annotated[
-            str, Field(default="running", description="Checkpoint status")
+            str,
+            Field(default="running", description="Checkpoint status"),
         ] = "running"
         stash_ref: Annotated[
-            str, Field(default="", description="Git stash reference")
+            str,
+            Field(default="", description="Git stash reference"),
         ] = ""
         processed_targets: Annotated[
             list[str],
@@ -137,7 +142,8 @@ class FlextInfraRefactorModels(
         name: Annotated[str, Field(min_length=1, description="Class name")]
         line: Annotated[int, Field(ge=0, description="Line number (0 = unknown)")]
         is_top_level: Annotated[
-            bool, Field(description="Whether class is at module top level")
+            bool,
+            Field(description="Whether class is at module top level"),
         ]
 
     class LooseClassViolation(FlextModels.ArbitraryTypesModel):
@@ -148,7 +154,8 @@ class FlextInfraRefactorModels(
         file: Annotated[str, Field(min_length=1, description="Source file path")]
         line: Annotated[int, Field(ge=1, description="Line number")]
         class_name: Annotated[
-            str, Field(min_length=1, description="Violating class name")
+            str,
+            Field(min_length=1, description="Violating class name"),
         ]
         expected_prefix: Annotated[str, Field(description="Expected namespace prefix")]
         rule: Annotated[str, Field(min_length=1, description="Violated rule id")]
@@ -169,7 +176,8 @@ class FlextInfraRefactorModels(
             ),
         ]
         resolved_mro: Annotated[
-            tuple[str, ...], Field(description="Resolved MRO class names")
+            tuple[str, ...],
+            Field(description="Resolved MRO class names"),
         ]
         accessible_namespaces: Annotated[
             tuple[str, ...],
@@ -203,10 +211,12 @@ class FlextInfraRefactorModels(
         model_config = ConfigDict(extra="ignore", frozen=True)
 
         loose_name: Annotated[
-            str, Field(default="", description="Original loose class name")
+            str,
+            Field(default="", description="Original loose class name"),
         ] = ""
         current_file: Annotated[
-            str, Field(default="", description="File containing class")
+            str,
+            Field(default="", description="File containing class"),
         ] = ""
         target_namespace: Annotated[
             str,
@@ -216,11 +226,13 @@ class FlextInfraRefactorModels(
             ),
         ]
         target_name: Annotated[
-            str, Field(default="", description="Target class name")
+            str,
+            Field(default="", description="Target class name"),
         ] = ""
         confidence: Annotated[str, Field(min_length=1, description="Confidence level")]
         reason: Annotated[
-            str, Field(default="", description="Optional mapping rationale")
+            str,
+            Field(default="", description="Optional mapping rationale"),
         ] = ""
         rewrite_scope: Annotated[
             str | None,
@@ -246,7 +258,8 @@ class FlextInfraRefactorModels(
             ),
         ] = ""
         confidence: Annotated[
-            str, Field(default="low", description="Confidence level")
+            str,
+            Field(default="low", description="Confidence level"),
         ] = "low"
         rewrite_scope: Annotated[
             str,
@@ -262,7 +275,8 @@ class FlextInfraRefactorModels(
         model_config = ConfigDict(extra="ignore", frozen=True)
 
         family_name: Annotated[
-            str, Field(min_length=1, description="Module family name")
+            str,
+            Field(min_length=1, description="Module family name"),
         ]
         allowed_operations: Annotated[
             list[str],
@@ -578,7 +592,8 @@ class FlextInfraRefactorModels(
         """Specification for an MRO target family."""
 
         family_alias: Annotated[
-            str, Field(min_length=1, description="Family alias letter")
+            str,
+            Field(min_length=1, description="Family alias letter"),
         ]
         file_names: Annotated[frozenset[str], Field(description="File name patterns")]
         package_directory: Annotated[
@@ -600,7 +615,8 @@ class FlextInfraRefactorModels(
         end: Annotated[int, Field(ge=0, description="End line number")]
         source: Annotated[str, Field(description="Source code text")]
         kind: Annotated[
-            str, Field(min_length=1, description="Model kind classification")
+            str,
+            Field(min_length=1, description="Model kind classification"),
         ]
 
     class AliasMove(FlextModels.FrozenStrictModel):
@@ -631,7 +647,8 @@ class FlextInfraRefactorModels(
             ),
         ] = 0
         parse_io_errors: Annotated[
-            int, Field(default=0, ge=0, description="I/O error count")
+            int,
+            Field(default=0, ge=0, description="I/O error count"),
         ] = 0
 
     # -- Namespace Enforcer Models ---------------------------------------------
@@ -655,10 +672,12 @@ class FlextInfraRefactorModels(
         model_config = ConfigDict(frozen=True)
 
         family: Annotated[
-            str, Field(min_length=1, description="Family alias letter (c/t/p/m/u)")
+            str,
+            Field(min_length=1, description="Family alias letter (c/t/p/m/u)"),
         ]
         class_suffix: Annotated[
-            str, Field(description="Class name suffix (e.g. 'Utilities')")
+            str,
+            Field(description="Class name suffix (e.g. 'Utilities')"),
         ]
         package_dir: Annotated[
             str,
@@ -696,7 +715,8 @@ class FlextInfraRefactorModels(
 
         name: Annotated[str, Field(min_length=1, description="Method name")]
         method_type: Annotated[
-            str, Field(description="Method kind: static, class, instance")
+            str,
+            Field(description="Method kind: static, class, instance"),
         ]
         source_file: Annotated[str, Field(description="Source filename")]
 
@@ -706,11 +726,13 @@ class FlextInfraRefactorModels(
         model_config = ConfigDict(frozen=True)
 
         class_name: Annotated[
-            str, Field(min_length=1, description="Utilities class name")
+            str,
+            Field(min_length=1, description="Utilities class name"),
         ]
         method_name: Annotated[str, Field(min_length=1, description="Method name")]
         access_mode: Annotated[
-            str, Field(description="Access mode: alias_flat, alias_namespaced, direct")
+            str,
+            Field(description="Access mode: alias_flat, alias_namespaced, direct"),
         ]
         file_path: Annotated[str, Field(description="Source file path")]
         project: Annotated[str, Field(description="Project name")]
@@ -724,7 +746,8 @@ class FlextInfraRefactorModels(
         method_type: Annotated[str, Field(description="Method kind")]
         alias_flat: Annotated[int, Field(ge=0, description="u.method count")]
         alias_namespaced: Annotated[
-            int, Field(ge=0, description="u.Class.method count")
+            int,
+            Field(ge=0, description="u.Class.method count"),
         ]
         direct: Annotated[int, Field(ge=0, description="Direct class.method count")]
         total: Annotated[int, Field(ge=0, description="Total usages")]
@@ -735,7 +758,8 @@ class FlextInfraRefactorModels(
         model_config = ConfigDict(frozen=True)
 
         class_name: Annotated[
-            str, Field(min_length=1, description="Utilities class name")
+            str,
+            Field(min_length=1, description="Utilities class name"),
         ]
         source_file: Annotated[str, Field(description="Source filename")]
         methods: Annotated[
@@ -754,7 +778,8 @@ class FlextInfraRefactorModels(
         model_config = ConfigDict(frozen=True)
 
         class_name: Annotated[
-            str, Field(min_length=1, description="Utilities class name")
+            str,
+            Field(min_length=1, description="Utilities class name"),
         ]
         method_name: Annotated[str, Field(min_length=1, description="Method name")]
         access_mode: Annotated[str, Field(description="Access mode")]
@@ -766,7 +791,8 @@ class FlextInfraRefactorModels(
         model_config = ConfigDict(frozen=True)
 
         project_name: Annotated[
-            str, Field(min_length=1, description="Project directory name")
+            str,
+            Field(min_length=1, description="Project directory name"),
         ]
         usages: Annotated[
             list[FlextInfraRefactorModels.CensusProjectMethodUsage],
@@ -801,18 +827,22 @@ class FlextInfraRefactorModels(
             ),
         ]
         total_classes: Annotated[
-            int, Field(ge=0, description="Number of utility classes")
+            int,
+            Field(ge=0, description="Number of utility classes"),
         ]
         total_methods: Annotated[
-            int, Field(ge=0, description="Number of public methods")
+            int,
+            Field(ge=0, description="Number of public methods"),
         ]
         total_usages: Annotated[int, Field(ge=0, description="Total usage records")]
         total_unused: Annotated[
-            int, Field(ge=0, description="Methods with zero usages")
+            int,
+            Field(ge=0, description="Methods with zero usages"),
         ]
         files_scanned: Annotated[int, Field(ge=0, description="Files scanned")]
         parse_errors: Annotated[
-            int, Field(ge=0, description="Files that failed to parse")
+            int,
+            Field(ge=0, description="Files that failed to parse"),
         ]
 
 

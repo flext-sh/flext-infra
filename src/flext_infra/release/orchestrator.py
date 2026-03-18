@@ -209,21 +209,20 @@ class FlextInfraReleaseOrchestrator(s[bool]):
 
     def run_release(
         self,
-        workspace_root: Path,
-        version: str,
-        tag: str,
-        phases: list[str],
-        *,
-        project_names: list[str] | None = None,
-        dry_run: bool = False,
-        push: bool = False,
-        dev_suffix: bool = False,
-        create_branches: bool = True,
-        next_dev: bool = False,
-        next_bump: str = "minor",
+        release_config: m.Infra.ReleaseOrchestratorConfig,
     ) -> r[bool]:
         """Run release workflow for the provided ordered phases."""
-        names = project_names or []
+        workspace_root = release_config.workspace_root
+        version = release_config.version
+        tag = release_config.tag
+        phases = release_config.phases
+        dry_run = release_config.dry_run
+        push = release_config.push
+        dev_suffix = release_config.dev_suffix
+        create_branches = release_config.create_branches
+        next_dev = release_config.next_dev
+        next_bump = release_config.next_bump
+        names = release_config.project_names or []
         spec = m.Infra.ReleaseSpec(
             version=version,
             tag=tag,
@@ -245,14 +244,16 @@ class FlextInfraReleaseOrchestrator(s[bool]):
                 return branch_result
         for phase in phases:
             result = self._dispatch_phase(
-                phase,
-                workspace_root,
-                spec.version,
-                spec.tag,
-                names,
-                dry_run=dry_run,
-                push=push,
-                dev_suffix=dev_suffix,
+                m.Infra.ReleasePhaseDispatchConfig(
+                    phase=phase,
+                    workspace_root=workspace_root,
+                    version=spec.version,
+                    tag=spec.tag,
+                    project_names=names,
+                    dry_run=dry_run,
+                    push=push,
+                    dev_suffix=dev_suffix,
+                ),
             )
             if result.is_failure:
                 return result
@@ -337,17 +338,17 @@ class FlextInfraReleaseOrchestrator(s[bool]):
 
     def _dispatch_phase(
         self,
-        phase: str,
-        workspace_root: Path,
-        version: str,
-        tag: str,
-        project_names: list[str],
-        *,
-        dry_run: bool,
-        push: bool,
-        dev_suffix: bool,
+        dispatch_config: m.Infra.ReleasePhaseDispatchConfig,
     ) -> r[bool]:
         """Route to the correct phase method."""
+        phase = dispatch_config.phase
+        workspace_root = dispatch_config.workspace_root
+        version = dispatch_config.version
+        tag = dispatch_config.tag
+        project_names = dispatch_config.project_names
+        dry_run = dispatch_config.dry_run
+        push = dispatch_config.push
+        dev_suffix = dispatch_config.dev_suffix
         if phase == c.Infra.Verbs.VALIDATE:
             return self.phase_validate(workspace_root, dry_run=dry_run)
         if phase == c.Infra.Toml.VERSION:

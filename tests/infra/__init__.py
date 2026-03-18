@@ -160,10 +160,15 @@ if TYPE_CHECKING:
         TestMypyEmptyLinesInOutput,
         TestRuffFormatDuplicateFiles,
     )
+    from .unit.check.extended_gate_bandit_markdown import (
+        TestWorkspaceCheckerRunBandit,
+        TestWorkspaceCheckerRunMarkdown,
+    )
     from .unit.check.extended_gate_go_cmd import (
         TestWorkspaceCheckerCollectMarkdownFiles,
         TestWorkspaceCheckerRunCommand,
         TestWorkspaceCheckerRunGo,
+        run_command_failure_check,
     )
     from .unit.check.extended_gate_mypy_pyright import (
         TestWorkspaceCheckerRunMypy,
@@ -2300,6 +2305,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.check.extended_workspace_init",
         "TestWorkspaceCheckerResolveWorkspaceRootFallback",
     ),
+    "TestWorkspaceCheckerRunBandit": (
+        "tests.infra.unit.check.extended_gate_bandit_markdown",
+        "TestWorkspaceCheckerRunBandit",
+    ),
     "TestWorkspaceCheckerRunCommand": (
         "tests.infra.unit.check.extended_gate_go_cmd",
         "TestWorkspaceCheckerRunCommand",
@@ -2307,6 +2316,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestWorkspaceCheckerRunGo": (
         "tests.infra.unit.check.extended_gate_go_cmd",
         "TestWorkspaceCheckerRunGo",
+    ),
+    "TestWorkspaceCheckerRunMarkdown": (
+        "tests.infra.unit.check.extended_gate_bandit_markdown",
+        "TestWorkspaceCheckerRunMarkdown",
     ),
     "TestWorkspaceCheckerRunMypy": (
         "tests.infra.unit.check.extended_gate_mypy_pyright",
@@ -2411,6 +2424,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "rewrite_dep_paths": (
         "tests.infra.unit.deps.test_path_sync_rewrite_deps",
         "rewrite_dep_paths",
+    ),
+    "run_command_failure_check": (
+        "tests.infra.unit.check.extended_gate_go_cmd",
+        "run_command_failure_check",
     ),
     "run_lint": ("tests.infra.unit.github.main", "run_lint"),
     "run_pr": ("tests.infra.unit.github.main", "run_pr"),
@@ -3927,8 +3944,10 @@ __all__ = [
     "TestWorkspaceCheckerParseGateCSV",
     "TestWorkspaceCheckerResolveGates",
     "TestWorkspaceCheckerResolveWorkspaceRootFallback",
+    "TestWorkspaceCheckerRunBandit",
     "TestWorkspaceCheckerRunCommand",
     "TestWorkspaceCheckerRunGo",
+    "TestWorkspaceCheckerRunMarkdown",
     "TestWorkspaceCheckerRunMypy",
     "TestWorkspaceCheckerRunPyright",
     "TestWorkspaceCheckerSARIFReport",
@@ -3985,6 +4004,7 @@ __all__ = [
     "refactor",
     "release",
     "rewrite_dep_paths",
+    "run_command_failure_check",
     "run_lint",
     "run_pr",
     "run_pr_workspace",

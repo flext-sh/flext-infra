@@ -161,10 +161,12 @@ class TestMigratorReadFailures:
         )
 
     def test_basemk_generation_failure(self, tmp_path: Path) -> None:
-        root = tmp_path / "project-a"
-        root.mkdir(parents=True)
-        h.write_project(root)
-        proj = _project(root)
+        root = tmp_path
+        (root / ".git").mkdir(parents=True, exist_ok=True)
+        (root / "Makefile").write_text("content", encoding="utf-8")
+        (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+        (root / ".gitignore").write_text("", encoding="utf-8")
+        proj = _project(root, "workspace-root")
         migrator = FlextInfraProjectMigrator()
         migrator._discovery = _StubDiscovery([proj])
         migrator._generator = _StubGenerator(fail="Generation failed")

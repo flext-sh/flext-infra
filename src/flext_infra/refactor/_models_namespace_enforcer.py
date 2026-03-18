@@ -3,11 +3,18 @@ from __future__ import annotations
 from typing import Annotated, Self
 
 from flext_core import FlextModels
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, JsonValue
 
 
 class FlextInfraNamespaceEnforcerModels:
     """Namespace enforcer violation and report models."""
+
+    @staticmethod
+    def _build_violation[T: FlextModels.ArbitraryTypesModel](
+        model_type: type[T],
+        values: dict[str, JsonValue],
+    ) -> T:
+        return model_type.model_validate(values)
 
     class FacadeStatus(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
@@ -80,11 +87,14 @@ class FlextInfraNamespaceEnforcerModels:
             current_import: str,
             suggested_import: str,
         ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                current_import=current_import,
-                suggested_import=suggested_import,
+            return FlextInfraNamespaceEnforcerModels._build_violation(
+                cls,
+                {
+                    "file": file,
+                    "line": line,
+                    "current_import": current_import,
+                    "suggested_import": suggested_import,
+                },
             )
 
     class NamespaceSourceViolation(FlextModels.ArbitraryTypesModel):
@@ -187,13 +197,21 @@ class FlextInfraNamespaceEnforcerModels:
 
         @classmethod
         def create(
-            cls, *, file: str, line: int, current_import: str, detail: str
+            cls,
+            *,
+            file: str,
+            line: int,
+            current_import: str,
+            detail: str,
         ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                current_import=current_import,
-                detail=detail,
+            return FlextInfraNamespaceEnforcerModels._build_violation(
+                cls,
+                {
+                    "file": file,
+                    "line": line,
+                    "current_import": current_import,
+                    "detail": detail,
+                },
             )
 
     class ManualProtocolViolation(FlextModels.ArbitraryTypesModel):
@@ -209,7 +227,12 @@ class FlextInfraNamespaceEnforcerModels:
 
         @classmethod
         def create(
-            cls, *, file: str, line: int, name: str, suggestion: str = ""
+            cls,
+            *,
+            file: str,
+            line: int,
+            name: str,
+            suggestion: str = "",
         ) -> Self:
             if len(suggestion) > 0:
                 return cls(file=file, line=line, name=name, suggestion=suggestion)
@@ -276,11 +299,14 @@ class FlextInfraNamespaceEnforcerModels:
 
         @classmethod
         def create(cls, *, file: str, line: int, name: str, detail: str) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                name=name,
-                detail=detail,
+            return FlextInfraNamespaceEnforcerModels._build_violation(
+                cls,
+                {
+                    "file": file,
+                    "line": line,
+                    "name": name,
+                    "detail": detail,
+                },
             )
 
     class CompatibilityAliasViolation(FlextModels.ArbitraryTypesModel):
@@ -317,11 +343,14 @@ class FlextInfraNamespaceEnforcerModels:
 
         @classmethod
         def create(cls, *, file: str, stage: str, error_type: str, detail: str) -> Self:
-            return cls(
-                file=file,
-                stage=stage,
-                error_type=error_type,
-                detail=detail,
+            return FlextInfraNamespaceEnforcerModels._build_violation(
+                cls,
+                {
+                    "file": file,
+                    "stage": stage,
+                    "error_type": error_type,
+                    "detail": detail,
+                },
             )
 
     class ProjectEnforcementReport(FlextModels.ArbitraryTypesModel):

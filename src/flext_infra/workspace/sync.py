@@ -212,30 +212,21 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         *,
         canonical_root: Path | None = None,
     ) -> r[bool]:
-        """Sync base.mk from canonical root or generate from template.
+        """Sync base.mk only for workspace root; subprojects use bootstrap.
 
-        When canonical_root is provided and contains base.mk, copies it
-        directly to ensure validator alignment. Falls back to generator.
+        When canonical_root differs from workspace_root this is a subproject
+        call — base.mk is served by the Makefile bootstrap pattern, so skip.
         """
-        canonical_basemk = (
-            canonical_root / c.Infra.Files.BASE_MK
-            if canonical_root is not None
-            else None
+        is_subproject = (
+            canonical_root is not None
+            and canonical_root.resolve() != workspace_root.resolve()
         )
-        if (
-            canonical_basemk is not None
-            and canonical_basemk.exists()
-            and (
-                canonical_basemk.resolve()
-                != (workspace_root / c.Infra.Files.BASE_MK).resolve()
-            )
-        ):
-            content = canonical_basemk.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        else:
-            gen_result = self._generator.generate(config)
-            if gen_result.is_failure:
-                return r[bool].fail(gen_result.error or "base.mk generation failed")
-            content = gen_result.value
+        if is_subproject:
+            return r[bool].ok(False)
+        gen_result = self._generator.generate(config)
+        if gen_result.is_failure:
+            return r[bool].fail(gen_result.error or "base.mk generation failed")
+        content: str = gen_result.value
         target_path = workspace_root / c.Infra.Files.BASE_MK
         content_hash = self._sha256_content(content)
         if target_path.exists():

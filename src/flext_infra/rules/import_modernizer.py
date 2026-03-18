@@ -10,7 +10,7 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_infra import c, m, t
+from flext_infra import c, m, t, u
 from flext_infra.refactor._base_rule import FlextInfraRefactorRule
 from flext_infra.transformers.import_modernizer import (
     FlextInfraRefactorImportModernizer,
@@ -211,18 +211,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     def _module_name_from_expr(self, module: cst.BaseExpression | None) -> str:
         if module is None:
             return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression | cst.BaseAssignTargetExpression = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""
+        return u.Infra.dotted_name(module)
 
 
 __all__ = ["FlextInfraRefactorImportModernizerRule"]

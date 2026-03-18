@@ -154,7 +154,7 @@ class TestMigratorDryRun:
         (root / "Makefile").write_text("content", encoding="utf-8")
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text(
-            ".reports/\n.venv/\n__pycache__/\n",
+            ".reports/\n.venv/\n__pycache__/\nbase.mk\n",
             encoding="utf-8",
         )
         migrator = _build_migrator(_project(root), "base")

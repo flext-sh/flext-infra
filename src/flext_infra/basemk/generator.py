@@ -12,7 +12,7 @@ from flext_core import r, s
 from flext_infra import FlextInfraUtilitiesSubprocess, c, m, p, t
 from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
 
-_TEMPLATES_DIR: Path = Path(__file__).resolve().parent / "templates"
+_TEMPLATES_DIR: Path = Path(__file__).resolve().parent.parent / "templates"
 
 
 class TemplateRenderer(Protocol):

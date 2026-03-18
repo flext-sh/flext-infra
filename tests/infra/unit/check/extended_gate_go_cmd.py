@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from flext_core import r, t
@@ -17,10 +19,23 @@ from flext_infra.check.services import FlextInfraWorkspaceChecker
 from flext_infra.gates._base_gate import FlextInfraGateContext
 from flext_infra.gates.go import FlextInfraGoGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
+from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
 from ...helpers import h
-from ...models import m
-from ._shared_fixtures import create_fake_run_raw
+
+GateClass = type[FlextInfraGoGate] | type[FlextInfraRuffLintGate]
+
+
+def _create_run_raw_result(
+    result: r[SimpleNamespace] | str,
+) -> Callable[[list[str]], r[SimpleNamespace]]:
+    def _fake_run_raw(_cmd: list[str], **_kw: t.Scalar) -> r[SimpleNamespace]:
+        del _cmd, _kw
+        if isinstance(result, str):
+            return r[SimpleNamespace].fail(result)
+        return result
+
+    return _fake_run_raw
 
 
 def _create_checker_project(
@@ -40,7 +55,7 @@ def _create_checker_project(
 
 def _patch_go_gate_run_sequence(
     monkeypatch: pytest.MonkeyPatch,
-    outputs: list[m.Infra.CommandOutput],
+    outputs: list[SimpleNamespace],
 ) -> None:
     index = {"value": 0}
 
@@ -48,7 +63,7 @@ def _patch_go_gate_run_sequence(
         _self: FlextInfraGoGate,
         *_a: t.Scalar,
         **_kw: t.Scalar,
-    ) -> m.Infra.CommandOutput:
+    ) -> SimpleNamespace:
         del _self, _a, _kw
         current = index["value"]
         index["value"] = current + 1
@@ -57,6 +72,24 @@ def _patch_go_gate_run_sequence(
         return outputs[-1]
 
     monkeypatch.setattr(FlextInfraGoGate, "_run", _fake_run)
+
+
+def run_command_failure_check(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    gate_class: GateClass,
+) -> tuple[bool, str]:
+    monkeypatch.setattr(
+        FlextInfraUtilitiesSubprocess,
+        "run_raw",
+        _create_run_raw_result("execution failed"),
+    )
+    gate = gate_class(tmp_path)
+    result = gate.check(
+        tmp_path,
+        FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+    )
+    return bool(result.result.passed), str(result.raw_output)
 
 
 class TestWorkspaceCheckerRunGo:
@@ -77,12 +110,12 @@ class TestWorkspaceCheckerRunGo:
         _patch_go_gate_run_sequence(
             monkeypatch,
             outputs=[
-                m.Infra.CommandOutput(
+                SimpleNamespace(
                     stdout="main.go:10:5: error message",
                     stderr="",
                     exit_code=1,
                 ),
-                m.Infra.CommandOutput(stdout="", stderr="", exit_code=0),
+                SimpleNamespace(stdout="", stderr="", exit_code=0),
             ],
         )
         result = checker._run_go(proj_dir)
@@ -101,8 +134,8 @@ class TestWorkspaceCheckerRunGo:
         _patch_go_gate_run_sequence(
             monkeypatch,
             outputs=[
-                m.Infra.CommandOutput(stdout="", stderr="", exit_code=0),
-                m.Infra.CommandOutput(stdout="main.go", stderr="", exit_code=1),
+                SimpleNamespace(stdout="", stderr="", exit_code=0),
+                SimpleNamespace(stdout="main.go", stderr="", exit_code=1),
             ],
         )
         result = checker._run_go(proj_dir)
@@ -118,12 +151,12 @@ class TestWorkspaceCheckerRunGo:
         _patch_go_gate_run_sequence(
             monkeypatch,
             outputs=[
-                m.Infra.CommandOutput(
+                SimpleNamespace(
                     stdout="",
                     stderr="go vet failed",
                     exit_code=1,
                 ),
-                m.Infra.CommandOutput(stdout="", stderr="", exit_code=0),
+                SimpleNamespace(stdout="", stderr="", exit_code=0),
             ],
         )
         result = checker._run_go(proj_dir)
@@ -144,9 +177,9 @@ class TestWorkspaceCheckerRunCommand:
         monkeypatch.setattr(
             FlextInfraUtilitiesSubprocess,
             "run_raw",
-            create_fake_run_raw(
-                r[m.Infra.CommandOutput].ok(
-                    m.Infra.CommandOutput(stdout="", stderr="", exit_code=0),
+            _create_run_raw_result(
+                r[SimpleNamespace].ok(
+                    SimpleNamespace(stdout="", stderr="", exit_code=0),
                 )
             ),
         )
@@ -164,18 +197,13 @@ class TestWorkspaceCheckerRunCommand:
     ) -> None:
         (tmp_path / "go.mod").write_text("module test")
 
-        monkeypatch.setattr(
-            FlextInfraUtilitiesSubprocess,
-            "run_raw",
-            create_fake_run_raw("execution failed"),
-        )
-        gate = FlextInfraGoGate(tmp_path)
-        result = gate.check(
+        passed, raw_output = run_command_failure_check(
+            monkeypatch,
             tmp_path,
-            FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+            FlextInfraGoGate,
         )
-        tm.that(result.result.passed, eq=False)
-        tm.that(result.raw_output, contains="execution failed")
+        tm.that(passed, eq=False)
+        tm.that(raw_output, contains="execution failed")
 
 
 class TestWorkspaceCheckerCollectMarkdownFiles:

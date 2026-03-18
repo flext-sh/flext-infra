@@ -465,17 +465,17 @@ class ClassNestingRefactorRule:
         policy_context: t.Infra.PolicyContext,
         class_families: t.Infra.ClassFamilyMap,
     ) -> cst.Module:
-        transformer = FlextInfraRefactorClassNestingTransformer(
-            mappings=mappings,
-            policy_context=policy_context,
-            class_families=class_families,
+        return self._apply_transformer(
+            tree=tree,
+            transformer=FlextInfraRefactorClassNestingTransformer(
+                mappings=mappings,
+                policy_context=policy_context,
+                class_families=class_families,
+            ),
+            changes=changes,
+            label="FlextInfraRefactorClassNestingTransformer",
+            mapping_count=len(mappings),
         )
-        updated_tree = tree.visit(transformer)
-        if updated_tree.code != tree.code:
-            changes.append(
-                f"Applied FlextInfraRefactorClassNestingTransformer ({len(mappings)} mappings)",
-            )
-        return updated_tree
 
     def _apply_helper_consolidation(
         self,
@@ -485,16 +485,30 @@ class ClassNestingRefactorRule:
         policy_context: t.Infra.PolicyContext,
         helper_families: t.Infra.ClassFamilyMap,
     ) -> cst.Module:
-        transformer = HelperConsolidationTransformer(
-            helper_mappings=mappings,
-            policy_context=policy_context,
-            helper_families=helper_families,
+        return self._apply_transformer(
+            tree=tree,
+            transformer=HelperConsolidationTransformer(
+                helper_mappings=mappings,
+                policy_context=policy_context,
+                helper_families=helper_families,
+            ),
+            changes=changes,
+            label="HelperConsolidationTransformer",
+            mapping_count=len(mappings),
         )
+
+    @staticmethod
+    def _apply_transformer(
+        *,
+        tree: cst.Module,
+        transformer: cst.CSTTransformer,
+        changes: list[str],
+        label: str,
+        mapping_count: int,
+    ) -> cst.Module:
         updated_tree = tree.visit(transformer)
         if updated_tree.code != tree.code:
-            changes.append(
-                f"Applied HelperConsolidationTransformer ({len(mappings)} mappings)",
-            )
+            changes.append(f"Applied {label} ({mapping_count} mappings)")
         return updated_tree
 
     def _policy_context_from_document(self) -> t.Infra.PolicyContext:

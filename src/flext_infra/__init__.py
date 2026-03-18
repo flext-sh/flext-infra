@@ -146,6 +146,7 @@ if TYPE_CHECKING:
     from flext_infra.protocols import FlextInfraProtocols, p
     from flext_infra.refactor._detectors.import_collector import ImportCollector
     from flext_infra.refactor._detectors.module_loader import (
+        DetectorScanResultBuilder,
         FlextInfraRefactorDetectorModuleLoader,
     )
     from flext_infra.refactor._detectors.python_module_loader_mixin import (
@@ -338,6 +339,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "DependencyAnalyzer": (
         "flext_infra.refactor.dependency_analyzer",
         "DependencyAnalyzer",
+    ),
+    "DetectorScanResultBuilder": (
+        "flext_infra.refactor._detectors.module_loader",
+        "DetectorScanResultBuilder",
     ),
     "EnsureCoverageConfigPhase": (
         "flext_infra.deps._phases.ensure_coverage",
@@ -917,6 +922,7 @@ __all__ = [
     "ConsolidateGroupsPhase",
     "CyclicImportDetector",
     "DependencyAnalyzer",
+    "DetectorScanResultBuilder",
     "EnsureCoverageConfigPhase",
     "EnsureExtraPathsPhase",
     "EnsureFormattingToolingPhase",

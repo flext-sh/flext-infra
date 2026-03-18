@@ -14,7 +14,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra import c, output, u
+from flext_infra import c, m, output, u
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 
 
@@ -122,17 +122,19 @@ class FlextInfraReleaseCommand:
         tag = _resolve_tag(args.tag, version)
         service = FlextInfraReleaseOrchestrator()
         result = service.run_release(
-            workspace_root=root,
-            version=version,
-            tag=tag,
-            phases=phases,
-            project_names=args.projects or None,
-            dry_run=cli.dry_run,
-            push=args.push,
-            dev_suffix=args.dev_suffix,
-            create_branches=args.create_branches == 1,
-            next_dev=args.next_dev,
-            next_bump=args.next_bump,
+            m.Infra.ReleaseOrchestratorConfig(
+                workspace_root=root,
+                version=version,
+                tag=tag,
+                phases=phases,
+                project_names=args.projects or None,
+                dry_run=cli.dry_run,
+                push=args.push,
+                dev_suffix=args.dev_suffix,
+                create_branches=args.create_branches == 1,
+                next_dev=args.next_dev,
+                next_bump=args.next_bump,
+            ),
         )
         return u.Infra.exit_code(result)
 

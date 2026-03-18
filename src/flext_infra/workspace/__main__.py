@@ -38,7 +38,8 @@ class FlextInfraWorkspaceCommand:
         canonical_path = Path(canonical_root) if canonical_root else None
         service = FlextInfraSyncService(canonical_root=canonical_path)
         result = service.sync(
-            workspace_root=cli.workspace, canonical_root=canonical_path
+            workspace_root=cli.workspace,
+            canonical_root=canonical_path,
         )
         return u.Infra.exit_code(result, failure_msg="sync failed")
 
@@ -98,6 +99,7 @@ class FlextInfraWorkspaceCommand:
 
     @staticmethod
     def run(argv: list[str] | None = None) -> int:
+        """Dispatch workspace subcommands and return process exit code."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext_infra workspace",
             "Workspace management utilities",

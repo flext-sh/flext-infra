@@ -266,7 +266,8 @@ class FlextInfraExtraPathsManager:
         manager = FlextInfraExtraPathsManager(workspace_root=cli.workspace)
         project_dirs = FlextInfraExtraPathsManager._resolve_project_dirs(cli)
         result = manager.sync_extra_paths(
-            dry_run=cli.dry_run, project_dirs=project_dirs
+            dry_run=cli.dry_run,
+            project_dirs=project_dirs,
         )
         if result.is_success:
             return result.value

@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import override
 
 import tomlkit
-from flext_core import r, s, t
-from pydantic import BaseModel, JsonValue, TypeAdapter
+from flext_core import r, s
+from pydantic import JsonValue, TypeAdapter
+from tomlkit.container import Container
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
@@ -18,7 +19,7 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 _OBJECT_LIST_ADAPTER: TypeAdapter[list[JsonValue]] = TypeAdapter(list[JsonValue])
 
 
-class FlextInfraProjectMigrator(s):
+class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
 
     def __init__(
@@ -70,7 +71,7 @@ class FlextInfraProjectMigrator(s):
     def _toml_get(
         container: TOMLDocument | Table,
         key: str,
-    ) -> Item | Table | object | None:
+    ) -> Item | Container | None:
         if key not in container:
             return None
         return container[key]
@@ -126,12 +127,8 @@ class FlextInfraProjectMigrator(s):
         )
 
     @override
-    def execute(
-        self,
-    ) -> r[t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]]:
-        return r[
-            t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]
-        ].fail(
+    def execute(self) -> r[list[m.Infra.MigrationResult]]:
+        return r[list[m.Infra.MigrationResult]].fail(
             "Use migrate() method directly",
         )
 
@@ -163,7 +160,11 @@ class FlextInfraProjectMigrator(s):
         ):
             projects.append(workspace_project)
         results: list[m.Infra.MigrationResult] = [
-            self._migrate_project(project=project, dry_run=dry_run)
+            self._migrate_project(
+                project=project,
+                dry_run=dry_run,
+                workspace_root=root,
+            )
             for project in projects
         ]
         return r[list[m.Infra.MigrationResult]].ok(results)
@@ -292,7 +293,8 @@ class FlextInfraProjectMigrator(s):
                 return r[str].fail(f"Makefile update failed: {exc}")
         return r[str].ok(
             self._action_text(
-                "Makefile migrated to bootstrap include", dry_run=dry_run
+                "Makefile migrated to bootstrap include",
+                dry_run=dry_run,
             ),
         )
 
@@ -312,11 +314,17 @@ class FlextInfraProjectMigrator(s):
         *,
         project: p.Infra.ProjectInfo,
         dry_run: bool,
+        workspace_root: Path,
     ) -> m.Infra.MigrationResult:
+        is_root = project.path.resolve() == workspace_root.resolve()
         changes: list[str] = []
         errors: list[str] = []
         self._append_result(
-            self._migrate_basemk(project.path, dry_run=dry_run),
+            self._migrate_basemk(
+                project.path,
+                dry_run=dry_run,
+                is_workspace_root=is_root,
+            ),
             changes,
             errors,
         )

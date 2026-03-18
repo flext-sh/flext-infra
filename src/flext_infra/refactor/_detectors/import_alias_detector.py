@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m, p, u
+from flext_infra.refactor._detectors.module_loader import (
+    DetectorScanResultBuilder,
+)
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -27,6 +30,20 @@ class ImportAliasDetector(p.Infra.Scanner):
         return f"from {package} import {', '.join(ordered_names)}"
 
     @staticmethod
+    def parse_imported_names(import_clause: str) -> list[str]:
+        no_comment = import_clause.split("#", maxsplit=1)[0].strip()
+        normalized_clause = no_comment.replace("(", "").replace(")", "")
+        names: list[str] = []
+        for part in normalized_clause.split(","):
+            token_text = part.strip()
+            if len(token_text) == 0:
+                continue
+            if " as " in token_text:
+                token_text = token_text.split(" as ", maxsplit=1)[0].strip()
+            names.append(token_text)
+        return names
+
+    @staticmethod
     def _is_facade_or_subclass_file(*, file_path: Path, tree: ast.Module) -> bool:
         family_file_names = set(c.Infra.NAMESPACE_FILE_TO_FAMILY)
         family_file_names.update(c.Infra.NAMESPACE_PROTECTED_FILES)
@@ -45,6 +62,10 @@ class ImportAliasDetector(p.Infra.Scanner):
                     return True
         return False
 
+    @classmethod
+    def is_facade_or_subclass_file(cls, *, file_path: Path, tree: ast.Module) -> bool:
+        return cls._is_facade_or_subclass_file(file_path=file_path, tree=tree)
+
     def __init__(
         self,
         *,
@@ -61,21 +82,15 @@ class ImportAliasDetector(p.Infra.Scanner):
             file_path=file_path,
             _parse_failures=self._parse_failures,
         )
-        return m.Infra.ScanResult(
+        return DetectorScanResultBuilder.build(
             file_path=file_path,
-            violations=[
-                m.Infra.ScanViolation(
-                    line=violation.line,
-                    message=(
-                        f"Deep import '{violation.current_import}' should use "
-                        f"'{violation.suggested_import}'"
-                    ),
-                    severity="error",
-                    rule_id="namespace.import_alias",
-                )
-                for violation in violations
-            ],
             detector_name=self.__class__.__name__,
+            rule_id="namespace.import_alias",
+            violations=violations,
+            message_builder=lambda violation: (
+                f"Deep import '{violation.current_import}' should use "
+                f"'{violation.suggested_import}'"
+            ),
         )
 
     @classmethod

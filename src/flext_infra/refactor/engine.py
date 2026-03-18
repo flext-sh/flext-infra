@@ -311,12 +311,9 @@ class FlextInfraRefactorEngine:
         """Refactor files under configured project directories matching the pattern."""
         stash_ref = ""
         if apply_safety and (not dry_run):
-            stash_result = self.safety_manager.create_pre_transformation_stash(
-                project_path,
-            )
-            if stash_result.is_failure:
-                error_msg = stash_result.error or "pre-transformation stash failed"
-                FlextInfraRefactorCliSupport.error(error_msg)
+            stash_ref_result = self._prepare_safety_stash(project_path)
+            if stash_ref_result.is_failure:
+                error_msg = stash_ref_result.error or "pre-transformation stash failed"
                 return [
                     m.Infra.Result(
                         file_path=project_path,
@@ -327,7 +324,7 @@ class FlextInfraRefactorEngine:
                         refactored_code=None,
                     ),
                 ]
-            stash_ref = stash_result.value
+            stash_ref = stash_ref_result.value
         scan_dirs = frozenset(self.rule_loader.extract_project_scan_dirs(self.config))
         iter_result = u.Infra.iter_python_files(
             workspace_root=project_path,
@@ -428,10 +425,9 @@ class FlextInfraRefactorEngine:
         processed_targets: list[str] = []
         stash_ref = ""
         if apply_safety and (not dry_run):
-            stash_result = self.safety_manager.create_pre_transformation_stash(root)
-            if stash_result.is_failure:
-                error_msg = stash_result.error or "pre-transformation stash failed"
-                FlextInfraRefactorCliSupport.error(error_msg)
+            stash_ref_result = self._prepare_safety_stash(root)
+            if stash_ref_result.is_failure:
+                error_msg = stash_ref_result.error or "pre-transformation stash failed"
                 return [
                     m.Infra.Result(
                         file_path=root,
@@ -442,7 +438,7 @@ class FlextInfraRefactorEngine:
                         refactored_code=None,
                     ),
                 ]
-            stash_ref = stash_result.value
+            stash_ref = stash_ref_result.value
         for project in project_paths:
             if apply_safety and self.safety_manager.is_emergency_stop_requested():
                 break
@@ -508,6 +504,14 @@ class FlextInfraRefactorEngine:
             FlextInfraRefactorCliSupport.error(
                 clear_result.error or "checkpoint clear failed",
             )
+
+    def _prepare_safety_stash(self, target_path: Path) -> r[str]:
+        stash_result = self.safety_manager.create_pre_transformation_stash(target_path)
+        if stash_result.is_failure:
+            error_msg = stash_result.error or "pre-transformation stash failed"
+            FlextInfraRefactorCliSupport.error(error_msg)
+            return r[str].fail(error_msg)
+        return r[str].ok(stash_result.value)
 
     def set_rule_filters(self, filters: list[str]) -> None:
         """Set active rule filters using normalized lowercase rule ids."""

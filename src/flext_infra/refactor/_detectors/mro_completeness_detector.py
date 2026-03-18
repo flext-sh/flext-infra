@@ -98,7 +98,8 @@ class MROCompletenessDetector(
         if facade_name is None:
             return []
         facade_node = cls._find_top_level_class(
-            tree=parsed.tree, class_name=facade_name
+            tree=parsed.tree,
+            class_name=facade_name,
         )
         if facade_node is None:
             return []
@@ -117,7 +118,8 @@ class MROCompletenessDetector(
         )
         violations: list[nem.MROCompletenessViolation] = []
         for candidate_name, candidate_line in sorted(
-            candidates, key=operator.itemgetter(0)
+            candidates,
+            key=operator.itemgetter(0),
         ):
             if candidate_name in declared_bases:
                 continue
@@ -155,7 +157,9 @@ class MROCompletenessDetector(
 
     @staticmethod
     def _find_top_level_class(
-        *, tree: ast.Module, class_name: str
+        *,
+        tree: ast.Module,
+        class_name: str,
     ) -> ast.ClassDef | None:
         for stmt in tree.body:
             if isinstance(stmt, ast.ClassDef) and stmt.name == class_name:

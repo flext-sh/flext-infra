@@ -147,7 +147,7 @@ class FlextInfraRefactorCommand:
             normalize_remaining=normalize_remaining,
         )
         mro_report = FlextInfraRefactorMigrateToClassMRO(
-            workspace_root=cli.workspace
+            workspace_root=cli.workspace,
         ).run(
             target="all",
             apply=cli.apply,

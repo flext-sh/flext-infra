@@ -225,7 +225,8 @@ class FlextInfraPyprojectModernizer:
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
         return FlextInfraPyprojectModernizer(workspace_root=cli.workspace).run(
-            args, cli
+            args,
+            cli,
         )
 
 

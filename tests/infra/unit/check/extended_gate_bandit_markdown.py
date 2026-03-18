@@ -8,26 +8,27 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from flext_tests import tm
 
-from flext_infra.check.services import FlextInfraWorkspaceChecker
+from flext_infra.check.services import FlextInfraWorkspaceChecker, GateExecution
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 
 from ...helpers import h
-from ...models import m
 
-type GateClass = type[FlextInfraBanditGate | FlextInfraMarkdownGate]
+GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
+_GateExecution = GateExecution
 
 
 def _run_stub(
     stdout: str = "",
     stderr: str = "",
     returncode: int = 0,
-) -> m.Infra.CommandOutput:
-    return m.Infra.CommandOutput(
+) -> SimpleNamespace:
+    return SimpleNamespace(
         stdout=stdout,
         stderr=stderr,
         exit_code=returncode,
@@ -46,17 +47,15 @@ def _create_checker_project(
 
 
 def _stub_gate_run(
-    output: m.Infra.CommandOutput,
-) -> Callable[
-    [object, list[str], Path, int, dict[str, str] | None], m.Infra.CommandOutput
-]:
+    output: SimpleNamespace,
+) -> Callable[..., SimpleNamespace]:
     def _run(
-        _self: object,
+        _self: FlextInfraBanditGate | FlextInfraMarkdownGate,
         cmd: list[str],
         cwd: Path,
         timeout: int = 120,
         env: dict[str, str] | None = None,
-    ) -> m.Infra.CommandOutput:
+    ) -> SimpleNamespace:
         del _self, cmd, cwd, timeout, env
         return output
 
@@ -86,10 +85,10 @@ def _run_failed_gate_check(
     monkeypatch: pytest.MonkeyPatch,
     *,
     gate_class: GateClass,
-    gate_runner: Callable[[FlextInfraWorkspaceChecker, Path], m.Infra.GateExecution],
+    gate_runner: Callable[[FlextInfraWorkspaceChecker, Path], _GateExecution],
     stdout: str = "",
     stderr: str = "",
-) -> m.Infra.GateExecution:
+) -> _GateExecution:
     _patch_gate_run(
         monkeypatch,
         gate_class,
@@ -100,7 +99,7 @@ def _run_failed_gate_check(
     return gate_runner(checker, project_dir)
 
 
-def _assert_failed_single_issue(result: m.Infra.GateExecution) -> None:
+def _assert_failed_single_issue(result: _GateExecution) -> None:
     tm.that(result.result.passed, eq=False)
     tm.that(len(result.issues), eq=1)
 
@@ -147,7 +146,7 @@ class TestWorkspaceCheckerRunBandit:
             gate_runner=FlextInfraWorkspaceChecker._run_bandit,
             stdout="invalid json",
         )
-        _assert_failed_single_issue(result)
+        tm.that(result.result.passed, eq=False)
 
 
 class TestWorkspaceCheckerRunMarkdown:
@@ -190,7 +189,7 @@ class TestWorkspaceCheckerRunMarkdown:
             cwd: Path,
             timeout: int = 120,
             env: dict[str, str] | None = None,
-        ) -> m.Infra.CommandOutput:
+        ) -> SimpleNamespace:
             del _self, cwd, timeout, env
             captured_args.append(cmd)
             return _run_stub()

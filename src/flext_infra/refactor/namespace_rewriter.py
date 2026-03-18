@@ -12,6 +12,7 @@ from io import StringIO
 from pathlib import Path
 
 from flext_infra import c, m, u
+from flext_infra.refactor._detectors.import_alias_detector import ImportAliasDetector
 from flext_infra.refactor.dependency_analyzer import (
     FlextInfraRefactorDependencyAnalyzerFacade,
 )
@@ -128,23 +129,9 @@ class NamespaceEnforcementRewriter:
         deep_import_re = re.compile(
             r"^(\s*)from\s+(flext_core|flext_infra)(\.\S+)\s+import\s+(.+)$",
         )
-        runtime_alias_names_by_package: dict[str, tuple[str, ...]] = {
-            "flext_core": ("c", "m", "r", "t", "u", "p", "d", "e", "h", "s", "x"),
-            "flext_infra": ("c", "m", "t", "u", "p"),
-        }
-
-        def _parse_imported_names(import_clause: str) -> list[str]:
-            no_comment = import_clause.split("#", maxsplit=1)[0].strip()
-            normalized_clause = no_comment.replace("(", "").replace(")", "")
-            names: list[str] = []
-            for part in normalized_clause.split(","):
-                token_text = part.strip()
-                if len(token_text) == 0:
-                    continue
-                if " as " in token_text:
-                    token_text = token_text.split(" as ", maxsplit=1)[0].strip()
-                names.append(token_text)
-            return names
+        runtime_alias_names_by_package = (
+            ImportAliasDetector.RUNTIME_ALIAS_NAMES_BY_PACKAGE
+        )
 
         def _build_replacement(*, package: str, imported_names: list[str]) -> str:
             ordered_aliases = runtime_alias_names_by_package.get(package, ())
@@ -153,31 +140,16 @@ class NamespaceEnforcementRewriter:
             ]
             return f"from {package} import {', '.join(ordered)}"
 
-        def _is_facade_or_subclass_file(*, file_path: Path, tree: ast.Module) -> bool:
-            family_file_names = set(c.Infra.NAMESPACE_FILE_TO_FAMILY)
-            family_file_names.update(c.Infra.NAMESPACE_PROTECTED_FILES)
-            if file_path.name in family_file_names:
-                return True
-            suffixes = tuple(c.Infra.NAMESPACE_FACADE_FAMILIES.values())
-            for stmt in tree.body:
-                if not isinstance(stmt, ast.ClassDef):
-                    continue
-                if stmt.name.endswith(suffixes):
-                    return True
-                for base in stmt.bases:
-                    if isinstance(base, ast.Name) and base.id.endswith(suffixes):
-                        return True
-                    if isinstance(base, ast.Attribute) and base.attr.endswith(suffixes):
-                        return True
-            return False
-
         for file_path in py_files:
             if file_path.name == "__init__.py":
                 continue
             parsed_file = load_python_module(file_path)
             if parsed_file is None:
                 continue
-            if _is_facade_or_subclass_file(file_path=file_path, tree=parsed_file.tree):
+            if ImportAliasDetector.is_facade_or_subclass_file(
+                file_path=file_path,
+                tree=parsed_file.tree,
+            ):
                 continue
             try:
                 source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -196,7 +168,9 @@ class NamespaceEnforcementRewriter:
                     if not stripped.startswith(prefix):
                         continue
                     candidate_clause = stripped.removeprefix(prefix)
-                    candidate_names = _parse_imported_names(candidate_clause)
+                    candidate_names = ImportAliasDetector.parse_imported_names(
+                        candidate_clause,
+                    )
                     if len(candidate_names) == 0:
                         continue
                     replacement = _build_replacement(
@@ -228,7 +202,9 @@ class NamespaceEnforcementRewriter:
                     if " as " in import_clause:
                         new_lines.append(line)
                         continue
-                    imported_names = _parse_imported_names(import_clause)
+                    imported_names = ImportAliasDetector.parse_imported_names(
+                        import_clause,
+                    )
                     if len(imported_names) == 0:
                         new_lines.append(line)
                         continue
@@ -420,7 +396,9 @@ class NamespaceEnforcementRewriter:
                 if isinstance(stmt, ast.ClassDef) and stmt.name in missing_by_facade
             ]
             for class_node in sorted(
-                facade_nodes, key=operator.attrgetter("lineno"), reverse=True
+                facade_nodes,
+                key=operator.attrgetter("lineno"),
+                reverse=True,
             ):
                 current_bases = [
                     base_name

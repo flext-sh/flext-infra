@@ -49,10 +49,15 @@ if TYPE_CHECKING:
         TestMypyEmptyLinesInOutput,
         TestRuffFormatDuplicateFiles,
     )
+    from .extended_gate_bandit_markdown import (
+        TestWorkspaceCheckerRunBandit,
+        TestWorkspaceCheckerRunMarkdown,
+    )
     from .extended_gate_go_cmd import (
         TestWorkspaceCheckerCollectMarkdownFiles,
         TestWorkspaceCheckerRunCommand,
         TestWorkspaceCheckerRunGo,
+        run_command_failure_check,
     )
     from .extended_gate_mypy_pyright import (
         TestWorkspaceCheckerRunMypy,
@@ -344,6 +349,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.check.extended_workspace_init",
         "TestWorkspaceCheckerResolveWorkspaceRootFallback",
     ),
+    "TestWorkspaceCheckerRunBandit": (
+        "tests.infra.unit.check.extended_gate_bandit_markdown",
+        "TestWorkspaceCheckerRunBandit",
+    ),
     "TestWorkspaceCheckerRunCommand": (
         "tests.infra.unit.check.extended_gate_go_cmd",
         "TestWorkspaceCheckerRunCommand",
@@ -351,6 +360,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestWorkspaceCheckerRunGo": (
         "tests.infra.unit.check.extended_gate_go_cmd",
         "TestWorkspaceCheckerRunGo",
+    ),
+    "TestWorkspaceCheckerRunMarkdown": (
+        "tests.infra.unit.check.extended_gate_bandit_markdown",
+        "TestWorkspaceCheckerRunMarkdown",
     ),
     "TestWorkspaceCheckerRunMypy": (
         "tests.infra.unit.check.extended_gate_mypy_pyright",
@@ -371,6 +384,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "r": (
         "tests.infra.unit.check.extended_workspace_init",
         "TestWorkspaceCheckerBuildGateResult",
+    ),
+    "run_command_failure_check": (
+        "tests.infra.unit.check.extended_gate_go_cmd",
+        "run_command_failure_check",
     ),
     "test_check_main_executes_real_cli": (
         "tests.infra.unit.check.main",
@@ -472,13 +489,16 @@ __all__ = [
     "TestWorkspaceCheckerParseGateCSV",
     "TestWorkspaceCheckerResolveGates",
     "TestWorkspaceCheckerResolveWorkspaceRootFallback",
+    "TestWorkspaceCheckerRunBandit",
     "TestWorkspaceCheckerRunCommand",
     "TestWorkspaceCheckerRunGo",
+    "TestWorkspaceCheckerRunMarkdown",
     "TestWorkspaceCheckerRunMypy",
     "TestWorkspaceCheckerRunPyright",
     "TestWorkspaceCheckerSARIFReport",
     "TestWorkspaceCheckerSARIFReportEdgeCases",
     "r",
+    "run_command_failure_check",
     "test_check_main_executes_real_cli",
     "test_fix_pyrefly_config_main_executes_real_cli_help",
     "test_resolve_gates_maps_type_alias",

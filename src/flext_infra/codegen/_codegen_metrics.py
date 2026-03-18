@@ -6,10 +6,11 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from flext_infra import c, m, t
+from flext_infra.codegen._codegen_coercion import FlextInfraCodegenCoercion
 from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
 
 
-class FlextInfraCodegenMetrics(FlextInfraCodegenGeneration):
+class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGeneration):
     """Metrics extraction and computation for quality gate analysis."""
 
     @staticmethod

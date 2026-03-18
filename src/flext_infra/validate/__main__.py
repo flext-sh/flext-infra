@@ -61,7 +61,8 @@ class FlextInfraValidateCommand:
         if result.is_success:
             report: m.Infra.InventoryReport = result.value
             for output_path in FlextInfraValidateCommand.list_str(
-                report, "reports_written"
+                report,
+                "reports_written",
             ):
                 output.info(f"Wrote: {output_path}")
             return 0
@@ -203,14 +204,17 @@ class FlextInfraValidateCommand:
         )
 
         subs["pytest-diag"].add_argument(
-            "--junit", required=True, help="JUnit XML path"
+            "--junit",
+            required=True,
+            help="JUnit XML path",
         )
         subs["pytest-diag"].add_argument("--log", required=True, help="Pytest log path")
         subs["pytest-diag"].add_argument("--failed", help="Path to write failed cases")
         subs["pytest-diag"].add_argument("--errors", help="Path to write error traces")
         subs["pytest-diag"].add_argument("--warnings", help="Path to write warnings")
         subs["pytest-diag"].add_argument(
-            "--slowest", help="Path to write slowest entries"
+            "--slowest",
+            help="Path to write slowest entries",
         )
         subs["pytest-diag"].add_argument("--skips", help="Path to write skipped cases")
 

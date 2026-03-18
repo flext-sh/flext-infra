@@ -1,4 +1,8 @@
+"""Import insertion helpers for LibCST module rewrites."""
+
 from __future__ import annotations
+
+from collections.abc import Sequence
 
 import libcst as cst
 
@@ -6,8 +10,9 @@ import libcst as cst
 class FlextInfraTransformerImportInsertion:
     @staticmethod
     def index_after_docstring_and_future_imports(
-        body: list[cst.BaseStatement],
+        body: Sequence[cst.BaseStatement],
     ) -> int:
+        """Return insertion index after module docstring and future imports."""
         insert_idx = 0
         if (
             body

@@ -1,7 +1,7 @@
-"""Base.mk sync validation service.
+"""Base.mk freshness validation service.
 
-Checks that vendored project base.mk files match the root base.mk,
-detecting configuration drift across workspace projects.
+Checks that the workspace root base.mk matches the output from the
+canonical template generator, detecting template drift.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,28 +15,37 @@ from pathlib import Path
 from flext_core import r
 
 from flext_infra import c, m
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 class FlextInfraBaseMkValidator:
-    """Validates base.mk synchronization across workspace projects.
+    """Validates root base.mk freshness against the template generator."""
 
-    Compares SHA-256 hashes of vendored base.mk copies against the
-    root base.mk to detect configuration drift.
-    """
+    def __init__(
+        self,
+        generator: FlextInfraBaseMkGenerator | None = None,
+    ) -> None:
+        """Initialize with optional generator for freshness comparison."""
+        self._generator = generator or FlextInfraBaseMkGenerator()
 
     @staticmethod
-    def _sha256(path: Path) -> str:
-        """Compute SHA-256 hash of a file."""
+    def _sha256(content: str) -> str:
+        """Compute SHA-256 hash of string content."""
+        return hashlib.sha256(content.encode(c.Infra.Encoding.DEFAULT)).hexdigest()
+
+    @staticmethod
+    def _sha256_file(path: Path) -> str:
+        """Compute SHA-256 hash of file on disk."""
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
     def validate(self, workspace_root: Path) -> r[m.Infra.ValidationReport]:
-        """Validate that all vendored base.mk copies match root base.mk.
+        """Validate root base.mk exists and matches generated template output.
 
         Args:
             workspace_root: Root directory of the workspace.
 
         Returns:
-            r with ValidationReport indicating sync status.
+            r with ValidationReport indicating freshness status.
 
         """
         try:
@@ -49,29 +58,34 @@ class FlextInfraBaseMkValidator:
                         summary="missing root base.mk",
                     ),
                 )
-            source_hash = self._sha256(source)
-            mismatched: list[str] = []
-            checked = 0
-            for pyproject in sorted(
-                workspace_root.glob(f"*/{c.Infra.Files.PYPROJECT_FILENAME}"),
-            ):
-                local_base = pyproject.parent / c.Infra.Files.BASE_MK
-                if not local_base.exists():
-                    continue
-                checked += 1
-                if self._sha256(local_base) != source_hash:
-                    rel = str(local_base.relative_to(workspace_root))
-                    mismatched.append(f"drift: {rel}")
-            passed = len(mismatched) == 0
+            gen_result = self._generator.generate()
+            if gen_result.is_failure:
+                return r[m.Infra.ValidationReport].ok(
+                    m.Infra.ValidationReport(
+                        passed=False,
+                        violations=[
+                            gen_result.error or "base.mk generation failed",
+                        ],
+                        summary="base.mk template generation failed",
+                    ),
+                )
+            generated_hash = self._sha256(gen_result.value)
+            existing_hash = self._sha256_file(source)
+            violations: list[str] = []
+            if generated_hash != existing_hash:
+                violations.append(
+                    "root base.mk is stale (does not match generated template)",
+                )
+            passed = len(violations) == 0
             summary = (
-                f"all vendored base.mk copies in sync ({checked} checked)"
+                "root base.mk matches generated template"
                 if passed
-                else f"{len(mismatched)} base.mk files out of sync"
+                else "root base.mk is out of sync with templates"
             )
             return r[m.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(
                     passed=passed,
-                    violations=mismatched,
+                    violations=violations,
                     summary=summary,
                 ),
             )

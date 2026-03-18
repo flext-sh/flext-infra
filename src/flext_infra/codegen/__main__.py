@@ -179,7 +179,8 @@ class FlextInfraCodegenCommand:
         scaffolder = FlextInfraCodegenScaffolder(workspace_root=cli.workspace)
         scaffold_results = scaffolder.run()
         fixer = FlextInfraCodegenFixer(
-            workspace_root=cli.workspace, dry_run=cli.dry_run
+            workspace_root=cli.workspace,
+            dry_run=cli.dry_run,
         )
         fix_results = fixer.run()
         generator = FlextInfraCodegenLazyInit(workspace_root=cli.workspace)

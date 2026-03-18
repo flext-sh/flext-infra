@@ -8,6 +8,8 @@ from typing import override
 import libcst as cst
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
+from flext_infra import u
+
 
 class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
     """Propagate import/symbol renames safely using CST + import metadata."""
@@ -118,18 +120,7 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
     def _module_name_from_expr(self, module: cst.BaseExpression | None) -> str:
         if module is None:
             return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression | cst.BaseAssignTargetExpression = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""
+        return u.Infra.dotted_name(module)
 
     def _record_change(self, message: str) -> None:
         self.changes.append(message)

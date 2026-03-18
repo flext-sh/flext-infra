@@ -16,10 +16,13 @@ from flext_tests import tm
 from flext_infra.check.services import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
+from flext_infra.gates.pyright import FlextInfraPyrightGate
 
 from ...helpers import h
 
-type GateClass = type[FlextInfraPyreflyGate | FlextInfraMypyGate]
+type GateClass = type[
+    FlextInfraPyreflyGate | FlextInfraMypyGate | FlextInfraPyrightGate
+]
 
 
 def _as_command_output(result: SimpleNamespace) -> SimpleNamespace:

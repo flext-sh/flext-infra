@@ -27,6 +27,7 @@ from flext_core import r, s
 
 from flext_infra import c, output, u
 from flext_infra.codegen._codegen_ast_parsing import FlextInfraCodegenAstParsing
+from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
 
 # ---------------------------------------------------------------------------
 # Service class
@@ -521,7 +522,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         eager_typevar_names: frozenset[str] = frozenset(),
     ) -> str:
         """Generate the complete ``__init__.py`` content."""
-        return u.Infra.generate_file(
+        return FlextInfraCodegenGeneration.generate_file(
             docstring_source,
             exports,
             filtered,

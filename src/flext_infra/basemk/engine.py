@@ -44,7 +44,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             wire_packages=None,
             wire_classes=None,
         )
-        template_root = Path(__file__).resolve().parent / "templates"
+        template_root = Path(__file__).resolve().parent.parent / "templates"
         self._environment = Environment(
             loader=FileSystemLoader(str(template_root)),
             trim_blocks=False,

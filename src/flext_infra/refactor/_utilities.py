@@ -583,15 +583,23 @@ class FlextInfraUtilitiesRefactor:
         project_roots: list[Path],
     ) -> str:
         """Identify project name for a file path (most-specific root wins)."""
-        best: Path | None = None
-        for root in project_roots:
-            try:
-                file_path.relative_to(root)
-            except ValueError:
-                continue
-            if best is None or len(root.parts) > len(best.parts):
-                best = root
-        return best.name if best else c.Infra.Defaults.UNKNOWN
+        matching_roots = [
+            root
+            for root in project_roots
+            if FlextInfraUtilitiesRefactor._is_path_within_root(file_path, root)
+        ]
+        if not matching_roots:
+            return c.Infra.Defaults.UNKNOWN
+        best = max(matching_roots, key=lambda root: len(root.parts))
+        return best.name
+
+    @staticmethod
+    def _is_path_within_root(file_path: Path, root: Path) -> bool:
+        try:
+            file_path.relative_to(root)
+        except ValueError:
+            return False
+        return True
 
     @staticmethod
     def build_mro_target(

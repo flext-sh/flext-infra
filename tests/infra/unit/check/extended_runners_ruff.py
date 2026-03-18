@@ -8,7 +8,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from flext_core import r
@@ -22,12 +24,23 @@ from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
 from ...helpers import h
-from ...models import m
 from ._shared_fixtures import (
     create_checker_project,
-    create_fake_run_raw,
     patch_gate_run,
 )
+from .extended_gate_go_cmd import run_command_failure_check
+
+
+def _create_run_raw_result(
+    result: r[SimpleNamespace] | str,
+) -> Callable[[list[str]], r[SimpleNamespace]]:
+    def _fake_run_raw(_cmd: list[str], **_kw: str) -> r[SimpleNamespace]:
+        del _cmd, _kw
+        if isinstance(result, str):
+            return r[SimpleNamespace].fail(result)
+        return result
+
+    return _fake_run_raw
 
 
 class TestRunRuffLint:
@@ -145,9 +158,9 @@ class TestRunCommand:
         monkeypatch.setattr(
             FlextInfraUtilitiesSubprocess,
             "run_raw",
-            create_fake_run_raw(
-                r[m.Infra.CommandOutput].ok(
-                    m.Infra.CommandOutput(stdout="[]", stderr="", exit_code=0),
+            _create_run_raw_result(
+                r[SimpleNamespace].ok(
+                    SimpleNamespace(stdout="[]", stderr="", exit_code=0),
                 )
             ),
         )
@@ -164,18 +177,13 @@ class TestRunCommand:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            FlextInfraUtilitiesSubprocess,
-            "run_raw",
-            create_fake_run_raw("execution failed"),
-        )
-        gate = FlextInfraRuffLintGate(tmp_path)
-        result = gate.check(
+        passed, raw_output = run_command_failure_check(
+            monkeypatch,
             tmp_path,
-            FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+            FlextInfraRuffLintGate,
         )
-        tm.that(result.result.passed, eq=False)
-        tm.that(result.raw_output, contains="execution failed")
+        tm.that(passed, eq=False)
+        tm.that(raw_output, contains="execution failed")
 
 
 class TestCollectMarkdownFiles:

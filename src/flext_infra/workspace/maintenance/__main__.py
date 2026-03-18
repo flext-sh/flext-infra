@@ -23,6 +23,7 @@ from flext_infra.workspace.maintenance.python_version import (
 class FlextInfraWorkspaceMaintenanceCommand:
     @staticmethod
     def run(argv: list[str] | None = None) -> int:
+        """Execute maintenance CLI and return service exit code."""
         parser = u.Infra.create_parser(
             prog="maintenance",
             description="Enforce Python version constraints via pyproject.toml",
