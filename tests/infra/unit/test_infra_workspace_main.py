@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_core import r
+from flext_core import r, t
 from flext_tests import tm
 
 from flext_infra._utilities.cli import FlextInfraUtilitiesCli

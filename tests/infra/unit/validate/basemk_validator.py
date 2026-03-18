@@ -181,7 +181,7 @@ class TestBaseMkValidatorSha256:
 
     @staticmethod
     def _sha(path: Path) -> str:
-        return FlextInfraBaseMkValidator._sha256(path)
+        return FlextInfraBaseMkValidator._sha256_file(path)
 
     def test_hash_is_64char_hex(self, tmp_path: Path) -> None:
         f = tf.create_in("content", "test.txt", tmp_path)

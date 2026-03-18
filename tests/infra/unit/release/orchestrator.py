@@ -36,7 +36,7 @@ def _make_config(
     dev_suffix: bool = False,
     create_branches: bool = True,
     next_dev: bool = False,
-    next_bump: str | None = None,
+    next_bump: str = "minor",
 ) -> infra_models.Infra.ReleaseOrchestratorConfig:
     """Create a ReleaseOrchestratorConfig with test defaults."""
     return infra_models.Infra.ReleaseOrchestratorConfig(
