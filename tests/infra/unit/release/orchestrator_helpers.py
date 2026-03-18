@@ -230,16 +230,17 @@ class TestDispatchPhase:
         phase: str,
         root: Path,
     ) -> r[bool]:
-        return orch._dispatch_phase(
-            phase,
-            root,
-            "1.0.0",
-            "v1.0.0",
-            [],
+        config = infra_models.Infra.ReleasePhaseDispatchConfig(
+            phase=phase,
+            workspace_root=root,
+            version="1.0.0",
+            tag="v1.0.0",
+            project_names=[],
             dry_run=False,
             push=False,
             dev_suffix=False,
         )
+        return orch._dispatch_phase(config)
 
     def test_unknown_phase(self, workspace_root: Path) -> None:
         result = self._dispatch(_CLS(), "unknown", workspace_root)

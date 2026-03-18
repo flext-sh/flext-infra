@@ -12,6 +12,7 @@ import pytest
 from flext_core import r, t
 from flext_tests import tm
 
+from flext_infra import m as infra_models
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 
 from ... import h
@@ -22,6 +23,35 @@ if TYPE_CHECKING:
     from _pytest.monkeypatch import MonkeyPatch
 
 _CLS = FlextInfraReleaseOrchestrator
+
+
+def _make_config(
+    workspace_root: Path,
+    version: str = "1.0.0",
+    tag: str = "v1.0.0",
+    phases: list[str] | None = None,
+    project_names: list[str] | None = None,
+    dry_run: bool = False,
+    push: bool = False,
+    dev_suffix: bool = False,
+    create_branches: bool = True,
+    next_dev: bool = False,
+    next_bump: str | None = None,
+) -> infra_models.Infra.ReleaseOrchestratorConfig:
+    """Create a ReleaseOrchestratorConfig with test defaults."""
+    return infra_models.Infra.ReleaseOrchestratorConfig(
+        workspace_root=workspace_root,
+        version=version,
+        tag=tag,
+        phases=phases or [],
+        project_names=project_names,
+        dry_run=dry_run,
+        push=push,
+        dev_suffix=dev_suffix,
+        create_branches=create_branches,
+        next_dev=next_dev,
+        next_bump=next_bump,
+    )
 
 
 def _noop_branches(*args: t.Scalar, **kwargs: t.Scalar) -> r[bool]:
@@ -59,12 +89,8 @@ class TestReleaseOrchestratorExecute:
         tm.ok(_CLS().execute(), eq=True)
 
     def test_run_release_invalid_phase(self, workspace_root: Path) -> None:
-        result = _CLS().run_release(
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
-            phases=["invalid_phase"],
-        )
+        config = _make_config(workspace_root, phases=["invalid_phase"])
+        result = _CLS().run_release(config)
         tm.fail(result)
 
     def test_run_release_empty_phases(
@@ -73,12 +99,8 @@ class TestReleaseOrchestratorExecute:
         monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_branches(monkeypatch)
-        result = _CLS().run_release(
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
-            phases=[],
-        )
+        config = _make_config(workspace_root, phases=[])
+        result = _CLS().run_release(config)
         tm.ok(result)
 
     def test_run_release_with_project_filter(
@@ -88,13 +110,12 @@ class TestReleaseOrchestratorExecute:
     ) -> None:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
-        result = _CLS().run_release(
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
+        config = _make_config(
+            workspace_root,
             phases=["validate"],
             project_names=["flext-core", "flext-api"],
         )
+        result = _CLS().run_release(config)
         tm.ok(result)
 
     def test_run_release_dry_run(
@@ -103,13 +124,8 @@ class TestReleaseOrchestratorExecute:
         monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_dispatch(monkeypatch)
-        result = _CLS().run_release(
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
-            phases=["validate"],
-            dry_run=True,
-        )
+        config = _make_config(workspace_root, phases=["validate"], dry_run=True)
+        result = _CLS().run_release(config)
         tm.ok(result)
 
     def test_run_release_with_push(
@@ -119,13 +135,8 @@ class TestReleaseOrchestratorExecute:
     ) -> None:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
-        result = _CLS().run_release(
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
-            phases=["validate"],
-            push=True,
-        )
+        config = _make_config(workspace_root, phases=["validate"], push=True)
+        result = _CLS().run_release(config)
         tm.ok(result)
 
     def test_run_release_with_dev_suffix(
@@ -135,13 +146,14 @@ class TestReleaseOrchestratorExecute:
     ) -> None:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
-        result = _CLS().run_release(
-            workspace_root=workspace_root,
+        config = _make_config(
+            workspace_root,
             version="1.0.0-dev",
             tag="v1.0.0-dev",
             phases=["version"],
             dev_suffix=True,
         )
+        result = _CLS().run_release(config)
         tm.ok(result)
 
     def test_run_release_next_dev(
@@ -152,14 +164,13 @@ class TestReleaseOrchestratorExecute:
         _stub_branches(monkeypatch)
         _stub_dispatch(monkeypatch)
         monkeypatch.setattr(_CLS, "_bump_next_dev", _noop_bump)
-        result = _CLS().run_release(
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
+        config = _make_config(
+            workspace_root,
             phases=["version"],
             next_dev=True,
             next_bump="minor",
         )
+        result = _CLS().run_release(config)
         tm.ok(result)
 
     def test_run_release_phase_failure_stops(
@@ -183,12 +194,11 @@ class TestReleaseOrchestratorExecute:
 
         _stub_branches(monkeypatch)
         monkeypatch.setattr(_CLS, "_dispatch_phase", fake_dispatch)
-        result = _CLS().run_release(
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
+        config = _make_config(
+            workspace_root,
             phases=["validate", "version"],
         )
+        result = _CLS().run_release(config)
         tm.fail(result)
         tm.that(call_count, eq=1)
 
@@ -198,11 +208,10 @@ class TestReleaseOrchestratorExecute:
         monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_dispatch(monkeypatch)
-        result = _CLS().run_release(
-            workspace_root=workspace_root,
-            version="1.0.0",
-            tag="v1.0.0",
+        config = _make_config(
+            workspace_root,
             phases=["validate"],
             create_branches=False,
         )
+        result = _CLS().run_release(config)
         tm.ok(result)
