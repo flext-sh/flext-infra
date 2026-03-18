@@ -168,8 +168,13 @@ class FlextInfraOrchestratorService(s):
         )
         log_path.parent.mkdir(parents=True, exist_ok=True)
         started = time.monotonic()
+        normalized_make_args = self._normalize_make_args_for_project(
+            project=project,
+            verb=verb,
+            make_args=make_args,
+        )
         proc_result = u.Infra.run_to_file(
-            [c.Infra.Cli.MAKE, "-C", project, verb, *make_args],
+            [c.Infra.Cli.MAKE, "-C", project, verb, *normalized_make_args],
             log_path,
             env={"NO_COLOR": "1", **os.environ},
         )
@@ -189,6 +194,59 @@ class FlextInfraOrchestratorService(s):
                 duration=round(elapsed, 2),
             ),
         )
+
+    def _normalize_make_args_for_project(
+        self,
+        *,
+        project: str,
+        verb: str,
+        make_args: list[str],
+    ) -> list[str]:
+        if (verb != c.Infra.Verbs.CHECK) or (not self._is_go_project(project)):
+            return make_args
+        normalized_args: list[str] = []
+        for make_arg in make_args:
+            if make_arg.startswith("CHECK_GATES="):
+                _, _, gates_value = make_arg.partition("=")
+                normalized_gates = self._normalize_check_gates_for_go(gates_value)
+                normalized_args.append(f"CHECK_GATES={normalized_gates}")
+                continue
+            normalized_args.append(make_arg)
+        return normalized_args
+
+    def _is_go_project(self, project: str) -> bool:
+        return (Path(project) / "go.mod").exists()
+
+    def _normalize_check_gates_for_go(self, gates_value: str) -> str:
+        raw_gates = [gate.strip() for gate in gates_value.split(",") if gate.strip()]
+        if not raw_gates:
+            return gates_value
+        normalized_gates: list[str] = []
+        go_supported = {
+            c.Infra.Gates.LINT,
+            c.Infra.Gates.FORMAT,
+            c.Infra.Gates.SECURITY,
+            c.Infra.Gates.MARKDOWN,
+            c.Infra.Gates.GO,
+            c.Infra.Gates.TYPE_ALIAS,
+        }
+        python_type_gates = {
+            c.Infra.Gates.PYREFLY,
+            c.Infra.Gates.MYPY,
+            c.Infra.Gates.PYRIGHT,
+        }
+        for gate in raw_gates:
+            mapped_gate = (
+                c.Infra.Gates.TYPE_ALIAS if gate in python_type_gates else gate
+            )
+            if mapped_gate not in go_supported and mapped_gate not in python_type_gates:
+                normalized_gates.append(mapped_gate)
+                continue
+            if mapped_gate in go_supported and mapped_gate not in normalized_gates:
+                normalized_gates.append(mapped_gate)
+        if not normalized_gates:
+            normalized_gates.append(c.Infra.Gates.TYPE_ALIAS)
+        return ",".join(normalized_gates)
 
 
 __all__ = ["FlextInfraOrchestratorService"]

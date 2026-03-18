@@ -898,6 +898,7 @@ if TYPE_CHECKING:
     from .test_infra_workspace_orchestrator import (
         TestOrchestratorBasic,
         TestOrchestratorFailures,
+        TestOrchestratorGateNormalization,
         orchestrator,
     )
     from .test_infra_workspace_sync import (
@@ -1797,6 +1798,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestOrchestratorFailures": (
         "tests.infra.unit.test_infra_workspace_orchestrator",
         "TestOrchestratorFailures",
+    ),
+    "TestOrchestratorGateNormalization": (
+        "tests.infra.unit.test_infra_workspace_orchestrator",
+        "TestOrchestratorGateNormalization",
     ),
     "TestOwnerFromRemoteUrl": (
         "tests.infra.unit.deps.test_internal_sync_validation",
@@ -3708,6 +3713,7 @@ __all__ = [
     "TestOrchestrate",
     "TestOrchestratorBasic",
     "TestOrchestratorFailures",
+    "TestOrchestratorGateNormalization",
     "TestOwnerFromRemoteUrl",
     "TestParseArgs",
     "TestParseGitmodules",

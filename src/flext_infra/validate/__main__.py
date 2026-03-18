@@ -148,6 +148,7 @@ class FlextInfraValidateCommand:
 
     @staticmethod
     def run_skill_validate(cli: u.Infra.CliArgs, skill: str, mode: str) -> int:
+        """Validate a skill."""
         validator = FlextInfraSkillValidator()
         result = validator.validate(cli.workspace, skill, mode=mode)
         if result.is_success:
@@ -161,6 +162,7 @@ class FlextInfraValidateCommand:
 
     @staticmethod
     def run_stub_validate(cli: u.Infra.CliArgs, project: list[str] | None) -> int:
+        """Validate stub supply chain."""
         chain = FlextInfraStubSupplyChain()
         project_dirs: list[Path] | None = (
             [cli.workspace / project_name for project_name in project]
@@ -179,6 +181,7 @@ class FlextInfraValidateCommand:
 
     @staticmethod
     def run(argv: list[str] | None = None) -> int:
+        """Run validation command dispatcher."""
         parser, subs = u.Infra.create_subcommand_parser(
             prog="flext_infra core",
             description="Core infrastructure services",

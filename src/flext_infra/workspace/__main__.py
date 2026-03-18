@@ -27,12 +27,14 @@ from flext_infra.workspace.sync import FlextInfraSyncService
 class FlextInfraWorkspaceCommand:
     @staticmethod
     def run_detect(cli: u.Infra.CliArgs) -> int:
+        """Detect workspace or standalone mode."""
         detector = FlextInfraWorkspaceDetector()
         result = detector.detect(cli.workspace)
         return u.Infra.exit_code(result, failure_msg="detection failed")
 
     @staticmethod
     def run_sync(cli: u.Infra.CliArgs, canonical_root: str | None) -> int:
+        """Sync base.mk to project root."""
         canonical_path = Path(canonical_root) if canonical_root else None
         service = FlextInfraSyncService(canonical_root=canonical_path)
         result = service.sync(
@@ -48,6 +50,7 @@ class FlextInfraWorkspaceCommand:
         fail_fast: bool,
         make_args: list[str],
     ) -> int:
+        """Run make verb across projects."""
         filtered_projects = [project for project in projects if project]
         if not filtered_projects:
             return u.Infra.exit_code(
@@ -69,6 +72,7 @@ class FlextInfraWorkspaceCommand:
 
     @staticmethod
     def run_migrate(cli: u.Infra.CliArgs) -> int:
+        """Migrate workspace projects to flext_infra tooling."""
         service = FlextInfraProjectMigrator()
         result = service.migrate(workspace_root=cli.workspace, dry_run=cli.dry_run)
         if result.is_failure:

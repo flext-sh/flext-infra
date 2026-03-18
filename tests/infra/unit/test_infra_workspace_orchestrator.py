@@ -4,6 +4,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
+from flext_infra import c
 from flext_infra.models import FlextInfraModels as m
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
@@ -122,3 +123,43 @@ class TestOrchestratorFailures:
             orchestrator.orchestrate(["p1", "p2", "p3"], "test", fail_fast=True),
             len=3,
         )
+
+
+class TestOrchestratorGateNormalization:
+    def test_maps_python_type_gates_to_go_type_alias(
+        self,
+        tmp_path_factory: pytest.TempPathFactory,
+    ) -> None:
+        orchestrator = FlextInfraOrchestratorService()
+        go_project = tmp_path_factory.mktemp("go-project")
+        (go_project / "go.mod").write_text("module example.org/go-project\n")
+
+        normalized = orchestrator._normalize_make_args_for_project(
+            project=str(go_project),
+            verb=c.Infra.Verbs.CHECK,
+            make_args=["CHECK_GATES=lint,pyrefly,mypy,pyright,security"],
+        )
+
+        tm.that(
+            normalized,
+            eq=["CHECK_GATES=lint,type,security"],
+        )
+
+    def test_leaves_python_project_gates_unchanged(
+        self,
+        tmp_path_factory: pytest.TempPathFactory,
+    ) -> None:
+        orchestrator = FlextInfraOrchestratorService()
+        python_project = tmp_path_factory.mktemp("python-project")
+        (python_project / "pyproject.toml").write_text(
+            "[project]\nname='python-project'\n"
+        )
+
+        make_args = ["CHECK_GATES=pyrefly"]
+        normalized = orchestrator._normalize_make_args_for_project(
+            project=str(python_project),
+            verb=c.Infra.Verbs.CHECK,
+            make_args=make_args,
+        )
+
+        tm.that(normalized, eq=make_args)
