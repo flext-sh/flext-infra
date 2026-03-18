@@ -16,15 +16,15 @@ from tests.infra import c, m
 
 class TestExcludedProjects:
     def test_flexcore_in_excluded_set(self) -> None:
-        tm.that("flexcore" in c.Infra.Codegen.EXCLUDED_PROJECTS, eq=True)
+        tm.that("flexcore" in c.Infra.EXCLUDED_PROJECTS, eq=True)
 
     def test_excluded_set_is_frozenset(self) -> None:
-        tm.that(type(c.Infra.Codegen.EXCLUDED_PROJECTS).__name__, eq="frozenset")
+        tm.that(type(c.Infra.EXCLUDED_PROJECTS).__name__, eq="frozenset")
 
 
 class TestViolationPattern:
     def test_named_groups_present(self) -> None:
-        match = c.Infra.Codegen.VIOLATION_PATTERN.match(
+        match = c.Infra.VIOLATION_PATTERN.match(
             "[NS-001-001] src/file.py:10 — msg",
         )
         tm.that(match is not None, eq=True)
