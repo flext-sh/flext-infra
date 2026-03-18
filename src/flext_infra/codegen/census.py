@@ -13,8 +13,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s, t
-from pydantic import BaseModel
+from flext_core import r, s
 
 from flext_infra import (
     FlextInfraNamespaceValidator,
@@ -25,7 +24,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraCodegenCensus(s):
+class FlextInfraCodegenCensus(s[bool]):
     """Read-only census service for namespace violation counting."""
 
     def __init__(self, workspace_root: Path) -> None:
@@ -77,12 +76,8 @@ class FlextInfraCodegenCensus(s):
         )
 
     @override
-    def execute(
-        self,
-    ) -> r[t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]]:
-        return r[
-            t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]
-        ].fail("Use run() directly")
+    def execute(self) -> r[bool]:
+        return r[bool].fail("Use run() directly")
 
     def run(
         self,

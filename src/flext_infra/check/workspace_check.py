@@ -9,8 +9,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s, t
-from pydantic import BaseModel, JsonValue
+from flext_core import r, s
+from pydantic import JsonValue
 
 from flext_infra import (
     c,
@@ -24,7 +24,7 @@ from flext_infra.gates._gate_registry import FlextInfraGateRegistry
 from flext_infra.gates._report import FlextInfraCheckReporter
 
 
-class FlextInfraWorkspaceChecker(s):
+class FlextInfraWorkspaceChecker(s[bool]):
     """Run workspace quality gates and generate reports."""
 
     def __init__(self, workspace_root: Path | None = None) -> None:
@@ -88,14 +88,8 @@ class FlextInfraWorkspaceChecker(s):
         return r[list[str]].ok(resolved)
 
     @override
-    def execute(
-        self,
-    ) -> r[t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]]:
-        return r[
-            t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]
-        ].fail(
-            "Use run() or run_projects() directly",
-        )
+    def execute(self) -> r[bool]:
+        return r[bool].fail("Use run() or run_projects() directly")
 
     def format(self, project_dir: Path) -> r[m.Infra.GateResult]:
         """Run format checks for one project."""

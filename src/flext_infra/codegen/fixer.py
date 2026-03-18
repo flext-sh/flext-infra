@@ -17,8 +17,7 @@ import ast
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s, t
-from pydantic import BaseModel
+from flext_core import r, s
 
 from flext_infra import (
     FlextInfraCodegenLazyInit,
@@ -35,7 +34,7 @@ from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
 from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 
 
-class FlextInfraCodegenFixer(s):
+class FlextInfraCodegenFixer(s[bool]):
     """AST-based auto-fixer for namespace violations (Rules 1-2)."""
 
     _workspace_root: Path
@@ -81,12 +80,8 @@ class FlextInfraCodegenFixer(s):
     # ------------------------------------------------------------------
 
     @override
-    def execute(
-        self,
-    ) -> r[t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]]:
-        return r[
-            t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]
-        ].fail("Use run() directly")
+    def execute(self) -> r[bool]:
+        return r[bool].fail("Use run() directly")
 
     def fix_project(self, project_path: Path) -> m.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project.

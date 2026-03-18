@@ -15,8 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_core import FlextLogger, r, s, t
-from pydantic import BaseModel
+from flext_core import FlextLogger, r, s
 
 from flext_infra import (
     c,
@@ -28,7 +27,7 @@ from flext_infra import (
 logger = FlextLogger.create_module_logger(__name__)
 
 
-class FlextInfraOrchestratorService(s):
+class FlextInfraOrchestratorService(s[bool]):
     """Infrastructure service for multi-project make orchestration.
 
     Executes a make verb across a list of projects sequentially, capturing
@@ -54,15 +53,9 @@ class FlextInfraOrchestratorService(s):
         )
 
     @override
-    def execute(
-        self,
-    ) -> r[t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]]:
+    def execute(self) -> r[bool]:
         """Not used; call orchestrate() directly instead."""
-        return r[
-            t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]
-        ].fail(
-            "Use orchestrate() method directly",
-        )
+        return r[bool].fail("Use orchestrate() method directly")
 
     def orchestrate(
         self,

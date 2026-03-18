@@ -12,8 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s, t
-from pydantic import BaseModel
+from flext_core import r, s
 
 from flext_infra import (
     FlextInfraNamespaceValidator,
@@ -26,7 +25,7 @@ from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 __all__ = ["FlextInfraCodegenScaffolder"]
 
 
-class FlextInfraCodegenScaffolder(s):
+class FlextInfraCodegenScaffolder(s[bool]):
     """Generates missing base modules in src/ and tests/ directories."""
 
     def __init__(self, workspace_root: Path) -> None:
@@ -57,12 +56,8 @@ class FlextInfraCodegenScaffolder(s):
         return None
 
     @override
-    def execute(
-        self,
-    ) -> r[t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]]:
-        return r[
-            t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]
-        ].fail("Use run() directly")
+    def execute(self) -> r[bool]:
+        return r[bool].fail("Use run() directly")
 
     def run(self) -> list[m.Infra.ScaffoldResult]:
         """Scaffold missing base modules for all projects in workspace.

@@ -14,7 +14,7 @@ from typing import override
 
 import tomlkit
 from flext_core import FlextLogger, r, s
-from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
+from pydantic import JsonValue, TypeAdapter, ValidationError
 from tomlkit import items
 
 from flext_infra import (
@@ -27,7 +27,7 @@ from flext_infra._utilities.output import output
 _logger = FlextLogger.create_module_logger(__name__)
 
 
-class FlextInfraConfigFixer(s):
+class FlextInfraConfigFixer(s[bool]):
     """Fix pyrefly configuration across workspace projects."""
 
     def __init__(self, workspace_root: Path | None = None) -> None:
@@ -63,12 +63,8 @@ class FlextInfraConfigFixer(s):
         return arr
 
     @override
-    def execute(
-        self,
-    ) -> r[t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]]:
-        return r[
-            t.NormalizedValue | BaseModel | list[t.NormalizedValue | BaseModel]
-        ].fail("Use run() directly")
+    def execute(self) -> r[bool]:
+        return r[bool].fail("Use run() directly")
 
     def find_pyproject_files(
         self,
