@@ -130,6 +130,7 @@ class FlextInfraValidateCommand:
         exclude: list[str],
         match: str,
     ) -> int:
+        """Scan text files for patterns."""
         scanner = FlextInfraTextPatternScanner()
         result = scanner.scan(
             cli.workspace,
