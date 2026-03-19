@@ -1,0 +1,23 @@
+src/flext_infra/codegen/transforms.py
+  fad76ebabdd5def2 87,93,435,441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "8fb7cafdf2b00af5eb5970835ab95e54d58d2e4d",
+  "prompts": {
+    "fad76ebabdd5def2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "837e8317-8739-4910-8ae5-c91674f8a1e6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 3,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}
