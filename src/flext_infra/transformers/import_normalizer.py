@@ -174,7 +174,7 @@ def _alias_tiers() -> Mapping[str, int]:
         return {}
     tiers: dict[str, int] = {}
     for alias_name, tier_value in config.items():
-        if len(alias_name) != 1 or not alias_name.isalpha():
+        if len(alias_name) != 1 or not alias_name.islower():
             continue
         if isinstance(tier_value, int):
             tiers[alias_name] = tier_value
@@ -203,7 +203,7 @@ def _wrong_source_config() -> tuple[bool, frozenset[str]]:
     universal_aliases: set[str] = set()
     if isinstance(universal_raw, list):
         for item in universal_raw:
-            if isinstance(item, str) and len(item) == 1 and item.isalpha():
+            if isinstance(item, str) and len(item) == 1 and item.islower():
                 universal_aliases.add(item)
     return enabled, frozenset(universal_aliases)
 
@@ -243,7 +243,7 @@ def discover_project_aliases(project_root: Path) -> dict[str, str]:
         if not facade_path.is_file():
             continue
         alias_name = _extract_declared_alias_from_facade(facade_path)
-        if len(alias_name) != 1 or not alias_name.isalpha():
+        if len(alias_name) != 1 or not alias_name.islower():
             continue
         alias_to_facade[alias_name] = facade_name
     return alias_to_facade
@@ -321,7 +321,7 @@ def _extract_lazy_alias_map(package_dir: Path) -> dict[str, str]:
     lazy_import_map = _extract_lazy_import_map(init_path)
     alias_map: dict[str, str] = {}
     for key_text, module_name in lazy_import_map.items():
-        if len(key_text) != 1 or not key_text.isalpha():
+        if len(key_text) != 1 or not key_text.islower():
             continue
         alias_map[key_text] = module_name
     return alias_map
@@ -351,7 +351,8 @@ def _build_alias_to_defining_module(
     project_root: Path | None,
     alias_map: dict[str, tuple[str, ...]] | None,
 ) -> dict[str, str]:
-    alias_to_module = _extract_lazy_alias_map(package_dir)
+    init_path = package_dir / "__init__.py"
+    alias_to_module = dict(_extract_lazy_import_map(init_path))
     if project_root is not None:
         alias_to_facade = discover_project_aliases(project_root)
         for alias_name, facade_file in alias_to_facade.items():
@@ -647,7 +648,10 @@ def _is_deep_violation(
         return False
     if not module_name.startswith(f"{context.project_package}."):
         return False
-    if _is_private_submodule(module_name):
+    if (
+        _is_private_submodule(module_name)
+        and imported_name not in context.project_aliases
+    ):
         return False
     if not _is_safe_to_normalize(context, imported_name):
         return False
@@ -722,7 +726,7 @@ class ImportNormalizerVisitor(cst.CSTVisitor):
     @override
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         module_name = _module_name(node)
-        if len(module_name) == 0 or _is_private_submodule(module_name):
+        if len(module_name) == 0:
             return
         if isinstance(node.names, cst.ImportStar):
             return
@@ -787,8 +791,6 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
             return updated_node
         if module_name == self._context.project_package:
             self._track_present_aliases(updated_node.names)
-        if _is_private_submodule(module_name):
-            return updated_node
 
         violating_names: set[str] = set()
         for imported_alias in updated_node.names:

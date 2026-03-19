@@ -357,7 +357,8 @@ class FlextInfraCodegenLazyInit(s[int]):
             )
             if has_all and all_exports:
                 for name in all_exports:
-                    index[name] = (mod_path, name)
+                    if name not in index:
+                        index[name] = (mod_path, name)
             else:
                 FlextInfraCodegenLazyInit._scan_ast_public_defs(
                     sibling_tree,
