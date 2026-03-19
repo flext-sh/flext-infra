@@ -80,13 +80,13 @@ class FlextInfraModels(FlextModels):
             create_branches: Annotated[
                 bool,
                 Field(
-                    default=True, description="Create release branches before phases"
+                    default=True, description="Create release branches before phases",
                 ),
             ]
             next_dev: Annotated[
                 bool,
                 Field(
-                    default=False, description="Bump to next dev version after release"
+                    default=False, description="Bump to next dev version after release",
                 ),
             ]
             next_bump: Annotated[

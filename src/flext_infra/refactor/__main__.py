@@ -24,6 +24,7 @@ class FlextInfraRefactorCommand:
                 "centralize-pydantic": "Centralize BaseModel/TypedDict/dict-like aliases into _models.py",
                 "migrate-mro": "Migrate loose declarations into MRO facade classes",
                 "namespace-enforce": "Scan workspace for namespace governance violations",
+                "imports": "Detect and fix all import violations across workspace (CST-based)",
                 "ultrawork-models": "Run full centralization + MRO + namespace workflow",
                 "census": "Run AST/CST census of MRO family method usage",
             },
@@ -75,6 +76,8 @@ class FlextInfraRefactorCommand:
             )
         if command == "namespace-enforce":
             return FlextInfraRefactorCommand.run_namespace_enforce(cli)
+        if command == "imports":
+            return FlextInfraRefactorCommand.run_imports(cli)
         if command == "ultrawork-models":
             return FlextInfraRefactorCommand.run_ultrawork_models(
                 cli,
@@ -126,6 +129,17 @@ class FlextInfraRefactorCommand:
     @staticmethod
     def run_namespace_enforce(cli: u.Infra.CliArgs) -> int:
         """Run namespace enforcement checks and optionally apply fixes."""
+        enforcer = FlextInfraNamespaceEnforcer(workspace_root=cli.workspace)
+        report = enforcer.enforce(apply=cli.apply)
+        sys.stdout.write(FlextInfraNamespaceEnforcer.render_text(report))
+        sys.stdout.flush()
+        if report.has_violations:
+            return 1
+        return 0
+
+    @staticmethod
+    def run_imports(cli: u.Infra.CliArgs) -> int:
+        """Detect and optionally fix import violations across workspace (CST-based)."""
         enforcer = FlextInfraNamespaceEnforcer(workspace_root=cli.workspace)
         report = enforcer.enforce(apply=cli.apply)
         sys.stdout.write(FlextInfraNamespaceEnforcer.render_text(report))

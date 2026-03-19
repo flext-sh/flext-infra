@@ -6,6 +6,7 @@ import ast
 from pathlib import Path
 
 from flext_infra import c, m, u
+from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 from flext_infra.transformers.mro_reference_rewriter import (
     FlextInfraRefactorMROReferenceRewriter,
 )
@@ -156,9 +157,7 @@ class FlextInfraRefactorMROImportRewriter:
                         existing_imports.add(key)
         imports_to_add = sorted(facade_imports_needed - existing_imports)
         if len(imports_to_add) > 0:
-            insert_at = FlextInfraRefactorMROImportRewriter._import_insertion_index(
-                module=rewritten,
-            )
+            insert_at = FlextInfraCodegenTransforms.find_insert_position(rewritten)
             for offset, facade_key in enumerate(imports_to_add):
                 facade_import = facade_import_objects[facade_key]
                 rewritten.body.insert(
@@ -191,17 +190,6 @@ class FlextInfraRefactorMROImportRewriter:
             on_failure=lambda _: [],
             on_success=lambda v: v,
         )
-
-    @staticmethod
-    def _import_insertion_index(*, module: ast.Module) -> int:
-        insert_at = 0
-        for index, stmt in enumerate(module.body):
-            if isinstance(stmt, (ast.Import, ast.ImportFrom)):
-                insert_at = index + 1
-                continue
-            if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant):
-                insert_at = index + 1
-        return insert_at
 
 
 __all__ = ["FlextInfraRefactorMROImportRewriter"]

@@ -14,8 +14,7 @@ import builtins as _builtins_module
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra import c, u
 
 
 class FlextInfraCodegenTransforms:
@@ -89,15 +88,7 @@ class FlextInfraCodegenTransforms:
         for stmt in tree.body:
             if not isinstance(stmt, ast.AnnAssign):
                 continue
-            annotation = stmt.annotation
-            if isinstance(annotation, ast.Name) and annotation.id == "Final":
-                matches.append(stmt)
-                continue
-            if (
-                isinstance(annotation, ast.Subscript)
-                and isinstance(annotation.value, ast.Name)
-                and annotation.value.id == "Final"
-            ):
+            if u.Infra.is_final_annotation(annotation=stmt.annotation):
                 matches.append(stmt)
         return matches
 
@@ -441,7 +432,7 @@ class FlextInfraCodegenTransforms:
             source = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except (OSError, UnicodeDecodeError):
             return False
-        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
+        tree = u.Infra.parse_ast_from_source(source)
         if tree is None:
             return False
         assignment: ast.Assign | None = None

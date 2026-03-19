@@ -758,6 +758,30 @@ class FlextInfraUtilitiesRefactor:
             tree.visit(visitor)
         return tree
 
+    @staticmethod
+    def is_final_annotation(*, annotation: ast.expr) -> bool:
+        """Check if an annotation is ``Final`` or ``Final[T]``.
+
+        Args:
+            annotation: AST expression node to check.
+
+        Returns:
+            True if the annotation is Final or Final[T], False otherwise.
+
+        """
+        final_name = c.Infra.FINAL_ANNOTATION_NAME
+        if isinstance(annotation, ast.Name):
+            return annotation.id == final_name
+        if isinstance(annotation, ast.Attribute):
+            return annotation.attr == final_name
+        if isinstance(annotation, ast.Subscript):
+            base = annotation.value
+            if isinstance(base, ast.Name):
+                return base.id == final_name
+            if isinstance(base, ast.Attribute):
+                return base.attr == final_name
+        return False
+
 
 __all__ = ["FlextInfraUtilitiesRefactor"]
 from flext_infra._utilities.subprocess import (

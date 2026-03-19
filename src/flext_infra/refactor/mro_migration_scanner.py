@@ -96,9 +96,7 @@ class FlextInfraRefactorMROMigrationScanner:
                 return None
             if not _CONSTANT_PATTERN.match(stmt.target.id):
                 return None
-            if not FlextInfraRefactorMROMigrationScanner._is_final_annotation(
-                annotation=stmt.annotation,
-            ):
+            if not u.Infra.is_final_annotation(annotation=stmt.annotation):
                 return None
             return m.Infra.MROSymbolCandidate(
                 symbol=stmt.target.id,
@@ -333,21 +331,6 @@ class FlextInfraRefactorMROMigrationScanner:
             class_name="",
             facade_name="",
         )
-
-    @staticmethod
-    def _is_final_annotation(*, annotation: ast.expr) -> bool:
-        final_name = c.Infra.FINAL_ANNOTATION_NAME
-        if isinstance(annotation, ast.Name):
-            return annotation.id == final_name
-        if isinstance(annotation, ast.Attribute):
-            return annotation.attr == final_name
-        if isinstance(annotation, ast.Subscript):
-            base = annotation.value
-            if isinstance(base, ast.Name):
-                return base.id == final_name
-            if isinstance(base, ast.Attribute):
-                return base.attr == final_name
-        return False
 
     @staticmethod
     def _is_type_alias_annotation(*, annotation: ast.expr) -> bool:

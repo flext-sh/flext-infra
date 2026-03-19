@@ -23,7 +23,7 @@ class NamespaceFacadeScanner:
         """Scan a project for namespace facade classes and return their status."""
         results: list[nem.FacadeStatus] = []
         class_stem = cls.project_class_stem(project_name=project_name)
-        for family, suffix in c.Infra.NAMESPACE_FACADE_FAMILIES.items():
+        for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_class = f"{class_stem}{suffix}"
             found_class, found_file, symbol_count = cls._find_facade_class(
                 project_root=project_root,
@@ -53,7 +53,7 @@ class NamespaceFacadeScanner:
         suffix: str,
         _parse_failures: list[nem.ParseFailureViolation] | None,
     ) -> tuple[str, str, int]:
-        file_pattern = c.Infra.NAMESPACE_FACADE_FILE_PATTERNS[family]
+        file_pattern = c.Infra.FAMILY_FILES[family]
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return ("", "", 0)

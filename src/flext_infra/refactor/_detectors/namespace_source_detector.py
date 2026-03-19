@@ -198,7 +198,7 @@ class NamespaceSourceDetector(
             family: file_name
             for file_name, family in c.Infra.NAMESPACE_FILE_TO_FAMILY.items()
         }
-        for family in c.Infra.NAMESPACE_FACADE_FAMILIES:
+        for family in c.Infra.FAMILY_SUFFIXES:
             file_name = family_to_file_name.get(family)
             if file_name is None:
                 continue

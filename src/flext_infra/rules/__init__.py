@@ -39,6 +39,9 @@ if TYPE_CHECKING:
         FlextInfraRefactorSignaturePropagator,
         FlextInfraRefactorSymbolPropagationRule,
     )
+    from flext_infra.rules.type_alias_unification import (
+        FlextInfraRefactorTypingUnificationRule,
+    )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ClassNestingRefactorRule": (
@@ -89,6 +92,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.rules.symbol_propagation",
         "FlextInfraRefactorSymbolPropagationRule",
     ),
+    "FlextInfraRefactorTypingUnificationRule": (
+        "flext_infra.rules.type_alias_unification",
+        "FlextInfraRefactorTypingUnificationRule",
+    ),
     "PreCheckGate": ("flext_infra.rules.class_reconstructor", "PreCheckGate"),
 }
 
@@ -105,6 +112,7 @@ __all__ = [
     "FlextInfraRefactorSignaturePropagationRule",
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagationRule",
+    "FlextInfraRefactorTypingUnificationRule",
     "PreCheckGate",
 ]
 

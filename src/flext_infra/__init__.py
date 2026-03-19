@@ -238,6 +238,9 @@ if TYPE_CHECKING:
         FlextInfraRefactorSignaturePropagator,
         FlextInfraRefactorSymbolPropagationRule,
     )
+    from flext_infra.rules.type_alias_unification import (
+        FlextInfraRefactorTypingUnificationRule,
+    )
     from flext_infra.transformers.alias_remover import FlextInfraRefactorAliasRemover
     from flext_infra.transformers.census_visitors import (
         CensusImportDiscoveryVisitor,
@@ -284,6 +287,7 @@ if TYPE_CHECKING:
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
     )
+    from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
     from flext_infra.typings import FlextInfraTypes, t
     from flext_infra.utilities import FlextInfraUtilities, u
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
@@ -675,6 +679,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.policy",
         "FlextInfraRefactorTransformerPolicyUtilities",
     ),
+    "FlextInfraRefactorTypingUnificationRule": (
+        "flext_infra.rules.type_alias_unification",
+        "FlextInfraRefactorTypingUnificationRule",
+    ),
+    "FlextInfraRefactorTypingUnifier": (
+        "flext_infra.transformers.typing_unifier",
+        "FlextInfraRefactorTypingUnifier",
+    ),
     "FlextInfraRefactorViolationAnalyzer": (
         "flext_infra.refactor.violation_analyzer",
         "FlextInfraRefactorViolationAnalyzer",
@@ -1020,6 +1032,8 @@ __all__ = [
     "FlextInfraRefactorSymbolPropagationRule",
     "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTransformerPolicyUtilities",
+    "FlextInfraRefactorTypingUnificationRule",
+    "FlextInfraRefactorTypingUnifier",
     "FlextInfraRefactorViolationAnalyzer",
     "FlextInfraReleaseOrchestrator",
     "FlextInfraRuffFormatGate",

@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
     )
+    from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "CensusImportDiscoveryVisitor": (
@@ -121,6 +122,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.policy",
         "FlextInfraRefactorTransformerPolicyUtilities",
     ),
+    "FlextInfraRefactorTypingUnifier": (
+        "flext_infra.transformers.typing_unifier",
+        "FlextInfraRefactorTypingUnifier",
+    ),
     "FlextInfraTransformerImportInsertion": (
         "flext_infra.transformers.import_insertion",
         "FlextInfraTransformerImportInsertion",
@@ -155,6 +160,7 @@ __all__ = [
     "FlextInfraRefactorMRORemover",
     "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTransformerPolicyUtilities",
+    "FlextInfraRefactorTypingUnifier",
     "FlextInfraTransformerImportInsertion",
     "HelperConsolidationTransformer",
     "NestedClassPropagationTransformer",

@@ -9,7 +9,7 @@ from flext_infra.codegen._codegen_execution import FlextInfraCodegenExecution
 
 
 class FlextInfraUtilitiesCodegen(
-    FlextInfraCodegenExecution, FlextInfraCodegenAstParsing
+    FlextInfraCodegenExecution, FlextInfraCodegenAstParsing,
 ):
     @staticmethod
     @override

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, p, u
+from flext_infra import c, m, p
 from flext_infra.refactor._detectors.module_loader import (
     DetectorScanResultBuilder,
 )
@@ -43,28 +42,18 @@ class ImportAliasDetector(p.Infra.Scanner):
             names.append(token_text)
         return names
 
-    @staticmethod
-    def _is_facade_or_subclass_file(*, file_path: Path, tree: ast.Module) -> bool:
-        family_file_names = set(c.Infra.NAMESPACE_FILE_TO_FAMILY)
-        family_file_names.update(c.Infra.NAMESPACE_PROTECTED_FILES)
-        if file_path.name in family_file_names:
-            return True
-        suffixes = tuple(c.Infra.NAMESPACE_FACADE_FAMILIES.values())
-        for stmt in tree.body:
-            if not isinstance(stmt, ast.ClassDef):
-                continue
-            if stmt.name.endswith(suffixes):
-                return True
-            for base in stmt.bases:
-                if isinstance(base, ast.Name) and base.id.endswith(suffixes):
-                    return True
-                if isinstance(base, ast.Attribute) and base.attr.endswith(suffixes):
-                    return True
-        return False
-
     @classmethod
-    def is_facade_or_subclass_file(cls, *, file_path: Path, tree: ast.Module) -> bool:
-        return cls._is_facade_or_subclass_file(file_path=file_path, tree=tree)
+    def _discover_package(cls, file_path: Path) -> str:
+        src_dir_name = c.Infra.Paths.DEFAULT_SRC_DIR
+        parts = file_path.resolve().parts
+        try:
+            src_index = parts.index(src_dir_name)
+        except ValueError:
+            return ""
+        package_index = src_index + 1
+        if package_index >= len(parts):
+            return ""
+        return parts[package_index]
 
     def __init__(
         self,
@@ -114,53 +103,23 @@ class ImportAliasDetector(p.Infra.Scanner):
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ImportAliasViolation]:
         """Scan a file for deep import paths that should use aliases."""
-        tree = u.Infra.parse_module_ast(file_path)
-        if tree is None:
-            return []
-        if cls._is_facade_or_subclass_file(file_path=file_path, tree=tree):
-            return []
-        violations: list[nem.ImportAliasViolation] = []
-        for stmt in tree.body:
-            if not isinstance(stmt, ast.ImportFrom):
-                continue
-            if stmt.module is None:
-                continue
-            if file_path.name == "__init__.py":
-                continue
-            for prefix in cls.RUNTIME_ALIAS_NAMES_BY_PACKAGE:
-                if stmt.module.startswith(prefix + "."):
-                    if "._" in stmt.module:
-                        continue
-                    if any(alias.name == "*" for alias in stmt.names):
-                        continue
-                    if any(alias.asname is not None for alias in stmt.names):
-                        continue
-                    imported_names = [alias.name for alias in stmt.names]
-                    if len(imported_names) == 0:
-                        continue
-                    allowed_names = set(
-                        cls.RUNTIME_ALIAS_NAMES_BY_PACKAGE.get(prefix, ()),
-                    )
-                    if not all(name in allowed_names for name in imported_names):
-                        continue
-                    suggestion = cls._suggest_alias_import(
-                        package=prefix,
-                        imported_names=imported_names,
-                    )
-                    import_names = (
-                        ", ".join(
-                            alias.name for alias in stmt.names if alias.name != "*"
-                        )
-                        if not any(alias.name == "*" for alias in stmt.names)
-                        else "*"
-                    )
-                    current = f"from {stmt.module} import {import_names}"
-                    violations.append(
-                        nem.ImportAliasViolation.create(
-                            file=str(file_path),
-                            line=stmt.lineno,
-                            current_import=current,
-                            suggested_import=suggestion,
-                        ),
-                    )
-        return violations
+        _ = _parse_failures
+        from flext_infra.transformers.import_normalizer import (
+            ImportNormalizerTransformer,
+        )
+
+        violations_cst = ImportNormalizerTransformer.detect_file(
+            file_path=file_path,
+            project_package=cls._discover_package(file_path),
+            alias_map=c.Infra.RUNTIME_ALIAS_NAMES_BY_PACKAGE,
+        )
+        return [
+            nem.ImportAliasViolation.create(
+                file=str(v.file),
+                line=v.line,
+                current_import=v.current_import,
+                suggested_import=v.suggested_import,
+            )
+            for v in violations_cst
+            if v.violation_type == "deep"
+        ]

@@ -25,7 +25,7 @@ class NamespaceEnforcementRewriter:
 
     @staticmethod
     def _preferred_file_name(*, family: str) -> str:
-        pattern = c.Infra.NAMESPACE_FACADE_FILE_PATTERNS.get(
+        pattern = c.Infra.FAMILY_FILES.get(
             family,
             "utilities.py",
         )
@@ -34,13 +34,13 @@ class NamespaceEnforcementRewriter:
     @staticmethod
     def _base_import_for_family(*, family: str) -> str:
         class_name = (
-            f"Flext{c.Infra.NAMESPACE_FACADE_FAMILIES.get(family, 'Utilities')}"
+            f"Flext{c.Infra.FAMILY_SUFFIXES.get(family, 'Utilities')}"
         )
         return f"from flext_core import {class_name}"
 
     @staticmethod
     def _base_class_for_family(*, family: str) -> str:
-        return f"Flext{c.Infra.NAMESPACE_FACADE_FAMILIES.get(family, 'Utilities')}"
+        return f"Flext{c.Infra.FAMILY_SUFFIXES.get(family, 'Utilities')}"
 
     @staticmethod
     def _write_missing_facade_file(
@@ -91,7 +91,7 @@ class NamespaceEnforcementRewriter:
         for status in facade_statuses:
             if status.exists:
                 continue
-            suffix = c.Infra.NAMESPACE_FACADE_FAMILIES[status.family]
+            suffix = c.Infra.FAMILY_SUFFIXES[status.family]
             class_name = f"{stem}{suffix}"
             file_name = cls._preferred_file_name(family=status.family)
             target_path = primary_package / file_name
@@ -748,11 +748,6 @@ class NamespaceEnforcementRewriter:
         if "from __future__ import annotations" not in updated:
             updated = "from __future__ import annotations\n\n" + updated.lstrip("\n")
         merged_blocks = "\n\n".join(blocks)
-        if (
-            "TypeAlias" in merged_blocks
-            and "from typing import TypeAlias" not in updated
-        ):
-            updated = updated.rstrip() + "\n\nfrom typing import TypeAlias\n"
         updated = updated.rstrip() + "\n\n" + merged_blocks + "\n"
         target_file.parent.mkdir(parents=True, exist_ok=True)
         _ = target_file.write_text(updated, encoding=c.Infra.Encoding.DEFAULT)

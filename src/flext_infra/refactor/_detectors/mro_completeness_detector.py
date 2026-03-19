@@ -147,7 +147,7 @@ class MROCompletenessDetector(
             for target in stmt.targets:
                 if isinstance(target, ast.Name) and target.id == family:
                     return stmt.value.id
-        suffix = c.Infra.NAMESPACE_FACADE_FAMILIES.get(family, "")
+        suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
         if len(suffix) == 0:
             return None
         for stmt in tree.body:

@@ -88,8 +88,7 @@ def test_standalone_typealias_detected_as_fixable(tmp_path: Path) -> None:
         name="test-proj",
         pkg_name="test_proj",
         files={
-            "base.py": "from typing import TypeAlias\n"
-            "MyType: TypeAlias = str\nclass TestProjBase:\n    pass\n",
+            "base.py": "type MyType = str\nclass TestProjBase:\n    pass\n",
         },
     )
     fixer = FlextInfraCodegenFixer(tmp_path)

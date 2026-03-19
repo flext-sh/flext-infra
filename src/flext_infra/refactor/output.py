@@ -58,7 +58,7 @@ class FlextInfraRefactorOutputRenderer:
                 lines.append(
                     "  Missing facades: "
                     + ", ".join(
-                        f"{s.family} ({c.Infra.NAMESPACE_FACADE_FAMILIES[s.family]})"
+                        f"{s.family} ({c.Infra.FAMILY_SUFFIXES[s.family]})"
                         for s in missing
                     ),
                 )

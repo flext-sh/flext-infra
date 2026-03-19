@@ -180,7 +180,7 @@ class LooseObjectDetector(p.Infra.Scanner):
         classes: set[str] = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
-                for suffix in c.Infra.NAMESPACE_FACADE_FAMILIES.values():
+                for suffix in c.Infra.FAMILY_SUFFIXES.values():
                     if node.name.endswith(suffix):
                         classes.add(node.name)
                         break

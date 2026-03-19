@@ -85,7 +85,6 @@ class FlextInfraRefactorPydanticCentralizer:
         return (
             '"""Auto-generated centralized typings."""\n\n'
             "from __future__ import annotations\n\n"
-            "from typing import TypeAlias\n\n"
         )
 
     @staticmethod
