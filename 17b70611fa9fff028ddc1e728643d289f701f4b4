@@ -1,0 +1,23 @@
+src/flext_infra/refactor/mro_import_rewriter.py
+  fad76ebabdd5def2 9,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "17b70611fa9fff028ddc1e728643d289f701f4b4",
+  "prompts": {
+    "fad76ebabdd5def2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "837e8317-8739-4910-8ae5-c91674f8a1e6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 18,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
