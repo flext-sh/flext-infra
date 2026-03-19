@@ -1,0 +1,38 @@
+src/flext_infra/transformers/import_normalizer.py
+  20fbca534021839f 27-36,56-58,129-130,161-163,346-347
+src/flext_infra/codegen/_codegen_constant_transformer.py
+  75a43350beaefac1 1-6,29,65,109,112,141,146,189,201-203,205,214,238-240,243-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "e5c659a14e1bb4f6c282e63b27dd224e4ba22086",
+  "prompts": {
+    "20fbca534021839f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f8cc1353ffe0QUqUyemAG6YSY",
+        "model": "kimi-for-coding/k2p5"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 37,
+      "total_deletions": 17,
+      "accepted_lines": 21,
+      "overriden_lines": 0
+    },
+    "75a43350beaefac1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f8cd3f91ffeteZJBc4Fm2XOVg",
+        "model": "kimi-for-coding/k2p5"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 38,
+      "total_deletions": 18,
+      "accepted_lines": 27,
+      "overriden_lines": 0
+    }
+  }
+}
