@@ -1,0 +1,32 @@
+# Typing census and annotation fix rules.
+# Driven by CST analysis — no hardcoded patterns.
+# Engine discovers violations dynamically via TypingAnnotationCensusVisitor.
+
+rules:
+  - id: replace-object-annotations
+    name: "Replace object-based type annotations"
+    description: >
+      Detect and replace bare object, dict[str, object], Mapping[str, object],
+      list[object], Sequence[object], and TypeAdapter[object] annotations with
+      t.ContainerValue equivalents. Detection via CST visitor, not regex.
+    enabled: true
+    severity: error
+    fix_action: replace_object_annotations
+    skip_dunder_methods:
+      - "__eq__"
+      - "__ne__"
+      - "__hash__"
+      - "__lt__"
+      - "__le__"
+      - "__gt__"
+      - "__ge__"
+
+  - id: remove-unused-models
+    name: "Remove unused model classes"
+    description: >
+      Detect model classes with zero references across workspace and remove
+      them. Uses two-pass CST analysis: ModelDefinitionCollector + ModelReferenceCollector.
+      MRO base classes and exported models are never removed.
+    enabled: true
+    severity: warning
+    fix_action: remove_unused_models
