@@ -13,9 +13,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_core import FlextLogger, r, s
+from flext_core import FlextLogger
 
-from flext_infra import c, m, u
+from flext_infra import c, m, r, s, u
 from flext_infra.release._reporting import FlextInfraReleaseReporting
 
 logger = FlextLogger.create_module_logger(__name__)

@@ -5,11 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from importlib.resources import files
 
-from flext_core import r
 from pydantic import ValidationError
 from yaml import YAMLError, safe_load
 
-from flext_infra import c, m, t
+from flext_infra import c, m, r, t
 
 
 class FlextInfraDependencyToolConfig:

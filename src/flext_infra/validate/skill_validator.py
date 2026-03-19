@@ -13,16 +13,9 @@ import sys
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_core import r
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_infra import (
-    c,
-    m,
-    p,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
 from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
 
 

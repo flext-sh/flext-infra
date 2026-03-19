@@ -10,7 +10,7 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_core import FlextLogger, r
+from flext_core import FlextLogger
 from pydantic import JsonValue
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
@@ -20,6 +20,7 @@ from flext_infra import (
     FlextInfraUtilitiesToml,
     c,
     m,
+    r,
     u,
 )
 

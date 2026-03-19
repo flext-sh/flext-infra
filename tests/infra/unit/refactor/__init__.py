@@ -124,20 +124,32 @@ if TYPE_CHECKING:
         test_refactor_project_integrates_safety_manager,
     )
     from .test_infra_refactor_typing_unifier import (
+        test_all_three_capabilities_in_one_pass,
         test_converts_multiple_aliases,
         test_converts_typealias_to_pep695,
         test_injects_t_import_when_needed,
+        test_no_duplicate_t_import_when_t_from_project_package,
         test_noop_clean_module,
+        test_preserves_annotated_in_function_params,
         test_preserves_non_matching_unions,
+        test_preserves_override_in_method,
+        test_preserves_protocol_and_runtime_checkable,
+        test_preserves_type_checking_import,
+        test_preserves_typealias_import_when_class_level_usage_exists,
+        test_preserves_used_imports_when_import_precedes_usage,
         test_preserves_used_typing_imports,
+        test_removes_all_imports_when_none_used_import_first,
         test_removes_all_unused_typing_imports,
         test_removes_dead_typealias_import,
+        test_removes_typealias_import_only_when_all_usages_converted,
+        test_removes_unused_preserves_used_when_import_precedes_usage,
         test_replaces_container_union,
         test_replaces_numeric_union,
         test_replaces_primitives_union,
         test_replaces_scalar_union,
         test_skips_definition_files,
         test_skips_union_with_none,
+        test_typealias_conversion_preserves_used_typing_siblings,
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
@@ -152,6 +164,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FAMILY_SUFFIX_MAP": (
         "tests.infra.unit.refactor.test_infra_refactor_namespace_source",
         "FAMILY_SUFFIX_MAP",
+    ),
+    "test_all_three_capabilities_in_one_pass": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_all_three_capabilities_in_one_pass",
     ),
     "test_build_impact_map_extracts_rename_entries": (
         "tests.infra.unit.refactor.test_infra_refactor_analysis",
@@ -337,6 +353,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
     ),
+    "test_no_duplicate_t_import_when_t_from_project_package": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_no_duplicate_t_import_when_t_from_project_package",
+    ),
     "test_non_pydantic_class_not_flagged": (
         "tests.infra.unit.refactor.test_infra_refactor_class_placement",
         "test_non_pydantic_class_not_flagged",
@@ -377,9 +397,33 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_skips_overload_signatures",
     ),
+    "test_preserves_annotated_in_function_params": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_preserves_annotated_in_function_params",
+    ),
     "test_preserves_non_matching_unions": (
         "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_non_matching_unions",
+    ),
+    "test_preserves_override_in_method": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_preserves_override_in_method",
+    ),
+    "test_preserves_protocol_and_runtime_checkable": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_preserves_protocol_and_runtime_checkable",
+    ),
+    "test_preserves_type_checking_import": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_preserves_type_checking_import",
+    ),
+    "test_preserves_typealias_import_when_class_level_usage_exists": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_preserves_typealias_import_when_class_level_usage_exists",
+    ),
+    "test_preserves_used_imports_when_import_precedes_usage": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_preserves_used_imports_when_import_precedes_usage",
     ),
     "test_preserves_used_typing_imports": (
         "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
@@ -401,6 +445,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_engine",
         "test_refactor_project_scans_tests_and_scripts_dirs",
     ),
+    "test_removes_all_imports_when_none_used_import_first": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_removes_all_imports_when_none_used_import_first",
+    ),
     "test_removes_all_unused_typing_imports": (
         "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
         "test_removes_all_unused_typing_imports",
@@ -408,6 +456,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_removes_dead_typealias_import": (
         "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
         "test_removes_dead_typealias_import",
+    ),
+    "test_removes_typealias_import_only_when_all_usages_converted": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_removes_typealias_import_only_when_all_usages_converted",
+    ),
+    "test_removes_unused_preserves_used_when_import_precedes_usage": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_removes_unused_preserves_used_when_import_precedes_usage",
     ),
     "test_replaces_container_union": (
         "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
@@ -545,6 +601,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_symbol_propagation_updates_mro_base_references",
     ),
+    "test_typealias_conversion_preserves_used_typing_siblings": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_typealias_conversion_preserves_used_typing_siblings",
+    ),
     "test_violation_analysis_counts_massive_patterns": (
         "tests.infra.unit.refactor.test_infra_refactor_analysis",
         "test_violation_analysis_counts_massive_patterns",
@@ -559,6 +619,7 @@ __all__ = [
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
     "EngineSafetyStub",
+    "test_all_three_capabilities_in_one_pass",
     "test_build_impact_map_extracts_rename_entries",
     "test_build_impact_map_extracts_signature_entries",
     "test_class_reconstructor_reorders_each_contiguous_method_block",
@@ -605,6 +666,7 @@ __all__ = [
     "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
     "test_namespace_rewriter_skips_facade_and_subclass_files",
     "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
+    "test_no_duplicate_t_import_when_t_from_project_package",
     "test_non_pydantic_class_not_flagged",
     "test_noop_clean_module",
     "test_pattern_rule_converts_dict_annotations_to_mapping",
@@ -615,14 +677,23 @@ __all__ = [
     "test_pattern_rule_removes_configured_redundant_casts",
     "test_pattern_rule_removes_nested_type_object_cast_chain",
     "test_pattern_rule_skips_overload_signatures",
+    "test_preserves_annotated_in_function_params",
     "test_preserves_non_matching_unions",
+    "test_preserves_override_in_method",
+    "test_preserves_protocol_and_runtime_checkable",
+    "test_preserves_type_checking_import",
+    "test_preserves_typealias_import_when_class_level_usage_exists",
+    "test_preserves_used_imports_when_import_precedes_usage",
     "test_preserves_used_typing_imports",
     "test_project_without_alias_facade_has_no_violation",
     "test_refactor_files_skips_non_python_inputs",
     "test_refactor_project_integrates_safety_manager",
     "test_refactor_project_scans_tests_and_scripts_dirs",
+    "test_removes_all_imports_when_none_used_import_first",
     "test_removes_all_unused_typing_imports",
     "test_removes_dead_typealias_import",
+    "test_removes_typealias_import_only_when_all_usages_converted",
+    "test_removes_unused_preserves_used_when_import_precedes_usage",
     "test_replaces_container_union",
     "test_replaces_numeric_union",
     "test_replaces_primitives_union",
@@ -657,6 +728,7 @@ __all__ = [
     "test_symbol_propagation_keeps_alias_reference_when_asname_used",
     "test_symbol_propagation_renames_import_and_local_references",
     "test_symbol_propagation_updates_mro_base_references",
+    "test_typealias_conversion_preserves_used_typing_siblings",
     "test_violation_analysis_counts_massive_patterns",
     "test_violation_analyzer_skips_non_utf8_files",
 ]

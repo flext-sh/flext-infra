@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flext_core import FlextLogger, r
+from flext_core import FlextLogger
 
-from flext_infra import c, m, u
+from flext_infra import c, m, r, u
 
 logger = FlextLogger.create_module_logger(__name__)
 

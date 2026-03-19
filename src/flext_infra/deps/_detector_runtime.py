@@ -8,10 +8,9 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, p, r, t, u
 
 
 class _WorkspaceReport(Protocol):

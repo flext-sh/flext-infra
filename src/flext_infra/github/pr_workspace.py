@@ -14,14 +14,13 @@ import time
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_core import r
-
 from flext_infra import (
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
     c,
     m,
     p,
+    r,
     u,
 )
 

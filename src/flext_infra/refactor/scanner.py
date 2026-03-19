@@ -6,10 +6,9 @@ from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.refactor._top_level_class_collector import TopLevelClassCollector
 
 type RConfigMapping = r[t.Infra.ContainerDict]

@@ -12,9 +12,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flext_core import r
-
-from flext_infra import c, m, t, u
+from flext_infra import c, m, r, t, u
 
 
 class FlextInfraInventoryService:

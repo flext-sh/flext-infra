@@ -1,13 +1,18 @@
+"""Centralized CST transformer library for constants governance auto-fix.
+
+ALL transformation CST logic lives here. Fixer calls these entry-point
+functions — it NEVER imports libcst directly.
+"""
+
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.codegen._codegen_constant_visitor import (
     attribute_chain,
     canonical_reference_for,
@@ -21,6 +26,7 @@ class CanonicalValueReplacer(cst.CSTTransformer):
         parent_class: str,
         definitions: list[m.Infra.ConstantDefinition],
     ) -> None:
+        super().__init__()
         self._parent_class = parent_class
         self._lookup = {
             (item.name, item.value_repr): canonical_reference_for(
@@ -56,6 +62,7 @@ class CanonicalValueReplacer(cst.CSTTransformer):
 
 class UnusedConstantRemover(cst.CSTTransformer):
     def __init__(self, *, unused_names: set[str]) -> None:
+        super().__init__()
         self._unused_names = unused_names
         self._class_stack: list[str] = []
         self.changes: list[str] = []
@@ -99,9 +106,10 @@ class UnusedConstantRemover(cst.CSTTransformer):
 
 
 class DirectRefAliasNormalizer(cst.CSTTransformer):
-    def __init__(self, *, project_import: str) -> None:
+    def __init__(self, *, project_import: str, target_class: str) -> None:
         super().__init__()
         self._project_import = project_import
+        self._target_class = target_class
         self._has_c_import = False
         self._replaced_classes: set[str] = set()
         self.changes: list[str] = []
@@ -130,12 +138,12 @@ class DirectRefAliasNormalizer(cst.CSTTransformer):
         chain = attribute_chain(updated_node)
         if len(chain) < 2:
             return updated_node
-        if not re.fullmatch(c.Infra.Dedup.CONSTANTS_CLASS_PATTERN, chain[0]):
+        if chain[0] != self._target_class:
             return updated_node
         self._replaced_classes.add(chain[0])
         rewritten = ".".join(["c", *chain[1:]])
         self.replacements += 1
-        self.changes.append(f"normalized {'.'.join(chain)} -> {rewritten}")
+        self.changes.append(f"{'.'.join(chain)} -> {rewritten}")
         return cst.parse_expression(rewritten)
 
     @override
@@ -178,7 +186,7 @@ class DirectRefAliasNormalizer(cst.CSTTransformer):
                         for i, a in enumerate(remaining)
                     ]
                     stmt = stmt.with_changes(
-                        body=[import_node.with_changes(names=cleaned)]
+                        body=[import_node.with_changes(names=cleaned)],
                     )
             new_body.append(stmt)
         if not c_import_present:
@@ -190,6 +198,11 @@ class DirectRefAliasNormalizer(cst.CSTTransformer):
         return updated_node.with_changes(body=new_body)
 
 
+def _derive_constants_class(package_name: str) -> str:
+    """``flext_dbt_oracle_wms`` -> ``FlextDbtOracleWmsConstants``."""
+    return "".join(part.capitalize() for part in package_name.split("_")) + "Constants"
+
+
 def replace_canonical_values(
     file_path: Path,
     parent_class: str,
@@ -197,7 +210,8 @@ def replace_canonical_values(
 ) -> tuple[bool, list[str]]:
     tree = cst.parse_module(file_path.read_text("utf-8"))
     transformer = CanonicalValueReplacer(
-        parent_class=parent_class, definitions=definitions
+        parent_class=parent_class,
+        definitions=definitions,
     )
     new_tree = tree.visit(transformer)
     if transformer.replacements > 0:
@@ -221,8 +235,14 @@ def normalize_constant_aliases(
     file_path: Path,
     project_import: str,
 ) -> tuple[bool, list[str]]:
+    parts = project_import.replace("from ", "").split(" import ")
+    package_name = parts[0].strip() if parts else ""
+    target_class = _derive_constants_class(package_name)
     tree = cst.parse_module(file_path.read_text("utf-8"))
-    transformer = DirectRefAliasNormalizer(project_import=project_import)
+    transformer = DirectRefAliasNormalizer(
+        project_import=project_import,
+        target_class=target_class,
+    )
     new_tree = tree.visit(transformer)
     if transformer.replacements > 0:
         file_path.write_text(new_tree.code, encoding="utf-8")

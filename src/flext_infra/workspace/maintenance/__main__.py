@@ -11,9 +11,7 @@ from __future__ import annotations
 
 import sys
 
-from flext_core import r
-
-from flext_infra import u
+from flext_infra import r, u
 from flext_infra._utilities.output import output
 from flext_infra.workspace.maintenance.python_version import (
     FlextInfraPythonVersionEnforcer,

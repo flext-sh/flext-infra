@@ -14,9 +14,7 @@ import re
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_core import r
-
-from flext_infra import c, t
+from flext_infra import c, r, t
 
 
 class FlextInfraTextPatternScanner:

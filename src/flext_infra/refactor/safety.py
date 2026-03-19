@@ -5,9 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import overload
 
-from flext_core import r
-
-from flext_infra import c, m, p, u
+from flext_infra import c, m, p, r, u
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 
 type RBool = r[bool]

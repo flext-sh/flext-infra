@@ -24,6 +24,16 @@ class ImportViolation(FlextModels.ArbitraryTypesModel):
     violation_type: Annotated[str, Field(pattern="^(deep|wrong_source)$")]
 
 
+def _is_file_in_private_subdirectory(file_path: Path, project_package: str) -> bool:
+    pkg_dir = project_package.replace(".", "/")
+    file_str = str(file_path)
+    idx = file_str.find(f"{pkg_dir}/")
+    if idx < 0:
+        return False
+    relative = file_str[idx + len(pkg_dir) + 1 :]
+    return any(part.startswith("_") for part in Path(relative).parts[:-1])
+
+
 class ImportNormalizerVisitor(cst.CSTVisitor):
     def __init__(
         self,
@@ -42,6 +52,9 @@ class ImportNormalizerVisitor(cst.CSTVisitor):
         self._project_aliases = set(self._alias_map.get(project_package, ()))
         self._declared_alias = c.Infra.FACADE_FILE_DECLARES_ALIAS.get(
             file_path.name, ""
+        )
+        self._is_internal_module = _is_file_in_private_subdirectory(
+            file_path, project_package
         )
         self.violations: list[ImportViolation] = []
 
@@ -113,6 +126,8 @@ class ImportNormalizerVisitor(cst.CSTVisitor):
     def _is_wrong_source_violation(
         self, *, module_name: str, imported_name: str
     ) -> bool:
+        if self._is_internal_module:
+            return False
         if module_name == self._project_package:
             return False
         if module_name not in self._alias_map:
@@ -142,6 +157,9 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         self._project_aliases = set(self._alias_map.get(project_package, ()))
         self._declared_alias = c.Infra.FACADE_FILE_DECLARES_ALIAS.get(
             file_path.name, ""
+        )
+        self._is_internal_module = _is_file_in_private_subdirectory(
+            file_path, project_package
         )
         self._on_change: Callable[[str], None] | None = on_change
         self.modified_imports = False
@@ -325,6 +343,8 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
     def _is_wrong_source_violation(
         self, *, module_name: str, imported_name: str
     ) -> bool:
+        if self._is_internal_module:
+            return False
         if module_name == self._project_package:
             return False
         if module_name not in self._alias_map:

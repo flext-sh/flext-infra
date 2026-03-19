@@ -7,10 +7,10 @@ import sys
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from flext_core import FlextLogger, r
+from flext_core import FlextLogger
 
 import flext_infra as infra
-from flext_infra import m, p, u
+from flext_infra import m, p, r, u
 from flext_infra.deps._detector_runtime import (
     DepsService,
     FlextInfraDependencyDetectorRuntime,

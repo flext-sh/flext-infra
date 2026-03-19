@@ -6,10 +6,9 @@ import fnmatch
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from flext_core import r
 from pydantic import JsonValue, TypeAdapter
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, r, t, u
 from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
 from flext_infra.refactor.rule import (
     FlextInfraRefactorRule,

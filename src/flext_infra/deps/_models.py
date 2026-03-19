@@ -5,10 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Annotated
 
-from flext_core import m
 from pydantic import ConfigDict, Field
 
-from flext_infra import t
+from flext_infra import m, t
 
 type _DeptryIssueMap = Mapping[str, t.Primitives | None]
 

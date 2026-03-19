@@ -7,13 +7,12 @@ from pathlib import Path
 from typing import override
 
 import tomlkit
-from flext_core import r, s
 from pydantic import JsonValue, TypeAdapter
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import c, m, p, u
+from flext_infra import c, m, p, r, s, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 _OBJECT_LIST_ADAPTER: TypeAdapter[list[JsonValue]] = TypeAdapter(list[JsonValue])

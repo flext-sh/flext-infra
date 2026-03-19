@@ -14,9 +14,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from flext_core import FlextProtocols, r
+from flext_core import FlextProtocols
 
-from flext_infra import m, t
+from flext_infra import m, r, t
 
 
 class FlextInfraProtocols(FlextProtocols):

@@ -12,7 +12,6 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_core import r
 from pydantic import JsonValue
 
 from flext_infra import (
@@ -21,6 +20,7 @@ from flext_infra import (
     FlextInfraUtilitiesTemplates,
     c,
     m,
+    r,
     u,
 )
 

@@ -6,9 +6,7 @@ import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
-from flext_core import r
-
-from flext_infra import c, m, u
+from flext_infra import c, m, r, u
 from flext_infra.github.linter import FlextInfraWorkflowLinter
 from flext_infra.github.pr import main as pr_main
 from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager

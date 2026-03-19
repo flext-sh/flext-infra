@@ -6,10 +6,9 @@ from argparse import Namespace
 from pathlib import Path
 
 import tomlkit
-from flext_core import r
 from tomlkit.items import Table
 
-from flext_infra import ProjectClassifier, c, u
+from flext_infra import ProjectClassifier, c, r, u
 from flext_infra.deps._phases import (
     ConsolidateGroupsPhase,
     EnsureCoverageConfigPhase,

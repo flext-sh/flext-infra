@@ -17,8 +17,6 @@ import ast
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s
-
 from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraNamespaceValidator,
@@ -28,6 +26,8 @@ from flext_infra import (
     NamespaceEnforcementRewriter,
     c,
     m,
+    r,
+    s,
     u,
 )
 from flext_infra.codegen._codegen_constant_transformer import (

@@ -5,10 +5,9 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 
-from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, u
+from flext_infra import c, m, r, u
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 
 type _ClassNestingMappingIndex = dict[

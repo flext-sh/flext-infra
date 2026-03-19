@@ -14,9 +14,8 @@ from pathlib import Path
 from typing import ClassVar
 
 from defusedxml import ElementTree as DefusedET
-from flext_core import r
 
-from flext_infra import c, m
+from flext_infra import c, m, r
 
 
 class _DiagResult:

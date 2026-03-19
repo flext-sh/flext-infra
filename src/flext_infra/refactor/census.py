@@ -11,14 +11,13 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from flext_core import r
-
 from flext_infra import (
     CensusImportDiscoveryVisitor,
     CensusUsageCollector,
     c,
     m,
     output,
+    r,
     u,
 )
 from flext_infra.refactor.output import FlextInfraRefactorOutputRenderer

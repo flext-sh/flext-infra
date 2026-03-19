@@ -12,9 +12,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_core import r
-
-from flext_infra import FlextInfraUtilitiesIo, m, p, u
+from flext_infra import FlextInfraUtilitiesIo, m, p, r, u
 
 
 class FlextInfraWorkflowLinter:
