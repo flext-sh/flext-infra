@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-import ast
+import libcst as cst
+from collections.abc import Mapping
+from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, p, u
+from flext_infra import c, m, p
 from flext_infra.refactor._detectors.module_loader import (
     DetectorScanResultBuilder,
 )
@@ -79,6 +81,7 @@ class ClassPlacementDetector(p.Infra.Scanner):
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ClassPlacementViolation]:
         """Scan a file for BaseModel subclasses outside canonical model files."""
+        _ = _parse_failures
         if file_path.name in cls.CANONICAL_MODEL_FILES:
             return []
         if cls.CANONICAL_MODEL_DIR in file_path.parts:
@@ -87,14 +90,18 @@ class ClassPlacementDetector(p.Infra.Scanner):
             return []
         if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
             return []
-        tree = u.Infra.parse_module_ast(file_path)
-        if tree is None:
+        try:
+            tree = cst.parse_module(file_path.read_text())
+        except cst.ParserSyntaxError:
             return []
+        wrapper = MetadataWrapper(tree)
+        module = wrapper.module
+        positions = wrapper.resolve(PositionProvider)
         violations: list[nem.ClassPlacementViolation] = []
-        for stmt in tree.body:
-            if not isinstance(stmt, ast.ClassDef):
+        for stmt in module.body:
+            if not isinstance(stmt, cst.ClassDef):
                 continue
-            if stmt.name.startswith("_"):
+            if stmt.name.value.startswith("_"):
                 continue
             is_model_class, base_class_name = cls.is_pydantic_model_class(stmt)
             if not is_model_class:
@@ -102,8 +109,8 @@ class ClassPlacementDetector(p.Infra.Scanner):
             violations.append(
                 nem.ClassPlacementViolation.create(
                     file=str(file_path),
-                    line=stmt.lineno,
-                    name=stmt.name,
+                    line=cls._line_for(node=stmt, positions=positions),
+                    name=stmt.name.value,
                     base_class=base_class_name,
                     suggestion="Move class to models.py/_models.py or _models/",
                 ),
@@ -111,29 +118,51 @@ class ClassPlacementDetector(p.Infra.Scanner):
         return violations
 
     @staticmethod
-    def is_pydantic_model_class(node: ast.ClassDef) -> tuple[bool, str]:
+    def is_pydantic_model_class(node: cst.ClassDef) -> tuple[bool, str]:
         """Return (is_model, base_class_name) for known Pydantic ancestors."""
-        for base in node.bases:
-            if (
-                isinstance(base, ast.Name)
-                and base.id in ClassPlacementDetector.PYDANTIC_BASE_NAMES
-            ):
-                return (True, base.id)
-            if (
-                isinstance(base, ast.Attribute)
-                and base.attr in ClassPlacementDetector.PYDANTIC_BASE_NAMES
-            ):
-                return (True, base.attr)
-            if isinstance(base, ast.Subscript):
-                val = base.value
-                if (
-                    isinstance(val, ast.Attribute)
-                    and val.attr in ClassPlacementDetector.PYDANTIC_BASE_NAMES
-                ):
-                    return (True, val.attr)
-                if (
-                    isinstance(val, ast.Name)
-                    and val.id in ClassPlacementDetector.PYDANTIC_BASE_NAMES
-                ):
-                    return (True, val.id)
+        for arg in node.bases:
+            base_name = ClassPlacementDetector._base_expr_name(arg.value)
+            if base_name in ClassPlacementDetector.PYDANTIC_BASE_NAMES:
+                return (True, base_name)
         return (False, "")
+
+    @staticmethod
+    def _base_expr_name(base_expr: cst.BaseExpression) -> str:
+        if isinstance(base_expr, cst.Subscript):
+            return ClassPlacementDetector._base_expr_name(base_expr.value)
+        if isinstance(base_expr, cst.Name):
+            return base_expr.value
+        if isinstance(base_expr, cst.Attribute):
+            dotted_name = ClassPlacementDetector._module_to_str(base_expr)
+            if "." in dotted_name:
+                return dotted_name.rsplit(".", maxsplit=1)[1]
+            return dotted_name
+        return ""
+
+    @staticmethod
+    def _module_to_str(module: cst.BaseExpression | None) -> str:
+        if module is None:
+            return ""
+        if isinstance(module, cst.Name):
+            return module.value
+        if isinstance(module, cst.Attribute):
+            parts: list[str] = []
+            current: cst.BaseExpression = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+            return ".".join(reversed(parts))
+        return ""
+
+    @staticmethod
+    def _line_for(
+        *,
+        node: cst.CSTNode,
+        positions: Mapping[cst.CSTNode, CodeRange],
+    ) -> int:
+        code_range = positions.get(node)
+        if code_range is None:
+            return 1
+        return code_range.start.line

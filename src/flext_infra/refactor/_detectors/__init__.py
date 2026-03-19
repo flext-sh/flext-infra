@@ -46,9 +46,6 @@ if TYPE_CHECKING:
         DetectorScanResultBuilder,
         FlextInfraRefactorDetectorModuleLoader,
     )
-    from flext_infra.refactor._detectors.mro_completeness_detector import (
-        MROCompletenessDetector,
-    )
     from flext_infra.refactor._detectors.namespace_facade_scanner import (
         NamespaceFacadeScanner,
     )

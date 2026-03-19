@@ -1,0 +1,51 @@
+# Import normalization configuration
+# Used by ImportNormalizerTransformer for dynamic, project-agnostic import analysis
+#
+# This file replaces ALL hardcoded Python dicts (FACADE_TIER, FACADE_FILENAMES,
+# RUNTIME_ALIAS_NAMES_BY_PACKAGE) with declarative YAML configuration.
+
+import_normalization:
+  version: "2.0.0"
+  description: "Import alias normalization - reachability-based circular import prevention"
+
+  # Tier ordering for facade aliases (lower = loaded earlier in init chain).
+  # A facade file at tier N should only import aliases from tiers < N.
+  # Used as OPTIONAL guardrail alongside the primary reachability check.
+  alias_tiers:
+    c: 0
+    t: 1
+    p: 2
+    m: 3
+    u: 4
+    e: 4
+    r: 4
+    s: 5
+    d: 5
+    h: 5
+    x: 5
+
+  # Facade filename patterns that declare single-letter aliases.
+  # Used for fallback alias discovery when __init__.py lacks _LAZY_IMPORTS.
+  # The normalizer auto-discovers aliases via CST; this list is a hint.
+  facade_filenames:
+    - "constants.py"
+    - "typings.py"
+    - "protocols.py"
+    - "models.py"
+    - "utilities.py"
+    - "service.py"
+    - "exceptions.py"
+    - "decorators.py"
+    - "handlers.py"
+    - "mixins.py"
+    - "result.py"
+
+  # Wrong-source detection configuration.
+  # Detects when a file imports an alias from a parent/sibling package
+  # when the same alias is exported by the current package.
+  wrong_source:
+    enabled: true
+    # Aliases exempt from wrong-source detection.
+    # 'r' is always imported from flext_core per convention.
+    universal_aliases:
+      - "r"

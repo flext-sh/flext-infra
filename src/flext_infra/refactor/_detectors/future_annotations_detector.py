@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import ast
+import libcst as cst
 from pathlib import Path
 from typing import override
 

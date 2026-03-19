@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-import ast
+import libcst as cst
+from collections.abc import Mapping
+from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 from pathlib import Path
 from typing import override
 
@@ -70,43 +72,98 @@ class ManualTypingAliasDetector(
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ManualTypingAliasViolation]:
         """Scan a file for type aliases outside canonical locations."""
+        _ = _parse_failures
         if file_path.suffix != ".py":
             return []
         if file_path.name in c.Infra.NAMESPACE_CANONICAL_TYPINGS_FILES:
             return []
         if c.Infra.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts:
             return []
-        parsed = cls._load_python_module(
-            file_path,
-            stage="manual-typing-alias-scan",
-            parse_failures=_parse_failures,
-        )
-        if parsed is None:
+        try:
+            tree = cst.parse_module(file_path.read_text())
+        except cst.ParserSyntaxError:
             return []
-        source = parsed.source
-        tree = parsed.tree
+        wrapper = MetadataWrapper(tree)
+        module = wrapper.module
+        positions = wrapper.resolve(PositionProvider)
         violations: list[nem.ManualTypingAliasViolation] = []
-        for stmt in tree.body:
-            if isinstance(stmt, ast.TypeAlias):
-                alias_name = stmt.name.id
-                violations.append(
-                    nem.ManualTypingAliasViolation.create(
-                        file=str(file_path),
-                        line=stmt.lineno,
-                        name=alias_name,
-                        detail="PEP695 alias must be centralized under typings scope",
-                    ),
-                )
+        for stmt in module.body:
+            if not isinstance(stmt, cst.SimpleStatementLine):
                 continue
-            if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
-                annotation_src = ast.get_source_segment(source, stmt.annotation) or ""
-                if "TypeAlias" in annotation_src:
+            for small_stmt in stmt.body:
+                alias_name = cls._type_alias_name(stmt=small_stmt)
+                if alias_name:
                     violations.append(
                         nem.ManualTypingAliasViolation.create(
                             file=str(file_path),
-                            line=stmt.lineno,
-                            name=stmt.target.id,
-                            detail="TypeAlias assignment must be centralized under typings scope",
+                            line=cls._line_for(node=small_stmt, positions=positions),
+                            name=alias_name,
+                            detail=(
+                                "PEP695 alias must be centralized under typings scope"
+                            ),
+                        ),
+                    )
+                    continue
+                if (
+                    isinstance(small_stmt, cst.AnnAssign)
+                    and isinstance(small_stmt.target, cst.Name)
+                    and cls._annotation_contains_type_alias(
+                        annotation=small_stmt.annotation.annotation,
+                    )
+                ):
+                    violations.append(
+                        nem.ManualTypingAliasViolation.create(
+                            file=str(file_path),
+                            line=cls._line_for(node=small_stmt, positions=positions),
+                            name=small_stmt.target.value,
+                            detail=(
+                                "TypeAlias assignment must be centralized "
+                                "under typings scope"
+                            ),
                         ),
                     )
         return violations
+
+    @staticmethod
+    def _type_alias_name(*, stmt: cst.BaseSmallStatement) -> str:
+        if hasattr(cst, "TypeAlias") and isinstance(stmt, cst.TypeAlias):
+            return stmt.name.value
+        return ""
+
+    @staticmethod
+    def _annotation_contains_type_alias(*, annotation: cst.BaseExpression) -> bool:
+        if isinstance(annotation, cst.Subscript):
+            return ManualTypingAliasDetector._annotation_contains_type_alias(
+                annotation=annotation.value,
+            )
+        return ManualTypingAliasDetector._module_to_str(annotation).endswith(
+            "TypeAlias"
+        )
+
+    @staticmethod
+    def _module_to_str(module: cst.BaseExpression | None) -> str:
+        if module is None:
+            return ""
+        if isinstance(module, cst.Name):
+            return module.value
+        if isinstance(module, cst.Attribute):
+            parts: list[str] = []
+            current: cst.BaseExpression = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+            return ".".join(reversed(parts))
+        return ""
+
+    @staticmethod
+    def _line_for(
+        *,
+        node: cst.CSTNode,
+        positions: Mapping[cst.CSTNode, CodeRange],
+    ) -> int:
+        code_range = positions.get(node)
+        if code_range is None:
+            return 1
+        return code_range.start.line
