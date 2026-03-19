@@ -1,0 +1,23 @@
+src/flext_infra/rules/typing-census.yml
+  846c6f91412fb05e 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "1420ec093e389114463e6e7cf44d4fb28a6d8ae8",
+  "prompts": {
+    "846c6f91412fb05e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2fce0d49cffeggdyQR2MJEmMOf",
+        "model": "kimi-for-coding/k2p5"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 32,
+      "total_deletions": 0,
+      "accepted_lines": 32,
+      "overriden_lines": 0
+    }
+  }
+}
