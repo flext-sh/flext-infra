@@ -43,10 +43,7 @@ class ModelDefinitionCollector(cst.CSTVisitor):
         self.exported_models.update(defined_names.intersection(exported_names))
 
     def _is_model_class(self, node: cst.ClassDef) -> bool:
-        for base in node.bases:
-            if self._has_model_marker(base.value):
-                return True
-        return False
+        return any(self._has_model_marker(base.value) for base in node.bases)
 
     def _has_model_marker(self, expression: cst.BaseExpression) -> bool:
         if isinstance(expression, cst.Name):
