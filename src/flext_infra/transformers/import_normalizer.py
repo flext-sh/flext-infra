@@ -247,6 +247,10 @@ class ImportNormalizerVisitor(cst.CSTVisitor):
         return None
 
     def _is_deep_violation(self, *, module_name: str, imported_name: str) -> bool:
+        if module_name == self._project_package:
+            if imported_name not in self._project_aliases:
+                return False
+            return not self._is_safe_to_normalize(imported_name)
         if not module_name.startswith(f"{self._project_package}."):
             return False
         if self._is_private_submodule(module_name):
@@ -518,6 +522,10 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         return None
 
     def _is_deep_violation(self, *, module_name: str, imported_name: str) -> bool:
+        if module_name == self._project_package:
+            if imported_name not in self._project_aliases:
+                return False
+            return not self._is_safe_to_normalize(imported_name)
         if not module_name.startswith(f"{self._project_package}."):
             return False
         if self._is_private_submodule(module_name):
