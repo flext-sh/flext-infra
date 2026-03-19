@@ -193,6 +193,9 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         ]
         if len(kept_aliases) == 0:
             return cst.RemovalSentinel.REMOVE
+        kept_aliases[-1] = kept_aliases[-1].with_changes(
+            comma=cst.MaybeSentinel.DEFAULT,
+        )
         return updated_node.with_changes(names=tuple(kept_aliases))
 
     @override
