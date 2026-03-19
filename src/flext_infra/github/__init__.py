@@ -18,7 +18,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
-
     from flext_infra.github.linter import FlextInfraWorkflowLinter
     from flext_infra.github.pr import FlextInfraPrManager, main
     from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager, u

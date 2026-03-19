@@ -13,11 +13,11 @@ import tomllib
 from pathlib import Path
 
 import tomlkit
-from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
+from flext_core import r
 from flext_infra._utilities.toml import FlextInfraUtilitiesToml
 from flext_infra.constants import c
 from flext_infra.typings import t

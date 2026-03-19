@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from flext_core import FlextModels
 from pydantic import AliasPath, ConfigDict, Field
+
+from flext_core import FlextModels
 
 
 class FlextInfraRefactorAstGrepModels:

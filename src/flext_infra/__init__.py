@@ -18,7 +18,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
-
     from flext_infra import (
         _utilities,
         basemk,
@@ -968,7 +967,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "release": ("flext_infra.release", ""),
     "rules": ("flext_infra.rules", ""),
     "run_cli": ("flext_infra.check.workspace_check", "run_cli"),
-    "s": ("flext_infra.deps.detection", "FlextInfraDependencyDetectionService"),
+    "s": ("flext_core.service", "s"),
     "shutil": ("flext_infra.deps.internal_sync", "shutil"),
     "t": ("flext_infra.typings", "t"),
     "transformers": ("flext_infra.transformers", ""),

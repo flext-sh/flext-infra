@@ -6,8 +6,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import FlextModels
 from pydantic import Field
+
+from flext_core import FlextModels
 
 
 class FlextInfraWorkspaceModels:

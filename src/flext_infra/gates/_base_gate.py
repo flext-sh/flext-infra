@@ -5,9 +5,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Protocol, runtime_checkable
 
-from flext_core import FlextModels
 from pydantic import ConfigDict, Field, TypeAdapter, ValidationError
 
+from flext_core import FlextModels
 from flext_infra import c, m, t as t_infra, u
 
 

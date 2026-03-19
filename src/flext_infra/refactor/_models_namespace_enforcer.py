@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Annotated, Self
 
-from flext_core import FlextModels
 from pydantic import ConfigDict, Field, JsonValue
+
+from flext_core import FlextModels
 
 
 class FlextInfraNamespaceEnforcerModels:

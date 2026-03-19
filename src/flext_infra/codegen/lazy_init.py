@@ -24,7 +24,6 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_core import r, s
-
 from flext_infra import c, output, u
 from flext_infra.codegen._codegen_ast_parsing import FlextInfraCodegenAstParsing
 from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration

@@ -10,7 +10,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from flext_core import r
-
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_infra.constants import FlextInfraConstants as c

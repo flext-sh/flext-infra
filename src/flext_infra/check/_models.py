@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from flext_core import FlextModels
 from pydantic import ConfigDict, Field, computed_field, model_serializer
 
+from flext_core import FlextModels
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
 

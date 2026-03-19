@@ -16,9 +16,9 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_core import FlextTypes
 from pydantic import BaseModel
 
+from flext_core import FlextTypes
 from flext_infra import c
 
 

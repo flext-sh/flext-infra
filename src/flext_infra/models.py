@@ -12,9 +12,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import FlextModels
 from pydantic import BaseModel, Field
 
+from flext_core import FlextModels
 from flext_infra._utilities._models import FlextInfraUtilitiesModels
 from flext_infra.basemk._models import FlextInfraBasemkModels
 from flext_infra.check._models import FlextInfraCheckModels

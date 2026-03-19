@@ -4,9 +4,9 @@ import sys
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
-from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
+from flext_core import r
 from flext_infra import c, m, u
 
 from .import_collector import ImportCollector

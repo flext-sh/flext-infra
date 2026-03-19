@@ -6,8 +6,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import FlextModels
 from pydantic import BaseModel, ConfigDict, Field
+
+from flext_core import FlextModels
 
 
 class FlextInfraDocsModels:

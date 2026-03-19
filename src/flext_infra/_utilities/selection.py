@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import r
-
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra.models import FlextInfraModels as m
 

@@ -12,11 +12,11 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.models import m
 from flext_infra.codegen._codegen_constant_visitor import (
     attribute_chain,
     canonical_reference_for,
 )
+from flext_infra.models import m
 
 
 class CanonicalValueReplacer(cst.CSTTransformer):
@@ -298,8 +298,7 @@ def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
     parent_pkg = resolve_parent_package(pkg_dir)
     cycle_edges: set[tuple[str, str]] = set()
     for cycle in cycles:
-        for i in range(len(cycle) - 1):
-            cycle_edges.add((cycle[i], cycle[i + 1]))
+        cycle_edges.update((cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1))
 
     all_changes: list[str] = []
     any_modified = False
