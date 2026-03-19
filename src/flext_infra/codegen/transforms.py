@@ -14,7 +14,7 @@ import builtins as _builtins_module
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, u
+from flext_infra import c
 
 
 class FlextInfraCodegenTransforms:
@@ -84,11 +84,15 @@ class FlextInfraCodegenTransforms:
         statements.  The caller decides whether to move them based on
         additional guards (private prefix, circular-import risk, etc.).
         """
+        from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
+
         matches: list[ast.AnnAssign] = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.AnnAssign):
                 continue
-            if u.Infra.is_final_annotation(annotation=stmt.annotation):
+            if FlextInfraUtilitiesRefactor.is_final_annotation(
+                annotation=stmt.annotation
+            ):
                 matches.append(stmt)
         return matches
 
@@ -428,11 +432,13 @@ class FlextInfraCodegenTransforms:
     @staticmethod
     def prune_stale_all_assignment(*, path: Path) -> bool:
         """Remove stale entries from __all__ that no longer exist in the module."""
+        from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+
         try:
             source = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except (OSError, UnicodeDecodeError):
             return False
-        tree = u.Infra.parse_ast_from_source(source)
+        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
         if tree is None:
             return False
         assignment: ast.Assign | None = None

@@ -235,7 +235,8 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         return None
 
     def _extract_union_leaf_names(
-        self, expr: cst.BaseExpression,
+        self,
+        expr: cst.BaseExpression,
     ) -> frozenset[str] | None:
         leaves = self._union_leaves(expr)
         if leaves is None:

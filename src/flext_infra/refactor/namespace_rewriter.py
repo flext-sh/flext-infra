@@ -33,9 +33,7 @@ class NamespaceEnforcementRewriter:
 
     @staticmethod
     def _base_import_for_family(*, family: str) -> str:
-        class_name = (
-            f"Flext{c.Infra.FAMILY_SUFFIXES.get(family, 'Utilities')}"
-        )
+        class_name = f"Flext{c.Infra.FAMILY_SUFFIXES.get(family, 'Utilities')}"
         return f"from flext_core import {class_name}"
 
     @staticmethod
