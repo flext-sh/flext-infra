@@ -25,6 +25,60 @@ class FlextInfraRefactorConstants:
         "x",
     })
     NAMESPACE_SOURCE_UNIVERSAL_ALIASES: ClassVar[frozenset[str]] = frozenset({"r"})
+
+    RUNTIME_ALIAS_NAMES_BY_PACKAGE: ClassVar[dict[str, tuple[str, ...]]] = {
+        "flext_core": ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x"),
+        "flext_infra": ("c", "m", "p", "r", "s", "t", "u"),
+        "flext_api": ("c", "m", "p", "t", "u"),
+        "flext_auth": ("c", "m", "p", "s", "t", "u", "x"),
+        "flext_cli": ("c", "m", "p", "s", "t", "u", "x"),
+        "flext_db_oracle": ("c", "e", "m", "p", "s", "t", "u"),
+        "flext_dbt_ldap": ("c", "m", "p", "s", "t", "u"),
+        "flext_dbt_ldif": ("c", "m", "p", "s", "t", "u"),
+        "flext_dbt_oracle": ("c", "m", "p", "t", "u"),
+        "flext_dbt_oracle_wms": ("c", "m", "p", "s", "t", "u"),
+        "flext_grpc": ("c", "m", "p", "t", "u"),
+        "flext_ldap": ("c", "m", "p", "s", "t", "u"),
+        "flext_ldif": ("c", "d", "m", "p", "r", "s", "t", "u"),
+        "flext_meltano": ("c", "m", "p", "r", "s", "t", "u"),
+        "flext_observability": ("c", "m", "p", "t", "u"),
+        "flext_oracle_oic": ("c", "m", "p", "s", "t", "u"),
+        "flext_oracle_wms": ("c", "e", "m", "p", "t", "u"),
+        "flext_plugin": ("c", "h", "m", "p", "s", "t", "u"),
+        "flext_quality": ("c", "m", "p", "r", "s", "t", "u"),
+        "flext_tap_ldap": ("c", "m", "p", "t", "u"),
+        "flext_tap_ldif": ("c", "m", "p", "t", "u"),
+        "flext_tap_oracle": ("c", "m", "p", "s", "t", "u"),
+        "flext_tap_oracle_oic": ("c", "m", "p", "t", "u"),
+        "flext_tap_oracle_wms": ("c", "m", "p", "t", "u"),
+        "flext_target_ldap": ("c", "m", "p", "r", "s", "t", "u"),
+        "flext_target_ldif": ("c", "m", "p", "t", "u"),
+        "flext_target_oracle": ("c", "e", "m", "p", "s", "t", "u"),
+        "flext_target_oracle_oic": ("c", "m", "p", "t", "u"),
+        "flext_target_oracle_wms": ("c", "m", "p", "t", "u"),
+        "flext_tests": ("c", "m", "p", "s", "t", "u"),
+        "flext_web": ("c", "h", "m", "p", "t", "u"),
+        "gruponos_meltano_native": ("c", "m", "p", "r", "t", "u"),
+        "algar_oud_mig": ("c", "m", "p", "r", "s", "t", "u"),
+    }
+    "Package → exported single-letter aliases for import normalization."
+
+    FACADE_FILE_DECLARES_ALIAS: ClassVar[dict[str, str]] = {
+        "constants.py": "c",
+        "typings.py": "t",
+        "models.py": "m",
+        "protocols.py": "p",
+        "utilities.py": "u",
+        "exceptions.py": "e",
+        "decorators.py": "d",
+        "handlers.py": "h",
+        "service.py": "s",
+        "services.py": "s",
+        "mixins.py": "x",
+        "result.py": "r",
+    }
+    "Facade file → single-letter alias it declares (self-import is circular)."
+
     LEGACY_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "remove",
         "inline_and_remove",
@@ -50,9 +104,22 @@ class FlextInfraRefactorConstants:
         "convert_dict_to_mapping_annotations",
         "remove_redundant_casts",
     })
+    TYPE_ALIAS_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({"unify_typings"})
     FUTURE_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "ensure_future_annotations",
     })
+    TYPING_DEFINITION_FILES: ClassVar[frozenset[str]] = frozenset({
+        "typings.py",
+        "_typings",
+        "protocols.py",
+        "_protocols",
+    })
+    TYPING_INLINE_UNION_CANONICAL_MAP: ClassVar[Mapping[frozenset[str], str]] = {
+        frozenset({"str", "int", "float", "bool"}): "t.Primitives",
+        frozenset({"int", "float"}): "t.Numeric",
+        frozenset({"str", "int", "float", "bool", "datetime"}): "t.Scalar",
+        frozenset({"str", "int", "float", "bool", "datetime", "Path"}): ("t.Container"),
+    }
     FUTURE_CHECKS: ClassVar[frozenset[str]] = frozenset({"missing_future_import"})
     MRO_TARGETS: ClassVar[frozenset[str]] = frozenset({
         "constants",
@@ -106,10 +173,7 @@ class FlextInfraRefactorConstants:
     MRO_UTILITIES_DIRECTORY: ClassVar[str] = "utilities"
     "Canonical utilities package directory name."
 
-    SCAN_DIRECTORIES = ("src", "examples", "scripts", "tests")
-    CONSTANTS_FILE_NAMES = frozenset({"constants.py", "_constants.py"})
     CONSTANTS_DIRECTORY = "constants"
-    TYPINGS_FILE_NAMES = frozenset({"typings.py", "_typings.py"})
     TYPINGS_DIRECTORY = "typings"
     DEFAULT_CONSTANTS_CLASS: ClassVar[str] = "FlextConstants"
     "Fallback constants class name when none exists in module."
@@ -274,8 +338,6 @@ class FlextInfraRefactorConstants:
     TYPED_DICT_MIN_ARGS: int = 2
     "Minimum positional args expected in TypedDict(name, fields, ...)."
 
-    NAMESPACE_FACADE_FAMILIES: ClassVar[dict[str, str]] = dict(FAMILY_SUFFIXES.items())
-    NAMESPACE_FACADE_FILE_PATTERNS: ClassVar[dict[str, str]] = dict(FAMILY_FILES)
     NAMESPACE_CONSTANT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r"^_?[A-Z][A-Z0-9_]+$",
     )
