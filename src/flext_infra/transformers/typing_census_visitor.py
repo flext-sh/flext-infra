@@ -16,6 +16,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         "__le__",
         "__gt__",
         "__ge__",
+        "model_post_init",
     })
 
     def __init__(self, *, file_path: Path, project_name: str) -> None:
@@ -23,6 +24,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         self._project_name = project_name
         self._current_class: str = ""
         self._current_function: str = ""
+        self._current_function_is_typeguard: bool = False
         self._renderer = cst.Module(body=[])
         self.violations: list[dict[str, str | int]] = []
 
@@ -35,6 +37,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         self._current_function = node.name.value
+        self._current_function_is_typeguard = self._has_typeguard_return(node)
         return_annotation = (
             node.returns.annotation if node.returns is not None else None
         )
@@ -43,9 +46,12 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
     def leave_FunctionDef(self, original_node: cst.FunctionDef) -> None:
         del original_node
         self._current_function = ""
+        self._current_function_is_typeguard = False
 
     def visit_Param(self, node: cst.Param) -> None:
         if self._current_function in self.DUNDER_OBJECT_ALLOWLIST:
+            return
+        if self._current_function_is_typeguard:
             return
         annotation = node.annotation.annotation if node.annotation is not None else None
         self._check_annotation(annotation, context="param", line=0)
@@ -163,6 +169,23 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
             and node.value.value == "builtins"
             and node.attr.value == "object"
         ):
+            return True
+        return False
+
+    def _has_typeguard_return(self, node: cst.FunctionDef) -> bool:
+        if node.returns is None:
+            return False
+        ann = node.returns.annotation
+        if isinstance(ann, cst.Subscript):
+            base = ann.value
+            if isinstance(base, cst.Name) and base.value in {
+                "TypeGuard",
+                "TypeIs",
+            }:
+                return True
+        fn_name = node.name.value
+        is_guard_name = fn_name.startswith("is_") or fn_name.startswith("_is_")
+        if is_guard_name and isinstance(ann, cst.Name) and ann.value == "bool":
             return True
         return False
 

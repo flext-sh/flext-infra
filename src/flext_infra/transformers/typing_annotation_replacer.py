@@ -12,7 +12,16 @@ from flext_infra.transformers.import_insertion import (
 
 class TypingAnnotationReplacer(cst.CSTTransformer):
     DUNDER_OBJECT_ALLOWLIST = frozenset(
-        {"__eq__", "__ne__", "__hash__", "__lt__", "__le__", "__gt__", "__ge__"},
+        {
+            "__eq__",
+            "__ne__",
+            "__hash__",
+            "__lt__",
+            "__le__",
+            "__gt__",
+            "__ge__",
+            "model_post_init",
+        },
     )
 
     def __init__(

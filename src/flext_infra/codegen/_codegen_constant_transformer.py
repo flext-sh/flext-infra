@@ -433,10 +433,7 @@ def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
                 new_body.append(stmt)
                 continue
             imported = [
-                alias.name.value
-                for alias in names
-                if isinstance(alias, cst.ImportAlias)
-                and isinstance(alias.name, cst.Name)
+                alias.name.value for alias in names if isinstance(alias.name, cst.Name)
             ]
             cycle_aliases = [a for a in imported if a in target_aliases]
             keep_aliases = [a for a in imported if a not in target_aliases]
