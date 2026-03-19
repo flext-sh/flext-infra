@@ -48,10 +48,12 @@ class _ImportEdgeCollector(cst.CSTVisitor):
         current_module: str,
         package_name: str,
         known_modules: frozenset[str],
+        lazy_import_maps: Mapping[str, Mapping[str, str]],
     ) -> None:
         self._current_module = current_module
         self._package_name = package_name
         self._known_modules = known_modules
+        self._lazy_import_maps = lazy_import_maps
         self.imported_modules: set[str] = set()
 
     @override
@@ -75,6 +77,12 @@ class _ImportEdgeCollector(cst.CSTVisitor):
                 continue
             if len(base_module) == 0:
                 continue
+            lazy_module = self._lazy_import_maps.get(base_module, {}).get(
+                imported_name,
+                "",
+            )
+            if len(lazy_module) > 0:
+                self._add_candidate(lazy_module)
             self._add_candidate(f"{base_module}.{imported_name}")
 
     def _resolve_import_from_module(self, node: cst.ImportFrom) -> str:
@@ -281,8 +289,7 @@ def _extract_string_literal(node: cst.BaseExpression) -> str:
     return value if isinstance(value, str) else ""
 
 
-def _extract_lazy_alias_map(package_dir: Path) -> dict[str, str]:
-    init_path = package_dir / "__init__.py"
+def _extract_lazy_import_map(init_path: Path) -> dict[str, str]:
     if not init_path.is_file():
         return {}
     try:
@@ -293,12 +300,12 @@ def _extract_lazy_alias_map(package_dir: Path) -> dict[str, str]:
     lazy_imports = _find_lazy_imports_dict(module)
     if lazy_imports is None:
         return {}
-    alias_map: dict[str, str] = {}
+    lazy_import_map: dict[str, str] = {}
     for element in lazy_imports.elements:
         if not isinstance(element, cst.DictElement):
             continue
         key_text = _extract_string_literal(element.key)
-        if len(key_text) != 1 or not key_text.isalpha():
+        if len(key_text) == 0:
             continue
         if not isinstance(element.value, cst.Tuple):
             continue
@@ -308,8 +315,36 @@ def _extract_lazy_alias_map(package_dir: Path) -> dict[str, str]:
         module_name = _extract_string_literal(module_element.value)
         if len(module_name) == 0:
             continue
+        lazy_import_map[key_text] = module_name
+    return lazy_import_map
+
+
+def _extract_lazy_alias_map(package_dir: Path) -> dict[str, str]:
+    init_path = package_dir / "__init__.py"
+    lazy_import_map = _extract_lazy_import_map(init_path)
+    alias_map: dict[str, str] = {}
+    for key_text, module_name in lazy_import_map.items():
+        if len(key_text) != 1 or not key_text.isalpha():
+            continue
         alias_map[key_text] = module_name
     return alias_map
+
+
+@lru_cache(maxsize=128)
+def _build_lazy_import_maps(
+    package_dir: Path,
+    package_name: str,
+) -> dict[str, dict[str, str]]:
+    lazy_import_maps: dict[str, dict[str, str]] = {}
+    for init_path in sorted(package_dir.rglob("__init__.py")):
+        module_name = _file_to_module(init_path, package_dir, package_name)
+        if len(module_name) == 0:
+            module_name = package_name
+        module_map = _extract_lazy_import_map(init_path)
+        if len(module_map) == 0:
+            continue
+        lazy_import_maps[module_name] = module_map
+    return lazy_import_maps
 
 
 def _build_alias_to_defining_module(
@@ -383,6 +418,7 @@ def _build_import_graph(
     graph: dict[str, frozenset[str]] = {
         module_name: frozenset() for module_name in known_modules
     }
+    lazy_import_maps = _build_lazy_import_maps(package_dir, package_name)
     for file_path in python_files:
         current_module = _file_to_module(file_path, package_dir, package_name)
         if current_module not in known_modules:
@@ -396,6 +432,7 @@ def _build_import_graph(
             current_module=current_module,
             package_name=package_name,
             known_modules=known_modules,
+            lazy_import_maps=lazy_import_maps,
         )
         module.visit(collector)
         edges = {
@@ -458,6 +495,21 @@ def _discover_workspace_packages(workspace_root: Path) -> frozenset[str]:
     return frozenset(packages)
 
 
+def _find_installed_package_dir(package_name: str) -> Path | None:
+    import importlib.util
+
+    spec = importlib.util.find_spec(package_name)
+    if spec is None or spec.submodule_search_locations is None:
+        return None
+    locations = list(spec.submodule_search_locations)
+    if len(locations) == 0:
+        return None
+    candidate = Path(locations[0])
+    if candidate.is_dir() and (candidate / "__init__.py").is_file():
+        return candidate
+    return None
+
+
 def _build_context(
     *,
     file_path: Path,
@@ -475,6 +527,8 @@ def _build_context(
         candidate = project_root / "src" / package_name
         if candidate.is_dir() and (candidate / "__init__.py").is_file():
             package_dir = candidate
+    if package_dir is None and len(package_name) > 0:
+        package_dir = _find_installed_package_dir(package_name)
     alias_to_module = (
         _build_alias_to_defining_module(
             package_name=package_name,
@@ -485,11 +539,12 @@ def _build_context(
         if package_dir is not None and len(package_name) > 0
         else {}
     )
-    file_module = (
-        _file_to_module(file_path, package_dir, package_name)
-        if package_dir is not None and len(package_name) > 0
-        else ""
-    )
+    file_module = ""
+    if package_dir is not None and len(package_name) > 0:
+        try:
+            file_module = _file_to_module(file_path, package_dir, package_name)
+        except ValueError:
+            file_module = ""
     alias_to_facade = (
         discover_project_aliases(project_root) if project_root is not None else {}
     )
@@ -596,9 +651,7 @@ def _is_deep_violation(
     imported_name: str,
 ) -> bool:
     if module_name == context.project_package:
-        if imported_name not in context.project_aliases:
-            return False
-        return not _is_safe_to_normalize(context, imported_name)
+        return False
     if not module_name.startswith(f"{context.project_package}."):
         return False
     if _is_private_submodule(module_name):

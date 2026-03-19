@@ -178,10 +178,17 @@ class ConstantDeclarationVisitor(cst.CSTVisitor):
 class ConstantUsageVisitor(cst.CSTVisitor):
     """Detect c.* accesses and direct FlextXConstants.Y.Z references."""
 
-    def __init__(self, *, project: str, file_path: str) -> None:
+    def __init__(
+        self,
+        *,
+        project: str,
+        file_path: str,
+        target_class: str = "",
+    ) -> None:
         super().__init__()
         self._project = project
         self._file_path = file_path
+        self._target_class = target_class
         self._render = _CodeRenderContext(Path(file_path).read_text("utf-8"))
         self.used_constants: set[str] = set()
         self.direct_refs: list[m.Infra.DirectConstantRef] = []
@@ -197,6 +204,8 @@ class ConstantUsageVisitor(cst.CSTVisitor):
         if len(chain) < _MIN_DIRECT_REFERENCE_CHAIN:
             return
         if not re.fullmatch(get_constants_class_pattern(), chain[0]):
+            return
+        if self._target_class and chain[0] != self._target_class:
             return
 
         self.direct_refs.append(
@@ -233,6 +242,8 @@ def extract_constant_definitions(
 def scan_constant_usages(
     file_path: Path,
     project: str,
+    *,
+    target_class: str = "",
 ) -> tuple[set[str], list[m.Infra.DirectConstantRef]]:
     """Parse a Python file with libcst, find c.* usages and direct refs."""
     try:
@@ -240,7 +251,18 @@ def scan_constant_usages(
         tree = cst.parse_module(source)
     except (cst.ParserSyntaxError, UnicodeDecodeError):
         return set(), []
-    visitor = ConstantUsageVisitor(project=project, file_path=str(file_path))
+    if not target_class:
+        pkg_name = file_path.parent.name
+        while pkg_name.startswith("_") and file_path.parent.parent.name != "src":
+            pkg_name = file_path.parent.parent.name
+        target_class = (
+            "".join(part.capitalize() for part in pkg_name.split("_")) + "Constants"
+        )
+    visitor = ConstantUsageVisitor(
+        project=project,
+        file_path=str(file_path),
+        target_class=target_class,
+    )
     tree.visit(visitor)
     return visitor.used_constants, visitor.direct_refs
 
