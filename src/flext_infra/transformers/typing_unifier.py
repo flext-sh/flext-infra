@@ -21,6 +21,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
     ) -> None:
         self._scope_depth = 0
         self._typing_import_names: set[str] = set()
+        self._typing_import_aliases: list[cst.ImportAlias] = []
         self._all_name_usages: set[str] = set()
         self._has_t_import = False
         self._needs_t_import = False
@@ -39,6 +40,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
                 if not isinstance(alias.name, cst.Name):
                     continue
                 self._typing_import_names.add(self._bound_name(alias))
+                self._typing_import_aliases.append(alias)
             return False
         if module_name == "flext_core":
             names = node.names
@@ -91,29 +93,13 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        module_name = u.Infra.module_name_from_expr(original_node.module)
-        if module_name != "typing":
-            return updated_node
-        if isinstance(original_node.names, cst.ImportStar):
-            return updated_node
-        retained_names: list[cst.ImportAlias] = []
-        for alias in tuple(original_node.names):
-            if not isinstance(alias.name, cst.Name):
-                retained_names.append(alias)
-                continue
-            imported_name = alias.name.value
-            bound_name = self._bound_name(alias)
-            if imported_name == "TypeAlias":
-                self.changes.append("Removed typing import: TypeAlias")
-                continue
-            if bound_name in self._all_name_usages:
-                retained_names.append(alias)
-                continue
-            self.changes.append(f"Removed unused typing import: {imported_name}")
-        if len(retained_names) == 0:
-            self.changes.append("Removed empty typing import")
-            return cst.RemovalSentinel.REMOVE
-        return updated_node.with_changes(names=tuple(retained_names))
+        """Pass through typing imports unchanged — filtering deferred to leave_Module.
+
+        DFS ordering means leave_ImportFrom fires before visit_Name has
+        collected usages from the rest of the file. The actual unused-import
+        filtering runs in leave_Module where _all_name_usages is complete.
+        """
+        return updated_node
 
     @override
     def leave_AnnAssign(
@@ -170,8 +156,56 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         updated_node: cst.Module,
     ) -> cst.Module:
         del original_node
-        if not self._needs_t_import or self._has_t_import:
-            return updated_node
+        result = self._filter_typing_imports(updated_node)
+        if self._needs_t_import and not self._has_t_import:
+            result = self._inject_t_import(result)
+        return result
+
+    def _filter_typing_imports(self, module: cst.Module) -> cst.Module:
+        new_body: list[cst.BaseStatement] = []
+        for stmt in module.body:
+            replacement = self._maybe_filter_typing_import_stmt(stmt)
+            if replacement is not None:
+                new_body.append(replacement)
+        return module.with_changes(body=new_body)
+
+    def _maybe_filter_typing_import_stmt(
+        self,
+        stmt: cst.BaseStatement,
+    ) -> cst.BaseStatement | None:
+        if not isinstance(stmt, cst.SimpleStatementLine):
+            return stmt
+        if len(stmt.body) != 1:
+            return stmt
+        only = stmt.body[0]
+        if not isinstance(only, cst.ImportFrom):
+            return stmt
+        module_name = u.Infra.module_name_from_expr(only.module)
+        if module_name != "typing":
+            return stmt
+        if isinstance(only.names, cst.ImportStar):
+            return stmt
+        retained: list[cst.ImportAlias] = []
+        for alias in tuple(only.names):
+            if not isinstance(alias.name, cst.Name):
+                retained.append(alias)
+                continue
+            imported_name = alias.name.value
+            bound_name = self._bound_name(alias)
+            if imported_name == "TypeAlias":
+                self.changes.append("Removed typing import: TypeAlias")
+                continue
+            if bound_name in self._all_name_usages:
+                retained.append(alias)
+                continue
+            self.changes.append(f"Removed unused typing import: {imported_name}")
+        if len(retained) == 0:
+            self.changes.append("Removed empty typing import")
+            return None
+        updated_import = only.with_changes(names=tuple(retained))
+        return stmt.with_changes(body=[updated_import])
+
+    def _inject_t_import(self, module: cst.Module) -> cst.Module:
         import_stmt = cst.SimpleStatementLine(
             body=[
                 cst.ImportFrom(
@@ -180,13 +214,13 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
                 ),
             ],
         )
-        body = list(updated_node.body)
+        body = list(module.body)
         insert_idx = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
             body,
         )
         self.changes.append("Added import: from flext_core import t")
         new_body = body[:insert_idx] + [import_stmt] + body[insert_idx:]
-        return updated_node.with_changes(body=new_body)
+        return module.with_changes(body=new_body)
 
     @staticmethod
     def _bound_name(alias: cst.ImportAlias) -> str:
