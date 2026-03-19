@@ -100,22 +100,25 @@ class UnusedConstantRemover(cst.CSTTransformer):
 
 class DirectRefAliasNormalizer(cst.CSTTransformer):
     def __init__(self, *, project_import: str) -> None:
+        super().__init__()
         self._project_import = project_import
         self._has_c_import = False
+        self._replaced_classes: set[str] = set()
         self.changes: list[str] = []
         self.replacements = 0
 
     @override
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> bool:
         if isinstance(node.names, cst.ImportStar):
-            return
-        for alias in tuple(node.names):
+            return False
+        for alias in node.names:
             imported_name = alias.name.value if isinstance(alias.name, cst.Name) else ""
             local_name = imported_name
             if alias.asname is not None and isinstance(alias.asname.name, cst.Name):
                 local_name = alias.asname.name.value
             if local_name == "c":
                 self._has_c_import = True
+        return False
 
     @override
     def leave_Attribute(
@@ -129,6 +132,7 @@ class DirectRefAliasNormalizer(cst.CSTTransformer):
             return updated_node
         if not re.fullmatch(c.Infra.Dedup.CONSTANTS_CLASS_PATTERN, chain[0]):
             return updated_node
+        self._replaced_classes.add(chain[0])
         rewritten = ".".join(["c", *chain[1:]])
         self.replacements += 1
         self.changes.append(f"normalized {'.'.join(chain)} -> {rewritten}")
@@ -141,14 +145,49 @@ class DirectRefAliasNormalizer(cst.CSTTransformer):
         updated_node: cst.Module,
     ) -> cst.Module:
         del original_node
-        if self.replacements == 0 or self._has_c_import:
+        if self.replacements == 0:
             return updated_node
-        body = list(updated_node.body)
-        body.insert(
-            _import_insert_index(body), cst.parse_statement(f"{self._project_import}\n")
-        )
-        self.changes.append("added c import")
-        return updated_node.with_changes(body=body)
+        new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
+        c_import_present = self._has_c_import
+        for stmt in updated_node.body:
+            if (
+                isinstance(stmt, cst.SimpleStatementLine)
+                and len(stmt.body) == 1
+                and isinstance(stmt.body[0], cst.ImportFrom)
+                and not isinstance(stmt.body[0].names, cst.ImportStar)
+            ):
+                import_node = stmt.body[0]
+                remaining = [
+                    alias
+                    for alias in import_node.names
+                    if not (
+                        isinstance(alias.name, cst.Name)
+                        and alias.name.value in self._replaced_classes
+                    )
+                ]
+                removed_count = len(import_node.names) - len(remaining)
+                if removed_count > 0:
+                    self.changes.append(f"removed {removed_count} unused import(s)")
+                if not remaining:
+                    continue
+                if removed_count > 0:
+                    cleaned = [
+                        a.with_changes(comma=cst.MaybeSentinel.DEFAULT)
+                        if i == len(remaining) - 1
+                        else a
+                        for i, a in enumerate(remaining)
+                    ]
+                    stmt = stmt.with_changes(
+                        body=[import_node.with_changes(names=cleaned)]
+                    )
+            new_body.append(stmt)
+        if not c_import_present:
+            new_body.insert(
+                _import_insert_index(new_body),
+                cst.parse_statement(f"{self._project_import}\n"),
+            )
+            self.changes.append("added c import")
+        return updated_node.with_changes(body=new_body)
 
 
 def replace_canonical_values(
