@@ -6,6 +6,8 @@ functions — it NEVER imports libcst directly.
 
 from __future__ import annotations
 
+import ast
+import re
 from collections.abc import Sequence
 from pathlib import Path
 from typing import override
@@ -15,8 +17,11 @@ import libcst as cst
 from flext_infra.codegen._codegen_constant_visitor import (
     attribute_chain,
     canonical_reference_for,
+    resolve_parent_package,
 )
 from flext_infra.models import m
+
+_MIN_ATTRIBUTE_CHAIN = 2
 
 
 class CanonicalValueReplacer(cst.CSTTransformer):
@@ -136,7 +141,7 @@ class DirectRefAliasNormalizer(cst.CSTTransformer):
     ) -> cst.BaseExpression:
         del original_node
         chain = attribute_chain(updated_node)
-        if len(chain) < 2:
+        if len(chain) < _MIN_ATTRIBUTE_CHAIN:
             return updated_node
         if chain[0] != self._target_class:
             return updated_node
@@ -198,8 +203,19 @@ class DirectRefAliasNormalizer(cst.CSTTransformer):
         return updated_node.with_changes(body=new_body)
 
 
-def _derive_constants_class(package_name: str) -> str:
+def _derive_constants_class(package_name: str, pkg_dir: Path | None = None) -> str:
     """``flext_dbt_oracle_wms`` -> ``FlextDbtOracleWmsConstants``."""
+    if pkg_dir is not None:
+        constants_file = pkg_dir / "constants.py"
+        if constants_file.is_file():
+            try:
+                tree = ast.parse(constants_file.read_text("utf-8"))
+            except (SyntaxError, UnicodeDecodeError):
+                tree = None
+            if tree is not None:
+                for node in tree.body:
+                    if isinstance(node, ast.ClassDef):
+                        return node.name
     return "".join(part.capitalize() for part in package_name.split("_")) + "Constants"
 
 
@@ -234,10 +250,17 @@ def remove_unused_constants(
 def normalize_constant_aliases(
     file_path: Path,
     project_import: str,
+    pkg_dir: Path | None = None,
 ) -> tuple[bool, list[str]]:
     parts = project_import.replace("from ", "").split(" import ")
     package_name = parts[0].strip() if parts else ""
-    target_class = _derive_constants_class(package_name)
+    resolved_pkg_dir = pkg_dir
+    if resolved_pkg_dir is None and package_name:
+        for parent in file_path.parents:
+            if parent.name == package_name:
+                resolved_pkg_dir = parent
+                break
+    target_class = _derive_constants_class(package_name, resolved_pkg_dir)
     tree = cst.parse_module(file_path.read_text("utf-8"))
     transformer = DirectRefAliasNormalizer(
         project_import=project_import,
@@ -253,10 +276,14 @@ def _import_insert_index(
     body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
 ) -> int:
     index = 0
-    if body and isinstance(body[0], cst.SimpleStatementLine):
-        if len(body[0].body) == 1 and isinstance(body[0].body[0], cst.Expr):
-            if isinstance(body[0].body[0].value, cst.SimpleString):
-                index = 1
+    if (
+        body
+        and isinstance(body[0], cst.SimpleStatementLine)
+        and len(body[0].body) == 1
+        and isinstance(body[0].body[0], cst.Expr)
+        and isinstance(body[0].body[0].value, cst.SimpleString)
+    ):
+        index = 1
     while index < len(body):
         stmt = body[index]
         if not isinstance(stmt, cst.SimpleStatementLine) or len(stmt.body) != 1:
@@ -279,18 +306,87 @@ def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
     Analyzes the real import graph via ``_LAZY_IMPORTS``, finds cycles, identifies
     the edges that can be safely redirected to a parent package, and rewrites them.
     """
-    from flext_infra.codegen._codegen_constant_visitor import (
-        _build_self_import_graph,
-        _find_cycles,
-        _parse_lazy_imports,
-        resolve_parent_package,
-    )
 
-    lazy_map = _parse_lazy_imports(pkg_dir / "__init__.py")
+    def parse_lazy_imports(init_file: Path) -> dict[str, str]:
+        if not init_file.is_file():
+            return {}
+        source = init_file.read_text("utf-8")
+        mapping: dict[str, str] = {}
+        for match in re.finditer(
+            r'"(\w+)":\s*\("([\w.]+)",\s*"(\w+)"\)',
+            source,
+        ):
+            alias, module_path, _export = match.groups()
+            mapping[alias] = module_path.rsplit(".", 1)[-1]
+        return mapping
+
+    def build_self_import_graph(
+        package_name: str,
+        lazy_map: dict[str, str],
+    ) -> dict[str, set[str]]:
+        graph: dict[str, set[str]] = {}
+        for py_file in pkg_dir.glob("*.py"):
+            if py_file.name == "__init__.py":
+                continue
+            stem = py_file.stem
+            deps: set[str] = set()
+            try:
+                source = py_file.read_text("utf-8")
+                tree = cst.parse_module(source)
+            except (cst.ParserSyntaxError, UnicodeDecodeError):
+                continue
+            for stmt in tree.body:
+                if not isinstance(stmt, cst.SimpleStatementLine):
+                    continue
+                for small in stmt.body:
+                    if not isinstance(small, cst.ImportFrom):
+                        continue
+                    if isinstance(small.names, cst.ImportStar):
+                        continue
+                    mod = tree.code_for_node(small.module) if small.module else ""
+                    if mod != package_name:
+                        continue
+                    for alias in small.names:
+                        name = (
+                            alias.name.value if isinstance(alias.name, cst.Name) else ""
+                        )
+                        target = lazy_map.get(name)
+                        if target and target != stem:
+                            deps.add(target)
+            if deps:
+                graph[stem] = deps
+        return graph
+
+    def find_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
+        cycles: list[list[str]] = []
+        visited: set[str] = set()
+        path: list[str] = []
+        path_set: set[str] = set()
+
+        def dfs(node: str) -> None:
+            if node in path_set:
+                idx = path.index(node)
+                cycles.append([*path[idx:], node])
+                return
+            if node in visited:
+                return
+            visited.add(node)
+            path.append(node)
+            path_set.add(node)
+            for neighbor in graph.get(node, set()):
+                dfs(neighbor)
+            path.pop()
+            path_set.remove(node)
+
+        for start in graph:
+            dfs(start)
+        return cycles
+
+    lazy_map = parse_lazy_imports(pkg_dir / "__init__.py")
     if not lazy_map:
         return False, []
-    graph = _build_self_import_graph(pkg_dir, lazy_map)
-    cycles = _find_cycles(graph)
+    graph = build_self_import_graph(pkg_dir.name, lazy_map)
+    cycles = find_cycles(graph)
     if not cycles:
         return False, []
 
@@ -332,7 +428,16 @@ def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
             if mod != package_name:
                 new_body.append(stmt)
                 continue
-            imported = [a.name.value for a in imp.names if isinstance(a.name, cst.Name)]
+            names = imp.names
+            if isinstance(names, cst.ImportStar):
+                new_body.append(stmt)
+                continue
+            imported = [
+                alias.name.value
+                for alias in names
+                if isinstance(alias, cst.ImportAlias)
+                and isinstance(alias.name, cst.Name)
+            ]
             cycle_aliases = [a for a in imported if a in target_aliases]
             keep_aliases = [a for a in imported if a not in target_aliases]
             if not cycle_aliases:

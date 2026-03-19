@@ -155,7 +155,16 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
             )
 
     def _is_object_name(self, node: cst.BaseExpression) -> bool:
-        return isinstance(node, cst.Name) and node.value == "object"
+        if isinstance(node, cst.Name) and node.value == "object":
+            return True
+        if (
+            isinstance(node, cst.Attribute)
+            and isinstance(node.value, cst.Name)
+            and node.value.value == "builtins"
+            and node.attr.value == "object"
+        ):
+            return True
+        return False
 
     def _get_subscript_name(self, node: cst.Subscript) -> str:
         if isinstance(node.value, cst.Name):

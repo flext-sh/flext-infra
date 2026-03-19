@@ -21,6 +21,7 @@ from flext_infra.codegen._codegen_constant_visitor import (
     extract_constant_definitions,
     scan_constant_usages,
 )
+from flext_infra.codegen._codegen_governance import is_rule_fixable
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
@@ -50,13 +51,7 @@ class FlextInfraCodegenCensus(s[bool]):
     @staticmethod
     def _is_fixable(*, rule: str, module: str, message: str) -> bool:
         _ = message
-        if rule == "NS-000":
-            return False
-        if rule == "NS-001":
-            return True
-        if rule == "NS-002":
-            return not module.endswith("typings.py")
-        return rule in {"NS-003", "NS-004", "NS-005"}
+        return is_rule_fixable(rule, module)
 
     @staticmethod
     def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:

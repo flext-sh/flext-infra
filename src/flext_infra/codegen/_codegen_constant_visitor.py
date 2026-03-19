@@ -15,8 +15,16 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.constants import c
+from flext_infra.codegen._codegen_governance import (
+    get_canonical_int_values,
+    get_canonical_str_values,
+    get_constants_class_pattern,
+    get_semantic_names,
+)
 from flext_infra.models import m
+
+_MIN_QUOTED_LITERAL_LEN = 2
+_MIN_DIRECT_REFERENCE_CHAIN = 3
 
 # ---------------------------------------------------------------------------
 # Shared CST helpers (used by visitors and importable by transformer)
@@ -47,7 +55,7 @@ def _int_literal(value_repr: str) -> int | None:
 
 def _str_literal(value_repr: str) -> str | None:
     """Parse string literal from source repr, or None."""
-    if len(value_repr) < 2:
+    if len(value_repr) < _MIN_QUOTED_LITERAL_LEN:
         return None
     if value_repr[0] != value_repr[-1]:
         return None
@@ -58,29 +66,22 @@ def _str_literal(value_repr: str) -> str | None:
 
 def _semantic_name_matches(name: str, canonical_ref: str) -> bool:
     """Return True when the constant name semantically matches the canonical ref."""
-    if canonical_ref == "Network.DEFAULT_TIMEOUT":
-        return name in c.Infra.Dedup.TIMEOUT_NAMES
-    if canonical_ref == "DEFAULT_MAX_RETRY_ATTEMPTS":
-        return name in c.Infra.Dedup.RETRY_NAMES
-    if canonical_ref == "DEFAULT_BATCH_SIZE":
-        return name in c.Infra.Dedup.BATCH_NAMES
-    if canonical_ref == "Network.LOCALHOST":
-        return name in c.Infra.Dedup.HOST_NAMES
-    if canonical_ref == "Utilities.DEFAULT_ENCODING":
-        return name in c.Infra.Dedup.ENCODING_NAMES
-    return False
+    if not canonical_ref:
+        return False
+    semantic_names = get_semantic_names(canonical_ref)
+    return name in semantic_names
 
 
 def canonical_reference_for(name: str, value_repr: str) -> str:
     """Return the canonical parent MRO reference for a hardcoded value, or ''."""
     int_value = _int_literal(value_repr)
     if int_value is not None:
-        candidate = c.Infra.Dedup.CANONICAL_INT_VALUES.get(int_value, "")
+        candidate = get_canonical_int_values().get(int_value, "")
         return candidate if _semantic_name_matches(name, candidate) else ""
 
     str_value = _str_literal(value_repr)
     if str_value is not None:
-        candidate = c.Infra.Dedup.CANONICAL_STR_VALUES.get(str_value, "")
+        candidate = get_canonical_str_values().get(str_value, "")
         return candidate if _semantic_name_matches(name, candidate) else ""
 
     return ""
@@ -193,9 +194,9 @@ class ConstantUsageVisitor(cst.CSTVisitor):
 
         # Detect FlextXConstants.Y.Z direct references
         chain = attribute_chain(node)
-        if len(chain) < 3:
+        if len(chain) < _MIN_DIRECT_REFERENCE_CHAIN:
             return
-        if not re.fullmatch(c.Infra.Dedup.CONSTANTS_CLASS_PATTERN, chain[0]):
+        if not re.fullmatch(get_constants_class_pattern(), chain[0]):
             return
 
         self.direct_refs.append(

@@ -166,10 +166,23 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         self._t_import_present = True
         return updated_node.with_changes(body=new_body)
 
+    @staticmethod
+    def _is_object_ref(node: cst.BaseExpression) -> bool:
+        if isinstance(node, cst.Name) and node.value == "object":
+            return True
+        if (
+            isinstance(node, cst.Attribute)
+            and isinstance(node.value, cst.Name)
+            and node.value.value == "builtins"
+            and node.attr.value == "object"
+        ):
+            return True
+        return False
+
     def _replace_expression(
         self, node: cst.BaseExpression
     ) -> cst.BaseExpression | None:
-        if isinstance(node, cst.Name) and node.value == "object":
+        if self._is_object_ref(node):
             return self._t_container_value()
 
         if isinstance(node, cst.Subscript) and self._is_supported_base(node.value):
