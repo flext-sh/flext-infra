@@ -30,6 +30,17 @@ from flext_infra import (
     m,
     u,
 )
+from flext_infra.codegen._codegen_constant_transformer import (
+    normalize_constant_aliases,
+    remove_unused_constants,
+    replace_canonical_values,
+)
+from flext_infra.codegen._codegen_constant_visitor import (
+    detect_hardcoded_canonicals,
+    detect_unused_constants,
+    extract_constant_definitions,
+    scan_constant_usages,
+)
 from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
 from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 from flext_infra.refactor._detectors.namespace_source_detector import (
@@ -203,6 +214,26 @@ class FlextInfraCodegenFixer(s[bool]):
                 violations_skipped=violations_skipped,
                 files_modified=files_modified,
             )
+        self._fix_rule3(
+            pkg_dir=pkg_dir,
+            violations_fixed=violations_fixed,
+            violations_skipped=violations_skipped,
+            files_modified=files_modified,
+        )
+        self._fix_rule4(
+            src_dir=src_dir,
+            pkg_dir=pkg_dir,
+            violations_fixed=violations_fixed,
+            violations_skipped=violations_skipped,
+            files_modified=files_modified,
+        )
+        self._fix_rule5(
+            src_dir=src_dir,
+            pkg_dir=pkg_dir,
+            violations_fixed=violations_fixed,
+            violations_skipped=violations_skipped,
+            files_modified=files_modified,
+        )
 
     def _apply_project_mro_migrations(
         self,
@@ -700,6 +731,205 @@ class FlextInfraCodegenFixer(s[bool]):
             )
             files_modified.add(str(source_file))
             files_modified.add(str(target_path))
+
+    @staticmethod
+    def _resolve_parent_constants_class(constants_file: Path) -> str:
+        tree = FlextInfraUtilitiesParsing.parse_module_ast(constants_file)
+        if tree is None:
+            return ""
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            if not node.bases:
+                return ""
+            return ast.unparse(node.bases[0])
+        return ""
+
+    def _fix_rule3(
+        self,
+        *,
+        pkg_dir: Path,
+        violations_fixed: list[m.Infra.CensusViolation],
+        violations_skipped: list[m.Infra.CensusViolation],
+        files_modified: set[str],
+    ) -> None:
+        constants_file = pkg_dir / "constants.py"
+        if not constants_file.exists():
+            return
+        definitions = extract_constant_definitions(
+            file_path=constants_file,
+            project=pkg_dir.name,
+        )
+        hardcoded = detect_hardcoded_canonicals(definitions)
+        if not hardcoded:
+            return
+        parent_class = self._resolve_parent_constants_class(constants_file)
+        if not parent_class:
+            violations_skipped.extend(
+                m.Infra.CensusViolation(
+                    module=definition.file_path,
+                    rule="NS-003",
+                    line=definition.line,
+                    message=(
+                        f"Could not resolve parent constants class for '{definition.name}'"
+                    ),
+                    fixable=False,
+                )
+                for definition in hardcoded
+            )
+            return
+        modified, _ = replace_canonical_values(
+            file_path=constants_file,
+            parent_class=parent_class,
+            definitions=hardcoded,
+        )
+        if modified:
+            files_modified.add(str(constants_file))
+            violations_fixed.extend(
+                m.Infra.CensusViolation(
+                    module=definition.file_path,
+                    rule="NS-003",
+                    line=definition.line,
+                    message=(
+                        f"Hardcoded canonical '{definition.name}' replaced with {parent_class} reference"
+                    ),
+                    fixable=True,
+                )
+                for definition in hardcoded
+            )
+            return
+        violations_skipped.extend(
+            m.Infra.CensusViolation(
+                module=definition.file_path,
+                rule="NS-003",
+                line=definition.line,
+                message=f"No canonical replacement applied for '{definition.name}'",
+                fixable=False,
+            )
+            for definition in hardcoded
+        )
+
+    def _fix_rule4(
+        self,
+        *,
+        src_dir: Path,
+        pkg_dir: Path,
+        violations_fixed: list[m.Infra.CensusViolation],
+        violations_skipped: list[m.Infra.CensusViolation],
+        files_modified: set[str],
+    ) -> None:
+        constants_file = pkg_dir / "constants.py"
+        if not constants_file.exists():
+            return
+        definitions = extract_constant_definitions(
+            file_path=constants_file,
+            project=pkg_dir.name,
+        )
+        if not definitions:
+            return
+
+        all_used_names: set[str] = set()
+        projects_result = u.Infra.discover_projects(self._workspace_root)
+        if projects_result.is_success:
+            discovered_projects: list[m.Infra.ProjectInfo] = projects_result.unwrap()
+            for project in discovered_projects:
+                discovered_src = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
+                if not discovered_src.is_dir():
+                    continue
+                for py_file in sorted(discovered_src.rglob("*.py")):
+                    used_names, _ = scan_constant_usages(
+                        file_path=py_file,
+                        project=project.name,
+                    )
+                    all_used_names.update(used_names)
+        else:
+            for py_file in sorted(src_dir.rglob("*.py")):
+                used_names, _ = scan_constant_usages(
+                    file_path=py_file,
+                    project=pkg_dir.name,
+                )
+                all_used_names.update(used_names)
+
+        unused = detect_unused_constants(
+            definitions=definitions,
+            all_used_names=all_used_names,
+        )
+        if not unused:
+            return
+        modified, _ = remove_unused_constants(file_path=constants_file, unused=unused)
+        if modified:
+            files_modified.add(str(constants_file))
+            violations_fixed.extend(
+                m.Infra.CensusViolation(
+                    module=item.file_path,
+                    rule="NS-004",
+                    line=item.line,
+                    message=f"Removed unused constant '{item.name}'",
+                    fixable=True,
+                )
+                for item in unused
+            )
+            return
+        violations_skipped.extend(
+            m.Infra.CensusViolation(
+                module=item.file_path,
+                rule="NS-004",
+                line=item.line,
+                message=f"Unused constant '{item.name}' detected but not removed",
+                fixable=False,
+            )
+            for item in unused
+        )
+
+    def _fix_rule5(
+        self,
+        *,
+        src_dir: Path,
+        pkg_dir: Path,
+        violations_fixed: list[m.Infra.CensusViolation],
+        violations_skipped: list[m.Infra.CensusViolation],
+        files_modified: set[str],
+    ) -> None:
+        project_import = f"from {pkg_dir.name} import c"
+        for py_file in sorted(src_dir.rglob("*.py")):
+            if py_file.name == "constants.py":
+                continue
+            _, direct_refs = scan_constant_usages(
+                file_path=py_file, project=pkg_dir.name
+            )
+            if not direct_refs:
+                continue
+            modified, _ = normalize_constant_aliases(
+                file_path=py_file,
+                project_import=project_import,
+            )
+            if modified:
+                files_modified.add(str(py_file))
+                violations_fixed.extend(
+                    m.Infra.CensusViolation(
+                        module=ref.file_path,
+                        rule="NS-005",
+                        line=ref.line,
+                        message=(
+                            f"Direct ref {ref.full_ref} normalized to {ref.alias_ref}"
+                        ),
+                        fixable=True,
+                    )
+                    for ref in direct_refs
+                )
+                continue
+            violations_skipped.extend(
+                m.Infra.CensusViolation(
+                    module=ref.file_path,
+                    rule="NS-005",
+                    line=ref.line,
+                    message=(
+                        f"Direct ref {ref.full_ref} detected but replacement did not apply"
+                    ),
+                    fixable=False,
+                )
+                for ref in direct_refs
+            )
 
 
 __all__ = ["FlextInfraCodegenFixer"]

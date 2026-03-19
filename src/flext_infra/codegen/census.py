@@ -22,6 +22,12 @@ from flext_infra import (
     m,
     p,
 )
+from flext_infra.codegen._codegen_constant_visitor import (
+    detect_hardcoded_canonicals,
+    detect_unused_constants,
+    extract_constant_definitions,
+    scan_constant_usages,
+)
 
 
 class FlextInfraCodegenCensus(s[bool]):
@@ -53,6 +59,8 @@ class FlextInfraCodegenCensus(s[bool]):
             return True
         if rule == "NS-002":
             return not module.endswith("typings.py")
+        if rule in {"NS-003", "NS-004", "NS-005"}:
+            return True
         return False
 
     @staticmethod
@@ -122,12 +130,103 @@ class FlextInfraCodegenCensus(s[bool]):
                 violation = self._parse_violation(violation_str)
                 if violation is not None:
                     violations.append(violation)
+        self._census_constants_governance(project=project, violations=violations)
         return m.Infra.CensusReport(
             project=project.name,
             violations=violations,
             total=len(violations),
             fixable=sum(1 for v in violations if v.fixable),
         )
+
+    def _census_constants_governance(
+        self,
+        *,
+        project: p.Infra.ProjectInfo,
+        violations: list[m.Infra.CensusViolation],
+    ) -> None:
+        src_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
+        if not src_dir.is_dir():
+            return
+        package_dir: Path | None = None
+        for child in sorted(src_dir.iterdir()):
+            if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
+                package_dir = child
+                break
+        if package_dir is None:
+            return
+        constants_file = package_dir / "constants.py"
+        if not constants_file.exists():
+            return
+
+        definitions = extract_constant_definitions(
+            file_path=constants_file,
+            project=project.name,
+        )
+
+        hardcoded = detect_hardcoded_canonicals(definitions)
+        violations.extend(
+            m.Infra.CensusViolation(
+                module=definition.file_path,
+                rule="NS-003",
+                line=definition.line,
+                message=(
+                    f"Hardcoded canonical value in '{definition.name}' should use parent MRO reference"
+                ),
+                fixable=True,
+            )
+            for definition in hardcoded
+        )
+
+        all_used_names: set[str] = set()
+        discovery = FlextInfraUtilitiesDiscovery()
+        projects_result = discovery.discover_projects(self._workspace_root)
+        if projects_result.is_success:
+            discovered_projects: Sequence[p.Infra.ProjectInfo] = (
+                projects_result.unwrap()
+            )
+            for discovered_project in discovered_projects:
+                discovered_src = discovered_project.path / c.Infra.Paths.DEFAULT_SRC_DIR
+                if not discovered_src.is_dir():
+                    continue
+                for py_file in sorted(discovered_src.rglob("*.py")):
+                    used_names, _ = scan_constant_usages(
+                        file_path=py_file,
+                        project=discovered_project.name,
+                    )
+                    all_used_names.update(used_names)
+
+        unused_constants = detect_unused_constants(
+            definitions=definitions,
+            all_used_names=all_used_names,
+        )
+        violations.extend(
+            m.Infra.CensusViolation(
+                module=unused.file_path,
+                rule="NS-004",
+                line=unused.line,
+                message=f"Unused constant '{unused.name}' can be removed",
+                fixable=True,
+            )
+            for unused in unused_constants
+        )
+
+        for py_file in sorted(src_dir.rglob("*.py")):
+            if py_file.name == "constants.py":
+                continue
+            _, direct_refs = scan_constant_usages(
+                file_path=py_file,
+                project=project.name,
+            )
+            violations.extend(
+                m.Infra.CensusViolation(
+                    module=ref.file_path,
+                    rule="NS-005",
+                    line=ref.line,
+                    message=(f"Direct ref {ref.full_ref} should use {ref.alias_ref}"),
+                    fixable=True,
+                )
+                for ref in direct_refs
+            )
 
 
 __all__ = ["FlextInfraCodegenCensus"]
