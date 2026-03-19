@@ -186,7 +186,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         # Internal packages (_models, _utilities, _dispatcher, etc.) MUST NOT receive
         # short aliases — they conflict with the root namespace MRO (d, m, s, r, …).
         if not pkg_dir.name.startswith("_"):
-            self._resolve_aliases(lazy_map)
+            self._resolve_aliases(lazy_map, pkg_dir=pkg_dir)
 
         # 6. Remove infrastructure names (eagerly imported, not lazy)
         for infra_name in ("cleanup_submodule_namespace", "lazy_getattr"):
@@ -491,20 +491,68 @@ class FlextInfraCodegenLazyInit(s[int]):
         return (inline, lazy)
 
     @staticmethod
-    def _resolve_aliases(lazy_map: dict[str, tuple[str, str]]) -> None:
+    def _resolve_aliases(
+        lazy_map: dict[str, tuple[str, str]],
+        pkg_dir: Path | None = None,
+    ) -> None:
         """Resolve single-letter aliases from ``ALIAS_TO_SUFFIX`` mapping.
 
-        For each alias (``c``, ``m``, ``t``, ``u``, ``p``, ``r``, ``d``,
-        ``e``, ``h``, ``s``, ``x``), find a class in the lazy_map whose name
-        ends with the corresponding suffix and create a mapping.
+        Strategy (dynamic, no hardcoded rules):
+        1. Skip if alias already discovered by AST scan (facade defines it).
+        2. Match only from canonical facade modules (module basename ==
+           suffix in lowercase). This prevents ``ProjectResult`` from
+           stealing ``r`` when ``result.py`` doesn't exist locally.
+        3. If no local facade exists, discover the parent package by
+           inspecting the MRO of ``constants.py`` (always present) and
+           delegate the alias to that parent.
         """
         for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
             if alias in lazy_map:
                 continue
+            canonical_basename = suffix.lower()
+            # Phase 1: match only from canonical facade module
             for name, (mod, _attr) in list(lazy_map.items()):
-                if name.endswith(suffix) and len(name) > 1:
+                mod_leaf = mod.rsplit(".", 1)[-1]
+                if mod_leaf == canonical_basename and name.endswith(suffix):
                     lazy_map[alias] = (mod, name)
                     break
+            if alias in lazy_map:
+                continue
+            # Phase 2: no local facade — discover parent package dynamically
+            if pkg_dir is not None:
+                parent_pkg = FlextInfraCodegenLazyInit._discover_parent_package(
+                    pkg_dir,
+                )
+                if parent_pkg:
+                    lazy_map[alias] = (f"{parent_pkg}.{canonical_basename}", alias)
+
+    @staticmethod
+    def _discover_parent_package(pkg_dir: Path) -> str | None:
+        """Discover the parent flext package by inspecting constants.py MRO.
+
+        Reads ``constants.py`` and finds the first ``from <pkg> import``
+        of a class whose name starts with ``Flext`` and ends with the
+        same facade suffix. Returns the package name (e.g. ``flext_core``).
+
+        This is fully dynamic — works for any project without hardcoded
+        package names.
+        """
+        constants_file = pkg_dir / "constants.py"
+        if not constants_file.exists():
+            return None
+        tree = u.Infra.parse_module_ast(constants_file)
+        if tree is None:
+            return None
+        for node in ast.iter_child_nodes(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            if node.module is None:
+                continue
+            for alias_node in node.names:
+                name = alias_node.name
+                if name.startswith("Flext") and name.endswith("Constants"):
+                    return node.module.split(".")[0]
+        return None
 
     # ---------------------------------------------------------------------------
     # Code generation
