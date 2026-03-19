@@ -159,5 +159,84 @@ class FlextInfraCodegenModels:
             ),
         ]
 
+    class ConstantDefinition(FlextModels.ArbitraryTypesModel):
+        """A single constant extracted from a constants.py file."""
+
+        name: Annotated[str, Field(min_length=1, description="Constant identifier")]
+        value_repr: Annotated[
+            str,
+            Field(description="Source repr (e.g., '30', '\"localhost\"')"),
+        ]
+        type_annotation: Annotated[
+            str,
+            Field(default="", description="Type annotation string"),
+        ]
+        file_path: Annotated[
+            str,
+            Field(min_length=1, description="Absolute file path"),
+        ]
+        class_path: Annotated[
+            str,
+            Field(
+                default="",
+                description="Nested class path (e.g., 'OracleWms.Connection')",
+            ),
+        ]
+        project: Annotated[str, Field(min_length=1, description="Project name")]
+        line: Annotated[int, Field(ge=1, description="Line number")]
+
+    class DuplicateConstantGroup(FlextModels.ArbitraryTypesModel):
+        """Cross-project duplicate group with consolidation metadata."""
+
+        constant_name: Annotated[
+            str,
+            Field(min_length=1, description="Constant identifier"),
+        ]
+        definitions: Annotated[
+            list[FlextInfraCodegenModels.ConstantDefinition],
+            Field(min_length=2, description="Definitions across projects"),
+        ]
+        is_value_identical: Annotated[
+            bool,
+            Field(description="Whether all values match"),
+        ]
+        canonical_ref: Annotated[
+            str,
+            Field(default="", description="Canonical parent reference"),
+        ]
+
+    class UnusedConstant(FlextModels.ArbitraryTypesModel):
+        """Constant declared but never referenced in workspace."""
+
+        name: Annotated[str, Field(min_length=1, description="Constant identifier")]
+        file_path: Annotated[
+            str,
+            Field(min_length=1, description="Declaration file path"),
+        ]
+        class_path: Annotated[str, Field(default="", description="Nested class path")]
+        project: Annotated[str, Field(min_length=1, description="Project name")]
+        line: Annotated[int, Field(ge=1, description="Line number")]
+
+    class DirectConstantRef(FlextModels.ArbitraryTypesModel):
+        """Direct FlextXConstants.Y.Z reference that should use c.* alias."""
+
+        full_ref: Annotated[
+            str,
+            Field(
+                min_length=1,
+                description="e.g., FlextAuthConstants.Auth.DEFAULT_TIMEOUT",
+            ),
+        ]
+        alias_ref: Annotated[
+            str,
+            Field(min_length=1, description="e.g., c.Auth.DEFAULT_TIMEOUT"),
+        ]
+        file_path: Annotated[
+            str,
+            Field(min_length=1, description="File containing the reference"),
+        ]
+        project: Annotated[str, Field(min_length=1, description="Project name")]
+        line: Annotated[int, Field(ge=1, description="Line number")]
+
 
 __all__ = ["FlextInfraCodegenModels"]
