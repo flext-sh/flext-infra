@@ -96,7 +96,7 @@ class FlextInfraProtocols(FlextProtocols):
 
             def generate(
                 self,
-                config: m.Infra.BaseMkConfig | object | None = None,
+                config: m.Infra.BaseMkConfig | t.ContainerValue | None = None,
             ) -> r[str]:
                 """Generate text or artifacts from configuration."""
                 ...
