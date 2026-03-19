@@ -105,6 +105,49 @@ class FlextInfraRefactorConstants:
         "remove_redundant_casts",
     })
     TYPE_ALIAS_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({"unify_typings"})
+    TYPING_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
+        "replace_object_annotations",
+        "remove_unused_models",
+    })
+    "Fix actions for typing census auto-fix rules."
+    TYPING_VIOLATION_KINDS: ClassVar[frozenset[str]] = frozenset({
+        "bare_object",
+        "container_object",
+        "mapping_object",
+        "list_object",
+        "sequence_object",
+        "typeadapter_object",
+    })
+    "Violation kind identifiers for typing annotation census."
+    TYPING_ANNOTATION_CONTEXTS: ClassVar[frozenset[str]] = frozenset({
+        "param",
+        "return",
+        "field",
+        "variable",
+        "typeadapter",
+    })
+    "Annotation context identifiers for typing census records."
+    DUNDER_OBJECT_ALLOWLIST: ClassVar[frozenset[str]] = frozenset({
+        "__eq__",
+        "__ne__",
+        "__hash__",
+        "__lt__",
+        "__le__",
+        "__gt__",
+        "__ge__",
+    })
+    "Dunder methods where `object` parameter type is canonical Python."
+    TYPING_REPLACEMENT_MAP: ClassVar[Mapping[str, str]] = {
+        "object": "t.ContainerValue",
+        "dict[str, object]": "dict[str, t.ContainerValue]",
+        "Mapping[str, object]": "Mapping[str, t.ContainerValue]",
+        "list[object]": "list[t.ContainerValue]",
+        "Sequence[object]": "Sequence[t.ContainerValue]",
+        "TypeAdapter[object]": "TypeAdapter[t.ContainerValue]",
+        "TypeAdapter[dict[str, object]]": "TypeAdapter[dict[str, t.ContainerValue]]",
+        "TypeAdapter[list[object]]": "TypeAdapter[list[t.ContainerValue]]",
+    }
+    "Canonical replacement map from object-based annotations to t.ContainerValue."
     FUTURE_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "ensure_future_annotations",
     })
@@ -298,7 +341,7 @@ class FlextInfraRefactorConstants:
             r"(?m)^\s*[A-Za-z_][A-Za-z0-9_]*\s*=\s*[A-Za-z_][A-Za-z0-9_]*\s*$",
         ),
     }
-    "Regex patterns for violation analysis."
+    "DEPRECATED: Regex patterns for violation analysis. Being migrated to ViolationCensusVisitor (SSOT). Will be removed after CST replacement is complete."
     MODEL_TOKENS: ClassVar[tuple[str, ...]] = (
         "model",
         "schema",
