@@ -389,10 +389,6 @@ def _resolve_relative_module(
 
 
 def _file_to_module(file_path: Path, package_dir: Path, package_name: str) -> str:
-    """Convert file path to dotted module name.
-
-    e.g. /path/src/flext_infra/_utilities/cli.py -> flext_infra._utilities.cli
-    """
     del package_name
     relative = file_path.relative_to(package_dir.parent)
     parts = list(relative.with_suffix("").parts)
