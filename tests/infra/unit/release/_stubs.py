@@ -13,8 +13,8 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_core import r
 
+from flext_core import r
 from flext_infra import FlextInfraModels
 
 if TYPE_CHECKING:

@@ -11,6 +11,11 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
+    from flext_infra.decorators import d
+    from flext_infra.exceptions import e
+    from flext_infra.mixins import x
+    from flext_infra.result import r
+    from flext_infra.service import s
 
     from . import unit as unit
     from .constants import FlextInfraTestConstants, c
@@ -219,7 +224,6 @@ if TYPE_CHECKING:
     )
     from .unit.check.extended_workspace_init import (
         TestWorkspaceCheckerBuildGateResult,
-        TestWorkspaceCheckerBuildGateResult as r,
         TestWorkspaceCheckerDirsWithPy,
         TestWorkspaceCheckerExecute,
         TestWorkspaceCheckerExistingCheckDirs,
@@ -328,7 +332,6 @@ if TYPE_CHECKING:
     from .unit.deps.test_detection_models import (
         TestFlextInfraDependencyDetectionModels,
         TestFlextInfraDependencyDetectionService,
-        TestFlextInfraDependencyDetectionService as s,
         TestToInfraValue,
     )
     from .unit.deps.test_detection_pip_check import TestRunPipCheck
@@ -2403,6 +2406,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "check": ("tests.infra.unit.check", ""),
     "codegen": ("tests.infra.unit.codegen", ""),
     "container": ("tests.infra.unit.container", ""),
+    "d": ("flext_infra.decorators", "d"),
     "dedupe_specs": ("tests.infra.unit.deps.test_modernizer_helpers", "dedupe_specs"),
     "dep_name": ("tests.infra.unit.deps.test_modernizer_helpers", "dep_name"),
     "deps": ("tests.infra.unit.deps", ""),
@@ -2410,6 +2414,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "discovery": ("tests.infra.unit.discovery", ""),
     "doc": ("tests.infra.unit.deps.test_modernizer_helpers", "doc"),
     "docs": ("tests.infra.unit.docs", ""),
+    "e": ("flext_infra.exceptions", "e"),
     "ensure_table": ("tests.infra.unit.deps.test_modernizer_helpers", "ensure_table"),
     "extract_dep_name": (
         "tests.infra.unit.deps.test_path_sync_helpers",
@@ -2437,10 +2442,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_extra_paths_sync",
         "pyright_content",
     ),
-    "r": (
-        "tests.infra.unit.check.extended_workspace_init",
-        "TestWorkspaceCheckerBuildGateResult",
-    ),
+    "r": ("flext_infra.result", "r"),
     "real_docs_project": ("tests.infra.fixtures", "real_docs_project"),
     "real_git_repo": ("tests.infra.fixtures_git", "real_git_repo"),
     "real_makefile_project": ("tests.infra.fixtures", "real_makefile_project"),
@@ -2462,10 +2464,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "run_pr_workspace": ("tests.infra.unit.github.main_dispatch", "run_pr_workspace"),
     "run_workflows": ("tests.infra.unit.github.main", "run_workflows"),
     "runner": ("tests.infra.unit.test_infra_subprocess_core", "runner"),
-    "s": (
-        "tests.infra.unit.deps.test_detection_models",
-        "TestFlextInfraDependencyDetectionService",
-    ),
+    "s": ("flext_infra.service", "s"),
     "service": ("tests.infra.unit.test_infra_versioning", "service"),
     "should_skip_target": ("tests.infra.unit.docs.auditor", "should_skip_target"),
     "svc": ("tests.infra.unit.test_infra_workspace_sync", "svc"),
@@ -3675,6 +3674,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.release.orchestrator_publish",
         "workspace_root",
     ),
+    "x": ("flext_infra.mixins", "x"),
 }
 
 __all__ = [
@@ -4104,6 +4104,7 @@ __all__ = [
     "check",
     "codegen",
     "container",
+    "d",
     "dedupe_specs",
     "dep_name",
     "deps",
@@ -4111,6 +4112,7 @@ __all__ = [
     "discovery",
     "doc",
     "docs",
+    "e",
     "ensure_table",
     "extract_dep_name",
     "fixer",
@@ -4455,6 +4457,7 @@ __all__ = [
     "validate",
     "validator",
     "workspace_root",
+    "x",
 ]
 
 

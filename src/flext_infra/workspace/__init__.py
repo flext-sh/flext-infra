@@ -28,10 +28,7 @@ if TYPE_CHECKING:
         logger,
     )
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-    from flext_infra.workspace.orchestrator import (
-        FlextInfraOrchestratorService,
-        FlextInfraOrchestratorService as s,
-    )
+    from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.sync import FlextInfraSyncService, main
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
@@ -56,7 +53,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "main": ("flext_infra.workspace.sync", "main"),
     "maintenance": ("flext_infra.workspace.maintenance", ""),
-    "s": ("flext_infra.workspace.orchestrator", "FlextInfraOrchestratorService"),
 }
 
 __all__ = [
@@ -69,7 +65,6 @@ __all__ = [
     "logger",
     "main",
     "maintenance",
-    "s",
 ]
 
 

@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra.github.pr import FlextInfraPrManager
 from tests.infra.unit.github._stubs import StubRunner, StubVersioning
 

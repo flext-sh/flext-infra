@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
 
 _PATH_SYNC = FlextInfraDependencyPathSync()

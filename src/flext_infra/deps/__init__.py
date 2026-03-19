@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from flext_infra.deps.detection import (
         FlextInfraDependencyDetectionHelpers,
         FlextInfraDependencyDetectionService,
-        FlextInfraDependencyDetectionService as s,
         dm,
     )
     from flext_infra.deps.detector import (
@@ -157,7 +156,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "_phases": ("flext_infra.deps._phases", ""),
     "dm": ("flext_infra.deps.detection", "dm"),
     "main": ("flext_infra.deps.fix_pyrefly_config", "main"),
-    "s": ("flext_infra.deps.detection", "FlextInfraDependencyDetectionService"),
     "shutil": ("flext_infra.deps.internal_sync", "shutil"),
     "u": ("flext_infra.deps.modernizer", "u"),
 }
@@ -191,7 +189,6 @@ __all__ = [
     "_phases",
     "dm",
     "main",
-    "s",
     "shutil",
     "u",
 ]

@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
 import flext_infra.deps.internal_sync as _internal_sync_mod
+from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
 from tests.infra import h, t
 

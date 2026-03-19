@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
 from flext_tests import s
 
+from flext_core import r
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 

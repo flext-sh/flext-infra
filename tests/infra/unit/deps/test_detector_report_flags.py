@@ -4,10 +4,10 @@ import types
 from pathlib import Path
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
 import flext_infra as detector_module
+from flext_core import r
 
 
 class _ReportStub:

@@ -12,9 +12,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_core import r, t
 from flext_tests import tm
 
+from flext_core import r, t
 from flext_infra import FlextInfraModels
 from flext_infra.release import orchestrator as _orch_mod
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator

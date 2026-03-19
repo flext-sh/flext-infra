@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
 from tests.infra import t
 

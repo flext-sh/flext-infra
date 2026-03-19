@@ -9,9 +9,9 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from tests.infra.models import m as im
 

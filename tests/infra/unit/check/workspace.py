@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra.check.services import FlextInfraWorkspaceChecker
 
 

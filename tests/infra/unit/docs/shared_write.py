@@ -11,9 +11,9 @@ import pathlib
 from pathlib import Path
 
 import pytest
-from flext_core import t
 from flext_tests import tm
 
+from flext_core import t
 from flext_infra.docs.shared import FlextInfraDocsShared
 from tests.infra.models import m
 

@@ -10,9 +10,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_core import r, t
 from flext_tests import tm
 
+from flext_core import r, t
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.shared import FlextInfraDocsShared
 from tests.infra import m

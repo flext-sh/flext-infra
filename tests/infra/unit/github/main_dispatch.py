@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra.github import __main__ as github_main
 from tests.infra.models import m
 from tests.infra.unit.github._stubs import StubWorkspaceManager

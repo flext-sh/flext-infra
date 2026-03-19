@@ -11,10 +11,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from _pytest.monkeypatch import MonkeyPatch
-from flext_core import r, t
 from flext_tests import tm
 
 import flext_infra.release.__main__ as _main_mod
+from flext_core import r, t
 from flext_infra.release.__main__ import main
 
 

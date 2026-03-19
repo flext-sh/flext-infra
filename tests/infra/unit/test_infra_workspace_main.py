@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_core import r, t
 from flext_tests import tm
 
+from flext_core import r, t
 from flext_infra._utilities.cli import FlextInfraUtilitiesCli
 from flext_infra.models import FlextInfraModels as m
 from flext_infra.workspace import __main__ as workspace_main

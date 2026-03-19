@@ -10,9 +10,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_core import r, t
 from flext_tests import tm
 
+from flext_core import r, t
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.shared import FlextInfraDocsShared
 from tests.infra.models import m

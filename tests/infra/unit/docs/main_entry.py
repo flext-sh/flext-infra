@@ -10,9 +10,9 @@ import sys
 from collections.abc import Callable
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra.docs.__main__ import main
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder

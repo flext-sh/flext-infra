@@ -14,8 +14,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_core import r, t
 
+from flext_core import r, t
 from flext_infra import m as infra_models
 from flext_infra.check.services import FlextInfraWorkspaceChecker, GateExecution
 from flext_infra.gates.bandit import FlextInfraBanditGate

@@ -4,9 +4,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests.infra import h

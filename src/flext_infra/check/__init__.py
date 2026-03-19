@@ -16,7 +16,6 @@ if TYPE_CHECKING:
         FlextInfraConfigFixer,
         GateExecution,
         ProjectResult,
-        ProjectResult as r,
     )
     from flext_infra.check.workspace_check import (
         FlextInfraWorkspaceChecker,
@@ -36,7 +35,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ProjectResult": ("flext_infra.check.services", "ProjectResult"),
     "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
     "main": ("flext_infra.check.workspace_check", "main"),
-    "r": ("flext_infra.check.services", "ProjectResult"),
     "run_cli": ("flext_infra.check.workspace_check", "run_cli"),
 }
 
@@ -48,7 +46,6 @@ __all__ = [
     "ProjectResult",
     "build_parser",
     "main",
-    "r",
     "run_cli",
 ]
 

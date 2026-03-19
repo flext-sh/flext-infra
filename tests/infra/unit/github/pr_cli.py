@@ -5,9 +5,9 @@ from __future__ import annotations
 import argparse
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra.github import pr as pr_module
 from flext_infra.github.pr import FlextInfraPrManager
 from tests.infra.helpers import h

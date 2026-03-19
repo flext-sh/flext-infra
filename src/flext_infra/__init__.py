@@ -17,6 +17,12 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
+    from flext_core.decorators import d
+    from flext_core.exceptions import e
+    from flext_core.handlers import h
+    from flext_core.mixins import x
+    from flext_core.result import r
+    from flext_core.service import s
     from flext_core.typings import FlextTypes
     from flext_infra import (
         _utilities,
@@ -77,7 +83,6 @@ if TYPE_CHECKING:
         FlextInfraConfigFixer,
         GateExecution,
         ProjectResult,
-        ProjectResult as r,
     )
     from flext_infra.check.workspace_check import (
         FlextInfraWorkspaceChecker,
@@ -111,7 +116,6 @@ if TYPE_CHECKING:
     from flext_infra.deps.detection import (
         FlextInfraDependencyDetectionHelpers,
         FlextInfraDependencyDetectionService,
-        FlextInfraDependencyDetectionService as s,
         dm,
     )
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
@@ -952,11 +956,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "c": ("flext_infra.constants", "c"),
     "check": ("flext_infra.check", ""),
     "codegen": ("flext_infra.codegen", ""),
+    "d": ("flext_core.decorators", "d"),
     "deps": ("flext_infra.deps", ""),
     "dm": ("flext_infra.deps.detection", "dm"),
     "docs": ("flext_infra.docs", ""),
+    "e": ("flext_core.exceptions", "e"),
     "gates": ("flext_infra.gates", ""),
     "github": ("flext_infra.github", ""),
+    "h": ("flext_core.handlers", "h"),
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "m": ("flext_infra.models", "m"),
     "maintenance": ("flext_infra.workspace.maintenance", ""),
@@ -974,6 +981,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "u": ("flext_infra.utilities", "u"),
     "validate": ("flext_infra.validate", ""),
     "workspace": ("flext_infra.workspace", ""),
+    "x": ("flext_core.mixins", "x"),
 }
 
 __all__ = [
@@ -1170,11 +1178,14 @@ __all__ = [
     "c",
     "check",
     "codegen",
+    "d",
     "deps",
     "dm",
     "docs",
+    "e",
     "gates",
     "github",
+    "h",
     "logger",
     "m",
     "maintenance",
@@ -1192,6 +1203,7 @@ __all__ = [
     "u",
     "validate",
     "workspace",
+    "x",
 ]
 
 

@@ -58,7 +58,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.policy import (
         FlextInfraRefactorTransformerPolicyUtilities,
-        FlextInfraRefactorTransformerPolicyUtilities as u,
     )
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
@@ -190,10 +189,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.violation_census_visitor",
         "ViolationCensusVisitor",
     ),
-    "u": (
-        "flext_infra.transformers.policy",
-        "FlextInfraRefactorTransformerPolicyUtilities",
-    ),
 }
 
 __all__ = [
@@ -225,7 +220,6 @@ __all__ = [
     "TypingAnnotationReplacer",
     "UnusedModelRemover",
     "ViolationCensusVisitor",
-    "u",
 ]
 
 

@@ -13,12 +13,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_core import r, t
 from flext_tests import tm
 
 import flext_infra.check.__main__ as check_main_mod
 import flext_infra.check.workspace_check as ws_mod
 import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
+from flext_core import r, t
 from flext_infra.check.services import (
     GateExecution,
     ProjectResult,

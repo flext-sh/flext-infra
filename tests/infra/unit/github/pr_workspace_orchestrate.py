@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import m
 from flext_infra.github import pr_workspace as pw_mod
 from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager

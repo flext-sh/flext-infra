@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import c
 from flext_infra.models import FlextInfraModels as m
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService

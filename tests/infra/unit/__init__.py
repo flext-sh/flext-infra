@@ -190,7 +190,6 @@ if TYPE_CHECKING:
     )
     from .check.extended_workspace_init import (
         TestWorkspaceCheckerBuildGateResult,
-        TestWorkspaceCheckerBuildGateResult as r,
         TestWorkspaceCheckerDirsWithPy,
         TestWorkspaceCheckerExecute,
         TestWorkspaceCheckerExistingCheckDirs,
@@ -265,7 +264,6 @@ if TYPE_CHECKING:
     )
     from .codegen.lazy_init_transforms import (
         TestExtractInlineConstants,
-        TestExtractInlineConstants as c,
         TestExtractVersionExports,
         TestMergeChildExports,
         TestScanAstPublicDefs,
@@ -296,9 +294,7 @@ if TYPE_CHECKING:
     from .deps.test_detection_deptry import TestRunDeptry
     from .deps.test_detection_models import (
         TestFlextInfraDependencyDetectionModels,
-        TestFlextInfraDependencyDetectionModels as m,
         TestFlextInfraDependencyDetectionService,
-        TestFlextInfraDependencyDetectionService as s,
         TestToInfraValue,
     )
     from .deps.test_detection_pip_check import TestRunPipCheck
@@ -822,7 +818,6 @@ if TYPE_CHECKING:
     from .test_infra_patterns_extra import (
         TestFlextInfraPatternsEdgeCases,
         TestFlextInfraPatternsPatternTypes,
-        TestFlextInfraPatternsPatternTypes as t,
     )
     from .test_infra_protocols import TestFlextInfraProtocolsImport
     from .test_infra_reporting_core import TestFlextInfraReportingServiceCore
@@ -2324,10 +2319,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "auditor": ("tests.infra.unit.docs.auditor", "auditor"),
     "basemk": ("tests.infra.unit.basemk", ""),
     "builder": ("tests.infra.unit.docs.builder", "builder"),
-    "c": (
-        "tests.infra.unit.codegen.lazy_init_transforms",
-        "TestExtractInlineConstants",
-    ),
     "canonical_dev_dependencies": (
         "tests.infra.unit.deps.test_modernizer_helpers",
         "canonical_dev_dependencies",
@@ -2354,10 +2345,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "github": ("tests.infra.unit.github", ""),
     "io": ("tests.infra.unit.io", ""),
     "is_external": ("tests.infra.unit.docs.auditor", "is_external"),
-    "m": (
-        "tests.infra.unit.deps.test_detection_models",
-        "TestFlextInfraDependencyDetectionModels",
-    ),
     "normalize_link": ("tests.infra.unit.docs.auditor", "normalize_link"),
     "orchestrator": (
         "tests.infra.unit.test_infra_workspace_orchestrator",
@@ -2370,10 +2357,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "pyright_content": (
         "tests.infra.unit.deps.test_extra_paths_sync",
         "pyright_content",
-    ),
-    "r": (
-        "tests.infra.unit.check.extended_workspace_init",
-        "TestWorkspaceCheckerBuildGateResult",
     ),
     "refactor": ("tests.infra.unit.refactor", ""),
     "release": ("tests.infra.unit.release", ""),
@@ -2390,17 +2373,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "run_pr_workspace": ("tests.infra.unit.github.main_dispatch", "run_pr_workspace"),
     "run_workflows": ("tests.infra.unit.github.main", "run_workflows"),
     "runner": ("tests.infra.unit.test_infra_subprocess_core", "runner"),
-    "s": (
-        "tests.infra.unit.deps.test_detection_models",
-        "TestFlextInfraDependencyDetectionService",
-    ),
     "service": ("tests.infra.unit.test_infra_versioning", "service"),
     "should_skip_target": ("tests.infra.unit.docs.auditor", "should_skip_target"),
     "svc": ("tests.infra.unit.test_infra_workspace_sync", "svc"),
-    "t": (
-        "tests.infra.unit.test_infra_patterns_extra",
-        "TestFlextInfraPatternsPatternTypes",
-    ),
     "test_all_three_capabilities_in_one_pass": (
         "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
         "test_all_three_capabilities_in_one_pass",
@@ -4007,7 +3982,6 @@ __all__ = [
     "auditor",
     "basemk",
     "builder",
-    "c",
     "canonical_dev_dependencies",
     "census",
     "check",
@@ -4028,12 +4002,10 @@ __all__ = [
     "github",
     "io",
     "is_external",
-    "m",
     "normalize_link",
     "orchestrator",
     "project_dev_groups",
     "pyright_content",
-    "r",
     "refactor",
     "release",
     "rewrite_dep_paths",
@@ -4043,11 +4015,9 @@ __all__ = [
     "run_pr_workspace",
     "run_workflows",
     "runner",
-    "s",
     "service",
     "should_skip_target",
     "svc",
-    "t",
     "test_all_three_capabilities_in_one_pass",
     "test_array",
     "test_as_string_list",

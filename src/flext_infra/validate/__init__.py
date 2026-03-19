@@ -20,10 +20,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
-    from flext_infra.validate.inventory import (
-        FlextInfraInventoryService,
-        FlextInfraInventoryService as s,
-    )
+    from flext_infra.validate.inventory import FlextInfraInventoryService
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
     from flext_infra.validate.scanner import FlextInfraTextPatternScanner
@@ -59,7 +56,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.validate.scanner",
         "FlextInfraTextPatternScanner",
     ),
-    "s": ("flext_infra.validate.inventory", "FlextInfraInventoryService"),
 }
 
 __all__ = [
@@ -70,7 +66,6 @@ __all__ = [
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
     "FlextInfraTextPatternScanner",
-    "s",
 ]
 
 
