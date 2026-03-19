@@ -218,6 +218,7 @@ select = [
 
 [tool.ruff.lint.isort]
 known-first-party = [
+  "flext_core",
   "flext_infra",
 ]
 
