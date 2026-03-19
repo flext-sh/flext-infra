@@ -927,7 +927,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "maintenance": ("flext_infra.workspace.maintenance", ""),
     "output": ("flext_infra._utilities.output", "output"),
     "p": ("flext_infra.protocols", "p"),
-    "r": ("flext_infra.check.services", "ProjectResult"),
+    "r": ("flext_core.result", "r"),
     "refactor": ("flext_infra.refactor", ""),
     "release": ("flext_infra.release", ""),
     "rules": ("flext_infra.rules", ""),
