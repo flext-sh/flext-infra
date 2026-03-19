@@ -431,3 +431,68 @@ def test_all_three_capabilities_in_one_pass() -> None:
         change == "Canonicalized inline union -> t.Primitives" for change in changes
     )
     assert any(change == "Added import: from flext_core import t" for change in changes)
+
+
+def test_no_duplicate_t_import_when_t_from_project_package() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from flext_ldif import c, m, t\n\n"
+        "def foo(x: int | float) -> None:\n"
+        "    pass\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "t.Numeric" in updated
+    assert "from flext_core import t" not in updated
+    assert "from flext_ldif import c, m, t" in updated
+    assert updated.count("from flext_core") == 0
+    assert any(
+        change == "Canonicalized inline union -> t.Numeric" for change in changes
+    )
+    assert not any(
+        change == "Added import: from flext_core import t" for change in changes
+    )
+
+
+def test_preserves_typealias_import_when_class_level_usage_exists() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import TypeAlias\n"
+        "from collections.abc import Callable\n\n"
+        "class MyTypes:\n"
+        "    Handler: TypeAlias = Callable[[], None]\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "from typing import TypeAlias" in updated
+    assert "Handler: TypeAlias = Callable[[], None]" in updated
+    assert updated == source
+    assert changes == []
+
+
+def test_removes_typealias_import_only_when_all_usages_converted() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import TypeAlias\n\n"
+        "MyType: TypeAlias = str\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "type MyType = str" in updated
+    assert "TypeAlias" not in updated
+    assert any(change == "Removed typing import: TypeAlias" for change in changes)

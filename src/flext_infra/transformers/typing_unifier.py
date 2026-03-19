@@ -25,6 +25,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         self._all_name_usages: set[str] = set()
         self._has_t_import = False
         self._needs_t_import = False
+        self._typealias_unconverted = 0
         self._is_definition_file = self._is_typing_definition_file(file_path)
         self._canonical_map = canonical_map
         self.changes: list[str] = []
@@ -42,14 +43,11 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
                 self._typing_import_names.add(self._bound_name(alias))
                 self._typing_import_aliases.append(alias)
             return False
-        if module_name == "flext_core":
-            names = node.names
-            if isinstance(names, cst.ImportStar):
-                return True
-            for alias in tuple(names):
+        if not isinstance(node.names, cst.ImportStar):
+            for alias in tuple(node.names):
                 if not isinstance(alias.name, cst.Name):
                     continue
-                if alias.name.value == "t" and self._bound_name(alias) == "t":
+                if self._bound_name(alias) == "t":
                     self._has_t_import = True
         return True
 
@@ -107,14 +105,15 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         original_node: cst.AnnAssign,
         updated_node: cst.AnnAssign,
     ) -> cst.BaseSmallStatement:
-        if self._scope_depth > 0:
-            return updated_node
         if not isinstance(original_node.target, cst.Name):
             return updated_node
         if original_node.value is None:
             return updated_node
         annotation_name = self._annotation_name(original_node.annotation.annotation)
         if annotation_name not in {"TypeAlias", "typing.TypeAlias"}:
+            return updated_node
+        if self._scope_depth > 0:
+            self._typealias_unconverted += 1
             return updated_node
         alias_value = updated_node.value
         if alias_value is None:
@@ -193,7 +192,10 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
             imported_name = alias.name.value
             bound_name = self._bound_name(alias)
             if imported_name == "TypeAlias":
-                self.changes.append("Removed typing import: TypeAlias")
+                if self._typealias_unconverted > 0:
+                    retained.append(alias)
+                else:
+                    self.changes.append("Removed typing import: TypeAlias")
                 continue
             if bound_name in self._all_name_usages:
                 retained.append(alias)
