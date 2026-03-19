@@ -537,13 +537,17 @@ class FlextInfraCodegenLazyInit(s[int]):
                     break
             if alias in lazy_map:
                 continue
-            # Phase 2: no local facade — discover parent package dynamically
+            # Phase 2: no local facade — delegate to parent package
             if pkg_dir is not None:
                 parent_pkg = FlextInfraCodegenLazyInit._discover_parent_package(
                     pkg_dir,
                 )
                 if parent_pkg:
-                    lazy_map[alias] = (f"{parent_pkg}.{canonical_basename}", alias)
+                    parent_dir = pkg_dir.parent / parent_pkg
+                    target_mod = f"{parent_pkg}.{canonical_basename}"
+                    if not (parent_dir / f"{canonical_basename}.py").is_file():
+                        target_mod = parent_pkg
+                    lazy_map[alias] = (target_mod, alias)
 
     @staticmethod
     def _discover_parent_package(pkg_dir: Path) -> str | None:

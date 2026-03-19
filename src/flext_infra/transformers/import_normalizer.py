@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections import deque
+from collections.abc import Callable, Mapping, Sequence
+from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, override
 
 import libcst as cst
 from pydantic import ConfigDict, Field
 
-from flext_infra import c, u
+from flext_infra import c, t, u
 from flext_infra.models import FlextModels
 from flext_infra.transformers.import_insertion import (
     FlextInfraTransformerImportInsertion,
@@ -24,33 +26,75 @@ class ImportViolation(FlextModels.ArbitraryTypesModel):
     violation_type: Annotated[str, Field(pattern="^(deep|wrong_source)$")]
 
 
-FACADE_TIER: dict[str, int] = {
-    "c": 0,
-    "t": 1,
-    "p": 2,
-    "m": 3,
-    "u": 4,
-    "e": 4,
-    "r": 4,
-    "s": 5,
-    "d": 5,
-    "h": 5,
-    "x": 5,
-}
+class _ImportNormalizationContext(FlextModels.ArbitraryTypesModel):
+    file_path: Path
+    file_module: str
+    project_package: str
+    project_aliases: frozenset[str]
+    declared_alias: str
+    alias_to_defining_module: Mapping[str, str]
+    alias_tiers: Mapping[str, int]
+    file_tier: int
+    package_reachability: Mapping[str, frozenset[str]]
+    wrong_source_enabled: bool
+    universal_aliases: frozenset[str]
+    workspace_packages: frozenset[str]
 
-FACADE_FILENAMES: tuple[str, ...] = (
-    "constants.py",
-    "typings.py",
-    "protocols.py",
-    "models.py",
-    "utilities.py",
-    "service.py",
-    "exceptions.py",
-    "decorators.py",
-    "handlers.py",
-    "mixins.py",
-    "result.py",
-)
+
+class _ImportEdgeCollector(cst.CSTVisitor):
+    def __init__(
+        self,
+        *,
+        current_module: str,
+        package_name: str,
+        known_modules: frozenset[str],
+    ) -> None:
+        self._current_module = current_module
+        self._package_name = package_name
+        self._known_modules = known_modules
+        self.imported_modules: set[str] = set()
+
+    @override
+    def visit_Import(self, node: cst.Import) -> None:
+        for imported_alias in node.names:
+            module_name = u.Infra.module_name_from_expr(imported_alias.name)
+            if len(module_name) == 0:
+                continue
+            self._add_candidate(module_name)
+
+    @override
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+        base_module = self._resolve_import_from_module(node)
+        if len(base_module) > 0:
+            self._add_candidate(base_module)
+        if isinstance(node.names, cst.ImportStar):
+            return
+        for imported_alias in node.names:
+            imported_name = _imported_name(imported_alias)
+            if imported_name is None:
+                continue
+            if len(base_module) == 0:
+                continue
+            self._add_candidate(f"{base_module}.{imported_name}")
+
+    def _resolve_import_from_module(self, node: cst.ImportFrom) -> str:
+        module_name = u.Infra.module_name_from_expr(node.module)
+        if len(node.relative) == 0:
+            return module_name
+        return _resolve_relative_module(
+            current_module=self._current_module,
+            level=len(node.relative),
+            module_name=module_name,
+        )
+
+    def _add_candidate(self, module_name: str) -> None:
+        if module_name == self._package_name:
+            self.imported_modules.add(module_name)
+            return
+        if not module_name.startswith(f"{self._package_name}."):
+            return
+        if module_name in self._known_modules:
+            self.imported_modules.add(module_name)
 
 
 def _discover_src_package_dir(project_root: Path) -> tuple[str, Path] | None:
@@ -84,12 +128,12 @@ def discover_package_from_file(file_path: Path) -> str:
         if current.name != "src":
             continue
         try:
-            rel = resolved.relative_to(current)
+            relative = resolved.relative_to(current)
         except ValueError:
             continue
-        if len(rel.parts) == 0:
+        if len(relative.parts) == 0:
             continue
-        package_name = rel.parts[0]
+        package_name = relative.parts[0]
         package_dir = current / package_name
         if (package_dir / "__init__.py").is_file():
             return package_name
@@ -99,8 +143,64 @@ def discover_package_from_file(file_path: Path) -> str:
     discovered = _discover_src_package_dir(project_root)
     if discovered is None:
         return ""
-    package_name, _ = discovered
-    return package_name
+    return discovered[0]
+
+
+@lru_cache(maxsize=1)
+def _load_import_normalization_config() -> Mapping[str, t.Infra.InfraValue]:
+    rules_path = (
+        Path(__file__).resolve().parent.parent / "rules" / "import-normalization.yml"
+    )
+    loaded = u.Infra.safe_load_yaml(rules_path)
+    root = loaded.get("import_normalization")
+    if isinstance(root, Mapping):
+        normalized: dict[str, t.Infra.InfraValue] = {}
+        for key, value in root.items():
+            normalized[key] = value
+        return normalized
+    return {}
+
+
+@lru_cache(maxsize=1)
+def _alias_tiers() -> Mapping[str, int]:
+    config = _load_import_normalization_config().get("alias_tiers")
+    if not isinstance(config, Mapping):
+        return {}
+    tiers: dict[str, int] = {}
+    for alias_name, tier_value in config.items():
+        if len(alias_name) != 1 or not alias_name.isalpha():
+            continue
+        if isinstance(tier_value, int):
+            tiers[alias_name] = tier_value
+    return tiers
+
+
+@lru_cache(maxsize=1)
+def _facade_filenames() -> tuple[str, ...]:
+    config = _load_import_normalization_config().get("facade_filenames")
+    if not isinstance(config, list):
+        return ()
+    output: list[str] = []
+    for item in config:
+        if isinstance(item, str) and item.endswith(".py"):
+            output.append(item)
+    return tuple(output)
+
+
+@lru_cache(maxsize=1)
+def _wrong_source_config() -> tuple[bool, frozenset[str]]:
+    config = _load_import_normalization_config().get("wrong_source")
+    if not isinstance(config, Mapping):
+        return False, frozenset()
+    enabled_raw = config.get("enabled")
+    enabled = isinstance(enabled_raw, bool) and enabled_raw
+    universal_raw = config.get("universal_aliases")
+    universal_aliases: set[str] = set()
+    if isinstance(universal_raw, list):
+        for item in universal_raw:
+            if isinstance(item, str) and len(item) == 1 and item.isalpha():
+                universal_aliases.add(item)
+    return enabled, frozenset(universal_aliases)
 
 
 def _extract_declared_alias_from_facade(file_path: Path) -> str:
@@ -111,17 +211,17 @@ def _extract_declared_alias_from_facade(file_path: Path) -> str:
     for statement in module.body:
         if not isinstance(statement, cst.SimpleStatementLine):
             continue
-        for expr in statement.body:
-            if not isinstance(expr, cst.Assign):
+        for expression in statement.body:
+            if not isinstance(expression, cst.Assign):
                 continue
-            if len(expr.targets) != 1:
+            if len(expression.targets) != 1:
                 continue
-            target = expr.targets[0].target
+            target = expression.targets[0].target
             if not isinstance(target, cst.Name):
                 continue
             if len(target.value) != 1:
                 continue
-            if not isinstance(expr.value, cst.Name):
+            if not isinstance(expression.value, cst.Name):
                 continue
             alias_name = target.value
     return alias_name
@@ -133,29 +233,429 @@ def discover_project_aliases(project_root: Path) -> dict[str, str]:
         return {}
     _, package_dir = discovered
     alias_to_facade: dict[str, str] = {}
-    for facade_name in FACADE_FILENAMES:
+    for facade_name in _facade_filenames():
         facade_path = package_dir / facade_name
         if not facade_path.is_file():
             continue
         alias_name = _extract_declared_alias_from_facade(facade_path)
-        if len(alias_name) != 1:
+        if len(alias_name) != 1 or not alias_name.isalpha():
             continue
         alias_to_facade[alias_name] = facade_name
     return alias_to_facade
 
 
-def _reverse_alias_map(alias_to_facade: dict[str, str]) -> dict[str, str]:
+def _reverse_alias_map(alias_to_facade: Mapping[str, str]) -> dict[str, str]:
     return {file_name: alias_name for alias_name, file_name in alias_to_facade.items()}
 
 
-def _is_file_in_private_subdirectory(file_path: Path, project_package: str) -> bool:
-    pkg_dir = project_package.replace(".", "/")
-    file_str = str(file_path)
-    idx = file_str.find(f"{pkg_dir}/")
-    if idx < 0:
+def _find_lazy_imports_dict(module: cst.Module) -> cst.Dict | None:
+    for statement in module.body:
+        if not isinstance(statement, cst.SimpleStatementLine):
+            continue
+        for expression in statement.body:
+            if isinstance(expression, cst.Assign):
+                if len(expression.targets) != 1:
+                    continue
+                target = expression.targets[0].target
+                if isinstance(target, cst.Name) and target.value == "_LAZY_IMPORTS":
+                    if isinstance(expression.value, cst.Dict):
+                        return expression.value
+            if isinstance(expression, cst.AnnAssign):
+                target = expression.target
+                if not isinstance(target, cst.Name):
+                    continue
+                if target.value != "_LAZY_IMPORTS":
+                    continue
+                if expression.value is None or not isinstance(
+                    expression.value, cst.Dict
+                ):
+                    continue
+                return expression.value
+    return None
+
+
+def _extract_string_literal(node: cst.BaseExpression) -> str:
+    if not isinstance(node, cst.SimpleString):
+        return ""
+    value = node.evaluated_value
+    return value if isinstance(value, str) else ""
+
+
+def _extract_lazy_alias_map(package_dir: Path) -> dict[str, str]:
+    init_path = package_dir / "__init__.py"
+    if not init_path.is_file():
+        return {}
+    try:
+        source = init_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        module = cst.parse_module(source)
+    except (OSError, cst.ParserSyntaxError):
+        return {}
+    lazy_imports = _find_lazy_imports_dict(module)
+    if lazy_imports is None:
+        return {}
+    alias_map: dict[str, str] = {}
+    for element in lazy_imports.elements:
+        if not isinstance(element, cst.DictElement):
+            continue
+        key_text = _extract_string_literal(element.key)
+        if len(key_text) != 1 or not key_text.isalpha():
+            continue
+        if not isinstance(element.value, cst.Tuple):
+            continue
+        if len(element.value.elements) == 0:
+            continue
+        module_element = element.value.elements[0]
+        module_name = _extract_string_literal(module_element.value)
+        if len(module_name) == 0:
+            continue
+        alias_map[key_text] = module_name
+    return alias_map
+
+
+def _build_alias_to_defining_module(
+    *,
+    package_name: str,
+    package_dir: Path,
+    project_root: Path | None,
+    alias_map: dict[str, tuple[str, ...]] | None,
+) -> dict[str, str]:
+    alias_to_module = _extract_lazy_alias_map(package_dir)
+    if project_root is not None:
+        alias_to_facade = discover_project_aliases(project_root)
+        for alias_name, facade_file in alias_to_facade.items():
+            if alias_name in alias_to_module:
+                continue
+            facade_module = f"{package_name}.{Path(facade_file).stem}"
+            alias_to_module[alias_name] = facade_module
+    if alias_map is not None:
+        legacy_aliases = alias_map.get(package_name, ())
+        for alias_name in legacy_aliases:
+            if alias_name in alias_to_module:
+                continue
+            guessed_module = f"{package_name}.{alias_name}"
+            alias_to_module[alias_name] = guessed_module
+    return alias_to_module
+
+
+def _resolve_relative_module(
+    *, current_module: str, level: int, module_name: str
+) -> str:
+    if len(current_module) == 0:
+        return ""
+    parts = current_module.split(".")
+    package_parts = parts[:-1]
+    hops = max(level - 1, 0)
+    if hops > len(package_parts):
+        return ""
+    base_parts = package_parts[: len(package_parts) - hops]
+    if len(module_name) > 0:
+        base_parts.extend(module_name.split("."))
+    return ".".join(base_parts)
+
+
+def _file_to_module(file_path: Path, package_dir: Path, package_name: str) -> str:
+    """Convert file path to dotted module name.
+
+    e.g. /path/src/flext_infra/_utilities/cli.py -> flext_infra._utilities.cli
+    """
+    del package_name
+    relative = file_path.relative_to(package_dir.parent)
+    parts = list(relative.with_suffix("").parts)
+    if parts and parts[-1] == "__init__":
+        parts = parts[:-1]
+    return ".".join(parts)
+
+
+@lru_cache(maxsize=128)
+def _build_import_graph(
+    package_dir: Path,
+    package_name: str,
+) -> dict[str, frozenset[str]]:
+    python_files = sorted(
+        path for path in package_dir.rglob("*.py") if path.name != "__init__.py"
+    )
+    module_names = {
+        _file_to_module(path, package_dir, package_name)
+        for path in python_files
+        if len(_file_to_module(path, package_dir, package_name)) > 0
+    }
+    known_modules = frozenset(module_names)
+    graph: dict[str, frozenset[str]] = {
+        module_name: frozenset() for module_name in known_modules
+    }
+    for file_path in python_files:
+        current_module = _file_to_module(file_path, package_dir, package_name)
+        if current_module not in known_modules:
+            continue
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            module = cst.parse_module(source)
+        except (OSError, cst.ParserSyntaxError):
+            continue
+        collector = _ImportEdgeCollector(
+            current_module=current_module,
+            package_name=package_name,
+            known_modules=known_modules,
+        )
+        module.visit(collector)
+        edges = {
+            imported_module
+            for imported_module in collector.imported_modules
+            if imported_module in known_modules
+        }
+        graph[current_module] = frozenset(edges)
+    return graph
+
+
+@lru_cache(maxsize=128)
+def _build_reachability(
+    package_dir: Path,
+    package_name: str,
+) -> dict[str, frozenset[str]]:
+    graph = _build_import_graph(package_dir, package_name)
+    reachability: dict[str, frozenset[str]] = {}
+    for module_name in graph:
+        visited: set[str] = set()
+        queue: deque[str] = deque(graph.get(module_name, frozenset()))
+        while len(queue) > 0:
+            imported_module = queue.popleft()
+            if imported_module in visited:
+                continue
+            visited.add(imported_module)
+            queue.extend(graph.get(imported_module, frozenset()))
+        reachability[module_name] = frozenset(visited)
+    return reachability
+
+
+def _discover_workspace_root_from_file(file_path: Path) -> Path:
+    resolved = file_path.resolve()
+    candidate = resolved.parent if resolved.is_file() else resolved
+    lineage = (candidate, *candidate.parents)
+    for current in lineage:
+        if (current / ".git").exists():
+            return current
+    return candidate
+
+
+@lru_cache(maxsize=16)
+def _discover_workspace_packages(workspace_root: Path) -> frozenset[str]:
+    packages: set[str] = set()
+    roots = [workspace_root]
+    roots.extend(
+        child
+        for child in workspace_root.iterdir()
+        if child.is_dir() and not child.name.startswith(".")
+    )
+    for root in roots:
+        src_dir = root / "src"
+        if not src_dir.is_dir():
+            continue
+        for package_dir in src_dir.iterdir():
+            if not package_dir.is_dir():
+                continue
+            if (package_dir / "__init__.py").is_file():
+                packages.add(package_dir.name)
+    return frozenset(packages)
+
+
+def _build_context(
+    *,
+    file_path: Path,
+    project_package: str,
+    alias_map: dict[str, tuple[str, ...]] | None,
+) -> _ImportNormalizationContext:
+    package_name = (
+        project_package
+        if len(project_package) > 0
+        else discover_package_from_file(file_path)
+    )
+    project_root = _discover_project_root_from_file(file_path)
+    package_dir: Path | None = None
+    if project_root is not None:
+        candidate = project_root / "src" / package_name
+        if candidate.is_dir() and (candidate / "__init__.py").is_file():
+            package_dir = candidate
+    alias_to_module = (
+        _build_alias_to_defining_module(
+            package_name=package_name,
+            package_dir=package_dir,
+            project_root=project_root,
+            alias_map=alias_map,
+        )
+        if package_dir is not None and len(package_name) > 0
+        else {}
+    )
+    file_module = (
+        _file_to_module(file_path, package_dir, package_name)
+        if package_dir is not None and len(package_name) > 0
+        else ""
+    )
+    alias_to_facade = (
+        discover_project_aliases(project_root) if project_root is not None else {}
+    )
+    facade_to_alias = _reverse_alias_map(alias_to_facade)
+    declared_alias = facade_to_alias.get(file_path.name, "")
+    alias_tiers = _alias_tiers()
+    file_tier = _file_tier(
+        file_path=file_path,
+        project_package=package_name,
+        facade_to_alias=facade_to_alias,
+        alias_tiers=alias_tiers,
+    )
+    reachability = (
+        _build_reachability(package_dir, package_name)
+        if package_dir is not None and len(package_name) > 0
+        else {}
+    )
+    workspace_root = _discover_workspace_root_from_file(file_path)
+    workspace_packages = _discover_workspace_packages(workspace_root)
+    wrong_source_enabled, universal_aliases = _wrong_source_config()
+    project_aliases = set(alias_to_module)
+    if alias_map is not None and len(package_name) > 0:
+        project_aliases.update(alias_map.get(package_name, ()))
+    return _ImportNormalizationContext(
+        file_path=file_path,
+        file_module=file_module,
+        project_package=package_name,
+        project_aliases=frozenset(project_aliases),
+        declared_alias=declared_alias,
+        alias_to_defining_module=alias_to_module,
+        alias_tiers=alias_tiers,
+        file_tier=file_tier,
+        package_reachability=reachability,
+        wrong_source_enabled=wrong_source_enabled,
+        universal_aliases=universal_aliases,
+        workspace_packages=workspace_packages,
+    )
+
+
+def _file_tier(
+    *,
+    file_path: Path,
+    project_package: str,
+    facade_to_alias: Mapping[str, str],
+    alias_tiers: Mapping[str, int],
+) -> int:
+    declared_alias = facade_to_alias.get(file_path.name, "")
+    if declared_alias in alias_tiers:
+        return alias_tiers[declared_alias]
+    if len(project_package) == 0:
+        return 99
+    marker = f"/src/{project_package}/"
+    file_str = str(file_path.resolve())
+    if marker not in file_str:
+        return 99
+    relative = file_str.split(marker, maxsplit=1)[1]
+    parts = Path(relative).parts[:-1]
+    if len(parts) == 0:
+        return 99
+    first = parts[0]
+    if first.startswith("_"):
+        normalized = first.lstrip("_")
+        if normalized == "services":
+            normalized = "service"
+        alias = facade_to_alias.get(f"{normalized}.py", "")
+        if alias in alias_tiers:
+            return alias_tiers[alias]
+        if normalized == "result" and "r" in alias_tiers:
+            return alias_tiers["r"]
+        return 4
+    return 4
+
+
+def _is_private_submodule(module_name: str) -> bool:
+    return "._" in module_name
+
+
+def _imported_name(imported_alias: cst.ImportAlias) -> str | None:
+    if imported_alias.asname is not None:
+        return None
+    if not isinstance(imported_alias.name, cst.Name):
+        return None
+    return imported_alias.name.value
+
+
+def _is_safe_to_normalize(context: _ImportNormalizationContext, alias: str) -> bool:
+    defining_module = context.alias_to_defining_module.get(alias, "")
+    if len(defining_module) > 0 and len(context.file_module) > 0:
+        if defining_module == context.file_module:
+            return False
+        reachable = context.package_reachability.get(defining_module)
+        if reachable is not None:
+            return context.file_module not in reachable
+    alias_tier = context.alias_tiers.get(alias, 99)
+    if context.file_tier < 99:
+        return alias_tier < context.file_tier
+    return True
+
+
+def _is_deep_violation(
+    *,
+    context: _ImportNormalizationContext,
+    module_name: str,
+    imported_name: str,
+) -> bool:
+    if module_name == context.project_package:
+        if imported_name not in context.project_aliases:
+            return False
+        return not _is_safe_to_normalize(context, imported_name)
+    if not module_name.startswith(f"{context.project_package}."):
         return False
-    relative = file_str[idx + len(pkg_dir) + 1 :]
-    return any(part.startswith("_") for part in Path(relative).parts[:-1])
+    if _is_private_submodule(module_name):
+        return False
+    if not _is_safe_to_normalize(context, imported_name):
+        return False
+    return imported_name in context.project_aliases
+
+
+def _is_wrong_source_violation(
+    *,
+    context: _ImportNormalizationContext,
+    module_name: str,
+    imported_name: str,
+) -> bool:
+    if not context.wrong_source_enabled:
+        return False
+    if module_name == context.project_package:
+        return False
+    if "." in module_name:
+        return False
+    if imported_name in context.universal_aliases:
+        return False
+    if imported_name not in context.project_aliases:
+        return False
+    if not _is_safe_to_normalize(context, imported_name):
+        return False
+    return module_name in context.workspace_packages
+
+
+def _violation_type(
+    *,
+    context: _ImportNormalizationContext,
+    module_name: str,
+    imported_name: str,
+) -> str | None:
+    if imported_name not in context.project_aliases:
+        return None
+    if _is_deep_violation(
+        context=context,
+        module_name=module_name,
+        imported_name=imported_name,
+    ):
+        return "deep"
+    if _is_wrong_source_violation(
+        context=context,
+        module_name=module_name,
+        imported_name=imported_name,
+    ):
+        return "wrong_source"
+    return None
+
+
+def _module_name(node: cst.ImportFrom) -> str:
+    if node.module is None or len(node.relative) > 0:
+        return ""
+    return u.Infra.module_name_from_expr(node.module)
 
 
 class ImportNormalizerVisitor(cst.CSTVisitor):
@@ -166,33 +666,17 @@ class ImportNormalizerVisitor(cst.CSTVisitor):
         project_package: str = "",
         alias_map: dict[str, tuple[str, ...]] | None = None,
     ) -> None:
-        self._file_path = file_path
-        self._project_package = (
-            project_package
-            if len(project_package) > 0
-            else discover_package_from_file(file_path)
-        )
-        project_root = _discover_project_root_from_file(file_path)
-        alias_to_facade = (
-            discover_project_aliases(project_root) if project_root is not None else {}
-        )
-        facade_to_alias = _reverse_alias_map(alias_to_facade)
-        if alias_map is not None and len(self._project_package) > 0:
-            self._project_aliases = set(alias_map.get(self._project_package, ()))
-        else:
-            self._project_aliases = set(alias_to_facade)
-        self._facade_to_alias = facade_to_alias
-        self._declared_alias = facade_to_alias.get(file_path.name, "")
-        self._file_tier = self._get_file_tier()
-        self._is_internal_module = _is_file_in_private_subdirectory(
-            file_path, self._project_package
+        self._context = _build_context(
+            file_path=file_path,
+            project_package=project_package,
+            alias_map=alias_map,
         )
         self.violations: list[ImportViolation] = []
 
     @override
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
-        module_name = self._module_name(node)
-        if len(module_name) == 0 or self._is_private_submodule(module_name):
+        module_name = _module_name(node)
+        if len(module_name) == 0 or _is_private_submodule(module_name):
             return
         if isinstance(node.names, cst.ImportStar):
             return
@@ -202,112 +686,26 @@ class ImportNormalizerVisitor(cst.CSTVisitor):
             if not isinstance(imported_alias.name, cst.Name):
                 continue
             imported_name = imported_alias.name.value
-            if imported_name == self._declared_alias:
+            if imported_name == self._context.declared_alias:
                 continue
-            violation_type = self._violation_type(
+            violation_type = _violation_type(
+                context=self._context,
                 module_name=module_name,
                 imported_name=imported_name,
             )
             if violation_type is None:
                 continue
-            line = 1
             self.violations.append(
                 ImportViolation(
-                    file=str(self._file_path),
-                    line=line,
+                    file=str(self._context.file_path),
+                    line=1,
                     current_import=f"from {module_name} import {imported_name}",
                     suggested_import=(
-                        f"from {self._project_package} import {imported_name}"
+                        f"from {self._context.project_package} import {imported_name}"
                     ),
                     violation_type=violation_type,
                 ),
             )
-
-    def _module_name(self, node: cst.ImportFrom) -> str:
-        if node.module is None or len(node.relative) > 0:
-            return ""
-        return u.Infra.module_name_from_expr(node.module)
-
-    @staticmethod
-    def _is_private_submodule(module_name: str) -> bool:
-        return "._" in module_name
-
-    def _violation_type(self, *, module_name: str, imported_name: str) -> str | None:
-        if imported_name not in self._project_aliases:
-            return None
-        if self._is_deep_violation(
-            module_name=module_name, imported_name=imported_name
-        ):
-            return "deep"
-        if self._is_wrong_source_violation(
-            module_name=module_name,
-            imported_name=imported_name,
-        ):
-            return "wrong_source"
-        return None
-
-    def _is_deep_violation(self, *, module_name: str, imported_name: str) -> bool:
-        if module_name == self._project_package:
-            if imported_name not in self._project_aliases:
-                return False
-            return not self._is_safe_to_normalize(imported_name)
-        if not module_name.startswith(f"{self._project_package}."):
-            return False
-        if self._is_private_submodule(module_name):
-            return False
-        if not self._is_safe_to_normalize(imported_name):
-            return False
-        return imported_name in self._project_aliases
-
-    def _is_wrong_source_violation(
-        self, *, module_name: str, imported_name: str
-    ) -> bool:
-        if module_name == self._project_package:
-            return False
-        if "." in module_name:
-            return False
-        if imported_name not in self._project_aliases:
-            return False
-        if not self._is_safe_to_normalize(imported_name):
-            return False
-        return (
-            module_name.startswith("flext_") or module_name == "gruponos_meltano_native"
-        )
-
-    def _get_file_tier(self) -> int:
-        declared_alias = self._facade_to_alias.get(self._file_path.name, "")
-        if declared_alias in FACADE_TIER:
-            return FACADE_TIER[declared_alias]
-        package_name = self._project_package
-        if len(package_name) == 0:
-            return 99
-        marker = f"/src/{package_name}/"
-        file_str = str(self._file_path.resolve())
-        if marker not in file_str:
-            return 99
-        relative = file_str.split(marker, maxsplit=1)[1]
-        parts = Path(relative).parts[:-1]
-        if len(parts) == 0:
-            return 99
-        first = parts[0]
-        if first.startswith("_"):
-            normalized = first.lstrip("_")
-            if normalized == "services":
-                normalized = "service"
-            alias = self._facade_to_alias.get(f"{normalized}.py", "")
-            if alias in FACADE_TIER:
-                return FACADE_TIER[alias]
-            if normalized == "result":
-                return FACADE_TIER["r"]
-            return 4
-        return 4
-
-    def _is_safe_to_normalize(self, alias: str) -> bool:
-        file_tier = self._file_tier
-        alias_tier = FACADE_TIER.get(alias, 99)
-        if file_tier < 99:
-            return alias_tier < file_tier
-        return True
 
 
 class ImportNormalizerTransformer(cst.CSTTransformer):
@@ -319,28 +717,12 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         alias_map: dict[str, tuple[str, ...]] | None = None,
         on_change: Callable[[str], None] | None = None,
     ) -> None:
-        self._file_path = file_path
-        self._project_package = (
-            project_package
-            if len(project_package) > 0
-            else discover_package_from_file(file_path)
+        self._context = _build_context(
+            file_path=file_path,
+            project_package=project_package,
+            alias_map=alias_map,
         )
-        project_root = _discover_project_root_from_file(file_path)
-        alias_to_facade = (
-            discover_project_aliases(project_root) if project_root is not None else {}
-        )
-        facade_to_alias = _reverse_alias_map(alias_to_facade)
-        if alias_map is not None and len(self._project_package) > 0:
-            self._project_aliases = set(alias_map.get(self._project_package, ()))
-        else:
-            self._project_aliases = set(alias_to_facade)
-        self._facade_to_alias = facade_to_alias
-        self._declared_alias = facade_to_alias.get(file_path.name, "")
-        self._file_tier = self._get_file_tier()
-        self._is_internal_module = _is_file_in_private_subdirectory(
-            file_path, self._project_package
-        )
-        self._on_change: Callable[[str], None] | None = on_change
+        self._on_change = on_change
         self.modified_imports = False
         self.aliases_to_inject: set[str] = set()
         self.aliases_present: set[str] = set()
@@ -352,22 +734,23 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        module_name = self._module_name(original_node)
+        module_name = _module_name(original_node)
         if len(module_name) == 0:
             return updated_node
         if isinstance(updated_node.names, cst.ImportStar):
             return updated_node
-        if module_name == self._project_package:
+        if module_name == self._context.project_package:
             self._track_present_aliases(updated_node.names)
-        if self._is_private_submodule(module_name):
+        if _is_private_submodule(module_name):
             return updated_node
 
         violating_names: set[str] = set()
         for imported_alias in updated_node.names:
-            imported_name = self._imported_name(imported_alias)
-            if imported_name is None or imported_name == self._declared_alias:
+            imported_name = _imported_name(imported_alias)
+            if imported_name is None or imported_name == self._context.declared_alias:
                 continue
-            violation_type = self._violation_type(
+            violation_type = _violation_type(
+                context=self._context,
                 module_name=module_name,
                 imported_name=imported_name,
             )
@@ -386,12 +769,12 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         kept_aliases = [
             imported_alias
             for imported_alias in updated_node.names
-            if self._imported_name(imported_alias) not in violating_names
+            if _imported_name(imported_alias) not in violating_names
         ]
         if len(kept_aliases) == 0:
             return cst.RemovalSentinel.REMOVE
         kept_aliases[-1] = kept_aliases[-1].with_changes(
-            comma=cst.MaybeSentinel.DEFAULT,
+            comma=cst.MaybeSentinel.DEFAULT
         )
         return updated_node.with_changes(names=tuple(kept_aliases))
 
@@ -420,7 +803,7 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         new_import = cst.SimpleStatementLine(
             body=[
                 cst.ImportFrom(
-                    module=self._project_module_expr(self._project_package),
+                    module=self._project_module_expr(self._context.project_package),
                     names=tuple(
                         cst.ImportAlias(name=cst.Name(alias_name))
                         for alias_name in missing
@@ -432,10 +815,12 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
             body,
         )
         self._record_change(
-            f"Added normalized alias import: from {self._project_package} import {', '.join(missing)}",
+            "Added normalized alias import: "
+            f"from {self._context.project_package} import {', '.join(missing)}",
         )
-        new_body = body[:insert_idx] + [new_import] + body[insert_idx:]
-        return updated_node.with_changes(body=new_body)
+        return updated_node.with_changes(
+            body=body[:insert_idx] + [new_import] + body[insert_idx:]
+        )
 
     @staticmethod
     def detect_file(
@@ -490,111 +875,14 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
             u.Infra.run_ruff_fix(file_path, include_format=True, quiet=True)
         return transformer.changes
 
-    def _module_name(self, node: cst.ImportFrom) -> str:
-        if node.module is None or len(node.relative) > 0:
-            return ""
-        return u.Infra.module_name_from_expr(node.module)
-
-    @staticmethod
-    def _is_private_submodule(module_name: str) -> bool:
-        return "._" in module_name
-
-    @staticmethod
-    def _imported_name(imported_alias: cst.ImportAlias) -> str | None:
-        if imported_alias.asname is not None:
-            return None
-        if not isinstance(imported_alias.name, cst.Name):
-            return None
-        return imported_alias.name.value
-
-    def _violation_type(self, *, module_name: str, imported_name: str) -> str | None:
-        if imported_name not in self._project_aliases:
-            return None
-        if self._is_deep_violation(
-            module_name=module_name, imported_name=imported_name
-        ):
-            return "deep"
-        if self._is_wrong_source_violation(
-            module_name=module_name,
-            imported_name=imported_name,
-        ):
-            return "wrong_source"
-        return None
-
-    def _is_deep_violation(self, *, module_name: str, imported_name: str) -> bool:
-        if module_name == self._project_package:
-            if imported_name not in self._project_aliases:
-                return False
-            return not self._is_safe_to_normalize(imported_name)
-        if not module_name.startswith(f"{self._project_package}."):
-            return False
-        if self._is_private_submodule(module_name):
-            return False
-        if not self._is_safe_to_normalize(imported_name):
-            return False
-        return imported_name in self._project_aliases
-
-    def _is_wrong_source_violation(
-        self, *, module_name: str, imported_name: str
-    ) -> bool:
-        if module_name == self._project_package:
-            return False
-        if "." in module_name:
-            return False
-        if imported_name not in self._project_aliases:
-            return False
-        if not self._is_safe_to_normalize(imported_name):
-            return False
-        return (
-            module_name.startswith("flext_") or module_name == "gruponos_meltano_native"
-        )
-
-    def _get_file_tier(self) -> int:
-        declared_alias = self._facade_to_alias.get(self._file_path.name, "")
-        if declared_alias in FACADE_TIER:
-            return FACADE_TIER[declared_alias]
-        package_name = self._project_package
-        if len(package_name) == 0:
-            return 99
-        marker = f"/src/{package_name}/"
-        file_str = str(self._file_path.resolve())
-        if marker not in file_str:
-            return 99
-        relative = file_str.split(marker, maxsplit=1)[1]
-        parts = Path(relative).parts[:-1]
-        if len(parts) == 0:
-            return 99
-        first = parts[0]
-        if first.startswith("_"):
-            normalized = first.lstrip("_")
-            if normalized == "services":
-                normalized = "service"
-            alias = self._facade_to_alias.get(f"{normalized}.py", "")
-            if alias in FACADE_TIER:
-                return FACADE_TIER[alias]
-            if normalized == "result":
-                return FACADE_TIER["r"]
-            return 4
-        return 4
-
-    def _is_safe_to_normalize(self, alias: str) -> bool:
-        file_tier = self._file_tier
-        alias_tier = FACADE_TIER.get(alias, 99)
-        if file_tier < 99:
-            return alias_tier < file_tier
-        return True
-
-    def _track_present_aliases(
-        self,
-        aliases: Sequence[cst.ImportAlias],
-    ) -> None:
+    def _track_present_aliases(self, aliases: Sequence[cst.ImportAlias]) -> None:
         for imported_alias in aliases:
-            imported_name = self._imported_name(imported_alias)
+            imported_name = _imported_name(imported_alias)
             if imported_name is None:
                 continue
-            if imported_name == self._declared_alias:
+            if imported_name == self._context.declared_alias:
                 continue
-            if imported_name not in self._project_aliases:
+            if imported_name not in self._context.project_aliases:
                 continue
             self.aliases_present.add(imported_name)
 
@@ -610,8 +898,8 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
             only_stmt = statement.body[0]
             if not isinstance(only_stmt, cst.ImportFrom):
                 continue
-            module_name = self._module_name(only_stmt)
-            if module_name != self._project_package:
+            module_name = _module_name(only_stmt)
+            if module_name != self._context.project_package:
                 continue
             if isinstance(only_stmt.names, cst.ImportStar):
                 continue
@@ -641,7 +929,7 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         existing_names = {
             imported_name
             for imported_alias in existing
-            if (imported_name := self._imported_name(imported_alias)) is not None
+            if (imported_name := _imported_name(imported_alias)) is not None
         }
         new_aliases = [
             cst.ImportAlias(name=cst.Name(alias_name))
@@ -651,12 +939,12 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         if len(new_aliases) == 0:
             return None
 
-        merged_names = tuple(existing + new_aliases)
         mutable_body[index] = statement.with_changes(
-            body=[only_stmt.with_changes(names=merged_names)],
+            body=[only_stmt.with_changes(names=tuple(existing + new_aliases))],
         )
         self._record_change(
-            f"Merged normalized aliases into existing import: from {self._project_package} import {', '.join(missing)}",
+            "Merged normalized aliases into existing import: "
+            f"from {self._context.project_package} import {', '.join(missing)}",
         )
         return mutable_body
 

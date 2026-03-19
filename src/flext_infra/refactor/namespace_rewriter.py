@@ -143,14 +143,13 @@ class NamespaceEnforcementRewriter:
         normalize_file_obj = getattr(transformer_obj, "normalize_file", None)
         if not callable(normalize_file_obj):
             return
-        alias_map = c.Infra.RUNTIME_ALIAS_NAMES_BY_PACKAGE
         for file_path in py_files:
             if file_path.name == "__init__.py":
                 continue
             _ = normalize_file_obj(
                 file_path=file_path,
                 project_package=project_package,
-                alias_map=alias_map,
+                alias_map=None,
             )
 
     @classmethod
@@ -368,9 +367,7 @@ class NamespaceEnforcementRewriter:
                 continue
             if stmt.name not in protocol_names:
                 continue
-            if not FlextInfraRefactorDependencyAnalyzerFacade.ManualProtocolDetector.is_protocol_class(
-                stmt,
-            ):
+            if not cls._is_ast_protocol_class(stmt):
                 continue
             block = ast.get_source_segment(source, stmt)
             if block is None:
@@ -660,6 +657,21 @@ class NamespaceEnforcementRewriter:
             updated.rstrip() + "\n",
             encoding=c.Infra.Encoding.DEFAULT,
         )
+
+    @staticmethod
+    def _is_ast_protocol_class(node: ast.ClassDef) -> bool:
+        for base in node.bases:
+            if isinstance(base, ast.Name) and base.id == "Protocol":
+                return True
+            if isinstance(base, ast.Attribute) and base.attr == "Protocol":
+                return True
+            if isinstance(base, ast.Subscript):
+                value = base.value
+                if isinstance(value, ast.Name) and value.id == "Protocol":
+                    return True
+                if isinstance(value, ast.Attribute) and value.attr == "Protocol":
+                    return True
+        return False
 
     @staticmethod
     def _rewrite_moved_protocol_imports(

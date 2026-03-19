@@ -19,7 +19,7 @@ class _ImportNormalizerTransformerLike(Protocol):
         *,
         file_path: Path,
         project_package: str,
-        alias_map: dict[str, tuple[str, ...]],
+        alias_map: dict[str, tuple[str, ...]] | None = None,
     ) -> list[object]: ...
 
 
@@ -129,7 +129,7 @@ class ImportAliasDetector(p.Infra.Scanner):
         violations_raw = transformer_obj.detect_file(
             file_path=file_path,
             project_package=cls._discover_package(file_path),
-            alias_map=c.Infra.RUNTIME_ALIAS_NAMES_BY_PACKAGE,
+            alias_map=None,
         )
         violations: list[nem.ImportAliasViolation] = []
         for raw in violations_raw:

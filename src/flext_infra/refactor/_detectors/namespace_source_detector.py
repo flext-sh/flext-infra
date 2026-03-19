@@ -16,7 +16,7 @@ class _ImportNormalizerTransformerLike(Protocol):
         *,
         file_path: Path,
         project_package: str,
-        alias_map: dict[str, tuple[str, ...]],
+        alias_map: dict[str, tuple[str, ...]] | None = None,
     ) -> list[object]: ...
 
 
@@ -108,7 +108,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         violations_cst = transformer_obj.detect_file(
             file_path=file_path,
             project_package=package_name,
-            alias_map=c.Infra.RUNTIME_ALIAS_NAMES_BY_PACKAGE,
+            alias_map=None,
         )
         violations: list[nem.NamespaceSourceViolation] = []
         for raw in violations_cst:
