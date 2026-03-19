@@ -15,9 +15,10 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import libcst as cst
+from flext_core import r
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
-from flext_infra import c, m, r, t
+from flext_infra import c, m, t
 from flext_infra._utilities.io import FlextInfraUtilitiesIo
 from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml

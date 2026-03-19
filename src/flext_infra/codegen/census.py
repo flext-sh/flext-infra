@@ -13,14 +13,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
+from flext_core import r, s
+
 from flext_infra import (
     FlextInfraNamespaceValidator,
     FlextInfraUtilitiesDiscovery,
     c,
     m,
     p,
-    r,
-    s,
 )
 from flext_infra.codegen._codegen_constant_visitor import (
     detect_hardcoded_canonicals,

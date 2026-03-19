@@ -7,7 +7,7 @@ import os
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_core import FlextLogger
+from flext_core import FlextLogger, r
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import (
@@ -16,10 +16,12 @@ from flext_infra import (
     c,
     m,
     p,
-    r,
     t,
-    u,
 )
+from flext_infra._utilities.io import FlextInfraUtilitiesIo
+from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
+from flext_infra._utilities.toml import FlextInfraUtilitiesToml
+from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
 
 
 class FlextInfraDependencyDetectionService:
@@ -44,12 +46,12 @@ class FlextInfraDependencyDetectionService:
     ) -> r[list[m.Infra.ProjectInfo]]:
         if self.selector is not None:
             return self.selector.resolve_projects(workspace_root, names)
-        return u.Infra.resolve_projects(workspace_root, names)
+        return FlextInfraUtilitiesSelection.resolve_projects(workspace_root, names)
 
     def _read_plain(self, path: Path) -> r[t.Infra.TomlConfig]:
         if self.toml is not None:
             return self.toml.read_plain(path)
-        return u.Infra.read_plain(path)
+        return FlextInfraUtilitiesTomlParse.read_plain(path)
 
     def _run_raw(
         self,
@@ -61,7 +63,9 @@ class FlextInfraDependencyDetectionService:
     ) -> r[m.Infra.CommandOutput]:
         if self.runner is not None:
             return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-        return u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+        return FlextInfraUtilitiesSubprocess.run_raw(
+            cmd, cwd=cwd, timeout=timeout, env=env
+        )
 
     @staticmethod
     def to_infra_value(
@@ -110,7 +114,7 @@ class FlextInfraDependencyDetectionService:
     ) -> t.Infra.TomlConfig:
         if value is None:
             return {}
-        mapped_value = u.Infra.as_toml_mapping(value)
+        mapped_value = FlextInfraUtilitiesToml.as_toml_mapping(value)
         if mapped_value is None:
             return {}
         normalized: t.Infra.TomlConfig = {}
@@ -432,7 +436,7 @@ class FlextInfraDependencyDetectionService:
         issues: list[t.Infra.IssueMap] = []
         if out_file.exists():
             raw = out_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            loaded_result = u.Infra.parse(raw) if raw.strip() else None
+            loaded_result = FlextInfraUtilitiesIo.parse(raw) if raw.strip() else None
             if (
                 loaded_result is not None
                 and loaded_result.is_success
