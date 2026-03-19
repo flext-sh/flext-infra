@@ -524,9 +524,11 @@ class FlextInfraCodegenLazyInit(s[int]):
            delegate the alias to that parent.
         """
         for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
-            if alias in lazy_map:
-                continue
             canonical_basename = suffix.lower()
+            if alias in lazy_map:
+                existing_mod = lazy_map[alias][0].rsplit(".", 1)[-1]
+                if existing_mod == canonical_basename:
+                    continue
             # Phase 1: match only from canonical facade module
             for name, (mod, _attr) in list(lazy_map.items()):
                 mod_leaf = mod.rsplit(".", 1)[-1]

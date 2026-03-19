@@ -394,9 +394,12 @@ def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
     parent_pkg = resolve_parent_package(pkg_dir)
     if parent_pkg.startswith(f"{package_name}.") or parent_pkg == package_name:
         return False, []
+    _NEVER_REWRITE = frozenset({"typings", "protocols"})
     cycle_edges: set[tuple[str, str]] = set()
     for cycle in cycles:
-        cycle_edges.update((cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1))
+        edges = [(cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1)]
+        safe = [e for e in edges if e[0] not in _NEVER_REWRITE]
+        cycle_edges.update(safe)
 
     all_changes: list[str] = []
     any_modified = False
