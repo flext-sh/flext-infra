@@ -242,3 +242,192 @@ def test_noop_clean_module() -> None:
     updated = updated_tree.code
     assert updated == source
     assert changes == []
+
+
+def test_preserves_used_imports_when_import_precedes_usage() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import ClassVar, Final\n\n"
+        "class Foo:\n"
+        "    X: ClassVar[str] = 'hello'\n"
+        "    Y: Final[int] = 42\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "from typing import ClassVar, Final" in updated
+    assert updated == source
+    assert changes == []
+
+
+def test_removes_unused_preserves_used_when_import_precedes_usage() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import ClassVar, Final, Literal, override\n\n"
+        "class Config:\n"
+        "    NAME: Final[str] = 'app'\n"
+        "    ITEMS: ClassVar[list[str]] = []\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "Final" in updated
+    assert "ClassVar" in updated
+    assert "Literal" not in updated
+    assert "override" not in updated
+    assert any(change == "Removed unused typing import: Literal" for change in changes)
+    assert any(change == "Removed unused typing import: override" for change in changes)
+
+
+def test_removes_all_imports_when_none_used_import_first() -> None:
+    source = "from typing import Literal, override\n\ndef foo() -> None:\n    pass\n"
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "from typing" not in updated
+    assert any(change == "Removed empty typing import" for change in changes)
+
+
+def test_typealias_conversion_preserves_used_typing_siblings() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import Final, TypeAlias\n\n"
+        "MyType: TypeAlias = str\n"
+        "TIMEOUT: Final[int] = 30\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "type MyType = str" in updated
+    assert "from typing import Final" in updated
+    assert "TypeAlias" not in updated
+    assert any(
+        change == "Converted legacy TypeAlias assignment: MyType" for change in changes
+    )
+    assert any(change == "Removed typing import: TypeAlias" for change in changes)
+
+
+def test_preserves_type_checking_import() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import TYPE_CHECKING\n\n"
+        "if TYPE_CHECKING:\n"
+        "    from pathlib import Path\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "from typing import TYPE_CHECKING" in updated
+    assert updated == source
+    assert changes == []
+
+
+def test_preserves_protocol_and_runtime_checkable() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import Protocol, runtime_checkable\n\n"
+        "@runtime_checkable\n"
+        "class Connectable(Protocol):\n"
+        "    def connect(self) -> None: ...\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "from typing import Protocol, runtime_checkable" in updated
+    assert updated == source
+    assert changes == []
+
+
+def test_preserves_annotated_in_function_params() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import Annotated\n"
+        "from pydantic import Field\n\n"
+        "def create(name: Annotated[str, Field(min_length=1)]) -> None:\n"
+        "    pass\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "from typing import Annotated" in updated
+    assert updated == source
+    assert changes == []
+
+
+def test_preserves_override_in_method() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import override\n\n"
+        "class Child:\n"
+        "    @override\n"
+        "    def run(self) -> None:\n"
+        "        pass\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "from typing import override" in updated
+    assert updated == source
+    assert changes == []
+
+
+def test_all_three_capabilities_in_one_pass() -> None:
+    source = (
+        "from __future__ import annotations\n"
+        "from typing import TypeAlias, Final\n\n"
+        "MyType: TypeAlias = str\n\n"
+        "def foo(x: str | int | float | bool) -> Final[str]:\n"
+        "    pass\n"
+    )
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorTypingUnificationRule({
+        "id": "unify-typings",
+        "fix_action": "unify_typings",
+    })
+    updated_tree, changes = rule.apply(tree)
+    updated = updated_tree.code
+    assert "type MyType = str" in updated
+    assert "TypeAlias" not in updated
+    assert "from typing import Final" in updated
+    assert "t.Primitives" in updated
+    assert "from flext_core import t" in updated
+    assert any(
+        change == "Converted legacy TypeAlias assignment: MyType" for change in changes
+    )
+    assert any(change == "Removed typing import: TypeAlias" for change in changes)
+    assert any(
+        change == "Canonicalized inline union -> t.Primitives" for change in changes
+    )
+    assert any(change == "Added import: from flext_core import t" for change in changes)
