@@ -12,6 +12,9 @@ from flext_infra import (
     m,
     u,
 )
+from flext_infra.refactor._detectors.namespace_source_detector import (
+    NamespaceSourceDetector,
+)
 
 
 class FlextInfraNamespaceEnforcer:
@@ -138,8 +141,12 @@ class FlextInfraNamespaceEnforcer:
                 ),
             )
         if apply and len(import_violations) > 0:
-            NamespaceEnforcementRewriter.rewrite_import_alias_violations(
+            package_name = NamespaceSourceDetector._discover_project_package_name(
+                project_root=project_root,
+            )
+            NamespaceEnforcementRewriter.rewrite_import_violations(
                 py_files=py_files,
+                project_package=package_name,
             )
             import_violations = []
             for py_file in py_files:
@@ -160,10 +167,6 @@ class FlextInfraNamespaceEnforcer:
                 ),
             )
         if apply and len(namespace_source_violations) > 0:
-            NamespaceEnforcementRewriter.rewrite_namespace_source_violations(
-                violations=namespace_source_violations,
-                parse_failures=parse_failures,
-            )
             namespace_source_violations = []
             for py_file in py_files:
                 namespace_source_violations.extend(
