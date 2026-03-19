@@ -59,9 +59,7 @@ class FlextInfraCodegenCensus(s[bool]):
             return True
         if rule == "NS-002":
             return not module.endswith("typings.py")
-        if rule in {"NS-003", "NS-004", "NS-005"}:
-            return True
-        return False
+        return rule in {"NS-003", "NS-004", "NS-005"}
 
     @staticmethod
     def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:

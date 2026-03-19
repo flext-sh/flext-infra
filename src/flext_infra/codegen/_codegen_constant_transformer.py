@@ -216,9 +216,9 @@ def _import_insert_index(
 
 __all__ = [
     "CanonicalValueReplacer",
-    "UnusedConstantRemover",
     "DirectRefAliasNormalizer",
-    "replace_canonical_values",
-    "remove_unused_constants",
+    "UnusedConstantRemover",
     "normalize_constant_aliases",
+    "remove_unused_constants",
+    "replace_canonical_values",
 ]

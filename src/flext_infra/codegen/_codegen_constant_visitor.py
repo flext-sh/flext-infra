@@ -17,7 +17,6 @@ import libcst as cst
 
 from flext_infra import c, m
 
-
 # ---------------------------------------------------------------------------
 # Shared CST helpers (used by visitors and importable by transformer)
 # ---------------------------------------------------------------------------

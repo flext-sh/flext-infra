@@ -25,9 +25,9 @@ def test_converts_typealias_to_pep695() -> None:
     assert "type MyType = str" in updated
     assert "TypeAlias" not in updated
     assert any(
-        "Converted legacy TypeAlias assignment: MyType" == change for change in changes
+        change == "Converted legacy TypeAlias assignment: MyType" for change in changes
     )
-    assert any("Removed typing import: TypeAlias" == change for change in changes)
+    assert any(change == "Removed typing import: TypeAlias" for change in changes)
 
 
 def test_converts_multiple_aliases() -> None:
@@ -46,10 +46,10 @@ def test_converts_multiple_aliases() -> None:
     assert "type AliasA = str" in updated
     assert "type AliasB = int" in updated
     assert any(
-        "Converted legacy TypeAlias assignment: AliasA" == change for change in changes
+        change == "Converted legacy TypeAlias assignment: AliasA" for change in changes
     )
     assert any(
-        "Converted legacy TypeAlias assignment: AliasB" == change for change in changes
+        change == "Converted legacy TypeAlias assignment: AliasB" for change in changes
     )
 
 
@@ -64,7 +64,7 @@ def test_removes_dead_typealias_import() -> None:
     updated = updated_tree.code
     assert "from typing import" not in updated
     assert "type MyType = str" in updated
-    assert any("Removed empty typing import" == change for change in changes)
+    assert any(change == "Removed empty typing import" for change in changes)
 
 
 def test_removes_all_unused_typing_imports() -> None:
@@ -82,9 +82,9 @@ def test_removes_all_unused_typing_imports() -> None:
     assert "TypeAlias" not in updated
     assert "ClassVar" not in updated
     assert "override" not in updated
-    assert any("Removed typing import: TypeAlias" == change for change in changes)
-    assert any("Removed unused typing import: ClassVar" == change for change in changes)
-    assert any("Removed unused typing import: override" == change for change in changes)
+    assert any(change == "Removed typing import: TypeAlias" for change in changes)
+    assert any(change == "Removed unused typing import: ClassVar" for change in changes)
+    assert any(change == "Removed unused typing import: override" for change in changes)
 
 
 def test_preserves_used_typing_imports() -> None:
@@ -120,7 +120,7 @@ def test_replaces_primitives_union() -> None:
     assert "str | int | float | bool" not in updated
     assert "from flext_core import t" in updated
     assert any(
-        "Canonicalized inline union -> t.Primitives" == change for change in changes
+        change == "Canonicalized inline union -> t.Primitives" for change in changes
     )
 
 
@@ -136,7 +136,7 @@ def test_replaces_numeric_union() -> None:
     assert "x: t.Numeric" in updated
     assert "int | float" not in updated
     assert any(
-        "Canonicalized inline union -> t.Numeric" == change for change in changes
+        change == "Canonicalized inline union -> t.Numeric" for change in changes
     )
 
 
@@ -151,7 +151,7 @@ def test_replaces_scalar_union() -> None:
     updated = updated_tree.code
     assert "x: t.Scalar" in updated
     assert "str | int | float | bool | datetime" not in updated
-    assert any("Canonicalized inline union -> t.Scalar" == change for change in changes)
+    assert any(change == "Canonicalized inline union -> t.Scalar" for change in changes)
 
 
 def test_replaces_container_union() -> None:
@@ -168,7 +168,7 @@ def test_replaces_container_union() -> None:
     assert "x: t.Container" in updated
     assert "str | int | float | bool | datetime | Path" not in updated
     assert any(
-        "Canonicalized inline union -> t.Container" == change for change in changes
+        change == "Canonicalized inline union -> t.Container" for change in changes
     )
 
 
@@ -183,7 +183,7 @@ def test_injects_t_import_when_needed() -> None:
     updated = updated_tree.code
     assert "from flext_core import t" in updated
     assert "x: t.Primitives" in updated
-    assert any("Added import: from flext_core import t" == change for change in changes)
+    assert any(change == "Added import: from flext_core import t" for change in changes)
 
 
 def test_skips_union_with_none() -> None:

@@ -5,12 +5,13 @@ from pathlib import Path
 from typing import Annotated, override
 
 import libcst as cst
+from pydantic import ConfigDict, Field
+
 from flext_infra import c, u
 from flext_infra.models import FlextModels
 from flext_infra.transformers.import_insertion import (
     FlextInfraTransformerImportInsertion,
 )
-from pydantic import ConfigDict, Field
 
 
 class ImportViolation(FlextModels.ArbitraryTypesModel):
