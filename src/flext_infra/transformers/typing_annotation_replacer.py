@@ -36,6 +36,8 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         self._needs_t_import: bool = False
         self._current_function: str = ""
         self._function_stack: list[str] = []
+        self._typeguard_stack: list[bool] = []
+        self._current_function_is_typeguard: bool = False
         self._param_depth: int = 0
 
     @override
@@ -60,7 +62,9 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
     @override
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         self._function_stack.append(self._current_function)
+        self._typeguard_stack.append(self._current_function_is_typeguard)
         self._current_function = node.name.value
+        self._current_function_is_typeguard = self._is_typeguard_function(node)
 
     @override
     def leave_FunctionDef(
@@ -82,6 +86,9 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         self._current_function = (
             self._function_stack.pop() if self._function_stack else ""
         )
+        self._current_function_is_typeguard = (
+            self._typeguard_stack.pop() if self._typeguard_stack else False
+        )
         return result_node
 
     @override
@@ -97,7 +104,11 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
     ) -> cst.Param:
         del original_node
         result_node = updated_node
-        if self._current_function not in self.DUNDER_OBJECT_ALLOWLIST:
+        skip = (
+            self._current_function in self.DUNDER_OBJECT_ALLOWLIST
+            or self._current_function_is_typeguard
+        )
+        if not skip:
             if updated_node.annotation is not None:
                 replacement = self._replace_expression(
                     updated_node.annotation.annotation
@@ -138,10 +149,13 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         updated_node: cst.Annotation,
     ) -> cst.Annotation:
         del original_node
-        if (
-            self._param_depth > 0
-            and self._current_function in self.DUNDER_OBJECT_ALLOWLIST
-        ):
+        skip_function = (
+            self._current_function in self.DUNDER_OBJECT_ALLOWLIST
+            or self._current_function_is_typeguard
+        )
+        if self._param_depth > 0 and skip_function:
+            return updated_node
+        if self._current_function_is_typeguard:
             return updated_node
         replacement = self._replace_expression(updated_node.annotation)
         if replacement is None:
@@ -174,6 +188,24 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         self._record_change("Added import: from flext_core import t")
         self._t_import_present = True
         return updated_node.with_changes(body=new_body)
+
+    @staticmethod
+    def _is_typeguard_function(node: cst.FunctionDef) -> bool:
+        if node.returns is None:
+            return False
+        ann = node.returns.annotation
+        if isinstance(ann, cst.Subscript):
+            base = ann.value
+            if isinstance(base, cst.Name) and base.value in {
+                "TypeGuard",
+                "TypeIs",
+            }:
+                return True
+        fn_name = node.name.value
+        is_guard_name = fn_name.startswith("is_") or fn_name.startswith("_is_")
+        if is_guard_name and isinstance(ann, cst.Name) and ann.value == "bool":
+            return True
+        return False
 
     @staticmethod
     def _is_object_ref(node: cst.BaseExpression) -> bool:
