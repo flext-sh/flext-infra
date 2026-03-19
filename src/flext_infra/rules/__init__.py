@@ -46,62 +46,20 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "ClassNestingRefactorRule": (
-        "flext_infra.rules.class_nesting",
-        "ClassNestingRefactorRule",
-    ),
-    "FlextInfraRefactorClassNestingReconstructor": (
-        "flext_infra.rules.class_reconstructor",
-        "FlextInfraRefactorClassNestingReconstructor",
-    ),
-    "FlextInfraRefactorClassReconstructorRule": (
-        "flext_infra.rules.class_reconstructor",
-        "FlextInfraRefactorClassReconstructorRule",
-    ),
-    "FlextInfraRefactorEnsureFutureAnnotationsRule": (
-        "flext_infra.rules.ensure_future_annotations",
-        "FlextInfraRefactorEnsureFutureAnnotationsRule",
-    ),
-    "FlextInfraRefactorImportModernizerRule": (
-        "flext_infra.rules.import_modernizer",
-        "FlextInfraRefactorImportModernizerRule",
-    ),
-    "FlextInfraRefactorLegacyRemovalRule": (
-        "flext_infra.rules.legacy_removal",
-        "FlextInfraRefactorLegacyRemovalRule",
-    ),
-    "FlextInfraRefactorMROClassMigrationRule": (
-        "flext_infra.rules.mro_class_migration",
-        "FlextInfraRefactorMROClassMigrationRule",
-    ),
-    "FlextInfraRefactorMRORedundancyChecker": (
-        "flext_infra.rules.mro_redundancy_checker",
-        "FlextInfraRefactorMRORedundancyChecker",
-    ),
-    "FlextInfraRefactorPatternCorrectionsRule": (
-        "flext_infra.rules.pattern_corrections",
-        "FlextInfraRefactorPatternCorrectionsRule",
-    ),
-    "FlextInfraRefactorSignaturePropagationRule": (
-        "flext_infra.rules.symbol_propagation",
-        "FlextInfraRefactorSignaturePropagationRule",
-    ),
-    "FlextInfraRefactorSignaturePropagator": (
-        "flext_infra.rules.symbol_propagation",
-        "FlextInfraRefactorSignaturePropagator",
-    ),
-    "FlextInfraRefactorSymbolPropagationRule": (
-        "flext_infra.rules.symbol_propagation",
-        "FlextInfraRefactorSymbolPropagationRule",
-    ),
-    "FlextInfraRefactorTypingAnnotationFixRule": (
-        "flext_infra.rules.typing_census",
-        "FlextInfraRefactorTypingAnnotationFixRule",
-    ),
-    "FlextInfraRefactorTypingUnificationRule": (
-        "flext_infra.rules.type_alias_unification",
-        "FlextInfraRefactorTypingUnificationRule",
-    ),
+    "ClassNestingRefactorRule": ("flext_infra.rules.class_nesting", "ClassNestingRefactorRule"),
+    "FlextInfraRefactorClassNestingReconstructor": ("flext_infra.rules.class_reconstructor", "FlextInfraRefactorClassNestingReconstructor"),
+    "FlextInfraRefactorClassReconstructorRule": ("flext_infra.rules.class_reconstructor", "FlextInfraRefactorClassReconstructorRule"),
+    "FlextInfraRefactorEnsureFutureAnnotationsRule": ("flext_infra.rules.ensure_future_annotations", "FlextInfraRefactorEnsureFutureAnnotationsRule"),
+    "FlextInfraRefactorImportModernizerRule": ("flext_infra.rules.import_modernizer", "FlextInfraRefactorImportModernizerRule"),
+    "FlextInfraRefactorLegacyRemovalRule": ("flext_infra.rules.legacy_removal", "FlextInfraRefactorLegacyRemovalRule"),
+    "FlextInfraRefactorMROClassMigrationRule": ("flext_infra.rules.mro_class_migration", "FlextInfraRefactorMROClassMigrationRule"),
+    "FlextInfraRefactorMRORedundancyChecker": ("flext_infra.rules.mro_redundancy_checker", "FlextInfraRefactorMRORedundancyChecker"),
+    "FlextInfraRefactorPatternCorrectionsRule": ("flext_infra.rules.pattern_corrections", "FlextInfraRefactorPatternCorrectionsRule"),
+    "FlextInfraRefactorSignaturePropagationRule": ("flext_infra.rules.symbol_propagation", "FlextInfraRefactorSignaturePropagationRule"),
+    "FlextInfraRefactorSignaturePropagator": ("flext_infra.rules.symbol_propagation", "FlextInfraRefactorSignaturePropagator"),
+    "FlextInfraRefactorSymbolPropagationRule": ("flext_infra.rules.symbol_propagation", "FlextInfraRefactorSymbolPropagationRule"),
+    "FlextInfraRefactorTypingAnnotationFixRule": ("flext_infra.rules.typing_census", "FlextInfraRefactorTypingAnnotationFixRule"),
+    "FlextInfraRefactorTypingUnificationRule": ("flext_infra.rules.type_alias_unification", "FlextInfraRefactorTypingUnificationRule"),
     "PreCheckGate": ("flext_infra.rules.class_reconstructor", "PreCheckGate"),
 }
 
