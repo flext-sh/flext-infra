@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flext_infra import FlextInfraCodegenCensus, c, t, u
+from flext_infra import FlextInfraCodegenCensus, c, m, t, u
 
 
 class FlextInfraCodegenConstantsQualityGate:
@@ -39,7 +39,7 @@ class FlextInfraCodegenConstantsQualityGate:
         census_reports = FlextInfraCodegenCensus(
             workspace_root=self._workspace_root,
         ).run()
-        duplicate_groups = u.Infra.quality_gate_count_duplicate_constant_groups(
+        duplicate_groups = u.Infra.quality_gate_detect_duplicate_constant_groups(
             self._workspace_root,
         )
         modified_files = u.Infra.quality_gate_modified_python_files(
@@ -60,7 +60,7 @@ class FlextInfraCodegenConstantsQualityGate:
         before_metrics = u.Infra.quality_gate_before_metrics(before_payload)
         after_metrics = u.Infra.quality_gate_after_metrics(
             census_reports=census_reports,
-            duplicate_groups=duplicate_groups,
+            duplicate_groups=len(duplicate_groups),
             import_scan=import_scan,
             modified_files=modified_files,
         )
@@ -94,6 +94,9 @@ class FlextInfraCodegenConstantsQualityGate:
             "before": before_metrics,
             "after": after_metrics,
             "improvement": improvement,
+            "duplicate_constant_groups": [
+                group.model_dump() for group in duplicate_groups
+            ],
             "projects": projects_infra,
         }
         report["artifacts"] = u.Infra.quality_gate_write_artifacts(
@@ -113,6 +116,7 @@ class FlextInfraCodegenConstantsQualityGate:
         before = u.Infra.dict_or_empty(report.get("before"))
         after = u.Infra.dict_or_empty(report.get("after"))
         improvement = u.Infra.dict_or_empty(report.get("improvement"))
+        duplicate_groups = u.Infra.dict_list(report.get("duplicate_constant_groups"))
         lines: list[str] = [
             f"Workspace: {report.get('workspace', '')}",
             f"Verdict: {report.get('verdict', 'FAIL')}",
@@ -131,6 +135,24 @@ class FlextInfraCodegenConstantsQualityGate:
             f"- violations: {before.get('total_violations', 'n/a')} -> {after.get('total_violations', 'n/a')}",
             f"- duplicates: {before.get('duplicate_groups', 'n/a')} -> {after.get('duplicate_groups', 'n/a')}",
             f"- projects: {after.get('projects_total', 0)} total, {after.get('projects_passed', 0)} passed, {after.get('projects_failed', 0)} failed",
+        ])
+        if duplicate_groups:
+            lines.extend(["", "Duplicate Groups:"])
+        for group in duplicate_groups:
+            parsed_group = m.Infra.DuplicateConstantGroup.model_validate(group)
+            projects = sorted({
+                definition.project for definition in parsed_group.definitions
+            })
+            lines.append(
+                "- "
+                f"{parsed_group.constant_name}: "
+                f"projects={len(projects)}, "
+                f"definitions={len(parsed_group.definitions)}, "
+                f"values_identical={parsed_group.is_value_identical}",
+            )
+            if projects:
+                lines.append(f"  projects: {', '.join(projects)}")
+        lines.extend([
             "",
             "Improvement:",
             f"- violations_delta: {improvement.get('violations_delta', 0)}",

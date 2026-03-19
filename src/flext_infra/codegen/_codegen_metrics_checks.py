@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import ast
 from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra.codegen._codegen_metrics import FlextInfraCodegenMetrics
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 
@@ -153,8 +151,14 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         return "CONDITIONAL_PASS"
 
     @staticmethod
-    def quality_gate_count_duplicate_constant_groups(workspace_root: Path) -> int:
-        name_to_projects: dict[str, set[str]] = {}
+    def quality_gate_detect_duplicate_constant_groups(
+        workspace_root: Path,
+    ) -> list[m.Infra.DuplicateConstantGroup]:
+        from flext_infra.codegen._codegen_constant_visitor import (
+            extract_constant_definitions,
+        )
+
+        all_definitions: list[m.Infra.ConstantDefinition] = []
         for report in FlextInfraCodegenCensus(workspace_root=workspace_root).run():
             project_root = workspace_root / report.project
             constants_file = (
@@ -162,17 +166,26 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
             )
             if not constants_file.is_file():
                 continue
-            tree = FlextInfraUtilitiesParsing.parse_module_ast(constants_file)
-            if tree is None:
+            definitions = extract_constant_definitions(constants_file, report.project)
+            all_definitions.extend(definitions)
+        name_to_defs: dict[str, list[m.Infra.ConstantDefinition]] = {}
+        for definition in all_definitions:
+            name_to_defs.setdefault(definition.name, []).append(definition)
+        groups: list[m.Infra.DuplicateConstantGroup] = []
+        for name, definitions in sorted(name_to_defs.items()):
+            projects = {item.project for item in definitions}
+            if len(projects) < 2:
                 continue
-            for node in tree.body:
-                if isinstance(node, ast.Assign) and len(node.targets) == 1:
-                    target = node.targets[0]
-                    if isinstance(target, ast.Name) and target.id.isupper():
-                        name_to_projects.setdefault(target.id, set()).add(
-                            report.project,
-                        )
-        return sum(1 for projects in name_to_projects.values() if len(projects) > 1)
+            values = {item.value_repr for item in definitions}
+            groups.append(
+                m.Infra.DuplicateConstantGroup(
+                    constant_name=name,
+                    definitions=definitions,
+                    is_value_identical=len(values) == 1,
+                    canonical_ref="",
+                ),
+            )
+        return groups
 
     @staticmethod
     def quality_gate_project_findings(

@@ -30,7 +30,7 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
         report: dict[str, t.Infra.InfraValue],
         render_text: str,
         census_reports: Sequence[m.Infra.CensusReport],
-        duplicate_groups: int,
+        duplicate_groups: list[m.Infra.DuplicateConstantGroup],
         before_payload: dict[str, t.Infra.InfraValue] | None,
     ) -> dict[str, t.Infra.InfraValue]:
         """Write quality gate artifacts to disk."""
@@ -67,9 +67,20 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
         inventory_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
             dict[str, t.Infra.InfraValue],
         )
+        group_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
+            dict[str, t.Infra.InfraValue],
+        )
+        groups_payload: list[t.Infra.InfraValue] = [
+            group_adapter.validate_python(group.model_dump())
+            for group in duplicate_groups
+        ]
+        inventory_payload: dict[str, t.Infra.InfraValue] = {
+            "groups": groups_payload,
+            "count": len(duplicate_groups),
+        }
         inventory_json.write_text(
             inventory_adapter.dump_json(
-                {"duplicate_groups": duplicate_groups},
+                inventory_payload,
                 by_alias=True,
             ).decode(c.Infra.Encoding.DEFAULT),
             encoding=c.Infra.Encoding.DEFAULT,
