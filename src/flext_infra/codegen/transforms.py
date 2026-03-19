@@ -14,7 +14,7 @@ import builtins as _builtins_module
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c
+from flext_infra.constants import c
 
 
 class FlextInfraCodegenTransforms:

@@ -12,7 +12,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import m
+from flext_infra.models import m
 from flext_infra.codegen._codegen_constant_visitor import (
     attribute_chain,
     canonical_reference_for,
@@ -273,10 +273,102 @@ def _import_insert_index(
     return index
 
 
+def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
+    """Detect and break lazy-loader cycles by rewriting self-package imports to parent-package.
+
+    Analyzes the real import graph via ``_LAZY_IMPORTS``, finds cycles, identifies
+    the edges that can be safely redirected to a parent package, and rewrites them.
+    """
+    from flext_infra.codegen._codegen_constant_visitor import (
+        _build_self_import_graph,
+        _find_cycles,
+        _parse_lazy_imports,
+        resolve_parent_package,
+    )
+
+    lazy_map = _parse_lazy_imports(pkg_dir / "__init__.py")
+    if not lazy_map:
+        return False, []
+    graph = _build_self_import_graph(pkg_dir, lazy_map)
+    cycles = _find_cycles(graph)
+    if not cycles:
+        return False, []
+
+    package_name = pkg_dir.name
+    parent_pkg = resolve_parent_package(pkg_dir)
+    cycle_edges: set[tuple[str, str]] = set()
+    for cycle in cycles:
+        for i in range(len(cycle) - 1):
+            cycle_edges.add((cycle[i], cycle[i + 1]))
+
+    all_changes: list[str] = []
+    any_modified = False
+
+    for source_mod, target_mod in cycle_edges:
+        source_file = pkg_dir / f"{source_mod}.py"
+        if not source_file.is_file():
+            continue
+        source_text = source_file.read_text("utf-8")
+        tree = cst.parse_module(source_text)
+        new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
+        changed = False
+
+        target_aliases = [
+            alias for alias, mod_stem in lazy_map.items() if mod_stem == target_mod
+        ]
+        if not target_aliases:
+            continue
+
+        for stmt in tree.body:
+            if not (
+                isinstance(stmt, cst.SimpleStatementLine)
+                and len(stmt.body) == 1
+                and isinstance(stmt.body[0], cst.ImportFrom)
+                and not isinstance(stmt.body[0].names, cst.ImportStar)
+            ):
+                new_body.append(stmt)
+                continue
+            imp = stmt.body[0]
+            mod = tree.code_for_node(imp.module) if imp.module else ""
+            if mod != package_name:
+                new_body.append(stmt)
+                continue
+            imported = [a.name.value for a in imp.names if isinstance(a.name, cst.Name)]
+            cycle_aliases = [a for a in imported if a in target_aliases]
+            keep_aliases = [a for a in imported if a not in target_aliases]
+            if not cycle_aliases:
+                new_body.append(stmt)
+                continue
+            if keep_aliases:
+                new_body.append(
+                    cst.parse_statement(
+                        f"from {package_name} import {', '.join(keep_aliases)}\n",
+                    ),
+                )
+            new_body.append(
+                cst.parse_statement(
+                    f"from {parent_pkg} import {', '.join(cycle_aliases)}\n",
+                ),
+            )
+            changed = True
+            all_changes.append(
+                f"{source_mod}.py: from {package_name} import {', '.join(cycle_aliases)}"
+                f" → from {parent_pkg} import {', '.join(cycle_aliases)}",
+            )
+
+        if changed:
+            new_tree = tree.with_changes(body=new_body)
+            source_file.write_text(new_tree.code, encoding="utf-8")
+            any_modified = True
+
+    return any_modified, all_changes
+
+
 __all__ = [
     "CanonicalValueReplacer",
     "DirectRefAliasNormalizer",
     "UnusedConstantRemover",
+    "break_import_cycles",
     "normalize_constant_aliases",
     "remove_unused_constants",
     "replace_canonical_values",

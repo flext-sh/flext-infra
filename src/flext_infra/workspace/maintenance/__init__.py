@@ -17,17 +17,13 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
-
     from flext_infra.workspace.maintenance.python_version import (
         FlextInfraPythonVersionEnforcer,
         logger,
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "FlextInfraPythonVersionEnforcer": (
-        "flext_infra.workspace.maintenance.python_version",
-        "FlextInfraPythonVersionEnforcer",
-    ),
+    "FlextInfraPythonVersionEnforcer": ("flext_infra.workspace.maintenance.python_version", "FlextInfraPythonVersionEnforcer"),
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
 }
 

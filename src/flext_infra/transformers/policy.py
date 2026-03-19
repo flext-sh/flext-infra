@@ -6,7 +6,8 @@ from collections.abc import Mapping
 
 from pydantic import ValidationError
 
-from flext_infra import m, t
+from flext_infra.models import m
+from flext_infra.typings import t
 
 
 class FlextInfraRefactorTransformerPolicyUtilities:

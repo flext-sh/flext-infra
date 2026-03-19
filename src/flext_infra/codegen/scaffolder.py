@@ -12,7 +12,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraNamespaceValidator, c, m, r, s, u
+from flext_core import r, s
+
+from flext_infra import FlextInfraNamespaceValidator, c, m, u
 from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 
 __all__ = ["FlextInfraCodegenScaffolder"]

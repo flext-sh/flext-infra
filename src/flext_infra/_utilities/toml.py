@@ -16,7 +16,8 @@ from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 from tomlkit.items import Array, Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import c, t
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesToml:

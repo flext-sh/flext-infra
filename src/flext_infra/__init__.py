@@ -292,7 +292,19 @@ if TYPE_CHECKING:
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
     )
+    from flext_infra.transformers.typing_annotation_replacer import (
+        TypingAnnotationReplacer,
+    )
+    from flext_infra.transformers.typing_census_visitor import (
+        TypingAnnotationCensusVisitor,
+    )
     from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+    from flext_infra.transformers.unused_model_remover import UnusedModelRemover
+    from flext_infra.transformers.unused_model_visitor import (
+        ModelDefinitionCollector,
+        ModelReferenceCollector,
+    )
+    from flext_infra.transformers.violation_census_visitor import ViolationCensusVisitor
     from flext_infra.typings import FlextInfraTypes, t
     from flext_infra.utilities import FlextInfraUtilities, u
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
@@ -872,6 +884,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "ManualTypingAliasDetector",
     ),
+    "ModelDefinitionCollector": (
+        "flext_infra.transformers.unused_model_visitor",
+        "ModelDefinitionCollector",
+    ),
+    "ModelReferenceCollector": (
+        "flext_infra.transformers.unused_model_visitor",
+        "ModelReferenceCollector",
+    ),
     "NamespaceEnforcementRewriter": (
         "flext_infra.refactor.namespace_rewriter",
         "NamespaceEnforcementRewriter",
@@ -901,6 +921,22 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "RuntimeAliasDetector",
     ),
     "SyncOperation": ("flext_infra.github.workflows", "SyncOperation"),
+    "TypingAnnotationCensusVisitor": (
+        "flext_infra.transformers.typing_census_visitor",
+        "TypingAnnotationCensusVisitor",
+    ),
+    "TypingAnnotationReplacer": (
+        "flext_infra.transformers.typing_annotation_replacer",
+        "TypingAnnotationReplacer",
+    ),
+    "UnusedModelRemover": (
+        "flext_infra.transformers.unused_model_remover",
+        "UnusedModelRemover",
+    ),
+    "ViolationCensusVisitor": (
+        "flext_infra.transformers.violation_census_visitor",
+        "ViolationCensusVisitor",
+    ),
     "WorkspaceMode": ("flext_infra.workspace.detector", "WorkspaceMode"),
     "__all__": ("flext_infra.__version__", "__all__"),
     "__author__": ("flext_infra.__version__", "__author__"),
@@ -1102,6 +1138,8 @@ __all__ = [
     "MROCompletenessDetector",
     "ManualProtocolDetector",
     "ManualTypingAliasDetector",
+    "ModelDefinitionCollector",
+    "ModelReferenceCollector",
     "NamespaceEnforcementRewriter",
     "NamespaceFacadeScanner",
     "NamespaceSourceDetector",
@@ -1113,6 +1151,10 @@ __all__ = [
     "ProjectResult",
     "RuntimeAliasDetector",
     "SyncOperation",
+    "TypingAnnotationCensusVisitor",
+    "TypingAnnotationReplacer",
+    "UnusedModelRemover",
+    "ViolationCensusVisitor",
     "WorkspaceMode",
     "__all__",
     "__author__",

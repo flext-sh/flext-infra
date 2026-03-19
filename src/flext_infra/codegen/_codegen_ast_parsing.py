@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import c
+from flext_infra.constants import c
 from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
 
 

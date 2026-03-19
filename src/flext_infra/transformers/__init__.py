@@ -64,7 +64,19 @@ if TYPE_CHECKING:
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
     )
+    from flext_infra.transformers.typing_annotation_replacer import (
+        TypingAnnotationReplacer,
+    )
+    from flext_infra.transformers.typing_census_visitor import (
+        TypingAnnotationCensusVisitor,
+    )
     from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+    from flext_infra.transformers.unused_model_remover import UnusedModelRemover
+    from flext_infra.transformers.unused_model_visitor import (
+        ModelDefinitionCollector,
+        ModelReferenceCollector,
+    )
+    from flext_infra.transformers.violation_census_visitor import ViolationCensusVisitor
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "CensusImportDiscoveryVisitor": (
@@ -151,9 +163,33 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.import_normalizer",
         "ImportViolation",
     ),
+    "ModelDefinitionCollector": (
+        "flext_infra.transformers.unused_model_visitor",
+        "ModelDefinitionCollector",
+    ),
+    "ModelReferenceCollector": (
+        "flext_infra.transformers.unused_model_visitor",
+        "ModelReferenceCollector",
+    ),
     "NestedClassPropagationTransformer": (
         "flext_infra.transformers.nested_class_propagation",
         "NestedClassPropagationTransformer",
+    ),
+    "TypingAnnotationCensusVisitor": (
+        "flext_infra.transformers.typing_census_visitor",
+        "TypingAnnotationCensusVisitor",
+    ),
+    "TypingAnnotationReplacer": (
+        "flext_infra.transformers.typing_annotation_replacer",
+        "TypingAnnotationReplacer",
+    ),
+    "UnusedModelRemover": (
+        "flext_infra.transformers.unused_model_remover",
+        "UnusedModelRemover",
+    ),
+    "ViolationCensusVisitor": (
+        "flext_infra.transformers.violation_census_visitor",
+        "ViolationCensusVisitor",
     ),
     "u": (
         "flext_infra.transformers.policy",
@@ -183,7 +219,13 @@ __all__ = [
     "ImportNormalizerTransformer",
     "ImportNormalizerVisitor",
     "ImportViolation",
+    "ModelDefinitionCollector",
+    "ModelReferenceCollector",
     "NestedClassPropagationTransformer",
+    "TypingAnnotationCensusVisitor",
+    "TypingAnnotationReplacer",
+    "UnusedModelRemover",
+    "ViolationCensusVisitor",
     "u",
 ]
 

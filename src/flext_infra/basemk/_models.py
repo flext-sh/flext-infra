@@ -7,7 +7,7 @@ from typing import Annotated
 from flext_core import FlextModels
 from pydantic import Field
 
-from flext_infra import c
+from flext_infra.constants import FlextInfraConstants as c
 
 
 class FlextInfraBasemkModels:

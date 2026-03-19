@@ -15,7 +15,8 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import c, m
+from flext_infra.constants import c
+from flext_infra.models import m
 
 # ---------------------------------------------------------------------------
 # Shared CST helpers (used by visitors and importable by transformer)
@@ -273,15 +274,133 @@ def detect_unused_constants(
     ]
 
 
+def _parse_lazy_imports(init_file: Path) -> dict[str, str]:
+    """Parse ``_LAZY_IMPORTS`` from ``__init__.py`` → ``{alias: module_stem}``."""
+    if not init_file.is_file():
+        return {}
+    source = init_file.read_text("utf-8")
+    mapping: dict[str, str] = {}
+    for match in re.finditer(r'"(\w+)":\s*\("([\w.]+)",\s*"(\w+)"\)', source):
+        alias, module_path, _export = match.groups()
+        mapping[alias] = module_path.rsplit(".", 1)[-1]
+    return mapping
+
+
+def _build_self_import_graph(
+    pkg_dir: Path,
+    lazy_map: dict[str, str],
+) -> dict[str, set[str]]:
+    """Build directed graph: ``module_stem → {modules it depends on via lazy loader}``."""
+    package_name = pkg_dir.name
+    graph: dict[str, set[str]] = {}
+    for py_file in pkg_dir.glob("*.py"):
+        if py_file.name == "__init__.py":
+            continue
+        stem = py_file.stem
+        deps: set[str] = set()
+        try:
+            source = py_file.read_text("utf-8")
+            tree = cst.parse_module(source)
+        except (cst.ParserSyntaxError, UnicodeDecodeError):
+            continue
+        for stmt in tree.body:
+            if not isinstance(stmt, cst.SimpleStatementLine):
+                continue
+            for small in stmt.body:
+                if not isinstance(small, cst.ImportFrom):
+                    continue
+                if isinstance(small.names, cst.ImportStar):
+                    continue
+                mod = tree.code_for_node(small.module) if small.module else ""
+                if mod != package_name:
+                    continue
+                for alias in small.names:
+                    name = alias.name.value if isinstance(alias.name, cst.Name) else ""
+                    target = lazy_map.get(name)
+                    if target and target != stem:
+                        deps.add(target)
+        if deps:
+            graph[stem] = deps
+    return graph
+
+
+def _find_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
+    """DFS cycle detection on directed graph."""
+    cycles: list[list[str]] = []
+    visited: set[str] = set()
+    path: list[str] = []
+    path_set: set[str] = set()
+
+    def _dfs(node: str) -> None:
+        if node in path_set:
+            idx = path.index(node)
+            cycles.append([*path[idx:], node])
+            return
+        if node in visited:
+            return
+        visited.add(node)
+        path.append(node)
+        path_set.add(node)
+        for neighbor in graph.get(node, set()):
+            _dfs(neighbor)
+        path.pop()
+        path_set.remove(node)
+
+    for start in graph:
+        _dfs(start)
+    return cycles
+
+
+def detect_import_cycles(pkg_dir: Path) -> list[list[str]]:
+    """Detect circular imports in a package by analyzing the lazy-loader graph.
+
+    Returns cycles as lists of module stems (e.g. ``["constants", "typings", "constants"]``).
+    Fully dynamic — reads ``_LAZY_IMPORTS`` from ``__init__.py`` and scans all ``.py`` files.
+    """
+    lazy_map = _parse_lazy_imports(pkg_dir / "__init__.py")
+    if not lazy_map:
+        return []
+    graph = _build_self_import_graph(pkg_dir, lazy_map)
+    return _find_cycles(graph)
+
+
+def resolve_parent_package(pkg_dir: Path) -> str:
+    """Discover the parent package by inspecting ``constants.py`` imports."""
+    constants_file = pkg_dir / "constants.py"
+    if not constants_file.is_file():
+        return "flext_core"
+    try:
+        source = constants_file.read_text("utf-8")
+        tree = cst.parse_module(source)
+    except (cst.ParserSyntaxError, UnicodeDecodeError):
+        return "flext_core"
+    for stmt in tree.body:
+        if not isinstance(stmt, cst.SimpleStatementLine):
+            continue
+        for small in stmt.body:
+            if not isinstance(small, cst.ImportFrom):
+                continue
+            if isinstance(small.names, cst.ImportStar):
+                continue
+            mod = tree.code_for_node(small.module) if small.module else ""
+            for alias in small.names:
+                name = alias.name.value if isinstance(alias.name, cst.Name) else ""
+                if "Constants" in name and name.startswith("Flext"):
+                    return mod
+    return "flext_core"
+
+
 __all__ = [
     "ConstantDeclarationVisitor",
     "ConstantUsageVisitor",
     "attribute_chain",
     "canonical_reference_for",
     "detect_hardcoded_canonicals",
+    "detect_import_cycles",
     "detect_unused_constants",
     "extract_constant_definitions",
     "is_mro_passthrough",
+    "resolve_parent_package",
     "root_name",
     "scan_constant_usages",
 ]
