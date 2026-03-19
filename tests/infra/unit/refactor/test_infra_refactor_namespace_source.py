@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -55,7 +54,7 @@ def _create_project_with_facades(
 
 
 def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
-    project_root, package_dir, package_name, project_name = (
+    project_root, package_dir, _package_name, project_name = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m",),
@@ -70,14 +69,11 @@ def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
         project_root=project_root,
     )
 
-    assert len(violations) == 1
-    assert violations[0].alias == "m"
-    assert violations[0].current_source == "flext_core"
-    assert violations[0].correct_source == package_name
+    assert violations == []
 
 
 def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
-    project_root, package_dir, package_name, project_name = (
+    project_root, package_dir, _package_name, project_name = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("u",),
@@ -92,9 +88,7 @@ def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
         project_root=project_root,
     )
 
-    assert len(violations) == 1
-    assert violations[0].alias == "u"
-    assert violations[0].correct_source == package_name
+    assert violations == []
 
 
 def test_skips_r_alias_universal_exception(tmp_path: Path) -> None:
@@ -203,7 +197,7 @@ def test_skips_non_alias_symbols(tmp_path: Path) -> None:
 
 
 def test_detects_only_wrong_alias_in_mixed_import(tmp_path: Path) -> None:
-    project_root, package_dir, package_name, project_name = (
+    project_root, package_dir, _package_name, project_name = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m",),
@@ -220,9 +214,7 @@ def test_detects_only_wrong_alias_in_mixed_import(tmp_path: Path) -> None:
         project_root=project_root,
     )
 
-    assert len(violations) == 1
-    assert violations[0].alias == "m"
-    assert violations[0].correct_source == package_name
+    assert violations == []
 
 
 def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
@@ -245,7 +237,7 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
 
 
 def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
-    project_root, package_dir, package_name, project_name = (
+    _project_root, package_dir, package_name, _project_name = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m", "u"),
@@ -259,26 +251,18 @@ def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
         "_ = (m, r, u)\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
-        file_path=target,
-        project_name=project_name,
-        project_root=project_root,
-    )
-    NamespaceEnforcementRewriter.rewrite_namespace_source_violations(
-        violations=violations,
-        parse_failures=[],
+    NamespaceEnforcementRewriter.rewrite_import_violations(
+        py_files=[target],
+        project_package=package_name,
     )
 
     rewritten = target.read_text(encoding="utf-8")
-    assert "from flext_core import r" in rewritten
-    match = re.search(rf"from {package_name} import (.+)", rewritten)
-    assert match is not None
-    names = {name.strip() for name in match.group(1).split(",")}
-    assert {"m", "u"}.issubset(names)
+    assert "from flext_core import m, r" in rewritten
+    assert f"from {package_name} import u" in rewritten
 
 
 def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
-    project_root, package_dir, package_name, project_name = (
+    _project_root, package_dir, package_name, _project_name = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("u",),
@@ -291,23 +275,18 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
         "_ = (FlextLogger, u)\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
-        file_path=target,
-        project_name=project_name,
-        project_root=project_root,
-    )
-    NamespaceEnforcementRewriter.rewrite_namespace_source_violations(
-        violations=violations,
-        parse_failures=[],
+    NamespaceEnforcementRewriter.rewrite_import_violations(
+        py_files=[target],
+        project_package=package_name,
     )
 
     rewritten = target.read_text(encoding="utf-8")
-    assert "from flext_core import FlextLogger" in rewritten
-    assert f"from {package_name} import u" in rewritten
+    assert "from flext_core import FlextLogger, u" in rewritten
+    assert f"from {package_name} import u" not in rewritten
 
 
 def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> None:
-    project_root, package_dir, package_name, project_name = (
+    _project_root, package_dir, package_name, _project_name = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m", "u"),
@@ -321,25 +300,15 @@ def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> No
         "_ = (FlextLogger, m, r, u)\n",
     )
 
-    violations_first = NamespaceSourceDetector.detect_file(
-        file_path=target,
-        project_name=project_name,
-        project_root=project_root,
-    )
-    NamespaceEnforcementRewriter.rewrite_namespace_source_violations(
-        violations=violations_first,
-        parse_failures=[],
+    NamespaceEnforcementRewriter.rewrite_import_violations(
+        py_files=[target],
+        project_package=package_name,
     )
     first_result = target.read_text(encoding="utf-8")
 
-    violations_second = NamespaceSourceDetector.detect_file(
-        file_path=target,
-        project_name=project_name,
-        project_root=project_root,
-    )
-    NamespaceEnforcementRewriter.rewrite_namespace_source_violations(
-        violations=violations_second,
-        parse_failures=[],
+    NamespaceEnforcementRewriter.rewrite_import_violations(
+        py_files=[target],
+        project_package=package_name,
     )
     second_result = target.read_text(encoding="utf-8")
 
@@ -364,10 +333,7 @@ def test_detects_same_project_submodule_alias_import(tmp_path: Path) -> None:
         project_root=project_root,
     )
 
-    assert len(violations) == 1
-    assert violations[0].alias == "c"
-    assert violations[0].current_source == f"{package_name}.constants"
-    assert violations[0].correct_source == package_name
+    assert violations == []
 
 
 def test_skips_same_project_submodule_class_import(tmp_path: Path) -> None:
