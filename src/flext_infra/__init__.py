@@ -267,6 +267,11 @@ if TYPE_CHECKING:
     from flext_infra.transformers.import_modernizer import (
         FlextInfraRefactorImportModernizer,
     )
+    from flext_infra.transformers.import_normalizer import (
+        ImportNormalizerTransformer,
+        ImportNormalizerVisitor,
+        ImportViolation,
+    )
     from flext_infra.transformers.lazy_import_fixer import (
         FlextInfraRefactorLazyImportFixer,
     )
@@ -831,6 +836,18 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor._detectors.import_collector",
         "ImportCollector",
     ),
+    "ImportNormalizerTransformer": (
+        "flext_infra.transformers.import_normalizer",
+        "ImportNormalizerTransformer",
+    ),
+    "ImportNormalizerVisitor": (
+        "flext_infra.transformers.import_normalizer",
+        "ImportNormalizerVisitor",
+    ),
+    "ImportViolation": (
+        "flext_infra.transformers.import_normalizer",
+        "ImportViolation",
+    ),
     "InjectCommentsPhase": (
         "flext_infra.deps._phases.inject_comments",
         "InjectCommentsPhase",
@@ -1076,6 +1093,9 @@ __all__ = [
     "HelperConsolidationTransformer",
     "ImportAliasDetector",
     "ImportCollector",
+    "ImportNormalizerTransformer",
+    "ImportNormalizerVisitor",
+    "ImportViolation",
     "InjectCommentsPhase",
     "InternalImportDetector",
     "LooseObjectDetector",

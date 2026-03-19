@@ -38,6 +38,11 @@ if TYPE_CHECKING:
     from flext_infra.transformers.import_modernizer import (
         FlextInfraRefactorImportModernizer,
     )
+    from flext_infra.transformers.import_normalizer import (
+        ImportNormalizerTransformer,
+        ImportNormalizerVisitor,
+        ImportViolation,
+    )
     from flext_infra.transformers.lazy_import_fixer import (
         FlextInfraRefactorLazyImportFixer,
     )
@@ -134,6 +139,18 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.helper_consolidation",
         "HelperConsolidationTransformer",
     ),
+    "ImportNormalizerTransformer": (
+        "flext_infra.transformers.import_normalizer",
+        "ImportNormalizerTransformer",
+    ),
+    "ImportNormalizerVisitor": (
+        "flext_infra.transformers.import_normalizer",
+        "ImportNormalizerVisitor",
+    ),
+    "ImportViolation": (
+        "flext_infra.transformers.import_normalizer",
+        "ImportViolation",
+    ),
     "NestedClassPropagationTransformer": (
         "flext_infra.transformers.nested_class_propagation",
         "NestedClassPropagationTransformer",
@@ -163,6 +180,9 @@ __all__ = [
     "FlextInfraRefactorTypingUnifier",
     "FlextInfraTransformerImportInsertion",
     "HelperConsolidationTransformer",
+    "ImportNormalizerTransformer",
+    "ImportNormalizerVisitor",
+    "ImportViolation",
     "NestedClassPropagationTransformer",
     "u",
 ]

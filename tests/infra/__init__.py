@@ -753,6 +753,22 @@ if TYPE_CHECKING:
         EngineSafetyStub,
         test_refactor_project_integrates_safety_manager,
     )
+    from .unit.refactor.test_infra_refactor_typing_unifier import (
+        test_converts_multiple_aliases,
+        test_converts_typealias_to_pep695,
+        test_injects_t_import_when_needed,
+        test_noop_clean_module,
+        test_preserves_non_matching_unions,
+        test_preserves_used_typing_imports,
+        test_removes_all_unused_typing_imports,
+        test_removes_dead_typealias_import,
+        test_replaces_container_union,
+        test_replaces_numeric_union,
+        test_replaces_primitives_union,
+        test_replaces_scalar_union,
+        test_skips_definition_files,
+        test_skips_union_with_none,
+    )
     from .unit.release.flow import TestReleaseMainFlow
     from .unit.release.main import TestReleaseMainParsing
     from .unit.release.orchestrator import TestReleaseOrchestratorExecute
@@ -2611,6 +2627,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_modernizer_consolidate",
         "test_consolidate_groups_phase_apply_with_empty_poetry_group",
     ),
+    "test_converts_multiple_aliases": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_converts_multiple_aliases",
+    ),
+    "test_converts_typealias_to_pep695": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_converts_typealias_to_pep695",
+    ),
     "test_current_workspace_version": (
         "tests.infra.unit.test_infra_versioning",
         "test_current_workspace_version",
@@ -2924,6 +2948,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_apply_with_optional_dependencies_dev",
     ),
+    "test_injects_t_import_when_needed": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_injects_t_import_when_needed",
+    ),
     "test_lazy_import_rule_hoists_import_to_module_level": (
         "tests.infra.unit.refactor.test_infra_refactor_import_modernizer",
         "test_lazy_import_rule_hoists_import_to_module_level",
@@ -3136,6 +3164,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_class_placement",
         "test_non_pydantic_class_not_flagged",
     ),
+    "test_noop_clean_module": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_noop_clean_module",
+    ),
     "test_parse_semver_invalid": (
         "tests.infra.unit.test_infra_versioning",
         "test_parse_semver_invalid",
@@ -3180,6 +3212,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_skips_overload_signatures",
     ),
+    "test_preserves_non_matching_unions": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_preserves_non_matching_unions",
+    ),
+    "test_preserves_used_typing_imports": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_preserves_used_typing_imports",
+    ),
     "test_project_dev_groups": (
         "tests.infra.unit.deps.test_modernizer_helpers",
         "test_project_dev_groups",
@@ -3220,6 +3260,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.test_infra_versioning",
         "test_release_tag_from_branch_valid",
     ),
+    "test_removes_all_unused_typing_imports": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_removes_all_unused_typing_imports",
+    ),
+    "test_removes_dead_typealias_import": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_removes_dead_typealias_import",
+    ),
     "test_render_all_generates_large_makefile": (
         "tests.infra.unit.basemk.engine",
         "test_render_all_generates_large_makefile",
@@ -3231,6 +3279,22 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_replace_project_version": (
         "tests.infra.unit.test_infra_versioning",
         "test_replace_project_version",
+    ),
+    "test_replaces_container_union": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_replaces_container_union",
+    ),
+    "test_replaces_numeric_union": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_replaces_numeric_union",
+    ),
+    "test_replaces_primitives_union": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_replaces_primitives_union",
+    ),
+    "test_replaces_scalar_union": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_replaces_scalar_union",
     ),
     "test_resolve_gates_maps_type_alias": (
         "tests.infra.unit.check.cli",
@@ -3353,6 +3417,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_signature_propagation_renames_call_keyword",
     ),
+    "test_skips_definition_files": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_skips_definition_files",
+    ),
     "test_skips_facade_declaration_files": (
         "tests.infra.unit.refactor.test_infra_refactor_namespace_source",
         "test_skips_facade_declaration_files",
@@ -3408,6 +3476,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_skips_settings_file": (
         "tests.infra.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_settings_file",
+    ),
+    "test_skips_union_with_none": (
+        "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
+        "test_skips_union_with_none",
     ),
     "test_skips_when_candidate_is_already_in_facade_bases": (
         "tests.infra.unit.refactor.test_infra_refactor_mro_completeness",
@@ -4058,6 +4130,8 @@ __all__ = [
     "test_codegen_pipeline_end_to_end",
     "test_consolidate_groups_phase_apply_removes_old_groups",
     "test_consolidate_groups_phase_apply_with_empty_poetry_group",
+    "test_converts_multiple_aliases",
+    "test_converts_typealias_to_pep695",
     "test_current_workspace_version",
     "test_dedupe_specs",
     "test_dep_name",
@@ -4137,6 +4211,7 @@ __all__ = [
     "test_inject_comments_phase_apply_broken_group_section",
     "test_inject_comments_phase_apply_markers",
     "test_inject_comments_phase_apply_with_optional_dependencies_dev",
+    "test_injects_t_import_when_needed",
     "test_lazy_import_rule_hoists_import_to_module_level",
     "test_lazy_import_rule_uses_fix_action_for_hoist",
     "test_legacy_import_bypass_collapses_to_primary_import",
@@ -4190,6 +4265,7 @@ __all__ = [
     "test_namespace_rewriter_skips_facade_and_subclass_files",
     "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
     "test_non_pydantic_class_not_flagged",
+    "test_noop_clean_module",
     "test_parse_semver_invalid",
     "test_parse_semver_result_type",
     "test_parse_semver_valid",
@@ -4201,6 +4277,8 @@ __all__ = [
     "test_pattern_rule_removes_configured_redundant_casts",
     "test_pattern_rule_removes_nested_type_object_cast_chain",
     "test_pattern_rule_skips_overload_signatures",
+    "test_preserves_non_matching_unions",
+    "test_preserves_used_typing_imports",
     "test_project_dev_groups",
     "test_project_dev_groups_missing_sections",
     "test_project_without_alias_facade_has_no_violation",
@@ -4211,9 +4289,15 @@ __all__ = [
     "test_release_tag_from_branch_invalid",
     "test_release_tag_from_branch_result_type",
     "test_release_tag_from_branch_valid",
+    "test_removes_all_unused_typing_imports",
+    "test_removes_dead_typealias_import",
     "test_render_all_generates_large_makefile",
     "test_render_all_has_no_scripts_path_references",
     "test_replace_project_version",
+    "test_replaces_container_union",
+    "test_replaces_numeric_union",
+    "test_replaces_primitives_union",
+    "test_replaces_scalar_union",
     "test_resolve_gates_maps_type_alias",
     "test_rewrite_dep_paths_dry_run",
     "test_rewrite_dep_paths_read_failure",
@@ -4245,6 +4329,7 @@ __all__ = [
     "test_run_raw_cases",
     "test_signature_propagation_removes_and_adds_keywords",
     "test_signature_propagation_renames_call_keyword",
+    "test_skips_definition_files",
     "test_skips_facade_declaration_files",
     "test_skips_import_as_rename",
     "test_skips_init_file",
@@ -4259,6 +4344,7 @@ __all__ = [
     "test_skips_same_project_private_submodule",
     "test_skips_same_project_submodule_class_import",
     "test_skips_settings_file",
+    "test_skips_union_with_none",
     "test_skips_when_candidate_is_already_in_facade_bases",
     "test_standalone_final_detected_as_fixable",
     "test_standalone_typealias_detected_as_fixable",
