@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import ast
+import libcst as cst
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, u
+from flext_infra import c, m, p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -77,8 +78,9 @@ class RuntimeAliasDetector(p.Infra.Scanner):
             return []
         if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
-        tree = u.Infra.parse_module_ast(file_path)
-        if tree is None:
+        try:
+            tree = cst.parse_module(file_path.read_text())
+        except cst.ParserSyntaxError:
             return []
         violations: list[nem.RuntimeAliasViolation] = []
         _ = project_name
@@ -86,14 +88,15 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         if not family:
             return []
         alias_assignments: list[tuple[int, str, str]] = []
-        for stmt in tree.body:
-            if not isinstance(stmt, ast.Assign):
+        for stmt in cls._iter_simple_statements(tree.body):
+            if not isinstance(stmt, cst.Assign):
                 continue
             for target in stmt.targets:
-                if not isinstance(target, ast.Name):
+                target_expr = target.target
+                if not isinstance(target_expr, cst.Name):
                     continue
-                if len(target.id) == 1 and isinstance(stmt.value, ast.Name):
-                    alias_assignments.append((stmt.lineno, target.id, stmt.value.id))
+                if len(target_expr.value) == 1 and isinstance(stmt.value, cst.Name):
+                    alias_assignments.append((0, target_expr.value, stmt.value.value))
         expected_alias = family
         matches = [a for a in alias_assignments if a[1] == expected_alias]
         if len(matches) == 0:
@@ -120,3 +123,11 @@ class RuntimeAliasDetector(p.Infra.Scanner):
     @staticmethod
     def _family_for_file(*, file_name: str) -> str:
         return c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_name, "")
+
+    @staticmethod
+    def _iter_simple_statements(
+        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
+    ) -> Iterator[cst.BaseSmallStatement]:
+        for item in body:
+            if isinstance(item, cst.SimpleStatementLine):
+                yield from item.body

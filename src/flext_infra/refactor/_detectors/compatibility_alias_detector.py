@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import ast
+import libcst as cst
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import m, p, u
+from flext_infra import m, p
 from flext_infra.refactor._detectors.module_loader import (
     DetectorScanResultBuilder,
 )
@@ -66,22 +67,23 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         """Scan a file for compatibility aliases that may be removable."""
         if file_path.suffix != ".py":
             return []
-        tree = u.Infra.parse_module_ast(file_path)
-        if tree is None:
+        try:
+            tree = cst.parse_module(file_path.read_text())
+        except cst.ParserSyntaxError:
             return []
         violations: list[nem.CompatibilityAliasViolation] = []
-        for stmt in tree.body:
-            if not isinstance(stmt, ast.Assign):
+        for stmt in cls._iter_simple_statements(tree.body):
+            if not isinstance(stmt, cst.Assign):
                 continue
             if len(stmt.targets) != 1:
                 continue
-            target = stmt.targets[0]
-            if not isinstance(target, ast.Name):
+            target = stmt.targets[0].target
+            if not isinstance(target, cst.Name):
                 continue
-            if not isinstance(stmt.value, ast.Name):
+            if not isinstance(stmt.value, cst.Name):
                 continue
-            alias_name = target.id
-            target_name = stmt.value.id
+            alias_name = target.value
+            target_name = stmt.value.value
             if len(alias_name) == 1:
                 continue
             if alias_name in {"__all__", "__version__", "__version_info__"}:
@@ -94,9 +96,17 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
                 violations.append(
                     nem.CompatibilityAliasViolation.create(
                         file=str(file_path),
-                        line=stmt.lineno,
+                        line=0,
                         alias_name=alias_name,
                         target_name=target_name,
                     ),
                 )
         return violations
+
+    @staticmethod
+    def _iter_simple_statements(
+        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
+    ) -> Iterator[cst.BaseSmallStatement]:
+        for item in body:
+            if isinstance(item, cst.SimpleStatementLine):
+                yield from item.body

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import ast
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
+
+import libcst as cst
 
 from flext_infra import c, u
 from flext_infra.refactor._models_namespace_enforcer import (
@@ -48,21 +49,38 @@ class CyclicImportDetector:
                 if module_name not in file_map:
                     file_map[module_name] = str(py_file)
                 graph.setdefault(module_name, set())
-                tree = u.Infra.parse_module_ast(py_file)
-                if tree is None:
+                try:
+                    tree = cst.parse_module(py_file.read_text())
+                except (OSError, cst.ParserSyntaxError):
                     continue
-                for stmt in tree.body:
-                    if isinstance(stmt, ast.Import):
-                        for alias in stmt.names:
-                            imported = alias.name
-                            root_pkg = imported.split(".")[0]
-                            if root_pkg in package_roots:
-                                graph[module_name].add(imported)
-                    if isinstance(stmt, ast.ImportFrom) and stmt.module:
-                        imported = stmt.module
-                        root_pkg = imported.split(".")[0]
-                        if root_pkg in package_roots:
-                            graph[module_name].add(imported)
+                for item in tree.body:
+                    if isinstance(item, cst.If):
+                        test = item.test
+                        if isinstance(test, cst.Name) and test.value == "TYPE_CHECKING":
+                            continue
+                    if isinstance(item, cst.SimpleStatementLine):
+                        for stmt in item.body:
+                            if isinstance(stmt, cst.Import) and not isinstance(
+                                stmt.names,
+                                cst.ImportStar,
+                            ):
+                                for alias in stmt.names:
+                                    imported = (
+                                        alias.name.value
+                                        if isinstance(alias.name, cst.Name)
+                                        else cls._module_to_str(alias.name)
+                                    )
+                                    root_pkg = imported.split(".")[0]
+                                    if root_pkg in package_roots:
+                                        graph[module_name].add(imported)
+                            elif (
+                                isinstance(stmt, cst.ImportFrom)
+                                and stmt.module is not None
+                            ):
+                                imported = cls._module_to_str(stmt.module)
+                                root_pkg = imported.split(".")[0]
+                                if root_pkg in package_roots:
+                                    graph[module_name].add(imported)
         violations: list[nem.CyclicImportViolation] = []
         try:
             _ = list(TopologicalSorter(graph).static_order())
@@ -125,3 +143,20 @@ class CyclicImportDetector:
         if parts and parts[-1] == "__init__":
             parts = parts[:-1]
         return ".".join(parts) if parts else ""
+
+    @staticmethod
+    def _module_to_str(module: cst.BaseExpression | None) -> str:
+        if module is None:
+            return ""
+        if isinstance(module, cst.Name):
+            return module.value
+        if isinstance(module, cst.Attribute):
+            parts: list[str] = []
+            current: cst.BaseExpression | cst.Attribute = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+            return ".".join(reversed(parts))
+        return ""

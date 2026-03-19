@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-import ast
 import operator
 from pathlib import Path
 from typing import ClassVar, override
 
+import libcst as cst
+from libcst import metadata as cst_metadata
+
 from flext_infra import c, m, p
-from flext_infra.refactor._detectors.python_module_loader_mixin import (
-    FlextInfraRefactorDetectorPythonModuleLoaderMixin,
-)
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
 
 
 class MROCompletenessDetector(
-    FlextInfraRefactorDetectorPythonModuleLoaderMixin,
     p.Infra.Scanner,
 ):
     """Detect facade classes missing local MRO composition bases."""
@@ -87,18 +85,18 @@ class MROCompletenessDetector(
             return []
         if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
-        parsed = cls._load_python_module(
-            file_path,
+        tree = cls._parse_module(
+            file_path=file_path,
             stage="mro-completeness-scan",
             parse_failures=_parse_failures,
         )
-        if parsed is None:
+        if tree is None:
             return []
-        facade_name = cls._resolve_facade_class_name(tree=parsed.tree, family=family)
+        facade_name = cls._resolve_facade_class_name(tree=tree, family=family)
         if facade_name is None:
             return []
         facade_node = cls._find_top_level_class(
-            tree=parsed.tree,
+            tree=tree,
             class_name=facade_name,
         )
         if facade_node is None:
@@ -138,42 +136,57 @@ class MROCompletenessDetector(
         return violations
 
     @staticmethod
-    def _resolve_facade_class_name(*, tree: ast.Module, family: str) -> str | None:
-        for stmt in tree.body:
-            if not isinstance(stmt, ast.Assign):
+    def _resolve_facade_class_name(*, tree: cst.Module, family: str) -> str | None:
+        for item in tree.body:
+            if not isinstance(item, cst.SimpleStatementLine):
                 continue
-            if not isinstance(stmt.value, ast.Name):
-                continue
-            for target in stmt.targets:
-                if isinstance(target, ast.Name) and target.id == family:
-                    return stmt.value.id
+            for stmt in item.body:
+                if not isinstance(stmt, cst.Assign):
+                    continue
+                if not isinstance(stmt.value, cst.Name):
+                    continue
+                for target in stmt.targets:
+                    if (
+                        isinstance(target.target, cst.Name)
+                        and target.target.value == family
+                    ):
+                        return stmt.value.value
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
         if len(suffix) == 0:
             return None
         for stmt in tree.body:
-            if isinstance(stmt, ast.ClassDef) and stmt.name.endswith(suffix):
-                return stmt.name
+            if isinstance(stmt, cst.ClassDef) and stmt.name.value.endswith(suffix):
+                return stmt.name.value
         return None
 
     @staticmethod
     def _find_top_level_class(
         *,
-        tree: ast.Module,
+        tree: cst.Module,
         class_name: str,
-    ) -> ast.ClassDef | None:
+    ) -> cst.ClassDef | None:
         for stmt in tree.body:
-            if isinstance(stmt, ast.ClassDef) and stmt.name == class_name:
+            if isinstance(stmt, cst.ClassDef) and stmt.name.value == class_name:
                 return stmt
         return None
 
     @staticmethod
-    def _extract_base_name(base: ast.expr) -> str:
-        if isinstance(base, ast.Name):
-            return base.id
-        if isinstance(base, ast.Attribute):
-            return base.attr
-        if isinstance(base, ast.Subscript):
-            return MROCompletenessDetector._extract_base_name(base.value)
+    def _extract_base_name(base: cst.Arg) -> str:
+        value = base.value
+        if isinstance(value, cst.Name):
+            return value.value
+        if isinstance(value, cst.Attribute):
+            return MROCompletenessDetector._module_to_str(value)
+        if isinstance(value, cst.Subscript):
+            return MROCompletenessDetector._expr_to_base_name(value.value)
+        return ""
+
+    @staticmethod
+    def _expr_to_base_name(value: cst.BaseExpression) -> str:
+        if isinstance(value, cst.Name):
+            return value.value
+        if isinstance(value, cst.Attribute):
+            return MROCompletenessDetector._module_to_str(value)
         return ""
 
     @classmethod
@@ -228,22 +241,102 @@ class MROCompletenessDetector(
         facade_name: str,
         _parse_failures: list[nem.ParseFailureViolation] | None,
     ) -> set[tuple[str, int]]:
-        parsed = MROCompletenessDetector._load_python_module(
-            file_path,
+        tree = MROCompletenessDetector._parse_module(
+            file_path=file_path,
             stage="mro-completeness-candidates",
             parse_failures=_parse_failures,
         )
-        if parsed is None:
+        if tree is None:
             return set()
+        wrapper = cst_metadata.MetadataWrapper(tree, unsafe_skip_copy=True)
+        positions = wrapper.resolve(cst_metadata.PositionProvider)
         result: set[tuple[str, int]] = set()
-        for stmt in parsed.tree.body:
-            if not isinstance(stmt, ast.ClassDef):
+        for stmt in tree.body:
+            if not isinstance(stmt, cst.ClassDef):
                 continue
-            if stmt.name == facade_name:
+            class_name = stmt.name.value
+            if class_name == facade_name:
                 continue
-            if stmt.name.startswith("_"):
+            if class_name.startswith("_"):
                 continue
-            if not stmt.name.startswith(facade_prefix):
+            if not class_name.startswith(facade_prefix):
                 continue
-            result.add((stmt.name, stmt.lineno))
+            position = positions.get(stmt)
+            line = position.start.line if position is not None else 0
+            result.add((class_name, line))
         return result
+
+    @staticmethod
+    def _parse_module(
+        *,
+        file_path: Path,
+        stage: str,
+        parse_failures: list[nem.ParseFailureViolation] | None,
+    ) -> cst.Module | None:
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            return cst.parse_module(source)
+        except UnicodeDecodeError as exc:
+            MROCompletenessDetector._append_parse_failure(
+                parse_failures=parse_failures,
+                file_path=file_path,
+                stage=stage,
+                error_type=type(exc).__name__,
+                detail=str(exc),
+            )
+            return None
+        except OSError as exc:
+            MROCompletenessDetector._append_parse_failure(
+                parse_failures=parse_failures,
+                file_path=file_path,
+                stage=stage,
+                error_type=type(exc).__name__,
+                detail=str(exc),
+            )
+            return None
+        except cst.ParserSyntaxError as exc:
+            MROCompletenessDetector._append_parse_failure(
+                parse_failures=parse_failures,
+                file_path=file_path,
+                stage=stage,
+                error_type="SyntaxError",
+                detail=str(exc),
+            )
+            return None
+
+    @staticmethod
+    def _append_parse_failure(
+        *,
+        parse_failures: list[nem.ParseFailureViolation] | None,
+        file_path: Path,
+        stage: str,
+        error_type: str,
+        detail: str,
+    ) -> None:
+        if parse_failures is None:
+            return
+        parse_failures.append(
+            nem.ParseFailureViolation.create(
+                file=str(file_path),
+                stage=stage,
+                error_type=error_type,
+                detail=detail,
+            ),
+        )
+
+    @staticmethod
+    def _module_to_str(module: cst.BaseExpression | None) -> str:
+        if module is None:
+            return ""
+        if isinstance(module, cst.Name):
+            return module.value
+        if isinstance(module, cst.Attribute):
+            parts: list[str] = []
+            current: cst.BaseExpression | cst.Attribute = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+            return ".".join(reversed(parts))
+        return ""

@@ -80,168 +80,48 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "ClassPlacementDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "ClassPlacementDetector",
-    ),
-    "CompatibilityAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "CompatibilityAliasDetector",
-    ),
-    "CyclicImportDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "CyclicImportDetector",
-    ),
-    "DependencyAnalyzer": (
-        "flext_infra.refactor.dependency_analyzer",
-        "DependencyAnalyzer",
-    ),
-    "DetectorScanResultBuilder": (
-        "flext_infra.refactor._detectors.module_loader",
-        "DetectorScanResultBuilder",
-    ),
-    "FlextInfraNamespaceEnforcer": (
-        "flext_infra.refactor.namespace_enforcer",
-        "FlextInfraNamespaceEnforcer",
-    ),
-    "FlextInfraRefactorCensus": (
-        "flext_infra.refactor.census",
-        "FlextInfraRefactorCensus",
-    ),
-    "FlextInfraRefactorClassNestingAnalyzer": (
-        "flext_infra.refactor.class_nesting_analyzer",
-        "FlextInfraRefactorClassNestingAnalyzer",
-    ),
-    "FlextInfraRefactorCliSupport": (
-        "flext_infra.refactor.validation",
-        "FlextInfraRefactorCliSupport",
-    ),
-    "FlextInfraRefactorDependencyAnalyzerFacade": (
-        "flext_infra.refactor.dependency_analyzer",
-        "FlextInfraRefactorDependencyAnalyzerFacade",
-    ),
-    "FlextInfraRefactorDetectorModuleLoader": (
-        "flext_infra.refactor._detectors.module_loader",
-        "FlextInfraRefactorDetectorModuleLoader",
-    ),
-    "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
-        "flext_infra.refactor._detectors.python_module_loader_mixin",
-        "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
-    ),
-    "FlextInfraRefactorEngine": (
-        "flext_infra.refactor.engine",
-        "FlextInfraRefactorEngine",
-    ),
-    "FlextInfraRefactorLooseClassScanner": (
-        "flext_infra.refactor.scanner",
-        "FlextInfraRefactorLooseClassScanner",
-    ),
-    "FlextInfraRefactorMROImportRewriter": (
-        "flext_infra.refactor.mro_resolver",
-        "FlextInfraRefactorMROImportRewriter",
-    ),
-    "FlextInfraRefactorMROMigrationScanner": (
-        "flext_infra.refactor.mro_resolver",
-        "FlextInfraRefactorMROMigrationScanner",
-    ),
-    "FlextInfraRefactorMROMigrationTransformer": (
-        "flext_infra.refactor.mro_migrator",
-        "FlextInfraRefactorMROMigrationTransformer",
-    ),
-    "FlextInfraRefactorMROMigrationValidator": (
-        "flext_infra.refactor.validation",
-        "FlextInfraRefactorMROMigrationValidator",
-    ),
-    "FlextInfraRefactorMROResolver": (
-        "flext_infra.refactor.mro_resolver",
-        "FlextInfraRefactorMROResolver",
-    ),
-    "FlextInfraRefactorMigrateToClassMRO": (
-        "flext_infra.refactor.migrate_to_class_mro",
-        "FlextInfraRefactorMigrateToClassMRO",
-    ),
-    "FlextInfraRefactorOutputRenderer": (
-        "flext_infra.refactor.output",
-        "FlextInfraRefactorOutputRenderer",
-    ),
-    "FlextInfraRefactorPydanticCentralizer": (
-        "flext_infra.refactor.pydantic_centralizer",
-        "FlextInfraRefactorPydanticCentralizer",
-    ),
-    "FlextInfraRefactorPydanticCentralizerAnalysis": (
-        "flext_infra.refactor.pydantic_centralizer_analysis",
-        "FlextInfraRefactorPydanticCentralizerAnalysis",
-    ),
+    "ClassPlacementDetector": ("flext_infra.refactor.dependency_analyzer", "ClassPlacementDetector"),
+    "CompatibilityAliasDetector": ("flext_infra.refactor.dependency_analyzer", "CompatibilityAliasDetector"),
+    "CyclicImportDetector": ("flext_infra.refactor.dependency_analyzer", "CyclicImportDetector"),
+    "DependencyAnalyzer": ("flext_infra.refactor.dependency_analyzer", "DependencyAnalyzer"),
+    "DetectorScanResultBuilder": ("flext_infra.refactor._detectors.module_loader", "DetectorScanResultBuilder"),
+    "FlextInfraNamespaceEnforcer": ("flext_infra.refactor.namespace_enforcer", "FlextInfraNamespaceEnforcer"),
+    "FlextInfraRefactorCensus": ("flext_infra.refactor.census", "FlextInfraRefactorCensus"),
+    "FlextInfraRefactorClassNestingAnalyzer": ("flext_infra.refactor.class_nesting_analyzer", "FlextInfraRefactorClassNestingAnalyzer"),
+    "FlextInfraRefactorCliSupport": ("flext_infra.refactor.validation", "FlextInfraRefactorCliSupport"),
+    "FlextInfraRefactorDependencyAnalyzerFacade": ("flext_infra.refactor.dependency_analyzer", "FlextInfraRefactorDependencyAnalyzerFacade"),
+    "FlextInfraRefactorDetectorModuleLoader": ("flext_infra.refactor._detectors.module_loader", "FlextInfraRefactorDetectorModuleLoader"),
+    "FlextInfraRefactorDetectorPythonModuleLoaderMixin": ("flext_infra.refactor._detectors.python_module_loader_mixin", "FlextInfraRefactorDetectorPythonModuleLoaderMixin"),
+    "FlextInfraRefactorEngine": ("flext_infra.refactor.engine", "FlextInfraRefactorEngine"),
+    "FlextInfraRefactorLooseClassScanner": ("flext_infra.refactor.scanner", "FlextInfraRefactorLooseClassScanner"),
+    "FlextInfraRefactorMROImportRewriter": ("flext_infra.refactor.mro_resolver", "FlextInfraRefactorMROImportRewriter"),
+    "FlextInfraRefactorMROMigrationScanner": ("flext_infra.refactor.mro_resolver", "FlextInfraRefactorMROMigrationScanner"),
+    "FlextInfraRefactorMROMigrationTransformer": ("flext_infra.refactor.mro_migrator", "FlextInfraRefactorMROMigrationTransformer"),
+    "FlextInfraRefactorMROMigrationValidator": ("flext_infra.refactor.validation", "FlextInfraRefactorMROMigrationValidator"),
+    "FlextInfraRefactorMROResolver": ("flext_infra.refactor.mro_resolver", "FlextInfraRefactorMROResolver"),
+    "FlextInfraRefactorMigrateToClassMRO": ("flext_infra.refactor.migrate_to_class_mro", "FlextInfraRefactorMigrateToClassMRO"),
+    "FlextInfraRefactorOutputRenderer": ("flext_infra.refactor.output", "FlextInfraRefactorOutputRenderer"),
+    "FlextInfraRefactorPydanticCentralizer": ("flext_infra.refactor.pydantic_centralizer", "FlextInfraRefactorPydanticCentralizer"),
+    "FlextInfraRefactorPydanticCentralizerAnalysis": ("flext_infra.refactor.pydantic_centralizer_analysis", "FlextInfraRefactorPydanticCentralizerAnalysis"),
     "FlextInfraRefactorRule": ("flext_infra.refactor.rule", "FlextInfraRefactorRule"),
-    "FlextInfraRefactorRuleDefinitionValidator": (
-        "flext_infra.refactor.validation",
-        "FlextInfraRefactorRuleDefinitionValidator",
-    ),
-    "FlextInfraRefactorRuleLoader": (
-        "flext_infra.refactor.rule",
-        "FlextInfraRefactorRuleLoader",
-    ),
-    "FlextInfraRefactorSafetyManager": (
-        "flext_infra.refactor.safety",
-        "FlextInfraRefactorSafetyManager",
-    ),
-    "FlextInfraRefactorViolationAnalyzer": (
-        "flext_infra.refactor.violation_analyzer",
-        "FlextInfraRefactorViolationAnalyzer",
-    ),
-    "FutureAnnotationsDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "FutureAnnotationsDetector",
-    ),
-    "ImportAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "ImportAliasDetector",
-    ),
-    "ImportCollector": (
-        "flext_infra.refactor._detectors.import_collector",
-        "ImportCollector",
-    ),
-    "InternalImportDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "InternalImportDetector",
-    ),
-    "LooseObjectDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "LooseObjectDetector",
-    ),
-    "MROCompletenessDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "MROCompletenessDetector",
-    ),
-    "ManualProtocolDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "ManualProtocolDetector",
-    ),
-    "ManualTypingAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "ManualTypingAliasDetector",
-    ),
-    "NamespaceEnforcementRewriter": (
-        "flext_infra.refactor.namespace_rewriter",
-        "NamespaceEnforcementRewriter",
-    ),
-    "NamespaceFacadeScanner": (
-        "flext_infra.refactor.dependency_analyzer",
-        "NamespaceFacadeScanner",
-    ),
-    "NamespaceSourceDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "NamespaceSourceDetector",
-    ),
+    "FlextInfraRefactorRuleDefinitionValidator": ("flext_infra.refactor.validation", "FlextInfraRefactorRuleDefinitionValidator"),
+    "FlextInfraRefactorRuleLoader": ("flext_infra.refactor.rule", "FlextInfraRefactorRuleLoader"),
+    "FlextInfraRefactorSafetyManager": ("flext_infra.refactor.safety", "FlextInfraRefactorSafetyManager"),
+    "FlextInfraRefactorViolationAnalyzer": ("flext_infra.refactor.violation_analyzer", "FlextInfraRefactorViolationAnalyzer"),
+    "FutureAnnotationsDetector": ("flext_infra.refactor.dependency_analyzer", "FutureAnnotationsDetector"),
+    "ImportAliasDetector": ("flext_infra.refactor.dependency_analyzer", "ImportAliasDetector"),
+    "ImportCollector": ("flext_infra.refactor._detectors.import_collector", "ImportCollector"),
+    "InternalImportDetector": ("flext_infra.refactor.dependency_analyzer", "InternalImportDetector"),
+    "LooseObjectDetector": ("flext_infra.refactor.dependency_analyzer", "LooseObjectDetector"),
+    "MROCompletenessDetector": ("flext_infra.refactor.dependency_analyzer", "MROCompletenessDetector"),
+    "ManualProtocolDetector": ("flext_infra.refactor.dependency_analyzer", "ManualProtocolDetector"),
+    "ManualTypingAliasDetector": ("flext_infra.refactor.dependency_analyzer", "ManualTypingAliasDetector"),
+    "NamespaceEnforcementRewriter": ("flext_infra.refactor.namespace_rewriter", "NamespaceEnforcementRewriter"),
+    "NamespaceFacadeScanner": ("flext_infra.refactor.dependency_analyzer", "NamespaceFacadeScanner"),
+    "NamespaceSourceDetector": ("flext_infra.refactor.dependency_analyzer", "NamespaceSourceDetector"),
     "PostCheckGate": ("flext_infra.refactor.validation", "PostCheckGate"),
-    "ProjectClassifier": (
-        "flext_infra.refactor.project_classifier",
-        "ProjectClassifier",
-    ),
-    "RuntimeAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "RuntimeAliasDetector",
-    ),
+    "ProjectClassifier": ("flext_infra.refactor.project_classifier", "ProjectClassifier"),
+    "RuntimeAliasDetector": ("flext_infra.refactor.dependency_analyzer", "RuntimeAliasDetector"),
     "_detectors": ("flext_infra.refactor._detectors", ""),
 }
 

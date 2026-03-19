@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import ast
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 
-from flext_infra import c, u
+import libcst as cst
+
+from flext_infra import c
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -58,29 +60,59 @@ class NamespaceFacadeScanner:
         if not src_dir.is_dir():
             return ("", "", 0)
         for file_path in src_dir.rglob(file_pattern):
-            tree = u.Infra.parse_module_ast(file_path)
-            if tree is None:
+            try:
+                tree = cst.parse_module(file_path.read_text())
+            except (OSError, cst.ParserSyntaxError):
                 continue
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.ClassDef):
-                    continue
-                if node.name == expected_class or node.name.endswith(suffix):
-                    symbol_count = sum(
-                        1
-                        for child in ast.iter_child_nodes(node)
-                        if isinstance(
-                            child,
-                            (
-                                ast.FunctionDef,
-                                ast.AsyncFunctionDef,
-                                ast.ClassDef,
-                                ast.AnnAssign,
-                                ast.Assign,
-                            ),
-                        )
-                    )
-                    return (node.name, str(file_path), symbol_count)
+            for node in cls._walk_classes(tree.body):
+                class_name = node.name.value
+                if class_name == expected_class or class_name.endswith(suffix):
+                    symbol_count = cls._count_class_symbols(node)
+                    return (class_name, str(file_path), symbol_count)
         return ("", "", 0)
+
+    @classmethod
+    def _count_class_symbols(cls, node: cst.ClassDef) -> int:
+        if not isinstance(node.body, cst.IndentedBlock):
+            return 0
+        count = 0
+        for child in node.body.body:
+            if isinstance(child, (cst.FunctionDef, cst.ClassDef)):
+                count += 1
+                continue
+            if isinstance(child, cst.SimpleStatementLine):
+                for stmt in child.body:
+                    if isinstance(stmt, (cst.Assign, cst.AnnAssign)):
+                        count += 1
+        return count
+
+    @classmethod
+    def _walk_classes(
+        cls,
+        body: Sequence[cst.BaseStatement | cst.BaseCompoundStatement],
+    ) -> Iterator[cst.ClassDef]:
+        for item in body:
+            if isinstance(item, cst.ClassDef):
+                yield item
+                if isinstance(item.body, cst.IndentedBlock):
+                    yield from cls._walk_classes(item.body.body)
+
+    @staticmethod
+    def _module_to_str(module: cst.BaseExpression | None) -> str:
+        if module is None:
+            return ""
+        if isinstance(module, cst.Name):
+            return module.value
+        if isinstance(module, cst.Attribute):
+            parts: list[str] = []
+            current: cst.BaseExpression | cst.Attribute = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+            return ".".join(reversed(parts))
+        return ""
 
     @staticmethod
     def project_class_stem(*, project_name: str) -> str:

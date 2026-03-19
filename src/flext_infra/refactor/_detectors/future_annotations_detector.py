@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import libcst as cst
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import m, p, u
+from flext_infra import m, p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -66,28 +67,71 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         """Scan a file for missing future annotations import."""
         if file_path.name == "py.typed":
             return []
-        tree = u.Infra.parse_module_ast(file_path)
-        if tree is None:
+        try:
+            tree = cst.parse_module(file_path.read_text())
+        except cst.ParserSyntaxError:
             return []
         if len(tree.body) == 0:
             return []
+        simple_statements = list(cls._iter_simple_statements(tree.body))
         if (
             len(tree.body) == 1
-            and isinstance(tree.body[0], ast.Expr)
-            and isinstance(tree.body[0].value, ast.Constant)
+            and len(simple_statements) == 1
+            and isinstance(simple_statements[0], cst.Expr)
+            and isinstance(
+                simple_statements[0].value,
+                (
+                    cst.SimpleString,
+                    cst.ConcatenatedString,
+                    cst.FormattedString,
+                    cst.Integer,
+                    cst.Float,
+                ),
+            )
         ):
             return []
         for stmt in tree.body:
-            if (
-                isinstance(stmt, ast.ImportFrom)
-                and stmt.module == "__future__"
-                and any(alias.name == "annotations" for alias in stmt.names)
+            if isinstance(stmt, cst.SimpleStatementLine) and any(
+                isinstance(simple_stmt, cst.ImportFrom)
+                and cls._module_to_str(simple_stmt.module) == "__future__"
+                and not isinstance(simple_stmt.names, cst.ImportStar)
+                and any(
+                    isinstance(alias.name, cst.Name)
+                    and alias.name.value == "annotations"
+                    for alias in simple_stmt.names
+                )
+                for simple_stmt in stmt.body
             ):
                 return []
-            if isinstance(stmt, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(stmt, (cst.ClassDef, cst.FunctionDef)):
                 break
         return [
             nem.FutureAnnotationsViolation.create(
                 file=str(file_path),
             ),
         ]
+
+    @staticmethod
+    def _module_to_str(module: cst.BaseExpression | None) -> str:
+        if module is None:
+            return ""
+        if isinstance(module, cst.Name):
+            return module.value
+        if isinstance(module, cst.Attribute):
+            parts: list[str] = []
+            current: cst.BaseExpression = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+            return ".".join(reversed(parts))
+        return ""
+
+    @staticmethod
+    def _iter_simple_statements(
+        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
+    ) -> Iterator[cst.BaseSmallStatement]:
+        for item in body:
+            if isinstance(item, cst.SimpleStatementLine):
+                yield from item.body

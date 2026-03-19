@@ -47,6 +47,9 @@ from flext_infra.rules.symbol_propagation import (
 from flext_infra.rules.type_alias_unification import (
     FlextInfraRefactorTypingUnificationRule,
 )
+from flext_infra.rules.typing_census import (
+    FlextInfraRefactorTypingAnnotationFixRule,
+)
 
 
 class FlextInfraRefactorEngine:
@@ -558,6 +561,8 @@ class FlextInfraRefactorEngine:
             return FlextInfraRefactorPatternCorrectionsRule(rule_def)
         if fix_action in c.Infra.TYPE_ALIAS_FIX_ACTIONS:
             return FlextInfraRefactorTypingUnificationRule(rule_def)
+        if fix_action in c.Infra.TYPING_FIX_ACTIONS:
+            return FlextInfraRefactorTypingAnnotationFixRule(rule_def)
         rule_id_lower = rule_id.lower()
         if "ensure-future" in rule_id_lower or "future-annotations" in rule_id_lower:
             return FlextInfraRefactorEnsureFutureAnnotationsRule(rule_def)

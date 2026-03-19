@@ -15,9 +15,13 @@ from flext_infra.refactor._models_ast_grep import FlextInfraRefactorAstGrepModel
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels,
 )
+from flext_infra.refactor._models_typing_census import (
+    FlextInfraTypingCensusModels,
+)
 
 
 class FlextInfraRefactorModels(
+    FlextInfraTypingCensusModels,
     FlextInfraRefactorAstGrepModels,
     FlextInfraNamespaceEnforcerModels,
 ):

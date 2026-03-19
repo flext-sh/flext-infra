@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import ast
+import libcst as cst
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import m, p, u
+from flext_infra import m, p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -67,21 +68,31 @@ class InternalImportDetector(p.Infra.Scanner):
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.InternalImportViolation]:
         """Scan a file for private module or symbol imports."""
-        tree = u.Infra.parse_module_ast(file_path)
-        if tree is None:
+        try:
+            tree = cst.parse_module(file_path.read_text())
+        except cst.ParserSyntaxError:
             return []
         violations: list[nem.InternalImportViolation] = []
-        for stmt in tree.body:
-            if not isinstance(stmt, ast.ImportFrom):
+        for stmt in cls._iter_simple_statements(tree.body):
+            if not isinstance(stmt, cst.ImportFrom):
                 continue
-            if stmt.module is None:
+            module_name = cls._module_to_str(stmt.module)
+            if module_name == "":
                 continue
             if file_path.name == "__init__.py":
                 continue
-            imported_names = [alias.name for alias in stmt.names if alias.name != "*"]
-            import_list = ", ".join(imported_names) if imported_names else "*"
-            current_import = f"from {stmt.module} import {import_list}"
-            has_private_module = "._" in stmt.module
+            if isinstance(stmt.names, cst.ImportStar):
+                imported_names: list[str] = []
+                import_list = "*"
+            else:
+                imported_names = [
+                    cls._module_to_str(alias.name)
+                    for alias in stmt.names
+                    if cls._module_to_str(alias.name) != ""
+                ]
+                import_list = ", ".join(imported_names) if imported_names else "*"
+            current_import = f"from {module_name} import {import_list}"
+            has_private_module = "._" in module_name
             has_private_symbol = any(name.startswith("_") for name in imported_names)
             if not (has_private_module or has_private_symbol):
                 continue
@@ -93,9 +104,34 @@ class InternalImportDetector(p.Infra.Scanner):
             violations.append(
                 nem.InternalImportViolation.create(
                     file=str(file_path),
-                    line=stmt.lineno,
+                    line=0,
                     current_import=current_import,
                     detail=detail,
                 ),
             )
         return violations
+
+    @staticmethod
+    def _module_to_str(module: cst.BaseExpression | None) -> str:
+        if module is None:
+            return ""
+        if isinstance(module, cst.Name):
+            return module.value
+        if isinstance(module, cst.Attribute):
+            parts: list[str] = []
+            current: cst.BaseExpression = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+            return ".".join(reversed(parts))
+        return ""
+
+    @staticmethod
+    def _iter_simple_statements(
+        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
+    ) -> Iterator[cst.BaseSmallStatement]:
+        for item in body:
+            if isinstance(item, cst.SimpleStatementLine):
+                yield from item.body
