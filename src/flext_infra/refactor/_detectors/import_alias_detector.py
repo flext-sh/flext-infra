@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar, override
+from typing import ClassVar, Protocol, override, runtime_checkable
 
 from flext_infra import c, m, p
 from flext_infra.refactor._detectors.module_loader import (
@@ -10,6 +10,17 @@ from flext_infra.refactor._detectors.module_loader import (
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
+
+
+@runtime_checkable
+class _ImportNormalizerTransformerLike(Protocol):
+    @staticmethod
+    def detect_file(
+        *,
+        file_path: Path,
+        project_package: str,
+        alias_map: dict[str, tuple[str, ...]],
+    ) -> list[object]: ...
 
 
 class ImportAliasDetector(p.Infra.Scanner):
@@ -104,22 +115,45 @@ class ImportAliasDetector(p.Infra.Scanner):
     ) -> list[nem.ImportAliasViolation]:
         """Scan a file for deep import paths that should use aliases."""
         _ = _parse_failures
-        from flext_infra.transformers.import_normalizer import (
-            ImportNormalizerTransformer,
+        transformers_module = __import__(
+            "flext_infra.transformers",
+            fromlist=["ImportNormalizerTransformer"],
         )
-
-        violations_cst = ImportNormalizerTransformer.detect_file(
+        transformer_obj = getattr(
+            transformers_module,
+            "ImportNormalizerTransformer",
+            None,
+        )
+        if not isinstance(transformer_obj, _ImportNormalizerTransformerLike):
+            return []
+        violations_raw = transformer_obj.detect_file(
             file_path=file_path,
             project_package=cls._discover_package(file_path),
             alias_map=c.Infra.RUNTIME_ALIAS_NAMES_BY_PACKAGE,
         )
-        return [
-            nem.ImportAliasViolation.create(
-                file=str(v.file),
-                line=v.line,
-                current_import=v.current_import,
-                suggested_import=v.suggested_import,
+        violations: list[nem.ImportAliasViolation] = []
+        for raw in violations_raw:
+            violation_type = getattr(raw, "violation_type", "")
+            file_value = getattr(raw, "file", "")
+            line_value = getattr(raw, "line", 0)
+            current_import = getattr(raw, "current_import", "")
+            suggested_import = getattr(raw, "suggested_import", "")
+            if violation_type != "deep":
+                continue
+            if not isinstance(file_value, str):
+                continue
+            if not isinstance(line_value, int):
+                continue
+            if not isinstance(current_import, str):
+                continue
+            if not isinstance(suggested_import, str):
+                continue
+            violations.append(
+                nem.ImportAliasViolation.create(
+                    file=file_value,
+                    line=line_value,
+                    current_import=current_import,
+                    suggested_import=suggested_import,
+                ),
             )
-            for v in violations_cst
-            if v.violation_type == "deep"
-        ]
+        return violations

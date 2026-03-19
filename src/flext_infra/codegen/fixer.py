@@ -32,6 +32,9 @@ from flext_infra import (
 )
 from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
 from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
+from flext_infra.refactor._detectors.namespace_source_detector import (
+    NamespaceSourceDetector,
+)
 
 
 class FlextInfraCodegenFixer(s[bool]):
@@ -309,7 +312,13 @@ class FlextInfraCodegenFixer(s[bool]):
         before_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_files(
             file_paths=src_files,
         )
-        NamespaceEnforcementRewriter.rewrite_import_alias_violations(py_files=src_files)
+        package_name = NamespaceSourceDetector.discover_project_package_name(
+            project_root=project_path,
+        )
+        NamespaceEnforcementRewriter.rewrite_import_violations(
+            py_files=src_files,
+            project_package=package_name,
+        )
         NamespaceEnforcementRewriter.rewrite_runtime_alias_violations(
             py_files=src_files,
         )

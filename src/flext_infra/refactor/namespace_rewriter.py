@@ -129,15 +129,25 @@ class NamespaceEnforcementRewriter:
     ) -> None:
         """Normalize all imports using centralized CST transformer."""
         _ = cls
-        from flext_infra.transformers.import_normalizer import (
-            ImportNormalizerTransformer,
+        transformers_module = __import__(
+            "flext_infra.transformers",
+            fromlist=["ImportNormalizerTransformer"],
         )
-
+        transformer_obj = getattr(
+            transformers_module,
+            "ImportNormalizerTransformer",
+            None,
+        )
+        if transformer_obj is None:
+            return
+        normalize_file_obj = getattr(transformer_obj, "normalize_file", None)
+        if not callable(normalize_file_obj):
+            return
         alias_map = c.Infra.RUNTIME_ALIAS_NAMES_BY_PACKAGE
         for file_path in py_files:
             if file_path.name == "__init__.py":
                 continue
-            ImportNormalizerTransformer.normalize_file(
+            _ = normalize_file_obj(
                 file_path=file_path,
                 project_package=project_package,
                 alias_map=alias_map,

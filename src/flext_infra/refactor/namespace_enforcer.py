@@ -141,7 +141,7 @@ class FlextInfraNamespaceEnforcer:
                 ),
             )
         if apply and len(import_violations) > 0:
-            package_name = NamespaceSourceDetector._discover_project_package_name(
+            package_name = NamespaceSourceDetector.discover_project_package_name(
                 project_root=project_root,
             )
             NamespaceEnforcementRewriter.rewrite_import_violations(

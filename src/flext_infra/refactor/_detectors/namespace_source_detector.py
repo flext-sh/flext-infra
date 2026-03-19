@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
+from typing import Protocol, override, runtime_checkable
 
 from flext_infra import c, m, p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
+
+
+@runtime_checkable
+class _ImportNormalizerTransformerLike(Protocol):
+    @staticmethod
+    def detect_file(
+        *,
+        file_path: Path,
+        project_package: str,
+        alias_map: dict[str, tuple[str, ...]],
+    ) -> list[object]: ...
 
 
 class NamespaceSourceDetector(p.Infra.Scanner):
@@ -83,34 +94,59 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         package_name = cls._discover_project_package_name(project_root=project_root)
         if len(package_name) == 0:
             return []
-        from flext_infra.transformers.import_normalizer import (
-            ImportNormalizerTransformer,
+        transformers_module = __import__(
+            "flext_infra.transformers",
+            fromlist=["ImportNormalizerTransformer"],
         )
-
-        violations_cst = ImportNormalizerTransformer.detect_file(
+        transformer_obj = getattr(
+            transformers_module,
+            "ImportNormalizerTransformer",
+            None,
+        )
+        if not isinstance(transformer_obj, _ImportNormalizerTransformerLike):
+            return []
+        violations_cst = transformer_obj.detect_file(
             file_path=file_path,
             project_package=package_name,
             alias_map=c.Infra.RUNTIME_ALIAS_NAMES_BY_PACKAGE,
         )
-        return [
-            nem.NamespaceSourceViolation.create(
-                file=str(v.file),
-                line=v.line,
-                alias=(
-                    v.current_import.rsplit(" ", maxsplit=1)[-1]
-                    if " " in v.current_import
-                    else ""
-                ),
-                current_source=(
-                    v.current_import.split(" ")[1] if " " in v.current_import else ""
-                ),
-                correct_source=package_name,
-                current_import=v.current_import,
-                suggested_import=v.suggested_import,
+        violations: list[nem.NamespaceSourceViolation] = []
+        for raw in violations_cst:
+            violation_type = getattr(raw, "violation_type", "")
+            file_value = getattr(raw, "file", "")
+            line_value = getattr(raw, "line", 0)
+            current_import = getattr(raw, "current_import", "")
+            suggested_import = getattr(raw, "suggested_import", "")
+            if violation_type != "wrong_source":
+                continue
+            if not isinstance(file_value, str):
+                continue
+            if not isinstance(line_value, int):
+                continue
+            if not isinstance(current_import, str):
+                continue
+            if not isinstance(suggested_import, str):
+                continue
+            alias = (
+                current_import.rsplit(" ", maxsplit=1)[-1]
+                if " " in current_import
+                else ""
             )
-            for v in violations_cst
-            if v.violation_type == "wrong_source"
-        ]
+            current_source = (
+                current_import.split(" ")[1] if " " in current_import else ""
+            )
+            violations.append(
+                nem.NamespaceSourceViolation.create(
+                    file=file_value,
+                    line=line_value,
+                    alias=alias,
+                    current_source=current_source,
+                    correct_source=package_name,
+                    current_import=current_import,
+                    suggested_import=suggested_import,
+                ),
+            )
+        return violations
 
     @staticmethod
     def _discover_project_package_name(*, project_root: Path) -> str:
@@ -125,3 +161,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         if len(package_dirs) == 0:
             return ""
         return package_dirs[0].name
+
+    @classmethod
+    def discover_project_package_name(cls, *, project_root: Path) -> str:
+        return cls._discover_project_package_name(project_root=project_root)
