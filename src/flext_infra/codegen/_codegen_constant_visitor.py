@@ -85,6 +85,17 @@ def canonical_reference_for(name: str, value_repr: str) -> str:
     return ""
 
 
+def is_mro_passthrough(value_repr: str) -> bool:
+    """Return True when value_repr references a parent constants class (MRO bridge).
+
+    MRO pass-throughs like ``FlextConstants.Network.DEFAULT_TIMEOUT`` are not
+    hardcoded — they inherit the canonical value from a parent class. These
+    must be exempt from NS-004 (unused) detection because child projects
+    consume them via MRO inheritance.
+    """
+    return bool(re.match(r"Flext\w*Constants\.", value_repr))
+
+
 class _CodeRenderContext:
     """Lightweight helper to extract source text and line numbers from CST nodes."""
 
@@ -142,7 +153,7 @@ class ConstantDeclarationVisitor(cst.CSTVisitor):
         if not isinstance(node.target, cst.Name) or node.value is None:
             return
         type_annotation = self._render.node_code(node.annotation.annotation)
-        if "Final" not in type_annotation and "ClassVar" not in type_annotation:
+        if "Final" not in type_annotation:
             return
         self.definitions.append(
             m.Infra.ConstantDefinition(
@@ -258,6 +269,7 @@ def detect_unused_constants(
         )
         for definition in definitions
         if definition.name not in all_used_names
+        and not is_mro_passthrough(definition.value_repr)
     ]
 
 
@@ -269,6 +281,7 @@ __all__ = [
     "detect_hardcoded_canonicals",
     "detect_unused_constants",
     "extract_constant_definitions",
+    "is_mro_passthrough",
     "root_name",
     "scan_constant_usages",
 ]
