@@ -16,8 +16,7 @@ from pathlib import Path
 
 from flext_core import r
 
-from flext_infra import output, u
-from flext_infra.models import m
+from flext_infra import m, output, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService

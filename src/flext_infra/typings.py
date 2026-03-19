@@ -15,12 +15,11 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import TypeAlias
 
 from flext_core import FlextTypes
 from pydantic import BaseModel
 
-from flext_infra.constants import c
+from flext_infra import c
 
 
 class FlextInfraTypes(FlextTypes):
@@ -67,13 +66,13 @@ class FlextInfraTypes(FlextTypes):
         "Recursive infrastructure value: primitive, nested dict/list, or null."
         type ContainerDict = dict[str, InfraValue]
         "Dict with string keys and infra values (project reports, etc.)."
-        TomlScalar: TypeAlias = str | int | float | bool | None
+        type TomlScalar = str | int | float | bool | None
         "TOML scalar value (null, string, integer, float, boolean)."
-        TomlValue: TypeAlias = (
+        type TomlValue = (
             str | int | float | bool | None | dict[str, InfraValue] | list[InfraValue]
         )
         "Recursive TOML value (scalar, table, or array)."
-        TomlConfig: TypeAlias = dict[str, InfraValue]
+        type TomlConfig = dict[str, InfraValue]
         "Top-level TOML document mapping."
         type ContainerReport = dict[str, ContainerDict]
         "Nested container dict (project-level reports)."
@@ -106,9 +105,9 @@ class FlextInfraTypes(FlextTypes):
         "Class-nesting policy matrix keyed by module family."
         type ClassFamilyMap = Mapping[str, str]
         "Mapping from symbol name to resolved module family."
-        MetricValue: TypeAlias = FlextTypes.Scalar | Path | None
+        type MetricValue = FlextTypes.Scalar | Path | None
         "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
-        MetricRecord: TypeAlias = BaseModel | Mapping[str, MetricValue]
+        type MetricRecord = BaseModel | Mapping[str, MetricValue]
         "A single metric record: a Pydantic model or a string-keyed mapping of metric values."
 
 

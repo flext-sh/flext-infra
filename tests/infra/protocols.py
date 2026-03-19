@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from flext_tests.protocols import p
+from flext_tests import p
 
 from flext_infra import FlextInfraProtocols
 

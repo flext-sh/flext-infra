@@ -16,8 +16,7 @@ from typing import Protocol, runtime_checkable
 
 from flext_core import FlextProtocols, r
 
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import m, t
 
 
 class FlextInfraProtocols(FlextProtocols):

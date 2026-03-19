@@ -12,7 +12,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra.constants import c
+from flext_infra import c
 from flext_infra.docs.shared import FlextInfraDocsShared
 
 from ...models import m

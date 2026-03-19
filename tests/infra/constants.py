@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from flext_tests.constants import c
+from flext_tests import c
 
 from flext_infra import FlextInfraConstants
 
