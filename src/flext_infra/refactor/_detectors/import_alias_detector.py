@@ -10,6 +10,7 @@ from flext_infra.refactor._detectors.module_loader import (
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
+from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
 
 
 @runtime_checkable
@@ -26,14 +27,22 @@ class _ImportNormalizerTransformerLike(Protocol):
 class ImportAliasDetector(p.Infra.Scanner):
     """Detect deep import paths that should use top-level aliases."""
 
-    RUNTIME_ALIAS_NAMES_BY_PACKAGE: ClassVar[dict[str, tuple[str, ...]]] = {
-        "flext_core": ("c", "m", "r", "t", "u", "p", "d", "e", "h", "s", "x"),
-        "flext_infra": ("c", "m", "t", "u", "p"),
-    }
+    _alias_cache: ClassVar[dict[str, tuple[str, ...]] | None] = None
+
+    @classmethod
+    def _get_alias_map(
+        cls, workspace_root: Path | None = None
+    ) -> dict[str, tuple[str, ...]]:
+        if cls._alias_cache is not None:
+            return cls._alias_cache
+        root = workspace_root if workspace_root is not None else Path.cwd()
+        cls._alias_cache = ProjectAliasDiscovery.discover_workspace_aliases(root)
+        return cls._alias_cache
 
     @classmethod
     def _suggest_alias_import(cls, *, package: str, imported_names: list[str]) -> str:
-        allowed = cls.RUNTIME_ALIAS_NAMES_BY_PACKAGE.get(package, ())
+        alias_map = cls._get_alias_map()
+        allowed = alias_map.get(package, ())
         allowed_set = set(allowed)
         unique_names = {name for name in imported_names if name in allowed_set}
         ordered_names = [name for name in allowed if name in unique_names]

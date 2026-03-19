@@ -394,12 +394,10 @@ def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
     parent_pkg = resolve_parent_package(pkg_dir)
     if parent_pkg.startswith(f"{package_name}.") or parent_pkg == package_name:
         return False, []
-    _NEVER_REWRITE = frozenset({"typings", "protocols"})
     cycle_edges: set[tuple[str, str]] = set()
     for cycle in cycles:
         edges = [(cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1)]
-        safe = [e for e in edges if e[0] not in _NEVER_REWRITE]
-        cycle_edges.update(safe)
+        cycle_edges.update(edges)
 
     all_changes: list[str] = []
     any_modified = False
@@ -413,11 +411,11 @@ def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
         new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
         changed = False
 
-        _CANONICAL = frozenset("c d e h m p r s t u x".split())
+        CANONICAL = frozenset(["c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x"])
         target_aliases = [
             alias
             for alias, mod_stem in lazy_map.items()
-            if mod_stem == target_mod and alias in _CANONICAL
+            if mod_stem == target_mod and alias in CANONICAL
         ]
         if not target_aliases:
             continue

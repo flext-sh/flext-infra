@@ -15,10 +15,10 @@ from flext_infra.refactor._function_dependency_collector import (
     FunctionDependencyCollector,
 )
 from flext_infra.refactor._import_dependency_collector import ImportDependencyCollector
-from flext_infra.transformers.violation_census_visitor import ViolationCensusVisitor
 from flext_infra.refactor.class_nesting_analyzer import (
     FlextInfraRefactorClassNestingAnalyzer,
 )
+from flext_infra.transformers.violation_census_visitor import ViolationCensusVisitor
 
 
 class FlextInfraRefactorViolationAnalyzer:

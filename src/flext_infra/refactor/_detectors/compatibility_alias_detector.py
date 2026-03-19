@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import libcst as cst
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
+
+import libcst as cst
 
 from flext_infra import m, p
 from flext_infra.refactor._detectors.module_loader import (
@@ -68,7 +69,7 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         if file_path.suffix != ".py":
             return []
         try:
-            tree = cst.parse_module(file_path.read_text())
+            tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
         except cst.ParserSyntaxError:
             return []
         violations: list[nem.CompatibilityAliasViolation] = []

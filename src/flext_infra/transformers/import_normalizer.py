@@ -162,9 +162,7 @@ def _load_import_normalization_config() -> Mapping[str, t.Infra.InfraValue]:
     loaded = u.Infra.safe_load_yaml(rules_path)
     root = loaded.get("import_normalization")
     if isinstance(root, Mapping):
-        normalized: dict[str, t.Infra.InfraValue] = {}
-        for key, value in root.items():
-            normalized[key] = value
+        normalized: dict[str, t.Infra.InfraValue] = dict(root.items())
         return normalized
     return {}
 
@@ -188,10 +186,9 @@ def _facade_filenames() -> tuple[str, ...]:
     config = _load_import_normalization_config().get("facade_filenames")
     if not isinstance(config, list):
         return ()
-    output: list[str] = []
-    for item in config:
-        if isinstance(item, str) and item.endswith(".py"):
-            output.append(item)
+    output: list[str] = [
+        item for item in config if isinstance(item, str) and item.endswith(".py")
+    ]
     return tuple(output)
 
 

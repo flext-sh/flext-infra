@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import libcst as cst
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
+
+import libcst as cst
 
 from flext_infra import m, p
 from flext_infra.refactor._models_namespace_enforcer import (
@@ -68,7 +69,7 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         if file_path.name == "py.typed":
             return []
         try:
-            tree = cst.parse_module(file_path.read_text())
+            tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
         except cst.ParserSyntaxError:
             return []
         if len(tree.body) == 0:

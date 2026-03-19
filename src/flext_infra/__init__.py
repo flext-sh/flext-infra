@@ -290,6 +290,7 @@ if TYPE_CHECKING:
     from flext_infra.transformers.policy import (
         FlextInfraRefactorTransformerPolicyUtilities,
     )
+    from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
     )
@@ -916,6 +917,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "OutputBackend": ("flext_infra._utilities.output", "OutputBackend"),
     "PostCheckGate": ("flext_infra.refactor.validation", "PostCheckGate"),
     "PreCheckGate": ("flext_infra.rules.class_reconstructor", "PreCheckGate"),
+    "ProjectAliasDiscovery": (
+        "flext_infra.transformers.project_discovery",
+        "ProjectAliasDiscovery",
+    ),
     "ProjectClassifier": (
         "flext_infra.refactor.project_classifier",
         "ProjectClassifier",
@@ -1157,6 +1162,7 @@ __all__ = [
     "OutputBackend",
     "PostCheckGate",
     "PreCheckGate",
+    "ProjectAliasDiscovery",
     "ProjectClassifier",
     "ProjectResult",
     "RuntimeAliasDetector",

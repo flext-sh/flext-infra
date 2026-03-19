@@ -26,43 +26,6 @@ class FlextInfraRefactorConstants:
     })
     NAMESPACE_SOURCE_UNIVERSAL_ALIASES: ClassVar[frozenset[str]] = frozenset({"r"})
 
-    RUNTIME_ALIAS_NAMES_BY_PACKAGE: ClassVar[dict[str, tuple[str, ...]]] = {
-        "flext_core": ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x"),
-        "flext_infra": ("c", "m", "p", "r", "s", "t", "u"),
-        "flext_api": ("c", "m", "p", "t", "u"),
-        "flext_auth": ("c", "m", "p", "s", "t", "u", "x"),
-        "flext_cli": ("c", "m", "p", "s", "t", "u", "x"),
-        "flext_db_oracle": ("c", "e", "m", "p", "s", "t", "u"),
-        "flext_dbt_ldap": ("c", "m", "p", "s", "t", "u"),
-        "flext_dbt_ldif": ("c", "m", "p", "s", "t", "u"),
-        "flext_dbt_oracle": ("c", "m", "p", "t", "u"),
-        "flext_dbt_oracle_wms": ("c", "m", "p", "s", "t", "u"),
-        "flext_grpc": ("c", "m", "p", "t", "u"),
-        "flext_ldap": ("c", "m", "p", "s", "t", "u"),
-        "flext_ldif": ("c", "d", "m", "p", "r", "s", "t", "u"),
-        "flext_meltano": ("c", "m", "p", "r", "s", "t", "u"),
-        "flext_observability": ("c", "m", "p", "t", "u"),
-        "flext_oracle_oic": ("c", "m", "p", "s", "t", "u"),
-        "flext_oracle_wms": ("c", "e", "m", "p", "t", "u"),
-        "flext_plugin": ("c", "h", "m", "p", "s", "t", "u"),
-        "flext_quality": ("c", "m", "p", "r", "s", "t", "u"),
-        "flext_tap_ldap": ("c", "m", "p", "t", "u"),
-        "flext_tap_ldif": ("c", "m", "p", "t", "u"),
-        "flext_tap_oracle": ("c", "m", "p", "s", "t", "u"),
-        "flext_tap_oracle_oic": ("c", "m", "p", "t", "u"),
-        "flext_tap_oracle_wms": ("c", "m", "p", "t", "u"),
-        "flext_target_ldap": ("c", "m", "p", "r", "s", "t", "u"),
-        "flext_target_ldif": ("c", "m", "p", "t", "u"),
-        "flext_target_oracle": ("c", "e", "m", "p", "s", "t", "u"),
-        "flext_target_oracle_oic": ("c", "m", "p", "t", "u"),
-        "flext_target_oracle_wms": ("c", "m", "p", "t", "u"),
-        "flext_tests": ("c", "m", "p", "s", "t", "u"),
-        "flext_web": ("c", "h", "m", "p", "t", "u"),
-        "gruponos_meltano_native": ("c", "m", "p", "r", "t", "u"),
-        "algar_oud_mig": ("c", "m", "p", "r", "s", "t", "u"),
-    }
-    "Package → exported single-letter aliases for import normalization."
-
     FACADE_FILE_DECLARES_ALIAS: ClassVar[dict[str, str]] = {
         "constants.py": "c",
         "typings.py": "t",
@@ -312,36 +275,6 @@ class FlextInfraRefactorConstants:
         Path("rules") / "class-nesting-mappings.yml"
     )
     "Relative path from the refactor package to the nesting mappings YAML."
-    VIOLATION_PATTERNS: ClassVar[Mapping[str, re.Pattern[str]]] = {
-        "container_invariance": re.compile(
-            r"\bdict\s*\[\s*str\s*,\s*t\.(?:Container|object)\s*\]",
-        ),
-        "redundant_cast": re.compile(r"\bcast\s*\(\s*[\"'][^\"']+[\"']\s*,"),
-        "direct_submodule_import": re.compile(
-            r"\bfrom\s+flext_core\.[\w\.]+\s+import\b",
-        ),
-        "legacy_typing_mapping": re.compile(
-            r"\bfrom\s+typing\s+import\s+.*\bMapping\b",
-        ),
-        "runtime_alias_violation": re.compile(
-            r"\bfrom\s+flext_core\s+import\s+(?!.*\b(?:c|m|r|t|u|p|d|e|h|s|x)\b).*",
-        ),
-        "strenum_usage": re.compile(
-            r"\bclass\s+[A-Za-z_][A-Za-z0-9_]*\s*\(\s*(?:\w+\.)?StrEnum\s*\)",
-        ),
-        "literal_usage": re.compile(r"\bLiteral\s*\["),
-        "manual_mapping_constant": re.compile(
-            r"^\s*[A-Z][A-Z0-9_]*\s*(?::\s*[^=]+)?=\s*\{",
-            re.MULTILINE,
-        ),
-        "manual_typing_alias": re.compile(
-            r"(?m)^\s*(?:type\s+[A-Za-z_][A-Za-z0-9_]*\s*=|[A-Za-z_][A-Za-z0-9_]*\s*:\s*TypeAlias\s*=)",
-        ),
-        "compatibility_alias": re.compile(
-            r"(?m)^\s*[A-Za-z_][A-Za-z0-9_]*\s*=\s*[A-Za-z_][A-Za-z0-9_]*\s*$",
-        ),
-    }
-    "DEPRECATED: Regex patterns for violation analysis. Being migrated to ViolationCensusVisitor (SSOT). Will be removed after CST replacement is complete."
     MODEL_TOKENS: ClassVar[tuple[str, ...]] = (
         "model",
         "schema",

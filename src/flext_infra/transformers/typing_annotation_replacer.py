@@ -108,20 +108,17 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
             self._current_function in self.DUNDER_OBJECT_ALLOWLIST
             or self._current_function_is_typeguard
         )
-        if not skip:
-            if updated_node.annotation is not None:
-                replacement = self._replace_expression(
-                    updated_node.annotation.annotation
+        if not skip and updated_node.annotation is not None:
+            replacement = self._replace_expression(updated_node.annotation.annotation)
+            if replacement is not None:
+                result_node = updated_node.with_changes(
+                    annotation=updated_node.annotation.with_changes(
+                        annotation=replacement
+                    ),
                 )
-                if replacement is not None:
-                    result_node = updated_node.with_changes(
-                        annotation=updated_node.annotation.with_changes(
-                            annotation=replacement
-                        ),
-                    )
-                    self._mark_modified(
-                        "Replaced parameter annotation: object -> t.ContainerValue"
-                    )
+                self._mark_modified(
+                    "Replaced parameter annotation: object -> t.ContainerValue"
+                )
         self._param_depth = max(0, self._param_depth - 1)
         return result_node
 
@@ -202,23 +199,19 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
             }:
                 return True
         fn_name = node.name.value
-        is_guard_name = fn_name.startswith("is_") or fn_name.startswith("_is_")
-        if is_guard_name and isinstance(ann, cst.Name) and ann.value == "bool":
-            return True
-        return False
+        is_guard_name = fn_name.startswith(("is_", "_is_"))
+        return bool(is_guard_name and isinstance(ann, cst.Name) and ann.value == "bool")
 
     @staticmethod
     def _is_object_ref(node: cst.BaseExpression) -> bool:
         if isinstance(node, cst.Name) and node.value == "object":
             return True
-        if (
+        return bool(
             isinstance(node, cst.Attribute)
             and isinstance(node.value, cst.Name)
             and node.value.value == "builtins"
             and node.attr.value == "object"
-        ):
-            return True
-        return False
+        )
 
     def _replace_expression(
         self, node: cst.BaseExpression

@@ -163,14 +163,12 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
     def _is_object_name(self, node: cst.BaseExpression) -> bool:
         if isinstance(node, cst.Name) and node.value == "object":
             return True
-        if (
+        return bool(
             isinstance(node, cst.Attribute)
             and isinstance(node.value, cst.Name)
             and node.value.value == "builtins"
             and node.attr.value == "object"
-        ):
-            return True
-        return False
+        )
 
     def _has_typeguard_return(self, node: cst.FunctionDef) -> bool:
         if node.returns is None:
@@ -184,10 +182,8 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
             }:
                 return True
         fn_name = node.name.value
-        is_guard_name = fn_name.startswith("is_") or fn_name.startswith("_is_")
-        if is_guard_name and isinstance(ann, cst.Name) and ann.value == "bool":
-            return True
-        return False
+        is_guard_name = fn_name.startswith(("is_", "_is_"))
+        return bool(is_guard_name and isinstance(ann, cst.Name) and ann.value == "bool")
 
     def _get_subscript_name(self, node: cst.Subscript) -> str:
         if isinstance(node.value, cst.Name):

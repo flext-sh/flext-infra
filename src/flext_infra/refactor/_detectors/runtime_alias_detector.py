@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import libcst as cst
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
+
+import libcst as cst
 
 from flext_infra import c, m, p
 from flext_infra.refactor._models_namespace_enforcer import (
@@ -79,7 +80,7 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
         try:
-            tree = cst.parse_module(file_path.read_text())
+            tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
         except cst.ParserSyntaxError:
             return []
         violations: list[nem.RuntimeAliasViolation] = []
