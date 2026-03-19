@@ -208,7 +208,11 @@ def extract_constant_definitions(
     project: str,
 ) -> list[m.Infra.ConstantDefinition]:
     """Parse constants.py with libcst, extract all Final/ClassVar declarations."""
-    tree = cst.parse_module(file_path.read_text("utf-8"))
+    try:
+        source = file_path.read_text("utf-8")
+        tree = cst.parse_module(source)
+    except (cst.ParserSyntaxError, UnicodeDecodeError):
+        return []
     visitor = ConstantDeclarationVisitor(project=project, file_path=str(file_path))
     tree.visit(visitor)
     return visitor.definitions
@@ -219,7 +223,11 @@ def scan_constant_usages(
     project: str,
 ) -> tuple[set[str], list[m.Infra.DirectConstantRef]]:
     """Parse a Python file with libcst, find c.* usages and direct refs."""
-    tree = cst.parse_module(file_path.read_text("utf-8"))
+    try:
+        source = file_path.read_text("utf-8")
+        tree = cst.parse_module(source)
+    except (cst.ParserSyntaxError, UnicodeDecodeError):
+        return set(), []
     visitor = ConstantUsageVisitor(project=project, file_path=str(file_path))
     tree.visit(visitor)
     return visitor.used_constants, visitor.direct_refs
