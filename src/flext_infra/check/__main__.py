@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from flext_infra import run_cli, u
+from flext_infra.utilities import u
 
 
 class FlextInfraCheckCommand:

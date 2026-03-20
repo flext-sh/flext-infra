@@ -5,7 +5,7 @@ from typing import ClassVar, Final
 
 from yaml import safe_load
 
-from flext_infra import m
+from flext_infra.models import m
 
 
 class FlextInfraCodegenGovernance:

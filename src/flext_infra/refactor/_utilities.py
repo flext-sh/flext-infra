@@ -18,15 +18,8 @@ import libcst as cst
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
 from flext_core import r
-from flext_infra import (
-    FlextInfraUtilitiesIo,
-    FlextInfraUtilitiesParsing,
-    FlextInfraUtilitiesSubprocess,
-    FlextInfraUtilitiesYaml,
-    c,
-    m,
-    t,
-)
+from flext_infra import c, t
+from flext_infra.models import m
 
 
 class FlextInfraUtilitiesRefactor:

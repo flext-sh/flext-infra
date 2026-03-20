@@ -8,7 +8,8 @@ import tomlkit
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
-from flext_infra import c, u
+from flext_infra import c
+from flext_infra.utilities import u
 
 
 class EnsureNamespaceToolingPhase:

@@ -3,14 +3,16 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Final, override
+from typing import TYPE_CHECKING, Final, override
 
 import libcst as cst
 
-from flext_infra import m
 from flext_infra.codegen._codegen_constant_visitor import (
     FlextInfraCodegenConstantDetection,
 )
+
+if TYPE_CHECKING:
+    from flext_infra import m
 
 
 class FlextInfraCodegenConstantTransformation:

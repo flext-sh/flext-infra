@@ -4,7 +4,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import m
+from flext_infra.models import m
 
 
 class TopLevelClassCollector(cst.CSTVisitor):

@@ -8,7 +8,9 @@ from typing import Annotated, Protocol, runtime_checkable
 from pydantic import ConfigDict, Field, TypeAdapter, ValidationError
 
 from flext_core import FlextModels
-from flext_infra import c, m, t as t_infra, u
+from flext_infra import c
+from flext_infra.models import m
+from flext_infra.utilities import u
 
 
 class FlextInfraGateContext(FlextModels.FrozenStrictModel):

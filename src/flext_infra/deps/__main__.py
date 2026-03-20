@@ -11,7 +11,7 @@ import sys
 from collections.abc import Mapping
 from types import MappingProxyType
 
-from flext_infra import output, u
+from flext_infra.utilities import u
 
 _SUBCOMMAND_MODULES: Mapping[str, str] = MappingProxyType({
     "detect": "flext_infra.deps.detector",

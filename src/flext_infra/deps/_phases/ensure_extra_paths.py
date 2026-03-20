@@ -6,7 +6,7 @@ from pathlib import Path
 
 import tomlkit
 
-from flext_infra import FlextInfraExtraPathsManager, u
+from flext_infra.utilities import u
 
 
 class EnsureExtraPathsPhase:

@@ -19,20 +19,13 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra import (
-    FlextInfraBaseMkValidator,
-    FlextInfraInventoryService,
-    FlextInfraPytestDiagExtractor,
-    FlextInfraSkillValidator,
-    FlextInfraStubSupplyChain,
-    FlextInfraTextPatternScanner,
-    c,
-    m,
-    output,
-    t,
-    u,
-)
+from flext_infra import c, t
+from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import m
 
 
 class FlextInfraValidateCommand:

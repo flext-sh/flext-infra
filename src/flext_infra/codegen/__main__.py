@@ -18,17 +18,8 @@ import json
 import sys
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraCodegenCensus,
-    FlextInfraCodegenConstantsQualityGate,
-    FlextInfraCodegenFixer,
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenPyTyped,
-    FlextInfraCodegenScaffolder,
-    c,
-    output,
-    u,
-)
+from flext_infra import c
+from flext_infra.utilities import u
 
 
 class FlextInfraCodegenCommand:

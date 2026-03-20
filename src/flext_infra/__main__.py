@@ -30,7 +30,9 @@ from typing import ClassVar, override
 
 from flext_core import r
 from flext_core.service import FlextService
-from flext_infra import c, output, u
+from flext_infra import c
+from flext_infra._utilities.output import output
+from flext_infra.utilities import u
 
 
 class FlextInfraMainCLI(FlextService[int]):

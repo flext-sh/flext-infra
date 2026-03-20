@@ -4,8 +4,14 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkTemplateEngine, m, u
+from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import m
 
 
 def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:

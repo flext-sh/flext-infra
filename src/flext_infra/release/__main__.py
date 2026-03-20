@@ -14,7 +14,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra import FlextInfraReleaseOrchestrator, c, m, output, u
+from flext_infra import c
+from flext_infra.models import m
+from flext_infra.utilities import u
 
 
 def _resolve_version(

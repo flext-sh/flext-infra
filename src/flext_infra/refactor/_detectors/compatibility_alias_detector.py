@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import libcst as cst
 
-from flext_infra import DetectorScanResultBuilder, m, p
+from flext_infra import p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
+
+if TYPE_CHECKING:
+    from flext_infra import m
 
 
 class CompatibilityAliasDetector(p.Infra.Scanner):

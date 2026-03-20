@@ -2,15 +2,18 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
 from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
-from flext_infra import DetectorScanResultBuilder, c, m, p
+from flext_infra import c, p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
+
+if TYPE_CHECKING:
+    from flext_infra import m
 
 
 class ClassPlacementDetector(p.Infra.Scanner):

@@ -7,7 +7,9 @@ from pathlib import Path
 from pydantic import TypeAdapter, ValidationError
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c
+from flext_infra.models import m
+from flext_infra.utilities import u
 
 from .import_collector import ImportCollector
 

@@ -5,10 +5,11 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import c, u
+from flext_infra import c
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
+from flext_infra.utilities import u
 
 
 class CyclicImportDetector:

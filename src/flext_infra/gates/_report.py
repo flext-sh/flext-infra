@@ -6,7 +6,8 @@ from collections.abc import Sequence
 
 from pydantic import JsonValue
 
-from flext_infra import c, m
+from flext_infra import c
+from flext_infra.models import m
 
 
 class FlextInfraCheckReporter:

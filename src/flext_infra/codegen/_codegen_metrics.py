@@ -5,9 +5,10 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flext_infra import c, m, t
+from flext_infra import c, t
 from flext_infra.codegen._codegen_coercion import FlextInfraCodegenCoercion
 from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
+from flext_infra.models import m
 
 
 class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGeneration):

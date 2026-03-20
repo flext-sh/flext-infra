@@ -16,15 +16,8 @@ from __future__ import annotations
 import sys
 from argparse import ArgumentParser
 
-from flext_infra import (
-    FlextInfraDocAuditor,
-    FlextInfraDocBuilder,
-    FlextInfraDocFixer,
-    FlextInfraDocGenerator,
-    FlextInfraDocValidator,
-    c,
-    u,
-)
+from flext_infra import c
+from flext_infra.utilities import u
 
 
 class FlextInfraDocsCommand:
