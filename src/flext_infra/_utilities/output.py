@@ -15,7 +15,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Final, TextIO
 
-from flext_infra import FlextInfraUtilitiesTerminal, t
+from flext_infra import t
+from flext_infra._utilities.terminal import FlextInfraUtilitiesTerminal
 from flext_infra.constants import FlextInfraConstants as c
 
 

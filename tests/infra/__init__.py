@@ -72,7 +72,7 @@ if TYPE_CHECKING:
         TestScanFileBatch,
         TestScanModels,
     )
-    from .unit.basemk.engine import (
+    from .unit.basemk.test_engine import (
         test_basemk_cli_generate_to_file,
         test_basemk_cli_generate_to_stdout,
         test_basemk_engine_execute_calls_render_all,
@@ -85,7 +85,7 @@ if TYPE_CHECKING:
         test_render_all_generates_large_makefile,
         test_render_all_has_no_scripts_path_references,
     )
-    from .unit.basemk.generator import (
+    from .unit.basemk.test_generator import (
         test_generator_execute_returns_generated_content,
         test_generator_generate_propagates_render_failure,
         test_generator_generate_with_basemk_config_object,
@@ -99,7 +99,7 @@ if TYPE_CHECKING:
         test_generator_write_to_file,
         test_generator_write_to_stream,
     )
-    from .unit.basemk.generator_edge_cases import (
+    from .unit.basemk.test_generator_edge_cases import (
         test_generator_normalize_config_with_basemk_config,
         test_generator_normalize_config_with_dict,
         test_generator_normalize_config_with_invalid_dict,
@@ -108,15 +108,15 @@ if TYPE_CHECKING:
         test_generator_write_handles_file_permission_error,
         test_generator_write_to_stream_handles_oserror,
     )
-    from .unit.basemk.init import TestFlextInfraBaseMk
-    from .unit.basemk.main import (
+    from .unit.basemk.test_init import TestFlextInfraBaseMk
+    from .unit.basemk.test_main import (
         test_basemk_build_config_with_none,
         test_basemk_build_config_with_project_name,
-        test_basemk_main_calls_sys_exit,
         test_basemk_main_ensures_structlog_configured,
         test_basemk_main_output_to_stdout,
         test_basemk_main_with_generate_command,
         test_basemk_main_with_generation_failure,
+        test_basemk_main_with_help,
         test_basemk_main_with_invalid_command,
         test_basemk_main_with_no_command,
         test_basemk_main_with_none_argv,
@@ -1363,7 +1363,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "TestFixerScope": ("tests.infra.unit.docs.fixer_internals", "TestFixerScope"),
     "TestFixerToc": ("tests.infra.unit.docs.fixer_internals", "TestFixerToc"),
-    "TestFlextInfraBaseMk": ("tests.infra.unit.basemk.init", "TestFlextInfraBaseMk"),
+    "TestFlextInfraBaseMk": (
+        "tests.infra.unit.basemk.test_init",
+        "TestFlextInfraBaseMk",
+    ),
     "TestFlextInfraCheck": ("tests.infra.unit.check.init", "TestFlextInfraCheck"),
     "TestFlextInfraCodegenLazyInit": (
         "tests.infra.unit.codegen.lazy_init_service",
@@ -2483,79 +2486,79 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "test_atomic_write_ok",
     ),
     "test_basemk_build_config_with_none": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_build_config_with_none",
     ),
     "test_basemk_build_config_with_project_name": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_build_config_with_project_name",
     ),
     "test_basemk_cli_generate_to_file": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_basemk_cli_generate_to_file",
     ),
     "test_basemk_cli_generate_to_stdout": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_basemk_cli_generate_to_stdout",
     ),
     "test_basemk_engine_execute_calls_render_all": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_basemk_engine_execute_calls_render_all",
     ),
     "test_basemk_engine_render_all_handles_template_error": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_basemk_engine_render_all_handles_template_error",
     ),
     "test_basemk_engine_render_all_returns_string": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_basemk_engine_render_all_returns_string",
     ),
     "test_basemk_engine_render_all_with_valid_config": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_basemk_engine_render_all_with_valid_config",
     ),
-    "test_basemk_main_calls_sys_exit": (
-        "tests.infra.unit.basemk.main",
-        "test_basemk_main_calls_sys_exit",
-    ),
     "test_basemk_main_ensures_structlog_configured": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_ensures_structlog_configured",
     ),
     "test_basemk_main_output_to_stdout": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_output_to_stdout",
     ),
     "test_basemk_main_with_generate_command": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_with_generate_command",
     ),
     "test_basemk_main_with_generation_failure": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_with_generation_failure",
     ),
+    "test_basemk_main_with_help": (
+        "tests.infra.unit.basemk.test_main",
+        "test_basemk_main_with_help",
+    ),
     "test_basemk_main_with_invalid_command": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_with_invalid_command",
     ),
     "test_basemk_main_with_no_command": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_with_no_command",
     ),
     "test_basemk_main_with_none_argv": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_with_none_argv",
     ),
     "test_basemk_main_with_output_file": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_with_output_file",
     ),
     "test_basemk_main_with_project_name": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_with_project_name",
     ),
     "test_basemk_main_with_write_failure": (
-        "tests.infra.unit.basemk.main",
+        "tests.infra.unit.basemk.test_main",
         "test_basemk_main_with_write_failure",
     ),
     "test_build_impact_map_extracts_rename_entries": (
@@ -2768,91 +2771,91 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "test_flext_infra_pyproject_modernizer_process_file_invalid_toml",
     ),
     "test_generator_execute_returns_generated_content": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_execute_returns_generated_content",
     ),
     "test_generator_fails_for_invalid_make_syntax": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_generator_fails_for_invalid_make_syntax",
     ),
     "test_generator_generate_propagates_render_failure": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_generate_propagates_render_failure",
     ),
     "test_generator_generate_with_basemk_config_object": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_generate_with_basemk_config_object",
     ),
     "test_generator_generate_with_dict_config": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_generate_with_dict_config",
     ),
     "test_generator_generate_with_invalid_dict_config": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_generate_with_invalid_dict_config",
     ),
     "test_generator_generate_with_none_config_uses_default": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_generate_with_none_config_uses_default",
     ),
     "test_generator_initializes_with_custom_engine": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_initializes_with_custom_engine",
     ),
     "test_generator_initializes_with_default_engine": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_initializes_with_default_engine",
     ),
     "test_generator_normalize_config_with_basemk_config": (
-        "tests.infra.unit.basemk.generator_edge_cases",
+        "tests.infra.unit.basemk.test_generator_edge_cases",
         "test_generator_normalize_config_with_basemk_config",
     ),
     "test_generator_normalize_config_with_dict": (
-        "tests.infra.unit.basemk.generator_edge_cases",
+        "tests.infra.unit.basemk.test_generator_edge_cases",
         "test_generator_normalize_config_with_dict",
     ),
     "test_generator_normalize_config_with_invalid_dict": (
-        "tests.infra.unit.basemk.generator_edge_cases",
+        "tests.infra.unit.basemk.test_generator_edge_cases",
         "test_generator_normalize_config_with_invalid_dict",
     ),
     "test_generator_normalize_config_with_none": (
-        "tests.infra.unit.basemk.generator_edge_cases",
+        "tests.infra.unit.basemk.test_generator_edge_cases",
         "test_generator_normalize_config_with_none",
     ),
     "test_generator_renders_with_config_override": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_generator_renders_with_config_override",
     ),
     "test_generator_validate_generated_output_handles_oserror": (
-        "tests.infra.unit.basemk.generator_edge_cases",
+        "tests.infra.unit.basemk.test_generator_edge_cases",
         "test_generator_validate_generated_output_handles_oserror",
     ),
     "test_generator_write_creates_parent_directories": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_write_creates_parent_directories",
     ),
     "test_generator_write_fails_without_output_or_stream": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_write_fails_without_output_or_stream",
     ),
     "test_generator_write_handles_file_permission_error": (
-        "tests.infra.unit.basemk.generator_edge_cases",
+        "tests.infra.unit.basemk.test_generator_edge_cases",
         "test_generator_write_handles_file_permission_error",
     ),
     "test_generator_write_saves_output_file": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_generator_write_saves_output_file",
     ),
     "test_generator_write_to_file": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_write_to_file",
     ),
     "test_generator_write_to_stream": (
-        "tests.infra.unit.basemk.generator",
+        "tests.infra.unit.basemk.test_generator",
         "test_generator_write_to_stream",
     ),
     "test_generator_write_to_stream_handles_oserror": (
-        "tests.infra.unit.basemk.generator_edge_cases",
+        "tests.infra.unit.basemk.test_generator_edge_cases",
         "test_generator_write_to_stream_handles_oserror",
     ),
     "test_get_current_typings_from_pyproject_wrapper": (
@@ -3308,11 +3311,11 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "test_removes_unused_preserves_used_when_import_precedes_usage",
     ),
     "test_render_all_generates_large_makefile": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_render_all_generates_large_makefile",
     ),
     "test_render_all_has_no_scripts_path_references": (
-        "tests.infra.unit.basemk.engine",
+        "tests.infra.unit.basemk.test_engine",
         "test_render_all_has_no_scripts_path_references",
     ),
     "test_replace_project_version": (
@@ -4147,11 +4150,11 @@ __all__ = [
     "test_basemk_engine_render_all_handles_template_error",
     "test_basemk_engine_render_all_returns_string",
     "test_basemk_engine_render_all_with_valid_config",
-    "test_basemk_main_calls_sys_exit",
     "test_basemk_main_ensures_structlog_configured",
     "test_basemk_main_output_to_stdout",
     "test_basemk_main_with_generate_command",
     "test_basemk_main_with_generation_failure",
+    "test_basemk_main_with_help",
     "test_basemk_main_with_invalid_command",
     "test_basemk_main_with_no_command",
     "test_basemk_main_with_none_argv",

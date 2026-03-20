@@ -19,7 +19,8 @@ from pydantic import BaseModel
 
 from flext_core import FlextRuntime, r, t
 from flext_core.models import FlextModels
-from flext_infra import FlextInfraUtilitiesDiscovery, output
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.output import output
 from flext_infra.models import FlextInfraModels as m
 
 

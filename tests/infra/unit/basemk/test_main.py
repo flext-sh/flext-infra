@@ -10,7 +10,6 @@ import sys
 from io import StringIO
 from pathlib import Path
 
-import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
@@ -22,18 +21,6 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 def test_basemk_main_with_no_command(monkeypatch: MonkeyPatch) -> None:
     """Test main() with no command prints help and returns 1."""
     monkeypatch.setattr(sys, "argv", ["basemk"])
-    monkeypatch.setattr(
-        "flext_infra.basemk.__main__.output",
-        type(
-            "FakeOutput",
-            (),
-            {
-                "error": staticmethod(lambda *a, **kw: None),
-                "info": staticmethod(lambda *a, **kw: None),
-                "warning": staticmethod(lambda *a, **kw: None),
-            },
-        )(),
-    )
     result = main(argv=[])
     tm.that(result, eq=1)
 
@@ -65,22 +52,10 @@ def test_basemk_main_with_project_name(tmp_path: Path) -> None:
     tm.that(output_file.exists(), eq=True)
 
 
-def test_basemk_main_with_invalid_command(monkeypatch: MonkeyPatch) -> None:
-    """Test main() with invalid command raises SystemExit."""
-    monkeypatch.setattr(
-        "flext_infra.basemk.__main__.output",
-        type(
-            "FakeOutput",
-            (),
-            {
-                "error": staticmethod(lambda *a, **kw: None),
-                "info": staticmethod(lambda *a, **kw: None),
-                "warning": staticmethod(lambda *a, **kw: None),
-            },
-        )(),
-    )
-    with pytest.raises(SystemExit):
-        main(argv=["invalid"])
+def test_basemk_main_with_invalid_command() -> None:
+    """Test main() with invalid command returns 2."""
+    result = main(argv=["invalid"])
+    tm.that(result, eq=2)
 
 
 def test_basemk_main_ensures_structlog_configured(
@@ -145,12 +120,11 @@ def test_basemk_main_with_generation_failure(
     tm.that(result, eq=1)
 
 
-def test_basemk_main_calls_sys_exit(monkeypatch: MonkeyPatch) -> None:
-    """Test main() with --help raises SystemExit."""
+def test_basemk_main_with_help(monkeypatch: MonkeyPatch) -> None:
+    """Test main() with --help returns 0."""
     monkeypatch.setattr(sys, "stdout", StringIO())
-    with pytest.raises(SystemExit) as exc_info:
-        main(argv=["--help"])
-    tm.that(exc_info.value.code, eq=0)
+    result = main(argv=["--help"])
+    tm.that(result, eq=0)
 
 
 def test_basemk_main_with_write_failure(
