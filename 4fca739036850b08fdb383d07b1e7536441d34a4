@@ -1,0 +1,40 @@
+src/flext_infra/gates/_gate_registry.py
+  b279a83971a44010 8-25,33,43,47
+src/flext_infra/transformers/import_normalizer.py
+  368fb8be6b85b0b7 21-242,244-434,436,438-444,448-460,462-483,540-541,559
+src/flext_infra/_utilities/discovery.py
+  368fb8be6b85b0b7 105-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "4fca739036850b08fdb383d07b1e7536441d34a4",
+  "prompts": {
+    "368fb8be6b85b0b7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f74ae14fffeVDeXScl43zDHl2",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 543,
+      "total_deletions": 3,
+      "accepted_lines": 529,
+      "overriden_lines": 7
+    },
+    "b279a83971a44010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f73d7affffeiDJJeKXYaEabip",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 21,
+      "total_deletions": 24,
+      "accepted_lines": 21,
+      "overriden_lines": 0
+    }
+  }
+}
