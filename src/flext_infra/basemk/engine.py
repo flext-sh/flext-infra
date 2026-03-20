@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol, override
+from typing import override
 
 from jinja2 import (
     Environment,
@@ -16,20 +16,10 @@ from jinja2 import (
 from flext_infra import c, m, r, s
 
 
-class _TemplateRenderer(Protocol):
-    def render(
-        self,
-        *,
-        config: m.Infra.BaseMkConfig,
-        lint_gates_csv: str,
-    ) -> str: ...
-
-
 class FlextInfraBaseMkTemplateEngine(s[str]):
     """Render base.mk templates with configuration context."""
 
     def __init__(self) -> None:
-        """Initialize the template engine with Jinja2 environment."""
         super().__init__(
             config_type=None,
             config_overrides=None,
@@ -53,14 +43,8 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             autoescape=select_autoescape(),
         )
 
-    @classmethod
-    def default_config(cls) -> m.Infra.BaseMkConfig:
-        """Return the default base.mk configuration."""
-        return cls._default_config()
-
     @staticmethod
-    def _default_config() -> m.Infra.BaseMkConfig:
-        """Return the default base.mk configuration."""
+    def default_config() -> m.Infra.BaseMkConfig:
         return m.Infra.BaseMkConfig(
             project_name=c.Infra.Defaults.UNNAMED,
             python_version="3.13",
@@ -78,32 +62,20 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             test_command=c.Infra.Toml.PYTEST,
         )
 
-    @staticmethod
-    def _render_template(
-        template: _TemplateRenderer,
-        config: m.Infra.BaseMkConfig,
-        lint_gates_csv: str,
-    ) -> str:
-        return template.render(config=config, lint_gates_csv=lint_gates_csv)
-
     @override
     def execute(self) -> r[str]:
         return self.render_all()
 
     def render_all(self, config: m.Infra.BaseMkConfig | None = None) -> r[str]:
-        """Render all base.mk templates in order with the given configuration."""
-        active_config = config or self._default_config()
+        active_config = config or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
         sections: list[str] = []
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
-                template: _TemplateRenderer = self._environment.get_template(
-                    template_name,
-                )
-                rendered = self._render_template(
-                    template,
-                    active_config,
-                    lint_gates_csv,
+                template = self._environment.get_template(template_name)
+                rendered = template.render(
+                    config=active_config,
+                    lint_gates_csv=lint_gates_csv,
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"
