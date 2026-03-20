@@ -129,6 +129,3 @@ class TestPathDepPathsPoetry:
         }
         result = _manager().path_dep_paths_poetry(doc)
         tm.that(any("flext-core" in item for item in result), eq=True)
-
-
-def test_helpers_alias_exposed() -> None:
