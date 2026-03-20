@@ -67,7 +67,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         gates: list[str],
     ) -> JsonValue:
         """Generate a SARIF payload from gate results."""
-        return FlextInfraCheckReporter.sarif(results, gates)
+        return u.Infra.generate_sarif(results, gates)
 
     @staticmethod
     def parse_gate_csv(raw: str) -> list[str]:
@@ -106,7 +106,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         timestamp: str,
     ) -> str:
         """Generate a markdown summary report for check results."""
-        return FlextInfraCheckReporter.markdown(results, gates, timestamp)
+        return u.Infra.generate_markdown(results, gates, timestamp)
 
     def lint(self, project_dir: Path) -> r[m.Infra.GateResult]:
         """Run lint checks for one project."""

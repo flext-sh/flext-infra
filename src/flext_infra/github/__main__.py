@@ -136,7 +136,7 @@ def run_pr_workspace(
     }
     result = manager.orchestrate(
         workspace_root=cli.workspace,
-        projects=[cli.projects] if cli.projects else [],
+        projects=cli.projects if isinstance(cli.projects, list) else [],
         include_root=pr_args.include_root,
         branch=pr_args.branch,
         checkpoint=pr_args.checkpoint,
