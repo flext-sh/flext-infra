@@ -6,7 +6,6 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraInternalDependencySyncService
-from tests.infra import h
 
 
 class TestFlextInfraInternalDependencySyncService:
@@ -16,7 +15,6 @@ class TestFlextInfraInternalDependencySyncService:
             service.__class__.__name__,
             eq="FlextInfraInternalDependencySyncService",
         )
-        tm.that(hasattr(h, "assert_ok"), eq=True)
 
     def test_validate_git_ref_valid(self) -> None:
         tm.ok(

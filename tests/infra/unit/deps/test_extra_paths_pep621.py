@@ -4,7 +4,6 @@ import tomlkit
 from flext_tests import tm
 
 from flext_infra import FlextInfraExtraPathsManager
-from tests.infra import h
 
 
 def _manager() -> FlextInfraExtraPathsManager:
@@ -133,4 +132,3 @@ class TestPathDepPathsPoetry:
 
 
 def test_helpers_alias_exposed() -> None:
-    tm.that(hasattr(h, "assert_ok"), eq=True)

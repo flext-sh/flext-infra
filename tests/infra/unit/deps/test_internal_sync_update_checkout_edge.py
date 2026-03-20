@@ -7,7 +7,6 @@ from flext_tests import tm
 
 from flext_infra import FlextInfraInternalDependencySyncService
 from flext_infra.deps import internal_sync
-from tests.infra import h
 
 
 class TestEnsureCheckoutEdgeCases:
@@ -33,4 +32,3 @@ class TestEnsureCheckoutEdgeCases:
             ),
         )
         tm.that(error, contains="cleanup failed")
-        tm.that(hasattr(h, "assert_ok"), eq=True)

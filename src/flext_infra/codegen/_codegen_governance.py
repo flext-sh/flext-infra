@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Final
 
 from yaml import safe_load
 
@@ -10,7 +10,7 @@ from flext_infra import m
 
 class FlextInfraCodegenGovernance:
     _config_cache: ClassVar[dict[str, m.Infra.ConstantsGovernanceConfig]] = {}
-    _GOVERNANCE_FILE: ClassVar[Path] = (
+    GOVERNANCE_FILE: Final[Path] = (
         Path(__file__).parent.parent / "rules" / "constants-governance.yml"
     )
 
@@ -21,7 +21,7 @@ class FlextInfraCodegenGovernance:
             return cached
         raw: dict[str, object] = (
             safe_load(
-                FlextInfraCodegenGovernance._GOVERNANCE_FILE.read_text("utf-8"),
+                FlextInfraCodegenGovernance.GOVERNANCE_FILE.read_text("utf-8"),
             )
             or {}
         )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import ClassVar, override
+from typing import Final, override
 
 import libcst as cst
 
@@ -11,8 +11,8 @@ from flext_infra.codegen._codegen_governance import FlextInfraCodegenGovernance
 
 
 class FlextInfraCodegenConstantDetection:
-    _MIN_QUOTED_LITERAL_LEN: ClassVar[int] = 2
-    _MIN_DIRECT_REFERENCE_CHAIN: ClassVar[int] = 3
+    MIN_QUOTED_LITERAL_LEN: Final[int] = 2
+    MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 3
 
     class RenderContext:
         def __init__(self, source: str) -> None:
@@ -105,7 +105,7 @@ class FlextInfraCodegenConstantDetection:
             chain = det.attribute_chain(node)
             if (
                 len(chain)
-                < FlextInfraCodegenConstantDetection._MIN_DIRECT_REFERENCE_CHAIN
+                < FlextInfraCodegenConstantDetection.MIN_DIRECT_REFERENCE_CHAIN
             ):
                 return
             if not re.fullmatch(
@@ -150,7 +150,7 @@ class FlextInfraCodegenConstantDetection:
 
     @staticmethod
     def str_literal(value_repr: str) -> str | None:
-        if len(value_repr) < FlextInfraCodegenConstantDetection._MIN_QUOTED_LITERAL_LEN:
+        if len(value_repr) < FlextInfraCodegenConstantDetection.MIN_QUOTED_LITERAL_LEN:
             return None
         if value_repr[0] != value_repr[-1]:
             return None

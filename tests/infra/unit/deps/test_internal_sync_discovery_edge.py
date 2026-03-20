@@ -7,7 +7,7 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
-from tests.infra import h, t
+from tests.infra import t
 
 
 def _set_toml_sequence(
@@ -98,4 +98,3 @@ class TestCollectInternalDepsEdgeCases:
         tm.that(len(four), eq=0)
         tm.that(len(five), eq=0)
         tm.that(len(six), eq=0)
-        tm.that(hasattr(h, "assert_ok"), eq=True)

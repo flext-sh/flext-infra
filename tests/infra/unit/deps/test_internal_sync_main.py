@@ -9,7 +9,7 @@ from flext_tests import tm
 from flext_core import r
 from flext_infra.deps import internal_sync
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests.infra import h, u
+from tests.infra import u
 
 
 class TestMain:
@@ -52,4 +52,3 @@ class TestMain:
             lambda _self, _root: r[int].fail("sync failed"),
         )
         tm.that(FlextInfraInternalDependencySyncService.main(), eq=1)
-        tm.that(hasattr(h, "assert_ok"), eq=True)

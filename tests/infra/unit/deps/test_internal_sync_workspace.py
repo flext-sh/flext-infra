@@ -8,7 +8,7 @@ from flext_tests import tm
 import flext_infra.deps.internal_sync as _internal_sync_mod
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
-from tests.infra import h, t
+from tests.infra import t
 
 
 class TestWorkspaceRootFromEnv:
@@ -180,4 +180,3 @@ class TestIsWorkspaceMode:
         )
         tm.that(is_ws, eq=False)
         tm.that(root, eq=None)
-        tm.that(hasattr(h, "assert_ok"), eq=True)

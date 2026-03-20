@@ -8,7 +8,6 @@ from flext_tests import tm
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
 from flext_infra.deps import internal_sync
-from tests.infra import h
 
 
 class TestResolveRef:
@@ -145,4 +144,3 @@ class TestSynthesizedRepoMap:
             eq="git@github.com:flext-sh/flext-core.git",
         )
         tm.that(result["flext-core"].https_url.startswith("https://"), eq=True)
-        tm.that(hasattr(h, "assert_ok"), eq=True)

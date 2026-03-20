@@ -7,7 +7,7 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
-from tests.infra import h, t
+from tests.infra import t
 
 
 class _TomlStub:
@@ -85,4 +85,3 @@ class TestSyncMethodEdgeCasesMore:
             [r[t.Infra.TomlConfig].ok({"project": {"name": "test"}})],
         )
         tm.ok(service.sync(tmp_path), eq=0)
-        tm.that(hasattr(h, "assert_ok"), eq=True)

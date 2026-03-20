@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from pathlib import Path
-from typing import override
+from typing import Final, override
 
 import libcst as cst
 
@@ -12,10 +12,10 @@ from flext_infra.codegen._codegen_constant_visitor import (
     FlextInfraCodegenConstantDetection,
 )
 
-_MIN_ATTRIBUTE_CHAIN = 2
-
 
 class FlextInfraCodegenConstantTransformation:
+    MIN_ATTRIBUTE_CHAIN: Final[int] = 2
+
     class CanonicalValueReplacer(cst.CSTTransformer):
         def __init__(
             self,
@@ -141,7 +141,7 @@ class FlextInfraCodegenConstantTransformation:
         ) -> cst.BaseExpression:
             del original_node
             chain = FlextInfraCodegenConstantDetection.attribute_chain(updated_node)
-            if len(chain) < _MIN_ATTRIBUTE_CHAIN:
+            if len(chain) < FlextInfraCodegenConstantTransformation.MIN_ATTRIBUTE_CHAIN:
                 return updated_node
             if chain[0] != self._target_class:
                 return updated_node
@@ -199,14 +199,14 @@ class FlextInfraCodegenConstantTransformation:
                 new_body.append(stmt)
             if not c_import_present:
                 new_body.insert(
-                    t._import_insert_index(new_body),
+                    t.import_insert_index(new_body),
                     cst.parse_statement(f"{self._project_import}\n"),
                 )
                 self.changes.append("added c import")
             return updated_node.with_changes(body=new_body)
 
     @staticmethod
-    def _derive_constants_class(
+    def derive_constants_class(
         package_name: str,
         pkg_dir: Path | None = None,
     ) -> str:
@@ -273,7 +273,7 @@ class FlextInfraCodegenConstantTransformation:
                 if parent.name == package_name:
                     resolved_pkg_dir = parent
                     break
-        target_class = t._derive_constants_class(package_name, resolved_pkg_dir)
+        target_class = t.derive_constants_class(package_name, resolved_pkg_dir)
         tree = cst.parse_module(file_path.read_text("utf-8"))
         transformer = t.DirectRefAliasNormalizer(
             project_import=project_import,
@@ -285,7 +285,7 @@ class FlextInfraCodegenConstantTransformation:
         return transformer.replacements > 0, transformer.changes
 
     @staticmethod
-    def _import_insert_index(
+    def import_insert_index(
         body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
     ) -> int:
         index = 0
