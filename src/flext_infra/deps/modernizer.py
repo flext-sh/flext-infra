@@ -8,8 +8,7 @@ from pathlib import Path
 import tomlkit
 from tomlkit.items import Table
 
-from flext_infra import ProjectClassifier, c, r, u
-from flext_infra.deps._phases import (
+from flext_infra import (
     ConsolidateGroupsPhase,
     EnsureCoverageConfigPhase,
     EnsureExtraPathsPhase,
@@ -21,9 +20,13 @@ from flext_infra.deps._phases import (
     EnsurePyrightConfigPhase,
     EnsurePytestConfigPhase,
     EnsureRuffConfigPhase,
+    FlextInfraDependencyToolConfig,
     InjectCommentsPhase,
+    ProjectClassifier,
+    c,
+    r,
+    u,
 )
-from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
 
 
 class FlextInfraPyprojectModernizer:

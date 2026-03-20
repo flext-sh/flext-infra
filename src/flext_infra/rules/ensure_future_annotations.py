@@ -7,7 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.refactor._base_rule import FlextInfraRefactorRule
+from flext_infra import FlextInfraRefactorRule
 
 
 class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):

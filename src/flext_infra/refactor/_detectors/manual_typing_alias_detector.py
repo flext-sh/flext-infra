@@ -7,10 +7,7 @@ from typing import override
 import libcst as cst
 from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
-from flext_infra import c, m, p
-from flext_infra.refactor._detectors.python_module_loader_mixin import (
-    FlextInfraRefactorDetectorPythonModuleLoaderMixin,
-)
+from flext_infra import FlextInfraRefactorDetectorPythonModuleLoaderMixin, c, m, p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )

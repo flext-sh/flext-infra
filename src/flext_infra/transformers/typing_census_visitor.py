@@ -1,10 +1,15 @@
+"""Collect typing-annotation violations for reporting and remediation."""
+
 from __future__ import annotations
 
 from pathlib import Path
+from typing import override
 
 import libcst as cst
 
 __all__ = ["TypingAnnotationCensusVisitor"]
+
+_PAIR_LENGTH = 2
 
 
 class TypingAnnotationCensusVisitor(cst.CSTVisitor):
@@ -20,6 +25,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
     })
 
     def __init__(self, *, file_path: Path, project_name: str) -> None:
+        """Initialize census state for a single source file."""
         self._file_path = file_path
         self._project_name = project_name
         self._current_class: str = ""
@@ -28,14 +34,20 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         self._renderer = cst.Module(body=[])
         self.violations: list[dict[str, str | int]] = []
 
+    @override
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
+        """Track current class context while traversing class nodes."""
         self._current_class = node.name.value
 
+    @override
     def leave_ClassDef(self, original_node: cst.ClassDef) -> None:
+        """Clear class context after finishing class traversal."""
         del original_node
         self._current_class = ""
 
+    @override
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
+        """Track function context and inspect return annotations."""
         self._current_function = node.name.value
         self._current_function_is_typeguard = self._has_typeguard_return(node)
         return_annotation = (
@@ -43,12 +55,16 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         )
         self._check_annotation(return_annotation, context="return", line=0)
 
+    @override
     def leave_FunctionDef(self, original_node: cst.FunctionDef) -> None:
+        """Clear function context after leaving a function definition."""
         del original_node
         self._current_function = ""
         self._current_function_is_typeguard = False
 
+    @override
     def visit_Param(self, node: cst.Param) -> None:
+        """Inspect parameter annotations except allowlisted guard contexts."""
         if self._current_function in self.DUNDER_OBJECT_ALLOWLIST:
             return
         if self._current_function_is_typeguard:
@@ -56,7 +72,9 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         annotation = node.annotation.annotation if node.annotation is not None else None
         self._check_annotation(annotation, context="param", line=0)
 
+    @override
     def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
+        """Inspect annotated assignment nodes for forbidden typing patterns."""
         context = (
             "field"
             if self._current_class and not self._current_function
@@ -242,7 +260,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         return base_name == "dict" and self._is_str_object_pair(values)
 
     def _is_str_object_pair(self, values: list[cst.BaseExpression]) -> bool:
-        if len(values) != 2:
+        if len(values) != _PAIR_LENGTH:
             return False
         key_node = values[0]
         value_node = values[1]

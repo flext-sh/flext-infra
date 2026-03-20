@@ -8,48 +8,30 @@ from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter
 
-from flext_infra import c, m, r, t, u
-from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
-from flext_infra.refactor.rule import (
-    FlextInfraRefactorRule,
-    FlextInfraRefactorRuleLoader,
-)
-from flext_infra.refactor.rule_definition_validator import (
-    FlextInfraRefactorRuleDefinitionValidator,
-)
-from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-from flext_infra.rules.class_nesting import ClassNestingRefactorRule
-from flext_infra.rules.class_reconstructor import (
+from flext_infra import (
+    ClassNestingRefactorRule,
     FlextInfraRefactorClassReconstructorRule,
-)
-from flext_infra.rules.ensure_future_annotations import (
     FlextInfraRefactorEnsureFutureAnnotationsRule,
-)
-from flext_infra.rules.import_modernizer import (
     FlextInfraRefactorImportModernizerRule,
-)
-from flext_infra.rules.legacy_removal import (
     FlextInfraRefactorLegacyRemovalRule,
-)
-from flext_infra.rules.mro_class_migration import (
     FlextInfraRefactorMROClassMigrationRule,
-)
-from flext_infra.rules.mro_redundancy_checker import (
     FlextInfraRefactorMRORedundancyChecker,
-)
-from flext_infra.rules.pattern_corrections import (
     FlextInfraRefactorPatternCorrectionsRule,
-)
-from flext_infra.rules.symbol_propagation import (
+    FlextInfraRefactorRule,
+    FlextInfraRefactorRuleDefinitionValidator,
+    FlextInfraRefactorRuleLoader,
+    FlextInfraRefactorSafetyManager,
     FlextInfraRefactorSignaturePropagationRule,
     FlextInfraRefactorSymbolPropagationRule,
-)
-from flext_infra.rules.type_alias_unification import (
-    FlextInfraRefactorTypingUnificationRule,
-)
-from flext_infra.rules.typing_census import (
     FlextInfraRefactorTypingAnnotationFixRule,
+    FlextInfraRefactorTypingUnificationRule,
+    c,
+    m,
+    r,
+    t,
+    u,
 )
+from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
 
 
 class FlextInfraRefactorEngine:

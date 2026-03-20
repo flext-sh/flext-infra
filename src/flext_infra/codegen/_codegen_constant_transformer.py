@@ -14,12 +14,12 @@ from typing import override
 
 import libcst as cst
 
+from flext_infra import m
 from flext_infra.codegen._codegen_constant_visitor import (
     attribute_chain,
     canonical_reference_for,
     resolve_parent_package,
 )
-from flext_infra.models import m
 
 _MIN_ATTRIBUTE_CHAIN = 2
 
@@ -411,11 +411,23 @@ def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
         new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
         changed = False
 
-        CANONICAL = frozenset(["c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x"])
+        canonical_aliases = frozenset([
+            "c",
+            "d",
+            "e",
+            "h",
+            "m",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "x",
+        ])
         target_aliases = [
             alias
             for alias, mod_stem in lazy_map.items()
-            if mod_stem == target_mod and alias in CANONICAL
+            if mod_stem == target_mod and alias in canonical_aliases
         ]
         if not target_aliases:
             continue

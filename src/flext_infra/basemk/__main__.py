@@ -5,9 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra import m, u
-from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkTemplateEngine, m, u
 
 
 class FlextInfraBaseMkCommand:

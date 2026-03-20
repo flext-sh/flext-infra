@@ -20,11 +20,13 @@ from typing import override
 from flext_core import r, s
 from flext_infra import (
     FlextInfraCodegenLazyInit,
+    FlextInfraCodegenTransforms,
     FlextInfraNamespaceValidator,
     FlextInfraRefactorEngine,
     FlextInfraRefactorMigrateToClassMRO,
     FlextInfraUtilitiesParsing,
     NamespaceEnforcementRewriter,
+    NamespaceSourceDetector,
     c,
     m,
     u,
@@ -41,10 +43,6 @@ from flext_infra.codegen._codegen_constant_visitor import (
     scan_constant_usages,
 )
 from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
-from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
-from flext_infra.refactor._detectors.namespace_source_detector import (
-    NamespaceSourceDetector,
-)
 
 
 class FlextInfraCodegenFixer(s[bool]):

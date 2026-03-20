@@ -6,11 +6,17 @@ import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
-from flext_infra import c, m, r, u
-from flext_infra.github.linter import FlextInfraWorkflowLinter
+from flext_infra import (
+    FlextInfraPrWorkspaceManager,
+    FlextInfraWorkflowLinter,
+    FlextInfraWorkflowSyncer,
+    SyncOperation,
+    c,
+    m,
+    r,
+    u,
+)
 from flext_infra.github.pr import main as pr_main
-from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
-from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
 
 
 class FlextInfraGithubCommand:

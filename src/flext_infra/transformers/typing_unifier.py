@@ -1,3 +1,5 @@
+"""Unify inline typing unions and TypeAlias declarations to canonical forms."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -6,10 +8,9 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import c, u
-from flext_infra.transformers.import_insertion import (
-    FlextInfraTransformerImportInsertion,
-)
+from flext_infra import FlextInfraTransformerImportInsertion, c, u
+
+_PAIR_LENGTH = 2
 
 
 class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
@@ -19,6 +20,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         canonical_map: Mapping[frozenset[str], str],
         file_path: Path | None = None,
     ) -> None:
+        """Initialize unifier context and accumulated import/type state."""
         self._scope_depth = 0
         self._typing_import_names: set[str] = set()
         self._typing_import_aliases: list[cst.ImportAlias] = []
@@ -291,7 +293,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
     @staticmethod
     def _build_t_attribute(target: str) -> cst.BaseExpression | None:
         parts = target.split(".")
-        if len(parts) != 2:
+        if len(parts) != _PAIR_LENGTH:
             return None
         base_name, contract_name = parts
         if base_name != "t":

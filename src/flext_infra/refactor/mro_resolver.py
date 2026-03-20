@@ -6,10 +6,12 @@ import inspect
 import re
 from collections.abc import Mapping, Sequence
 
-from flext_infra import c, m, t
-from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
-from flext_infra.refactor.mro_migration_scanner import (
+from flext_infra import (
+    FlextInfraRefactorMROImportRewriter,
     FlextInfraRefactorMROMigrationScanner,
+    c,
+    m,
+    t,
 )
 
 

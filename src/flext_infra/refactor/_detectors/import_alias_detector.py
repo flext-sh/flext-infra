@@ -3,14 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, Protocol, override, runtime_checkable
 
-from flext_infra import c, m, p
-from flext_infra.refactor._detectors.module_loader import (
-    DetectorScanResultBuilder,
-)
+from flext_infra import DetectorScanResultBuilder, ProjectAliasDiscovery, c, m, p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
-from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
 
 
 @runtime_checkable

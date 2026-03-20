@@ -1,3 +1,5 @@
+"""Replace forbidden annotation patterns with canonical typing contracts."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -5,9 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.transformers.import_insertion import (
-    FlextInfraTransformerImportInsertion,
-)
+from flext_infra import FlextInfraTransformerImportInsertion
 
 
 class TypingAnnotationReplacer(cst.CSTTransformer):
@@ -29,6 +29,7 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         *,
         on_change: Callable[[str], None] | None = None,
     ) -> None:
+        """Initialize replacement state and change tracking."""
         self._on_change = on_change
         self.modified: bool = False
         self.changes: list[str] = []

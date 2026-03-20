@@ -14,11 +14,8 @@ import shutil
 import sys
 from pathlib import Path
 
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
+from flext_infra import FlextInfraUtilitiesParsing, FlextInfraUtilitiesSubprocess, c, t
 from flext_infra.codegen._codegen_metrics_checks import FlextInfraCodegenMetricsChecks
-from flext_infra.constants import c
-from flext_infra.typings import t
 
 
 class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):

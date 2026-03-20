@@ -5,10 +5,12 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import c, m, u
-from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
-from flext_infra.transformers.mro_reference_rewriter import (
+from flext_infra import (
+    FlextInfraCodegenTransforms,
     FlextInfraRefactorMROReferenceRewriter,
+    c,
+    m,
+    u,
 )
 
 

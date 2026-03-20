@@ -14,13 +14,13 @@ from pathlib import Path
 from flext_infra import (
     CensusImportDiscoveryVisitor,
     CensusUsageCollector,
+    FlextInfraRefactorOutputRenderer,
     c,
     m,
     output,
     r,
     u,
 )
-from flext_infra.refactor.output import FlextInfraRefactorOutputRenderer
 
 type RCensusReport = r[m.Infra.UtilitiesCensusReport]
 

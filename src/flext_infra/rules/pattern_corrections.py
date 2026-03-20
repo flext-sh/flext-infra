@@ -8,8 +8,7 @@ from typing import override
 import libcst as cst
 from pydantic import TypeAdapter
 
-from flext_infra import c, t, u
-from flext_infra.refactor._base_rule import FlextInfraRefactorRule
+from flext_infra import FlextInfraRefactorRule, c, t, u
 
 
 class DictToMappingTransformer(cst.CSTTransformer):

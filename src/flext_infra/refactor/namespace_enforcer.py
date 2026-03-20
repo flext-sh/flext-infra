@@ -8,12 +8,10 @@ from flext_infra import (
     FlextInfraRefactorDependencyAnalyzerFacade,
     FlextInfraRefactorOutputRenderer,
     NamespaceEnforcementRewriter,
+    NamespaceSourceDetector,
     c,
     m,
     u,
-)
-from flext_infra.refactor._detectors.namespace_source_detector import (
-    NamespaceSourceDetector,
 )
 
 

@@ -1,5 +1,8 @@
+"""Normalize project alias imports to canonical package-level imports."""
+
 from __future__ import annotations
 
+import importlib.util
 from collections import deque
 from collections.abc import Callable, Mapping, Sequence
 from functools import lru_cache
@@ -9,11 +12,10 @@ from typing import Annotated, override
 import libcst as cst
 from pydantic import ConfigDict, Field
 
-from flext_infra import c, t, u
+from flext_infra import FlextInfraTransformerImportInsertion, c, t, u
 from flext_infra.models import FlextModels
-from flext_infra.transformers.import_insertion import (
-    FlextInfraTransformerImportInsertion,
-)
+
+_UNKNOWN_TIER = 99
 
 
 class ImportViolation(FlextModels.ArbitraryTypesModel):
@@ -50,6 +52,7 @@ class _ImportEdgeCollector(cst.CSTVisitor):
         known_modules: frozenset[str],
         lazy_import_maps: Mapping[str, Mapping[str, str]],
     ) -> None:
+        """Initialize collector state used to build internal import edges."""
         self._current_module = current_module
         self._package_name = package_name
         self._known_modules = known_modules
@@ -262,9 +265,12 @@ def _find_lazy_imports_dict(module: cst.Module) -> cst.Dict | None:
                 if len(expression.targets) != 1:
                     continue
                 target = expression.targets[0].target
-                if isinstance(target, cst.Name) and target.value == "_LAZY_IMPORTS":
-                    if isinstance(expression.value, cst.Dict):
-                        return expression.value
+                if (
+                    isinstance(target, cst.Name)
+                    and target.value == "_LAZY_IMPORTS"
+                    and isinstance(expression.value, cst.Dict)
+                ):
+                    return expression.value
             if isinstance(expression, cst.AnnAssign):
                 target = expression.target
                 if not isinstance(target, cst.Name):
@@ -314,17 +320,6 @@ def _extract_lazy_import_map(init_path: Path) -> dict[str, str]:
             continue
         lazy_import_map[key_text] = module_name
     return lazy_import_map
-
-
-def _extract_lazy_alias_map(package_dir: Path) -> dict[str, str]:
-    init_path = package_dir / "__init__.py"
-    lazy_import_map = _extract_lazy_import_map(init_path)
-    alias_map: dict[str, str] = {}
-    for key_text, module_name in lazy_import_map.items():
-        if len(key_text) != 1 or not key_text.islower():
-            continue
-        alias_map[key_text] = module_name
-    return alias_map
 
 
 @lru_cache(maxsize=128)
@@ -490,8 +485,6 @@ def _discover_workspace_packages(workspace_root: Path) -> frozenset[str]:
 
 
 def _find_installed_package_dir(package_name: str) -> Path | None:
-    import importlib.util
-
     spec = importlib.util.find_spec(package_name)
     if spec is None or spec.submodule_search_locations is None:
         return None
@@ -589,15 +582,15 @@ def _file_tier(
     if declared_alias in alias_tiers:
         return alias_tiers[declared_alias]
     if len(project_package) == 0:
-        return 99
+        return _UNKNOWN_TIER
     marker = f"/src/{project_package}/"
     file_str = str(file_path.resolve())
     if marker not in file_str:
-        return 99
+        return _UNKNOWN_TIER
     relative = file_str.split(marker, maxsplit=1)[1]
     parts = Path(relative).parts[:-1]
     if len(parts) == 0:
-        return 99
+        return _UNKNOWN_TIER
     first = parts[0]
     if first.startswith("_"):
         normalized = first.lstrip("_")
@@ -632,8 +625,8 @@ def _is_safe_to_normalize(context: _ImportNormalizationContext, alias: str) -> b
         reachable = context.package_reachability.get(defining_module)
         if reachable is not None:
             return context.file_module not in reachable
-    alias_tier = context.alias_tiers.get(alias, 99)
-    if context.file_tier < 99:
+    alias_tier = context.alias_tiers.get(alias, _UNKNOWN_TIER)
+    if context.file_tier < _UNKNOWN_TIER:
         return alias_tier < context.file_tier
     return True
 
@@ -716,6 +709,7 @@ class ImportNormalizerVisitor(cst.CSTVisitor):
         project_package: str = "",
         alias_map: dict[str, tuple[str, ...]] | None = None,
     ) -> None:
+        """Build visitor context for detecting non-canonical alias imports."""
         self._context = _build_context(
             file_path=file_path,
             project_package=project_package,
@@ -767,6 +761,7 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         alias_map: dict[str, tuple[str, ...]] | None = None,
         on_change: Callable[[str], None] | None = None,
     ) -> None:
+        """Prepare import normalization and change tracking for one file."""
         self._context = _build_context(
             file_path=file_path,
             project_package=project_package,
@@ -877,6 +872,7 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         project_package: str = "",
         alias_map: dict[str, tuple[str, ...]] | None = None,
     ) -> list[ImportViolation]:
+        """Return deep/wrong-source alias violations for a single file."""
         effective_package = (
             project_package
             if len(project_package) > 0
@@ -902,6 +898,7 @@ class ImportNormalizerTransformer(cst.CSTTransformer):
         project_package: str = "",
         alias_map: dict[str, tuple[str, ...]] | None = None,
     ) -> list[str]:
+        """Rewrite violating imports and return applied normalization messages."""
         effective_package = (
             project_package
             if len(project_package) > 0

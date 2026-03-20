@@ -8,12 +8,16 @@ from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_infra import c, m, r, t, u
-from flext_infra.refactor._base_rule import FlextInfraRefactorRule
-from flext_infra.refactor.rule_definition_validator import (
+from flext_infra import (
+    ClassNestingRefactorRule,
     FlextInfraRefactorRuleDefinitionValidator,
+    c,
+    m,
+    r,
+    t,
+    u,
 )
-from flext_infra.rules.class_nesting import ClassNestingRefactorRule
+from flext_infra.refactor._base_rule import FlextInfraRefactorRule
 
 
 class FlextInfraRefactorRuleLoader:

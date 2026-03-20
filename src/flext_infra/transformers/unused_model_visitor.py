@@ -1,3 +1,5 @@
+"""Collect model definitions and references to identify dead model classes."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,6 +10,7 @@ import libcst as cst
 
 class ModelDefinitionCollector(cst.CSTVisitor):
     def __init__(self, *, file_path: Path) -> None:
+        """Initialize collector state for model definitions in one file."""
         super().__init__()
         self._file_path = file_path
         self.definitions: list[dict[str, str | int]] = []
@@ -84,6 +87,7 @@ class ModelDefinitionCollector(cst.CSTVisitor):
 
 class ModelReferenceCollector(cst.CSTVisitor):
     def __init__(self, *, known_models: frozenset[str], file_path: Path) -> None:
+        """Initialize collector state for model references in one file."""
         super().__init__()
         self._known_models = known_models
         self._file_path = file_path

@@ -8,10 +8,7 @@ from typing import override
 import libcst as cst
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
-from flext_infra import c, u
-from flext_infra.transformers.import_insertion import (
-    FlextInfraTransformerImportInsertion,
-)
+from flext_infra import FlextInfraTransformerImportInsertion, c, u
 
 
 class FlextInfraRefactorImportModernizer(cst.CSTTransformer):

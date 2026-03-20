@@ -13,8 +13,13 @@ from pathlib import Path
 from typing import override
 
 from flext_core import r, s
-from flext_infra import FlextInfraNamespaceValidator, c, m, u
-from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
+from flext_infra import (
+    FlextInfraCodegenTransforms,
+    FlextInfraNamespaceValidator,
+    c,
+    m,
+    u,
+)
 
 __all__ = ["FlextInfraCodegenScaffolder"]
 

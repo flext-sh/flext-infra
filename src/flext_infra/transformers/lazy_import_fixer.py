@@ -7,9 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.transformers.import_insertion import (
-    FlextInfraTransformerImportInsertion,
-)
+from flext_infra import FlextInfraTransformerImportInsertion
 
 
 class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):

@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from pydantic import TypeAdapter
 
-from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import FlextInfraCodegenTransforms, c, t
 
 
 class FlextInfraCodegenCoercion(FlextInfraCodegenTransforms):

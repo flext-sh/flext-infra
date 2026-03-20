@@ -3,11 +3,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from flext_infra import FlextInfraCodegenCensus, c, m, t
+from flext_infra.codegen._codegen_constant_visitor import extract_constant_definitions
 from flext_infra.codegen._codegen_metrics import FlextInfraCodegenMetrics
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+
+_MIN_DUPLICATE_PROJECT_COUNT = 2
 
 
 class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
@@ -156,10 +156,6 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     def quality_gate_detect_duplicate_constant_groups(
         workspace_root: Path,
     ) -> list[m.Infra.DuplicateConstantGroup]:
-        from flext_infra.codegen._codegen_constant_visitor import (
-            extract_constant_definitions,
-        )
-
         all_definitions: list[m.Infra.ConstantDefinition] = []
         for report in FlextInfraCodegenCensus(workspace_root=workspace_root).run():
             project_root = workspace_root / report.project
@@ -176,7 +172,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         groups: list[m.Infra.DuplicateConstantGroup] = []
         for name, definitions in sorted(name_to_defs.items()):
             projects = {item.project for item in definitions}
-            if len(projects) < 2:
+            if len(projects) < _MIN_DUPLICATE_PROJECT_COUNT:
                 continue
             values = {item.value_repr for item in definitions}
             groups.append(

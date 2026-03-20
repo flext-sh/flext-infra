@@ -14,8 +14,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra import c, m, output, u
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from flext_infra import FlextInfraReleaseOrchestrator, c, m, output, u
 
 
 class FlextInfraReleaseCommand:

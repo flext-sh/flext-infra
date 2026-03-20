@@ -7,8 +7,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, r, u
-from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, r, u
 
 type _ClassNestingMappingIndex = dict[
     tuple[str, str],

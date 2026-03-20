@@ -1,3 +1,5 @@
+"""Remove model classes that were proven unused by static census."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -13,6 +15,7 @@ class UnusedModelRemover(cst.CSTTransformer):
         unused_classes: frozenset[str],
         on_change: Callable[[str], None] | None = None,
     ) -> None:
+        """Initialize class-removal transformer for known unused models."""
         self._unused_classes = unused_classes
         self._on_change = on_change
         self.modified: bool = False

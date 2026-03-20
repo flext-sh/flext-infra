@@ -15,13 +15,13 @@ from typing import override
 
 import libcst as cst
 
+from flext_infra import m
 from flext_infra.codegen._codegen_governance import (
     get_canonical_int_values,
     get_canonical_str_values,
     get_constants_class_pattern,
     get_semantic_names,
 )
-from flext_infra.models import m
 
 _MIN_QUOTED_LITERAL_LEN = 2
 _MIN_DIRECT_REFERENCE_CHAIN = 3

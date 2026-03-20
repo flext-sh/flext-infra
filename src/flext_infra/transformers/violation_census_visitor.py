@@ -1,3 +1,5 @@
+"""Collect code-pattern violations used by infra census reports."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,6 +8,8 @@ from typing import override
 import libcst as cst
 
 __all__ = ["ViolationCensusVisitor"]
+
+_DICT_KEY_VALUE_ARITY = 2
 
 
 class ViolationCensusVisitor(cst.CSTVisitor):
@@ -24,6 +28,7 @@ class ViolationCensusVisitor(cst.CSTVisitor):
     })
 
     def __init__(self, *, file_path: Path) -> None:
+        """Initialize visitor state for one file violation census."""
         self._file_path = file_path
         self._renderer = cst.Module(body=[])
         self.records: list[dict[str, str | int]] = []
@@ -155,7 +160,7 @@ class ViolationCensusVisitor(cst.CSTVisitor):
     def _is_container_invariance(self, node: cst.Subscript) -> bool:
         if not (isinstance(node.value, cst.Name) and node.value.value == "dict"):
             return False
-        if len(node.slice) != 2:
+        if len(node.slice) != _DICT_KEY_VALUE_ARITY:
             return False
 
         key_expr = self._subscript_value(node.slice[0])

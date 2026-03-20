@@ -6,10 +6,12 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import c, m, u
-from flext_infra.transformers.mro_private_inline import (
+from flext_infra import (
     FlextInfraRefactorMROPrivateInlineTransformer,
     FlextInfraRefactorMROQualifiedReferenceTransformer,
+    c,
+    m,
+    u,
 )
 
 

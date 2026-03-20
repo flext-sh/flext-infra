@@ -215,12 +215,13 @@ class LooseObjectDetector(p.Infra.Scanner):
     def _type_alias_name(*, stmt: cst.BaseSmallStatement) -> str:
         if hasattr(cst, "TypeAlias") and isinstance(stmt, cst.TypeAlias):
             return stmt.name.value
-        if isinstance(stmt, cst.AnnAssign) and isinstance(stmt.target, cst.Name):
-            if (
-                LooseObjectDetector._module_to_str(stmt.annotation.annotation)
-                == "TypeAlias"
-            ):
-                return stmt.target.value
+        if (
+            isinstance(stmt, cst.AnnAssign)
+            and isinstance(stmt.target, cst.Name)
+            and LooseObjectDetector._module_to_str(stmt.annotation.annotation)
+            == "TypeAlias"
+        ):
+            return stmt.target.value
         return ""
 
     @staticmethod

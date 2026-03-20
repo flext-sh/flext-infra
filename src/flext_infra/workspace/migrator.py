@@ -12,8 +12,7 @@ from tomlkit.container import Container
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import c, m, p, r, s, u
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra import FlextInfraBaseMkGenerator, c, m, p, r, s, u
 
 _OBJECT_LIST_ADAPTER: TypeAdapter[list[JsonValue]] = TypeAdapter(list[JsonValue])
 

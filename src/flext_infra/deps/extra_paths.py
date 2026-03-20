@@ -9,8 +9,14 @@ from pydantic import TypeAdapter, ValidationError
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraUtilitiesPaths, FlextInfraUtilitiesToml, c, r, u
-from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
+from flext_infra import (
+    FlextInfraDependencyPathSync,
+    FlextInfraUtilitiesPaths,
+    FlextInfraUtilitiesToml,
+    c,
+    r,
+    u,
+)
 
 
 class FlextInfraExtraPathsManager:

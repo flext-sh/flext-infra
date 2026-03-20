@@ -12,11 +12,15 @@ from typing import override
 from pydantic import JsonValue
 
 from flext_core import r, s
-from flext_infra import c, m, output
-from flext_infra._utilities.cli import FlextInfraUtilitiesCli
-from flext_infra._utilities.io import FlextInfraUtilitiesIo
-from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
-from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
+from flext_infra import (
+    FlextInfraUtilitiesCli,
+    FlextInfraUtilitiesIo,
+    FlextInfraUtilitiesPaths,
+    FlextInfraUtilitiesReporting,
+    c,
+    m,
+    output,
+)
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.gates._base_gate import FlextInfraGateContext
 from flext_infra.gates._gate_registry import FlextInfraGateRegistry

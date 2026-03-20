@@ -78,7 +78,7 @@ class InternalImportDetector(p.Infra.Scanner):
             if not isinstance(stmt, cst.ImportFrom):
                 continue
             module_name = cls._module_to_str(stmt.module)
-            if module_name == "":
+            if not module_name:
                 continue
             if file_path.name == "__init__.py":
                 continue
@@ -87,9 +87,9 @@ class InternalImportDetector(p.Infra.Scanner):
                 import_list = "*"
             else:
                 imported_names = [
-                    cls._module_to_str(alias.name)
+                    imported_name
                     for alias in stmt.names
-                    if cls._module_to_str(alias.name) != ""
+                    if (imported_name := cls._module_to_str(alias.name))
                 ]
                 import_list = ", ".join(imported_names) if imported_names else "*"
             current_import = f"from {module_name} import {import_list}"

@@ -15,8 +15,7 @@ from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
+from flext_infra import FlextInfraUtilitiesYaml, c, m, p, r, t, u
 
 
 class FlextInfraSkillValidator:

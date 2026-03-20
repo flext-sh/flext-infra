@@ -1,3 +1,5 @@
+"""Discover runtime alias declarations from project packages."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,6 +10,7 @@ import libcst as cst
 class ProjectAliasDiscovery:
     @staticmethod
     def discover_package_aliases(package_init: Path) -> tuple[str, ...]:
+        """Return single-letter aliases declared in a package ``__init__`` file."""
         if not package_init.exists():
             return ()
         try:
@@ -68,6 +71,7 @@ class ProjectAliasDiscovery:
     def discover_workspace_aliases(
         workspace_root: Path,
     ) -> dict[str, tuple[str, ...]]:
+        """Collect package aliases for all workspace projects under ``*/src``."""
         result: dict[str, tuple[str, ...]] = {}
         for src_dir in sorted(workspace_root.glob("*/src/")):
             project_dir = src_dir.parent
@@ -83,6 +87,7 @@ class ProjectAliasDiscovery:
 
     @staticmethod
     def discover_facade_alias_map(package_dir: Path) -> dict[str, str]:
+        """Map alias names to facade module filenames in a package directory."""
         facade_map: dict[str, str] = {}
         facade_files = [
             "constants.py",

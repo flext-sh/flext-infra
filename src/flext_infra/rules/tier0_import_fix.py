@@ -1,0 +1,64 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import override
+
+import libcst as cst
+
+from flext_infra import c
+from flext_infra.refactor._base_rule import FlextInfraRefactorRule
+from flext_infra.transformers.tier0_import_fixer import (
+    Tier0ImportAnalyzer,
+    Tier0ImportFixer,
+)
+
+
+class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
+    @override
+    def apply(
+        self,
+        tree: cst.Module,
+        file_path: Path | None = None,
+    ) -> tuple[cst.Module, list[str]]:
+        if file_path is None or file_path.name not in self._tier0_modules():
+            return (tree, [])
+        analyzer = Tier0ImportAnalyzer(
+            file_path=file_path,
+            tier0_modules=self._tier0_modules(),
+            core_aliases=self._core_aliases(),
+        )
+        tree.visit(analyzer)
+        analysis = analyzer.build_analysis()
+        if not analysis.has_violations:
+            return (tree, [])
+        fixer = Tier0ImportFixer(
+            analysis=analysis,
+            alias_to_submodule=self._alias_to_submodule(),
+            core_package=self._core_package(),
+        )
+        updated = tree.visit(fixer)
+        return (updated, fixer.changes)
+
+    def _tier0_modules(self) -> tuple[str, ...]:
+        value = self.config.get("tier0_modules", [])
+        if not isinstance(value, list):
+            return ("constants.py", "typings.py", "protocols.py")
+        return tuple(str(item) for item in value)
+
+    def _core_aliases(self) -> tuple[str, ...]:
+        value = self.config.get("core_aliases", [])
+        if not isinstance(value, list):
+            return tuple(c.Infra.NAMESPACE_SOURCE_UNIVERSAL_ALIASES)
+        return tuple(str(item) for item in value)
+
+    def _core_package(self) -> str:
+        return str(self.config.get("core_package", "flext_core"))
+
+    def _alias_to_submodule(self) -> dict[str, str]:
+        value = self.config.get("alias_to_submodule", {})
+        if not isinstance(value, dict):
+            return {}
+        return {str(key): str(item) for key, item in value.items()}
+
+
+__all__ = ["FlextInfraRefactorTier0ImportFixRule"]

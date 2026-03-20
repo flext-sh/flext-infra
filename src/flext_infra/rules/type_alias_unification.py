@@ -1,3 +1,5 @@
+"""Rule implementation for TypeAlias and inline-union unification."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -5,9 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import c
-from flext_infra.refactor._base_rule import FlextInfraRefactorRule
-from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+from flext_infra import FlextInfraRefactorRule, FlextInfraRefactorTypingUnifier, c
 
 
 class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):

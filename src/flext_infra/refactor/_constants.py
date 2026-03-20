@@ -72,6 +72,8 @@ class FlextInfraRefactorConstants:
         "replace_object_annotations",
         "remove_unused_models",
     })
+    TIER0_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({"fix_tier0_imports"})
+    "Fix actions for Tier 0 import analyzer/fixer rules."
     "Fix actions for typing census auto-fix rules."
     TYPING_VIOLATION_KINDS: ClassVar[frozenset[str]] = frozenset({
         "bare_object",

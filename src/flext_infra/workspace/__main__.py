@@ -14,11 +14,16 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra import m, output, r, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_infra import (
+    FlextInfraOrchestratorService,
+    FlextInfraProjectMigrator,
+    FlextInfraSyncService,
+    FlextInfraWorkspaceDetector,
+    m,
+    output,
+    r,
+    u,
+)
 
 
 class FlextInfraWorkspaceCommand:

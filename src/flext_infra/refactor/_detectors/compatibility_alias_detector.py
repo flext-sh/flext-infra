@@ -6,10 +6,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import m, p
-from flext_infra.refactor._detectors.module_loader import (
-    DetectorScanResultBuilder,
-)
+from flext_infra import DetectorScanResultBuilder, m, p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )

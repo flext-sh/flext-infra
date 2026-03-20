@@ -17,12 +17,15 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 from tomlkit import items
 
 from flext_core import FlextLogger, r, s
-from flext_infra import c, t
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.io import FlextInfraUtilitiesIo
-from flext_infra._utilities.output import output
-from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
-from flext_infra._utilities.toml import FlextInfraUtilitiesToml
+from flext_infra import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesIo,
+    FlextInfraUtilitiesPaths,
+    FlextInfraUtilitiesToml,
+    c,
+    output,
+    t,
+)
 
 _logger = FlextLogger.create_module_logger(__name__)
 
