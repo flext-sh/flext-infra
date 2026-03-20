@@ -18,6 +18,7 @@ from flext_core import r
 from flext_infra import c, m
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.io import FlextInfraUtilitiesIo
+from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
 from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
@@ -26,6 +27,7 @@ from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
 class FlextInfraUtilitiesGithub(
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesIo,
+    FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSelection,
     FlextInfraUtilitiesSubprocess,
     FlextInfraUtilitiesTemplates,
@@ -336,7 +338,7 @@ class FlextInfraUtilitiesGithub(
             repo_root,
             remote=c.Infra.Git.ORIGIN if branch else "",
             branch=branch,
-            set_upstream=bool(branch),
+            upstream=bool(branch),
         )
 
     @classmethod

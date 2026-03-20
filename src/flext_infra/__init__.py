@@ -133,9 +133,6 @@ if TYPE_CHECKING:
     from flext_infra.gates.pyright import FlextInfraPyrightGate
     from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-    from flext_infra.github.pr import FlextInfraPrManager
-    from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
-    from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor._detectors.import_collector import ImportCollector
@@ -502,10 +499,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraOrchestratorService",
     ),
     "FlextInfraPrManager": ("flext_infra.github.pr", "FlextInfraPrManager"),
-    "FlextInfraPrWorkspaceManager": (
-        "flext_infra.github.pr_workspace",
-        "FlextInfraPrWorkspaceManager",
-    ),
+    "FlextInfraPrWorkspaceManager": ("flext_infra.github.pr_workspace",),
     "FlextInfraProjectMigrator": (
         "flext_infra.workspace.migrator",
         "FlextInfraProjectMigrator",
@@ -837,10 +831,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra._utilities.yaml",
         "FlextInfraUtilitiesYaml",
     ),
-    "FlextInfraWorkflowSyncer": (
-        "flext_infra.github.workflows",
-        "FlextInfraWorkflowSyncer",
-    ),
+    "FlextInfraWorkflowSyncer": ("flext_infra.github.workflows",),
     "FlextInfraWorkspaceChecker": (
         "flext_infra.check.services",
         "FlextInfraWorkspaceChecker",
@@ -930,7 +921,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "RuntimeAliasDetector",
     ),
-    "SyncOperation": ("flext_infra.github.workflows", "SyncOperation"),
     "Tier0ImportAnalysis": (
         "flext_infra.transformers.tier0_import_fixer",
         "Tier0ImportAnalysis",
@@ -1061,8 +1051,6 @@ __all__ = [
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceValidator",
     "FlextInfraOrchestratorService",
-    "FlextInfraPrManager",
-    "FlextInfraPrWorkspaceManager",
     "FlextInfraProjectMigrator",
     "FlextInfraProtocols",
     "FlextInfraPyprojectModernizer",
@@ -1154,7 +1142,6 @@ __all__ = [
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesYaml",
-    "FlextInfraWorkflowSyncer",
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",
     "FutureAnnotationsDetector",
@@ -1181,7 +1168,6 @@ __all__ = [
     "ProjectClassifier",
     "ProjectResult",
     "RuntimeAliasDetector",
-    "SyncOperation",
     "Tier0ImportAnalysis",
     "Tier0ImportAnalyzer",
     "Tier0ImportContextDiscovery",

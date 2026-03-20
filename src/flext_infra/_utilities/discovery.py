@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import libcst as cst
+
 from flext_core import r
 from flext_infra.models import FlextInfraModels as m
 
@@ -123,15 +125,27 @@ class FlextInfraUtilitiesDiscovery:
 
     @staticmethod
     def package_context(file_path: Path) -> tuple[Path, str]:
-        """Return (package_dir, package_name) for the current file."""
-        parts = file_path.parts
-        if "src" not in parts:
-            return (file_path.parent, "")
-        src_idx = parts.index("src")
-        if src_idx + 1 >= len(parts):
-            return (file_path.parent, "")
-        package_dir = Path(*parts[: src_idx + 2])
-        return (package_dir, parts[src_idx + 1])
+        """Return (package_dir, package_name) for any project type."""
+        parts = file_path.resolve().parts
+        # 1. Standard FLEXT structure: .../src/<package_name>/...
+        if "src" in parts:
+            src_idx = parts.index("src")
+            # Package name is always the directory immediately after 'src'
+            if src_idx + 1 < len(parts):
+                package_name = parts[src_idx + 1]
+                package_dir = Path(*parts[: src_idx + 2])
+                return package_dir, package_name
+
+        # 2. Alternative structure: find highest-level directory with __init__.py
+        current = file_path.resolve().parent
+        best_dir, best_name = current, ""
+        while current.parent != current:
+            if (current / "__init__.py").is_file():
+                best_dir, best_name = current, current.name
+            elif best_name:  # Stop once we've crossed out of the package
+                break
+            current = current.parent
+        return best_dir, best_name
 
     @staticmethod
     def discover_core_package(project_root: Path) -> str:

@@ -8,10 +8,6 @@ from pathlib import Path
 
 from flext_core import r
 from flext_infra import c, output
-from flext_infra.github.linter import lint_workflows
-from flext_infra.github.pr import main as pr_main
-from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
-from flext_infra.github.workflows import SyncOperation, sync_workspace
 from flext_infra.models import m
 from flext_infra.utilities import u
 
@@ -74,7 +70,7 @@ def run_workflows(
     report: Path | None,
 ) -> int:
     """Sync GitHub workflow files."""
-    result: r[list[SyncOperation]] = sync_workspace(
+    result: r[list[m.Infra.SyncOperation]] = u.Infra.github_sync_workspace_workflows(
         workspace_root=cli.workspace,
         apply=cli.apply,
         prune=prune,
@@ -90,7 +86,7 @@ def run_lint(
     strict: bool,
 ) -> int:
     """Lint GitHub workflow files across workspace."""
-    result = lint_workflows(
+    result: r[m.Infra.WorkflowLintResult] = u.Infra.github_lint_workflows(
         root=cli.workspace,
         report_path=report,
         strict=strict,
@@ -105,13 +101,99 @@ def run_lint(
 
 
 def run_pr(argv: list[str]) -> int:
-    """Delegate PR logic managing arguments."""
-    original_argv = sys.argv.copy()
-    sys.argv = [sys.argv[0], *argv]
-    try:
-        return pr_main()
-    finally:
-        sys.argv = original_argv
+    """Manage pull requests for a single project."""
+    parser = u.Infra.create_parser(
+        "flext-infra github pr",
+        "Pull request lifecycle management",
+    )
+    _ = parser.add_argument(
+        "--repo-root",
+        type=Path,
+        required=True,
+        help="Repository root directory",
+    )
+    _ = parser.add_argument(
+        "--action",
+        choices=["status", "create", "view", "checks", "merge", "close"],
+        default="status",
+        help="PR action to perform",
+    )
+    _ = parser.add_argument("--base", default=c.Infra.Git.MAIN, help="Base branch")
+    _ = parser.add_argument("--head", help="Head branch (default: current)")
+    _ = parser.add_argument("--number", type=int, help="PR number")
+    _ = parser.add_argument("--title", help="PR title (for create)")
+    _ = parser.add_argument("--body", help="PR body (for create)")
+    _ = parser.add_argument(
+        "--draft",
+        type=int,
+        default=0,
+        choices=[0, 1],
+        help="Create as draft",
+    )
+    _ = parser.add_argument(
+        "--merge-method",
+        choices=["merge", "squash", "rebase"],
+        default="squash",
+        help="Merge method",
+    )
+    _ = parser.add_argument(
+        "--auto",
+        type=int,
+        default=0,
+        choices=[0, 1],
+        help="Auto-merge",
+    )
+    _ = parser.add_argument(
+        "--delete-branch",
+        type=int,
+        default=1,
+        choices=[0, 1],
+        help="Delete head branch on merge",
+    )
+    _ = parser.add_argument(
+        "--checks-strict",
+        type=int,
+        default=1,
+        choices=[0, 1],
+        help="Fail if checks fail",
+    )
+    _ = parser.add_argument(
+        "--release-on-merge",
+        type=int,
+        default=1,
+        choices=[0, 1],
+        help="Run release workflow on merge",
+    )
+    args = parser.parse_args(argv)
+
+    pr_args = {
+        "action": args.action,
+        "base": args.base,
+        "head": args.head,
+        "number": str(args.number) if args.number else "",
+        "title": args.title,
+        "body": args.body,
+        "draft": str(args.draft),
+        "merge_method": args.merge_method,
+        "auto": str(args.auto),
+        "delete_branch": str(args.delete_branch),
+        "checks_strict": str(args.checks_strict),
+        "release_on_merge": str(args.release_on_merge),
+    }
+
+    result = u.Infra._github_pr_run_single(
+        repo_root=args.repo_root,
+        workspace_root=args.repo_root,
+        pr_args=pr_args,
+    )
+
+    if result.is_failure:
+        output.error(result.error or "status failed")
+        return 1
+
+    if result.value.exit_code != 0:
+        return result.value.exit_code
+    return 0
 
 
 def run_pr_workspace(
@@ -119,7 +201,6 @@ def run_pr_workspace(
     pr_args: m.Infra.PrWorkspaceArgs,
 ) -> int:
     """Manage PRs across workspace."""
-    manager = FlextInfraPrWorkspaceManager()
     pr_dict = {
         c.Infra.ReportKeys.ACTION: pr_args.pr_action,
         "base": pr_args.pr_base,
@@ -134,7 +215,7 @@ def run_pr_workspace(
         "checks_strict": "1" if pr_args.pr_checks_strict else "0",
         "release_on_merge": "1" if pr_args.pr_release_on_merge else "0",
     }
-    result = manager.orchestrate(
+    result = u.Infra.github_pr_orchestrate(
         workspace_root=cli.workspace,
         projects=cli.projects if isinstance(cli.projects, list) else [],
         include_root=pr_args.include_root,

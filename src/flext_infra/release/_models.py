@@ -51,5 +51,32 @@ class FlextInfraReleaseModels:
             ),
         ]
 
+    class ReleaseOrchestratorConfig(FlextModels.ArbitraryTypesModel):
+        """Configuration for release workflow execution."""
+
+        workspace_root: Annotated[Path, Field(description="Workspace root")]
+        version: Annotated[str, Field(min_length=1)]
+        tag: Annotated[str, Field(min_length=1)]
+        phases: Annotated[list[str], Field(description="Ordered list of phases")]
+        project_names: Annotated[list[str] | None, Field(default=None)]
+        dry_run: Annotated[bool, Field(default=False)]
+        push: Annotated[bool, Field(default=False)]
+        dev_suffix: Annotated[bool, Field(default=False)]
+        create_branches: Annotated[bool, Field(default=True)]
+        next_dev: Annotated[bool, Field(default=False)]
+        next_bump: Annotated[str, Field(default="minor")]
+
+    class ReleasePhaseDispatchConfig(FlextModels.ArbitraryTypesModel):
+        """Configuration for single release phase dispatch."""
+
+        phase: Annotated[str, Field(min_length=1)]
+        workspace_root: Annotated[Path, Field(description="Workspace root")]
+        version: Annotated[str, Field(min_length=1)]
+        tag: Annotated[str, Field(min_length=1)]
+        project_names: Annotated[list[str], Field(default_factory=list)]
+        dry_run: Annotated[bool, Field(default=False)]
+        push: Annotated[bool, Field(default=False)]
+        dev_suffix: Annotated[bool, Field(default=False)]
+
 
 __all__ = ["FlextInfraReleaseModels"]

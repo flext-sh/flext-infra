@@ -5,7 +5,6 @@ from __future__ import annotations
 import ast
 from collections.abc import Sequence
 from pathlib import Path
-from typing import cast
 
 import libcst as cst
 
@@ -66,9 +65,8 @@ class FlextInfraUtilitiesParsing:
         return cst.SimpleStatementLine(
             body=[
                 cst.ImportFrom(
-                    module=cast(
-                        "cst.Name | cst.Attribute",
-                        FlextInfraUtilitiesParsing.module_expr_from_dotted(module_name),
+                    module=FlextInfraUtilitiesParsing.module_expr_from_dotted(
+                        module_name
                     ),
                     names=tuple(
                         cst.ImportAlias(name=cst.Name(alias))
@@ -113,13 +111,17 @@ class FlextInfraUtilitiesParsing:
 
     @staticmethod
     def cst_is_module_toplevel(file_path: Path) -> bool:
-        """Determine if a file is at the package root level."""
-        parts = file_path.parts
+        """Determine if a file is at the package root level (Facade level)."""
+        parts = file_path.resolve().parts
         try:
             src_idx = parts.index("src")
+            # Package root files are (..., 'src', 'package_name', 'file.py')
             return len(parts) == src_idx + 3
         except ValueError:
-            return False
+            # Fallback: if 'src' not found, check if it's in a package root
+            return (file_path.parent / "__init__.py").is_file() and not (
+                file_path.parent.parent / "__init__.py"
+            ).is_file()
 
 
 __all__ = ["FlextInfraUtilitiesParsing"]
