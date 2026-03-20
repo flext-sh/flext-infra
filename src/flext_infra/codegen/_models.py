@@ -239,5 +239,23 @@ class FlextInfraCodegenModels:
         project: Annotated[str, Field(min_length=1, description="Project name")]
         line: Annotated[int, Field(ge=1, description="Line number")]
 
+    class CanonicalValueRule(FlextModels.ArbitraryTypesModel):
+        value: int | str = Field(...)
+        type: str = Field(...)
+        canonical_ref: str = Field(...)
+        semantic_names: list[str] = Field(default_factory=list)
+
+    class NsRule(FlextModels.ArbitraryTypesModel):
+        id: str = Field(...)
+        description: str = Field(...)
+        fixable: bool = Field(...)
+        fixable_exclusion: str | None = Field(default=None)
+
+    class ConstantsGovernanceConfig(FlextModels.ArbitraryTypesModel):
+        version: str = Field(...)
+        rules: list[FlextInfraCodegenModels.NsRule] = Field(...)
+        canonical_values: list[FlextInfraCodegenModels.CanonicalValueRule] = Field(...)
+        constants_class_pattern: str = Field(...)
+
 
 __all__ = ["FlextInfraCodegenModels"]

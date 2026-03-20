@@ -27,7 +27,7 @@ from flext_infra.codegen._codegen_constant_visitor import (
     extract_constant_definitions,
     scan_constant_usages,
 )
-from flext_infra.codegen._codegen_governance import is_rule_fixable
+from flext_infra.codegen._codegen_governance import FlextInfraCodegenGovernance
 
 
 class FlextInfraCodegenCensus(s[bool]):
@@ -53,7 +53,7 @@ class FlextInfraCodegenCensus(s[bool]):
     @staticmethod
     def _is_fixable(*, rule: str, module: str, message: str) -> bool:
         _ = message
-        return is_rule_fixable(rule, module)
+        return FlextInfraCodegenGovernance.is_rule_fixable(rule, module)
 
     @staticmethod
     def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:
