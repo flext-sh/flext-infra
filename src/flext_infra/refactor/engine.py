@@ -70,9 +70,9 @@ class FlextInfraRefactorEngine:
 
     @classmethod
     def main(cls) -> int:
-        """Run the refactor CLI entrypoint and return the status code."""
+        """Run the refactor CLI entrypoint and exit with the status code."""
         runner: Callable[[type], int] = FlextInfraRefactorCliSupport.run_cli
-        return runner(cls)
+        raise SystemExit(runner(cls))
 
     def collect_workspace_files(
         self,

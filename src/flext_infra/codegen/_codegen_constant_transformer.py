@@ -158,7 +158,7 @@ class FlextInfraCodegenConstantTransformation:
             updated_node: cst.Module,
         ) -> cst.Module:
             del original_node
-            _t = FlextInfraCodegenConstantTransformation
+            t = FlextInfraCodegenConstantTransformation
             if self.replacements == 0:
                 return updated_node
             new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
@@ -199,7 +199,7 @@ class FlextInfraCodegenConstantTransformation:
                 new_body.append(stmt)
             if not c_import_present:
                 new_body.insert(
-                    _t._import_insert_index(new_body),
+                    t._import_insert_index(new_body),
                     cst.parse_statement(f"{self._project_import}\n"),
                 )
                 self.changes.append("added c import")
@@ -232,9 +232,9 @@ class FlextInfraCodegenConstantTransformation:
         parent_class: str,
         definitions: list[m.Infra.ConstantDefinition],
     ) -> tuple[bool, list[str]]:
-        _t = FlextInfraCodegenConstantTransformation
+        t = FlextInfraCodegenConstantTransformation
         tree = cst.parse_module(file_path.read_text("utf-8"))
-        transformer = _t.CanonicalValueReplacer(
+        transformer = t.CanonicalValueReplacer(
             parent_class=parent_class,
             definitions=definitions,
         )
@@ -248,9 +248,9 @@ class FlextInfraCodegenConstantTransformation:
         file_path: Path,
         unused: list[m.Infra.UnusedConstant],
     ) -> tuple[bool, list[str]]:
-        _t = FlextInfraCodegenConstantTransformation
+        t = FlextInfraCodegenConstantTransformation
         tree = cst.parse_module(file_path.read_text("utf-8"))
-        transformer = _t.UnusedConstantRemover(
+        transformer = t.UnusedConstantRemover(
             unused_names={item.name for item in unused},
         )
         new_tree = tree.visit(transformer)
@@ -264,7 +264,7 @@ class FlextInfraCodegenConstantTransformation:
         project_import: str,
         pkg_dir: Path | None = None,
     ) -> tuple[bool, list[str]]:
-        _t = FlextInfraCodegenConstantTransformation
+        t = FlextInfraCodegenConstantTransformation
         parts = project_import.replace("from ", "").split(" import ")
         package_name = parts[0].strip() if parts else ""
         resolved_pkg_dir = pkg_dir
@@ -273,9 +273,9 @@ class FlextInfraCodegenConstantTransformation:
                 if parent.name == package_name:
                     resolved_pkg_dir = parent
                     break
-        target_class = _t._derive_constants_class(package_name, resolved_pkg_dir)
+        target_class = t._derive_constants_class(package_name, resolved_pkg_dir)
         tree = cst.parse_module(file_path.read_text("utf-8"))
-        transformer = _t.DirectRefAliasNormalizer(
+        transformer = t.DirectRefAliasNormalizer(
             project_import=project_import,
             target_class=target_class,
         )

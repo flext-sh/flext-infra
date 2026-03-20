@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import libcst as cst
 
 from flext_infra import m
 from flext_infra.codegen._codegen_governance import FlextInfraCodegenGovernance
 
-_MIN_QUOTED_LITERAL_LEN = 2
-_MIN_DIRECT_REFERENCE_CHAIN = 3
-
 
 class FlextInfraCodegenConstantDetection:
+    _MIN_QUOTED_LITERAL_LEN: ClassVar[int] = 2
+    _MIN_DIRECT_REFERENCE_CHAIN: ClassVar[int] = 3
+
     class RenderContext:
         def __init__(self, source: str) -> None:
             self._render_module = cst.parse_module("")
@@ -103,7 +103,10 @@ class FlextInfraCodegenConstantDetection:
                 self.used_constants.add(node.attr.value)
 
             chain = det.attribute_chain(node)
-            if len(chain) < _MIN_DIRECT_REFERENCE_CHAIN:
+            if (
+                len(chain)
+                < FlextInfraCodegenConstantDetection._MIN_DIRECT_REFERENCE_CHAIN
+            ):
                 return
             if not re.fullmatch(
                 FlextInfraCodegenGovernance.get_constants_class_pattern(),
@@ -147,7 +150,7 @@ class FlextInfraCodegenConstantDetection:
 
     @staticmethod
     def str_literal(value_repr: str) -> str | None:
-        if len(value_repr) < _MIN_QUOTED_LITERAL_LEN:
+        if len(value_repr) < FlextInfraCodegenConstantDetection._MIN_QUOTED_LITERAL_LEN:
             return None
         if value_repr[0] != value_repr[-1]:
             return None

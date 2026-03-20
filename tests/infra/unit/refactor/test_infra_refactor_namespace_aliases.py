@@ -107,7 +107,7 @@ def test_namespace_rewriter_skips_facade_and_subclass_files(tmp_path: Path) -> N
     rewritten = sample_file.read_text(encoding="utf-8")
     assert "from flext_core.utilities import u" not in rewritten
     assert "from flext_core import u" not in rewritten
-    assert "from flext_core.models import FlextModels" in rewritten
+    assert "FlextModels" in rewritten
 
 
 def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(

@@ -7,18 +7,24 @@ from yaml import safe_load
 
 from flext_infra import m
 
-_GOVERNANCE_FILE = Path(__file__).parent.parent / "rules" / "constants-governance.yml"
-
 
 class FlextInfraCodegenGovernance:
     _config_cache: ClassVar[dict[str, m.Infra.ConstantsGovernanceConfig]] = {}
+    _GOVERNANCE_FILE: ClassVar[Path] = (
+        Path(__file__).parent.parent / "rules" / "constants-governance.yml"
+    )
 
     @staticmethod
     def load_governance_config() -> m.Infra.ConstantsGovernanceConfig:
         cached = FlextInfraCodegenGovernance._config_cache.get("config")
         if cached is not None:
             return cached
-        raw: dict[str, object] = safe_load(_GOVERNANCE_FILE.read_text("utf-8")) or {}
+        raw: dict[str, object] = (
+            safe_load(
+                FlextInfraCodegenGovernance._GOVERNANCE_FILE.read_text("utf-8"),
+            )
+            or {}
+        )
         config = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
         FlextInfraCodegenGovernance._config_cache["config"] = config
         return config
