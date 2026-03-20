@@ -1,15 +1,9 @@
-"""Centralized CST transformer library for constants governance auto-fix.
-
-ALL transformation CST logic lives here. Fixer calls these entry-point
-functions — it NEVER imports libcst directly.
-"""
-
 from __future__ import annotations
 
 import re
 from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar, override
+from typing import override
 
 import libcst as cst
 
@@ -18,198 +12,204 @@ from flext_infra.codegen._codegen_constant_visitor import (
     FlextInfraCodegenConstantDetection,
 )
 
-
-class CanonicalValueReplacer(cst.CSTTransformer):
-    def __init__(
-        self,
-        *,
-        parent_class: str,
-        definitions: list[m.Infra.ConstantDefinition],
-    ) -> None:
-        super().__init__()
-        self._parent_class = parent_class
-        self._lookup = {
-            (
-                item.name,
-                item.value_repr,
-            ): FlextInfraCodegenConstantDetection.canonical_reference_for(
-                item.name,
-                item.value_repr,
-            )
-            for item in definitions
-        }
-        self.changes: list[str] = []
-        self.replacements = 0
-
-    @override
-    def leave_AnnAssign(
-        self,
-        original_node: cst.AnnAssign,
-        updated_node: cst.AnnAssign,
-    ) -> cst.BaseSmallStatement:
-        if (
-            not isinstance(original_node.target, cst.Name)
-            or original_node.value is None
-        ):
-            return updated_node
-        value_repr = cst.parse_module("").code_for_node(original_node.value)
-        canonical_ref = self._lookup.get((original_node.target.value, value_repr), "")
-        if not canonical_ref:
-            return updated_node
-        self.replacements += 1
-        self.changes.append(f"replaced {original_node.target.value} -> {canonical_ref}")
-        return updated_node.with_changes(
-            value=cst.parse_expression(f"{self._parent_class}.{canonical_ref}"),
-        )
-
-
-class UnusedConstantRemover(cst.CSTTransformer):
-    def __init__(self, *, unused_names: set[str]) -> None:
-        super().__init__()
-        self._unused_names = unused_names
-        self._class_stack: list[str] = []
-        self.changes: list[str] = []
-        self.removals = 0
-
-    @override
-    def visit_ClassDef(self, node: cst.ClassDef) -> None:
-        self._class_stack.append(node.name.value)
-
-    @override
-    def leave_ClassDef(
-        self,
-        original_node: cst.ClassDef,
-        updated_node: cst.ClassDef,
-    ) -> cst.BaseStatement | cst.RemovalSentinel:
-        del original_node
-        if self._class_stack:
-            self._class_stack.pop()
-        if updated_node.body.body:
-            return updated_node
-        self.removals += 1
-        self.changes.append("removed empty class")
-        return cst.RemovalSentinel.REMOVE
-
-    @override
-    def leave_AnnAssign(
-        self,
-        original_node: cst.AnnAssign,
-        updated_node: cst.AnnAssign,
-    ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        del updated_node
-        if not isinstance(original_node.target, cst.Name):
-            return original_node
-        if original_node.target.value not in self._unused_names:
-            return original_node
-        self.removals += 1
-        self.changes.append(
-            f"removed {'.'.join(self._class_stack)}.{original_node.target.value}",
-        )
-        return cst.RemovalSentinel.REMOVE
-
-
-class DirectRefAliasNormalizer(cst.CSTTransformer):
-    def __init__(self, *, project_import: str, target_class: str) -> None:
-        super().__init__()
-        self._project_import = project_import
-        self._target_class = target_class
-        self._has_c_import = False
-        self._replaced_classes: set[str] = set()
-        self.changes: list[str] = []
-        self.replacements = 0
-
-    @override
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> bool:
-        if isinstance(node.names, cst.ImportStar):
-            return False
-        for alias in node.names:
-            imported_name = alias.name.value if isinstance(alias.name, cst.Name) else ""
-            local_name = imported_name
-            if alias.asname is not None and isinstance(alias.asname.name, cst.Name):
-                local_name = alias.asname.name.value
-            if local_name == "c":
-                self._has_c_import = True
-        return False
-
-    @override
-    def leave_Attribute(
-        self,
-        original_node: cst.Attribute,
-        updated_node: cst.Attribute,
-    ) -> cst.BaseExpression:
-        del original_node
-        chain = FlextInfraCodegenConstantDetection.attribute_chain(updated_node)
-        if len(chain) < FlextInfraCodegenConstantTransformation.min_attribute_chain():
-            return updated_node
-        if chain[0] != self._target_class:
-            return updated_node
-        self._replaced_classes.add(chain[0])
-        rewritten = ".".join(["c", *chain[1:]])
-        self.replacements += 1
-        self.changes.append(f"{'.'.join(chain)} -> {rewritten}")
-        return cst.parse_expression(rewritten)
-
-    @override
-    def leave_Module(
-        self,
-        original_node: cst.Module,
-        updated_node: cst.Module,
-    ) -> cst.Module:
-        del original_node
-        if self.replacements == 0:
-            return updated_node
-        new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
-        c_import_present = self._has_c_import
-        for stmt in updated_node.body:
-            if (
-                isinstance(stmt, cst.SimpleStatementLine)
-                and len(stmt.body) == 1
-                and isinstance(stmt.body[0], cst.ImportFrom)
-                and not isinstance(stmt.body[0].names, cst.ImportStar)
-            ):
-                import_node = stmt.body[0]
-                remaining = [
-                    alias
-                    for alias in import_node.names
-                    if not (
-                        isinstance(alias.name, cst.Name)
-                        and alias.name.value in self._replaced_classes
-                    )
-                ]
-                removed_count = len(import_node.names) - len(remaining)
-                if removed_count > 0:
-                    self.changes.append(f"removed {removed_count} unused import(s)")
-                if not remaining:
-                    continue
-                if removed_count > 0:
-                    cleaned = [
-                        a.with_changes(comma=cst.MaybeSentinel.DEFAULT)
-                        if i == len(remaining) - 1
-                        else a
-                        for i, a in enumerate(remaining)
-                    ]
-                    stmt = stmt.with_changes(
-                        body=[import_node.with_changes(names=cleaned)],
-                    )
-            new_body.append(stmt)
-        if not c_import_present:
-            new_body.insert(
-                FlextInfraCodegenConstantTransformation.import_insert_index(new_body),
-                cst.parse_statement(f"{self._project_import}\n"),
-            )
-            self.changes.append("added c import")
-        return updated_node.with_changes(body=new_body)
+_MIN_ATTRIBUTE_CHAIN = 2
 
 
 class FlextInfraCodegenConstantTransformation:
-    _MIN_ATTRIBUTE_CHAIN: ClassVar[int] = 2
+    class CanonicalValueReplacer(cst.CSTTransformer):
+        def __init__(
+            self,
+            *,
+            parent_class: str,
+            definitions: list[m.Infra.ConstantDefinition],
+        ) -> None:
+            super().__init__()
+            self._parent_class = parent_class
+            self._lookup = {
+                (
+                    item.name,
+                    item.value_repr,
+                ): FlextInfraCodegenConstantDetection.canonical_reference_for(
+                    item.name,
+                    item.value_repr,
+                )
+                for item in definitions
+            }
+            self.changes: list[str] = []
+            self.replacements = 0
+
+        @override
+        def leave_AnnAssign(
+            self,
+            original_node: cst.AnnAssign,
+            updated_node: cst.AnnAssign,
+        ) -> cst.BaseSmallStatement:
+            if (
+                not isinstance(original_node.target, cst.Name)
+                or original_node.value is None
+            ):
+                return updated_node
+            value_repr = cst.parse_module("").code_for_node(original_node.value)
+            canonical_ref = self._lookup.get(
+                (original_node.target.value, value_repr),
+                "",
+            )
+            if not canonical_ref:
+                return updated_node
+            self.replacements += 1
+            self.changes.append(
+                f"replaced {original_node.target.value} -> {canonical_ref}",
+            )
+            return updated_node.with_changes(
+                value=cst.parse_expression(f"{self._parent_class}.{canonical_ref}"),
+            )
+
+    class UnusedConstantRemover(cst.CSTTransformer):
+        def __init__(self, *, unused_names: set[str]) -> None:
+            super().__init__()
+            self._unused_names = unused_names
+            self._class_stack: list[str] = []
+            self.changes: list[str] = []
+            self.removals = 0
+
+        @override
+        def visit_ClassDef(self, node: cst.ClassDef) -> None:
+            self._class_stack.append(node.name.value)
+
+        @override
+        def leave_ClassDef(
+            self,
+            original_node: cst.ClassDef,
+            updated_node: cst.ClassDef,
+        ) -> cst.BaseStatement | cst.RemovalSentinel:
+            del original_node
+            if self._class_stack:
+                self._class_stack.pop()
+            if updated_node.body.body:
+                return updated_node
+            self.removals += 1
+            self.changes.append("removed empty class")
+            return cst.RemovalSentinel.REMOVE
+
+        @override
+        def leave_AnnAssign(
+            self,
+            original_node: cst.AnnAssign,
+            updated_node: cst.AnnAssign,
+        ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
+            del updated_node
+            if not isinstance(original_node.target, cst.Name):
+                return original_node
+            if original_node.target.value not in self._unused_names:
+                return original_node
+            self.removals += 1
+            self.changes.append(
+                f"removed {'.'.join(self._class_stack)}.{original_node.target.value}",
+            )
+            return cst.RemovalSentinel.REMOVE
+
+    class DirectRefAliasNormalizer(cst.CSTTransformer):
+        def __init__(self, *, project_import: str, target_class: str) -> None:
+            super().__init__()
+            self._project_import = project_import
+            self._target_class = target_class
+            self._has_c_import = False
+            self._replaced_classes: set[str] = set()
+            self.changes: list[str] = []
+            self.replacements = 0
+
+        @override
+        def visit_ImportFrom(self, node: cst.ImportFrom) -> bool:
+            if isinstance(node.names, cst.ImportStar):
+                return False
+            for alias in node.names:
+                imported_name = (
+                    alias.name.value if isinstance(alias.name, cst.Name) else ""
+                )
+                local_name = imported_name
+                if alias.asname is not None and isinstance(alias.asname.name, cst.Name):
+                    local_name = alias.asname.name.value
+                if local_name == "c":
+                    self._has_c_import = True
+            return False
+
+        @override
+        def leave_Attribute(
+            self,
+            original_node: cst.Attribute,
+            updated_node: cst.Attribute,
+        ) -> cst.BaseExpression:
+            del original_node
+            chain = FlextInfraCodegenConstantDetection.attribute_chain(updated_node)
+            if len(chain) < _MIN_ATTRIBUTE_CHAIN:
+                return updated_node
+            if chain[0] != self._target_class:
+                return updated_node
+            self._replaced_classes.add(chain[0])
+            rewritten = ".".join(["c", *chain[1:]])
+            self.replacements += 1
+            self.changes.append(f"{'.'.join(chain)} -> {rewritten}")
+            return cst.parse_expression(rewritten)
+
+        @override
+        def leave_Module(
+            self,
+            original_node: cst.Module,
+            updated_node: cst.Module,
+        ) -> cst.Module:
+            del original_node
+            _t = FlextInfraCodegenConstantTransformation
+            if self.replacements == 0:
+                return updated_node
+            new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
+            c_import_present = self._has_c_import
+            for stmt in updated_node.body:
+                if (
+                    isinstance(stmt, cst.SimpleStatementLine)
+                    and len(stmt.body) == 1
+                    and isinstance(stmt.body[0], cst.ImportFrom)
+                    and not isinstance(stmt.body[0].names, cst.ImportStar)
+                ):
+                    import_node = stmt.body[0]
+                    remaining = [
+                        alias
+                        for alias in import_node.names
+                        if not (
+                            isinstance(alias.name, cst.Name)
+                            and alias.name.value in self._replaced_classes
+                        )
+                    ]
+                    removed_count = len(import_node.names) - len(remaining)
+                    if removed_count > 0:
+                        self.changes.append(
+                            f"removed {removed_count} unused import(s)",
+                        )
+                    if not remaining:
+                        continue
+                    if removed_count > 0:
+                        cleaned = [
+                            a.with_changes(comma=cst.MaybeSentinel.DEFAULT)
+                            if i == len(remaining) - 1
+                            else a
+                            for i, a in enumerate(remaining)
+                        ]
+                        stmt = stmt.with_changes(
+                            body=[import_node.with_changes(names=cleaned)],
+                        )
+                new_body.append(stmt)
+            if not c_import_present:
+                new_body.insert(
+                    _t._import_insert_index(new_body),
+                    cst.parse_statement(f"{self._project_import}\n"),
+                )
+                self.changes.append("added c import")
+            return updated_node.with_changes(body=new_body)
 
     @staticmethod
-    def min_attribute_chain() -> int:
-        return FlextInfraCodegenConstantTransformation._MIN_ATTRIBUTE_CHAIN
-
-    @staticmethod
-    def _derive_constants_class(package_name: str, pkg_dir: Path | None = None) -> str:
+    def _derive_constants_class(
+        package_name: str,
+        pkg_dir: Path | None = None,
+    ) -> str:
         """``flext_dbt_oracle_wms`` -> ``FlextDbtOracleWmsConstants``."""
         if pkg_dir is not None:
             constants_file = pkg_dir / "constants.py"
@@ -232,8 +232,9 @@ class FlextInfraCodegenConstantTransformation:
         parent_class: str,
         definitions: list[m.Infra.ConstantDefinition],
     ) -> tuple[bool, list[str]]:
+        _t = FlextInfraCodegenConstantTransformation
         tree = cst.parse_module(file_path.read_text("utf-8"))
-        transformer = CanonicalValueReplacer(
+        transformer = _t.CanonicalValueReplacer(
             parent_class=parent_class,
             definitions=definitions,
         )
@@ -247,8 +248,11 @@ class FlextInfraCodegenConstantTransformation:
         file_path: Path,
         unused: list[m.Infra.UnusedConstant],
     ) -> tuple[bool, list[str]]:
+        _t = FlextInfraCodegenConstantTransformation
         tree = cst.parse_module(file_path.read_text("utf-8"))
-        transformer = UnusedConstantRemover(unused_names={item.name for item in unused})
+        transformer = _t.UnusedConstantRemover(
+            unused_names={item.name for item in unused},
+        )
         new_tree = tree.visit(transformer)
         if transformer.removals > 0:
             file_path.write_text(new_tree.code, encoding="utf-8")
@@ -260,6 +264,7 @@ class FlextInfraCodegenConstantTransformation:
         project_import: str,
         pkg_dir: Path | None = None,
     ) -> tuple[bool, list[str]]:
+        _t = FlextInfraCodegenConstantTransformation
         parts = project_import.replace("from ", "").split(" import ")
         package_name = parts[0].strip() if parts else ""
         resolved_pkg_dir = pkg_dir
@@ -268,12 +273,9 @@ class FlextInfraCodegenConstantTransformation:
                 if parent.name == package_name:
                     resolved_pkg_dir = parent
                     break
-        target_class = FlextInfraCodegenConstantTransformation._derive_constants_class(
-            package_name,
-            resolved_pkg_dir,
-        )
+        target_class = _t._derive_constants_class(package_name, resolved_pkg_dir)
         tree = cst.parse_module(file_path.read_text("utf-8"))
-        transformer = DirectRefAliasNormalizer(
+        transformer = _t.DirectRefAliasNormalizer(
             project_import=project_import,
             target_class=target_class,
         )
@@ -312,12 +314,6 @@ class FlextInfraCodegenConstantTransformation:
                 break
             index += 1
         return index
-
-    @staticmethod
-    def import_insert_index(
-        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
-    ) -> int:
-        return FlextInfraCodegenConstantTransformation._import_insert_index(body)
 
     @staticmethod
     def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
@@ -501,9 +497,4 @@ class FlextInfraCodegenConstantTransformation:
         return any_modified, all_changes
 
 
-__all__ = [
-    "CanonicalValueReplacer",
-    "DirectRefAliasNormalizer",
-    "FlextInfraCodegenConstantTransformation",
-    "UnusedConstantRemover",
-]
+__all__ = ["FlextInfraCodegenConstantTransformation"]
