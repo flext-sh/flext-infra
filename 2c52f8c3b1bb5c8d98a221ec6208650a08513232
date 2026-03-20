@@ -1,0 +1,25 @@
+src/flext_infra/basemk/engine.py
+  b279a83971a44010 6,47,70,75-78
+src/flext_infra/basemk/__main__.py
+  b279a83971a44010 11,15,19-20,44,47,58-59,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "2c52f8c3b1bb5c8d98a221ec6208650a08513232",
+  "prompts": {
+    "b279a83971a44010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f73d7affffeiDJJeKXYaEabip",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 55,
+      "total_deletions": 95,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    }
+  }
+}
