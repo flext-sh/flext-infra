@@ -12,11 +12,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from tests.infra import m, t
 from flext_infra import m
-from flext_infra.check.services import (
-    CheckIssue,
+from flext_infra.check.workspace_check import (
     FlextInfraWorkspaceChecker,
-    GateExecution,
     ProjectResult,
 )
 
@@ -28,10 +27,10 @@ def _make_gate_exec(
     project: str = "p",
     *,
     passed: bool = True,
-    issues: list[CheckIssue] | None = None,
-) -> GateExecution:
-    """Helper to create a _GateExecution."""
-    return GateExecution(
+    issues: list[m.Infra.Issue] | None = None,
+) -> m.Infra.GateExecution:
+    """Helper to create a _m.Infra.GateExecution."""
+    return m.Infra.GateExecution(
         result=m.Infra.GateResult(
             gate=gate,
             project=project,
@@ -178,7 +177,7 @@ class TestRunProjectsBehavior:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        issue = CheckIssue(
+        issue = m.Infra.Issue(
             file="test.py",
             line=1,
             column=1,
@@ -205,7 +204,7 @@ class TestRunProjectsBehavior:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        issue = CheckIssue(
+        issue = m.Infra.Issue(
             file="test.py",
             line=1,
             column=1,

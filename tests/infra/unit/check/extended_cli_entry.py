@@ -19,11 +19,11 @@ import flext_infra.check.__main__ as check_main_mod
 import flext_infra.check.workspace_check as ws_mod
 import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
 from flext_core import r, t
-from flext_infra.check.services import (
-    GateExecution,
+from tests.infra import m, t
+from flext_infra.check.workspace_check import (
+    FlextInfraWorkspaceChecker,
     ProjectResult,
 )
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 from ...models import m
 
@@ -182,7 +182,7 @@ class TestRunCLIExtended:
             errors=[],
             duration=0.0,
         )
-        gate_exec = GateExecution(result=gate, issues=[], raw_output="")
+        gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
         project = ProjectResult(project="p", gates={"lint": gate_exec})
         ok_result = r[list[ProjectResult]].ok([project])
         monkeypatch.setattr(

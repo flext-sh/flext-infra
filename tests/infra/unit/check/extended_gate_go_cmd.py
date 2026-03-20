@@ -14,8 +14,9 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r, t
+from tests.infra import m, t
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-from flext_infra.check.services import FlextInfraWorkspaceChecker
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates._base_gate import FlextInfraGateContext
 from flext_infra.gates.go import FlextInfraGoGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate

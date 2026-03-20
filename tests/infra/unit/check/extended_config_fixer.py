@@ -11,7 +11,8 @@ from pathlib import Path
 import tomlkit
 from flext_tests import tm
 
-from flext_infra.check.services import FlextInfraConfigFixer
+from tests.infra import m, t
+from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 
 
 class TestConfigFixerProcessFile:

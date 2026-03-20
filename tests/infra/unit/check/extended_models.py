@@ -1,4 +1,4 @@
-"""Tests for check model types — _CheckIssue and _ProjectResult.
+"""Tests for check model types — _m.Infra.Issue and _ProjectResult.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,20 +8,16 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from flext_infra.check.services import (
-    CheckIssue,
-    GateExecution,
-    ProjectResult,
-)
+
 
 from ...models import m
 
 
 class TestCheckIssueFormatted:
-    """Test _CheckIssue.formatted property."""
+    """Test _m.Infra.Issue.formatted property."""
 
     def test_formatted_with_code(self) -> None:
-        issue = CheckIssue(
+        issue = m.Infra.Issue(
             file="test.py",
             line=10,
             column=5,
@@ -33,7 +29,7 @@ class TestCheckIssueFormatted:
         tm.that(issue.formatted, contains="test.py:10:5")
 
     def test_formatted_without_code(self) -> None:
-        issue = CheckIssue(
+        issue = m.Infra.Issue(
             file="test.py",
             line=10,
             column=5,
@@ -62,7 +58,7 @@ class TestProjectResultProperties:
             errors=[],
             duration=0.0,
         )
-        issue1 = CheckIssue(
+        issue1 = m.Infra.Issue(
             file="a.py",
             line=1,
             column=1,
@@ -70,7 +66,7 @@ class TestProjectResultProperties:
             message="m1",
             severity="error",
         )
-        issue2 = CheckIssue(
+        issue2 = m.Infra.Issue(
             file="b.py",
             line=2,
             column=1,
@@ -78,7 +74,7 @@ class TestProjectResultProperties:
             message="m2",
             severity="error",
         )
-        issue3 = CheckIssue(
+        issue3 = m.Infra.Issue(
             file="c.py",
             line=3,
             column=1,
@@ -136,7 +132,7 @@ class TestWorkspaceCheckerErrorSummary:
     """Test error summary reporting."""
 
     def test_error_summary_with_multiple_projects_and_gates(self) -> None:
-        issue1 = CheckIssue(
+        issue1 = m.Infra.Issue(
             file="a.py",
             line=1,
             column=1,
@@ -144,7 +140,7 @@ class TestWorkspaceCheckerErrorSummary:
             message="m1",
             severity="error",
         )
-        issue2 = CheckIssue(
+        issue2 = m.Infra.Issue(
             file="b.py",
             line=2,
             column=1,
@@ -152,7 +148,7 @@ class TestWorkspaceCheckerErrorSummary:
             message="m2",
             severity="error",
         )
-        issue3 = CheckIssue(
+        issue3 = m.Infra.Issue(
             file="c.py",
             line=3,
             column=1,

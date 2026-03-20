@@ -13,7 +13,8 @@ from types import SimpleNamespace
 import pytest
 from flext_tests import tm
 
-from flext_infra.check.services import FlextInfraWorkspaceChecker
+from tests.infra import m, t
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests.infra.models import m
 
 from ... import h

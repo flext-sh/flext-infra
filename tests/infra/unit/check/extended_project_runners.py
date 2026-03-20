@@ -12,11 +12,9 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r, t
+from tests.infra import m, t
 from flext_infra import u
-from flext_infra.check.services import (
-    FlextInfraWorkspaceChecker,
-    GateExecution,
-)
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 from ._shared_fixtures import create_gate_execution
 

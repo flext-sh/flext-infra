@@ -11,10 +11,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.check.services import (
-    FlextInfraWorkspaceChecker,
-    ProjectResult,
-)
+from tests.infra import m, t
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 from ... import h
 from ...models import m

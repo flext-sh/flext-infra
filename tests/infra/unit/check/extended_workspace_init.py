@@ -12,9 +12,9 @@ import pytest
 from flext_tests import tm
 
 from flext_core import t
+from tests.infra import m, t
 from flext_infra import c
-from flext_infra.check.services import (
-    CheckIssue,
+from flext_infra.check.workspace_check import (
     FlextInfraWorkspaceChecker,
 )
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
@@ -118,7 +118,7 @@ class TestWorkspaceCheckerBuildGateResult:
 
     def test_build_gate_result_success(self, tmp_path: Path) -> None:
         gate = FlextInfraRuffLintGate(tmp_path)
-        issue = CheckIssue(
+        issue = m.Infra.Issue(
             file="a.py",
             line=1,
             column=1,

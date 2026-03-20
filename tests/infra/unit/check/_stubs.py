@@ -10,11 +10,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from flext_infra.check.services import (
-    CheckIssue,
-    GateExecution,
-    ProjectResult,
-)
+
 
 from ...models import m
 from ...typings import t
@@ -87,7 +83,7 @@ def make_gate_exec(
     gate: str = "lint",
     project: str = "p",
     passed: bool = True,
-    issues: list[CheckIssue] | None = None,
+    issues: list[m.Infra.Issue] | None = None,
 ) -> GateExecution:
     """Create a _GateExecution with defaults."""
     return GateExecution(
@@ -109,9 +105,9 @@ def make_issue(
     column: int = 1,
     code: str = "E1",
     message: str = "Error",
-) -> CheckIssue:
-    """Create a _CheckIssue with defaults."""
-    return CheckIssue(
+) -> m.Infra.Issue:
+    """Create a _m.Infra.Issue with defaults."""
+    return m.Infra.Issue(
         file=file,
         line=line,
         column=column,

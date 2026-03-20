@@ -13,7 +13,8 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r
-from flext_infra.check.services import FlextInfraConfigFixer
+from tests.infra import m, t
+from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 
 
 def _fake_process(

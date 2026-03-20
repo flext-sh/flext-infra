@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from flext_infra.check.services import (
-    CheckIssue,
+from tests.infra import m, t
+from flext_infra.check.workspace_check import (
     FlextInfraWorkspaceChecker,
-    GateExecution,
     ProjectResult,
 )
 
@@ -30,7 +29,7 @@ class TestWorkspaceCheckerMarkdownReport:
             errors=[],
             duration=0.0,
         )
-        issue = CheckIssue(
+        issue = m.Infra.Issue(
             file="a.py",
             line=1,
             column=1,
@@ -38,7 +37,7 @@ class TestWorkspaceCheckerMarkdownReport:
             message="Error",
             severity="error",
         )
-        gate_exec = GateExecution(result=gate, issues=[issue], raw_output="")
+        gate_exec = m.Infra.GateExecution(result=gate, issues=[issue], raw_output="")
         project = ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_markdown_report(
             [project],
@@ -58,7 +57,7 @@ class TestWorkspaceCheckerMarkdownReport:
             errors=[],
             duration=0.0,
         )
-        gate_exec = GateExecution(result=gate, issues=[], raw_output="")
+        gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
         project = ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_markdown_report(
             [project],
@@ -84,8 +83,8 @@ class TestWorkspaceCheckerMarkdownReport:
             errors=[],
             duration=0.0,
         )
-        exec1 = GateExecution(result=gate1, issues=[], raw_output="")
-        issue = CheckIssue(
+        exec1 = m.Infra.GateExecution(result=gate1, issues=[], raw_output="")
+        issue = m.Infra.Issue(
             file="a.py",
             line=1,
             column=1,
@@ -93,7 +92,7 @@ class TestWorkspaceCheckerMarkdownReport:
             message="Error",
             severity="error",
         )
-        exec2 = GateExecution(result=gate2, issues=[issue], raw_output="")
+        exec2 = m.Infra.GateExecution(result=gate2, issues=[issue], raw_output="")
         projects = [
             ProjectResult(project="p1", gates={"lint": exec1}),
             ProjectResult(project="p2", gates={"lint": exec2}),
@@ -119,7 +118,7 @@ class TestWorkspaceCheckerSARIFReport:
             errors=[],
             duration=0.0,
         )
-        gate_exec = GateExecution(result=gate, issues=[], raw_output="")
+        gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
         project = ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_sarif_report([project], ["lint"])
         assert isinstance(report, dict)
@@ -134,7 +133,7 @@ class TestWorkspaceCheckerSARIFReport:
             errors=[],
             duration=0.0,
         )
-        issue = CheckIssue(
+        issue = m.Infra.Issue(
             file="a.py",
             line=1,
             column=1,
@@ -142,7 +141,7 @@ class TestWorkspaceCheckerSARIFReport:
             message="Error",
             severity="error",
         )
-        gate_exec = GateExecution(result=gate, issues=[issue], raw_output="")
+        gate_exec = m.Infra.GateExecution(result=gate, issues=[issue], raw_output="")
         project = ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_sarif_report([project], ["lint"])
         assert isinstance(report, dict)
@@ -161,7 +160,7 @@ class TestWorkspaceCheckerSARIFReportEdgeCases:
             errors=[],
             duration=0.0,
         )
-        exec1 = GateExecution(result=gate, issues=[], raw_output="")
+        exec1 = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
         project = ProjectResult(project="p", gates={"lint": exec1})
         report = checker.generate_sarif_report([project], ["format"])
         assert isinstance(report, dict)
@@ -177,7 +176,7 @@ class TestWorkspaceCheckerSARIFReportEdgeCases:
             duration=0.0,
         )
         issues = [
-            CheckIssue(
+            m.Infra.Issue(
                 file=f"file{i}.py",
                 line=i,
                 column=1,
@@ -187,7 +186,7 @@ class TestWorkspaceCheckerSARIFReportEdgeCases:
             )
             for i in range(100)
         ]
-        exec1 = GateExecution(result=gate, issues=issues, raw_output="")
+        exec1 = m.Infra.GateExecution(result=gate, issues=issues, raw_output="")
         project = ProjectResult(project="p", gates={"lint": exec1})
         report = checker.generate_markdown_report(
             [project],
@@ -216,8 +215,8 @@ class TestMarkdownReportSkipsEmptyGates:
             errors=[],
             duration=0.0,
         )
-        exec1 = GateExecution(result=gate1, issues=[], raw_output="")
-        exec2 = GateExecution(result=gate2, issues=[], raw_output="")
+        exec1 = m.Infra.GateExecution(result=gate1, issues=[], raw_output="")
+        exec2 = m.Infra.GateExecution(result=gate2, issues=[], raw_output="")
         project = ProjectResult(project="p", gates={"lint": exec1, "format": exec2})
         report = checker.generate_markdown_report(
             [project],
@@ -232,7 +231,7 @@ class TestMarkdownReportWithErrors:
 
     def test_generate_markdown_report_with_errors(self) -> None:
         checker = FlextInfraWorkspaceChecker()
-        issue = CheckIssue(
+        issue = m.Infra.Issue(
             file="test.py",
             line=1,
             column=1,
@@ -247,7 +246,7 @@ class TestMarkdownReportWithErrors:
             errors=[],
             duration=0.0,
         )
-        exec1 = GateExecution(result=gate1, issues=[issue], raw_output="")
+        exec1 = m.Infra.GateExecution(result=gate1, issues=[issue], raw_output="")
         project = ProjectResult(project="p", gates={"lint": exec1})
         report = checker.generate_markdown_report([project], ["lint"], "2025-01-01")
         tm.that(report, contains="test.py")
@@ -271,7 +270,7 @@ class TestWorkspaceCheckerMarkdownReportEdgeCases:
             errors=[],
             duration=0.0,
         )
-        issue = CheckIssue(
+        issue = m.Infra.Issue(
             file="a.py",
             line=1,
             column=1,
@@ -279,7 +278,7 @@ class TestWorkspaceCheckerMarkdownReportEdgeCases:
             message="m1",
             severity="error",
         )
-        exec1 = GateExecution(result=gate_with_issues, issues=[issue], raw_output="")
-        exec2 = GateExecution(result=gate_no_issues, issues=[], raw_output="")
+        exec1 = m.Infra.GateExecution(result=gate_with_issues, issues=[issue], raw_output="")
+        exec2 = m.Infra.GateExecution(result=gate_no_issues, issues=[], raw_output="")
         tm.that(len(exec1.issues) > 0, eq=True)
         tm.that(len(exec2.issues), eq=0)

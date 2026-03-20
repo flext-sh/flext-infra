@@ -13,14 +13,15 @@ from types import SimpleNamespace
 import pytest
 from flext_tests import tm
 
-from flext_infra.check.services import FlextInfraWorkspaceChecker, GateExecution
+from tests.infra import m, t
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 
 from ._shared_fixtures import create_checker_project, patch_gate_run
 
 GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
-_GateExecution = GateExecution
+_m.Infra.GateExecution = m.Infra.GateExecution
 
 # Local aliases for backward compatibility
 _create_checker_project = create_checker_project
@@ -46,10 +47,10 @@ def _run_failed_gate_check(
     monkeypatch: pytest.MonkeyPatch,
     *,
     gate_class: GateClass,
-    gate_runner: Callable[[FlextInfraWorkspaceChecker, Path], _GateExecution],
+    gate_runner: Callable[[FlextInfraWorkspaceChecker, Path], _m.Infra.GateExecution],
     stdout: str = "",
     stderr: str = "",
-) -> _GateExecution:
+) -> _m.Infra.GateExecution:
     """Helper to run gate check with failure setup."""
     patch_gate_run(
         monkeypatch,
@@ -61,7 +62,7 @@ def _run_failed_gate_check(
     return gate_runner(checker, project_dir)
 
 
-def _assert_failed_single_issue(result: _GateExecution) -> None:
+def _assert_failed_single_issue(result: _m.Infra.GateExecution) -> None:
     tm.that(result.result.passed, eq=False)
     tm.that(len(result.issues), eq=1)
 

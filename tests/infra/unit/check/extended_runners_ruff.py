@@ -16,8 +16,9 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r
+from tests.infra import m, t
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-from flext_infra.check.services import FlextInfraWorkspaceChecker
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates._base_gate import FlextInfraGateContext
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
@@ -28,7 +29,7 @@ from ._shared_fixtures import (
     create_checker_project,
     patch_gate_run,
 )
-from .extended_gate_go_cmd import run_command_failure_check
+from .test_extended_gate_go_cmd import run_command_failure_check
 
 
 def _create_run_raw_result(
