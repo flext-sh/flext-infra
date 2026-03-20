@@ -525,18 +525,25 @@ class FlextInfraCodegenLazyInit(s[int]):
            delegate the alias to that parent.
         """
         for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
-            canonical_basename = suffix.lower()
             if alias in lazy_map:
-                existing_mod = lazy_map[alias][0].rsplit(".", 1)[-1]
-                if existing_mod == canonical_basename:
+                existing = lazy_map[alias]
+                if (
+                    existing[1].startswith("Flext")
+                    and existing[1].endswith(suffix)
+                    and existing[0].count(".") == 1
+                ):
                     continue
-            # Phase 1: match only from canonical facade module
+            matched = False
             for name, (mod, _attr) in list(lazy_map.items()):
-                mod_leaf = mod.rsplit(".", 1)[-1]
-                if mod_leaf == canonical_basename and name.endswith(suffix):
+                if (
+                    name.startswith("Flext")
+                    and name.endswith(suffix)
+                    and mod.count(".") == 1
+                ):
                     lazy_map[alias] = (mod, name)
+                    matched = True
                     break
-            if alias in lazy_map:
+            if matched:
                 continue
             # Phase 2: no local facade — delegate to parent package
             if pkg_dir is not None:
@@ -544,11 +551,7 @@ class FlextInfraCodegenLazyInit(s[int]):
                     pkg_dir,
                 )
                 if parent_pkg:
-                    parent_dir = pkg_dir.parent / parent_pkg
-                    target_mod = f"{parent_pkg}.{canonical_basename}"
-                    if not (parent_dir / f"{canonical_basename}.py").is_file():
-                        target_mod = parent_pkg
-                    lazy_map[alias] = (target_mod, alias)
+                    lazy_map[alias] = (parent_pkg, alias)
 
     @staticmethod
     def _discover_parent_package(pkg_dir: Path) -> str | None:
