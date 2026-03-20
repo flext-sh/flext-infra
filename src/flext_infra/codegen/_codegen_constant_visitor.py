@@ -297,24 +297,22 @@ def detect_unused_constants(
     ]
 
 
-def _parse_lazy_imports(init_file: Path) -> dict[str, str]:
-    """Parse ``_LAZY_IMPORTS`` from ``__init__.py`` → ``{alias: module_stem}``."""
-    if not init_file.is_file():
-        return {}
-    source = init_file.read_text("utf-8")
-    mapping: dict[str, str] = {}
-    for match in re.finditer(r'"(\w+)":\s*\("([\w.]+)",\s*"(\w+)"\)', source):
-        alias, module_path, _export = match.groups()
-        mapping[alias] = module_path.rsplit(".", 1)[-1]
-    return mapping
-
-
 def _build_self_import_graph(
     pkg_dir: Path,
-    lazy_map: dict[str, str],
 ) -> dict[str, set[str]]:
-    """Build directed graph: ``module_stem → {modules it depends on via lazy loader}``."""
+    """Build directed graph of direct submodule imports only.
+
+    Scans ``from pkg.module import X`` patterns which create real import-time
+    dependencies.  Lazy-safe imports (``from pkg import X`` via ``__getattr__``)
+    are intentionally excluded — they resolve at first access, not at import
+    time, so they cannot create circular-import deadlocks (AGENTS.md §2.2).
+    """
     package_name = pkg_dir.name
+    module_stems = {
+        py_file.stem
+        for py_file in pkg_dir.glob("*.py")
+        if py_file.name != "__init__.py"
+    }
     graph: dict[str, set[str]] = {}
     for py_file in pkg_dir.glob("*.py"):
         if py_file.name == "__init__.py":
@@ -335,13 +333,11 @@ def _build_self_import_graph(
                 if isinstance(small.names, cst.ImportStar):
                     continue
                 mod = tree.code_for_node(small.module) if small.module else ""
-                if mod != package_name:
+                if not mod.startswith(f"{package_name}."):
                     continue
-                for alias in small.names:
-                    name = alias.name.value if isinstance(alias.name, cst.Name) else ""
-                    target = lazy_map.get(name)
-                    if target and target != stem:
-                        deps.add(target)
+                target_mod = mod.split(".")[-1]
+                if target_mod in module_stems and target_mod != stem:
+                    deps.add(target_mod)
         if deps:
             graph[stem] = deps
     return graph

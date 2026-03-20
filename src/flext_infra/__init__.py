@@ -235,6 +235,7 @@ if TYPE_CHECKING:
         FlextInfraRefactorSignaturePropagator,
         FlextInfraRefactorSymbolPropagationRule,
     )
+    from flext_infra.rules.tier0_import_fix import FlextInfraRefactorTier0ImportFixRule
     from flext_infra.rules.type_alias_unification import (
         FlextInfraRefactorTypingUnificationRule,
     )
@@ -292,6 +293,11 @@ if TYPE_CHECKING:
     from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
+    )
+    from flext_infra.transformers.tier0_import_fixer import (
+        Tier0ImportAnalysis,
+        Tier0ImportAnalyzer,
+        Tier0ImportFixer,
     )
     from flext_infra.transformers.typing_annotation_replacer import (
         TypingAnnotationReplacer,
@@ -693,6 +699,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.symbol_propagator",
         "FlextInfraRefactorSymbolPropagator",
     ),
+    "FlextInfraRefactorTier0ImportFixRule": (
+        "flext_infra.rules.tier0_import_fix",
+        "FlextInfraRefactorTier0ImportFixRule",
+    ),
     "FlextInfraRefactorTransformerPolicyUtilities": (
         "flext_infra.transformers.policy",
         "FlextInfraRefactorTransformerPolicyUtilities",
@@ -930,6 +940,18 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "RuntimeAliasDetector",
     ),
     "SyncOperation": ("flext_infra.github.workflows", "SyncOperation"),
+    "Tier0ImportAnalysis": (
+        "flext_infra.transformers.tier0_import_fixer",
+        "Tier0ImportAnalysis",
+    ),
+    "Tier0ImportAnalyzer": (
+        "flext_infra.transformers.tier0_import_fixer",
+        "Tier0ImportAnalyzer",
+    ),
+    "Tier0ImportFixer": (
+        "flext_infra.transformers.tier0_import_fixer",
+        "Tier0ImportFixer",
+    ),
     "TypingAnnotationCensusVisitor": (
         "flext_infra.transformers.typing_census_visitor",
         "TypingAnnotationCensusVisitor",
@@ -1097,6 +1119,7 @@ __all__ = [
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagationRule",
     "FlextInfraRefactorSymbolPropagator",
+    "FlextInfraRefactorTier0ImportFixRule",
     "FlextInfraRefactorTransformerPolicyUtilities",
     "FlextInfraRefactorTypingAnnotationFixRule",
     "FlextInfraRefactorTypingUnificationRule",
@@ -1166,6 +1189,9 @@ __all__ = [
     "ProjectResult",
     "RuntimeAliasDetector",
     "SyncOperation",
+    "Tier0ImportAnalysis",
+    "Tier0ImportAnalyzer",
+    "Tier0ImportFixer",
     "TypingAnnotationCensusVisitor",
     "TypingAnnotationReplacer",
     "UnusedModelRemover",

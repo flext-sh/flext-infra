@@ -38,6 +38,7 @@ if TYPE_CHECKING:
         FlextInfraRefactorSignaturePropagator,
         FlextInfraRefactorSymbolPropagationRule,
     )
+    from flext_infra.rules.tier0_import_fix import FlextInfraRefactorTier0ImportFixRule
     from flext_infra.rules.type_alias_unification import (
         FlextInfraRefactorTypingUnificationRule,
     )
@@ -94,6 +95,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.rules.symbol_propagation",
         "FlextInfraRefactorSymbolPropagationRule",
     ),
+    "FlextInfraRefactorTier0ImportFixRule": (
+        "flext_infra.rules.tier0_import_fix",
+        "FlextInfraRefactorTier0ImportFixRule",
+    ),
     "FlextInfraRefactorTypingAnnotationFixRule": (
         "flext_infra.rules.typing_census",
         "FlextInfraRefactorTypingAnnotationFixRule",
@@ -118,6 +123,7 @@ __all__ = [
     "FlextInfraRefactorSignaturePropagationRule",
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagationRule",
+    "FlextInfraRefactorTier0ImportFixRule",
     "FlextInfraRefactorTypingAnnotationFixRule",
     "FlextInfraRefactorTypingUnificationRule",
     "PreCheckGate",
