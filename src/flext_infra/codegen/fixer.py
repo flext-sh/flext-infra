@@ -32,15 +32,10 @@ from flext_infra import (
     u,
 )
 from flext_infra.codegen._codegen_constant_transformer import (
-    normalize_constant_aliases,
-    remove_unused_constants,
-    replace_canonical_values,
+    FlextInfraCodegenConstantTransformation,
 )
 from flext_infra.codegen._codegen_constant_visitor import (
-    detect_hardcoded_canonicals,
-    detect_unused_constants,
-    extract_constant_definitions,
-    scan_constant_usages,
+    FlextInfraCodegenConstantDetection,
 )
 from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
 
@@ -753,11 +748,13 @@ class FlextInfraCodegenFixer(s[bool]):
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
             return
-        definitions = extract_constant_definitions(
+        definitions = FlextInfraCodegenConstantDetection.extract_constant_definitions(
             file_path=constants_file,
             project=pkg_dir.name,
         )
-        hardcoded = detect_hardcoded_canonicals(definitions)
+        hardcoded = FlextInfraCodegenConstantDetection.detect_hardcoded_canonicals(
+            definitions,
+        )
         if not hardcoded:
             return
         parent_class = self._resolve_parent_constants_class(constants_file)
@@ -775,7 +772,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 for definition in hardcoded
             )
             return
-        modified, _ = replace_canonical_values(
+        modified, _ = FlextInfraCodegenConstantTransformation.replace_canonical_values(
             file_path=constants_file,
             parent_class=parent_class,
             definitions=hardcoded,
@@ -818,7 +815,7 @@ class FlextInfraCodegenFixer(s[bool]):
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
             return
-        definitions = extract_constant_definitions(
+        definitions = FlextInfraCodegenConstantDetection.extract_constant_definitions(
             file_path=constants_file,
             project=pkg_dir.name,
         )
@@ -834,26 +831,31 @@ class FlextInfraCodegenFixer(s[bool]):
                 if not discovered_src.is_dir():
                     continue
                 for py_file in sorted(discovered_src.rglob("*.py")):
-                    used_names, _ = scan_constant_usages(
-                        file_path=py_file,
-                        project=project.name,
+                    used_names, _ = (
+                        FlextInfraCodegenConstantDetection.scan_constant_usages(
+                            file_path=py_file,
+                            project=project.name,
+                        )
                     )
                     all_used_names.update(used_names)
         else:
             for py_file in sorted(src_dir.rglob("*.py")):
-                used_names, _ = scan_constant_usages(
+                used_names, _ = FlextInfraCodegenConstantDetection.scan_constant_usages(
                     file_path=py_file,
                     project=pkg_dir.name,
                 )
                 all_used_names.update(used_names)
 
-        unused = detect_unused_constants(
+        unused = FlextInfraCodegenConstantDetection.detect_unused_constants(
             definitions=definitions,
             all_used_names=all_used_names,
         )
         if not unused:
             return
-        modified, _ = remove_unused_constants(file_path=constants_file, unused=unused)
+        modified, _ = FlextInfraCodegenConstantTransformation.remove_unused_constants(
+            file_path=constants_file,
+            unused=unused,
+        )
         if modified:
             files_modified.add(str(constants_file))
             violations_fixed.extend(
@@ -891,14 +893,16 @@ class FlextInfraCodegenFixer(s[bool]):
         for py_file in sorted(src_dir.rglob("*.py")):
             if py_file.name == "constants.py":
                 continue
-            _, direct_refs = scan_constant_usages(
+            _, direct_refs = FlextInfraCodegenConstantDetection.scan_constant_usages(
                 file_path=py_file, project=pkg_dir.name
             )
             if not direct_refs:
                 continue
-            modified, _ = normalize_constant_aliases(
-                file_path=py_file,
-                project_import=project_import,
+            modified, _ = (
+                FlextInfraCodegenConstantTransformation.normalize_constant_aliases(
+                    file_path=py_file,
+                    project_import=project_import,
+                )
             )
             if modified:
                 files_modified.add(str(py_file))

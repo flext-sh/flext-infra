@@ -22,10 +22,7 @@ from flext_infra import (
     p,
 )
 from flext_infra.codegen._codegen_constant_visitor import (
-    detect_hardcoded_canonicals,
-    detect_unused_constants,
-    extract_constant_definitions,
-    scan_constant_usages,
+    FlextInfraCodegenConstantDetection,
 )
 from flext_infra.codegen._codegen_governance import FlextInfraCodegenGovernance
 
@@ -150,12 +147,14 @@ class FlextInfraCodegenCensus(s[bool]):
         if not constants_file.exists():
             return
 
-        definitions = extract_constant_definitions(
+        definitions = FlextInfraCodegenConstantDetection.extract_constant_definitions(
             file_path=constants_file,
             project=project.name,
         )
 
-        hardcoded = detect_hardcoded_canonicals(definitions)
+        hardcoded = FlextInfraCodegenConstantDetection.detect_hardcoded_canonicals(
+            definitions,
+        )
         violations.extend(
             m.Infra.CensusViolation(
                 module=definition.file_path,
@@ -181,13 +180,15 @@ class FlextInfraCodegenCensus(s[bool]):
                 if not discovered_src.is_dir():
                     continue
                 for py_file in sorted(discovered_src.rglob("*.py")):
-                    used_names, _ = scan_constant_usages(
-                        file_path=py_file,
-                        project=discovered_project.name,
+                    used_names, _ = (
+                        FlextInfraCodegenConstantDetection.scan_constant_usages(
+                            file_path=py_file,
+                            project=discovered_project.name,
+                        )
                     )
                     all_used_names.update(used_names)
 
-        unused_constants = detect_unused_constants(
+        unused_constants = FlextInfraCodegenConstantDetection.detect_unused_constants(
             definitions=definitions,
             all_used_names=all_used_names,
         )
@@ -205,7 +206,7 @@ class FlextInfraCodegenCensus(s[bool]):
         for py_file in sorted(src_dir.rglob("*.py")):
             if py_file.name == "constants.py":
                 continue
-            _, direct_refs = scan_constant_usages(
+            _, direct_refs = FlextInfraCodegenConstantDetection.scan_constant_usages(
                 file_path=py_file,
                 project=project.name,
             )

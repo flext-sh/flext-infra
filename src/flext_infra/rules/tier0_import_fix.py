@@ -1,3 +1,5 @@
+"""Tier-0 import fix rule — enforces canonical alias import ordering."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -5,12 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import c
-from flext_infra.refactor._base_rule import FlextInfraRefactorRule
-from flext_infra.transformers.tier0_import_fixer import (
-    Tier0ImportAnalyzer,
-    Tier0ImportFixer,
-)
+from flext_infra import FlextInfraRefactorRule, Tier0ImportAnalyzer, Tier0ImportFixer, c
 
 
 class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
@@ -20,7 +17,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         tree: cst.Module,
         file_path: Path | None = None,
     ) -> tuple[cst.Module, list[str]]:
-        if file_path is None or file_path.name not in self._tier0_modules():
+        if file_path is None:
             return (tree, [])
         analyzer = Tier0ImportAnalyzer(
             file_path=file_path,

@@ -16,6 +16,6 @@ rules:
     severity: warning
     fix_action: remove_redundant_casts
     redundant_type_targets:
-      - "m.ConfigMap"
+      - "t.ConfigMap"
       - "type"
       - "FlextRegistry.Summary"

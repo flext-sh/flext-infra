@@ -90,7 +90,7 @@ if TYPE_CHECKING:
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
     from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
-    from flext_infra.constants import FlextInfraConstants, c
+    from flext_infra.constants import FlextInfraConstants, FlextInfraConstants as c
     from flext_infra.deps._phases.consolidate_groups import ConsolidateGroupsPhase
     from flext_infra.deps._phases.ensure_coverage import EnsureCoverageConfigPhase
     from flext_infra.deps._phases.ensure_extra_paths import EnsureExtraPathsPhase
@@ -137,8 +137,8 @@ if TYPE_CHECKING:
     from flext_infra.github.pr import FlextInfraPrManager
     from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
     from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
-    from flext_infra.models import FlextInfraModels, m
-    from flext_infra.protocols import FlextInfraProtocols, p
+    from flext_infra.models import FlextInfraModels, FlextInfraModels as m
+    from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor._detectors.import_collector import ImportCollector
     from flext_infra.refactor._detectors.module_loader import (
         DetectorScanResultBuilder,
@@ -312,8 +312,8 @@ if TYPE_CHECKING:
         ModelReferenceCollector,
     )
     from flext_infra.transformers.violation_census_visitor import ViolationCensusVisitor
-    from flext_infra.typings import FlextInfraTypes, t
-    from flext_infra.utilities import FlextInfraUtilities, u
+    from flext_infra.typings import FlextInfraTypes, FlextInfraTypes as t
+    from flext_infra.utilities import FlextInfraUtilities, FlextInfraUtilities as u
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
     from flext_infra.validate.inventory import FlextInfraInventoryService
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
@@ -981,7 +981,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "_utilities": ("flext_infra._utilities", ""),
     "basemk": ("flext_infra.basemk", ""),
     "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
-    "c": ("flext_infra.constants", "c"),
+    "c": ("flext_infra.constants", "FlextInfraConstants"),
     "check": ("flext_infra.check", ""),
     "codegen": ("flext_infra.codegen", ""),
     "d": ("flext_core", "d"),
@@ -993,10 +993,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "github": ("flext_infra.github", ""),
     "h": ("flext_core", "h"),
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
-    "m": ("flext_infra.models", "m"),
+    "m": ("flext_infra.models", "FlextInfraModels"),
     "maintenance": ("flext_infra.workspace.maintenance", ""),
     "output": ("flext_infra._utilities.output", "output"),
-    "p": ("flext_infra.protocols", "p"),
+    "p": ("flext_infra.protocols", "FlextInfraProtocols"),
     "r": ("flext_core", "r"),
     "refactor": ("flext_infra.refactor", ""),
     "release": ("flext_infra.release", ""),
@@ -1004,9 +1004,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "run_cli": ("flext_infra.check.workspace_check", "run_cli"),
     "s": ("flext_core", "s"),
     "shutil": ("flext_infra.deps.internal_sync", "shutil"),
-    "t": ("flext_infra.typings", "t"),
+    "t": ("flext_infra.typings", "FlextInfraTypes"),
     "transformers": ("flext_infra.transformers", ""),
-    "u": ("flext_infra.utilities", "u"),
+    "u": ("flext_infra.utilities", "FlextInfraUtilities"),
     "validate": ("flext_infra.validate", ""),
     "workspace": ("flext_infra.workspace", ""),
     "x": ("flext_core", "x"),

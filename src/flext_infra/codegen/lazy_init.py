@@ -26,7 +26,9 @@ from typing import ClassVar, override
 from flext_core import r, s
 from flext_infra import c, output, u
 from flext_infra.codegen._codegen_ast_parsing import FlextInfraCodegenAstParsing
-from flext_infra.codegen._codegen_constant_transformer import break_import_cycles
+from flext_infra.codegen._codegen_constant_transformer import (
+    FlextInfraCodegenConstantTransformation,
+)
 from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
 
 # ---------------------------------------------------------------------------
@@ -113,7 +115,9 @@ class FlextInfraCodegenLazyInit(s[int]):
                 init_file = pkg_dir / "__init__.py"
                 if not init_file.is_file():
                     continue
-                modified, changes = break_import_cycles(pkg_dir)
+                modified, changes = (
+                    FlextInfraCodegenConstantTransformation.break_import_cycles(pkg_dir)
+                )
                 if modified:
                     for change in changes:
                         output.info(f"  CYCLE-FIX: {change}")

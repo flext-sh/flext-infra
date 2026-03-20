@@ -11,10 +11,10 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
-    from flext_infra import d, e, r, s, x
+    from flext_infra import c, d, e, h, m, p, r, s, t, u, x
 
     from . import unit as unit
-    from .constants import FlextInfraTestConstants, c
+    from .constants import FlextInfraTestConstants
     from .fixtures import (
         real_docs_project,
         real_makefile_project,
@@ -24,9 +24,9 @@ if TYPE_CHECKING:
     )
     from .fixtures_git import real_git_repo
     from .git_service import RealGitService
-    from .helpers import FlextInfraTestHelpers, h
-    from .models import FlextInfraTestModels, m
-    from .protocols import FlextInfraTestProtocols, p
+    from .helpers import FlextInfraTestHelpers
+    from .models import FlextInfraTestModels
+    from .protocols import FlextInfraTestProtocols
     from .runner_service import RealSubprocessRunner
     from .scenarios import (
         DependencyScenario,
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
         WorkspaceScenario,
         WorkspaceScenarios,
     )
-    from .typings import FlextInfraTestTypes, t
+    from .typings import FlextInfraTestTypes
     from .unit import (
         basemk as basemk,
         check as check,
@@ -1027,7 +1027,7 @@ if TYPE_CHECKING:
         TestStubChainStubExists,
         TestStubChainValidate,
     )
-    from .utilities import FlextInfraTestUtilities, u
+    from .utilities import FlextInfraTestUtilities
     from .workspace_factory import WorkspaceFactory
     from .workspace_scenarios import (
         BrokenScenario,
@@ -2393,7 +2393,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "auditor": ("tests.infra.unit.docs.auditor", "auditor"),
     "basemk": ("tests.infra.unit.basemk", ""),
     "builder": ("tests.infra.unit.docs.builder", "builder"),
-    "c": ("tests.infra.constants", "c"),
+    "c": ("flext_infra", "c"),
     "canonical_dev_dependencies": (
         "tests.infra.unit.deps.test_modernizer_helpers",
         "canonical_dev_dependencies",
@@ -2420,16 +2420,16 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "gen": ("tests.infra.unit.docs.generator_internals", "gen"),
     "git_repo": ("tests.infra.unit.test_infra_git", "git_repo"),
     "github": ("tests.infra.unit.github", ""),
-    "h": ("tests.infra.helpers", "h"),
+    "h": ("flext_infra", "h"),
     "io": ("tests.infra.unit.io", ""),
     "is_external": ("tests.infra.unit.docs.auditor", "is_external"),
-    "m": ("tests.infra.models", "m"),
+    "m": ("flext_infra", "m"),
     "normalize_link": ("tests.infra.unit.docs.auditor", "normalize_link"),
     "orchestrator": (
         "tests.infra.unit.test_infra_workspace_orchestrator",
         "orchestrator",
     ),
-    "p": ("tests.infra.protocols", "p"),
+    "p": ("flext_infra", "p"),
     "project_dev_groups": (
         "tests.infra.unit.deps.test_modernizer_helpers",
         "project_dev_groups",
@@ -2464,7 +2464,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "service": ("tests.infra.unit.test_infra_versioning", "service"),
     "should_skip_target": ("tests.infra.unit.docs.auditor", "should_skip_target"),
     "svc": ("tests.infra.unit.test_infra_workspace_sync", "svc"),
-    "t": ("tests.infra.typings", "t"),
+    "t": ("flext_infra", "t"),
     "test_all_three_capabilities_in_one_pass": (
         "tests.infra.unit.refactor.test_infra_refactor_typing_unifier",
         "test_all_three_capabilities_in_one_pass",
@@ -3660,7 +3660,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_path_sync_main_more",
         "test_workspace_root_fallback",
     ),
-    "u": ("tests.infra.utilities", "u"),
+    "u": ("flext_infra", "u"),
     "unit": ("tests.infra.unit", ""),
     "unwrap_item": ("tests.infra.unit.deps.test_modernizer_helpers", "unwrap_item"),
     "v": ("tests.infra.unit.validate.basemk_validator", "v"),

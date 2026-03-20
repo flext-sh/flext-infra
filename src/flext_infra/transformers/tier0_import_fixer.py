@@ -9,10 +9,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.transformers.import_insertion import (
-    FlextInfraTransformerImportInsertion,
-)
-from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
+from flext_infra import FlextInfraTransformerImportInsertion, ProjectAliasDiscovery
 
 
 @dataclass(slots=True)
@@ -89,6 +86,10 @@ class Tier0ImportCstTools:
 class Tier0ImportContextDiscovery:
     def __init__(self, *, file_path: Path) -> None:
         self._file_path = file_path
+
+    @property
+    def file_path(self) -> Path:
+        return self._file_path
 
     def package_context(self) -> tuple[Path, str]:
         parts = self._file_path.parts
@@ -197,13 +198,16 @@ class Tier0ImportAnalyzer(cst.CSTVisitor):
 
     def build_analysis(self) -> Tier0ImportAnalysis:
         """Build categorized import-violation analysis from collected aliases."""
+        aggregator = self._detect_aggregator_module()
         analysis = Tier0ImportAnalysis(
             package_name=self._package_name,
             alias_to_module=dict(self._alias_to_module),
         )
         for alias in sorted(self._self_import_aliases):
             module_name = self._alias_to_module.get(alias, "")
-            if alias in self._core_aliases:
+            if alias in self._core_aliases or (
+                aggregator and module_name == aggregator
+            ):
                 analysis.category_b.add(alias)
             elif module_name in self._tier0_modules:
                 analysis.category_a.add(alias)
@@ -212,6 +216,18 @@ class Tier0ImportAnalyzer(cst.CSTVisitor):
             else:
                 analysis.category_c.add(alias)
         return analysis
+
+    def _detect_aggregator_module(self) -> str:
+        """Detect if file is inside _<dir>/ and return the aggregator module name.
+
+        Files inside _models/ have aggregator 'models', _utilities/ has 'utilities'.
+        Returns empty string if file is not inside an internal subpackage.
+        """
+        parts = self._discovery.file_path.parts
+        for part in parts:
+            if part.startswith("_") and not part.startswith("__"):
+                return part.lstrip("_")
+        return ""
 
     @override
     def visit_Module(self, node: cst.Module) -> None:
@@ -432,7 +448,9 @@ class Tier0ImportFixer(cst.CSTTransformer):
         )
         if not kept:
             return cst.RemovalSentinel.REMOVE
-        return node.with_changes(names=tuple(kept))
+        cleaned = list(kept)
+        cleaned[-1] = cleaned[-1].with_changes(comma=cst.MaybeSentinel.DEFAULT)
+        return node.with_changes(names=tuple(cleaned))
 
     def _merge_into_import(
         self,

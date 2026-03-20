@@ -78,17 +78,17 @@ def test_pattern_rule_skips_overload_signatures() -> None:
 
 
 def test_pattern_rule_removes_configured_redundant_casts() -> None:
-    source = 'value = cast("m.ConfigMap", result.unwrap_or(m.ConfigMap(root={})))\n'
+    source = 'value = cast("t.ConfigMap", result.unwrap_or(t.ConfigMap(root={})))\n'
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorPatternCorrectionsRule({
         "id": "remove-validated-redundant-casts",
         "fix_action": "remove_redundant_casts",
-        "redundant_type_targets": ["m.ConfigMap"],
+        "redundant_type_targets": ["t.ConfigMap"],
     })
     updated_tree, _ = rule.apply(tree)
     updated = updated_tree.code
     assert "cast(" not in updated
-    assert "value = result.unwrap_or(m.ConfigMap(root={}))" in updated
+    assert "value = result.unwrap_or(t.ConfigMap(root={}))" in updated
 
 
 def test_pattern_rule_removes_nested_type_object_cast_chain() -> None:

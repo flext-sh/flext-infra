@@ -2,16 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import FlextInfraCodegenCensus, c, m, t
-from flext_infra.codegen._codegen_constant_visitor import extract_constant_definitions
+from flext_infra.codegen._codegen_constant_visitor import (
+    FlextInfraCodegenConstantDetection,
+)
 from flext_infra.codegen._codegen_metrics import FlextInfraCodegenMetrics
-
-_MIN_DUPLICATE_PROJECT_COUNT = 2
 
 
 class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     """Quality gate checks and verdict computation."""
+
+    _MIN_DUPLICATE_PROJECT_COUNT: ClassVar[int] = 2
 
     @staticmethod
     def quality_gate_build_checks(
@@ -164,7 +167,12 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
             )
             if not constants_file.is_file():
                 continue
-            definitions = extract_constant_definitions(constants_file, report.project)
+            definitions = (
+                FlextInfraCodegenConstantDetection.extract_constant_definitions(
+                    constants_file,
+                    report.project,
+                )
+            )
             all_definitions.extend(definitions)
         name_to_defs: dict[str, list[m.Infra.ConstantDefinition]] = {}
         for definition in all_definitions:
@@ -172,7 +180,10 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         groups: list[m.Infra.DuplicateConstantGroup] = []
         for name, definitions in sorted(name_to_defs.items()):
             projects = {item.project for item in definitions}
-            if len(projects) < _MIN_DUPLICATE_PROJECT_COUNT:
+            if (
+                len(projects)
+                < FlextInfraCodegenMetricsChecks._MIN_DUPLICATE_PROJECT_COUNT
+            ):
                 continue
             values = {item.value_repr for item in definitions}
             groups.append(
