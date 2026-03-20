@@ -265,7 +265,8 @@ class Tier0ImportAnalyzer(cst.CSTVisitor):
             bound = item.name.value
             if item.asname is not None and isinstance(item.asname.name, cst.Name):
                 bound = item.asname.name.value
-            self._self_import_aliases.add(bound)
+            if len(bound) == 1 and bound.islower() and bound.isalpha():
+                self._self_import_aliases.add(bound)
 
     @override
     def leave_ImportFrom(self, original_node: cst.ImportFrom) -> None:

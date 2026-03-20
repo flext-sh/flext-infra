@@ -15,7 +15,9 @@ import sys
 from pathlib import Path
 
 from flext_infra import c
+from flext_infra._utilities.output import output
 from flext_infra.models import m
+from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.utilities import u
 
 
@@ -133,10 +135,6 @@ def run(argv: list[str] | None = None) -> int:
 
 def main() -> int:
     return u.Infra.run_cli(run)
-
-
-if __name__ == "__main__":
-    sys.exit(main())
 
 
 if __name__ == "__main__":

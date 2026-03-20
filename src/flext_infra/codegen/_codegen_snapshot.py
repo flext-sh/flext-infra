@@ -6,7 +6,10 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c
+from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
+from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 from flext_infra.codegen._codegen_coercion import FlextInfraCodegenCoercion
+from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
 
 

@@ -9,6 +9,9 @@ from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
 from flext_infra import c, p
 from flext_infra.models import m
+from flext_infra.refactor._detectors.python_module_loader_mixin import (
+    FlextInfraRefactorDetectorPythonModuleLoaderMixin,
+)
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import tomlkit
 import tomlkit.items
-from flext_tests import tb, tm
+from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import t, u
@@ -159,7 +159,7 @@ def test_ensure_table(mode: str) -> None:
 
 def _doc_with_optional_deps(optional_deps: dict[str, list[str]]) -> TOMLDocument:
     doc = tomlkit.document()
-    doc["project"] = tb().add("optional-dependencies", optional_deps).build()
+    doc["project"] = {"optional-dependencies": optional_deps}
     return doc
 
 

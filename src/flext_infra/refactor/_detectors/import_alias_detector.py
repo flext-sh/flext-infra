@@ -4,9 +4,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Protocol, override, runtime_checkable
 
 from flext_infra import c, p
+from flext_infra.refactor._detectors.module_loader import DetectorScanResultBuilder
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
+from flext_infra.refactor.discovery import ProjectAliasDiscovery
 
 if TYPE_CHECKING:
     from flext_infra import m

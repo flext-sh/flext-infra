@@ -9,6 +9,7 @@ from flext_infra.codegen._codegen_constant_visitor import (
     FlextInfraCodegenConstantDetection,
 )
 from flext_infra.codegen._codegen_metrics import FlextInfraCodegenMetrics
+from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.models import m
 
 

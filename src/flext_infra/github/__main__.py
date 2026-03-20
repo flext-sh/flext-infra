@@ -10,6 +10,9 @@ from typing import TYPE_CHECKING
 from flext_core import r
 from flext_infra import c
 from flext_infra.github.pr import main as pr_main
+from flext_infra.github.pr_workspace_manager import FlextInfraPrWorkspaceManager
+from flext_infra.github.workflow_linter import FlextInfraWorkflowLinter
+from flext_infra.github.workflow_syncer import FlextInfraWorkflowSyncer
 from flext_infra.models import m
 from flext_infra.utilities import u
 

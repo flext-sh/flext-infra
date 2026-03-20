@@ -8,6 +8,7 @@ import libcst as cst
 from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
 from flext_infra import c, p
+from flext_infra.refactor._detectors.module_loader import DetectorScanResultBuilder
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )

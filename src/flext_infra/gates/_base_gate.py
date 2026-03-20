@@ -3,12 +3,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, Protocol, runtime_checkable
+from typing import Annotated
 
 from pydantic import ConfigDict, Field, TypeAdapter, ValidationError
 
 from flext_core import FlextModels
-from flext_infra import c
+from flext_infra import c, t as t_infra
 from flext_infra.models import m
 from flext_infra.utilities import u
 
@@ -21,19 +21,6 @@ class FlextInfraGateContext(FlextModels.FrozenStrictModel):
         bool,
         Field(default=False, description="Stop on first gate failure"),
     ] = False
-
-
-@runtime_checkable
-class FlextInfraGateProtocol(Protocol):
-    @property
-    def gate_id(self) -> str: ...
-    @property
-    def can_fix(self) -> bool: ...
-    def check(
-        self,
-        project_dir: Path,
-        ctx: FlextInfraGateContext,
-    ) -> m.Infra.GateExecution: ...
 
 
 class FlextInfraGate(ABC):
@@ -104,9 +91,6 @@ class FlextInfraGate(ABC):
             issues=issues,
             raw_output=raw_output,
         )
-
-    def _result_exit_code(self, result: m.Infra.CommandOutput) -> int:
-        return result.exit_code if hasattr(result, "exit_code") else 1
 
     def _existing_check_dirs(self, project_dir: Path) -> list[str]:
         dirs = (
