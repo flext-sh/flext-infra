@@ -133,7 +133,6 @@ if TYPE_CHECKING:
     from flext_infra.gates.pyright import FlextInfraPyrightGate
     from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-    from flext_infra.github.linter import FlextInfraWorkflowLinter
     from flext_infra.github.pr import FlextInfraPrManager
     from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
     from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
@@ -830,10 +829,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra._utilities.yaml",
         "FlextInfraUtilitiesYaml",
     ),
-    "FlextInfraWorkflowLinter": (
-        "flext_infra.github.linter",
-        "FlextInfraWorkflowLinter",
-    ),
     "FlextInfraWorkflowSyncer": (
         "flext_infra.github.workflows",
         "FlextInfraWorkflowSyncer",
@@ -1157,7 +1152,6 @@ __all__ = [
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesYaml",
-    "FlextInfraWorkflowLinter",
     "FlextInfraWorkflowSyncer",
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",

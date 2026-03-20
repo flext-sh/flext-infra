@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c
-from flext_infra.github.linter import FlextInfraWorkflowLinter
+from flext_infra.github.linter import lint_workflows
 from flext_infra.github.pr import main as pr_main
 from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
 from flext_infra.github.workflows import FlextInfraWorkflowSyncer
@@ -95,8 +95,7 @@ def run_lint(
     strict: bool,
 ) -> int:
     """Lint GitHub workflow files across workspace."""
-    linter = FlextInfraWorkflowLinter()
-    result: r[m.Infra.WorkflowLintResult] = linter.lint(
+    result = lint_workflows(
         root=cli.workspace,
         report_path=report,
         strict=strict,

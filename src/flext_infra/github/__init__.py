@@ -18,7 +18,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
-    from flext_infra.github.linter import FlextInfraWorkflowLinter
     from flext_infra.github.pr import FlextInfraPrManager, main
     from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager, u
     from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
@@ -28,10 +27,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraPrWorkspaceManager": (
         "flext_infra.github.pr_workspace",
         "FlextInfraPrWorkspaceManager",
-    ),
-    "FlextInfraWorkflowLinter": (
-        "flext_infra.github.linter",
-        "FlextInfraWorkflowLinter",
     ),
     "FlextInfraWorkflowSyncer": (
         "flext_infra.github.workflows",
@@ -45,7 +40,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 __all__ = [
     "FlextInfraPrManager",
     "FlextInfraPrWorkspaceManager",
-    "FlextInfraWorkflowLinter",
     "FlextInfraWorkflowSyncer",
     "SyncOperation",
     "main",
