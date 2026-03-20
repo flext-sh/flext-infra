@@ -1,0 +1,50 @@
+src/flext_infra/_utilities/github.py
+  b279a83971a44010 1-426
+src/flext_infra/_utilities/parsing.py
+  368fb8be6b85b0b7 6,33,81-95,99-102,104-109,111,113-115,117-123
+src/flext_infra/refactor/_utilities.py
+  368fb8be6b85b0b7 79-81
+src/flext_infra/github/pr.py
+  b279a83971a44010 30
+src/flext_infra/github/linter.py
+  b279a83971a44010 1-61
+src/flext_infra/_utilities/discovery.py
+  368fb8be6b85b0b7 125-135,147-150,152-153,155-160,162-165,168,172-176,180-181,186,192,194,197-198,201-202,204-205,208,210,215-217,219-220,223-226,229-232,234-240,242-244
+src/flext_infra/github/__main__.py
+  b279a83971a44010 10,14,98-104
+src/flext_infra/github/workflows.py
+  b279a83971a44010 14,19-67,77-78,81-88,91-103,105-107,109-143,145-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "f12669e467d60ae44d1b6c3457211397c67a3a7c",
+  "prompts": {
+    "368fb8be6b85b0b7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f74ae14fffeVDeXScl43zDHl2",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 252,
+      "total_deletions": 39,
+      "accepted_lines": 118,
+      "overriden_lines": 33
+    },
+    "b279a83971a44010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f73d7affffeiDJJeKXYaEabip",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 667,
+      "total_deletions": 280,
+      "accepted_lines": 664,
+      "overriden_lines": 0
+    }
+  }
+}
