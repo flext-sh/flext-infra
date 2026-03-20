@@ -371,15 +371,12 @@ def _find_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
 
 
 def detect_import_cycles(pkg_dir: Path) -> list[list[str]]:
-    """Detect circular imports in a package by analyzing the lazy-loader graph.
+    """Detect circular imports caused by direct submodule imports.
 
-    Returns cycles as lists of module stems (e.g. ``["constants", "typings", "constants"]``).
-    Fully dynamic — reads ``_LAZY_IMPORTS`` from ``__init__.py`` and scans all ``.py`` files.
+    Only ``from pkg.module import X`` edges are tracked (real cycle risk).
+    Lazy-safe ``from pkg import X`` (via ``__getattr__``) are excluded.
     """
-    lazy_map = _parse_lazy_imports(pkg_dir / "__init__.py")
-    if not lazy_map:
-        return []
-    graph = _build_self_import_graph(pkg_dir, lazy_map)
+    graph = _build_self_import_graph(pkg_dir)
     return _find_cycles(graph)
 
 

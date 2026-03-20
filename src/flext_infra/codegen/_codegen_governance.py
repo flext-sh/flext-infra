@@ -35,9 +35,8 @@ def load_governance_config() -> ConstantsGovernanceConfig:
     cached = _config_cache.get("config")
     if cached is not None:
         return cached
-    payload: object = safe_load(_GOVERNANCE_FILE.read_text("utf-8"))
-    data = dict(payload) if isinstance(payload, dict) else {}
-    config = ConstantsGovernanceConfig.model_validate(data)
+    raw: dict[str, object] = safe_load(_GOVERNANCE_FILE.read_text("utf-8")) or {}
+    config = ConstantsGovernanceConfig.model_validate(raw)
     _config_cache["config"] = config
     return config
 
