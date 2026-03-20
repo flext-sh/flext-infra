@@ -519,30 +519,27 @@ class FlextInfraCodegenLazyInit(s[int]):
     ) -> None:
         """Resolve single-letter aliases from ``ALIAS_TO_SUFFIX`` mapping.
 
-        Strategy (dynamic, no hardcoded rules):
-        1. Skip if alias already discovered by AST scan (facade defines it).
-        2. Match only from canonical facade modules (module basename ==
-           suffix in lowercase). This prevents ``ProjectResult`` from
-           stealing ``r`` when ``result.py`` doesn't exist locally.
-        3. If no local facade exists, discover the parent package by
-           inspecting the MRO of ``constants.py`` (always present) and
-           delegate the alias to that parent.
+        Strategy (fully dynamic, zero hardcoded project names):
+        1. Skip if alias already points to a public depth-1 facade class.
+        2. Search lazy-map for a class ending with the expected suffix in a
+           public depth-1 submodule (basename without leading ``_``).
+        3. Fall back to parent package discovery via ``constants.py`` MRO.
         """
         for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
             if alias in lazy_map:
                 existing = lazy_map[alias]
                 if (
-                    existing[1].startswith("Flext")
-                    and existing[1].endswith(suffix)
+                    existing[1].endswith(suffix)
                     and existing[0].count(".") == 1
+                    and not existing[0].rsplit(".", 1)[-1].startswith("_")
                 ):
                     continue
             matched = False
             for name, (mod, _attr) in list(lazy_map.items()):
                 if (
-                    name.startswith("Flext")
-                    and name.endswith(suffix)
+                    name.endswith(suffix)
                     and mod.count(".") == 1
+                    and not mod.rsplit(".", 1)[-1].startswith("_")
                 ):
                     lazy_map[alias] = (mod, name)
                     matched = True

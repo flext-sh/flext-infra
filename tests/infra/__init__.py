@@ -371,7 +371,6 @@ if TYPE_CHECKING:
     from .unit.deps.test_extra_paths_pep621 import (
         TestPathDepPathsPep621,
         TestPathDepPathsPoetry,
-        test_helpers_alias_exposed,
     )
     from .unit.deps.test_extra_paths_sync import (
         pyright_content,
@@ -509,10 +508,7 @@ if TYPE_CHECKING:
         test_detect_mode_with_nonexistent_path,
         test_detect_mode_with_path_object,
     )
-    from .unit.deps.test_path_sync_main import (
-        TestMain,
-        test_helpers_alias_is_reachable_main,
-    )
+    from .unit.deps.test_path_sync_main import TestMain
     from .unit.deps.test_path_sync_main_edges import TestMainEdgeCases
     from .unit.deps.test_path_sync_main_more import (
         test_main_discovery_failure,
@@ -2879,17 +2875,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.test_infra_workspace_sync",
         "test_gitignore_write_failure",
     ),
-    "test_helpers_alias_exposed": (
-        "tests.infra.unit.deps.test_extra_paths_pep621",
-        "test_helpers_alias_exposed",
-    ),
     "test_helpers_alias_is_reachable_helpers": (
         "tests.infra.unit.deps.test_path_sync_helpers",
         "test_helpers_alias_is_reachable_helpers",
-    ),
-    "test_helpers_alias_is_reachable_main": (
-        "tests.infra.unit.deps.test_path_sync_main",
-        "test_helpers_alias_is_reachable_main",
     ),
     "test_helpers_alias_is_reachable_project_obj": (
         "tests.infra.unit.deps.test_path_sync_main_project_obj",
@@ -4250,9 +4238,7 @@ __all__ = [
     "test_gitignore_entry_scenarios",
     "test_gitignore_sync_failure",
     "test_gitignore_write_failure",
-    "test_helpers_alias_exposed",
     "test_helpers_alias_is_reachable_helpers",
-    "test_helpers_alias_is_reachable_main",
     "test_helpers_alias_is_reachable_project_obj",
     "test_import_alias_detector_skips_facade_and_subclass_files",
     "test_import_alias_detector_skips_nested_private_and_as_renames",

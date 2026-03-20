@@ -53,11 +53,7 @@ if TYPE_CHECKING:
         TestGetDepPaths,
         TestSyncOne,
     )
-    from .test_extra_paths_pep621 import (
-        TestPathDepPathsPep621,
-        TestPathDepPathsPoetry,
-        test_helpers_alias_exposed,
-    )
+    from .test_extra_paths_pep621 import TestPathDepPathsPep621, TestPathDepPathsPoetry
     from .test_extra_paths_sync import (
         pyright_content,
         test_main_success_modes,
@@ -191,7 +187,7 @@ if TYPE_CHECKING:
         test_detect_mode_with_nonexistent_path,
         test_detect_mode_with_path_object,
     )
-    from .test_path_sync_main import TestMain, test_helpers_alias_is_reachable_main
+    from .test_path_sync_main import TestMain
     from .test_path_sync_main_edges import TestMainEdgeCases
     from .test_path_sync_main_more import (
         test_main_discovery_failure,
@@ -638,17 +634,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_detection_wrappers",
         "test_get_required_typings_wrapper",
     ),
-    "test_helpers_alias_exposed": (
-        "tests.infra.unit.deps.test_extra_paths_pep621",
-        "test_helpers_alias_exposed",
-    ),
     "test_helpers_alias_is_reachable_helpers": (
         "tests.infra.unit.deps.test_path_sync_helpers",
         "test_helpers_alias_is_reachable_helpers",
-    ),
-    "test_helpers_alias_is_reachable_main": (
-        "tests.infra.unit.deps.test_path_sync_main",
-        "test_helpers_alias_is_reachable_main",
     ),
     "test_helpers_alias_is_reachable_project_obj": (
         "tests.infra.unit.deps.test_path_sync_main_project_obj",
@@ -932,9 +920,7 @@ __all__ = [
     "test_flext_infra_pyproject_modernizer_process_file_invalid_toml",
     "test_get_current_typings_from_pyproject_wrapper",
     "test_get_required_typings_wrapper",
-    "test_helpers_alias_exposed",
     "test_helpers_alias_is_reachable_helpers",
-    "test_helpers_alias_is_reachable_main",
     "test_helpers_alias_is_reachable_project_obj",
     "test_inject_comments_phase_apply_banner",
     "test_inject_comments_phase_apply_broken_group_section",

@@ -9,7 +9,7 @@ from flext_tests import tm
 from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.infra import h
+from tests.infra.helpers import FlextInfraTestHelpers as h
 from tests.infra.models import m as im
 from tests.infra.typings import t
 

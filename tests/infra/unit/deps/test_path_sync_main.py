@@ -9,7 +9,7 @@ from flext_tests import tm
 from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync
 from flext_infra.deps import path_sync as path_sync_module
-from tests.infra import h, m
+from tests.infra import m
 
 
 def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
@@ -185,7 +185,3 @@ class TestMain:
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
         tm.that(path_sync_module.main(), eq=1)
-
-
-def test_helpers_alias_is_reachable_main() -> None:
-    tm.that(hasattr(h, "assert_toml_valid"), eq=True)

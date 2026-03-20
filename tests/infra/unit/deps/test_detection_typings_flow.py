@@ -1,18 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_core import r
-from flext_infra import u
+from flext_infra import FlextInfraUtilitiesSubprocess, FlextInfraUtilitiesTomlParse
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests.infra import m, t
 
 
 class _StubReadPlain:
-    """Stub for u.Infra.read_plain that returns predefined values."""
+    """Stub for read_plain returning predefined values in sequence."""
 
     def __init__(self, values: list[r[dict[str, t.Infra.TomlValue]]]) -> None:
         self._values = values
@@ -27,18 +28,19 @@ class _StubReadPlain:
 
 
 class _StubRunRaw:
-    """Stub for u.Infra.run_raw that returns a predefined result."""
+    """Stub for run_raw returning a predefined result."""
 
     def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
         self._result = result
 
     def __call__(
         self,
-        *args: t.Infra.TomlValue,
-        **kwargs: t.Infra.TomlValue,
+        cmd: list[str],
+        cwd: Path | None = None,
+        timeout: int | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> r[m.Infra.CommandOutput]:
-        _ = args
-        _ = kwargs
+        _ = cmd, cwd, timeout, env
         return self._result
 
 
@@ -58,7 +60,6 @@ class TestModuleAndTypingsFlow:
 
     def test_get_current_typings_from_pyproject(
         self,
-        tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
@@ -77,40 +78,48 @@ class TestModuleAndTypingsFlow:
             },
         }
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilitiesTomlParse,
             "read_plain",
             _StubReadPlain([r[dict[str, t.Infra.TomlValue]].ok(payload)]),
         )
-        got = service.get_current_typings_from_pyproject(tmp_path)
+        got = service.get_current_typings_from_pyproject(Path("/dummy"))
         tm.that(got, eq=[])
 
     def test_get_current_typings_from_pyproject_variants(
         self,
-        tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
-        values: list[r[dict[str, t.Infra.TomlValue]]] = [
-            r[dict[str, t.Infra.TomlValue]].ok({
-                "project": {
-                    "optional-dependencies": {
-                        "typings": ["types-pyyaml>=6.0", "types-requests[extra]==2.28"],
+        monkeypatch.setattr(
+            FlextInfraUtilitiesTomlParse,
+            "read_plain",
+            _StubReadPlain([
+                r[dict[str, t.Infra.TomlValue]].ok({
+                    "project": {
+                        "optional-dependencies": {
+                            "typings": [
+                                "types-pyyaml>=6.0",
+                                "types-requests[extra]==2.28",
+                            ],
+                        },
                     },
-                },
-            }),
-            r[dict[str, t.Infra.TomlValue]].ok({
-                "project": {
-                    "optional-dependencies": {"typings": {"types-pyyaml": ">=6.0"}},
-                },
-            }),
-            r[dict[str, t.Infra.TomlValue]].fail("not found"),
-            r[dict[str, t.Infra.TomlValue]].ok({}),
-        ]
-        monkeypatch.setattr(u.Infra, "read_plain", _StubReadPlain(values))
-        tm.that(service.get_current_typings_from_pyproject(tmp_path), eq=[])
-        tm.that(service.get_current_typings_from_pyproject(tmp_path), eq=[])
-        tm.that(service.get_current_typings_from_pyproject(tmp_path), eq=[])
-        tm.that(service.get_current_typings_from_pyproject(tmp_path), eq=[])
+                }),
+                r[dict[str, t.Infra.TomlValue]].ok({
+                    "project": {
+                        "optional-dependencies": {
+                            "typings": {"types-pyyaml": ">=6.0"},
+                        },
+                    },
+                }),
+                r[dict[str, t.Infra.TomlValue]].fail("not found"),
+                r[dict[str, t.Infra.TomlValue]].ok({}),
+            ]),
+        )
+        path = Path("/dummy")
+        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
+        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
+        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
+        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
 
     def test_get_required_typings_paths(
         self,
@@ -123,12 +132,12 @@ class TestModuleAndTypingsFlow:
         out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
         service = FlextInfraDependencyDetectionService()
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilitiesSubprocess,
             "run_raw",
             _StubRunRaw(r[m.Infra.CommandOutput].ok(out)),
         )
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilitiesTomlParse,
             "read_plain",
             _StubReadPlain([
                 r[dict[str, t.Infra.TomlValue]].ok({}),
@@ -139,7 +148,7 @@ class TestModuleAndTypingsFlow:
         )
         tm.ok(service.get_required_typings(tmp_path, venv_bin))
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilitiesTomlParse,
             "read_plain",
             _StubReadPlain([
                 r[dict[str, t.Infra.TomlValue]].ok({}),
@@ -148,12 +157,12 @@ class TestModuleAndTypingsFlow:
         )
         tm.ok(service.get_required_typings(tmp_path, venv_bin, include_mypy=False))
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilitiesSubprocess,
             "run_raw",
             _StubRunRaw(r[m.Infra.CommandOutput].fail("mypy crash")),
         )
         monkeypatch.setattr(
-            u.Infra,
+            FlextInfraUtilitiesTomlParse,
             "read_plain",
             _StubReadPlain([r[dict[str, t.Infra.TomlValue]].ok({})]),
         )
