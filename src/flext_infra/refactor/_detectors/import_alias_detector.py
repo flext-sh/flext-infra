@@ -8,7 +8,7 @@ from flext_infra.refactor._detectors.module_loader import DetectorScanResultBuil
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
-from flext_infra.refactor.discovery import ProjectAliasDiscovery
+from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
 
 if TYPE_CHECKING:
     from flext_infra import m

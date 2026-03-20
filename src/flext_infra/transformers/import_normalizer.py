@@ -18,7 +18,469 @@ from flext_infra.models import FlextModels
 _UNKNOWN_TIER = 99
 
 
-class ImportViolation(FlextModels.ArbitraryTypesModel):
+class FlextInfraTransformerImportNormalizerHelper:
+    """Helper class for import normalization logic."""
+
+    @staticmethod
+    def discover_src_package_dir(project_root: Path) -> tuple[str, Path] | None:
+        src_dir = project_root / "src"
+        if not src_dir.is_dir():
+            return None
+        for child in sorted(src_dir.iterdir()):
+            if child.is_dir() and (child / "__init__.py").is_file():
+                return child.name, child
+        return None
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def load_import_normalization_config() -> Mapping[str, t.Infra.InfraValue]:
+        rules_path = (
+            Path(__file__).resolve().parent.parent
+            / "rules"
+            / "import-normalization.yml"
+        )
+        loaded = u.Infra.safe_load_yaml(rules_path)
+        root = loaded.get("import_normalization")
+        if isinstance(root, Mapping):
+            normalized: dict[str, t.Infra.InfraValue] = dict(root.items())
+            return normalized
+        return {}
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def alias_tiers() -> Mapping[str, int]:
+        config = FlextInfraTransformerImportNormalizerHelper.load_import_normalization_config().get(
+            "alias_tiers",
+        )
+        if not isinstance(config, Mapping):
+            return {}
+        tiers: dict[str, int] = {}
+        for alias_name, tier_value in config.items():
+            if len(alias_name) != 1 or not alias_name.islower():
+                continue
+            if isinstance(tier_value, int):
+                tiers[alias_name] = tier_value
+        return tiers
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def facade_filenames() -> tuple[str, ...]:
+        config = FlextInfraTransformerImportNormalizerHelper.load_import_normalization_config().get(
+            "facade_filenames",
+        )
+        if not isinstance(config, list):
+            return ()
+        output: list[str] = [
+            item for item in config if isinstance(item, str) and item.endswith(".py")
+        ]
+        return tuple(output)
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def wrong_source_config() -> tuple[bool, frozenset[str]]:
+        config = FlextInfraTransformerImportNormalizerHelper.load_import_normalization_config().get(
+            "wrong_source",
+        )
+        if not isinstance(config, Mapping):
+            return False, frozenset()
+        enabled_raw = config.get("enabled")
+        enabled = isinstance(enabled_raw, bool) and enabled_raw
+        universal_raw = config.get("universal_aliases")
+        universal_aliases: set[str] = set()
+        if isinstance(universal_raw, list):
+            for item in universal_raw:
+                if isinstance(item, str) and len(item) == 1 and item.islower():
+                    universal_aliases.add(item)
+        return enabled, frozenset(universal_aliases)
+
+    @staticmethod
+    def extract_declared_alias_from_facade(file_path: Path) -> str:
+        module = u.Infra.parse_module_cst(file_path)
+        if module is None:
+            return ""
+        alias_name = ""
+        for statement in module.body:
+            if not isinstance(statement, cst.SimpleStatementLine):
+                continue
+            for expression in statement.body:
+                if not isinstance(expression, cst.Assign):
+                    continue
+                if len(expression.targets) != 1:
+                    continue
+                target = expression.targets[0].target
+                if not isinstance(target, cst.Name):
+                    continue
+                if len(target.value) != 1:
+                    continue
+                if not isinstance(expression.value, cst.Name):
+                    continue
+                alias_name = target.value
+        return alias_name
+
+    @staticmethod
+    def discover_project_aliases(project_root: Path) -> dict[str, str]:
+        discovered = (
+            FlextInfraTransformerImportNormalizerHelper.discover_src_package_dir(
+                project_root,
+            )
+        )
+        if discovered is None:
+            return {}
+        _, package_dir = discovered
+        alias_to_facade: dict[str, str] = {}
+        for (
+            facade_name
+        ) in FlextInfraTransformerImportNormalizerHelper.facade_filenames():
+            facade_path = package_dir / facade_name
+            if not facade_path.is_file():
+                continue
+            alias_name = FlextInfraTransformerImportNormalizerHelper.extract_declared_alias_from_facade(
+                facade_path,
+            )
+            if len(alias_name) != 1 or not alias_name.islower():
+                continue
+            alias_to_facade[alias_name] = facade_name
+        return alias_to_facade
+
+    @staticmethod
+    def reverse_alias_map(alias_to_facade: Mapping[str, str]) -> dict[str, str]:
+        return {
+            file_name: alias_name for alias_name, file_name in alias_to_facade.items()
+        }
+
+    @staticmethod
+    def find_lazy_imports_dict(module: cst.Module) -> cst.Dict | None:
+        for statement in module.body:
+            if not isinstance(statement, cst.SimpleStatementLine):
+                continue
+            for expression in statement.body:
+                if isinstance(expression, cst.Assign):
+                    if len(expression.targets) != 1:
+                        continue
+                    target = expression.targets[0].target
+                    if (
+                        isinstance(target, cst.Name)
+                        and target.value == "_LAZY_IMPORTS"
+                        and isinstance(expression.value, cst.Dict)
+                    ):
+                        return expression.value
+                if isinstance(expression, cst.AnnAssign):
+                    target = expression.target
+                    if not isinstance(target, cst.Name):
+                        continue
+                    if target.value != "_LAZY_IMPORTS":
+                        continue
+                    if expression.value is None or not isinstance(
+                        expression.value, cst.Dict
+                    ):
+                        continue
+                    return expression.value
+        return None
+
+    @staticmethod
+    def extract_string_literal(node: cst.BaseExpression) -> str:
+        if not isinstance(node, cst.SimpleString):
+            return ""
+        value = node.evaluated_value
+        return value if isinstance(value, str) else ""
+
+    @staticmethod
+    def extract_lazy_import_map(init_path: Path) -> dict[str, str]:
+        if not init_path.is_file():
+            return {}
+        try:
+            source = init_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            module = cst.parse_module(source)
+        except (cst.ParserSyntaxError, OSError):
+            return {}
+        lazy_dict = FlextInfraTransformerImportNormalizerHelper.find_lazy_imports_dict(
+            module,
+        )
+        if lazy_dict is None:
+            return {}
+        result: dict[str, str] = {}
+        for element in lazy_dict.elements:
+            if not isinstance(element, cst.DictElement):
+                continue
+            key = FlextInfraTransformerImportNormalizerHelper.extract_string_literal(
+                element.key,
+            )
+            if (
+                len(key) != 1
+                or not key.isalpha()
+                or not key.islower()
+                or not isinstance(element.value, (cst.Tuple, cst.List))
+            ):
+                continue
+            if len(element.value.elements) == 0:
+                continue
+            module_spec = element.value.elements[0].value
+            module_name = (
+                FlextInfraTransformerImportNormalizerHelper.extract_string_literal(
+                    module_spec,
+                )
+            )
+            if len(module_name) == 0:
+                continue
+            result[key] = module_name
+        return result
+
+    @staticmethod
+    def build_lazy_import_maps(
+        project_root: Path,
+    ) -> Mapping[str, Mapping[str, str]]:
+        discovered = (
+            FlextInfraTransformerImportNormalizerHelper.discover_src_package_dir(
+                project_root,
+            )
+        )
+        if discovered is None:
+            return {}
+        package_name, package_dir = discovered
+        maps: dict[str, Mapping[str, str]] = {}
+        for init_path in package_dir.rglob("__init__.py"):
+            relative = init_path.parent.relative_to(package_dir)
+            if relative == Path():
+                module_path = package_name
+            else:
+                module_path = f"{package_name}.{'.'.join(relative.parts)}"
+            lazy_map = (
+                FlextInfraTransformerImportNormalizerHelper.extract_lazy_import_map(
+                    init_path,
+                )
+            )
+            if len(lazy_map) > 0:
+                maps[module_path] = lazy_map
+        return maps
+
+    @staticmethod
+    def build_alias_to_defining_module(
+        alias_to_facade: Mapping[str, str],
+        package_name: str,
+    ) -> Mapping[str, str]:
+        return {
+            alias: f"{package_name}.{facade.removesuffix('.py')}"
+            for alias, facade in alias_to_facade.items()
+        }
+
+    @staticmethod
+    def resolve_relative_module(
+        current_module: str,
+        level: int,
+        module_name: str | None,
+    ) -> str:
+        parts = current_module.split(".")
+        if level > len(parts):
+            return ""
+        base = parts[: -level + 1] if level > 1 else parts[:-1]
+        if module_name:
+            base.extend(module_name.split("."))
+        return ".".join(base)
+
+    @staticmethod
+    def file_to_module(file_path: Path, package_dir: Path, package_name: str) -> str:
+        try:
+            relative = file_path.relative_to(package_dir)
+        except ValueError:
+            return ""
+        parts = list(relative.parts)
+        if len(parts) > 0:
+            parts[-1] = parts[-1].removesuffix(".py")
+        return f"{package_name}.{'.'.join(parts)}"
+
+    @staticmethod
+    def build_import_graph(
+        package_dir: Path,
+        package_name: str,
+        lazy_import_maps: Mapping[str, Mapping[str, str]],
+    ) -> Mapping[str, frozenset[str]]:
+        graph: dict[str, set[str]] = {}
+        all_py_files = list(package_dir.rglob("*.py"))
+        known_modules = frozenset(
+            FlextInfraTransformerImportNormalizerHelper.file_to_module(
+                f, package_dir, package_name
+            )
+            for f in all_py_files
+        )
+        for file_path in all_py_files:
+            module_name = FlextInfraTransformerImportNormalizerHelper.file_to_module(
+                file_path,
+                package_dir,
+                package_name,
+            )
+            if not module_name:
+                continue
+            try:
+                source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                tree = cst.parse_module(source)
+            except (cst.ParserSyntaxError, OSError):
+                continue
+            collector = _ImportEdgeCollector(
+                current_module=module_name,
+                package_name=package_name,
+                known_modules=known_modules,
+                lazy_import_maps=lazy_import_maps,
+            )
+            tree.visit(collector)
+            graph[module_name] = collector.imported_modules
+        return {k: frozenset(v) for k, v in graph.items()}
+
+    @staticmethod
+    def build_reachability(
+        graph: Mapping[str, frozenset[str]],
+    ) -> Mapping[str, frozenset[str]]:
+        reachability: dict[str, set[str]] = {}
+        for node in graph:
+            visited: set[str] = set()
+            queue = deque([node])
+            while queue:
+                current = queue.popleft()
+                if current in visited:
+                    continue
+                visited.add(current)
+                if current in graph:
+                    queue.extend(graph[current])
+            reachability[node] = visited
+        return {k: frozenset(v) for k, v in reachability.items()}
+
+    @staticmethod
+    def build_context(file_path: Path) -> _ImportNormalizationContext | None:
+        project_root = u.Infra.discover_project_root_from_file(file_path)
+        if project_root is None:
+            return None
+        package_info = (
+            FlextInfraTransformerImportNormalizerHelper.discover_src_package_dir(
+                project_root,
+            )
+        )
+        if package_info is None:
+            return None
+        package_name, package_dir = package_info
+        alias_to_facade = (
+            FlextInfraTransformerImportNormalizerHelper.discover_project_aliases(
+                project_root,
+            )
+        )
+        lazy_import_maps = (
+            FlextInfraTransformerImportNormalizerHelper.build_lazy_import_maps(
+                project_root,
+            )
+        )
+        graph = FlextInfraTransformerImportNormalizerHelper.build_import_graph(
+            package_dir,
+            package_name,
+            lazy_import_maps,
+        )
+        wrong_source_enabled, universal_aliases = (
+            FlextInfraTransformerImportNormalizerHelper.wrong_source_config()
+        )
+        return _ImportNormalizationContext(
+            file_path=file_path,
+            file_module=FlextInfraTransformerImportNormalizerHelper.file_to_module(
+                file_path,
+                package_dir,
+                package_name,
+            ),
+            project_package=package_name,
+            project_aliases=frozenset(alias_to_facade.keys()),
+            declared_alias=FlextInfraTransformerImportNormalizerHelper.extract_declared_alias_from_facade(
+                file_path,
+            ),
+            alias_to_defining_module=FlextInfraTransformerImportNormalizerHelper.build_alias_to_defining_module(
+                alias_to_facade,
+                package_name,
+            ),
+            alias_tiers=FlextInfraTransformerImportNormalizerHelper.alias_tiers(),
+            file_tier=FlextInfraTransformerImportNormalizerHelper.file_tier(
+                file_path,
+                alias_to_facade,
+            ),
+            package_reachability=FlextInfraTransformerImportNormalizerHelper.build_reachability(
+                graph,
+            ),
+            wrong_source_enabled=wrong_source_enabled,
+            universal_aliases=universal_aliases,
+            workspace_packages=u.Infra.discover_workspace_packages(
+                u.Infra.discover_workspace_root_from_file(file_path),
+            ),
+        )
+
+    @staticmethod
+    def file_tier(file_path: Path, alias_to_facade: Mapping[str, str]) -> int:
+        tiers = FlextInfraTransformerImportNormalizerHelper.alias_tiers()
+        facade_to_alias = FlextInfraTransformerImportNormalizerHelper.reverse_alias_map(
+            alias_to_facade,
+        )
+        alias = facade_to_alias.get(file_path.name)
+        return tiers.get(alias, _UNKNOWN_TIER) if alias else _UNKNOWN_TIER
+
+    @staticmethod
+    def is_private_submodule(module_name: str) -> bool:
+        return any(
+            part.startswith("_") and not part.startswith("__")
+            for part in module_name.split(".")
+        )
+
+    @staticmethod
+    def imported_name(imported_alias: cst.ImportAlias) -> str | None:
+        if isinstance(imported_alias.name, cst.Name):
+            return imported_alias.name.value
+        return None
+
+    @staticmethod
+    def is_safe_to_normalize(context: _ImportNormalizationContext, alias: str) -> bool:
+        defining_module = context.alias_to_defining_module.get(alias)
+        if not defining_module:
+            return False
+        return defining_module not in context.package_reachability.get(
+            context.file_module, frozenset()
+        )
+
+    @staticmethod
+    def is_deep_violation(
+        context: _ImportNormalizationContext, module_name: str
+    ) -> bool:
+        if not module_name.startswith(f"{context.project_package}."):
+            return False
+        return FlextInfraTransformerImportNormalizerHelper.is_private_submodule(
+            module_name
+        )
+
+    @staticmethod
+    def is_wrong_source_violation(
+        context: _ImportNormalizationContext, module_name: str, alias: str
+    ) -> bool:
+        if not context.wrong_source_enabled:
+            return False
+        if alias not in context.universal_aliases:
+            return False
+        if module_name in context.workspace_packages:
+            return False
+        if module_name == context.project_package:
+            return False
+        return not module_name.startswith(f"{context.project_package}.")
+
+    @staticmethod
+    def violation_type(
+        context: _ImportNormalizationContext, module_name: str, alias: str
+    ) -> str | None:
+        if FlextInfraTransformerImportNormalizerHelper.is_deep_violation(
+            context,
+            module_name,
+        ):
+            return "deep"
+        if FlextInfraTransformerImportNormalizerHelper.is_wrong_source_violation(
+            context,
+            module_name,
+            alias,
+        ):
+            return "wrong_source"
+        return None
+
+    @staticmethod
+    def module_name(node: cst.ImportFrom) -> str:
+        return u.Infra.module_name_from_expr(node.module)
+
     model_config = ConfigDict(frozen=True)
 
     file: Annotated[str, Field(min_length=1)]
@@ -75,7 +537,9 @@ class _ImportEdgeCollector(cst.CSTVisitor):
         if isinstance(node.names, cst.ImportStar):
             return
         for imported_alias in node.names:
-            imported_name = _imported_name(imported_alias)
+            imported_name = FlextInfraTransformerImportNormalizerHelper.imported_name(
+                imported_alias,
+            )
             if imported_name is None:
                 continue
             if len(base_module) == 0:
@@ -92,7 +556,7 @@ class _ImportEdgeCollector(cst.CSTVisitor):
         module_name = u.Infra.module_name_from_expr(node.module)
         if len(node.relative) == 0:
             return module_name
-        return _resolve_relative_module(
+        return FlextInfraTransformerImportNormalizerHelper.resolve_relative_module(
             current_module=self._current_module,
             level=len(node.relative),
             module_name=module_name,

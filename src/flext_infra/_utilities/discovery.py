@@ -102,6 +102,76 @@ class FlextInfraUtilitiesDiscovery:
         )
 
     @staticmethod
+    def discover_project_root_from_file(file_path: Path) -> Path | None:
+        """Discover the project root directory starting from a file path."""
+        resolved = file_path.resolve()
+        candidate = resolved.parent if resolved.is_file() else resolved
+        lineage = (candidate, *candidate.parents)
+        for current in lineage:
+            if current.name == "src":
+                return current.parent
+            src_dir = current / "src"
+            if src_dir.is_dir():
+                return current
+        return None
+
+    @staticmethod
+    def discover_package_from_file(file_path: Path) -> str:
+        """Discover the package name for a Python file."""
+        resolved = file_path.resolve()
+        candidate = resolved.parent if resolved.is_file() else resolved
+        lineage = (candidate, *candidate.parents)
+        for current in lineage:
+            if current.name != "src":
+                continue
+            try:
+                relative = resolved.relative_to(current)
+            except ValueError:
+                continue
+            if len(relative.parts) == 0:
+                continue
+            package_name = relative.parts[0]
+            package_dir = current / package_name
+            if (package_dir / "__init__.py").is_file():
+                return package_name
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            file_path,
+        )
+        if project_root is None:
+            return ""
+        src_dir = project_root / "src"
+        if not src_dir.is_dir():
+            return ""
+        for child in sorted(src_dir.iterdir()):
+            if child.is_dir() and (child / "__init__.py").is_file():
+                return child.name
+        return ""
+
+    @staticmethod
+    def discover_workspace_root_from_file(file_path: Path) -> Path:
+        """Discover the workspace root (directory containing all projects)."""
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            file_path,
+        )
+        return project_root.parent if project_root else file_path.resolve().parent
+
+    @staticmethod
+    def discover_workspace_packages(workspace_root: Path) -> frozenset[str]:
+        """Discover all project package names in the workspace."""
+        packages: set[str] = set()
+        if not workspace_root.is_dir():
+            return frozenset()
+        for entry in workspace_root.iterdir():
+            if not entry.is_dir() or entry.name.startswith("."):
+                continue
+            package_name = FlextInfraUtilitiesDiscovery.discover_package_from_file(
+                entry / "src",
+            )
+            if package_name:
+                packages.add(package_name)
+        return frozenset(packages)
+
+    @staticmethod
     def iter_workspace_python_modules(
         workspace_root: Path,
         *,

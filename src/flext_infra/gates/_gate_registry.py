@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
 
 from flext_infra.gates._base_gate import FlextInfraGate
+from flext_infra.gates.bandit import FlextInfraBanditGate
+from flext_infra.gates.go import FlextInfraGoGate
+from flext_infra.gates.markdown import FlextInfraMarkdownGate
+from flext_infra.gates.mypy import FlextInfraMypyGate
+from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
+from flext_infra.gates.pyright import FlextInfraPyrightGate
+from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
+from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
-_BUILTIN_GATES: tuple[tuple[str, str], ...] = (
-    ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
-    ("flext_infra.gates.ruff_format", "FlextInfraRuffFormatGate"),
-    ("flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"),
-    ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
-    ("flext_infra.gates.pyright", "FlextInfraPyrightGate"),
-    ("flext_infra.gates.bandit", "FlextInfraBanditGate"),
-    ("flext_infra.gates.markdown", "FlextInfraMarkdownGate"),
-    ("flext_infra.gates.go", "FlextInfraGoGate"),
+_GATES: tuple[type[FlextInfraGate], ...] = (
+    FlextInfraRuffLintGate,
+    FlextInfraRuffFormatGate,
+    FlextInfraPyreflyGate,
+    FlextInfraMypyGate,
+    FlextInfraPyrightGate,
+    FlextInfraBanditGate,
+    FlextInfraMarkdownGate,
+    FlextInfraGoGate,
 )
 
 
@@ -23,10 +30,7 @@ class FlextInfraGateRegistry:
     """Explicit gate registry mapping gate IDs to gate classes."""
 
     def __init__(self) -> None:
-        self._gates: dict[str, type[FlextInfraGate]] = {}
-
-    def register(self, gate_cls: type[FlextInfraGate]) -> None:
-        self._gates[gate_cls.gate_id] = gate_cls
+        self._gates: dict[str, type[FlextInfraGate]] = {g.gate_id: g for g in _GATES}
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:
         return self._gates.get(gate_id)
@@ -36,18 +40,11 @@ class FlextInfraGateRegistry:
 
     def create(self, gate_id: str, workspace_root: Path) -> FlextInfraGate | None:
         gate_cls = self._gates.get(gate_id)
-        if gate_cls is None:
-            return None
-        return gate_cls(workspace_root)
+        return gate_cls(workspace_root) if gate_cls else None
 
     @classmethod
     def default(cls) -> FlextInfraGateRegistry:
-        registry = cls()
-        for module_path, class_name in _BUILTIN_GATES:
-            module = importlib.import_module(module_path)
-            gate_cls: type[FlextInfraGate] = getattr(module, class_name)
-            registry.register(gate_cls)
-        return registry
+        return cls()
 
 
 __all__ = ["FlextInfraGateRegistry"]
