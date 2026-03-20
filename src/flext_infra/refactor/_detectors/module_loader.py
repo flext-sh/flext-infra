@@ -2,16 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Protocol, TypeVar
+from typing import Protocol
 
 from pydantic import JsonValue
 
-from flext_infra import c
-from flext_infra.models import m
-from flext_infra.refactor._models_namespace_enforcer import (
-    FlextInfraNamespaceEnforcerModels as nem,
-)
-from flext_infra.utilities import u
+from flext_infra import c, m, u
 
 
 class FlextInfraRefactorDetectorModuleLoader:
@@ -20,7 +15,7 @@ class FlextInfraRefactorDetectorModuleLoader:
         file_path: Path,
         *,
         stage: str,
-        parse_failures: list[nem.ParseFailureViolation] | None,
+        parse_failures: list[m.Infra.ParseFailureViolation] | None,
     ) -> m.Infra.ParsedPythonModule | None:
         try:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -57,7 +52,7 @@ class FlextInfraRefactorDetectorModuleLoader:
     @staticmethod
     def _append_parse_failure(
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None,
+        parse_failures: list[m.Infra.ParseFailureViolation] | None,
         file_path: Path,
         stage: str,
         error_type: str,
@@ -66,7 +61,7 @@ class FlextInfraRefactorDetectorModuleLoader:
         if parse_failures is None:
             return
         parse_failures.append(
-            nem.ParseFailureViolation.create(
+            m.Infra.ParseFailureViolation.create(
                 file=str(file_path),
                 stage=stage,
                 error_type=error_type,
@@ -79,25 +74,22 @@ class _ViolationWithLine(Protocol):
     def model_dump(self) -> dict[str, JsonValue]: ...
 
 
-def _coerce_violation_line(value: JsonValue | None) -> int:
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        return int(value)
-    if isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            return 0
-    return 0
-
-
-_V = TypeVar("_V", bound=_ViolationWithLine)
-
-
 class DetectorScanResultBuilder:
+    @staticmethod
+    def _coerce_violation_line(value: JsonValue | None) -> int:
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return 0
+        return 0
+
     @staticmethod
     def build(
         *,
@@ -111,7 +103,9 @@ class DetectorScanResultBuilder:
             file_path=file_path,
             violations=[
                 m.Infra.ScanViolation(
-                    line=_coerce_violation_line(violation.model_dump().get("line")),
+                    line=DetectorScanResultBuilder._coerce_violation_line(
+                        violation.model_dump().get("line")
+                    ),
                     message=message_builder(violation),
                     severity="error",
                     rule_id=rule_id,

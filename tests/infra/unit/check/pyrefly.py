@@ -10,7 +10,6 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests.infra import m, t
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 
 

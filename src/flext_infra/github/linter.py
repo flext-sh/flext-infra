@@ -12,23 +12,14 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesIo, m, p, r, u
+from flext_infra import m, r, s, u
 
 
-class FlextInfraWorkflowLinter:
+class FlextInfraWorkflowLinter(s[bool]):
     """Infrastructure service for GitHub Actions workflow linting.
 
     Delegates to ``actionlint`` for validation and persists JSON reports.
     """
-
-    def __init__(
-        self,
-        runner: p.Infra.CommandRunner | None = None,
-        json_io: FlextInfraUtilitiesIo | None = None,
-    ) -> None:
-        """Initialize the workflow linter."""
-        self._runner = runner
-        self._json = json_io
 
     def lint(
         self,
@@ -37,17 +28,7 @@ class FlextInfraWorkflowLinter:
         report_path: Path | None = None,
         strict: bool = False,
     ) -> r[m.Infra.WorkflowLintResult]:
-        """Run actionlint on the repository and return results.
-
-        Args:
-            root: Repository root directory.
-            report_path: Optional path for JSON report output.
-            strict: If True, treat lint failures as errors.
-
-        Returns:
-            r with lint status payload.
-
-        """
+        """Run actionlint on the repository and return results."""
         actionlint = shutil.which("actionlint")
         if actionlint is None:
             payload_skipped = m.Infra.WorkflowLintResult(
@@ -55,15 +36,10 @@ class FlextInfraWorkflowLinter:
                 reason="actionlint not installed",
             )
             if report_path is not None:
-                if self._json is not None:
-                    self._json.write_json(report_path, payload_skipped, sort_keys=True)
-                else:
-                    u.Infra.write_json(report_path, payload_skipped, sort_keys=True)
+                u.Infra.write_json(report_path, payload_skipped, sort_keys=True)
             return r[m.Infra.WorkflowLintResult].ok(payload_skipped)
-        if self._runner is not None:
-            result = self._runner.run([actionlint], cwd=root)
-        else:
-            result = u.Infra.run([actionlint], cwd=root)
+
+        result = u.Infra.run([actionlint], cwd=root)
         if result.is_success:
             output = result.value
             payload = m.Infra.WorkflowLintResult(
@@ -78,11 +54,10 @@ class FlextInfraWorkflowLinter:
                 exit_code=1,
                 detail=result.error or "",
             )
+
         if report_path is not None:
-            if self._json is not None:
-                self._json.write_json(report_path, payload, sort_keys=True)
-            else:
-                u.Infra.write_json(report_path, payload, sort_keys=True)
+            u.Infra.write_json(report_path, payload, sort_keys=True)
+
         if payload.status == "fail" and strict:
             return r[m.Infra.WorkflowLintResult].fail(
                 result.error or "actionlint found issues",

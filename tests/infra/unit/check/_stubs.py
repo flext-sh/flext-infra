@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-
-
 from ...models import m
 from ...typings import t
 

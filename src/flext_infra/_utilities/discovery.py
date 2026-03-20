@@ -172,6 +172,16 @@ class FlextInfraUtilitiesDiscovery:
         return frozenset(packages)
 
     @staticmethod
+    def discover_core_package(project_root: Path) -> str:
+        """Discover the core package name for a project."""
+        pyproject_path = project_root / c.Infra.Files.PYPROJECT_FILENAME
+        if pyproject_path.is_file():
+            content = pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            if "flext-core" in content or "flext_core" in content:
+                return "flext_core"
+        return "flext_core"
+
+    @staticmethod
     def iter_workspace_python_modules(
         workspace_root: Path,
         *,

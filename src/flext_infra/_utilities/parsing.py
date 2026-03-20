@@ -95,5 +95,56 @@ class FlextInfraUtilitiesParsing:
         except (OSError, UnicodeDecodeError, cst.ParserSyntaxError):
             return None
 
+    @staticmethod
+    def cst_module_name(node: cst.ImportFrom | cst.Attribute | cst.Name | None) -> str:
+        """Extract dotted module name from a CST node."""
+        if node is None:
+            return ""
+        if isinstance(node, cst.ImportFrom):
+            return FlextInfraUtilitiesParsing.cst_module_name(node.module)
+        if isinstance(node, cst.Name):
+            return node.value
+        if isinstance(node, cst.Attribute):
+            base = FlextInfraUtilitiesParsing.cst_module_name(node.value)
+            return f"{base}.{node.attr.value}" if base else node.attr.value
+        return ""
+
+    @staticmethod
+    def cst_is_type_checking_test(node: cst.BaseExpression) -> bool:
+        """Check if a CST expression is 'TYPE_CHECKING'."""
+        if not isinstance(node, cst.Name):
+            return False
+        return node.value == "TYPE_CHECKING"
+
+    @staticmethod
+    def cst_collect_bound_names(node: cst.ImportFrom) -> set[str]:
+        """Collect all bound names from a CST ImportFrom node."""
+        if isinstance(node.names, cst.ImportStar):
+            return set()
+        names: set[str] = set()
+        for item in node.names:
+            if item.asname is not None and isinstance(item.asname.name, cst.Name):
+                names.add(item.asname.name.value)
+            elif isinstance(item.name, cst.Name):
+                names.add(item.name.value)
+        return names
+
+    @staticmethod
+    def cst_import_line(module_name: str, aliases: Sequence[str]) -> cst.BaseStatement:
+        """Construct a CST ImportFrom statement line."""
+        from flext_infra.utilities import u
+
+        return cst.SimpleStatementLine(
+            body=[
+                cst.ImportFrom(
+                    module=u.Infra.module_expr_from_dotted(module_name),
+                    names=tuple(
+                        cst.ImportAlias(name=cst.Name(alias))
+                        for alias in sorted(aliases)
+                    ),
+                ),
+            ],
+        )
+
 
 __all__ = ["FlextInfraUtilitiesParsing"]

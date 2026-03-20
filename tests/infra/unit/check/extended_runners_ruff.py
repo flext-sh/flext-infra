@@ -16,7 +16,6 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r
-from tests.infra import m, t
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates._base_gate import FlextInfraGateContext

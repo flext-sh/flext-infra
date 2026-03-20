@@ -519,27 +519,34 @@ class FlextInfraCodegenLazyInit(s[int]):
     ) -> None:
         """Resolve single-letter aliases from ``ALIAS_TO_SUFFIX`` mapping.
 
-        Strategy (fully dynamic, zero hardcoded project names):
-        1. Skip if alias already points to a public depth-1 facade class.
-        2. Search lazy-map for a class ending with the expected suffix in a
-           public depth-1 submodule (basename without leading ``_``).
-        3. Fall back to parent package discovery via ``constants.py`` MRO.
+        Strategy (canonical facade module enforcement):
+        1. Derive the exact expected module name from the suffix
+           (e.g., Models -> 'models', Types -> 'typings').
+        2. Only accept classes ending with the suffix IF they reside in
+           the EXACT canonical depth-1 module.
+        3. This guarantees we never confuse internal packages (_models)
+           or other public modules with the true facade.
         """
         for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
+            expected_module = "typings" if suffix == "Types" else suffix.lower()
+
             if alias in lazy_map:
                 existing = lazy_map[alias]
+                existing_basename = existing[0].rsplit(".", 1)[-1]
                 if (
                     existing[1].endswith(suffix)
                     and existing[0].count(".") == 1
-                    and not existing[0].rsplit(".", 1)[-1].startswith("_")
+                    and existing_basename == expected_module
                 ):
                     continue
+
             matched = False
             for name, (mod, _attr) in list(lazy_map.items()):
+                basename = mod.rsplit(".", 1)[-1]
                 if (
                     name.endswith(suffix)
                     and mod.count(".") == 1
-                    and not mod.rsplit(".", 1)[-1].startswith("_")
+                    and basename == expected_module
                 ):
                     lazy_map[alias] = (mod, name)
                     matched = True

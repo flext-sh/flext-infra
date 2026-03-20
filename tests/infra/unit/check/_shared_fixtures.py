@@ -16,13 +16,13 @@ from types import SimpleNamespace
 import pytest
 
 from flext_core import r, t
-from tests.infra import m, t
 from flext_infra import m as infra_models
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+from tests.infra import m, t
 
 from ...helpers import h
 from ...models import m

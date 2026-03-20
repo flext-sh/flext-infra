@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests.infra import m, t
 from flext_infra.check.workspace_check import (
     FlextInfraWorkspaceChecker,
     ProjectResult,
 )
+from tests.infra import m
 
 from ...models import m
 
@@ -278,7 +278,9 @@ class TestWorkspaceCheckerMarkdownReportEdgeCases:
             message="m1",
             severity="error",
         )
-        exec1 = m.Infra.GateExecution(result=gate_with_issues, issues=[issue], raw_output="")
+        exec1 = m.Infra.GateExecution(
+            result=gate_with_issues, issues=[issue], raw_output=""
+        )
         exec2 = m.Infra.GateExecution(result=gate_no_issues, issues=[], raw_output="")
         tm.that(len(exec1.issues) > 0, eq=True)
         tm.that(len(exec2.issues), eq=0)

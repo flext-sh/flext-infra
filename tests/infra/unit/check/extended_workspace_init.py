@@ -12,12 +12,12 @@ import pytest
 from flext_tests import tm
 
 from flext_core import t
-from tests.infra import m, t
 from flext_infra import c
 from flext_infra.check.workspace_check import (
     FlextInfraWorkspaceChecker,
 )
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+from tests.infra import m, t
 
 
 class TestWorkspaceCheckerInitialization:

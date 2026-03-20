@@ -13,7 +13,6 @@ from types import SimpleNamespace
 import pytest
 from flext_tests import tm
 
-from tests.infra import m, t
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate

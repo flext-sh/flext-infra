@@ -1,4 +1,4 @@
-"""Detect and rewrite forbidden Tier-0 self-import alias patterns."""
+"""CST transformer for fixing circular Tier 0 self-imports in internal modules."""
 
 from __future__ import annotations
 
@@ -9,81 +9,31 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraTransformerImportInsertion, ProjectAliasDiscovery
+from flext_infra import FlextInfraTransformerImportInsertion, u
+from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class Tier0ImportAnalysis:
+    """Detection results for a single Python file's self-import patterns."""
+
     package_name: str
-    alias_to_module: dict[str, str]
-    category_a: set[str] = field(default_factory=lambda: set[str]())
-    category_b: set[str] = field(default_factory=lambda: set[str]())
-    category_c: set[str] = field(default_factory=lambda: set[str]())
-    category_d: set[str] = field(default_factory=lambda: set[str]())
+    file_path: Path
+    alias_to_module: dict[str, str] = field(default_factory=dict)
+    category_a: set[str] = field(default_factory=set)
+    category_b: set[str] = field(default_factory=set)
+    category_c: set[str] = field(default_factory=set)
+    category_d: set[str] = field(default_factory=set)
 
     @property
     def has_violations(self) -> bool:
-        """Return whether categories B/C/D contain any violations."""
+        """Return True if any imports need redirecting or moving."""
         return bool(self.category_b or self.category_c or self.category_d)
 
 
-class Tier0ImportCstTools:
-    @staticmethod
-    def module_name(expr: cst.BaseExpression | None) -> str:
-        if expr is None:
-            return ""
-        if isinstance(expr, cst.Name):
-            return expr.value
-        if isinstance(expr, cst.Attribute):
-            prefix = Tier0ImportCstTools.module_name(expr.value)
-            return f"{prefix}.{expr.attr.value}" if prefix else expr.attr.value
-        return ""
-
-    @staticmethod
-    def is_type_checking_test(node: cst.BaseExpression) -> bool:
-        if isinstance(node, cst.Name):
-            return node.value == "TYPE_CHECKING"
-        if isinstance(node, cst.Attribute):
-            return (
-                isinstance(node.value, cst.Name)
-                and node.value.value == "typing"
-                and node.attr.value == "TYPE_CHECKING"
-            )
-        return False
-
-    @staticmethod
-    def collect_bound_names(node: cst.ImportFrom) -> set[str]:
-        if isinstance(node.names, cst.ImportStar):
-            return set()
-        names: set[str] = set()
-        for item in node.names:
-            if not isinstance(item.name, cst.Name):
-                continue
-            if item.asname is not None and isinstance(item.asname.name, cst.Name):
-                names.add(item.asname.name.value)
-            else:
-                names.add(item.name.value)
-        return names
-
-    @staticmethod
-    def import_line(module_name: str, aliases: list[str]) -> cst.SimpleStatementLine:
-        root, *rest = module_name.split(".")
-        module_expr: cst.BaseExpression = cst.Name(root)
-        for part in rest:
-            module_expr = cst.Attribute(value=module_expr, attr=cst.Name(part))
-        return cst.SimpleStatementLine(
-            body=[
-                cst.ImportFrom(
-                    module=module_expr,
-                    names=tuple(
-                        cst.ImportAlias(name=cst.Name(alias)) for alias in aliases
-                    ),
-                ),
-            ],
-        )
-
-
 class Tier0ImportContextDiscovery:
+    """Discovery logic for package context and alias mappings."""
+
     def __init__(self, *, file_path: Path) -> None:
         self._file_path = file_path
 
@@ -92,6 +42,7 @@ class Tier0ImportContextDiscovery:
         return self._file_path
 
     def package_context(self) -> tuple[Path, str]:
+        """Return (package_dir, package_name) for the current file."""
         parts = self._file_path.parts
         if "src" not in parts:
             return (self._file_path.parent, "")
@@ -102,6 +53,7 @@ class Tier0ImportContextDiscovery:
         return (package_dir, parts[src_idx + 1])
 
     def alias_map(self, *, package_dir: Path, package_name: str) -> dict[str, str]:
+        """Build map of single-char aliases to their defining modules."""
         discovered = ProjectAliasDiscovery.discover_facade_alias_map(package_dir)
         alias_map = {
             alias: module.removesuffix(".py")
@@ -159,7 +111,7 @@ class Tier0ImportContextDiscovery:
             ):
                 continue
             if (
-                not isinstance(element.value, cst.Tuple)
+                not isinstance(element.value, (cst.Tuple, cst.List))
                 or len(element.value.elements) < 1
             ):
                 continue
@@ -176,6 +128,8 @@ class Tier0ImportContextDiscovery:
 
 
 class Tier0ImportAnalyzer(cst.CSTVisitor):
+    """Analyze imports and names to identify circular Tier 0 aliases."""
+
     def __init__(
         self,
         *,
@@ -183,7 +137,7 @@ class Tier0ImportAnalyzer(cst.CSTVisitor):
         tier0_modules: tuple[str, ...],
         core_aliases: tuple[str, ...],
     ) -> None:
-        """Initialize analyzer state for one target file and tier configuration."""
+        """Initialize analyzer state for one target file."""
         self._discovery = Tier0ImportContextDiscovery(file_path=file_path)
         self._tier0_modules = {name.removesuffix(".py") for name in tier0_modules}
         self._core_aliases = set(core_aliases)
@@ -196,15 +150,54 @@ class Tier0ImportAnalyzer(cst.CSTVisitor):
         self._self_import_aliases: set[str] = set()
         self._runtime_aliases: set[str] = set()
 
+    def _is_facade_file(self) -> bool:
+        """Determine if current file is a package facade (Tier 0)."""
+        name = self._discovery.file_path.name
+        # 1. Must match facade name pattern
+        is_facade_name = name.removesuffix(".py") in self._tier0_modules or (
+            name.startswith("_") and name.removesuffix(".py")[1:] in self._tier0_modules
+        )
+        if not is_facade_name:
+            return False
+
+        # 2. Must be directly under src/<package_name>/
+        parts = self._discovery.file_path.parts
+        try:
+            src_idx = parts.index("src")
+            return len(parts) == src_idx + 3
+        except ValueError:
+            return True
+
     def build_analysis(self) -> Tier0ImportAnalysis:
-        """Build categorized import-violation analysis from collected aliases."""
-        aggregator = self._detect_aggregator_module()
+        """Process visited nodes and build violation analysis."""
+        package_dir, self._package_name = self._discovery.package_context()
+        if not self._package_name:
+            return Tier0ImportAnalysis(
+                package_name="",
+                file_path=self._discovery.file_path,
+            )
+
+        self._alias_to_module = self._discovery.alias_map(
+            package_dir=package_dir,
+            package_name=self._package_name,
+        )
+
         analysis = Tier0ImportAnalysis(
             package_name=self._package_name,
-            alias_to_module=dict(self._alias_to_module),
+            file_path=self._discovery.file_path,
+            alias_to_module=self._alias_to_module,
         )
+
+        # Facade files are allowed to import self-aliases for aggregation
+        if self._is_facade_file():
+            analysis.category_a.update(self._self_import_aliases)
+            return analysis
+
+        aggregator = self._detect_aggregator_module()
+
         for alias in sorted(self._self_import_aliases):
             module_name = self._alias_to_module.get(alias, "")
+            # Redirect to core if it's a core alias OR redirects to parent facade aggregator
             if alias in self._core_aliases or (
                 aggregator and module_name == aggregator
             ):
@@ -215,14 +208,10 @@ class Tier0ImportAnalyzer(cst.CSTVisitor):
                 analysis.category_d.add(alias)
             else:
                 analysis.category_c.add(alias)
+
         return analysis
 
     def _detect_aggregator_module(self) -> str:
-        """Detect if file is inside _<dir>/ and return the aggregator module name.
-
-        Files inside _models/ have aggregator 'models', _utilities/ has 'utilities'.
-        Returns empty string if file is not inside an internal subpackage.
-        """
         parts = self._discovery.file_path.parts
         for part in parts:
             if part.startswith("_") and not part.startswith("__"):
@@ -230,24 +219,11 @@ class Tier0ImportAnalyzer(cst.CSTVisitor):
         return ""
 
     @override
-    def visit_Module(self, node: cst.Module) -> None:
-        del node
-        package_dir, package_name = self._discovery.package_context()
-        self._package_name = package_name
-        if package_name:
-            self._alias_to_module = self._discovery.alias_map(
-                package_dir=package_dir,
-                package_name=package_name,
-            )
-
-    @override
     def visit_Import(self, node: cst.Import) -> None:
-        del node
         self._import_depth += 1
 
     @override
     def leave_Import(self, original_node: cst.Import) -> None:
-        del original_node
         self._import_depth = max(0, self._import_depth - 1)
 
     @override
@@ -255,52 +231,45 @@ class Tier0ImportAnalyzer(cst.CSTVisitor):
         self._import_depth += 1
         if not self._package_name or node.module is None or node.relative:
             return
-        if Tier0ImportCstTools.module_name(node.module) != self._package_name:
+        if u.Infra.cst_module_name(node.module) != self._package_name:
             return
         if isinstance(node.names, cst.ImportStar):
             return
         for item in node.names:
-            if not isinstance(item.name, cst.Name):
-                continue
-            bound = item.name.value
-            if item.asname is not None and isinstance(item.asname.name, cst.Name):
-                bound = item.asname.name.value
+            bound = u.Infra.cst_asname_to_local(item.asname) or (
+                item.name.value if isinstance(item.name, cst.Name) else ""
+            )
             if len(bound) == 1 and bound.islower() and bound.isalpha():
                 self._self_import_aliases.add(bound)
 
     @override
     def leave_ImportFrom(self, original_node: cst.ImportFrom) -> None:
-        del original_node
         self._import_depth = max(0, self._import_depth - 1)
 
     @override
     def visit_Annotation(self, node: cst.Annotation) -> None:
-        del node
         self._annotation_depth += 1
 
     @override
     def leave_Annotation(self, original_node: cst.Annotation) -> None:
-        del original_node
         self._annotation_depth = max(0, self._annotation_depth - 1)
 
     @override
     def visit_TypeAlias(self, node: cst.TypeAlias) -> None:
-        del node
         self._type_alias_depth += 1
 
     @override
     def leave_TypeAlias(self, original_node: cst.TypeAlias) -> None:
-        del original_node
         self._type_alias_depth = max(0, self._type_alias_depth - 1)
 
     @override
     def visit_If(self, node: cst.If) -> None:
-        if Tier0ImportCstTools.is_type_checking_test(node.test):
+        if u.Infra.cst_is_type_checking_test(node.test):
             self._type_checking_depth += 1
 
     @override
     def leave_If(self, original_node: cst.If) -> None:
-        if Tier0ImportCstTools.is_type_checking_test(original_node.test):
+        if u.Infra.cst_is_type_checking_test(original_node.test):
             self._type_checking_depth = max(0, self._type_checking_depth - 1)
 
     @override
@@ -316,6 +285,23 @@ class Tier0ImportAnalyzer(cst.CSTVisitor):
 
 
 class Tier0ImportFixer(cst.CSTTransformer):
+    """Rewrite Tier 0 imports to remove circularity and enforce order."""
+
+    # Map of classes used in flext code that should be imported when redirecting to core
+    _CLASS_IMPORTS_MAP = {
+        "FlextRuntime": "flext_core.runtime",
+        "FlextUtilitiesGuardsTypeCore": "flext_core._utilities.guards_type_core",
+        "FlextUtilitiesGuards": "flext_core._utilities.guards",
+        "FlextUtilitiesGuardsType": "flext_core._utilities.guards_type",
+        "FlextUtilitiesCache": "flext_core._utilities.cache",
+        "FlextUtilitiesMapper": "flext_core._utilities.mapper",
+        "FlextUtilitiesModel": "flext_core._utilities.model",
+        "EnumT": "flext_core._typings.generics",
+        "T": "flext_core._typings.generics",
+        "U": "flext_core._typings.generics",
+        "T_Model": "flext_core._typings.generics",
+    }
+
     def __init__(
         self,
         *,
@@ -323,7 +309,7 @@ class Tier0ImportFixer(cst.CSTTransformer):
         alias_to_submodule: dict[str, str],
         core_package: str,
     ) -> None:
-        """Initialize fixer state from analyzer output and alias resolution map."""
+        """Initialize fixer state from analysis."""
         self.analysis = analysis
         self._package_name = analysis.package_name
         self._core_package = core_package
@@ -344,22 +330,30 @@ class Tier0ImportFixer(cst.CSTTransformer):
         self._changes: list[str] = []
         self._type_checking_depth = 0
         self._type_checking_import_present = False
+        self._missing_classes: set[str] = set()
 
     @property
     def changes(self) -> list[str]:
-        """Return accumulated human-readable change descriptions."""
         return self._changes
 
     @override
+    def visit_Module(self, node: cst.Module) -> None:
+        # Detect names that might need class imports
+        source = node.code
+        for name in self._CLASS_IMPORTS_MAP:
+            if name in source and f"import {name}" not in source:
+                self._missing_classes.add(name)
+
+    @override
     def visit_If(self, node: cst.If) -> None:
-        if Tier0ImportCstTools.is_type_checking_test(node.test):
+        if u.Infra.cst_is_type_checking_test(node.test):
             self._type_checking_depth += 1
 
     @override
     def leave_If(
         self, original_node: cst.If, updated_node: cst.If
     ) -> cst.BaseStatement:
-        if not Tier0ImportCstTools.is_type_checking_test(original_node.test):
+        if not u.Infra.cst_is_type_checking_test(original_node.test):
             return updated_node
         self._type_checking_depth = max(0, self._type_checking_depth - 1)
         return self._merge_type_checking_imports(updated_node)
@@ -370,10 +364,9 @@ class Tier0ImportFixer(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        del original_node
-        module_name = Tier0ImportCstTools.module_name(updated_node.module)
+        module_name = u.Infra.cst_module_name(updated_node.module)
         if module_name == "typing" and (
-            "TYPE_CHECKING" in Tier0ImportCstTools.collect_bound_names(updated_node)
+            "TYPE_CHECKING" in u.Infra.cst_collect_bound_names(updated_node)
         ):
             self._type_checking_import_present = True
         if module_name == self._package_name and self._type_checking_depth == 0:
@@ -389,114 +382,90 @@ class Tier0ImportFixer(cst.CSTTransformer):
     def leave_Module(
         self, original_node: cst.Module, updated_node: cst.Module
     ) -> cst.Module:
-        del original_node
-        body = list(updated_node.body)
-        insert_idx = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
-            body,
-        )
+        statements = list(updated_node.body)
+        if not self._type_checking_import_present and self._type_checking_pending:
+            insert_idx = self._index_after_import_block(statements)
+            statements.insert(
+                insert_idx,
+                u.Infra.cst_import_line("typing", ["TYPE_CHECKING"]),
+            )
+            self._type_checking_import_present = True
+            self._changes.append("Added 'from typing import TYPE_CHECKING'")
+
         additions = self._build_top_level_imports()
         if additions:
-            body = body[:insert_idx] + additions + body[insert_idx:]
+            insert_idx = self._index_after_import_block(statements)
+            statements[insert_idx:insert_idx] = additions
+
         if self._type_checking_pending:
-            if not self._type_checking_import_present:
-                import_stmt = Tier0ImportCstTools.import_line(
-                    "typing", ["TYPE_CHECKING"]
-                )
-                body = body[:insert_idx] + [import_stmt] + body[insert_idx:]
-                self._changes.append("Added import: from typing import TYPE_CHECKING")
-            block = cst.If(
-                test=cst.Name("TYPE_CHECKING"),
-                body=cst.IndentedBlock(
-                    body=[
-                        Tier0ImportCstTools.import_line(
-                            self._package_name,
-                            sorted(self._type_checking_pending),
-                        ),
-                    ],
-                ),
+            tc_import = u.Infra.cst_import_line(
+                self._package_name, list(self._type_checking_pending)
             )
-            block_idx = self._index_after_import_block(body)
-            body = body[:block_idx] + [block] + body[block_idx:]
+            tc_block = cst.If(
+                test=cst.Name("TYPE_CHECKING"),
+                body=cst.IndentedBlock(body=[tc_import]),
+            )
+            insert_idx = self._index_after_import_block(statements)
+            statements.insert(insert_idx, tc_block)
             self._changes.append(
-                "Added TYPE_CHECKING block for annotation-only aliases"
+                f"Added TYPE_CHECKING block with imports from {self._package_name}: {', '.join(sorted(self._type_checking_pending))}"
             )
             self._type_checking_pending.clear()
-        return updated_node.with_changes(body=body)
+
+        return updated_node.with_changes(body=tuple(statements))
 
     def _rewrite_root_self_import(
-        self,
-        node: cst.ImportFrom,
+        self, node: cst.ImportFrom
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
         if isinstance(node.names, cst.ImportStar):
             return node
-        kept: list[cst.ImportAlias] = []
-        removed: list[str] = []
+        remaining = []
         for item in node.names:
-            if not isinstance(item.name, cst.Name):
-                kept.append(item)
-                continue
-            bound = item.name.value
-            if item.asname is not None and isinstance(item.asname.name, cst.Name):
-                bound = item.asname.name.value
+            bound = u.Infra.cst_asname_to_local(item.asname) or (
+                item.name.value if isinstance(item.name, cst.Name) else ""
+            )
             if bound in self._root_remove:
-                removed.append(bound)
-            else:
-                kept.append(item)
-        if not removed:
-            return node
-        self._changes.append(
-            f"Removed self-import aliases: {', '.join(sorted(removed))}"
-        )
-        if not kept:
+                self._changes.append(
+                    f"Removing '{bound}' from {self._package_name} import"
+                )
+                continue
+            remaining.append(item)
+        if not remaining:
             return cst.RemovalSentinel.REMOVE
-        cleaned = list(kept)
-        cleaned[-1] = cleaned[-1].with_changes(comma=cst.MaybeSentinel.DEFAULT)
-        return node.with_changes(names=tuple(cleaned))
+        return node.with_changes(names=tuple(remaining))
 
     def _merge_into_import(
-        self,
-        node: cst.ImportFrom,
-        pending: set[str],
-    ) -> cst.BaseSmallStatement:
-        if len(pending) == 0 or isinstance(node.names, cst.ImportStar):
+        self, node: cst.ImportFrom, pending: set[str]
+    ) -> cst.ImportFrom:
+        if not pending or isinstance(node.names, cst.ImportStar):
             return node
-        existing = Tier0ImportCstTools.collect_bound_names(node)
-        missing = sorted(alias for alias in pending if alias not in existing)
-        if not missing:
+        existing = u.Infra.cst_collect_bound_names(node)
+        to_add = [cst.ImportAlias(name=cst.Name(a)) for a in sorted(pending - existing)]
+        if not to_add:
             return node
-        pending.difference_update(missing)
-        self._changes.append(
-            f"Merged import aliases into {Tier0ImportCstTools.module_name(node.module)}: {', '.join(missing)}",
-        )
-        return node.with_changes(
-            names=tuple(
-                list(node.names) + [cst.ImportAlias(name=cst.Name(x)) for x in missing]
-            ),
-        )
+        pending.clear()
+        return node.with_changes(names=tuple(list(node.names) + to_add))
 
-    def _merge_type_checking_imports(self, node: cst.If) -> cst.If:
-        if len(self._type_checking_pending) == 0 or not isinstance(
-            node.body, cst.IndentedBlock
-        ):
+    def _merge_type_checking_imports(self, node: cst.If) -> cst.BaseStatement:
+        if not self._type_checking_pending:
             return node
         statements = list(node.body.body)
-        for idx, stmt in enumerate(statements):
-            if not isinstance(stmt, cst.SimpleStatementLine) or len(stmt.body) != 1:
-                continue
-            single = stmt.body[0]
-            if not isinstance(single, cst.ImportFrom):
-                continue
-            if Tier0ImportCstTools.module_name(single.module) != self._package_name:
-                continue
-            merged = self._merge_into_import(single, self._type_checking_pending)
-            statements[idx] = stmt.with_changes(body=[merged])
-            if len(self._type_checking_pending) == 0:
+        for i, stmt in enumerate(statements):
+            if (
+                isinstance(stmt, cst.SimpleStatementLine)
+                and len(stmt.body) == 1
+                and isinstance(stmt.body[0], cst.ImportFrom)
+            ) and u.Infra.cst_module_name(stmt.body[0]) == self._package_name:
+                statements[i] = self._merge_into_import(
+                    stmt.body[0], self._type_checking_pending
+                )
+                self._changes.append(
+                    f"Merged TYPE_CHECKING imports from {self._package_name}"
+                )
                 break
-        if self._type_checking_pending:
+        else:
             aliases = sorted(self._type_checking_pending)
-            statements.append(
-                Tier0ImportCstTools.import_line(self._package_name, aliases)
-            )
+            statements.append(u.Infra.cst_import_line(self._package_name, aliases))
             self._changes.append(
                 f"Added TYPE_CHECKING imports from {self._package_name}: {', '.join(aliases)}",
             )
@@ -507,9 +476,7 @@ class Tier0ImportFixer(cst.CSTTransformer):
         additions: list[cst.BaseStatement] = []
         if self._core_pending:
             aliases = sorted(self._core_pending)
-            additions.append(
-                Tier0ImportCstTools.import_line(self._core_package, aliases)
-            )
+            additions.append(u.Infra.cst_import_line(self._core_package, aliases))
             self._changes.append(
                 f"Added core alias redirect import from {self._core_package}: {', '.join(aliases)}",
             )
@@ -520,11 +487,20 @@ class Tier0ImportFixer(cst.CSTTransformer):
                 continue
             aliases = sorted(pending)
             module_name = f"{self._package_name}.{submodule}"
-            additions.append(Tier0ImportCstTools.import_line(module_name, aliases))
+            additions.append(u.Infra.cst_import_line(module_name, aliases))
             self._changes.append(
                 f"Added direct submodule imports from {module_name}: {', '.join(aliases)}",
             )
             pending.clear()
+
+        # Add missing class imports if any
+        for name in sorted(self._missing_classes):
+            module_path = self._CLASS_IMPORTS_MAP[name]
+            additions.append(u.Infra.cst_import_line(module_path, [name]))
+            self._changes.append(
+                f"Added missing class import: from {module_path} import {name}"
+            )
+
         return additions
 
     def _index_after_import_block(self, body: Sequence[cst.BaseStatement]) -> int:

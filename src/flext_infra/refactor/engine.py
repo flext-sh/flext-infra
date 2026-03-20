@@ -23,6 +23,7 @@ from flext_infra import (
     FlextInfraRefactorSafetyManager,
     FlextInfraRefactorSignaturePropagationRule,
     FlextInfraRefactorSymbolPropagationRule,
+    FlextInfraRefactorTier0ImportFixRule,
     FlextInfraRefactorTypingAnnotationFixRule,
     FlextInfraRefactorTypingUnificationRule,
     c,
@@ -545,6 +546,8 @@ class FlextInfraRefactorEngine:
             return FlextInfraRefactorTypingUnificationRule(rule_def)
         if fix_action in c.Infra.TYPING_FIX_ACTIONS:
             return FlextInfraRefactorTypingAnnotationFixRule(rule_def)
+        if fix_action in c.Infra.TIER0_FIX_ACTIONS:
+            return FlextInfraRefactorTier0ImportFixRule(rule_def)
         rule_id_lower = rule_id.lower()
         if "ensure-future" in rule_id_lower or "future-annotations" in rule_id_lower:
             return FlextInfraRefactorEnsureFutureAnnotationsRule(rule_def)

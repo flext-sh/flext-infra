@@ -5,7 +5,6 @@ Tests the real entry-point behavior.
 
 from __future__ import annotations
 
-from tests.infra import m, t
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 

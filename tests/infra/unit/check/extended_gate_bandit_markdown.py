@@ -13,10 +13,10 @@ from types import SimpleNamespace
 import pytest
 from flext_tests import tm
 
-from tests.infra import m, t
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
+from tests.infra import m
 
 from ._shared_fixtures import create_checker_project, patch_gate_run
 

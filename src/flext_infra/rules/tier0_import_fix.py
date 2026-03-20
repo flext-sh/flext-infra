@@ -28,10 +28,18 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         analysis = analyzer.build_analysis()
         if not analysis.has_violations:
             return (tree, [])
+
+        project_root = u.Infra.discover_project_root_from_file(file_path)
+        core_package = (
+            u.Infra.discover_core_package(project_root)
+            if project_root
+            else self._core_package()
+        )
+
         fixer = Tier0ImportFixer(
             analysis=analysis,
             alias_to_submodule=self._alias_to_submodule(),
-            core_package=self._core_package(),
+            core_package=core_package,
         )
         updated = tree.visit(fixer)
         return (updated, fixer.changes)

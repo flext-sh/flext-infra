@@ -11,8 +11,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests.infra import m, t
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from tests.infra import m
 
 from ... import h
 from ...models import m

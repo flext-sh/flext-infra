@@ -9,7 +9,7 @@ rules:
     enabled: true
     severity: error
     fix_action: fix_tier0_imports
-    tier0_modules: ["constants.py", "typings.py", "protocols.py"]
+    tier0_modules: ["constants.py", "typings.py", "protocols.py", "models.py", "utilities.py", "exceptions.py", "shared.py"]
     core_aliases: ["r", "e", "h", "x"]
     alias_to_submodule:
       c: "constants"
