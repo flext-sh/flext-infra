@@ -1,0 +1,52 @@
+src/flext_infra/codegen/_codegen_execution_tools.py
+  368fb8be6b85b0b7 18-19
+src/flext_infra/check/__main__.py
+  368fb8be6b85b0b7 7
+src/flext_infra/transformers/tier0_import_fixer.py
+  368fb8be6b85b0b7 268-269
+src/flext_infra/codegen/__main__.py
+  368fb8be6b85b0b7 22-30
+src/flext_infra/codegen/_codegen_coercion.py
+  368fb8be6b85b0b7 6
+src/flext_infra/codegen/_codegen_metrics_checks.py
+  368fb8be6b85b0b7 12
+src/flext_infra/release/__main__.py
+  b279a83971a44010 20
+src/flext_infra/gates/_report.py
+  b279a83971a44010 13-38,41-67,70-96,98-121,123-134,136-137
+src/flext_infra/codegen/_codegen_snapshot.py
+  368fb8be6b85b0b7 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "ff81fcfcaad42d89570573de361902de123963eb",
+  "prompts": {
+    "368fb8be6b85b0b7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f74ae14fffeVDeXScl43zDHl2",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 3,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    },
+    "b279a83971a44010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f73d7affffeiDJJeKXYaEabip",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 122,
+      "total_deletions": 149,
+      "accepted_lines": 121,
+      "overriden_lines": 0
+    }
+  }
+}
