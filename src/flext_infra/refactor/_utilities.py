@@ -76,26 +76,9 @@ class FlextInfraUtilitiesRefactor:
         return ""
 
     @staticmethod
-    def module_expr_from_dotted(dotted: str) -> cst.BaseExpression:
-        """Build a CST expression tree from a dotted name string.
-
-        Inverse of :meth:`dotted_name`. Converts ``"foo.bar.baz"`` into
-        nested ``Attribute(Attribute(Name("foo"), "bar"), "baz")``.
-
-        Args:
-            dotted: Dotted name string (e.g. ``"foo.bar"``).
-
-        Returns:
-            CST expression tree, or ``Name("")`` for empty input.
-
-        """
-        parts = [part for part in dotted.split(".") if part]
-        if not parts:
-            return cst.Name("")
-        expr: cst.BaseExpression = cst.Name(parts[0])
-        for part in parts[1:]:
-            expr = cst.Attribute(value=expr, attr=cst.Name(part))
-        return expr
+    def module_expr_from_dotted(dotted: str) -> cst.Name | cst.Attribute:
+        """Forward to FlextInfraUtilitiesParsing."""
+        return FlextInfraUtilitiesParsing.module_expr_from_dotted(dotted)
 
     @staticmethod
     def module_name_from_expr(module: cst.BaseExpression | None) -> str:

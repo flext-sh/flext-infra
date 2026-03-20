@@ -1,11 +1,4 @@
-"""Subprocess execution utilities for infrastructure operations.
-
-Provides r-wrapped subprocess execution as static methods,
-replacing bare subprocess calls with structured error handling.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Subprocess execution utilities for infrastructure operations."""
 
 from __future__ import annotations
 
@@ -20,16 +13,7 @@ from flext_infra.models import FlextInfraModels as m
 
 
 class FlextInfraUtilitiesSubprocess:
-    """Subprocess execution helpers with r-wrapped error handling.
-
-    All methods are static and do not require instantiation.
-
-    Usage via namespace::
-
-        from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess as S
-
-        result = S.run(["ls", "-la"])
-    """
+    """Subprocess execution helpers with r-wrapped error handling."""
 
     @staticmethod
     def run_raw(
@@ -38,9 +22,9 @@ class FlextInfraUtilitiesSubprocess:
         timeout: int | None = None,
         env: Mapping[str, str] | None = None,
     ) -> r[m.Infra.CommandOutput]:
-        """Run a command without enforcing zero exit code."""
+        """Run command without enforcing exit code."""
         try:
-            result = subprocess.run(
+            res = subprocess.run(
                 list(cmd),
                 cwd=cwd,
                 capture_output=True,
@@ -49,21 +33,19 @@ class FlextInfraUtilitiesSubprocess:
                 timeout=timeout,
                 env=env,
             )
-            output = m.Infra.CommandOutput(
-                stdout=result.stdout or "",
-                stderr=result.stderr or "",
-                exit_code=result.returncode,
+            return r[m.Infra.CommandOutput].ok(
+                m.Infra.CommandOutput(
+                    stdout=res.stdout or "",
+                    stderr=res.stderr or "",
+                    exit_code=res.returncode,
+                )
             )
-            return r[m.Infra.CommandOutput].ok(output)
         except subprocess.TimeoutExpired as exc:
-            cmd_str = shlex.join(list(cmd))
             return r[m.Infra.CommandOutput].fail(
-                f"command timeout after {exc.timeout}s: {cmd_str}",
+                f"timeout {exc.timeout}s: {shlex.join(list(cmd))}"
             )
         except (OSError, ValueError) as exc:
-            return r[m.Infra.CommandOutput].fail(
-                f"command execution error: {exc}",
-            )
+            return r[m.Infra.CommandOutput].fail(f"execution error: {exc}")
 
     @staticmethod
     def run(
@@ -72,25 +54,16 @@ class FlextInfraUtilitiesSubprocess:
         timeout: int | None = None,
         env: Mapping[str, str] | None = None,
     ) -> r[m.Infra.CommandOutput]:
-        """Run a command and return structured output with zero-exit enforcement."""
-        raw_result = FlextInfraUtilitiesSubprocess.run_raw(
-            cmd,
-            cwd=cwd,
-            timeout=timeout,
-            env=env,
-        )
-        if raw_result.is_failure:
+        """Run command with zero-exit enforcement."""
+        res = FlextInfraUtilitiesSubprocess.run_raw(cmd, cwd, timeout, env)
+        if res.is_failure:
+            return res
+        out = res.value
+        if out.exit_code != 0:
             return r[m.Infra.CommandOutput].fail(
-                raw_result.error or "command execution error",
+                f"failed ({out.exit_code}): {shlex.join(list(cmd))}: {(out.stderr or out.stdout).strip()}"
             )
-        output = raw_result.value
-        if output.exit_code != 0:
-            cmd_str = shlex.join(list(cmd))
-            detail = (output.stderr or output.stdout).strip()
-            return r[m.Infra.CommandOutput].fail(
-                f"command failed ({output.exit_code}): {cmd_str}: {detail}",
-            )
-        return r[m.Infra.CommandOutput].ok(output)
+        return res
 
     @staticmethod
     def run_checked(
@@ -99,16 +72,9 @@ class FlextInfraUtilitiesSubprocess:
         timeout: int | None = None,
         env: Mapping[str, str] | None = None,
     ) -> r[bool]:
-        """Run a command and return success/failure boolean status."""
-        result = FlextInfraUtilitiesSubprocess.run(
-            cmd,
-            cwd=cwd,
-            timeout=timeout,
-            env=env,
-        )
-        return result.fold(
-            on_failure=lambda e: r[bool].fail(e or "command failed"),
-            on_success=lambda _: r[bool].ok(True),
+        """Run command and return status."""
+        return FlextInfraUtilitiesSubprocess.run(cmd, cwd, timeout, env).map(
+            lambda _: True
         )
 
     @staticmethod
@@ -118,50 +84,37 @@ class FlextInfraUtilitiesSubprocess:
         timeout: int | None = None,
         env: Mapping[str, str] | None = None,
     ) -> r[str]:
-        """Run a command and capture its stripped stdout."""
-        result = FlextInfraUtilitiesSubprocess.run(
-            cmd,
-            cwd=cwd,
-            timeout=timeout,
-            env=env,
-        )
-        return result.fold(
-            on_failure=lambda e: r[str].fail(e or "capture failed"),
-            on_success=lambda v: r[str].ok(v.stdout.strip()),
+        """Capture stripped stdout."""
+        return FlextInfraUtilitiesSubprocess.run(cmd, cwd, timeout, env).map(
+            lambda v: v.stdout.strip()
         )
 
     @staticmethod
     def run_to_file(
         cmd: Sequence[str],
-        output_file: Path,
+        out_file: Path,
         cwd: Path | None = None,
         timeout: int | None = None,
         env: Mapping[str, str] | None = None,
     ) -> r[int]:
-        """Run a command and stream combined output to a file.
-
-        Returns r containing the process exit code.
-        """
+        """Stream combined output to file."""
         try:
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            with output_file.open("w", encoding=c.Infra.Encoding.DEFAULT) as handle:
-                result = subprocess.run(
+            out_file.parent.mkdir(parents=True, exist_ok=True)
+            with out_file.open("w", encoding=c.Infra.Encoding.DEFAULT) as h:
+                res = subprocess.run(
                     list(cmd),
                     cwd=cwd,
-                    stdout=handle,
+                    stdout=h,
                     stderr=subprocess.STDOUT,
                     check=False,
                     timeout=timeout,
                     env=env,
                 )
-            return r[int].ok(result.returncode)
+            return r[int].ok(res.returncode)
         except subprocess.TimeoutExpired as exc:
-            cmd_str = shlex.join(list(cmd))
-            return r[int].fail(f"command timeout after {exc.timeout}s: {cmd_str}")
-        except OSError as exc:
-            return r[int].fail(f"command file output error: {exc}")
-        except ValueError as exc:
-            return r[int].fail(f"command execution error: {exc}")
+            return r[int].fail(f"timeout {exc.timeout}s: {shlex.join(list(cmd))}")
+        except (OSError, ValueError) as exc:
+            return r[int].fail(f"execution error: {exc}")
 
 
 __all__ = ["FlextInfraUtilitiesSubprocess"]

@@ -5,19 +5,15 @@ from __future__ import annotations
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c
+from flext_infra import c, output
 from flext_infra.github.linter import lint_workflows
 from flext_infra.github.pr import main as pr_main
 from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager
-from flext_infra.github.workflows import FlextInfraWorkflowSyncer
+from flext_infra.github.workflows import SyncOperation, sync_workspace
 from flext_infra.models import m
 from flext_infra.utilities import u
-
-if TYPE_CHECKING:
-    from flext_infra import SyncOperation
 
 
 def configure_workflows_parser(parser: ArgumentParser) -> None:
@@ -78,8 +74,7 @@ def run_workflows(
     report: Path | None,
 ) -> int:
     """Sync GitHub workflow files."""
-    syncer = FlextInfraWorkflowSyncer()
-    result: r[list[SyncOperation]] = syncer.sync_workspace(
+    result: r[list[SyncOperation]] = sync_workspace(
         workspace_root=cli.workspace,
         apply=cli.apply,
         prune=prune,
@@ -100,7 +95,13 @@ def run_lint(
         report_path=report,
         strict=strict,
     )
-    return u.Infra.exit_code(result, failure_msg="Workflow lint failed")
+    if result.is_failure:
+        output.error(f"Workflow lint failed: {result.error}")
+        return 1
+    if result.value.status != "ok" and strict:
+        output.error(f"Workflow lint found issues: {result.value.detail}")
+        return 1
+    return 0
 
 
 def run_pr(argv: list[str]) -> int:

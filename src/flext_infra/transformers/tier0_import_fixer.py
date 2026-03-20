@@ -45,14 +45,7 @@ class FlextInfraTransformerTier0ImportFixer:
 
         def package_context(self) -> tuple[Path, str]:
             """Return (package_dir, package_name) for the current file."""
-            parts = self._file_path.parts
-            if "src" not in parts:
-                return (self._file_path.parent, "")
-            src_idx = parts.index("src")
-            if src_idx + 1 >= len(parts):
-                return (self._file_path.parent, "")
-            package_dir = Path(*parts[: src_idx + 2])
-            return (package_dir, parts[src_idx + 1])
+            return u.Infra.package_context(self._file_path)
 
         def alias_map(self, *, package_dir: Path, package_name: str) -> dict[str, str]:
             """Build map of single-char aliases to their defining modules."""
@@ -63,61 +56,9 @@ class FlextInfraTransformerTier0ImportFixer:
                 if module.endswith(".py")
             }
             alias_map.update(
-                self._lazy_alias_map(
-                    package_init=package_dir / "__init__.py",
-                    package_name=package_name,
-                ),
+                u.Infra.extract_lazy_import_map(package_dir / "__init__.py")
             )
             return alias_map
-
-        def _lazy_alias_map(
-            self, *, package_init: Path, package_name: str
-        ) -> dict[str, str]:
-            if not package_init.exists():
-                return {}
-            try:
-                tree = cst.parse_module(package_init.read_text(encoding="utf-8"))
-            except cst.ParserSyntaxError:
-                return {}
-            for stmt_line in tree.body:
-                if not isinstance(stmt_line, cst.SimpleStatementLine):
-                    continue
-                for stmt in stmt_line.body:
-                    if (
-                        isinstance(stmt, cst.AnnAssign)
-                        and isinstance(stmt.target, cst.Name)
-                        and stmt.target.value == "_LAZY_IMPORTS"
-                    ):
-                        return self._extract_lazy_aliases(stmt.value, package_name)
-            return {}
-
-        def _extract_lazy_aliases(
-            self,
-            value: cst.BaseExpression | None,
-            package_name: str,
-        ) -> dict[str, str]:
-            if not isinstance(value, cst.Dict):
-                return {}
-            result: dict[str, str] = {}
-            for element in value.elements:
-                if not isinstance(element, cst.DictElement):
-                    continue
-                key_text = u.Infra.extract_string_literal(element.key)
-                if (
-                    len(key_text) != 1
-                    or not key_text.isalpha()
-                    or not key_text.islower()
-                    or not isinstance(element.value, (cst.Tuple, cst.List))
-                ):
-                    continue
-                if len(element.value.elements) == 0:
-                    continue
-                module_element = element.value.elements[0]
-                module_name = u.Infra.extract_string_literal(module_element.value)
-                if not module_name or not module_name.startswith(f"{package_name}."):
-                    continue
-                result[key_text] = module_name.split(".")[-1]
-            return result
 
     class Analyzer(cst.CSTVisitor):
         """Analyze imports and names to identify circular Tier 0 aliases."""
@@ -146,22 +87,7 @@ class FlextInfraTransformerTier0ImportFixer:
 
         def _is_facade_file(self) -> bool:
             """Determine if current file is a package facade (Tier 0)."""
-            name = self._discovery.file_path.name
-            # 1. Must match facade name pattern
-            is_facade_name = name.removesuffix(".py") in self._tier0_modules or (
-                name.startswith("_")
-                and name.removesuffix(".py")[1:] in self._tier0_modules
-            )
-            if not is_facade_name:
-                return False
-
-            # 2. Must be directly under src/<package_name>/
-            parts = self._discovery.file_path.parts
-            try:
-                src_idx = parts.index("src")
-                return len(parts) == src_idx + 3
-            except ValueError:
-                return True
+            return u.Infra.cst_is_module_toplevel(self._discovery.file_path)
 
         def build_analysis(self) -> FlextInfraTransformerTier0ImportFixer.Analysis:
             """Process visited nodes and build violation analysis."""
@@ -187,37 +113,15 @@ class FlextInfraTransformerTier0ImportFixer:
                 analysis.category_a.update(self._self_import_aliases)
                 return analysis
 
-            aggregator = self._detect_aggregator_module()
-
             for alias in sorted(self._self_import_aliases):
-                module_name = self._alias_to_module.get(alias, "")
-                if alias in self._core_aliases or (
-                    aggregator and module_name == aggregator
-                ):
+                if alias in self._core_aliases:
                     analysis.category_b.add(alias)
-                elif module_name in self._tier0_modules:
-                    analysis.category_a.add(alias)
                 elif alias in self._runtime_aliases:
                     analysis.category_d.add(alias)
                 else:
                     analysis.category_c.add(alias)
 
             return analysis
-
-        def _detect_aggregator_module(self) -> str:
-            parts = self._discovery.file_path.parts
-            for part in parts:
-                if part.startswith("_") and not part.startswith("__"):
-                    return part.lstrip("_")
-            return ""
-
-        @override
-        def visit_Import(self, node: cst.Import) -> None:
-            self._import_depth += 1
-
-        @override
-        def leave_Import(self, original_node: cst.Import) -> None:
-            self._import_depth = max(0, self._import_depth - 1)
 
         @override
         def visit_ImportFrom(self, node: cst.ImportFrom) -> None:

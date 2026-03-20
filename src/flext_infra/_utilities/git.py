@@ -1,266 +1,156 @@
-"""Git operations utilities for repository interaction.
-
-Wraps Git commands with r error handling as static methods.
-All subprocess delegation goes through FlextInfraUtilitiesSubprocess.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Git operations utilities for repository interaction."""
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from flext_core import r
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
+from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess as S
 from flext_infra.constants import FlextInfraConstants as c
+from flext_infra.models import FlextInfraModels as m
 
 
 class FlextInfraUtilitiesGit:
-    """Static Git operations utilities.
-
-    All methods delegate to ``FlextInfraUtilitiesSubprocess`` and are
-    exposed directly via ``u.Infra.git_*()`` through MRO.
-    """
+    """Static Git operations utilities."""
 
     @staticmethod
     def git_run(cmd: list[str], cwd: Path | None = None) -> r[str]:
-        """Run an arbitrary git command and capture output.
-
-        Args:
-            cmd: Git command arguments (without 'git' prefix).
-            cwd: Working directory.
-
-        Returns:
-            r[str] with command output.
-
-        """
-        return FlextInfraUtilitiesSubprocess.capture(
-            [c.Infra.Cli.GIT, *cmd],
-            cwd=cwd,
-        )
+        return S.capture([c.Infra.Cli.GIT, *cmd], cwd=cwd)
 
     @staticmethod
     def git_run_checked(cmd: list[str], cwd: Path | None = None) -> r[bool]:
-        """Run an arbitrary git command and return success/failure.
-
-        Args:
-            cmd: Git command arguments (without 'git' prefix).
-            cwd: Working directory.
-
-        Returns:
-            r[bool] with True on success.
-
-        """
-        return FlextInfraUtilitiesSubprocess.run_checked(
-            [c.Infra.Cli.GIT, *cmd],
-            cwd=cwd,
-        )
+        return S.run_checked([c.Infra.Cli.GIT, *cmd], cwd=cwd)
 
     @staticmethod
     def git_is_repo(path: Path) -> bool:
-        """Check whether *path* sits inside a Git work-tree."""
-        result = FlextInfraUtilitiesSubprocess.run_checked(
-            [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.REV_PARSE, "--is-inside-work-tree"],
-            cwd=path,
-        )
-        return result.is_success
+        return S.run_checked(
+            [c.Infra.Cli.GIT, "rev-parse", "--is-inside-work-tree"], cwd=path
+        ).is_success
 
     @staticmethod
-    def git_current_branch(repo_root: Path) -> r[str]:
-        """Return the name of the current active branch."""
-        return FlextInfraUtilitiesSubprocess.capture(
-            [c.Infra.Cli.GIT, "rev-parse", "--abbrev-ref", c.Infra.Git.HEAD],
-            cwd=repo_root,
+    def git_current_branch(root: Path) -> r[str]:
+        return S.capture(
+            [c.Infra.Cli.GIT, "rev-parse", "--abbrev-ref", "HEAD"], cwd=root
         )
 
     @staticmethod
-    def git_has_changes(repo_root: Path) -> r[bool]:
-        """Check if the repository has uncommitted changes."""
-        result = FlextInfraUtilitiesSubprocess.capture(
-            [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.STATUS, "--porcelain"],
-            cwd=repo_root,
-        )
-        return result.fold(
-            on_failure=lambda e: r[bool].fail(e or "git status failed"),
-            on_success=lambda v: r[bool].ok(bool(v.strip())),
+    def git_has_changes(root: Path) -> r[bool]:
+        return S.capture([c.Infra.Cli.GIT, "status", "--porcelain"], cwd=root).map(
+            lambda v: bool(v.strip())
         )
 
     @staticmethod
-    def git_diff_names(repo_root: Path, *, cached: bool = False) -> r[str]:
-        """Return names of changed files."""
-        cmd = [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.DIFF, "--name-only"]
+    def git_diff_names(root: Path, *, cached: bool = False) -> r[str]:
+        cmd = [c.Infra.Cli.GIT, "diff", "--name-only"]
         if cached:
-            cmd.insert(3, "--cached")
-        return FlextInfraUtilitiesSubprocess.capture(cmd, cwd=repo_root)
+            cmd.insert(2, "--cached")
+        return S.capture(cmd, cwd=root)
 
     @staticmethod
     def git_checkout(
-        repo_root: Path,
-        branch: str,
-        *,
-        create: bool = False,
-        track: str | None = None,
+        root: Path, branch: str, *, create: bool = False, track: str | None = None
     ) -> r[bool]:
-        """Checkout a branch."""
-        cmd = [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.CHECKOUT]
+        cmd = [c.Infra.Cli.GIT, "checkout"]
         if create:
             cmd.append("-B")
         cmd.append(branch)
         if track:
             cmd.append(track)
-        return FlextInfraUtilitiesSubprocess.run_checked(cmd, cwd=repo_root)
+        return S.run_checked(cmd, cwd=root)
 
     @staticmethod
-    def git_fetch(
-        repo_root: Path,
-        remote: str = "",
-        branch: str = "",
-    ) -> r[bool]:
-        """Fetch from a remote."""
-        cmd = [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.FETCH]
+    def git_fetch(root: Path, remote: str = "", branch: str = "") -> r[bool]:
+        cmd = [c.Infra.Cli.GIT, "fetch"]
         if remote:
             cmd.append(remote)
         if branch:
             cmd.append(branch)
-        return FlextInfraUtilitiesSubprocess.run_checked(cmd, cwd=repo_root)
+        return S.run_checked(cmd, cwd=root)
 
     @staticmethod
-    def git_add(repo_root: Path, *paths: str) -> r[bool]:
-        """Stage files for commit."""
-        targets = list(paths) if paths else ["-A"]
-        return FlextInfraUtilitiesSubprocess.run_checked(
-            [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.ADD, *targets],
-            cwd=repo_root,
-        )
+    def git_add(root: Path, *paths: str) -> r[bool]:
+        return S.run_checked([c.Infra.Cli.GIT, "add", *(paths or ["-A"])], cwd=root)
 
     @staticmethod
-    def git_commit(repo_root: Path, message: str) -> r[bool]:
-        """Create a commit with the given message."""
-        return FlextInfraUtilitiesSubprocess.run_checked(
-            [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.COMMIT, "-m", message],
-            cwd=repo_root,
-        )
+    def git_commit(root: Path, msg: str) -> r[bool]:
+        return S.run_checked([c.Infra.Cli.GIT, "commit", "-m", msg], cwd=root)
 
     @staticmethod
     def git_push(
-        repo_root: Path,
-        remote: str = "",
-        branch: str = "",
-        *,
-        set_upstream: bool = False,
+        root: Path, remote: str = "", branch: str = "", *, upstream: bool = False
     ) -> r[bool]:
-        """Push commits to a remote."""
-        cmd = [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.PUSH]
-        if set_upstream:
+        cmd = [c.Infra.Cli.GIT, "push"]
+        if upstream:
             cmd.append("-u")
         if remote:
             cmd.append(remote)
         if branch:
             cmd.append(branch)
-        return FlextInfraUtilitiesSubprocess.run_checked(cmd, cwd=repo_root)
+        return S.run_checked(cmd, cwd=root)
 
     @staticmethod
     def git_pull(
-        repo_root: Path,
-        *,
-        rebase: bool = False,
-        remote: str = "",
-        branch: str = "",
+        root: Path, *, rebase: bool = False, remote: str = "", branch: str = ""
     ) -> r[bool]:
-        """Pull from a remote."""
-        cmd = [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.PULL]
+        cmd = [c.Infra.Cli.GIT, "pull"]
         if rebase:
             cmd.append("--rebase")
         if remote:
             cmd.append(remote)
         if branch:
             cmd.append(branch)
-        return FlextInfraUtilitiesSubprocess.run_checked(cmd, cwd=repo_root)
+        return S.run_checked(cmd, cwd=root)
 
     @staticmethod
-    def git_tag_exists(repo_root: Path, tag: str) -> r[bool]:
-        """Check if a specific tag exists in the repository."""
-        result = FlextInfraUtilitiesSubprocess.capture(
-            [c.Infra.Cli.GIT, c.Infra.ReportKeys.TAG, "-l", tag],
-            cwd=repo_root,
-        )
-        if result.is_success:
-            return r[bool].ok(result.value.strip() == tag)
-        return r[bool].fail(result.error or "tag check failed")
-
-    @staticmethod
-    def git_create_tag(
-        repo_root: Path,
-        tag: str,
-        message: str = "",
-    ) -> r[bool]:
-        """Create an annotated Git tag."""
-        msg = message or f"release: {tag}"
-        return FlextInfraUtilitiesSubprocess.run_checked(
-            [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.TAG, "-a", tag, "-m", msg],
-            cwd=repo_root,
+    def git_tag_exists(root: Path, tag: str) -> r[bool]:
+        return S.capture([c.Infra.Cli.GIT, "tag", "-l", tag], cwd=root).map(
+            lambda v: v.strip() == tag
         )
 
     @staticmethod
-    def git_list_tags(
-        repo_root: Path,
-        *,
-        sort: str = "-v:refname",
-    ) -> r[str]:
-        """List tags with optional sorting."""
-        return FlextInfraUtilitiesSubprocess.capture(
-            [c.Infra.Cli.GIT, c.Infra.Cli.GitCmd.TAG, f"--sort={sort}"],
-            cwd=repo_root,
+    def git_create_tag(root: Path, tag: str, msg: str = "") -> r[bool]:
+        return S.run_checked(
+            [c.Infra.Cli.GIT, "tag", "-a", tag, "-m", msg or f"release: {tag}"],
+            cwd=root,
         )
+
+    @staticmethod
+    def git_list_tags(root: Path, *, sort: str = "-v:refname") -> r[str]:
+        return S.capture([c.Infra.Cli.GIT, "tag", f"--sort={sort}"], cwd=root)
 
     @staticmethod
     def lint_workflows(
-        root: Path,
-        *,
-        report_path: Path | None = None,
-        strict: bool = False,
+        root: Path, *, report_path: Path | None = None, strict: bool = False
     ) -> r[m.Infra.WorkflowLintResult]:
-        """Run actionlint on the repository and return results."""
-        import shutil
-
-        from flext_infra.models import FlextInfraModels as m
+        """Run actionlint and return results."""
+        exe = shutil.which("actionlint")
+        if not exe:
+            res = m.Infra.WorkflowLintResult(status="skipped", reason="not installed")
+            if report_path:
+                u.Infra.write_json(report_path, res, sort_keys=True)
+            return r[m.Infra.WorkflowLintResult].ok(res)
         from flext_infra.utilities import u
 
-        actionlint = shutil.which("actionlint")
-        if actionlint is None:
-            payload_skipped = m.Infra.WorkflowLintResult(
-                status="skipped",
-                reason="actionlint not installed",
-            )
-            if report_path is not None:
-                u.Infra.write_json(report_path, payload_skipped, sort_keys=True)
-            return r[m.Infra.WorkflowLintResult].ok(payload_skipped)
-
-        result = FlextInfraUtilitiesSubprocess.run_raw([actionlint], cwd=root)
-        if result.is_success:
-            output = result.value
-            payload = m.Infra.WorkflowLintResult(
+        out_res = S.run_raw([exe], cwd=root)
+        if out_res.is_success:
+            p = m.Infra.WorkflowLintResult(
                 status="ok",
-                exit_code=output.exit_code,
-                stdout=output.stdout,
-                stderr=output.stderr,
+                exit_code=out_res.value.exit_code,
+                stdout=out_res.value.stdout,
+                stderr=out_res.value.stderr,
             )
         else:
-            payload = m.Infra.WorkflowLintResult(
-                status="fail",
-                exit_code=1,
-                detail=result.error or "",
+            p = m.Infra.WorkflowLintResult(
+                status="fail", exit_code=1, detail=out_res.error or ""
             )
-
-        if report_path is not None:
-            u.Infra.write_json(report_path, payload, sort_keys=True)
-
-        if payload.status == "fail" and strict:
-            return r[m.Infra.WorkflowLintResult].fail(
-                result.error or "actionlint found issues",
-            )
-        return r[m.Infra.WorkflowLintResult].ok(payload)
+        if report_path:
+            u.Infra.write_json(report_path, p, sort_keys=True)
+        return (
+            r[m.Infra.WorkflowLintResult].fail(out_res.error or "lint failed")
+            if p.status == "fail" and strict
+            else r[m.Infra.WorkflowLintResult].ok(p)
+        )
 
 
 __all__ = ["FlextInfraUtilitiesGit"]

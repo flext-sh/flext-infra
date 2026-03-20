@@ -1,12 +1,4 @@
-"""Terminal output utility with ANSI color detection and structured formatting.
-
-Static facade delegates to a module-level ``OutputBackend`` singleton.
-All output is written to sys.stderr to preserve stdout for machine-readable
-content.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Terminal output utility with ANSI color and structured formatting."""
 
 from __future__ import annotations
 
@@ -20,251 +12,120 @@ from flext_infra._utilities.terminal import FlextInfraUtilitiesTerminal
 from flext_infra.constants import FlextInfraConstants as c
 
 
-class OutputBackend:
-    """Private output backend with instance state for color/unicode/stream.
+class FlextInfraUtilitiesOutput:
+    """Terminal output formatter with color and unicode support."""
 
-    All formatting methods live here as instance methods. Tests create
-    instances directly with custom config; production uses the module-level
-    ``_backend`` singleton through the ``FlextInfraUtilitiesOutput`` facade.
-    """
+    _stream: TextIO = sys.stderr
+    _use_color: bool = False
+    _use_unicode: bool = False
 
-    __slots__ = (
-        "blue",
-        "bold",
-        "green",
-        "red",
-        "reset",
-        "stream",
-        "sym_fail",
-        "sym_ok",
-        "sym_skip",
-        "sym_warn",
-        "use_color",
-        "use_unicode",
-        "yellow",
-    )
-
-    def __init__(
-        self,
+    @classmethod
+    def setup(
+        cls,
         *,
-        use_color: bool | None = None,
-        use_unicode: bool | None = None,
+        color: bool | None = None,
+        unicode: bool | None = None,
         stream: TextIO | None = None,
     ) -> None:
-        self.use_color = (
+        """Initialize output settings."""
+        cls._use_color = (
             FlextInfraUtilitiesTerminal.terminal_should_use_color()
-            if use_color is None
-            else use_color
+            if color is None
+            else color
         )
-        self.use_unicode = (
+        cls._use_unicode = (
             FlextInfraUtilitiesTerminal.terminal_should_use_unicode()
-            if use_unicode is None
-            else use_unicode
+            if unicode is None
+            else unicode
         )
-        self.stream = sys.stderr if stream is None else stream
-        style = c.Infra.Style
-        self.reset = style.RESET if self.use_color else ""
-        self.red = style.RED if self.use_color else ""
-        self.green = style.GREEN if self.use_color else ""
-        self.yellow = style.YELLOW if self.use_color else ""
-        self.blue = style.BLUE if self.use_color else ""
-        self.bold = style.BOLD if self.use_color else ""
-        self.sym_ok = style.OK if self.use_unicode else "[OK]"
-        self.sym_fail = style.FAIL if self.use_unicode else "[FAIL]"
-        self.sym_warn = style.WARN if self.use_unicode else "[WARN]"
-        self.sym_skip = style.SKIP if self.use_unicode else "[SKIP]"
+        if stream:
+            cls._stream = stream
 
-    def write(self, message: str) -> None:
-        """Write a line to the output stream with newline."""
-        self.stream.write(message + "\n")
-        self.stream.flush()
+    @classmethod
+    def _fmt(cls, level: str, color: str, message: str) -> None:
+        reset = c.Infra.Style.RESET if cls._use_color else ""
+        clr = color if cls._use_color else ""
+        cls._stream.write(f"{clr}{level}{reset}: {message}\n")
+        cls._stream.flush()
 
-    def info(self, message: str) -> None:
-        """Write an informational message."""
-        self.write(f"{self.blue}INFO{self.reset}: {message}")
+    @classmethod
+    def info(cls, msg: str) -> None:
+        cls._fmt("INFO", c.Infra.Style.BLUE, msg)
 
-    def error(self, message: str, detail: str | None = None) -> None:
-        """Write an error message with optional detail."""
-        self.write(f"{self.red}ERROR{self.reset}: {message}")
+    @classmethod
+    def error(cls, msg: str, detail: str | None = None) -> None:
+        cls._fmt("ERROR", c.Infra.Style.RED, msg)
         if detail:
-            self.write(f"  {detail}")
+            cls._stream.write(f"  {detail}\n")
 
-    def warning(self, message: str) -> None:
-        """Write a warning message."""
-        self.write(f"{self.yellow}WARN{self.reset}: {message}")
+    @classmethod
+    def warning(cls, msg: str) -> None:
+        cls._fmt("WARN", c.Infra.Style.YELLOW, msg)
 
-    def debug(self, message: str) -> None:
-        """Write a debug message."""
-        self.write(f"{self.green}DEBUG{self.reset}: {message}")
+    @classmethod
+    def debug(cls, msg: str) -> None:
+        cls._fmt("DEBUG", c.Infra.Style.GREEN, msg)
 
-    def header(self, title: str) -> None:
-        """Write a bold section header."""
-        sep = "═" if self.use_unicode else "="
+    @classmethod
+    def header(cls, title: str) -> None:
+        sep = "═" if cls._use_unicode else "="
         line = sep * 60
-        self.write("")
-        self.write(f"{self.bold}{line}{self.reset}")
-        self.write(f"{self.bold}  {title}{self.reset}")
-        self.write(f"{self.bold}{line}{self.reset}")
+        cls._stream.write(
+            f"\n{c.Infra.Style.BOLD if cls._use_color else ''}{line}\n  {title}\n{line}{c.Infra.Style.RESET if cls._use_color else ''}\n"
+        )
 
-    def progress(self, index: int, total: int, project: str, verb: str) -> None:
-        """Write a progress indicator line."""
-        width = len(str(total))
-        counter = f"[{index:0{width}d}/{total:0{width}d}]"
-        self.write(f"{self.bold}{counter}{self.reset} {project} {verb} ...")
+    @classmethod
+    def progress(cls, idx: int, total: int, proj: str, verb: str) -> None:
+        w = len(str(total))
+        cls._stream.write(f"[{idx:0{w}d}/{total:0{w}d}] {proj} {verb} ...\n")
 
-    def status(self, verb: str, project: str, result: bool, elapsed: float) -> None:
-        """Write a formatted status line for a project operation."""
+    @classmethod
+    def status(cls, verb: str, proj: str, result: bool, elapsed: float) -> None:
         sym = (
-            f"{self.green}{self.sym_ok}{self.reset}"
+            (c.Infra.Style.OK if cls._use_unicode else "[OK]")
             if result
-            else f"{self.red}{self.sym_fail}{self.reset}"
+            else (c.Infra.Style.FAIL if cls._use_unicode else "[FAIL]")
         )
-        self.write(f"  {sym} {verb:<8} {project:<24} {elapsed:.2f}s")
+        clr = (
+            (c.Infra.Style.GREEN if result else c.Infra.Style.RED)
+            if cls._use_color
+            else ""
+        )
+        cls._stream.write(
+            f"  {clr}{sym}{c.Infra.Style.RESET if cls._use_color else ''} {verb:<8} {proj:<24} {elapsed:.2f}s\n"
+        )
 
+    @classmethod
     def summary(
-        self,
-        verb: str,
-        total: int,
-        success: int,
-        failed: int,
-        skipped: int,
-        elapsed: float,
+        cls, verb: str, total: int, ok: int, fail: int, skip: int, elapsed: float
     ) -> None:
-        """Write an operation summary with counts."""
-        sep = "──" if self.use_unicode else "--"
-        hdr = f"{self.bold}{sep} {verb} summary {sep}{self.reset}"
-        self.write("")
-        self.write(hdr)
-        parts: list[str] = [f"Total: {total}"]
-        parts.append(f"{self.green}Success: {success}{self.reset}")
-        if failed > 0:
-            parts.append(f"{self.red}Failed: {failed}{self.reset}")
-        else:
-            parts.append(f"Failed: {failed}")
-        if skipped > 0:
-            parts.append(f"{self.yellow}Skipped: {skipped}{self.reset}")
-        else:
-            parts.append(f"Skipped: {skipped}")
-        self.write("  ".join(parts) + f"  ({elapsed:.2f}s)")
+        hdr = f"── {verb} summary ──" if cls._use_unicode else f"-- {verb} summary --"
+        cls._stream.write(
+            f"\n{hdr}\nTotal: {total}  Success: {ok}  Failed: {fail}  Skipped: {skip}  ({elapsed:.2f}s)\n"
+        )
 
-    def gate_result(
-        self,
-        gate: str,
-        count: int,
-        passed: bool,
-        elapsed: float,
-    ) -> None:
-        """Write per-gate result during check execution."""
+    @classmethod
+    def gate_result(cls, gate: str, count: int, passed: bool, elapsed: float) -> None:
         sym = (
-            f"{self.green}{self.sym_ok}{self.reset}"
-            if passed
-            else f"{self.red}{self.sym_fail}{self.reset}"
+            (c.Infra.Style.OK if passed else c.Infra.Style.FAIL)
+            if cls._use_unicode
+            else ("[OK]" if passed else "[FAIL]")
         )
-        count_str = (
-            f"{count:>5} errors"
-            if count > 0
-            else f"{self.green}    0{self.reset} errors"
-        )
-        self.write(f"    {sym} {gate:<10} {count_str}  ({elapsed:.2f}s)")
+        cls._stream.write(f"    {sym} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n")
 
+    @staticmethod
     def metrics(
-        self,
-        *instances: t.Infra.MetricRecord,
-        **kwargs: t.Infra.MetricValue,
+        *instances: t.Infra.MetricRecord, **kwargs: t.Infra.MetricValue
     ) -> None:
-        """Write key-value metrics for machine-readable output."""
-        for item in instances:
-            iterable = item.items() if isinstance(item, Mapping) else item
-            for key, value in iterable:
-                if isinstance(value, (*t.PRIMITIVES_TYPES, Path)) or value is None:
-                    sys.stdout.write(f"{key}={value}\n")
-
-        for key, value in kwargs.items():
-            if isinstance(value, (*t.PRIMITIVES_TYPES, Path)) or value is None:
-                sys.stdout.write(f"{key}={value}\n")
-
+        for item in list(instances) + [kwargs]:
+            for k, v in item.items() if isinstance(item, Mapping) else item:
+                if isinstance(v, (*t.PRIMITIVES_TYPES, Path)) or v is None:
+                    sys.stdout.write(f"{k}={v}\n")
         sys.stdout.flush()
 
 
-_backend: Final[OutputBackend] = OutputBackend()
+# Initialize default state
+FlextInfraUtilitiesOutput.setup()
+output: Final[type[FlextInfraUtilitiesOutput]] = FlextInfraUtilitiesOutput
 
-
-class FlextInfraUtilitiesOutput:
-    """Static output facade — delegates to ``_backend`` singleton.
-
-    All methods are ``@staticmethod`` — exposed via ``u.Infra.info()`` etc.
-    """
-
-    @staticmethod
-    def write(message: str) -> None:
-        """Write raw message."""
-        _backend.write(message)
-
-    @staticmethod
-    def info(message: str) -> None:
-        """Write an informational message."""
-        _backend.info(message)
-
-    @staticmethod
-    def error(message: str, detail: str | None = None) -> None:
-        """Write an error message with optional detail."""
-        _backend.error(message, detail)
-
-    @staticmethod
-    def warning(message: str) -> None:
-        """Write a warning message."""
-        _backend.warning(message)
-
-    @staticmethod
-    def debug(message: str) -> None:
-        """Write a debug message."""
-        _backend.debug(message)
-
-    @staticmethod
-    def header(title: str) -> None:
-        """Write a bold section header."""
-        _backend.header(title)
-
-    @staticmethod
-    def progress(index: int, total: int, project: str, verb: str) -> None:
-        """Write a progress indicator line."""
-        _backend.progress(index, total, project, verb)
-
-    @staticmethod
-    def status(verb: str, project: str, result: bool, elapsed: float) -> None:
-        """Write a formatted status line for a project operation."""
-        _backend.status(verb, project, result, elapsed)
-
-    @staticmethod
-    def summary(
-        verb: str,
-        total: int,
-        success: int,
-        failed: int,
-        skipped: int,
-        elapsed: float,
-    ) -> None:
-        """Write an operation summary with counts."""
-        _backend.summary(verb, total, success, failed, skipped, elapsed)
-
-    @staticmethod
-    def gate_result(gate: str, count: int, passed: bool, elapsed: float) -> None:
-        """Write per-gate result during check execution."""
-        _backend.gate_result(gate, count, passed, elapsed)
-
-    @staticmethod
-    def metrics(
-        *instances: t.Infra.MetricRecord,
-        **kwargs: t.Infra.MetricValue,
-    ) -> None:
-        """Write key-value metrics for machine readable stdout."""
-        _backend.metrics(*instances, **kwargs)
-
-
-output: Final[FlextInfraUtilitiesOutput] = FlextInfraUtilitiesOutput()
-"Module-level singleton for direct use: ``from flext_infra import output``"
-__all__ = [
-    "FlextInfraUtilitiesOutput",
-    "OutputBackend",
-    "output",
-]
+__all__ = ["FlextInfraUtilitiesOutput", "output"]

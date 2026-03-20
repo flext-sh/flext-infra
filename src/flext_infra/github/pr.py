@@ -17,7 +17,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraUtilitiesVersioning, c, m, output, p, r, t, u
+from flext_infra import c, output, r, t, u
 
 
 class FlextInfraPrManager:
@@ -27,38 +27,7 @@ class FlextInfraPrManager:
     view, checks, close) via the ``gh`` CLI.
     """
 
-    def __init__(
-        self,
-        runner: p.Infra.CommandRunner | None = None,
-        versioning: FlextInfraUtilitiesVersioning | None = None,
-    ) -> None:
-        """Initialize the PR manager."""
-        self._runner: p.Infra.CommandRunner | None = runner
-        self._versioning: FlextInfraUtilitiesVersioning | None = versioning
-
-    def _run(
-        self,
-        command: list[str],
-        repo_root: Path,
-    ) -> r[m.Infra.CommandOutput]:
-        if self._runner is not None:
-            return self._runner.run(command, cwd=repo_root)
-        return u.Infra.run(command, cwd=repo_root)
-
-    def _run_checked(self, command: list[str], repo_root: Path) -> r[bool]:
-        if self._runner is not None:
-            return self._runner.run_checked(command, cwd=repo_root)
-        return u.Infra.run_checked(command, cwd=repo_root)
-
-    def _capture(self, command: list[str], repo_root: Path) -> r[str]:
-        if self._runner is not None:
-            return self._runner.capture(command, cwd=repo_root)
-        return u.Infra.capture(command, cwd=repo_root)
-
-    def _release_tag_from_branch(self, head: str) -> r[str]:
-        if self._versioning is not None:
-            return self._versioning.release_tag_from_branch(head)
-        return u.Infra.release_tag_from_branch(head)
+    pass
 
     def checks(
         self,
@@ -78,7 +47,7 @@ class FlextInfraPrManager:
             r with check status info.
 
         """
-        result = self._run(
+        result = u.Infra.run(
             [c.Infra.Cli.GH, c.Infra.Cli.GhCmd.PR, c.Infra.Verbs.CHECKS, selector],
             repo_root,
         )
@@ -103,7 +72,7 @@ class FlextInfraPrManager:
             r[bool] with True on success.
 
         """
-        return self._run_checked(
+        return u.Infra.run_checked(
             [c.Infra.Cli.GH, c.Infra.Cli.GhCmd.PR, c.Infra.Verbs.CLOSE, selector],
             repo_root,
         )
@@ -161,7 +130,7 @@ class FlextInfraPrManager:
         ]
         if draft:
             command.append("--draft")
-        result: r[str] = self._capture(command, repo_root)
+        result: r[str] = u.Infra.capture(command, repo_root)
         return result.fold(
             on_failure=lambda e: r[Mapping[str, t.Scalar]].fail(
                 e or "PR creation failed",
@@ -220,11 +189,11 @@ class FlextInfraPrManager:
             command.append("--auto")
         if delete_branch:
             command.append("--delete-branch")
-        result = self._run(command, repo_root)
+        result = u.Infra.run(command, repo_root)
         if result.is_failure:
             stderr = result.error or ""
             if "not mergeable" in stderr:
-                update_result = self._run(
+                update_result = u.Infra.run(
                     [
                         c.Infra.Cli.GH,
                         c.Infra.Cli.GhCmd.PR,
@@ -235,7 +204,7 @@ class FlextInfraPrManager:
                     repo_root,
                 )
                 if update_result.is_success:
-                    result = self._run(command, repo_root)
+                    result = u.Infra.run(command, repo_root)
         if result.is_failure:
             return r[t.Infra.ContainerDict].fail(
                 result.error or "merge failed",
@@ -262,7 +231,7 @@ class FlextInfraPrManager:
             r with PR dict. Empty dict means no open PR found.
 
         """
-        result = self._capture(
+        result = u.Infra.capture(
             [
                 c.Infra.Cli.GH,
                 c.Infra.Cli.GhCmd.PR,
@@ -350,7 +319,7 @@ class FlextInfraPrManager:
             r with command output.
 
         """
-        return self._capture(
+        return u.Infra.capture(
             [c.Infra.Cli.GH, c.Infra.Cli.GhCmd.PR, c.Infra.Cli.GhCmd.VIEW, selector],
             repo_root,
         )
@@ -375,13 +344,13 @@ class FlextInfraPrManager:
             return r[Mapping[str, str]].ok({
                 c.Infra.ReportKeys.STATUS: "no-release-workflow",
             })
-        tag_result: r[str] = self._release_tag_from_branch(head)
+        tag_result: r[str] = u.Infra.release_tag_from_branch(head)
         if tag_result.is_failure:
             return r[Mapping[str, str]].ok({
                 c.Infra.ReportKeys.STATUS: "no-release-tag",
             })
         tag = tag_result.unwrap()
-        view_result = self._run(
+        view_result = u.Infra.run(
             [c.Infra.Cli.GH, c.Infra.ReportKeys.RELEASE, c.Infra.Cli.GhCmd.VIEW, tag],
             repo_root,
         )
@@ -390,7 +359,7 @@ class FlextInfraPrManager:
                 c.Infra.ReportKeys.STATUS: "release-exists",
                 c.Infra.ReportKeys.TAG: tag,
             })
-        dispatch_result = self._run(
+        dispatch_result = u.Infra.run(
             [
                 c.Infra.Cli.GH,
                 c.Infra.Cli.GhCmd.WORKFLOW,

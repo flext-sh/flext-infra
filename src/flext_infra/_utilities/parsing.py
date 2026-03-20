@@ -1,105 +1,37 @@
-"""Parsing utilities for infrastructure code analysis.
-
-Provides safe AST and CST parsing as static methods.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Parsing utilities for infrastructure code analysis."""
 
 from __future__ import annotations
 
 import ast
+from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 
 import libcst as cst
 
-from flext_infra.constants import FlextInfraConstants as c
-
 
 class FlextInfraUtilitiesParsing:
-    """Static parsing utilities for Python source analysis.
-
-    All methods are ``@staticmethod`` — no instantiation required.
-    Exposed via ``u.Infra.parse_module_ast()`` through MRO.
-    """
+    """Static parsing utilities for Python source analysis."""
 
     @staticmethod
     def parse_module_ast(file_path: Path) -> ast.Module | None:
-        """Parse a Python file into an AST module, returning None on error.
-
-        Args:
-            file_path: Path to the Python file.
-
-        Returns:
-            Parsed AST module, or None on read/parse error.
-
-        """
+        """Parse a Python file into an AST module."""
         try:
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            return ast.parse(source)
-        except (OSError, UnicodeDecodeError, SyntaxError):
-            return None
-
-    @staticmethod
-    def parse_ast_from_source(source: str) -> ast.Module | None:
-        """Parse a source string into an AST module, returning None on error.
-
-        Use when the caller already has source text (e.g. for rewriting,
-        ``ast.get_source_segment``, or in-memory transformations).
-
-        Args:
-            source: Python source code string.
-
-        Returns:
-            Parsed AST module, or None on syntax error.
-
-        """
-        try:
-            return ast.parse(source)
-        except SyntaxError:
-            return None
-
-    @staticmethod
-    def parse_cst_from_source(source: str) -> cst.Module | None:
-        """Parse a source string into a CST module, returning None on error.
-
-        Use when the caller already has source text (e.g. for CST
-        transformations or in-memory rewrites).
-
-        Args:
-            source: Python source code string.
-
-        Returns:
-            Parsed CST module, or None on parse error.
-
-        """
-        try:
-            return cst.parse_module(source)
-        except cst.ParserSyntaxError:
+            return ast.parse(file_path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
             return None
 
     @staticmethod
     def parse_module_cst(file_path: Path) -> cst.Module | None:
-        """Parse a Python file into a CST module, returning None on error.
-
-        Args:
-            file_path: Path to the Python file.
-
-        Returns:
-            Parsed CST module, or None on read/parse error.
-
-        """
+        """Parse a Python file into a CST module."""
         try:
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            return cst.parse_module(source)
-        except (OSError, UnicodeDecodeError, cst.ParserSyntaxError):
+            return cst.parse_module(file_path.read_text(encoding="utf-8"))
+        except (OSError, cst.ParserSyntaxError):
             return None
 
     @staticmethod
-    def cst_module_name(node: cst.ImportFrom | cst.Attribute | cst.Name | None) -> str:
+    def cst_module_name(node: cst.CSTNode | None) -> str:
         """Extract dotted module name from a CST node."""
-        if node is None:
-            return ""
         if isinstance(node, cst.ImportFrom):
             return FlextInfraUtilitiesParsing.cst_module_name(node.module)
         if isinstance(node, cst.Name):
@@ -112,9 +44,7 @@ class FlextInfraUtilitiesParsing:
     @staticmethod
     def cst_is_type_checking_test(node: cst.BaseExpression) -> bool:
         """Check if a CST expression is 'TYPE_CHECKING'."""
-        if not isinstance(node, cst.Name):
-            return False
-        return node.value == "TYPE_CHECKING"
+        return isinstance(node, cst.Name) and node.value == "TYPE_CHECKING"
 
     @staticmethod
     def cst_collect_bound_names(node: cst.ImportFrom) -> set[str]:
@@ -123,21 +53,23 @@ class FlextInfraUtilitiesParsing:
             return set()
         names: set[str] = set()
         for item in node.names:
-            if item.asname is not None and isinstance(item.asname.name, cst.Name):
-                names.add(item.asname.name.value)
-            elif isinstance(item.name, cst.Name):
-                names.add(item.name.value)
+            bound = FlextInfraUtilitiesParsing.cst_asname_to_local(item.asname)
+            if not bound and isinstance(item.name, cst.Name):
+                bound = item.name.value
+            if bound:
+                names.add(bound)
         return names
 
     @staticmethod
     def cst_import_line(module_name: str, aliases: Sequence[str]) -> cst.BaseStatement:
         """Construct a CST ImportFrom statement line."""
-        from flext_infra.utilities import u
-
         return cst.SimpleStatementLine(
             body=[
                 cst.ImportFrom(
-                    module=u.Infra.module_expr_from_dotted(module_name),
+                    module=cast(
+                        "cst.Name | cst.Attribute",
+                        FlextInfraUtilitiesParsing.module_expr_from_dotted(module_name),
+                    ),
                     names=tuple(
                         cst.ImportAlias(name=cst.Name(alias))
                         for alias in sorted(aliases)
@@ -145,6 +77,49 @@ class FlextInfraUtilitiesParsing:
                 ),
             ],
         )
+
+    @staticmethod
+    def module_expr_from_dotted(dotted: str) -> cst.Name | cst.Attribute:
+        """Build a CST expression tree from a dotted name string."""
+        parts = [part for part in dotted.split(".") if part]
+        if not parts:
+            return cst.Name("")
+        expr: cst.Name | cst.Attribute = cst.Name(parts[0])
+        for part in parts[1:]:
+            expr = cst.Attribute(value=expr, attr=cst.Name(part))
+        return expr
+
+    @staticmethod
+    def extract_string_literal(node: cst.BaseExpression) -> str:
+        """Extract a string value from a CST SimpleString node."""
+        if isinstance(node, cst.SimpleString):
+            val = node.evaluated_value
+            return val if isinstance(val, str) else ""
+        return ""
+
+    @staticmethod
+    def cst_asname_to_local(asname: cst.AsName | None) -> str | None:
+        """Extract the local alias name from a CST AsName node."""
+        if asname and isinstance(asname.name, cst.Name):
+            return asname.name.value
+        return None
+
+    @staticmethod
+    def cst_imported_name(imported_alias: cst.ImportAlias) -> str | None:
+        """Extract the imported name from a CST ImportAlias node."""
+        if imported_alias.asname is None and isinstance(imported_alias.name, cst.Name):
+            return imported_alias.name.value
+        return None
+
+    @staticmethod
+    def cst_is_module_toplevel(file_path: Path) -> bool:
+        """Determine if a file is at the package root level."""
+        parts = file_path.parts
+        try:
+            src_idx = parts.index("src")
+            return len(parts) == src_idx + 3
+        except ValueError:
+            return False
 
 
 __all__ = ["FlextInfraUtilitiesParsing"]

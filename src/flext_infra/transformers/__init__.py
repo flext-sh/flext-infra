@@ -38,9 +38,7 @@ if TYPE_CHECKING:
         FlextInfraRefactorImportModernizer,
     )
     from flext_infra.transformers.import_normalizer import (
-        ImportNormalizerTransformer,
-        ImportNormalizerVisitor,
-        ImportViolation,
+        FlextInfraTransformerImportNormalizer,
     )
     from flext_infra.transformers.lazy_import_fixer import (
         FlextInfraRefactorLazyImportFixer,
@@ -64,8 +62,10 @@ if TYPE_CHECKING:
         FlextInfraRefactorSymbolPropagator,
     )
     from flext_infra.transformers.tier0_import_fixer import (
+        FlextInfraTransformerTier0ImportFixer,
         Tier0ImportAnalysis,
         Tier0ImportAnalyzer,
+        Tier0ImportContextDiscovery,
         Tier0ImportFixer,
     )
     from flext_infra.transformers.typing_annotation_replacer import (
@@ -151,21 +151,17 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.import_insertion",
         "FlextInfraTransformerImportInsertion",
     ),
+    "FlextInfraTransformerImportNormalizer": (
+        "flext_infra.transformers.import_normalizer",
+        "FlextInfraTransformerImportNormalizer",
+    ),
+    "FlextInfraTransformerTier0ImportFixer": (
+        "flext_infra.transformers.tier0_import_fixer",
+        "FlextInfraTransformerTier0ImportFixer",
+    ),
     "HelperConsolidationTransformer": (
         "flext_infra.transformers.helper_consolidation",
         "HelperConsolidationTransformer",
-    ),
-    "ImportNormalizerTransformer": (
-        "flext_infra.transformers.import_normalizer",
-        "ImportNormalizerTransformer",
-    ),
-    "ImportNormalizerVisitor": (
-        "flext_infra.transformers.import_normalizer",
-        "ImportNormalizerVisitor",
-    ),
-    "ImportViolation": (
-        "flext_infra.transformers.import_normalizer",
-        "ImportViolation",
     ),
     "ModelDefinitionCollector": (
         "flext_infra.transformers.unused_model_visitor",
@@ -190,6 +186,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "Tier0ImportAnalyzer": (
         "flext_infra.transformers.tier0_import_fixer",
         "Tier0ImportAnalyzer",
+    ),
+    "Tier0ImportContextDiscovery": (
+        "flext_infra.transformers.tier0_import_fixer",
+        "Tier0ImportContextDiscovery",
     ),
     "Tier0ImportFixer": (
         "flext_infra.transformers.tier0_import_fixer",
@@ -231,16 +231,16 @@ __all__ = [
     "FlextInfraRefactorTransformerPolicyUtilities",
     "FlextInfraRefactorTypingUnifier",
     "FlextInfraTransformerImportInsertion",
+    "FlextInfraTransformerImportNormalizer",
+    "FlextInfraTransformerTier0ImportFixer",
     "HelperConsolidationTransformer",
-    "ImportNormalizerTransformer",
-    "ImportNormalizerVisitor",
-    "ImportViolation",
     "ModelDefinitionCollector",
     "ModelReferenceCollector",
     "NestedClassPropagationTransformer",
     "ProjectAliasDiscovery",
     "Tier0ImportAnalysis",
     "Tier0ImportAnalyzer",
+    "Tier0ImportContextDiscovery",
     "Tier0ImportFixer",
     "TypingAnnotationCensusVisitor",
     "TypingAnnotationReplacer",

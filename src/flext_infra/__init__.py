@@ -268,9 +268,7 @@ if TYPE_CHECKING:
         FlextInfraRefactorImportModernizer,
     )
     from flext_infra.transformers.import_normalizer import (
-        ImportNormalizerTransformer,
-        ImportNormalizerVisitor,
-        ImportViolation,
+        FlextInfraTransformerImportNormalizer,
     )
     from flext_infra.transformers.lazy_import_fixer import (
         FlextInfraRefactorLazyImportFixer,
@@ -294,8 +292,10 @@ if TYPE_CHECKING:
         FlextInfraRefactorSymbolPropagator,
     )
     from flext_infra.transformers.tier0_import_fixer import (
+        FlextInfraTransformerTier0ImportFixer,
         Tier0ImportAnalysis,
         Tier0ImportAnalyzer,
+        Tier0ImportContextDiscovery,
         Tier0ImportFixer,
     )
     from flext_infra.transformers.typing_annotation_replacer import (
@@ -752,6 +752,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.import_insertion",
         "FlextInfraTransformerImportInsertion",
     ),
+    "FlextInfraTransformerImportNormalizer": (
+        "flext_infra.transformers.import_normalizer",
+        "FlextInfraTransformerImportNormalizer",
+    ),
+    "FlextInfraTransformerTier0ImportFixer": (
+        "flext_infra.transformers.tier0_import_fixer",
+        "FlextInfraTransformerTier0ImportFixer",
+    ),
     "FlextInfraTypes": ("flext_infra.typings", "FlextInfraTypes"),
     "FlextInfraUtilities": ("flext_infra.utilities", "FlextInfraUtilities"),
     "FlextInfraUtilitiesCli": ("flext_infra._utilities.cli", "FlextInfraUtilitiesCli"),
@@ -858,18 +866,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor._detectors.import_collector",
         "ImportCollector",
     ),
-    "ImportNormalizerTransformer": (
-        "flext_infra.transformers.import_normalizer",
-        "ImportNormalizerTransformer",
-    ),
-    "ImportNormalizerVisitor": (
-        "flext_infra.transformers.import_normalizer",
-        "ImportNormalizerVisitor",
-    ),
-    "ImportViolation": (
-        "flext_infra.transformers.import_normalizer",
-        "ImportViolation",
-    ),
     "InjectCommentsPhase": (
         "flext_infra.deps._phases.inject_comments",
         "InjectCommentsPhase",
@@ -942,6 +938,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "Tier0ImportAnalyzer": (
         "flext_infra.transformers.tier0_import_fixer",
         "Tier0ImportAnalyzer",
+    ),
+    "Tier0ImportContextDiscovery": (
+        "flext_infra.transformers.tier0_import_fixer",
+        "Tier0ImportContextDiscovery",
     ),
     "Tier0ImportFixer": (
         "flext_infra.transformers.tier0_import_fixer",
@@ -1129,6 +1129,8 @@ __all__ = [
     "FlextInfraSyncService",
     "FlextInfraTextPatternScanner",
     "FlextInfraTransformerImportInsertion",
+    "FlextInfraTransformerImportNormalizer",
+    "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraUtilities",
     "FlextInfraUtilitiesCli",
@@ -1160,9 +1162,6 @@ __all__ = [
     "HelperConsolidationTransformer",
     "ImportAliasDetector",
     "ImportCollector",
-    "ImportNormalizerTransformer",
-    "ImportNormalizerVisitor",
-    "ImportViolation",
     "InjectCommentsPhase",
     "InternalImportDetector",
     "LooseObjectDetector",
@@ -1185,6 +1184,7 @@ __all__ = [
     "SyncOperation",
     "Tier0ImportAnalysis",
     "Tier0ImportAnalyzer",
+    "Tier0ImportContextDiscovery",
     "Tier0ImportFixer",
     "TypingAnnotationCensusVisitor",
     "TypingAnnotationReplacer",
