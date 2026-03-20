@@ -1,0 +1,46 @@
+src/flext_infra/_utilities/discovery.py
+  368fb8be6b85b0b7 8-9,128-148
+src/flext_infra/release/_models.py
+  368fb8be6b85b0b7 54-80
+src/flext_infra/_utilities/github.py
+  b279a83971a44010 21,30,341
+src/flext_infra/_utilities/parsing.py
+  368fb8be6b85b0b7 68-69,114-115,118,121-124
+src/flext_infra/models.py
+  368fb8be6b85b0b7 40
+src/flext_infra/github/__main__.py
+  b279a83971a44010 73,89,104-107,109-196,218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "e0f4c47c41341e276bd94a6d85b859839fe09ce1",
+  "prompts": {
+    "368fb8be6b85b0b7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f74ae14fffeVDeXScl43zDHl2",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 74,
+      "total_deletions": 119,
+      "accepted_lines": 60,
+      "overriden_lines": 0
+    },
+    "b279a83971a44010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f73d7affffeiDJJeKXYaEabip",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 105,
+      "total_deletions": 16,
+      "accepted_lines": 100,
+      "overriden_lines": 0
+    }
+  }
+}
