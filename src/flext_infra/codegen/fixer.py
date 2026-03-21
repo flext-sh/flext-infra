@@ -19,8 +19,8 @@ from typing import override
 
 from flext_core import r, s
 from flext_infra import (
-    FlextInfraCodegenConstantDetection,
-    FlextInfraCodegenConstantTransformation,
+    FlextInfraUtilitiesCodegenConstantDetection,
+    FlextInfraUtilitiesCodegenConstantTransformation,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenSnapshot,
     FlextInfraCodegenTransforms,
@@ -743,11 +743,11 @@ class FlextInfraCodegenFixer(s[bool]):
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
             return
-        definitions = FlextInfraCodegenConstantDetection.extract_constant_definitions(
+        definitions = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
             file_path=constants_file,
             project=pkg_dir.name,
         )
-        hardcoded = FlextInfraCodegenConstantDetection.detect_hardcoded_canonicals(
+        hardcoded = FlextInfraUtilitiesCodegenConstantDetection.detect_hardcoded_canonicals(
             definitions,
         )
         if not hardcoded:
@@ -767,7 +767,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 for definition in hardcoded
             )
             return
-        modified, _ = FlextInfraCodegenConstantTransformation.replace_canonical_values(
+        modified, _ = FlextInfraUtilitiesCodegenConstantTransformation.replace_canonical_values(
             file_path=constants_file,
             parent_class=parent_class,
             definitions=hardcoded,
@@ -810,7 +810,7 @@ class FlextInfraCodegenFixer(s[bool]):
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
             return
-        definitions = FlextInfraCodegenConstantDetection.extract_constant_definitions(
+        definitions = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
             file_path=constants_file,
             project=pkg_dir.name,
         )
@@ -827,7 +827,7 @@ class FlextInfraCodegenFixer(s[bool]):
                     continue
                 for py_file in sorted(discovered_src.rglob("*.py")):
                     used_names, _, _ = (
-                        FlextInfraCodegenConstantDetection.scan_constant_usages(
+                        FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
                             file_path=py_file,
                             project=project.name,
                         )
@@ -836,20 +836,20 @@ class FlextInfraCodegenFixer(s[bool]):
         else:
             for py_file in sorted(src_dir.rglob("*.py")):
                 used_names, _, _ = (
-                    FlextInfraCodegenConstantDetection.scan_constant_usages(
+                    FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
                         file_path=py_file,
                         project=pkg_dir.name,
                     )
                 )
                 all_used_names.update(used_names)
 
-        unused = FlextInfraCodegenConstantDetection.detect_unused_constants(
+        unused = FlextInfraUtilitiesCodegenConstantDetection.detect_unused_constants(
             definitions=definitions,
             all_used_names=all_used_names,
         )
         if not unused:
             return
-        modified, _ = FlextInfraCodegenConstantTransformation.remove_unused_constants(
+        modified, _ = FlextInfraUtilitiesCodegenConstantTransformation.remove_unused_constants(
             file_path=constants_file,
             unused=unused,
         )
@@ -890,13 +890,13 @@ class FlextInfraCodegenFixer(s[bool]):
         for py_file in sorted(src_dir.rglob("*.py")):
             if py_file.name == "constants.py":
                 continue
-            _, direct_refs, _ = FlextInfraCodegenConstantDetection.scan_constant_usages(
+            _, direct_refs, _ = FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
                 file_path=py_file, project=pkg_dir.name
             )
             if not direct_refs:
                 continue
             modified, _ = (
-                FlextInfraCodegenConstantTransformation.normalize_constant_aliases(
+                FlextInfraUtilitiesCodegenConstantTransformation.normalize_constant_aliases(
                     file_path=py_file,
                     project_import=project_import,
                 )

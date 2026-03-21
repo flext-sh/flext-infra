@@ -86,20 +86,20 @@ if TYPE_CHECKING:
         ProjectResult,
     )
     from flext_infra.check.workspace_check import build_parser, main, run_cli
-    from flext_infra.codegen._codegen_ast_parsing import FlextInfraCodegenAstParsing
+    from flext_infra.codegen._codegen_ast_parsing import FlextInfraUtilitiesCodegenAstParsing
     from flext_infra.codegen._codegen_coercion import FlextInfraCodegenCoercion
     from flext_infra.codegen._codegen_constant_transformer import (
-        FlextInfraCodegenConstantTransformation,
+        FlextInfraUtilitiesCodegenConstantTransformation,
     )
     from flext_infra.codegen._codegen_constant_visitor import (
-        FlextInfraCodegenConstantDetection,
+        FlextInfraUtilitiesCodegenConstantDetection,
     )
-    from flext_infra.codegen._codegen_execution import FlextInfraCodegenExecution
+    from flext_infra.codegen._utilities_codegen_execution import FlextInfraUtilitiesCodegenExecution
     from flext_infra.codegen._codegen_execution_tools import (
         FlextInfraCodegenExecutionTools,
     )
     from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
-    from flext_infra.codegen._codegen_governance import FlextInfraCodegenGovernance
+    from flext_infra.codegen._utilities_codegen_governance import FlextInfraUtilitiesCodegenGovernance
     from flext_infra.codegen._codegen_metrics import FlextInfraCodegenMetrics
     from flext_infra.codegen._codegen_metrics_checks import (
         FlextInfraCodegenMetricsChecks,
@@ -136,9 +136,7 @@ if TYPE_CHECKING:
     from flext_infra.deps._phases.ensure_ruff import EnsureRuffConfigPhase
     from flext_infra.deps._phases.inject_comments import InjectCommentsPhase
     from flext_infra.deps.detection import (
-        FlextInfraDependencyDetectionHelpers,
         FlextInfraDependencyDetectionService,
-        dm,
     )
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -521,9 +519,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraCheckConstants",
     ),
     "FlextInfraCheckModels": ("flext_infra.check._models", "FlextInfraCheckModels"),
-    "FlextInfraCodegenAstParsing": (
+    "FlextInfraUtilitiesCodegenAstParsing": (
         "flext_infra.codegen._codegen_ast_parsing",
-        "FlextInfraCodegenAstParsing",
+        "FlextInfraUtilitiesCodegenAstParsing",
     ),
     "FlextInfraCodegenCensus": (
         "flext_infra.codegen.census",
@@ -533,13 +531,13 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.codegen._codegen_coercion",
         "FlextInfraCodegenCoercion",
     ),
-    "FlextInfraCodegenConstantDetection": (
+    "FlextInfraUtilitiesCodegenConstantDetection": (
         "flext_infra.codegen._codegen_constant_visitor",
-        "FlextInfraCodegenConstantDetection",
+        "FlextInfraUtilitiesCodegenConstantDetection",
     ),
-    "FlextInfraCodegenConstantTransformation": (
+    "FlextInfraUtilitiesCodegenConstantTransformation": (
         "flext_infra.codegen._codegen_constant_transformer",
-        "FlextInfraCodegenConstantTransformation",
+        "FlextInfraUtilitiesCodegenConstantTransformation",
     ),
     "FlextInfraCodegenConstants": (
         "flext_infra.codegen._constants",
@@ -549,9 +547,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.codegen.constants_quality_gate",
         "FlextInfraCodegenConstantsQualityGate",
     ),
-    "FlextInfraCodegenExecution": (
-        "flext_infra.codegen._codegen_execution",
-        "FlextInfraCodegenExecution",
+    "FlextInfraUtilitiesCodegenExecution": (
+        "flext_infra.codegen._utilities_codegen_execution",
+        "FlextInfraUtilitiesCodegenExecution",
     ),
     "FlextInfraCodegenExecutionTools": (
         "flext_infra.codegen._codegen_execution_tools",
@@ -562,9 +560,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.codegen._codegen_generation",
         "FlextInfraCodegenGeneration",
     ),
-    "FlextInfraCodegenGovernance": (
-        "flext_infra.codegen._codegen_governance",
-        "FlextInfraCodegenGovernance",
+    "FlextInfraUtilitiesCodegenGovernance": (
+        "flext_infra.codegen._utilities_codegen_governance",
+        "FlextInfraUtilitiesCodegenGovernance",
     ),
     "FlextInfraCodegenLazyInit": (
         "flext_infra.codegen.lazy_init",
@@ -605,10 +603,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraCoreConstants",
     ),
     "FlextInfraCoreModels": ("flext_infra.validate._models", "FlextInfraCoreModels"),
-    "FlextInfraDependencyDetectionHelpers": (
-        "flext_infra.deps.detection",
-        "FlextInfraDependencyDetectionHelpers",
-    ),
     "FlextInfraDependencyDetectionService": (
         "flext_infra.deps.detection",
         "FlextInfraDependencyDetectionService",
@@ -1226,7 +1220,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "codegen": ("flext_infra.codegen", ""),
     "d": ("flext_core", "d"),
     "deps": ("flext_infra.deps", ""),
-    "dm": ("flext_infra.deps.detection", "dm"),
     "docs": ("flext_infra.docs", ""),
     "e": ("flext_core", "e"),
     "gates": ("flext_infra.gates", ""),
@@ -1281,18 +1274,18 @@ __all__ = [
     "FlextInfraBasemkModels",
     "FlextInfraCheckConstants",
     "FlextInfraCheckModels",
-    "FlextInfraCodegenAstParsing",
+    "FlextInfraUtilitiesCodegenAstParsing",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenCoercion",
-    "FlextInfraCodegenConstantDetection",
-    "FlextInfraCodegenConstantTransformation",
+    "FlextInfraUtilitiesCodegenConstantDetection",
+    "FlextInfraUtilitiesCodegenConstantTransformation",
     "FlextInfraCodegenConstants",
     "FlextInfraCodegenConstantsQualityGate",
-    "FlextInfraCodegenExecution",
+    "FlextInfraUtilitiesCodegenExecution",
     "FlextInfraCodegenExecutionTools",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenGeneration",
-    "FlextInfraCodegenGovernance",
+    "FlextInfraUtilitiesCodegenGovernance",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenMetrics",
     "FlextInfraCodegenMetricsChecks",
@@ -1305,7 +1298,6 @@ __all__ = [
     "FlextInfraConstants",
     "FlextInfraCoreConstants",
     "FlextInfraCoreModels",
-    "FlextInfraDependencyDetectionHelpers",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDependencyPathSync",
@@ -1497,7 +1489,6 @@ __all__ = [
     "codegen",
     "d",
     "deps",
-    "dm",
     "docs",
     "e",
     "gates",

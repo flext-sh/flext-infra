@@ -15,8 +15,8 @@ from typing import override
 
 from flext_core import r, s
 from flext_infra import (
-    FlextInfraCodegenConstantDetection,
-    FlextInfraCodegenGovernance,
+    FlextInfraUtilitiesCodegenConstantDetection,
+    FlextInfraUtilitiesCodegenGovernance,
     FlextInfraNamespaceValidator,
     c,
     m,
@@ -57,7 +57,7 @@ class FlextInfraCodegenCensus(s[bool]):
     @staticmethod
     def _is_fixable(*, rule: str, module: str, message: str) -> bool:
         _ = message
-        return FlextInfraCodegenGovernance.is_rule_fixable(rule, module)
+        return FlextInfraUtilitiesCodegenGovernance.is_rule_fixable(rule, module)
 
     @staticmethod
     def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:
@@ -104,7 +104,7 @@ class FlextInfraCodegenCensus(s[bool]):
         if self._class_to_analyze:
             simple_class_name = self._class_to_analyze.rsplit(".", 1)[-1]
             census_data = (
-                FlextInfraCodegenConstantDetection.analyze_class_object_census(
+                FlextInfraUtilitiesCodegenConstantDetection.analyze_class_object_census(
                     self._class_to_analyze,
                     workspace,
                     frozenset({".mypy_cache", "__pycache__", ".git", ".reports"}),
@@ -181,7 +181,7 @@ class FlextInfraCodegenCensus(s[bool]):
         if src_dir.is_dir() and not self._class_to_analyze:
             # Extract all constant definitions (any class with Final)
             all_defs = (
-                FlextInfraCodegenConstantDetection.extract_all_constant_definitions(
+                FlextInfraUtilitiesCodegenConstantDetection.extract_all_constant_definitions(
                     src_dir.parent,
                     frozenset({".mypy_cache", "__pycache__"}),
                 )
@@ -192,18 +192,18 @@ class FlextInfraCodegenCensus(s[bool]):
             for defs in all_defs.values():
                 flat_defs.extend(defs)
 
-            duplicates = FlextInfraCodegenConstantDetection.detect_duplicate_constants(
+            duplicates = FlextInfraUtilitiesCodegenConstantDetection.detect_duplicate_constants(
                 flat_defs,
             )
 
             # Count usage
-            all_usage_map = FlextInfraCodegenConstantDetection.scan_all_constant_usages(
+            all_usage_map = FlextInfraUtilitiesCodegenConstantDetection.scan_all_constant_usages(
                 src_dir.parent,
                 frozenset({".mypy_cache", "__pycache__"}),
             )
 
             # Add census info to violations as info (not violations, just counts)
-            unused = FlextInfraCodegenConstantDetection.detect_unused_constants(
+            unused = FlextInfraUtilitiesCodegenConstantDetection.detect_unused_constants(
                 flat_defs,
                 set(all_usage_map.keys()),
             )

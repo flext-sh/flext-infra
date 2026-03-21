@@ -20,7 +20,7 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraCodegenCensus,
-    FlextInfraCodegenConstantDetection,
+    FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraCodegenConstantsQualityGate,
     FlextInfraCodegenFixer,
     FlextInfraCodegenLazyInit,
@@ -131,7 +131,7 @@ class FlextInfraCodegenCommand:
             return 1
 
         # Get deduplicate proposals
-        fixes = FlextInfraCodegenConstantDetection.propose_deduplication_fixes(
+        fixes = FlextInfraUtilitiesCodegenConstantDetection.propose_deduplication_fixes(
             class_to_analyze,
             cli.workspace,
         )
@@ -162,7 +162,7 @@ class FlextInfraCodegenCommand:
         output.info(f"\nApplying {len(fixes)} deduplication fixes...")
         total_files_modified = 0
         for fix in fixes:
-            result = FlextInfraCodegenConstantDetection.apply_deduplication_fix(
+            result = FlextInfraUtilitiesCodegenConstantDetection.apply_deduplication_fix(
                 fix,
                 cli.workspace,
                 class_to_analyze,

@@ -8,7 +8,7 @@ from yaml import safe_load
 from flext_infra import m
 
 
-class FlextInfraCodegenGovernance:
+class FlextInfraUtilitiesCodegenGovernance:
     _config_cache: ClassVar[dict[str, m.Infra.ConstantsGovernanceConfig]] = {}
     GOVERNANCE_FILE: Final[Path] = (
         Path(__file__).parent.parent / "rules" / "constants-governance.yml"
@@ -16,22 +16,22 @@ class FlextInfraCodegenGovernance:
 
     @staticmethod
     def load_governance_config() -> m.Infra.ConstantsGovernanceConfig:
-        cached = FlextInfraCodegenGovernance._config_cache.get("config")
+        cached = FlextInfraUtilitiesCodegenGovernance._config_cache.get("config")
         if cached is not None:
             return cached
         raw: dict[str, object] = (
             safe_load(
-                FlextInfraCodegenGovernance.GOVERNANCE_FILE.read_text("utf-8"),
+                FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE.read_text("utf-8"),
             )
             or {}
         )
         config = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
-        FlextInfraCodegenGovernance._config_cache["config"] = config
+        FlextInfraUtilitiesCodegenGovernance._config_cache["config"] = config
         return config
 
     @staticmethod
     def get_canonical_int_values() -> dict[int, str]:
-        config = FlextInfraCodegenGovernance.load_governance_config()
+        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
         return {
             entry.value: entry.canonical_ref
             for entry in config.canonical_values
@@ -40,7 +40,7 @@ class FlextInfraCodegenGovernance:
 
     @staticmethod
     def get_canonical_str_values() -> dict[str, str]:
-        config = FlextInfraCodegenGovernance.load_governance_config()
+        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
         return {
             entry.value: entry.canonical_ref
             for entry in config.canonical_values
@@ -49,7 +49,7 @@ class FlextInfraCodegenGovernance:
 
     @staticmethod
     def get_semantic_names(canonical_ref: str) -> frozenset[str]:
-        config = FlextInfraCodegenGovernance.load_governance_config()
+        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
         for entry in config.canonical_values:
             if entry.canonical_ref == canonical_ref:
                 return frozenset(entry.semantic_names)
@@ -58,12 +58,12 @@ class FlextInfraCodegenGovernance:
     @staticmethod
     def get_constants_class_pattern() -> str:
         return (
-            FlextInfraCodegenGovernance.load_governance_config().constants_class_pattern
+            FlextInfraUtilitiesCodegenGovernance.load_governance_config().constants_class_pattern
         )
 
     @staticmethod
     def is_rule_fixable(rule_id: str, module: str) -> bool:
-        config = FlextInfraCodegenGovernance.load_governance_config()
+        config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
         for rule in config.rules:
             if rule.id != rule_id:
                 continue
@@ -75,4 +75,4 @@ class FlextInfraCodegenGovernance:
         return False
 
 
-__all__ = ["FlextInfraCodegenGovernance"]
+__all__ = ["FlextInfraUtilitiesCodegenGovernance"]

@@ -34,9 +34,7 @@ if TYPE_CHECKING:
     from flext_infra.deps._phases.ensure_ruff import EnsureRuffConfigPhase
     from flext_infra.deps._phases.inject_comments import InjectCommentsPhase
     from flext_infra.deps.detection import (
-        FlextInfraDependencyDetectionHelpers,
         FlextInfraDependencyDetectionService,
-        dm,
     )
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector, main
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -98,10 +96,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.deps.fix_pyrefly_config",
         "FlextInfraConfigFixer",
     ),
-    "FlextInfraDependencyDetectionHelpers": (
-        "flext_infra.deps.detection",
-        "FlextInfraDependencyDetectionHelpers",
-    ),
     "FlextInfraDependencyDetectionService": (
         "flext_infra.deps.detection",
         "FlextInfraDependencyDetectionService",
@@ -135,7 +129,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "InjectCommentsPhase",
     ),
     "_phases": ("flext_infra.deps._phases", ""),
-    "dm": ("flext_infra.deps.detection", "dm"),
     "main": ("flext_infra.deps.detector", "main"),
     "shutil": ("flext_infra.deps.internal_sync", "shutil"),
     "u": ("flext_infra.deps.modernizer", "u"),
@@ -154,7 +147,6 @@ __all__ = [
     "EnsurePytestConfigPhase",
     "EnsureRuffConfigPhase",
     "FlextInfraConfigFixer",
-    "FlextInfraDependencyDetectionHelpers",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyPathSync",
     "FlextInfraDependencyToolConfig",
@@ -164,7 +156,6 @@ __all__ = [
     "FlextInfraRuntimeDevDependencyDetector",
     "InjectCommentsPhase",
     "_phases",
-    "dm",
     "main",
     "shutil",
     "u",

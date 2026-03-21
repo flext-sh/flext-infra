@@ -6,7 +6,7 @@ from pathlib import Path
 from flext_infra import FlextInfraCodegenSnapshot, c
 
 
-class FlextInfraCodegenAstParsing(FlextInfraCodegenSnapshot):
+class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
     @staticmethod
     def infer_package(path: Path) -> str:
         abs_path = str(path.absolute())
@@ -123,7 +123,7 @@ class FlextInfraCodegenAstParsing(FlextInfraCodegenSnapshot):
                 raw_module = node.module or ""
                 if raw_module in c.Infra.SKIP_MODULES:
                     continue
-                module_path = FlextInfraCodegenAstParsing.resolve_module(
+                module_path = FlextInfraUtilitiesCodegenAstParsing.resolve_module(
                     raw_module,
                     node.level,
                     current_pkg,
@@ -161,4 +161,4 @@ class FlextInfraCodegenAstParsing(FlextInfraCodegenSnapshot):
         return lazy_map
 
 
-__all__ = ["FlextInfraCodegenAstParsing"]
+__all__ = ["FlextInfraUtilitiesCodegenAstParsing"]

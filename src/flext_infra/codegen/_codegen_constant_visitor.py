@@ -7,10 +7,10 @@ from typing import Final, override
 
 import libcst as cst
 
-from flext_infra import FlextInfraCodegenGovernance, m
+from flext_infra import FlextInfraUtilitiesCodegenGovernance, m
 
 
-class FlextInfraCodegenConstantDetection:
+class FlextInfraUtilitiesCodegenConstantDetection:
     MIN_QUOTED_LITERAL_LEN: Final[int] = 2
     MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 2
 
@@ -53,7 +53,7 @@ class FlextInfraCodegenConstantDetection:
             super().__init__()
             self._project = project
             self._file_path = file_path
-            self._render = FlextInfraCodegenConstantDetection.RenderContext(
+            self._render = FlextInfraUtilitiesCodegenConstantDetection.RenderContext(
                 Path(file_path).read_text("utf-8"),
             )
             self._class_stack: list[str] = []
@@ -102,7 +102,7 @@ class FlextInfraCodegenConstantDetection:
             self._file_path = file_path
             self._target_class = target_class
             self._collect_all_refs = collect_all_refs
-            self._render = FlextInfraCodegenConstantDetection.RenderContext(
+            self._render = FlextInfraUtilitiesCodegenConstantDetection.RenderContext(
                 Path(file_path).read_text("utf-8"),
             )
             self.used_constants: set[str] = set()
@@ -111,7 +111,7 @@ class FlextInfraCodegenConstantDetection:
 
         @override
         def visit_Attribute(self, node: cst.Attribute) -> None:
-            det = FlextInfraCodegenConstantDetection
+            det = FlextInfraUtilitiesCodegenConstantDetection
             root = det.root_name(node)
 
             # Track all c.* usage (generic) - both c.X and c.X.Y
@@ -126,11 +126,11 @@ class FlextInfraCodegenConstantDetection:
             chain = det.attribute_chain(node)
             if (
                 len(chain)
-                < FlextInfraCodegenConstantDetection.MIN_DIRECT_REFERENCE_CHAIN
+                < FlextInfraUtilitiesCodegenConstantDetection.MIN_DIRECT_REFERENCE_CHAIN
             ):
                 return
             if not re.fullmatch(
-                FlextInfraCodegenGovernance.get_constants_class_pattern(),
+                FlextInfraUtilitiesCodegenGovernance.get_constants_class_pattern(),
                 chain[0],
             ):
                 return
@@ -162,14 +162,14 @@ class FlextInfraCodegenConstantDetection:
             return [expr.value]
         if isinstance(expr, cst.Attribute):
             return [
-                *FlextInfraCodegenConstantDetection.attribute_chain(expr.value),
+                *FlextInfraUtilitiesCodegenConstantDetection.attribute_chain(expr.value),
                 expr.attr.value,
             ]
         return []
 
     @staticmethod
     def root_name(expr: cst.BaseExpression) -> str:
-        parts = FlextInfraCodegenConstantDetection.attribute_chain(expr)
+        parts = FlextInfraUtilitiesCodegenConstantDetection.attribute_chain(expr)
         return parts[0] if parts else ""
 
     @staticmethod
@@ -180,7 +180,7 @@ class FlextInfraCodegenConstantDetection:
 
     @staticmethod
     def str_literal(value_repr: str) -> str | None:
-        if len(value_repr) < FlextInfraCodegenConstantDetection.MIN_QUOTED_LITERAL_LEN:
+        if len(value_repr) < FlextInfraUtilitiesCodegenConstantDetection.MIN_QUOTED_LITERAL_LEN:
             return None
         if value_repr[0] != value_repr[-1]:
             return None
@@ -192,15 +192,15 @@ class FlextInfraCodegenConstantDetection:
     def semantic_name_matches(name: str, canonical_ref: str) -> bool:
         if not canonical_ref:
             return False
-        semantic_names = FlextInfraCodegenGovernance.get_semantic_names(canonical_ref)
+        semantic_names = FlextInfraUtilitiesCodegenGovernance.get_semantic_names(canonical_ref)
         return name in semantic_names
 
     @staticmethod
     def canonical_reference_for(name: str, value_repr: str) -> str:
-        det = FlextInfraCodegenConstantDetection
+        det = FlextInfraUtilitiesCodegenConstantDetection
         int_value = det.int_literal(value_repr)
         if int_value is not None:
-            candidate = FlextInfraCodegenGovernance.get_canonical_int_values().get(
+            candidate = FlextInfraUtilitiesCodegenGovernance.get_canonical_int_values().get(
                 int_value,
                 "",
             )
@@ -208,7 +208,7 @@ class FlextInfraCodegenConstantDetection:
 
         str_value = det.str_literal(value_repr)
         if str_value is not None:
-            candidate = FlextInfraCodegenGovernance.get_canonical_str_values().get(
+            candidate = FlextInfraUtilitiesCodegenGovernance.get_canonical_str_values().get(
                 str_value,
                 "",
             )
@@ -226,7 +226,7 @@ class FlextInfraCodegenConstantDetection:
             tree = cst.parse_module(source)
         except (cst.ParserSyntaxError, UnicodeDecodeError):
             return []
-        visitor = FlextInfraCodegenConstantDetection.DeclarationVisitor(
+        visitor = FlextInfraUtilitiesCodegenConstantDetection.DeclarationVisitor(
             project=project,
             file_path=str(file_path),
         )
@@ -260,11 +260,11 @@ class FlextInfraCodegenConstantDetection:
             if any(excl in py_file.parts for excl in exclude_packages):
                 continue
 
-            project_name = FlextInfraCodegenConstantDetection._infer_project_name(
+            project_name = FlextInfraUtilitiesCodegenConstantDetection._infer_project_name(
                 py_file, root_path
             )
 
-            defs = FlextInfraCodegenConstantDetection.extract_constant_definitions(
+            defs = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
                 py_file,
                 project_name,
             )
@@ -309,7 +309,7 @@ class FlextInfraCodegenConstantDetection:
                 "".join(part.capitalize() for part in pkg_name.split("_")) + "Constants"
             )
 
-        visitor = FlextInfraCodegenConstantDetection.UsageVisitor(
+        visitor = FlextInfraUtilitiesCodegenConstantDetection.UsageVisitor(
             project=project,
             file_path=str(file_path),
             target_class=target_class,
@@ -342,11 +342,11 @@ class FlextInfraCodegenConstantDetection:
             if any(excl in py_file.parts for excl in exclude_packages):
                 continue
 
-            project_name = FlextInfraCodegenConstantDetection._infer_project_name(
+            project_name = FlextInfraUtilitiesCodegenConstantDetection._infer_project_name(
                 py_file, root_path
             )
 
-            _, _, all_refs = FlextInfraCodegenConstantDetection.scan_constant_usages(
+            _, _, all_refs = FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
                 py_file,
                 project_name,
                 collect_all_refs=True,
@@ -366,7 +366,7 @@ class FlextInfraCodegenConstantDetection:
         return [
             definition
             for definition in definitions
-            if FlextInfraCodegenConstantDetection.canonical_reference_for(
+            if FlextInfraUtilitiesCodegenConstantDetection.canonical_reference_for(
                 definition.name,
                 definition.value_repr,
             )
@@ -605,14 +605,14 @@ class FlextInfraCodegenConstantDetection:
         max_files: int,
     ) -> tuple[dict, set[str], dict]:
         """Shared logic: extract attributes and usages for a class."""
-        attrs = FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
+        attrs = FlextInfraUtilitiesCodegenConstantDetection.extract_class_attributes_with_mro(
             class_path
         )
         if not attrs:
             return {}, set(), {}
         simple_class_name = class_path.rsplit(".", 1)[-1]
         used_attrs, usage_map = (
-            FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
+            FlextInfraUtilitiesCodegenConstantDetection.scan_class_attribute_usages(
                 root_path, simple_class_name, exclude_patterns, max_files
             )
         )
@@ -627,7 +627,7 @@ class FlextInfraCodegenConstantDetection:
     ) -> dict:
         """Comprehensive census of all objects in a class."""
         attrs, used_attrs, usage_map = (
-            FlextInfraCodegenConstantDetection._analyze_class_internal(
+            FlextInfraUtilitiesCodegenConstantDetection._analyze_class_internal(
                 class_path, root_path, exclude_patterns, max_files
             )
         )
@@ -662,7 +662,7 @@ class FlextInfraCodegenConstantDetection:
     ) -> list[dict]:
         """Propose fixes to deduplicate constant values across a class."""
         attrs, _, usage_map = (
-            FlextInfraCodegenConstantDetection._analyze_class_internal(
+            FlextInfraUtilitiesCodegenConstantDetection._analyze_class_internal(
                 class_path, root_path, exclude_patterns, max_files
             )
         )
@@ -789,4 +789,4 @@ class FlextInfraCodegenConstantDetection:
         }
 
 
-__all__ = ["FlextInfraCodegenConstantDetection"]
+__all__ = ["FlextInfraUtilitiesCodegenConstantDetection"]

@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 from flext_infra import (
-    FlextInfraCodegenAstParsing,
-    FlextInfraCodegenConstantDetection,
-    FlextInfraCodegenConstantTransformation,
-    FlextInfraCodegenExecution,
-    FlextInfraCodegenGovernance,
+    FlextInfraUtilitiesCodegenAstParsing,
+    FlextInfraUtilitiesCodegenConstantDetection,
+    FlextInfraUtilitiesCodegenConstantTransformation,
+    FlextInfraUtilitiesCodegenExecution,
+    FlextInfraUtilitiesCodegenGovernance,
 )
 
 
 class FlextInfraUtilitiesCodegen(
-    FlextInfraCodegenExecution,
-    FlextInfraCodegenAstParsing,
-    FlextInfraCodegenConstantDetection,
-    FlextInfraCodegenConstantTransformation,
-    FlextInfraCodegenGovernance,
+    FlextInfraUtilitiesCodegenExecution,
+    FlextInfraUtilitiesCodegenAstParsing,
+    FlextInfraUtilitiesCodegenConstantDetection,
+    FlextInfraUtilitiesCodegenConstantTransformation,
+    FlextInfraUtilitiesCodegenGovernance,
 ): ...
 
 

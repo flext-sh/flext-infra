@@ -22,7 +22,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
+class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
     """Code execution for artifact writing and file detection."""
 
     @staticmethod
@@ -197,4 +197,4 @@ class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):
         return []
 
 
-__all__ = ["FlextInfraCodegenExecution"]
+__all__ = ["FlextInfraUtilitiesCodegenExecution"]

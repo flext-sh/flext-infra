@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING, Final, override
 import libcst as cst
 
 from flext_infra import (
-    FlextInfraCodegenConstantDetection,
+    FlextInfraUtilitiesCodegenConstantDetection,
 )
 
 if TYPE_CHECKING:
     from flext_infra import m
 
 
-class FlextInfraCodegenConstantTransformation:
+class FlextInfraUtilitiesCodegenConstantTransformation:
     MIN_ATTRIBUTE_CHAIN: Final[int] = 2
 
     class CanonicalValueReplacer(cst.CSTTransformer):
@@ -31,7 +31,7 @@ class FlextInfraCodegenConstantTransformation:
                 (
                     item.name,
                     item.value_repr,
-                ): FlextInfraCodegenConstantDetection.canonical_reference_for(
+                ): FlextInfraUtilitiesCodegenConstantDetection.canonical_reference_for(
                     item.name,
                     item.value_repr,
                 )
@@ -142,8 +142,8 @@ class FlextInfraCodegenConstantTransformation:
             updated_node: cst.Attribute,
         ) -> cst.BaseExpression:
             del original_node
-            chain = FlextInfraCodegenConstantDetection.attribute_chain(updated_node)
-            if len(chain) < FlextInfraCodegenConstantTransformation.MIN_ATTRIBUTE_CHAIN:
+            chain = FlextInfraUtilitiesCodegenConstantDetection.attribute_chain(updated_node)
+            if len(chain) < FlextInfraUtilitiesCodegenConstantTransformation.MIN_ATTRIBUTE_CHAIN:
                 return updated_node
             if chain[0] != self._target_class:
                 return updated_node
@@ -160,7 +160,7 @@ class FlextInfraCodegenConstantTransformation:
             updated_node: cst.Module,
         ) -> cst.Module:
             del original_node
-            t = FlextInfraCodegenConstantTransformation
+            t = FlextInfraUtilitiesCodegenConstantTransformation
             if self.replacements == 0:
                 return updated_node
             new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
@@ -234,7 +234,7 @@ class FlextInfraCodegenConstantTransformation:
         parent_class: str,
         definitions: list[m.Infra.ConstantDefinition],
     ) -> tuple[bool, list[str]]:
-        t = FlextInfraCodegenConstantTransformation
+        t = FlextInfraUtilitiesCodegenConstantTransformation
         tree = cst.parse_module(file_path.read_text("utf-8"))
         transformer = t.CanonicalValueReplacer(
             parent_class=parent_class,
@@ -250,7 +250,7 @@ class FlextInfraCodegenConstantTransformation:
         file_path: Path,
         unused: list[m.Infra.UnusedConstant],
     ) -> tuple[bool, list[str]]:
-        t = FlextInfraCodegenConstantTransformation
+        t = FlextInfraUtilitiesCodegenConstantTransformation
         tree = cst.parse_module(file_path.read_text("utf-8"))
         transformer = t.UnusedConstantRemover(
             unused_names={item.name for item in unused},
@@ -266,7 +266,7 @@ class FlextInfraCodegenConstantTransformation:
         project_import: str,
         pkg_dir: Path | None = None,
     ) -> tuple[bool, list[str]]:
-        t = FlextInfraCodegenConstantTransformation
+        t = FlextInfraUtilitiesCodegenConstantTransformation
         parts = project_import.replace("from ", "").split(" import ")
         package_name = parts[0].strip() if parts else ""
         resolved_pkg_dir = pkg_dir
@@ -405,7 +405,7 @@ class FlextInfraCodegenConstantTransformation:
             return False, []
 
         package_name = pkg_dir.name
-        parent_pkg = FlextInfraCodegenConstantDetection.resolve_parent_package(pkg_dir)
+        parent_pkg = FlextInfraUtilitiesCodegenConstantDetection.resolve_parent_package(pkg_dir)
         if parent_pkg.startswith(f"{package_name}.") or parent_pkg == package_name:
             return False, []
         cycle_edges: set[tuple[str, str]] = set()
@@ -499,4 +499,4 @@ class FlextInfraCodegenConstantTransformation:
         return any_modified, all_changes
 
 
-__all__ = ["FlextInfraCodegenConstantTransformation"]
+__all__ = ["FlextInfraUtilitiesCodegenConstantTransformation"]
