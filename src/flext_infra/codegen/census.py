@@ -168,7 +168,8 @@ class FlextInfraCodegenCensus(s[bool]):
             for definition in hardcoded
         )
 
-        all_used_names: set[str] = set()
+        # Detect duplicate constants (same name or value across projects)
+        all_definitions: list[m.Infra.ConstantDefinition] = []
         discovery = FlextInfraUtilitiesDiscovery()
         projects_result = discovery.discover_projects(self._workspace_root)
         if projects_result.is_success:
@@ -176,17 +177,66 @@ class FlextInfraCodegenCensus(s[bool]):
                 projects_result.unwrap()
             )
             for discovered_project in discovered_projects:
+                discovered_pkg: Path | None = None
+                discovered_src = discovered_project.path / c.Infra.Paths.DEFAULT_SRC_DIR
+                if not discovered_src.is_dir():
+                    continue
+                for child in sorted(discovered_src.iterdir()):
+                    if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
+                        discovered_pkg = child
+                        break
+                if discovered_pkg is None:
+                    continue
+                discovered_constants = discovered_pkg / "constants.py"
+                if not discovered_constants.exists():
+                    continue
+                defs = FlextInfraCodegenConstantDetection.extract_constant_definitions(
+                    discovered_constants,
+                    discovered_project.name,
+                )
+                all_definitions.extend(defs)
+
+        duplicates = FlextInfraCodegenConstantDetection.detect_duplicate_constants(
+            all_definitions,
+        )
+        violations.extend(
+            m.Infra.CensusViolation(
+                module=dup.definitions[0].file_path,
+                rule="NS-006",
+                line=dup.definitions[0].line,
+                message=(
+                    f"Duplicate constant '{dup.constant_name}' found in {len(dup.definitions)} locations. "
+                    f"Value match: {dup.is_value_identical}"
+                ),
+                fixable=False,
+            )
+            for dup in duplicates
+            if len(dup.definitions) > 1
+        )
+
+        # Scan all usages across workspace
+        all_used_names: set[str] = set()
+        all_usage_map: dict[str, list[tuple[str, int]]] = {}
+
+        if projects_result.is_success:
+            discovered_projects = projects_result.unwrap()
+            for discovered_project in discovered_projects:
                 discovered_src = discovered_project.path / c.Infra.Paths.DEFAULT_SRC_DIR
                 if not discovered_src.is_dir():
                     continue
                 for py_file in sorted(discovered_src.rglob("*.py")):
-                    used_names, _ = (
+                    used_names, _, all_refs = (
                         FlextInfraCodegenConstantDetection.scan_constant_usages(
                             file_path=py_file,
                             project=discovered_project.name,
+                            collect_all_refs=True,
                         )
                     )
                     all_used_names.update(used_names)
+                    for const_name, line_num in all_refs:
+                        if const_name not in all_usage_map:
+                            all_usage_map[const_name] = []
+                        all_usage_map[const_name].append((str(py_file), line_num))
 
         unused_constants = FlextInfraCodegenConstantDetection.detect_unused_constants(
             definitions=definitions,
@@ -206,7 +256,7 @@ class FlextInfraCodegenCensus(s[bool]):
         for py_file in sorted(src_dir.rglob("*.py")):
             if py_file.name == "constants.py":
                 continue
-            _, direct_refs = FlextInfraCodegenConstantDetection.scan_constant_usages(
+            _, direct_refs, _ = FlextInfraCodegenConstantDetection.scan_constant_usages(
                 file_path=py_file,
                 project=project.name,
             )

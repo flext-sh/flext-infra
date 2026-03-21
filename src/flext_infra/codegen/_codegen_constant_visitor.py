@@ -82,26 +82,34 @@ class FlextInfraCodegenConstantDetection:
             project: str,
             file_path: str,
             target_class: str = "",
+            collect_all_refs: bool = False,
         ) -> None:
             super().__init__()
             self._project = project
             self._file_path = file_path
             self._target_class = target_class
+            self._collect_all_refs = collect_all_refs
             self._render = FlextInfraCodegenConstantDetection.RenderContext(
                 Path(file_path).read_text("utf-8"),
             )
             self.used_constants: set[str] = set()
             self.direct_refs: list[m.Infra.DirectConstantRef] = []
+            self.all_constant_refs: list[tuple[str, int]] = []  # (name, line)
 
         @override
         def visit_Attribute(self, node: cst.Attribute) -> None:
             det = FlextInfraCodegenConstantDetection
-            if (
-                isinstance(node.value, cst.Attribute)
-                and det.root_name(node.value) == "c"
-            ):
-                self.used_constants.add(node.attr.value)
+            root = det.root_name(node)
 
+            # Track all c.* usage (generic)
+            if isinstance(node.value, cst.Attribute) and root == "c":
+                constant_name = node.attr.value
+                self.used_constants.add(constant_name)
+                if self._collect_all_refs:
+                    line = self._render.line_for_node(node)
+                    self.all_constant_refs.append((constant_name, line))
+
+            # Track FlextXxxConstants.* patterns (direct refs)
             chain = det.attribute_chain(node)
             if (
                 len(chain)
@@ -113,18 +121,27 @@ class FlextInfraCodegenConstantDetection:
                 chain[0],
             ):
                 return
-            if self._target_class and chain[0] != self._target_class:
+            if (
+                self._target_class
+                and chain[0] != self._target_class
+                and not self._collect_all_refs
+            ):
                 return
 
-            self.direct_refs.append(
-                m.Infra.DirectConstantRef(
-                    full_ref=".".join(chain),
-                    alias_ref=".".join(["c", *chain[1:]]),
-                    file_path=self._file_path,
-                    project=self._project,
-                    line=self._render.line_for_node(node),
-                ),
+            line = self._render.line_for_node(node)
+            ref = m.Infra.DirectConstantRef(
+                full_ref=".".join(chain),
+                alias_ref=".".join(["c", *chain[1:]]),
+                file_path=self._file_path,
+                project=self._project,
+                line=line,
             )
+            self.direct_refs.append(ref)
+
+            if self._collect_all_refs:
+                # Also track the attribute name for duplicates analysis
+                constant_name = chain[-1]
+                self.all_constant_refs.append((constant_name, line))
 
     @staticmethod
     def attribute_chain(expr: cst.BaseExpression) -> list[str]:
@@ -208,31 +225,150 @@ class FlextInfraCodegenConstantDetection:
         return visitor.definitions
 
     @staticmethod
+    def extract_all_constant_definitions(
+        root_path: Path,
+        exclude_packages: frozenset[str] | None = None,
+    ) -> dict[str, list[m.Infra.ConstantDefinition]]:
+        """Extract all constant definitions from all Python files (generic).
+
+        Scans recursively for files named constants.py or any class with Final attrs.
+
+        Args:
+            root_path: Root directory to scan
+            exclude_packages: Package names to skip
+
+        Returns:
+            Dict mapping project_name -> list of ConstantDefinitions
+
+        """
+        if exclude_packages is None:
+            exclude_packages = frozenset()
+
+        all_defs: dict[str, list[m.Infra.ConstantDefinition]] = {}
+
+        for py_file in root_path.rglob("*.py"):
+            # Skip excluded packages
+            if any(excl in py_file.parts for excl in exclude_packages):
+                continue
+
+            # Infer project name from path structure
+            try:
+                parts = py_file.relative_to(root_path).parts
+                if "src" in parts:
+                    src_idx = parts.index("src")
+                    if src_idx + 1 < len(parts):
+                        project_name = parts[src_idx + 1].replace("_", "-")
+                    else:
+                        project_name = "unknown"
+                else:
+                    project_name = "unknown"
+            except ValueError:
+                project_name = "unknown"
+
+            defs = FlextInfraCodegenConstantDetection.extract_constant_definitions(
+                py_file,
+                project_name,
+            )
+            if defs:
+                if project_name not in all_defs:
+                    all_defs[project_name] = []
+                all_defs[project_name].extend(defs)
+
+        return all_defs
+
+    @staticmethod
     def scan_constant_usages(
         file_path: Path,
         project: str,
         *,
         target_class: str = "",
-    ) -> tuple[set[str], list[m.Infra.DirectConstantRef]]:
+        collect_all_refs: bool = False,
+    ) -> tuple[set[str], list[m.Infra.DirectConstantRef], list[tuple[str, int]]]:
+        """Scan constant usages in a file.
+
+        Args:
+            file_path: File to scan
+            project: Project name
+            target_class: Optional target class (e.g., 'FlextAuthConstants')
+            collect_all_refs: If True, collect all refs regardless of target_class
+
+        Returns:
+            Tuple of (used_names_set, direct_refs, all_refs_with_lines)
+
+        """
         try:
             source = file_path.read_text("utf-8")
             tree = cst.parse_module(source)
         except (cst.ParserSyntaxError, UnicodeDecodeError):
-            return set(), []
-        if not target_class:
+            return set(), [], []
+
+        if not target_class and not collect_all_refs:
             pkg_name = file_path.parent.name
             while pkg_name.startswith("_") and file_path.parent.parent.name != "src":
                 pkg_name = file_path.parent.parent.name
             target_class = (
                 "".join(part.capitalize() for part in pkg_name.split("_")) + "Constants"
             )
+
         visitor = FlextInfraCodegenConstantDetection.UsageVisitor(
             project=project,
             file_path=str(file_path),
             target_class=target_class,
+            collect_all_refs=collect_all_refs,
         )
         tree.visit(visitor)
-        return visitor.used_constants, visitor.direct_refs
+        return visitor.used_constants, visitor.direct_refs, visitor.all_constant_refs
+
+    @staticmethod
+    def scan_all_constant_usages(
+        root_path: Path,
+        exclude_packages: frozenset[str] | None = None,
+    ) -> dict[str, list[tuple[str, int]]]:
+        """Scan all constant usages across workspace (generic).
+
+        Args:
+            root_path: Root directory to scan
+            exclude_packages: Package names to skip
+
+        Returns:
+            Dict mapping constant_name -> [(file_path, line_number), ...]
+
+        """
+        if exclude_packages is None:
+            exclude_packages = frozenset()
+
+        usage_map: dict[str, list[tuple[str, int]]] = {}
+
+        for py_file in root_path.rglob("*.py"):
+            if any(excl in py_file.parts for excl in exclude_packages):
+                continue
+
+            # Infer project name
+            try:
+                parts = py_file.relative_to(root_path).parts
+                if "src" in parts:
+                    src_idx = parts.index("src")
+                    if src_idx + 1 < len(parts):
+                        project_name = parts[src_idx + 1].replace("_", "-")
+                    else:
+                        project_name = "unknown"
+                else:
+                    project_name = "unknown"
+            except ValueError:
+                project_name = "unknown"
+
+            _, _, all_refs = FlextInfraCodegenConstantDetection.scan_constant_usages(
+                py_file,
+                project_name,
+                collect_all_refs=True,
+            )
+
+            for constant_name, line_num in all_refs:
+                if constant_name not in usage_map:
+                    usage_map[constant_name] = []
+                usage_map[constant_name].append((str(py_file), line_num))
+
+        return usage_map
 
     @staticmethod
     def detect_hardcoded_canonicals(
@@ -266,6 +402,95 @@ class FlextInfraCodegenConstantDetection:
                 definition.value_repr,
             )
         ]
+
+    @staticmethod
+    def detect_duplicate_constants(
+        definitions: list[m.Infra.ConstantDefinition],
+    ) -> list[m.Infra.DuplicateConstantGroup]:
+        """Detect duplicate constants by name and value across projects.
+
+        Groups constants that have:
+        - Same name (semantic duplicates)
+        - Same value (potential consolidation candidates)
+        """
+        # Group by name
+        by_name: dict[str, list[m.Infra.ConstantDefinition]] = {}
+        for defn in definitions:
+            if defn.name not in by_name:
+                by_name[defn.name] = []
+            by_name[defn.name].append(defn)
+
+        # Group by value (for value duplicates)
+        by_value: dict[str, list[m.Infra.ConstantDefinition]] = {}
+        for defn in definitions:
+            value_key = defn.value_repr
+            if value_key not in by_value:
+                by_value[value_key] = []
+            by_value[value_key].append(defn)
+
+        duplicates: list[m.Infra.DuplicateConstantGroup] = []
+
+        # Name-based duplicates (at least 2 definitions)
+        for name, defs in by_name.items():
+            if len(defs) > 1:
+                values = {d.value_repr for d in defs}
+                duplicates.append(
+                    m.Infra.DuplicateConstantGroup(
+                        constant_name=name,
+                        definitions=defs,
+                        is_value_identical=len(values) == 1,
+                        canonical_ref="",
+                    )
+                )
+
+        # Value-based duplicates (different names, same value)
+        for value_key, defs in by_value.items():
+            if len(defs) > 1:
+                # Check if already captured by name
+                unique_names = {d.name for d in defs}
+                if len(unique_names) > 1:
+                    duplicates.append(
+                        m.Infra.DuplicateConstantGroup(
+                            constant_name=f"[value: {value_key}]",
+                            definitions=defs,
+                            is_value_identical=True,
+                            canonical_ref="",
+                        )
+                    )
+
+        return duplicates
+
+    @staticmethod
+    def build_constant_usage_map(
+        definitions: list[m.Infra.ConstantDefinition],
+        all_usages: dict[str, list[tuple[str, int]]],
+    ) -> dict[str, list[dict[str, object]]]:
+        """Build a map of where each constant is used.
+
+        Args:
+            definitions: All constant definitions
+            all_usages: Map of constant_name -> [(file_path, line_number), ...]
+
+        Returns:
+            Map of constant_name -> [usage_info, ...]
+
+        """
+        usage_map: dict[str, list[dict[str, object]]] = {}
+
+        for defn in definitions:
+            constant_key = defn.name
+            if constant_key not in all_usages:
+                usage_map[constant_key] = []
+            else:
+                usage_map[constant_key] = [
+                    {
+                        "file": file_path,
+                        "line": line_num,
+                    }
+                    for file_path, line_num in all_usages[constant_key]
+                ]
+
+        return usage_map
 
     @staticmethod
     def build_self_import_graph(pkg_dir: Path) -> dict[str, set[str]]:
