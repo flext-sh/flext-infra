@@ -330,17 +330,18 @@ class FlextInfraCodegenLazyInit(s[int]):
         pkg_dir: Path,
         current_pkg: str,
     ) -> dict[str, tuple[str, str]]:
-        """Scan sibling ``.py`` files for exports.
+        """Scan sibling ``.py`` files for exports (including nested submodules).
 
-        For each non-private, non-dunder sibling ``.py`` file:
+        For each non-private, non-dunder sibling ``.py`` file (at any depth):
 
         1. If it has ``__all__`` → use those names.
         2. If no ``__all__`` → scan AST for public classes/functions/assignments.
 
+        Recursively discovers exports at unlimited hierarchy depth.
         Returns ``{export_name: (module_path, attr_name)}``.
         """
         index: dict[str, tuple[str, str]] = {}
-        for py_file in sorted(pkg_dir.glob("*.py")):
+        for py_file in sorted(pkg_dir.rglob("*.py")):
             if py_file.name in {"__init__.py", "__main__.py", "__version__.py"}:
                 continue
             if py_file.name.startswith("_"):
@@ -348,8 +349,12 @@ class FlextInfraCodegenLazyInit(s[int]):
             if py_file.stem[0:1].isdigit():
                 continue
 
-            mod_stem = py_file.stem
+            # Build full module path from relative path
+            rel_path = py_file.relative_to(pkg_dir)
+            mod_parts = rel_path.with_suffix("").parts
+            mod_stem = ".".join(mod_parts)
             mod_path = f"{current_pkg}.{mod_stem}" if current_pkg else mod_stem
+
             sibling_tree = u.Infra.parse_module_ast(py_file)
             if sibling_tree is None:
                 output.warning(f"skipping {py_file.name}: parse failed")

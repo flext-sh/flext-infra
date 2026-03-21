@@ -80,7 +80,7 @@ if TYPE_CHECKING:
         GateExecution,
         ProjectResult,
     )
-    from flext_infra.check.workspace_check import build_parser, run_cli
+    from flext_infra.check.workspace_check import build_parser, main, run_cli
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.constants_quality_gate import (
         FlextInfraCodegenConstantsQualityGate,
@@ -135,13 +135,55 @@ if TYPE_CHECKING:
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
+    from flext_infra.refactor._detectors.class_placement_detector import (
+        ClassPlacementDetector,
+    )
+    from flext_infra.refactor._detectors.compatibility_alias_detector import (
+        CompatibilityAliasDetector,
+    )
+    from flext_infra.refactor._detectors.cyclic_import_detector import (
+        CyclicImportDetector,
+    )
+    from flext_infra.refactor._detectors.dependency_analyzer_base import (
+        DependencyAnalyzer,
+    )
+    from flext_infra.refactor._detectors.future_annotations_detector import (
+        FutureAnnotationsDetector,
+    )
+    from flext_infra.refactor._detectors.import_alias_detector import (
+        ImportAliasDetector,
+    )
     from flext_infra.refactor._detectors.import_collector import ImportCollector
+    from flext_infra.refactor._detectors.internal_import_detector import (
+        InternalImportDetector,
+    )
+    from flext_infra.refactor._detectors.loose_object_detector import (
+        LooseObjectDetector,
+    )
+    from flext_infra.refactor._detectors.manual_protocol_detector import (
+        ManualProtocolDetector,
+    )
+    from flext_infra.refactor._detectors.manual_typing_alias_detector import (
+        ManualTypingAliasDetector,
+    )
     from flext_infra.refactor._detectors.module_loader import (
         DetectorScanResultBuilder,
         FlextInfraRefactorDetectorModuleLoader,
     )
+    from flext_infra.refactor._detectors.mro_completeness_detector import (
+        MROCompletenessDetector,
+    )
+    from flext_infra.refactor._detectors.namespace_facade_scanner import (
+        NamespaceFacadeScanner,
+    )
+    from flext_infra.refactor._detectors.namespace_source_detector import (
+        NamespaceSourceDetector,
+    )
     from flext_infra.refactor._detectors.python_module_loader_mixin import (
         FlextInfraRefactorDetectorPythonModuleLoaderMixin,
+    )
+    from flext_infra.refactor._detectors.runtime_alias_detector import (
+        RuntimeAliasDetector,
     )
     from flext_infra.refactor.analysis import (
         FlextInfraRefactorClassNestingAnalyzer,
@@ -150,21 +192,7 @@ if TYPE_CHECKING:
     from flext_infra.refactor.census import FlextInfraRefactorCensus
     from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
     from flext_infra.refactor.dependency_analyzer import (
-        ClassPlacementDetector,
-        CompatibilityAliasDetector,
-        CyclicImportDetector,
-        DependencyAnalyzer,
         FlextInfraRefactorDependencyAnalyzerFacade,
-        FutureAnnotationsDetector,
-        ImportAliasDetector,
-        InternalImportDetector,
-        LooseObjectDetector,
-        ManualProtocolDetector,
-        ManualTypingAliasDetector,
-        MROCompletenessDetector,
-        NamespaceFacadeScanner,
-        NamespaceSourceDetector,
-        RuntimeAliasDetector,
     )
     from flext_infra.refactor.engine import FlextInfraRefactorEngine
     from flext_infra.refactor.migrate_to_class_mro import (
@@ -345,11 +373,11 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "ClassNestingRefactorRule",
     ),
     "ClassPlacementDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.class_placement_detector",
         "ClassPlacementDetector",
     ),
     "CompatibilityAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.compatibility_alias_detector",
         "CompatibilityAliasDetector",
     ),
     "ConsolidateGroupsPhase": (
@@ -357,11 +385,11 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "ConsolidateGroupsPhase",
     ),
     "CyclicImportDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.cyclic_import_detector",
         "CyclicImportDetector",
     ),
     "DependencyAnalyzer": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.dependency_analyzer_base",
         "DependencyAnalyzer",
     ),
     "DetectorScanResultBuilder": (
@@ -842,7 +870,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraWorkspaceDetector",
     ),
     "FutureAnnotationsDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.future_annotations_detector",
         "FutureAnnotationsDetector",
     ),
     "GateExecution": ("flext_infra.check.services", "GateExecution"),
@@ -851,7 +879,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "HelperConsolidationTransformer",
     ),
     "ImportAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.import_alias_detector",
         "ImportAliasDetector",
     ),
     "ImportCollector": (
@@ -863,23 +891,23 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "InjectCommentsPhase",
     ),
     "InternalImportDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.internal_import_detector",
         "InternalImportDetector",
     ),
     "LooseObjectDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.loose_object_detector",
         "LooseObjectDetector",
     ),
     "MROCompletenessDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.mro_completeness_detector",
         "MROCompletenessDetector",
     ),
     "ManualProtocolDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.manual_protocol_detector",
         "ManualProtocolDetector",
     ),
     "ManualTypingAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.manual_typing_alias_detector",
         "ManualTypingAliasDetector",
     ),
     "ModelDefinitionCollector": (
@@ -895,11 +923,11 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "NamespaceEnforcementRewriter",
     ),
     "NamespaceFacadeScanner": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.namespace_facade_scanner",
         "NamespaceFacadeScanner",
     ),
     "NamespaceSourceDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.namespace_source_detector",
         "NamespaceSourceDetector",
     ),
     "NestedClassPropagationTransformer": (
@@ -919,7 +947,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "ProjectResult": ("flext_infra.check.services", "ProjectResult"),
     "RuntimeAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor._detectors.runtime_alias_detector",
         "RuntimeAliasDetector",
     ),
     "Tier0ImportAnalysis": (
@@ -979,6 +1007,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "h": ("flext_core", "h"),
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "m": ("flext_infra.models", "FlextInfraModels"),
+    "main": ("flext_infra.check.workspace_check", "main"),
     "maintenance": ("flext_infra.workspace.maintenance", ""),
     "output": ("flext_infra._utilities.output", "output"),
     "p": ("flext_infra.protocols", "FlextInfraProtocols"),
@@ -1202,6 +1231,7 @@ __all__ = [
     "h",
     "logger",
     "m",
+    "main",
     "maintenance",
     "output",
     "p",

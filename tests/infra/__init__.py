@@ -238,7 +238,6 @@ if TYPE_CHECKING:
         test_workspace_check_main_returns_error_without_projects,
     )
     from .unit.codegen.autofix import (
-        fixer,
         test_in_context_typevar_not_flagged,
         test_standalone_final_detected_as_fixable,
         test_standalone_typealias_detected_as_fixable,
@@ -355,7 +354,6 @@ if TYPE_CHECKING:
     )
     from .unit.deps.test_detector_main import (
         TestFlextInfraRuntimeDevDependencyDetectorRunTypings,
-        TestMainFunction,
     )
     from .unit.deps.test_detector_models import TestFlextInfraDependencyDetectorModels
     from .unit.deps.test_detector_report import (
@@ -500,7 +498,6 @@ if TYPE_CHECKING:
         test_detect_mode_with_nonexistent_path,
         test_detect_mode_with_path_object,
     )
-    from .unit.deps.test_path_sync_main import TestMain
     from .unit.deps.test_path_sync_main_edges import TestMainEdgeCases
     from .unit.deps.test_path_sync_main_more import (
         test_main_discovery_failure,
@@ -561,6 +558,7 @@ if TYPE_CHECKING:
         TestFixerProcessFile,
         TestFixerScope,
         TestFixerToc,
+        fixer,
     )
     from .unit.docs.generator import TestGeneratorCore
     from .unit.docs.generator_internals import (
@@ -591,8 +589,13 @@ if TYPE_CHECKING:
         run_workflows,
     )
     from .unit.github.main_dispatch import TestRunPrWorkspace, run_pr_workspace
+    from .unit.github.main_integration import TestMain, main
     from .unit.github.pr import TestCreate, TestFlextInfraPrManager, TestStatus
-    from .unit.github.pr_cli import TestParseArgs, TestSelectorFunction
+    from .unit.github.pr_cli import (
+        TestMainFunction,
+        TestParseArgs,
+        TestSelectorFunction,
+    )
     from .unit.github.pr_init import TestGithubInit
     from .unit.github.pr_operations import (
         TestChecks,
@@ -621,6 +624,7 @@ if TYPE_CHECKING:
         TestMroFacadeMethods,
     )
     from .unit.io.test_infra_output_formatting import (
+        ANSI_RE,
         TestInfraOutputHeader,
         TestInfraOutputMessages,
         TestInfraOutputProgress,
@@ -710,6 +714,8 @@ if TYPE_CHECKING:
         test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates,
     )
     from .unit.refactor.test_infra_refactor_namespace_source import (
+        FAMILY_FILE_MAP,
+        FAMILY_SUFFIX_MAP,
         test_detects_only_wrong_alias_in_mixed_import,
         test_detects_same_project_submodule_alias_import,
         test_detects_wrong_source_m_import,
@@ -1025,6 +1031,7 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "ANSI_RE": ("tests.infra.unit.io.test_infra_output_formatting", "ANSI_RE"),
     "BrokenScenario": ("tests.infra.workspace_scenarios", "BrokenScenario"),
     "CheckProjectStub": (
         "tests.infra.unit.check.extended_run_projects",
@@ -1036,6 +1043,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "EngineSafetyStub": (
         "tests.infra.unit.refactor.test_infra_refactor_safety",
         "EngineSafetyStub",
+    ),
+    "FAMILY_FILE_MAP": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_source",
+        "FAMILY_FILE_MAP",
+    ),
+    "FAMILY_SUFFIX_MAP": (
+        "tests.infra.unit.refactor.test_infra_refactor_namespace_source",
+        "FAMILY_SUFFIX_MAP",
     ),
     "FlextInfraTestConstants": ("tests.infra.constants", "FlextInfraTestConstants"),
     "FlextInfraTestHelpers": ("tests.infra.helpers", "FlextInfraTestHelpers"),
@@ -1731,7 +1746,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_detection_typings",
         "TestLoadDependencyLimits",
     ),
-    "TestMain": ("tests.infra.unit.deps.test_path_sync_main", "TestMain"),
+    "TestMain": ("tests.infra.unit.github.main_integration", "TestMain"),
     "TestMainBaseMkValidate": (
         "tests.infra.unit.validate.main",
         "TestMainBaseMkValidate",
@@ -1755,10 +1770,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_main_dispatch",
         "TestMainExceptionHandling",
     ),
-    "TestMainFunction": (
-        "tests.infra.unit.deps.test_detector_main",
-        "TestMainFunction",
-    ),
+    "TestMainFunction": ("tests.infra.unit.github.pr_cli", "TestMainFunction"),
     "TestMainHelpAndErrors": (
         "tests.infra.unit.deps.test_main",
         "TestMainHelpAndErrors",
@@ -2395,7 +2407,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_path_sync_helpers",
         "extract_dep_name",
     ),
-    "fixer": ("tests.infra.unit.codegen.autofix", "fixer"),
+    "fixer": ("tests.infra.unit.docs.fixer_internals", "fixer"),
     "gen": ("tests.infra.unit.docs.generator_internals", "gen"),
     "git_repo": ("tests.infra.unit.test_infra_git", "git_repo"),
     "github": ("tests.infra.unit.github", ""),
@@ -2403,6 +2415,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "io": ("tests.infra.unit.io", ""),
     "is_external": ("tests.infra.unit.docs.auditor", "is_external"),
     "m": ("flext_infra", "m"),
+    "main": ("tests.infra.unit.github.main_integration", "main"),
     "normalize_link": ("tests.infra.unit.docs.auditor", "normalize_link"),
     "orchestrator": (
         "tests.infra.unit.test_infra_workspace_orchestrator",
@@ -3640,6 +3653,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 }
 
 __all__ = [
+    "ANSI_RE",
+    "FAMILY_FILE_MAP",
+    "FAMILY_SUFFIX_MAP",
     "BrokenScenario",
     "CheckProjectStub",
     "DependencyScenario",
@@ -4079,6 +4095,7 @@ __all__ = [
     "io",
     "is_external",
     "m",
+    "main",
     "normalize_link",
     "orchestrator",
     "p",
