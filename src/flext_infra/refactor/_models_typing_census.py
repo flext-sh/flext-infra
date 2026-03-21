@@ -7,6 +7,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraTypingCensusModels:
@@ -17,11 +18,11 @@ class FlextInfraTypingCensusModels:
 
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1, description="Source file path")]
-        line: Annotated[int, Field(ge=1, description="Line number")]
-        column: Annotated[int, Field(ge=0, description="Column offset")]
+        file: Annotated[t.NonEmptyStr, Field(description="Source file path")]
+        line: Annotated[t.PositiveInt, Field(description="Line number")]
+        column: Annotated[t.NonNegativeInt, Field(description="Column offset")]
         annotation_text: Annotated[
-            str, Field(min_length=1, description="Original annotation text")
+            t.NonEmptyStr, Field(description="Original annotation text")
         ]
         violation_kind: Annotated[
             str,
@@ -58,7 +59,7 @@ class FlextInfraTypingCensusModels:
             ),
         ]
         total_violations: Annotated[
-            int, Field(ge=0, description="Total violation count")
+            t.NonNegativeInt, Field(description="Total violation count")
         ]
         violations_by_kind: Annotated[
             dict[str, int],
@@ -67,9 +68,9 @@ class FlextInfraTypingCensusModels:
                 description="Violation counts by kind",
             ),
         ]
-        files_scanned: Annotated[int, Field(ge=0, description="Files scanned")]
+        files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
         parse_errors: Annotated[
-            int, Field(ge=0, description="Files that failed to parse")
+            t.NonNegativeInt, Field(description="Files that failed to parse")
         ]
 
     class UnusedModelViolation(FlextModels.FrozenStrictModel):
@@ -77,10 +78,10 @@ class FlextInfraTypingCensusModels:
 
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1, description="Source file path")]
-        line: Annotated[int, Field(ge=1, description="Line number")]
+        file: Annotated[t.NonEmptyStr, Field(description="Source file path")]
+        line: Annotated[t.PositiveInt, Field(description="Line number")]
         class_name: Annotated[
-            str, Field(min_length=1, description="Unused model class name")
+            t.NonEmptyStr, Field(description="Unused model class name")
         ]
         reason: Annotated[
             str,
@@ -100,17 +101,17 @@ class FlextInfraTypingCensusModels:
                 description="Unused model violations",
             ),
         ]
-        models_scanned: Annotated[int, Field(ge=0, description="Total models scanned")]
+        models_scanned: Annotated[t.NonNegativeInt, Field(description="Total models scanned")]
 
     class ViolationCensusRecord(FlextModels.FrozenStrictModel):
         """Single violation record in census."""
 
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1, description="Source file path")]
-        line: Annotated[int, Field(ge=1, description="Line number")]
+        file: Annotated[t.NonEmptyStr, Field(description="Source file path")]
+        line: Annotated[t.PositiveInt, Field(description="Line number")]
         kind: Annotated[
-            str, Field(min_length=1, description="Violation kind identifier")
+            t.NonEmptyStr, Field(description="Violation kind identifier")
         ]
         detail: Annotated[
             str,
@@ -134,7 +135,7 @@ class FlextInfraTypingCensusModels:
                 description="Counts by violation kind",
             ),
         ]
-        files_scanned: Annotated[int, Field(ge=0, description="Files scanned")]
+        files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
 
 
 __all__ = ["FlextInfraTypingCensusModels"]

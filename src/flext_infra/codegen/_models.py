@@ -7,6 +7,7 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraCodegenModels:
@@ -15,21 +16,15 @@ class FlextInfraCodegenModels:
     class CensusViolation(FlextModels.ArbitraryTypesModel):
         """A single namespace violation detected by the census service."""
 
-        module: Annotated[str, Field(min_length=1, description="Module file path")]
+        module: Annotated[t.NonEmptyStr, Field(description="Module file path")]
         rule: Annotated[
-            str,
-            Field(
-                min_length=1,
-                description="Violated rule identifier (e.g. NS-001)",
-            ),
+            t.NonEmptyStr,
+            Field(description="Violated rule identifier (e.g. NS-001)"),
         ]
-        line: Annotated[int, Field(ge=0, description="Line number of violation")]
+        line: Annotated[t.NonNegativeInt, Field(description="Line number of violation")]
         message: Annotated[
-            str,
-            Field(
-                min_length=1,
-                description="Human-readable violation message",
-            ),
+            t.NonEmptyStr,
+            Field(description="Human-readable violation message"),
         ]
         fixable: Annotated[
             bool,
@@ -39,7 +34,7 @@ class FlextInfraCodegenModels:
     class CensusReport(FlextModels.ArbitraryTypesModel):
         """Aggregated census report for a single project."""
 
-        project: Annotated[str, Field(min_length=1, description="Project name")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         violations: Annotated[
             list[FlextInfraCodegenModels.CensusViolation],
             Field(
@@ -47,16 +42,16 @@ class FlextInfraCodegenModels:
                 description="Detected violations",
             ),
         ]
-        total: Annotated[int, Field(ge=0, description="Total violation count")]
+        total: Annotated[t.NonNegativeInt, Field(description="Total violation count")]
         fixable: Annotated[
-            int,
-            Field(ge=0, description="Count of auto-fixable violations"),
+            t.NonNegativeInt,
+            Field(description="Count of auto-fixable violations"),
         ]
 
     class ScaffoldResult(FlextModels.ArbitraryTypesModel):
         """Result of scaffolding base modules for a project."""
 
-        project: Annotated[str, Field(min_length=1, description="Project name")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         files_created: Annotated[
             list[str],
             Field(
@@ -75,7 +70,7 @@ class FlextInfraCodegenModels:
     class AutoFixResult(FlextModels.ArbitraryTypesModel):
         """Result of auto-fixing namespace violations for a project."""
 
-        project: Annotated[str, Field(min_length=1, description="Project name")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         violations_fixed: Annotated[
             list[FlextInfraCodegenModels.CensusViolation],
             Field(
@@ -129,7 +124,7 @@ class FlextInfraCodegenModels:
     class QualityGateCheck(FlextModels.ArbitraryTypesModel):
         """A single quality gate check result entry."""
 
-        name: Annotated[str, Field(min_length=1, description="Check identifier")]
+        name: Annotated[t.NonEmptyStr, Field(description="Check identifier")]
         passed: Annotated[bool, Field(description="Whether check passed")]
         detail: Annotated[
             str,
@@ -140,30 +135,27 @@ class FlextInfraCodegenModels:
     class QualityGateProjectFinding(FlextModels.ArbitraryTypesModel):
         """Per-project quality gate findings."""
 
-        project: Annotated[str, Field(min_length=1, description="Project name")]
-        violations_total: Annotated[int, Field(ge=0, description="Total violations")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
+        violations_total: Annotated[t.NonNegativeInt, Field(description="Total violations")]
         fixable_violations: Annotated[
-            int,
-            Field(ge=0, description="Auto-fixable violations"),
+            t.NonNegativeInt,
+            Field(description="Auto-fixable violations"),
         ]
         validator_passed: Annotated[bool, Field(description="Whether validator passed")]
-        mro_failures: Annotated[int, Field(ge=0, description="MRO failure count")]
+        mro_failures: Annotated[t.NonNegativeInt, Field(description="MRO failure count")]
         layer_violations: Annotated[
-            int,
-            Field(ge=0, description="Layer violation count"),
+            t.NonNegativeInt,
+            Field(description="Layer violation count"),
         ]
         cross_project_reference_violations: Annotated[
-            int,
-            Field(
-                ge=0,
-                description="Cross-project reference violation count",
-            ),
+            t.NonNegativeInt,
+            Field(description="Cross-project reference violation count"),
         ]
 
     class ConstantDefinition(FlextModels.ArbitraryTypesModel):
         """A single constant extracted from a constants.py file."""
 
-        name: Annotated[str, Field(min_length=1, description="Constant identifier")]
+        name: Annotated[t.NonEmptyStr, Field(description="Constant identifier")]
         value_repr: Annotated[
             str,
             Field(description="Source repr (e.g., '30', '\"localhost\"')"),
@@ -173,8 +165,8 @@ class FlextInfraCodegenModels:
             Field(default="", description="Type annotation string"),
         ]
         file_path: Annotated[
-            str,
-            Field(min_length=1, description="Absolute file path"),
+            t.NonEmptyStr,
+            Field(description="Absolute file path"),
         ]
         class_path: Annotated[
             str,
@@ -183,19 +175,19 @@ class FlextInfraCodegenModels:
                 description="Nested class path (e.g., 'OracleWms.Connection')",
             ),
         ]
-        project: Annotated[str, Field(min_length=1, description="Project name")]
-        line: Annotated[int, Field(ge=1, description="Line number")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
+        line: Annotated[t.PositiveInt, Field(description="Line number")]
 
     class DuplicateConstantGroup(FlextModels.ArbitraryTypesModel):
         """Cross-project duplicate group with consolidation metadata."""
 
         constant_name: Annotated[
-            str,
-            Field(min_length=1, description="Constant identifier"),
+            t.NonEmptyStr,
+            Field(description="Constant identifier"),
         ]
         definitions: Annotated[
             list[FlextInfraCodegenModels.ConstantDefinition],
-            Field(min_length=2, description="Definitions across projects"),
+            Field(description="Definitions across projects"),
         ]
         is_value_identical: Annotated[
             bool,
@@ -209,35 +201,32 @@ class FlextInfraCodegenModels:
     class UnusedConstant(FlextModels.ArbitraryTypesModel):
         """Constant declared but never referenced in workspace."""
 
-        name: Annotated[str, Field(min_length=1, description="Constant identifier")]
+        name: Annotated[t.NonEmptyStr, Field(description="Constant identifier")]
         file_path: Annotated[
-            str,
-            Field(min_length=1, description="Declaration file path"),
+            t.NonEmptyStr,
+            Field(description="Declaration file path"),
         ]
         class_path: Annotated[str, Field(default="", description="Nested class path")]
-        project: Annotated[str, Field(min_length=1, description="Project name")]
-        line: Annotated[int, Field(ge=1, description="Line number")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
+        line: Annotated[t.PositiveInt, Field(description="Line number")]
 
     class DirectConstantRef(FlextModels.ArbitraryTypesModel):
         """Direct FlextXConstants.Y.Z reference that should use c.* alias."""
 
         full_ref: Annotated[
-            str,
-            Field(
-                min_length=1,
-                description="e.g., FlextAuthConstants.Auth.DEFAULT_TIMEOUT",
-            ),
+            t.NonEmptyStr,
+            Field(description="e.g., FlextAuthConstants.Auth.DEFAULT_TIMEOUT"),
         ]
         alias_ref: Annotated[
-            str,
-            Field(min_length=1, description="e.g., c.Auth.DEFAULT_TIMEOUT"),
+            t.NonEmptyStr,
+            Field(description="e.g., c.Auth.DEFAULT_TIMEOUT"),
         ]
         file_path: Annotated[
-            str,
-            Field(min_length=1, description="File containing the reference"),
+            t.NonEmptyStr,
+            Field(description="File containing the reference"),
         ]
-        project: Annotated[str, Field(min_length=1, description="Project name")]
-        line: Annotated[int, Field(ge=1, description="Line number")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
+        line: Annotated[t.PositiveInt, Field(description="Line number")]
 
     class CanonicalValueRule(FlextModels.ArbitraryTypesModel):
         value: int | str = Field(...)

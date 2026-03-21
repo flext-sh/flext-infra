@@ -463,7 +463,7 @@ class FlextInfraDepsModels:
     class DependencyReport(m.ArbitraryTypesModel):
         """Report of dependency detection for a single project."""
 
-        project: Annotated[str, Field(min_length=1, description="Project name")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         missing: Annotated[
             list[str],
             Field(
@@ -489,7 +489,7 @@ class FlextInfraDepsModels:
     class ModernizerFileChanges(m.ArbitraryTypesModel):
         """Modernizer changes for one pyproject file."""
 
-        file: Annotated[str, Field(min_length=1, description="Relative pyproject path")]
+        file: Annotated[t.NonEmptyStr, Field(description="Relative pyproject path")]
         changes: Annotated[
             list[str],
             Field(default_factory=list, description="Applied changes"),
@@ -522,12 +522,12 @@ class FlextInfraDepsModels:
         unused: Annotated[list[str], Field(default_factory=list)]
         transitive: Annotated[list[str], Field(default_factory=list)]
         dev_in_runtime: Annotated[list[str], Field(default_factory=list)]
-        raw_count: Annotated[int, Field(default=0, ge=0)]
+        raw_count: Annotated[t.NonNegativeInt, Field(default=0)]
 
     class ProjectDependencyReport(m.ArbitraryTypesModel):
         """Project-level dependency report combining deptry results."""
 
-        project: Annotated[str, Field(min_length=1)]
+        project: Annotated[t.NonEmptyStr, Field()]
         deptry: FlextInfraDepsModels.DeptryReport
 
     class TypingsReport(m.ArbitraryTypesModel):

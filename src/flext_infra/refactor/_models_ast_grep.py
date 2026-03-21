@@ -7,6 +7,7 @@ from typing import Annotated
 from pydantic import AliasPath, ConfigDict, Field
 
 from flext_core import FlextModels
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraRefactorAstGrepModels:
@@ -17,7 +18,7 @@ class FlextInfraRefactorAstGrepModels:
 
         model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-        file: Annotated[str, Field(min_length=1, description="Matched file path")]
+        file: Annotated[t.NonEmptyStr, Field(description="Matched file path")]
         symbol_name: Annotated[
             str | None,
             Field(
@@ -40,8 +41,8 @@ class FlextInfraRefactorAstGrepModels:
 
         model_config = ConfigDict(frozen=True)
 
-        symbol: Annotated[str, Field(min_length=1, description="Symbol name")]
-        line: Annotated[int, Field(ge=1, description="Source line number")]
+        symbol: Annotated[t.NonEmptyStr, Field(description="Symbol name")]
+        line: Annotated[t.PositiveInt, Field(description="Source line number")]
         kind: Annotated[
             str,
             Field(default="constant", description="constant|typevar|typealias"),
@@ -60,10 +61,10 @@ class FlextInfraRefactorAstGrepModels:
 
         model_config = ConfigDict(frozen=True)
 
-        module: Annotated[str, Field(min_length=1, description="Import module path")]
+        module: Annotated[t.NonEmptyStr, Field(description="Import module path")]
         import_name: Annotated[
             str,
-            Field(min_length=1, description="Imported symbol name"),
+            Field(description="Imported symbol name"),
         ]
         as_name: Annotated[
             str | None,
@@ -83,8 +84,8 @@ class FlextInfraRefactorAstGrepModels:
 
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1, description="Absolute file path")]
-        module: Annotated[str, Field(min_length=1, description="Import module path")]
+        file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
+        module: Annotated[t.NonEmptyStr, Field(description="Import module path")]
         constants_class: Annotated[
             str,
             Field(
@@ -107,8 +108,8 @@ class FlextInfraRefactorAstGrepModels:
     class MROFileMigration(FlextModels.ArbitraryTypesModel):
         """Migration summary for one transformed file."""
 
-        file: Annotated[str, Field(min_length=1, description="Absolute file path")]
-        module: Annotated[str, Field(min_length=1, description="Import module path")]
+        file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
+        module: Annotated[t.NonEmptyStr, Field(description="Import module path")]
         moved_symbols: Annotated[
             tuple[str, ...],
             Field(
@@ -127,10 +128,10 @@ class FlextInfraRefactorAstGrepModels:
     class MRORewriteResult(FlextModels.ArbitraryTypesModel):
         """Reference rewrite summary for one file."""
 
-        file: Annotated[str, Field(min_length=1, description="Absolute file path")]
+        file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
         replacements: Annotated[
             int,
-            Field(ge=0, description="Reference replacements applied"),
+            Field(description="Reference replacements applied"),
         ]
 
     class MROMigrationReport(FlextModels.ArbitraryTypesModel):
@@ -138,13 +139,13 @@ class FlextInfraRefactorAstGrepModels:
 
         workspace: Annotated[
             str,
-            Field(min_length=1, description="Workspace root path"),
+            Field(description="Workspace root path"),
         ]
-        target: Annotated[str, Field(min_length=1, description="constants|typings|all")]
+        target: Annotated[t.NonEmptyStr, Field(description="constants|typings|all")]
         dry_run: Annotated[bool, Field(description="Dry-run indicator")]
         files_scanned: Annotated[
             int,
-            Field(ge=0, description="Total scanned Python files"),
+            Field(description="Total scanned Python files"),
         ]
         files_with_candidates: Annotated[
             int,
@@ -174,7 +175,7 @@ class FlextInfraRefactorAstGrepModels:
                 description="Loose declarations remaining after run",
             ),
         ]
-        mro_failures: Annotated[int, Field(ge=0, description="MRO validation failures")]
+        mro_failures: Annotated[t.NonNegativeInt, Field(description="MRO validation failures")]
         stash_ref: Annotated[
             str,
             Field(default="", description="Git stash rollback ref"),

@@ -25,10 +25,10 @@ class FlextInfraTransformerImportNormalizer:
     class Violation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
-        current_import: Annotated[str, Field(min_length=1)]
-        suggested_import: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
+        current_import: Annotated[t.NonEmptyStr, Field()]
+        suggested_import: Annotated[t.NonEmptyStr, Field()]
         violation_type: Annotated[str, Field(pattern="^(deep|wrong_source)$")]
 
     class Context(FlextModels.ArbitraryTypesModel):

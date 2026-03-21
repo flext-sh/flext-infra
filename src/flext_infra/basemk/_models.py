@@ -8,6 +8,7 @@ from pydantic import Field
 
 from flext_core import FlextModels
 from flext_infra.constants import FlextInfraConstants as c
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraBasemkModels:
@@ -17,16 +18,16 @@ class FlextInfraBasemkModels:
         """Configuration model used to render base.mk templates."""
 
         project_name: Annotated[
-            str,
-            Field(min_length=1, description="Project identifier"),
+            t.NonEmptyStr,
+            Field(description="Project identifier"),
         ]
         python_version: Annotated[
-            str,
-            Field(min_length=1, description="Target Python version"),
+            t.NonEmptyStr,
+            Field(description="Target Python version"),
         ]
         core_stack: Annotated[
-            str,
-            Field(min_length=1, description="Core stack classification"),
+            t.NonEmptyStr,
+            Field(description="Core stack classification"),
         ]
         package_manager: Annotated[
             str,

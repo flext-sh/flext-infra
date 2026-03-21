@@ -7,6 +7,7 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraCoreModels:
@@ -27,8 +28,8 @@ class FlextInfraCoreModels:
         stderr: Annotated[str, Field(default="", description="Captured standard error")]
         exit_code: Annotated[int, Field(description="Command exit code")]
         duration: Annotated[
-            float,
-            Field(default=0.0, ge=0.0, description="Duration in seconds"),
+            t.NonNegativeFloat,
+            Field(default=0.0, description="Duration in seconds"),
         ] = 0.0
 
     class ValidationReport(FlextModels.ArbitraryTypesModel):
@@ -53,7 +54,7 @@ class FlextInfraCoreModels:
     class StubAnalysisReport(FlextModels.ArbitraryTypesModel):
         """Structured stub-chain analysis result for a project."""
 
-        project: Annotated[str, Field(min_length=1, description="Project name")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         mypy_hints: Annotated[
             list[str],
             Field(
@@ -75,17 +76,17 @@ class FlextInfraCoreModels:
                 description="Missing external imports without stubs",
             ),
         ]
-        total_missing: Annotated[int, Field(ge=0, description="Total missing imports")]
+        total_missing: Annotated[t.NonNegativeInt, Field(description="Total missing imports")]
 
     class PytestDiagnostics(FlextModels.ArbitraryTypesModel):
         """Extracted diagnostics summary from junit XML and pytest logs."""
 
-        failed_count: Annotated[int, Field(ge=0, description="Failed test case count")]
-        error_count: Annotated[int, Field(ge=0, description="Error trace count")]
-        warning_count: Annotated[int, Field(ge=0, description="Warning line count")]
+        failed_count: Annotated[t.NonNegativeInt, Field(description="Failed test case count")]
+        error_count: Annotated[t.NonNegativeInt, Field(description="Error trace count")]
+        warning_count: Annotated[t.NonNegativeInt, Field(description="Warning line count")]
         skipped_count: Annotated[
-            int,
-            Field(ge=0, description="Skipped test case count"),
+            t.NonNegativeInt,
+            Field(description="Skipped test case count"),
         ]
         failed_cases: Annotated[
             list[str],
@@ -127,8 +128,8 @@ class FlextInfraCoreModels:
         """Summary of written inventory report artifacts."""
 
         total_scripts: Annotated[
-            int,
-            Field(ge=0, description="Total discovered scripts"),
+            t.NonNegativeInt,
+            Field(description="Total discovered scripts"),
         ]
         reports_written: Annotated[
             list[str],

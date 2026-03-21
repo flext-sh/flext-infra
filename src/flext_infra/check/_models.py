@@ -60,8 +60,8 @@ class FlextInfraCheckModels:
     class GateResult(FlextModels.ArbitraryTypesModel):
         """Result summary for a single quality gate execution."""
 
-        gate: Annotated[str, Field(min_length=1, description="Gate name")]
-        project: Annotated[str, Field(min_length=1, description="Project name")]
+        gate: Annotated[t.NonEmptyStr, Field(description="Gate name")]
+        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         passed: Annotated[bool, Field(description="Gate execution status")]
         errors: Annotated[
             list[str],
@@ -71,8 +71,8 @@ class FlextInfraCheckModels:
             ),
         ] = Field(default_factory=lambda: list[str]())
         duration: Annotated[
-            float,
-            Field(default=0.0, ge=0.0, description="Duration in seconds"),
+            t.NonNegativeFloat,
+            Field(default=0.0, description="Duration in seconds"),
         ]
 
     class CheckResult(GateResult):

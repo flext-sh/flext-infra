@@ -7,6 +7,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraGithubModels:
@@ -16,11 +17,11 @@ class FlextInfraGithubModels:
         """Base model for PR execution result typing."""
 
         display: Annotated[
-            str,
-            Field(min_length=1, description="Repository display name"),
+            t.NonEmptyStr,
+            Field(description="Repository display name"),
         ]
-        status: Annotated[str, Field(min_length=1, description="Execution status")]
-        elapsed: Annotated[int, Field(ge=0, description="Elapsed time in seconds")]
+        status: Annotated[t.NonEmptyStr, Field(description="Execution status")]
+        elapsed: Annotated[t.NonNegativeInt, Field(description="Elapsed time in seconds")]
         exit_code: Annotated[int, Field(description="Process exit code")]
         log_path: Annotated[
             str | None,
@@ -33,9 +34,9 @@ class FlextInfraGithubModels:
     class PrOrchestrationResult(FlextModels.ArbitraryTypesModel):
         """Aggregated result of workspace-wide PR orchestration."""
 
-        total: Annotated[int, Field(ge=0, description="Total repositories processed")]
-        success: Annotated[int, Field(ge=0, description="Successful executions")]
-        fail: Annotated[int, Field(ge=0, description="Failed executions")]
+        total: Annotated[t.NonNegativeInt, Field(description="Total repositories processed")]
+        success: Annotated[t.NonNegativeInt, Field(description="Successful executions")]
+        fail: Annotated[t.NonNegativeInt, Field(description="Failed executions")]
         results: Annotated[
             tuple[FlextInfraGithubModels._PrExecutionResultModel, ...],
             Field(
@@ -53,7 +54,7 @@ class FlextInfraGithubModels:
     class WorkflowLintResult(FlextModels.ArbitraryTypesModel):
         """Structured result payload for workflow lint execution."""
 
-        status: Annotated[str, Field(min_length=1, description="Lint status")]
+        status: Annotated[t.NonEmptyStr, Field(description="Lint status")]
         reason: Annotated[
             str | None,
             Field(default=None, description="Skip reason"),

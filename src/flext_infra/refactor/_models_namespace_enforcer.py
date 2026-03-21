@@ -5,6 +5,7 @@ from typing import Annotated, Self
 from pydantic import ConfigDict, Field, JsonValue
 
 from flext_core import FlextModels
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraNamespaceEnforcerModels:
@@ -20,11 +21,11 @@ class FlextInfraNamespaceEnforcerModels:
     class FacadeStatus(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        family: Annotated[str, Field(min_length=1)]
+        family: Annotated[t.NonEmptyStr, Field()]
         exists: Annotated[bool, Field()]
         class_name: Annotated[str, Field(default="")]
         file: Annotated[str, Field(default="")]
-        symbol_count: Annotated[int, Field(default=0, ge=0)]
+        symbol_count: Annotated[t.NonNegativeInt, Field(default=0)]
 
         @classmethod
         def create(
@@ -47,9 +48,9 @@ class FlextInfraNamespaceEnforcerModels:
     class LooseObjectViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
-        name: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
+        name: Annotated[t.NonEmptyStr, Field()]
         kind: Annotated[str, Field()]
         suggestion: Annotated[str, Field(default="")]
 
@@ -74,8 +75,8 @@ class FlextInfraNamespaceEnforcerModels:
     class ImportAliasViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
         current_import: Annotated[str, Field()]
         suggested_import: Annotated[str, Field()]
 
@@ -101,11 +102,11 @@ class FlextInfraNamespaceEnforcerModels:
     class NamespaceSourceViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
-        alias: Annotated[str, Field(min_length=1)]
-        current_source: Annotated[str, Field(min_length=1)]
-        correct_source: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
+        alias: Annotated[t.NonEmptyStr, Field()]
+        current_source: Annotated[t.NonEmptyStr, Field()]
+        correct_source: Annotated[t.NonEmptyStr, Field()]
         current_import: Annotated[str, Field()]
         suggested_import: Annotated[str, Field()]
 
@@ -134,10 +135,10 @@ class FlextInfraNamespaceEnforcerModels:
     class ClassPlacementViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
-        name: Annotated[str, Field(min_length=1)]
-        base_class: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
+        name: Annotated[t.NonEmptyStr, Field()]
+        base_class: Annotated[t.NonEmptyStr, Field()]
         suggestion: Annotated[str, Field()]
 
         @classmethod
@@ -161,11 +162,11 @@ class FlextInfraNamespaceEnforcerModels:
     class MROCompletenessViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
-        family: Annotated[str, Field(min_length=1)]
-        facade_class: Annotated[str, Field(min_length=1)]
-        missing_base: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
+        family: Annotated[t.NonEmptyStr, Field()]
+        facade_class: Annotated[t.NonEmptyStr, Field()]
+        missing_base: Annotated[t.NonEmptyStr, Field()]
         suggestion: Annotated[str, Field()]
 
         @classmethod
@@ -191,8 +192,8 @@ class FlextInfraNamespaceEnforcerModels:
     class InternalImportViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
         current_import: Annotated[str, Field()]
         detail: Annotated[str, Field()]
 
@@ -218,9 +219,9 @@ class FlextInfraNamespaceEnforcerModels:
     class ManualProtocolViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
-        name: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
+        name: Annotated[t.NonEmptyStr, Field()]
         suggestion: Annotated[
             str,
             Field(default="Move to protocols.py/protocols/*.py/_protocols.py"),
@@ -257,8 +258,8 @@ class FlextInfraNamespaceEnforcerModels:
     class RuntimeAliasViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(default=0, ge=0)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.NonNegativeInt, Field(default=0)]
         kind: Annotated[str, Field()]
         alias: Annotated[str, Field()]
         detail: Annotated[str, Field(default="")]
@@ -284,7 +285,7 @@ class FlextInfraNamespaceEnforcerModels:
     class FutureAnnotationsViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
 
         @classmethod
         def create(cls, *, file: str) -> Self:
@@ -293,9 +294,9 @@ class FlextInfraNamespaceEnforcerModels:
     class ManualTypingAliasViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
-        name: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
+        name: Annotated[t.NonEmptyStr, Field()]
         detail: Annotated[str, Field(default="")]
 
         @classmethod
@@ -313,10 +314,10 @@ class FlextInfraNamespaceEnforcerModels:
     class CompatibilityAliasViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        line: Annotated[int, Field(ge=1)]
-        alias_name: Annotated[str, Field(min_length=1)]
-        target_name: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        line: Annotated[t.PositiveInt, Field()]
+        alias_name: Annotated[t.NonEmptyStr, Field()]
+        target_name: Annotated[t.NonEmptyStr, Field()]
 
         @classmethod
         def create(
@@ -337,9 +338,9 @@ class FlextInfraNamespaceEnforcerModels:
     class ParseFailureViolation(FlextModels.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
-        file: Annotated[str, Field(min_length=1)]
-        stage: Annotated[str, Field(min_length=1)]
-        error_type: Annotated[str, Field(min_length=1)]
+        file: Annotated[t.NonEmptyStr, Field()]
+        stage: Annotated[t.NonEmptyStr, Field()]
+        error_type: Annotated[t.NonEmptyStr, Field()]
         detail: Annotated[str, Field(default="")]
 
         @classmethod
@@ -355,7 +356,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class ProjectEnforcementReport(FlextModels.ArbitraryTypesModel):
-        project: Annotated[str, Field(min_length=1)]
+        project: Annotated[t.NonEmptyStr, Field()]
         project_root: Annotated[str, Field()]
         facade_statuses: Annotated[
             list[FlextInfraNamespaceEnforcerModels.FacadeStatus],
@@ -413,7 +414,7 @@ class FlextInfraNamespaceEnforcerModels:
             list[FlextInfraNamespaceEnforcerModels.ParseFailureViolation],
             Field(default_factory=list),
         ]
-        files_scanned: Annotated[int, Field(default=0, ge=0)]
+        files_scanned: Annotated[t.NonNegativeInt, Field(default=0)]
 
         @classmethod
         def create(
@@ -482,26 +483,26 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class WorkspaceEnforcementReport(FlextModels.ArbitraryTypesModel):
-        workspace: Annotated[str, Field(min_length=1)]
+        workspace: Annotated[t.NonEmptyStr, Field()]
         projects: Annotated[
             list[FlextInfraNamespaceEnforcerModels.ProjectEnforcementReport],
             Field(default_factory=list, description="Project enforcement reports"),
         ]
-        total_facades_missing: Annotated[int, Field(default=0, ge=0)]
-        total_loose_objects: Annotated[int, Field(default=0, ge=0)]
-        total_import_violations: Annotated[int, Field(default=0, ge=0)]
-        total_namespace_source_violations: Annotated[int, Field(default=0, ge=0)]
-        total_internal_import_violations: Annotated[int, Field(default=0, ge=0)]
-        total_manual_protocol_violations: Annotated[int, Field(default=0, ge=0)]
-        total_cyclic_imports: Annotated[int, Field(default=0, ge=0)]
-        total_runtime_alias_violations: Annotated[int, Field(default=0, ge=0)]
-        total_future_violations: Annotated[int, Field(default=0, ge=0)]
-        total_manual_typing_violations: Annotated[int, Field(default=0, ge=0)]
-        total_compatibility_alias_violations: Annotated[int, Field(default=0, ge=0)]
-        total_class_placement_violations: Annotated[int, Field(default=0, ge=0)]
-        total_mro_completeness_violations: Annotated[int, Field(default=0, ge=0)]
-        total_parse_failures: Annotated[int, Field(default=0, ge=0)]
-        total_files_scanned: Annotated[int, Field(default=0, ge=0)]
+        total_facades_missing: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_loose_objects: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_import_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_namespace_source_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_internal_import_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_manual_protocol_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_cyclic_imports: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_runtime_alias_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_future_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_manual_typing_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_compatibility_alias_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_class_placement_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_mro_completeness_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_parse_failures: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_files_scanned: Annotated[t.NonNegativeInt, Field(default=0)]
 
         @classmethod
         def create(

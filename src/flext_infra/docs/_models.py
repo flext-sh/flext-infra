@@ -9,6 +9,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 
 from flext_core import FlextModels
+from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraDocsModels:
@@ -35,12 +36,12 @@ class FlextInfraDocsModels:
             Field(default="", description="Item detail message"),
         ] = ""
         links: Annotated[
-            int,
-            Field(default=0, ge=0, description="Applied link fixes"),
+            t.NonNegativeInt,
+            Field(default=0, description="Applied link fixes"),
         ] = 0
         toc: Annotated[
-            int,
-            Field(default=0, ge=0, description="Applied TOC updates"),
+            t.NonNegativeInt,
+            Field(default=0, description="Applied TOC updates"),
         ] = 0
         path: Annotated[
             str,
@@ -54,7 +55,7 @@ class FlextInfraDocsModels:
     class FlextInfraDocScope(FlextModels.ArbitraryTypesModel):
         """Documentation scope targeting a project or workspace root."""
 
-        name: Annotated[str, Field(min_length=1, description="Scope name")]
+        name: Annotated[t.NonEmptyStr, Field(description="Scope name")]
         path: Annotated[Path, Field(description="Absolute path to scope root")]
         report_dir: Annotated[
             Path,
@@ -114,16 +115,16 @@ class FlextInfraDocsModels:
             Field(default=False, description="Whether phase passed"),
         ] = False
         changed_files: Annotated[
-            int,
-            Field(default=0, ge=0, description="Changed files count"),
+            t.NonNegativeInt,
+            Field(default=0, description="Changed files count"),
         ] = 0
         applied: Annotated[
             bool,
             Field(default=False, description="Apply mode flag"),
         ] = False
         generated: Annotated[
-            int,
-            Field(default=0, ge=0, description="Generated files count"),
+            t.NonNegativeInt,
+            Field(default=0, description="Generated files count"),
         ] = 0
         source: Annotated[
             str,
