@@ -10,7 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from flext_tests import m, u
+from flext_tests import tm
 
 from flext_infra import m
 from flext_infra.check.workspace_check import (
@@ -85,7 +85,7 @@ class TestRunProjectsValidation:
             ["invalid_gate"],
             reports_dir=tmp_path / "reports",
         )
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
     def test_skips_missing_projects(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
@@ -94,8 +94,8 @@ class TestRunProjectsValidation:
             ["lint"],
             reports_dir=tmp_path / "reports",
         )
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value), eq=0)
+        tm.ok(result)
+        tm.that(len(result.value), eq=0)
 
 
 class TestRunProjectsReports:
@@ -115,8 +115,8 @@ class TestRunProjectsReports:
         monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
         _setup_project(tmp_path, "p1")
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that((reports_dir / "check-report.md").exists(), eq=True)
+        tm.ok(result)
+        tm.that((reports_dir / "check-report.md").exists(), eq=True)
 
     def test_creates_sarif_report(
         self,
@@ -132,8 +132,8 @@ class TestRunProjectsReports:
         monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
         _setup_project(tmp_path, "p1")
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that((reports_dir / "check-report.sarif").exists(), eq=True)
+        tm.ok(result)
+        tm.that((reports_dir / "check-report.sarif").exists(), eq=True)
 
 
 class TestRunProjectsBehavior:
@@ -168,8 +168,8 @@ class TestRunProjectsBehavior:
             reports_dir=tmp_path / "reports",
             fail_fast=True,
         )
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(call_count[0], eq=1)
+        tm.ok(result)
+        tm.that(call_count[0], eq=1)
 
     def test_reports_errors(
         self,
@@ -194,9 +194,9 @@ class TestRunProjectsBehavior:
             ["lint"],
             reports_dir=tmp_path / "reports",
         )
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value), eq=1)
-        u.Tests.Matchers.that(result.value[0].total_errors, eq=1)
+        tm.ok(result)
+        tm.that(len(result.value), eq=1)
+        tm.that(result.value[0].total_errors, eq=1)
 
     def test_multiple_with_mixed_errors(
         self,
@@ -228,10 +228,10 @@ class TestRunProjectsBehavior:
             ["lint"],
             reports_dir=tmp_path / "reports",
         )
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value), eq=2)
-        u.Tests.Matchers.that(result.value[0].total_errors, eq=1)
-        u.Tests.Matchers.that(result.value[1].total_errors, eq=0)
+        tm.ok(result)
+        tm.that(len(result.value), eq=2)
+        tm.that(result.value[0].total_errors, eq=1)
+        tm.that(result.value[1].total_errors, eq=0)
 
 
 class TestRunSingleProject:
@@ -250,5 +250,5 @@ class TestRunSingleProject:
         )
         monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
         result = checker.run("p1", ["lint"])
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value), eq=1)
+        tm.ok(result)
+        tm.that(len(result.value), eq=1)

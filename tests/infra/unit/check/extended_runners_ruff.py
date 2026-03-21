@@ -13,7 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
@@ -60,8 +60,8 @@ class TestRunRuffLint:
             returncode=1,
         )
         result = checker._run_ruff_lint(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
-        u.Tests.Matchers.that(len(result.issues), eq=1)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=1)
 
     def test_run_ruff_lint_with_invalid_json(
         self,
@@ -76,7 +76,7 @@ class TestRunRuffLint:
             returncode=1,
         )
         result = checker._run_ruff_lint(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
+        tm.that(result.result.passed, eq=False)
 
 
 class TestRunRuffFormat:
@@ -95,8 +95,8 @@ class TestRunRuffFormat:
             returncode=1,
         )
         result = checker._run_ruff_format(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
-        u.Tests.Matchers.that(len(result.issues), eq=1)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=1)
 
     def test_run_ruff_format_with_simple_path(
         self,
@@ -111,8 +111,8 @@ class TestRunRuffFormat:
             returncode=1,
         )
         result = checker._run_ruff_format(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
-        u.Tests.Matchers.that(len(result.issues), eq=1)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=1)
 
     def test_run_ruff_format_deduplicates_files(
         self,
@@ -127,8 +127,8 @@ class TestRunRuffFormat:
             returncode=1,
         )
         result = checker._run_ruff_format(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
-        u.Tests.Matchers.that(len(result.issues), eq=2)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=2)
 
     def test_run_ruff_format_skips_empty_lines(
         self,
@@ -144,7 +144,7 @@ class TestRunRuffFormat:
             returncode=1,
         )
         result = checker._run_ruff_format(tmp_path)
-        u.Tests.Matchers.that(len(result.issues) >= 1, eq=True)
+        tm.that(len(result.issues) >= 1, eq=True)
 
 
 class TestRunCommand:
@@ -169,8 +169,8 @@ class TestRunCommand:
             tmp_path,
             FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
         )
-        u.Tests.Matchers.that(result.result.passed, eq=True)
-        u.Tests.Matchers.that(result.raw_output, eq="")
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.raw_output, eq="")
 
     def test_run_command_failure(
         self,
@@ -182,8 +182,8 @@ class TestRunCommand:
             tmp_path,
             FlextInfraRuffLintGate,
         )
-        u.Tests.Matchers.that(passed, eq=False)
-        u.Tests.Matchers.that(raw_output, contains="execution failed")
+        tm.that(passed, eq=False)
+        tm.that(raw_output, contains="execution failed")
 
 
 class TestCollectMarkdownFiles:
@@ -195,11 +195,11 @@ class TestCollectMarkdownFiles:
         (proj_dir / "docs").mkdir()
         (proj_dir / "docs" / "guide.md").write_text("# Guide")
         files = FlextInfraMarkdownGate(tmp_path)._collect_markdown_files(proj_dir)
-        u.Tests.Matchers.that(len(files), eq=2)
+        tm.that(len(files), eq=2)
 
     def test_collect_markdown_files_excludes_dirs(self, tmp_path: Path) -> None:
         proj_dir = h.mk_project(tmp_path, "p1", with_git=True)
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / ".git" / "README.md").write_text("# Git")
         files = FlextInfraMarkdownGate(tmp_path)._collect_markdown_files(proj_dir)
-        u.Tests.Matchers.that(len(files), eq=1)
+        tm.that(len(files), eq=1)

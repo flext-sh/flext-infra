@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tomlkit
-from flext_tests import u
+from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
@@ -13,7 +13,7 @@ _rewrite_pep621 = _PATH_SYNC._rewrite_pep621
 class TestRewritePep621:
     def test_rewrite_pep621_no_project(self) -> None:
         doc = TOMLDocument()
-        u.Tests.Matchers.that(
+        tm.that(
             _rewrite_pep621(doc, is_root=True, mode="workspace", internal_names=set()),
             eq=[],
         )
@@ -21,7 +21,7 @@ class TestRewritePep621:
     def test_rewrite_pep621_no_dependencies(self) -> None:
         doc = TOMLDocument()
         doc["project"] = tomlkit.table()
-        u.Tests.Matchers.that(
+        tm.that(
             _rewrite_pep621(doc, is_root=True, mode="workspace", internal_names=set()),
             eq=[],
         )
@@ -29,7 +29,7 @@ class TestRewritePep621:
     def test_rewrite_pep621_non_list_dependencies(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {"dependencies": "not-a-list"}
-        u.Tests.Matchers.that(
+        tm.that(
             _rewrite_pep621(doc, is_root=True, mode="workspace", internal_names=set()),
             eq=[],
         )
@@ -45,9 +45,9 @@ class TestRewritePep621:
             mode="workspace",
             internal_names={"flext-core"},
         )
-        u.Tests.Matchers.that(len(changes) > 0, eq=True)
+        tm.that(len(changes) > 0, eq=True)
         unwrapped = doc.unwrap()
-        u.Tests.Matchers.that(
+        tm.that(
             "flext-core @ file:./flext-core" in unwrapped["project"]["dependencies"][0],
             eq=True,
         )
@@ -55,7 +55,7 @@ class TestRewritePep621:
     def test_rewrite_pep621_skip_external_dep(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {"dependencies": ["requests>=2.0.0"]}
-        u.Tests.Matchers.that(
+        tm.that(
             _rewrite_pep621(
                 doc,
                 is_root=True,
@@ -78,9 +78,9 @@ class TestRewritePep621:
             mode="workspace",
             internal_names={"flext-core"},
         )
-        u.Tests.Matchers.that(len(changes) > 0, eq=True)
+        tm.that(len(changes) > 0, eq=True)
         unwrapped = doc.unwrap()
-        u.Tests.Matchers.that(
+        tm.that(
             'python_version >= "3.8"' in unwrapped["project"]["dependencies"][0],
             eq=True,
         )
@@ -96,7 +96,7 @@ class TestRewritePep621:
             mode="workspace",
             internal_names={"flext-core"},
         )
-        u.Tests.Matchers.that(len(changes), eq=1)
+        tm.that(len(changes), eq=1)
 
     def test_rewrite_pep621_subproject_mode(self) -> None:
         doc = TOMLDocument()
@@ -109,11 +109,9 @@ class TestRewritePep621:
             mode="workspace",
             internal_names={"flext-core"},
         )
-        u.Tests.Matchers.that(len(changes) > 0, eq=True)
+        tm.that(len(changes) > 0, eq=True)
         unwrapped = doc.unwrap()
-        u.Tests.Matchers.that(
-            "../flext-core" in unwrapped["project"]["dependencies"][0], eq=True
-        )
+        tm.that("../flext-core" in unwrapped["project"]["dependencies"][0], eq=True)
 
 
 def test_rewrite_pep621_non_string_item() -> None:
@@ -127,7 +125,7 @@ def test_rewrite_pep621_non_string_item() -> None:
         mode="workspace",
         internal_names={"flext-core"},
     )
-    u.Tests.Matchers.that(len(changes), eq=0)
+    tm.that(len(changes), eq=0)
 
 
 def test_rewrite_pep621_no_project_table() -> None:
@@ -138,7 +136,7 @@ def test_rewrite_pep621_no_project_table() -> None:
         mode="workspace",
         internal_names={"flext-core"},
     )
-    u.Tests.Matchers.that(len(changes), eq=0)
+    tm.that(len(changes), eq=0)
 
 
 def test_rewrite_pep621_invalid_path_dep_regex() -> None:
@@ -152,4 +150,4 @@ def test_rewrite_pep621_invalid_path_dep_regex() -> None:
         mode="workspace",
         internal_names={"flext-core"},
     )
-    u.Tests.Matchers.that(len(changes), eq=0)
+    tm.that(len(changes), eq=0)

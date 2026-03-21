@@ -10,7 +10,7 @@ import argparse
 from collections.abc import Callable
 
 import pytest
-from flext_tests import m, t, u
+from flext_tests import tm
 
 from flext_core import r, t
 from flext_infra import u
@@ -136,14 +136,12 @@ class TestRunAudit:
             passed=passed,
         )
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _ok([report]))
-        u.Tests.Matchers.that(
-            _run_audit(_audit_args(), check=True, strict=True), eq=expected
-        )
+        tm.that(_run_audit(_audit_args(), check=True, strict=True), eq=expected)
 
     def test_run_audit_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _fail_report("audit error"))
         monkeypatch.setattr(docs_main, "output", _SILENT)
-        u.Tests.Matchers.that(_run_audit(_audit_args(), check=True, strict=True), eq=1)
+        tm.that(_run_audit(_audit_args(), check=True, strict=True), eq=1)
 
     @pytest.mark.parametrize(
         ("kwargs", "field", "expected"),
@@ -168,18 +166,18 @@ class TestRunAudit:
             check=bool(kwargs.get("check")),
             strict=bool(kwargs.get("strict")),
         )
-        u.Tests.Matchers.that(captured_kwargs.get(field), eq=expected)
+        tm.that(captured_kwargs.get(field), eq=expected)
 
 
 class TestRunFix:
     def test_run_fix_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocFixer, "fix", _ok_list([]))
-        u.Tests.Matchers.that(_run_fix(_fix_args()), eq=0)
+        tm.that(_run_fix(_fix_args()), eq=0)
 
     def test_run_fix_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocFixer, "fix", _fail_list("fix error"))
         monkeypatch.setattr(docs_main, "output", _SILENT)
-        u.Tests.Matchers.that(_run_fix(_fix_args()), eq=1)
+        tm.that(_run_fix(_fix_args()), eq=1)
 
     @pytest.mark.parametrize(("apply", "expected"), [(True, True), (False, False)])
     def test_run_fix_forwards_apply_flag(

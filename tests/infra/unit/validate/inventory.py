@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import m, u
+from flext_tests import tm
 
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from tests.infra.models import m
@@ -21,28 +21,28 @@ class TestInventoryServiceCore:
         """Service initializes with required attributes."""
         service = FlextInfraInventoryService()
         assert service is not None
-        u.Tests.Matchers.that(hasattr(service, "_json"), eq=True)
+        tm.that(hasattr(service, "_json"), eq=True)
 
     def test_generate_empty_workspace(self, tmp_path: Path) -> None:
         """Empty workspace returns success with zero scripts."""
         service = FlextInfraInventoryService()
-        report = u.Tests.Matchers.ok(service.generate(tmp_path))
-        u.Tests.Matchers.that(report, is_=m.Infra.InventoryReport)
-        u.Tests.Matchers.that(report.total_scripts, eq=0)
+        report = tm.ok(service.generate(tmp_path))
+        tm.that(report, is_=m.Infra.InventoryReport)
+        tm.that(report.total_scripts, eq=0)
 
     def test_generate_with_output_dir(self, tmp_path: Path) -> None:
         """Generate creates reports in output directory."""
         service = FlextInfraInventoryService()
         output_dir = tmp_path / "reports"
         output_dir.mkdir()
-        u.Tests.Matchers.ok(service.generate(tmp_path, output_dir=output_dir))
+        tm.ok(service.generate(tmp_path, output_dir=output_dir))
 
     def test_generate_returns_flextresult(self, tmp_path: Path) -> None:
         """Generate returns r type."""
         service = FlextInfraInventoryService()
         result = service.generate(tmp_path)
-        u.Tests.Matchers.that(hasattr(result, "is_success"), eq=True)
-        u.Tests.Matchers.that(hasattr(result, "is_failure"), eq=True)
+        tm.that(hasattr(result, "is_success"), eq=True)
+        tm.that(hasattr(result, "is_failure"), eq=True)
 
 
 class TestInventoryServiceScripts:
@@ -54,7 +54,7 @@ class TestInventoryServiceScripts:
         scripts = tmp_path / "scripts"
         scripts.mkdir()
         (scripts / "test.py").write_text("#!/usr/bin/env python3\nprint('hello')")
-        u.Tests.Matchers.ok(service.generate(tmp_path))
+        tm.ok(service.generate(tmp_path))
 
     def test_generate_scans_bash_scripts(self, tmp_path: Path) -> None:
         """Bash scripts are detected."""
@@ -62,7 +62,7 @@ class TestInventoryServiceScripts:
         scripts = tmp_path / "scripts"
         scripts.mkdir()
         (scripts / "test.sh").write_text("#!/bin/bash\necho 'hello'")
-        u.Tests.Matchers.ok(service.generate(tmp_path))
+        tm.ok(service.generate(tmp_path))
 
     def test_generate_counts_multiple_scripts(self, tmp_path: Path) -> None:
         """All scripts are counted."""
@@ -72,8 +72,8 @@ class TestInventoryServiceScripts:
         (scripts / "script1.py").write_text("")
         (scripts / "script2.sh").write_text("")
         (scripts / "script3.py").write_text("")
-        report = u.Tests.Matchers.ok(service.generate(tmp_path))
-        u.Tests.Matchers.that(report.total_scripts, eq=3)
+        report = tm.ok(service.generate(tmp_path))
+        tm.that(report.total_scripts, eq=3)
 
     def test_generate_finds_nested_scripts(self, tmp_path: Path) -> None:
         """Scripts in nested directories are found."""
@@ -82,8 +82,8 @@ class TestInventoryServiceScripts:
         subdir.mkdir(parents=True)
         (tmp_path / "scripts" / "script1.py").write_text("")
         (subdir / "script2.sh").write_text("")
-        report = u.Tests.Matchers.ok(service.generate(tmp_path))
-        u.Tests.Matchers.that(report.total_scripts, eq=2)
+        report = tm.ok(service.generate(tmp_path))
+        tm.that(report.total_scripts, eq=2)
 
     def test_generate_ignores_non_script_files(self, tmp_path: Path) -> None:
         """Non-script files are excluded from count."""
@@ -93,14 +93,14 @@ class TestInventoryServiceScripts:
         (scripts / "script.py").write_text("")
         (scripts / "readme.txt").write_text("")
         (scripts / "config.json").write_text("")
-        report = u.Tests.Matchers.ok(service.generate(tmp_path))
-        u.Tests.Matchers.that(report.total_scripts, eq=1)
+        report = tm.ok(service.generate(tmp_path))
+        tm.that(report.total_scripts, eq=1)
 
     def test_generate_missing_scripts_dir(self, tmp_path: Path) -> None:
         """Missing scripts directory returns zero scripts."""
         service = FlextInfraInventoryService()
-        report = u.Tests.Matchers.ok(service.generate(tmp_path))
-        u.Tests.Matchers.that(report.total_scripts, eq=0)
+        report = tm.ok(service.generate(tmp_path))
+        tm.that(report.total_scripts, eq=0)
 
     def test_generate_sorts_scripts_alphabetically(self, tmp_path: Path) -> None:
         """Scripts are sorted alphabetically."""
@@ -110,7 +110,7 @@ class TestInventoryServiceScripts:
         (scripts / "z_script.py").write_text("")
         (scripts / "a_script.py").write_text("")
         (scripts / "m_script.py").write_text("")
-        u.Tests.Matchers.ok(service.generate(tmp_path))
+        tm.ok(service.generate(tmp_path))
 
 
 class TestInventoryServiceReports:
@@ -121,8 +121,8 @@ class TestInventoryServiceReports:
         service = FlextInfraInventoryService()
         output_dir = tmp_path / "reports"
         output_dir.mkdir()
-        report = u.Tests.Matchers.ok(service.generate(tmp_path, output_dir=output_dir))
-        u.Tests.Matchers.that(report.reports_written, is_=list)
+        report = tm.ok(service.generate(tmp_path, output_dir=output_dir))
+        tm.that(report.reports_written, is_=list)
 
     def test_generate_creates_inventory_report(self, tmp_path: Path) -> None:
         """Inventory report is created with scripts."""
@@ -132,13 +132,13 @@ class TestInventoryServiceReports:
         scripts = tmp_path / "scripts"
         scripts.mkdir()
         (scripts / "test.py").write_text("")
-        u.Tests.Matchers.ok(service.generate(tmp_path, output_dir=output_dir))
+        tm.ok(service.generate(tmp_path, output_dir=output_dir))
 
     def test_generate_nonexistent_workspace(self, tmp_path: Path) -> None:
         """Nonexistent workspace still returns success."""
         service = FlextInfraInventoryService()
         result = service.generate(tmp_path / "nonexistent")
-        u.Tests.Matchers.that(result.is_success, eq=True)
+        tm.that(result.is_success, eq=True)
 
     def test_generate_write_to_readonly_dir_fails(self, tmp_path: Path) -> None:
         """Writing to read-only output directory fails."""
@@ -148,7 +148,7 @@ class TestInventoryServiceReports:
         output_dir.chmod(0o444)
         try:
             result = service.generate(tmp_path, output_dir=output_dir)
-            u.Tests.Matchers.that(result.is_failure, eq=True)
+            tm.that(result.is_failure, eq=True)
         finally:
             output_dir.chmod(0o755)
 

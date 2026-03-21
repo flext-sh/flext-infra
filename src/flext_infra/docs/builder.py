@@ -12,12 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import FlextLogger
-from flext_core.result import r
-from flext_infra.constants import c
-from flext_infra.docs.shared import FlextInfraDocsShared
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.utilities import u
+from flext_infra import FlextInfraDocsShared, c, m, p, r, u
 
 logger = FlextLogger.create_module_logger(__name__)
 

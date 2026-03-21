@@ -9,17 +9,15 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.refactor._base_rule import FlextInfraRefactorRule
-from flext_infra.transformers.class_reconstructor import (
+from flext_infra import (
     FlextInfraRefactorClassReconstructor,
-)
-from flext_infra.transformers.nested_class_propagation import (
     NestedClassPropagationTransformer,
+    c,
+    m,
+    t,
+    u,
 )
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra.refactor._base_rule import FlextInfraRefactorRule
 
 
 class PreCheckGate:

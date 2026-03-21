@@ -19,7 +19,7 @@ import tomllib
 from pathlib import Path
 from types import SimpleNamespace
 
-from flext_tests import t, u
+from flext_tests import tm
 
 from flext_core import r
 from tests.infra.typings import t
@@ -65,7 +65,7 @@ class FlextInfraTestHelpers:
             AssertionError: If result is failure
 
         """
-        return u.Tests.Matchers.ok(result)
+        return tm.ok(result)
 
     @staticmethod
     def assert_fail[TResult](result: r[TResult], contains: str | None = None) -> str:
@@ -83,8 +83,8 @@ class FlextInfraTestHelpers:
 
         """
         if contains:
-            return u.Tests.Matchers.fail(result, has=contains)
-        return u.Tests.Matchers.fail(result)
+            return tm.fail(result, has=contains)
+        return tm.fail(result)
 
     @staticmethod
     def assert_file_exists(path: Path, msg: str | None = None) -> Path:
@@ -98,12 +98,8 @@ class FlextInfraTestHelpers:
             The path (for chaining)
 
         """
-        u.Tests.Matchers.that(
-            path.exists(), eq=True, msg=msg or f"File does not exist: {path}"
-        )
-        u.Tests.Matchers.that(
-            path.is_file(), eq=True, msg=msg or f"Path is not a file: {path}"
-        )
+        tm.that(path.exists(), eq=True, msg=msg or f"File does not exist: {path}")
+        tm.that(path.is_file(), eq=True, msg=msg or f"Path is not a file: {path}")
         return path
 
     @staticmethod
@@ -118,12 +114,8 @@ class FlextInfraTestHelpers:
             The path (for chaining)
 
         """
-        u.Tests.Matchers.that(
-            path.exists(), eq=True, msg=msg or f"Directory does not exist: {path}"
-        )
-        u.Tests.Matchers.that(
-            path.is_dir(), eq=True, msg=msg or f"Path is not a directory: {path}"
-        )
+        tm.that(path.exists(), eq=True, msg=msg or f"Directory does not exist: {path}")
+        tm.that(path.is_dir(), eq=True, msg=msg or f"Path is not a directory: {path}")
         return path
 
     @classmethod
@@ -146,7 +138,7 @@ class FlextInfraTestHelpers:
         """
         cls.assert_file_exists(path, msg)
         file_content = path.read_text(encoding="utf-8")
-        u.Tests.Matchers.that(
+        tm.that(
             file_content,
             contains=content,
             msg=msg or f"File {path} does not contain: {content}",
@@ -203,14 +195,14 @@ class FlextInfraTestHelpers:
         parts = section.split(".")
         current: dict[str, t.Infra.InfraValue] | t.Infra.InfraValue = content
         for part in parts:
-            u.Tests.Matchers.that(
+            tm.that(
                 isinstance(current, dict),
                 eq=True,
                 msg=msg or f"TOML section '{section}' not found in {path}",
             )
             assert isinstance(current, dict)
             current_map: dict[str, t.Infra.InfraValue] = current
-            u.Tests.Matchers.that(
+            tm.that(
                 part in current_map,
                 eq=True,
                 msg=msg or f"TOML section '{section}' not found in {path}",
@@ -231,9 +223,7 @@ class FlextInfraTestHelpers:
 
         """
         is_valid = name and name.replace("-", "").replace("_", "").isalnum()
-        u.Tests.Matchers.that(
-            is_valid, eq=True, msg=msg or f"Invalid project name: {name}"
-        )
+        tm.that(is_valid, eq=True, msg=msg or f"Invalid project name: {name}")
         return name
 
     @staticmethod
@@ -248,9 +238,7 @@ class FlextInfraTestHelpers:
 
         """
         is_available = shutil.which("docker") is not None
-        u.Tests.Matchers.that(
-            is_available, eq=True, msg=msg or "Docker is not available"
-        )
+        tm.that(is_available, eq=True, msg=msg or "Docker is not available")
         return True
 
     # ── Factory helpers ──────────────────────────────────────────────

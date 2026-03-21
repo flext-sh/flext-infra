@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesDiscovery
 
@@ -23,14 +23,14 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         (non_git_dir / "Makefile").touch()
         (non_git_dir / "pyproject.toml").touch()
         result = service.discover_projects(workspace_root)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         assert len(result.value) == 0
 
     def test_find_all_pyproject_files_with_nonexistent_path(self) -> None:
         service = FlextInfraUtilitiesDiscovery()
         nonexistent = Path("/nonexistent/path/to/workspace")
         result = service.find_all_pyproject_files(nonexistent)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         assert result.value == []
 
     def test_find_all_pyproject_files_with_permission_error(
@@ -40,7 +40,7 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         service = FlextInfraUtilitiesDiscovery()
         (tmp_path / "pyproject.toml").touch()
         result = service.find_all_pyproject_files(tmp_path)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         assert len(result.value) >= 1
 
     def test_discover_projects_skips_no_pyproject_no_gomod(
@@ -54,7 +54,7 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         (proj / ".git").mkdir()
         (proj / "Makefile").touch()
         result = service.discover_projects(workspace_root)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         assert len(result.value) == 0
 
     def test_find_all_pyproject_files_oserror_on_rglob(
@@ -70,7 +70,7 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
 
         monkeypatch.setattr(Path, "rglob", mock_rglob)
         result = service.find_all_pyproject_files(tmp_path)
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
         assert isinstance(result.error, str)
         assert "pyproject file scan failed" in result.error
 

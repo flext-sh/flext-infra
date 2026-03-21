@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r
@@ -39,8 +39,8 @@ class TestRewriteDepPaths:
             internal_names={"flext-core"},
             is_root=True,
         )
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value) > 0, eq=True)
+        tm.ok(result)
+        tm.that(len(result.value) > 0, eq=True)
 
     def test_rewrite_dep_paths_dry_run(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -55,8 +55,8 @@ class TestRewriteDepPaths:
             is_root=True,
             dry_run=True,
         )
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(pyproject.read_text(), eq=original)
+        tm.ok(result)
+        tm.that(pyproject.read_text(), eq=original)
 
     def test_rewrite_dep_paths_no_changes(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -67,7 +67,7 @@ class TestRewriteDepPaths:
             internal_names={"flext-core"},
             is_root=True,
         )
-        u.Tests.Matchers.that(tm.ok(result), eq=[])
+        tm.that(tm.ok(result), eq=[])
 
     def test_rewrite_dep_paths_read_failure(self, tmp_path: Path) -> None:
         result = rewrite_dep_paths(
@@ -76,7 +76,7 @@ class TestRewriteDepPaths:
             internal_names={"flext-core"},
             is_root=True,
         )
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
     def test_rewrite_dep_paths_write_failure(
         self,
@@ -99,7 +99,7 @@ class TestRewriteDepPaths:
             "flext_infra.FlextInfraUtilitiesToml.write_document",
             fail_write,
         )
-        u.Tests.Matchers.fail(
+        tm.fail(
             rewrite_dep_paths(
                 pyproject,
                 mode="workspace",
@@ -121,15 +121,15 @@ def test_rewrite_dep_paths_with_internal_names(tmp_path: Path) -> None:
         is_root=False,
         dry_run=False,
     )
-    u.Tests.Matchers.ok(result)
-    u.Tests.Matchers.that(len(result.value) > 0, eq=True)
+    tm.ok(result)
+    tm.that(len(result.value) > 0, eq=True)
 
 
 def test_rewrite_dep_paths_dry_run(tmp_path: Path) -> None:
     pyproject = tmp_path / "pyproject.toml"
     original = '[project]\ndependencies = ["flext-core @ file:../flext-core"]\n'
     pyproject.write_text(original)
-    u.Tests.Matchers.ok(
+    tm.ok(
         rewrite_dep_paths(
             pyproject,
             mode="workspace",
@@ -138,11 +138,11 @@ def test_rewrite_dep_paths_dry_run(tmp_path: Path) -> None:
             dry_run=True,
         ),
     )
-    u.Tests.Matchers.that(pyproject.read_text(), eq=original)
+    tm.that(pyproject.read_text(), eq=original)
 
 
 def test_rewrite_dep_paths_read_failure(tmp_path: Path) -> None:
-    u.Tests.Matchers.fail(
+    tm.fail(
         rewrite_dep_paths(
             tmp_path / "pyproject.toml",
             mode="workspace",
@@ -156,7 +156,7 @@ def test_rewrite_dep_paths_read_failure(tmp_path: Path) -> None:
 def test_rewrite_dep_paths_with_no_deps(tmp_path: Path) -> None:
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text('[tool.poetry.dependencies]\npython = "^3.13"')
-    u.Tests.Matchers.ok(
+    tm.ok(
         rewrite_dep_paths(
             pyproject,
             mode="poetry",

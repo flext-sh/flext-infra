@@ -11,11 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core.result import r
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
+from flext_infra import FlextInfraUtilitiesSubprocess, c, m, p, r
 
 
 class FlextInfraStubSupplyChain:

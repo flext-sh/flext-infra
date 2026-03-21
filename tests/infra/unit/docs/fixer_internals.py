@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import m, u
+from flext_tests import tf, tm
 
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from tests.infra.models import m
@@ -37,35 +37,33 @@ class TestFixerProcessFile:
         content: str,
         apply: bool,
     ) -> None:
-        md_file = u.Tests.Files.create_in(content, name, tmp_path)
+        md_file = tf.create_in(content, name, tmp_path)
         item = fixer._process_file(md_file, apply=apply)
-        u.Tests.Matchers.that(item.file, eq=str(md_file))
+        tm.that(item.file, eq=str(md_file))
 
     def test_process_file_with_fixable_links(
         self,
         fixer: FlextInfraDocFixer,
         tmp_path: Path,
     ) -> None:
-        md_file = u.Tests.Files.create_in(
-            "# Test\n\n[Link](target.md)\n", "test.md", tmp_path
-        )
-        _ = u.Tests.Files.create_in("# Target", "target.md", tmp_path)
+        md_file = tf.create_in("# Test\n\n[Link](target.md)\n", "test.md", tmp_path)
+        _ = tf.create_in("# Target", "target.md", tmp_path)
         item = fixer._process_file(md_file, apply=False)
-        u.Tests.Matchers.that("test.md" in item.file, eq=True)
+        tm.that("test.md" in item.file, eq=True)
 
     def test_fix_markdown_with_link_fix(
         self,
         fixer: FlextInfraDocFixer,
         tmp_path: Path,
     ) -> None:
-        _ = u.Tests.Files.create_in("", "target.md", tmp_path)
-        md_file = u.Tests.Files.create_in(
+        _ = tf.create_in("", "target.md", tmp_path)
+        md_file = tf.create_in(
             "# Test\n\nSee [link](target) for details.\n",
             "README.md",
             tmp_path,
         )
         item = fixer._process_file(md_file, apply=False)
-        u.Tests.Matchers.that(item.links, eq=1)
+        tm.that(item.links, eq=1)
 
 
 class TestFixerMaybeFixLink:
@@ -85,30 +83,24 @@ class TestFixerMaybeFixLink:
         tmp_path: Path,
         link: str,
     ) -> None:
-        _ = u.Tests.Files.create_in("# Test", "README.md", tmp_path)
-        u.Tests.Matchers.that(
-            fixer._maybe_fix_link(tmp_path / "README.md", link), eq=None
-        )
+        _ = tf.create_in("# Test", "README.md", tmp_path)
+        tm.that(fixer._maybe_fix_link(tmp_path / "README.md", link), eq=None)
 
     def test_maybe_fix_link_existing_file(
         self,
         fixer: FlextInfraDocFixer,
         tmp_path: Path,
     ) -> None:
-        _ = u.Tests.Files.create_in("# Existing", "existing.md", tmp_path)
-        u.Tests.Matchers.that(
-            fixer._maybe_fix_link(tmp_path / "test.md", "existing.md"), eq=None
-        )
+        _ = tf.create_in("# Existing", "existing.md", tmp_path)
+        tm.that(fixer._maybe_fix_link(tmp_path / "test.md", "existing.md"), eq=None)
 
     def test_maybe_fix_link_adds_md_extension(
         self,
         fixer: FlextInfraDocFixer,
         tmp_path: Path,
     ) -> None:
-        _ = u.Tests.Files.create_in("# Missing", "missing.md", tmp_path)
-        u.Tests.Matchers.that(
-            fixer._maybe_fix_link(tmp_path / "test.md", "missing"), eq="missing.md"
-        )
+        _ = tf.create_in("# Missing", "missing.md", tmp_path)
+        tm.that(fixer._maybe_fix_link(tmp_path / "test.md", "missing"), eq="missing.md")
 
     def test_maybe_fix_link_with_existing_target(
         self,
@@ -117,9 +109,9 @@ class TestFixerMaybeFixLink:
     ) -> None:
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True)
-        md_file = u.Tests.Files.create_in("", "foo.md", docs_dir)
-        _ = u.Tests.Files.create_in("", "bar.md", docs_dir)
-        u.Tests.Matchers.that(fixer._maybe_fix_link(md_file, "bar"), eq="bar.md")
+        md_file = tf.create_in("", "foo.md", docs_dir)
+        _ = tf.create_in("", "bar.md", docs_dir)
+        tm.that(fixer._maybe_fix_link(md_file, "bar"), eq="bar.md")
 
 
 class TestFixerToc:
@@ -141,24 +133,24 @@ class TestFixerToc:
         title: str,
         expected: str,
     ) -> None:
-        u.Tests.Matchers.that(fixer._anchorize(title), eq=expected)
+        tm.that(fixer._anchorize(title), eq=expected)
 
     def test_build_toc_variants(self, fixer: FlextInfraDocFixer) -> None:
         toc = fixer._build_toc(
             "# Main\n\n## Section 1\n\n### Subsection\n\n## Section 2\n",
         )
-        u.Tests.Matchers.that("<!-- TOC START -->" in toc, eq=True)
-        u.Tests.Matchers.that("<!-- TOC END -->" in toc, eq=True)
-        u.Tests.Matchers.that("Section 1" in toc, eq=True)
-        u.Tests.Matchers.that(
+        tm.that("<!-- TOC START -->" in toc, eq=True)
+        tm.that("<!-- TOC END -->" in toc, eq=True)
+        tm.that("Section 1" in toc, eq=True)
+        tm.that(
             "No sections found" in fixer._build_toc("# Main\n\nNo sections here.\n"),
             eq=True,
         )
 
     def test_build_toc_skips_empty_anchors(self, fixer: FlextInfraDocFixer) -> None:
         toc = fixer._build_toc("## !!!\n\n## Valid Section\n")
-        u.Tests.Matchers.that("Valid Section" in toc, eq=True)
-        u.Tests.Matchers.that("!!!" not in toc, eq=True)
+        tm.that("Valid Section" in toc, eq=True)
+        tm.that("!!!" not in toc, eq=True)
 
     @pytest.mark.parametrize(
         "content",
@@ -170,8 +162,8 @@ class TestFixerToc:
     )
     def test_update_toc_paths(self, fixer: FlextInfraDocFixer, content: str) -> None:
         updated, changed = fixer._update_toc(content)
-        u.Tests.Matchers.that(changed, eq=1)
-        u.Tests.Matchers.that("<!-- TOC START -->" in updated, eq=True)
+        tm.that(changed, eq=1)
+        tm.that("<!-- TOC START -->" in updated, eq=True)
 
 
 class TestFixerScope:
@@ -179,12 +171,12 @@ class TestFixerScope:
         fixer = FlextInfraDocFixer()
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
-        _ = u.Tests.Files.create_in("# Test\n\n## Section\n", "README.md", docs_dir)
+        _ = tf.create_in("# Test\n\n## Section\n", "README.md", docs_dir)
         scope = m.Infra.FlextInfraDocScope(
             name="test",
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
         report = fixer._fix_scope(scope, apply=False)
-        u.Tests.Matchers.that(report.scope, eq="test")
-        u.Tests.Matchers.that(len(report.items) >= 0, eq=True)
+        tm.that(report.scope, eq="test")
+        tm.that(len(report.items) >= 0, eq=True)

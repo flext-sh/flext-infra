@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 import tomlkit
-from flext_tests import u
+from flext_tests import tf, tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r
@@ -20,9 +20,7 @@ def pyright_content() -> str:
 
 
 def _create_pyproject(directory: Path, content: str) -> Path:
-    return u.Tests.Files.create_in(
-        content=content, name="pyproject.toml", directory=directory
-    )
+    return tf.create_in(content=content, name="pyproject.toml", directory=directory)
 
 
 def _manager() -> FlextInfraExtraPathsManager:
@@ -71,23 +69,23 @@ def test_sync_extra_paths_success_modes(
             dry_run=dry_run,
             project_dirs=project_dirs_arg,
         )
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         if expect_has:
-            u.Tests.Matchers.that(pyproject.read_text(encoding="utf-8"), has=expect_has)
+            tm.that(pyproject.read_text(encoding="utf-8"), has=expect_has)
         return
     if mode == "root":
         monkeypatch.setattr(FlextInfraExtraPathsManager, "ROOT", tmp_path)
         _ = _create_pyproject(tmp_path, pyright_content)
-        u.Tests.Matchers.ok(_manager().sync_extra_paths())
+        tm.ok(_manager().sync_extra_paths())
         return
     result = _manager().sync_extra_paths(
         dry_run=dry_run,
         project_dirs=[] if project_dirs == [] else None,
     )
     if expect_fail:
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
         return
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
 
 
 def test_sync_extra_paths_missing_root_pyproject(
@@ -95,7 +93,7 @@ def test_sync_extra_paths_missing_root_pyproject(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(FlextInfraExtraPathsManager, "ROOT", tmp_path)
-    u.Tests.Matchers.fail(_manager().sync_extra_paths(), has="Missing")
+    tm.fail(_manager().sync_extra_paths(), has="Missing")
 
 
 def test_sync_extra_paths_sync_failure(
@@ -116,9 +114,7 @@ def test_sync_extra_paths_sync_failure(
         return r[bool].fail("sync error")
 
     monkeypatch.setattr(FlextInfraExtraPathsManager, "sync_one", _fail_sync)
-    u.Tests.Matchers.fail(
-        _manager().sync_extra_paths(project_dirs=[project]), has="sync error"
-    )
+    tm.fail(_manager().sync_extra_paths(project_dirs=[project]), has="sync error")
 
 
 @pytest.mark.parametrize(
@@ -163,7 +159,7 @@ def test_main_success_modes(
         argv = ["prog", "--project", str(project), "--dry-run"]
     argv = [argv[0], "--workspace", str(tmp_path), *argv[1:]]
     monkeypatch.setattr(sys, "argv", argv)
-    u.Tests.Matchers.that(FlextInfraExtraPathsManager.main(), eq=expected_exit)
+    tm.that(FlextInfraExtraPathsManager.main(), eq=expected_exit)
 
 
 def test_main_sync_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -180,7 +176,7 @@ def test_main_sync_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         return r[int].fail("sync error")
 
     monkeypatch.setattr(FlextInfraExtraPathsManager, "sync_extra_paths", _fail_sync)
-    u.Tests.Matchers.that(FlextInfraExtraPathsManager.main(), eq=1)
+    tm.that(FlextInfraExtraPathsManager.main(), eq=1)
 
 
 @pytest.mark.parametrize(
@@ -201,7 +197,7 @@ def test_sync_one_edge_cases(
     expect_fail: bool,
 ) -> None:
     if mode == "nonexistent":
-        u.Tests.Matchers.that(
+        tm.that(
             _manager()
             .sync_one(Path("/nonexistent/pyproject.toml"), dry_run=dry_run)
             .is_success,
@@ -212,9 +208,9 @@ def test_sync_one_edge_cases(
         pyproject = _create_pyproject(tmp_path, "invalid toml {")
         result = _manager().sync_one(pyproject, dry_run=dry_run)
         if expect_fail:
-            u.Tests.Matchers.fail(result)
+            tm.fail(result)
             return
-        u.Tests.Matchers.that(result.is_success, eq=expected_ok)
+        tm.that(result.is_success, eq=expected_ok)
         return
     pyproject = _create_pyproject(tmp_path, pyright_content)
     doc = tomlkit.document()
@@ -235,4 +231,4 @@ def test_sync_one_edge_cases(
         write_document=_write_document,
     )
     monkeypatch.setattr(extra_paths, "FlextInfraUtilitiesToml", lambda: stub)
-    u.Tests.Matchers.ok(_manager().sync_one(pyproject, is_root=True, dry_run=dry_run))
+    tm.ok(_manager().sync_one(pyproject, is_root=True, dry_run=dry_run))

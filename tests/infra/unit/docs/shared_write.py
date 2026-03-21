@@ -11,7 +11,7 @@ import pathlib
 from pathlib import Path
 
 import pytest
-from flext_tests import m, t, u
+from flext_tests import tm
 
 from flext_core import t
 from flext_infra.docs.shared import FlextInfraDocsShared
@@ -25,14 +25,14 @@ class TestWriteJson:
         """Test write_json returns r."""
         json_file = tmp_path / "test.json"
         result = FlextInfraDocsShared.write_json(json_file, {"key": "value"})
-        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_creates_file(self, tmp_path: Path) -> None:
         """Test write_json creates JSON file."""
         json_file = tmp_path / "test.json"
         result = FlextInfraDocsShared.write_json(json_file, {"key": "value"})
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(json_file.exists(), eq=True)
+        tm.ok(result)
+        tm.that(json_file.exists(), eq=True)
 
     def test_with_model(self, tmp_path: Path) -> None:
         """Test write_json with Pydantic model."""
@@ -46,7 +46,7 @@ class TestWriteJson:
             passed=True,
         )
         result = FlextInfraDocsShared.write_json(json_file, report)
-        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_with_dict_payload(self, tmp_path: Path) -> None:
         """Test write_json with dictionary payload."""
@@ -55,27 +55,27 @@ class TestWriteJson:
             "key": "value",
         }
         result = FlextInfraDocsShared.write_json(json_file, payload)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
 
     def test_creates_parent_directories(self, tmp_path: Path) -> None:
         """Test write_json creates parent directories."""
         json_file = tmp_path / "nested/deep/test.json"
         result = FlextInfraDocsShared.write_json(json_file, {"key": "value"})
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(json_file.exists(), eq=True)
+        tm.ok(result)
+        tm.that(json_file.exists(), eq=True)
 
     def test_with_empty_dict(self, tmp_path: Path) -> None:
         """Test write_json with empty dictionary."""
         json_file = tmp_path / "empty.json"
         result = FlextInfraDocsShared.write_json(json_file, {})
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
 
     def test_with_nested_structure(self, tmp_path: Path) -> None:
         """Test write_json with nested dictionary."""
         json_file = tmp_path / "nested.json"
         payload: dict[str, str] = {"level1": "value"}
         result = FlextInfraDocsShared.write_json(json_file, payload)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
 
     def test_file_readable(self, tmp_path: Path) -> None:
         """Test write_json creates readable JSON file."""
@@ -83,8 +83,8 @@ class TestWriteJson:
         payload: dict[str, str | int] = {"key": "value", "number": 42}
         FlextInfraDocsShared.write_json(json_file, payload)
         content = json.loads(json_file.read_text())
-        u.Tests.Matchers.that(content["key"], eq="value")
-        u.Tests.Matchers.that(content["number"], eq=42)
+        tm.that(content["key"], eq="value")
+        tm.that(content["number"], eq=42)
 
 
 class TestWriteMarkdown:
@@ -94,21 +94,21 @@ class TestWriteMarkdown:
         """Test write_markdown returns r."""
         md_file = tmp_path / "test.md"
         result = FlextInfraDocsShared.write_markdown(md_file, ["# Test", "", "Content"])
-        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_creates_file(self, tmp_path: Path) -> None:
         """Test write_markdown creates markdown file."""
         md_file = tmp_path / "test.md"
         result = FlextInfraDocsShared.write_markdown(md_file, ["# Test", "", "Content"])
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(md_file.exists(), eq=True)
+        tm.ok(result)
+        tm.that(md_file.exists(), eq=True)
 
     def test_creates_parent_dirs(self, tmp_path: Path) -> None:
         """Test write_markdown creates parent directories."""
         md_file = tmp_path / "nested/deep/test.md"
         result = FlextInfraDocsShared.write_markdown(md_file, ["# Test"])
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(md_file.exists(), eq=True)
+        tm.ok(result)
+        tm.that(md_file.exists(), eq=True)
 
     def test_preserves_newlines(self, tmp_path: Path) -> None:
         """Test write_markdown preserves line structure."""
@@ -116,31 +116,31 @@ class TestWriteMarkdown:
         lines = ["# Title", "", "Paragraph 1", "", "Paragraph 2"]
         FlextInfraDocsShared.write_markdown(md_file, lines)
         content = md_file.read_text()
-        u.Tests.Matchers.that("# Title" in content, eq=True)
-        u.Tests.Matchers.that("Paragraph 1" in content, eq=True)
+        tm.that("# Title" in content, eq=True)
+        tm.that("Paragraph 1" in content, eq=True)
 
     def test_with_empty_lines(self, tmp_path: Path) -> None:
         """Test write_markdown preserves empty lines."""
         md_file = tmp_path / "test.md"
         lines = ["# Title", "", "", "Content"]
         result = FlextInfraDocsShared.write_markdown(md_file, lines)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         content = md_file.read_text()
-        u.Tests.Matchers.that(content.count("\n") >= 3, eq=True)
+        tm.that(content.count("\n") >= 3, eq=True)
 
     def test_with_single_line(self, tmp_path: Path) -> None:
         """Test write_markdown with single line."""
         md_file = tmp_path / "single.md"
         result = FlextInfraDocsShared.write_markdown(md_file, ["# Title"])
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that("# Title" in md_file.read_text(), eq=True)
+        tm.ok(result)
+        tm.that("# Title" in md_file.read_text(), eq=True)
 
     def test_with_special_characters(self, tmp_path: Path) -> None:
         """Test write_markdown handles special characters."""
         md_file = tmp_path / "special.md"
         lines = ["# Title with special chars", "Content with accents"]
         result = FlextInfraDocsShared.write_markdown(md_file, lines)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
 
     def test_file_content_exact(self, tmp_path: Path) -> None:
         """Test write_markdown writes exact content."""
@@ -148,7 +148,7 @@ class TestWriteMarkdown:
         lines = ["Line 1", "Line 2", "Line 3"]
         FlextInfraDocsShared.write_markdown(md_file, lines)
         content = md_file.read_text()
-        u.Tests.Matchers.that(content, eq="Line 1\nLine 2\nLine 3\n")
+        tm.that(content, eq="Line 1\nLine 2\nLine 3\n")
 
     def test_oserror_returns_failure(
         self,
@@ -169,4 +169,4 @@ class TestWriteMarkdown:
 
         monkeypatch.setattr(pathlib.Path, "write_text", mock_write_text)
         result = FlextInfraDocsShared.write_markdown(md_file, ["test"])
-        u.Tests.Matchers.fail(result, has="markdown write error")
+        tm.fail(result, has="markdown write error")

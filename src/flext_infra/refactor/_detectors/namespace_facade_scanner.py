@@ -5,7 +5,7 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra.constants import c
+from flext_infra import c
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )

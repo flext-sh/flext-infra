@@ -9,7 +9,7 @@ from __future__ import annotations
 import importlib
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra.release import FlextInfraReleaseOrchestrator
 
@@ -20,9 +20,7 @@ class TestReleaseInit:
     def test_lazy_import_orchestrator(self) -> None:
         release_module = importlib.import_module("flext_infra.release")
         orchestrator = release_module.FlextInfraReleaseOrchestrator()
-        u.Tests.Matchers.that(
-            isinstance(orchestrator, FlextInfraReleaseOrchestrator), eq=True
-        )
+        tm.that(isinstance(orchestrator, FlextInfraReleaseOrchestrator), eq=True)
 
     def test_getattr_invalid_attribute(self) -> None:
         release_module = importlib.import_module("flext_infra.release")
@@ -32,4 +30,4 @@ class TestReleaseInit:
     def test_dir_returns_all_exports(self) -> None:
         release_module = importlib.import_module("flext_infra.release")
         exports = dir(release_module)
-        u.Tests.Matchers.that("FlextInfraReleaseOrchestrator" in exports, eq=True)
+        tm.that("FlextInfraReleaseOrchestrator" in exports, eq=True)

@@ -10,13 +10,13 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper, QualifiedNameProvider
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra.models import m
-from flext_infra.refactor.rule import FlextInfraRefactorRule
-from flext_infra.transformers.symbol_propagator import (
+from flext_infra import (
+    FlextInfraRefactorRule,
     FlextInfraRefactorSymbolPropagator,
+    m,
+    t,
+    u,
 )
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):

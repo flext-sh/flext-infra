@@ -4,7 +4,7 @@ import types
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 import flext_infra.deps as detector_module
 from flext_core import r
@@ -25,7 +25,7 @@ class TestDetectorRunFailures:
         )
         monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", lambda: paths)
         result = detector_module.FlextInfraRuntimeDevDependencyDetector().run([])
-        u.Tests.Matchers.that(tm.ok(result), eq=2)
+        tm.that(tm.ok(result), eq=2)
 
     def test_run_with_project_discovery_failure(
         self,
@@ -34,10 +34,8 @@ class TestDetectorRunFailures:
     ) -> None:
         deps = _DepsStub([tmp_path / "proj-a"])
         deps.discovery_failure = "discovery failed"
-        error = u.Tests.Matchers.fail(
-            _setup_detector(monkeypatch, tmp_path, deps).run([])
-        )
-        u.Tests.Matchers.that(
+        error = tm.fail(_setup_detector(monkeypatch, tmp_path, deps).run([]))
+        tm.that(
             "discovery failed" in error or "project discovery failed" in error,
             eq=True,
         )
@@ -49,12 +47,10 @@ class TestDetectorRunFailures:
     ) -> None:
         deps = _DepsStub([tmp_path / "proj-a"])
         deps.deptry_failure = "deptry failed"
-        error = u.Tests.Matchers.fail(
+        error = tm.fail(
             _setup_detector(monkeypatch, tmp_path, deps).run(["--no-pip-check"]),
         )
-        u.Tests.Matchers.that(
-            "deptry failed" in error or "deptry run failed" in error, eq=True
-        )
+        tm.that("deptry failed" in error or "deptry run failed" in error, eq=True)
 
     def test_run_with_typings_detection_failure(
         self,
@@ -64,13 +60,13 @@ class TestDetectorRunFailures:
         (tmp_path / "proj-a" / "src").mkdir(parents=True)
         deps = _DepsStub([tmp_path / "proj-a"])
         deps.typings_failure = "typing detection failed"
-        error = u.Tests.Matchers.fail(
+        error = tm.fail(
             _setup_detector(monkeypatch, tmp_path, deps).run([
                 "--typings",
                 "--no-pip-check",
             ]),
         )
-        u.Tests.Matchers.that(
+        tm.that(
             "typing detection failed" in error
             or "typing dependency detection failed" in error,
             eq=True,

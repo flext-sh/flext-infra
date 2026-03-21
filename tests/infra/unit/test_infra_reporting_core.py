@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesReporting
 
@@ -107,7 +107,7 @@ class TestFlextInfraReportingServiceCore:
     ) -> None:
         """Test ensuring report directory creates it if missing."""
         result = service.ensure_report_dir(tmp_path, "project", "check")
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         report_dir = result.value
         assert report_dir.exists()
         assert report_dir.is_dir()
@@ -120,8 +120,8 @@ class TestFlextInfraReportingServiceCore:
         """Test ensuring report directory is idempotent."""
         result1 = service.ensure_report_dir(tmp_path, "project", "check")
         result2 = service.ensure_report_dir(tmp_path, "project", "check")
-        u.Tests.Matchers.ok(result1)
-        u.Tests.Matchers.ok(result2)
+        tm.ok(result1)
+        tm.ok(result2)
         assert result1.value == result2.value
 
     def test_ensure_report_dir_workspace_scope(
@@ -131,7 +131,7 @@ class TestFlextInfraReportingServiceCore:
     ) -> None:
         """Test ensuring workspace-level report directory."""
         result = service.ensure_report_dir(tmp_path, "workspace", "validate")
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         report_dir = result.value
         assert report_dir.exists()
         assert "workspace" in str(report_dir)
@@ -147,6 +147,6 @@ class TestFlextInfraReportingServiceCore:
         readonly_dir.chmod(292)
         try:
             result = service.ensure_report_dir(readonly_dir, "project", "check")
-            u.Tests.Matchers.fail(result)
+            tm.fail(result)
         finally:
             readonly_dir.chmod(493)

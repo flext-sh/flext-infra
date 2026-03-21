@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
@@ -16,7 +16,7 @@ from ._shared_fixtures import create_fake_run_projects
 
 def test_resolve_gates_maps_type_alias() -> None:
     result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "type", "lint"])
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert result.value == ["lint", "pyrefly"]
 
 

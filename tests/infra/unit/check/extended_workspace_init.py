@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import c, m, t, u
+from flext_tests import tm
 
 from flext_core import t
 from flext_infra import c
@@ -25,7 +25,7 @@ class TestWorkspaceCheckerInitialization:
 
     def test_init_creates_default_reports_dir(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        u.Tests.Matchers.that(checker._default_reports_dir.exists(), eq=True)
+        tm.that(checker._default_reports_dir.exists(), eq=True)
 
 
 class TestWorkspaceCheckerExecute:
@@ -34,7 +34,7 @@ class TestWorkspaceCheckerExecute:
     def test_execute_returns_failure(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         result = checker.execute()
-        u.Tests.Matchers.fail(result, has="Use run()")
+        tm.fail(result, has="Use run()")
 
 
 class TestWorkspaceCheckerExistingCheckDirs:
@@ -44,19 +44,19 @@ class TestWorkspaceCheckerExistingCheckDirs:
         (tmp_path / "src").mkdir()
         (tmp_path / "tests").mkdir()
         dirs = FlextInfraRuffLintGate(tmp_path)._existing_check_dirs(tmp_path)
-        u.Tests.Matchers.that(len(dirs) >= 0, eq=True)
+        tm.that(len(dirs) >= 0, eq=True)
 
     def test_existing_check_dirs_subproject(self, tmp_path: Path) -> None:
         subproj = tmp_path / "subproj"
         subproj.mkdir()
         (subproj / "src").mkdir()
         dirs = FlextInfraRuffLintGate(tmp_path)._existing_check_dirs(subproj)
-        u.Tests.Matchers.that(len(dirs) >= 0, eq=True)
+        tm.that(len(dirs) >= 0, eq=True)
 
     def test_existing_check_dirs_filters_nonexistent(self, tmp_path: Path) -> None:
         (tmp_path / "src").mkdir()
         dirs = FlextInfraRuffLintGate(tmp_path)._existing_check_dirs(tmp_path)
-        u.Tests.Matchers.that(all((tmp_path / d).is_dir() for d in dirs), eq=True)
+        tm.that(all((tmp_path / d).is_dir() for d in dirs), eq=True)
 
 
 class TestWorkspaceCheckerDirsWithPy:
@@ -67,24 +67,24 @@ class TestWorkspaceCheckerDirsWithPy:
         src.mkdir()
         (src / "main.py").write_text("# code")
         result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["src"])
-        u.Tests.Matchers.that("src" in result, eq=True)
+        tm.that("src" in result, eq=True)
 
     def test_dirs_with_py_finds_pyi_files(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         src.mkdir()
         (src / "main.pyi").write_text("# stub")
         result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["src"])
-        u.Tests.Matchers.that("src" in result, eq=True)
+        tm.that("src" in result, eq=True)
 
     def test_dirs_with_py_skips_empty_dirs(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         src.mkdir()
         result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["src"])
-        u.Tests.Matchers.that("src" not in result, eq=True)
+        tm.that("src" not in result, eq=True)
 
     def test_dirs_with_py_skips_nonexistent_dirs(self, tmp_path: Path) -> None:
         result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["nonexistent"])
-        u.Tests.Matchers.that("nonexistent" not in result, eq=True)
+        tm.that("nonexistent" not in result, eq=True)
 
 
 class TestWorkspaceCheckerResolveWorkspaceRootFallback:
@@ -93,7 +93,7 @@ class TestWorkspaceCheckerResolveWorkspaceRootFallback:
     def test_resolve_workspace_root_fallback_to_cwd(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         result = checker._resolve_workspace_root(None)
-        u.Tests.Matchers.that(result.is_absolute(), eq=True)
+        tm.that(result.is_absolute(), eq=True)
 
 
 class TestWorkspaceCheckerInitOSError:
@@ -110,7 +110,7 @@ class TestWorkspaceCheckerInitOSError:
 
         monkeypatch.setattr(Path, "mkdir", _raise_oserror)
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
-        u.Tests.Matchers.that(checker._default_reports_dir.is_absolute(), eq=True)
+        tm.that(checker._default_reports_dir.is_absolute(), eq=True)
 
 
 class TestWorkspaceCheckerBuildGateResult:
@@ -133,6 +133,6 @@ class TestWorkspaceCheckerBuildGateResult:
             duration=0.5,
             raw_output="",
         )
-        u.Tests.Matchers.that(result.result.passed, eq=True)
-        u.Tests.Matchers.that(result.result.gate, eq=c.Infra.Gates.LINT)
-        u.Tests.Matchers.that(len(result.issues), eq=1)
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.result.gate, eq=c.Infra.Gates.LINT)
+        tm.that(len(result.issues), eq=1)

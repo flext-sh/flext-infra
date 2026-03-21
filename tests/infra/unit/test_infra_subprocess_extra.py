@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import m, t, u
+from flext_tests import tm
 
 from flext_core import t
 from flext_infra import FlextInfraUtilitiesSubprocess, m
@@ -30,21 +30,21 @@ class TestFlextInfraCommandRunnerExtra:
         runner = FlextInfraUtilitiesSubprocess()
         cmd_list = ["echo", "sequence"]
         result = runner.run(cmd_list)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         assert "sequence" in result.value.stdout
 
     def test_run_checked_success(self) -> None:
         """Test run_checked returns True on success."""
         runner = FlextInfraUtilitiesSubprocess()
         result = runner.run_checked(["echo", "test"])
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         assert result.value is True
 
     def test_run_checked_failure(self) -> None:
         """Test run_checked returns failure on nonzero exit."""
         runner = FlextInfraUtilitiesSubprocess()
         result = runner.run_checked(["sh", "-c", "exit 1"])
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
         assert isinstance(result.error, str)
         assert "command failed" in result.error.lower()
 
@@ -53,7 +53,7 @@ class TestFlextInfraCommandRunnerExtra:
         runner = FlextInfraUtilitiesSubprocess()
         output_file = tmp_path / "output.txt"
         result = runner.run_to_file(["echo", "hello"], output_file)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         assert result.value == 0
         assert output_file.exists()
         assert "hello" in output_file.read_text()
@@ -63,7 +63,7 @@ class TestFlextInfraCommandRunnerExtra:
         runner = FlextInfraUtilitiesSubprocess()
         output_file = tmp_path / "output.txt"
         result = runner.run_to_file(["sleep", "10"], output_file, timeout=1)
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
         assert isinstance(result.error, str)
         assert "timeout" in result.error.lower()
 
@@ -76,7 +76,7 @@ class TestFlextInfraCommandRunnerExtra:
         output_file = readonly_dir / "output.txt"
         try:
             result = runner.run_to_file(["echo", "test"], output_file)
-            u.Tests.Matchers.fail(result)
+            tm.fail(result)
             assert isinstance(result.error, str)
             assert "file output error" in result.error.lower()
         finally:
@@ -97,6 +97,6 @@ class TestFlextInfraCommandRunnerExtra:
 
         monkeypatch.setattr("subprocess.run", mock_run)
         result = runner.run_to_file(["echo", "test"], output_file)
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
         assert isinstance(result.error, str)
         assert "execution error" in result.error.lower()

@@ -1,4 +1,7 @@
-"""CST transformer for fixing circular Tier 0 self-imports.
+"""CST transformer for fixing circular Tier 0 self-imports in internal modules.
+
+Distinguishes between package facades (Básicas) and internal submodules (Módulos Internos)
+using directory depth and naming conventions across flext, algar, and gruponos.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,25 +9,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import override
 
 import libcst as cst
 
-from flext_infra.transformers.import_insertion import (
-    FlextInfraTransformerImportInsertion,
-)
-from flext_infra.utilities import u
+from flext_infra import FlextInfraTransformerImportInsertion, u
 
 
 class FlextInfraTransformerTier0ImportFixer:
-    """Namespace for Tier 0 import fixing logic."""
+    """Namespace for Tier 0 import fixing logic and classes."""
 
     @dataclass(frozen=True)
     class Analysis:
-        """Detection results for self-import patterns."""
+        """Detection results for a single Python file's self-import patterns."""
 
         package_name: str
         file_path: Path
@@ -36,68 +36,11 @@ class FlextInfraTransformerTier0ImportFixer:
 
         @property
         def has_violations(self) -> bool:
+            """Return True if any imports need redirecting or moving."""
             return bool(self.category_b or self.category_c or self.category_d)
 
-    class ImportEdgeCollector(cst.CSTVisitor):
-        """Build internal import edges."""
-
-        def __init__(
-            self,
-            *,
-            current_module: str,
-            package_name: str,
-            known_modules: frozenset[str],
-            lazy_import_maps: Mapping[str, Mapping[str, str]],
-        ) -> None:
-            self._current_module, self._package_name = current_module, package_name
-            self._known_modules, self._lazy_import_maps = (
-                known_modules,
-                lazy_import_maps,
-            )
-            self.imported_modules: set[str] = set()
-
-        @override
-        def visit_Import(self, node: cst.Import) -> None:
-            for i in node.names:
-                n = u.Infra.cst_module_name(i.name)
-                if n:
-                    self._add(n)
-
-        @override
-        def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
-            base = self._res(node)
-            if base:
-                self._add(base)
-            if isinstance(node.names, cst.ImportStar):
-                return
-            for i in node.names:
-                n = u.Infra.cst_imported_name(i)
-                if not n or not base:
-                    continue
-                lzy = self._lazy_import_maps.get(base, {}).get(n, "")
-                if lzy:
-                    self._add(lzy)
-                self._add(f"{base}.{n}")
-
-        def _res(self, node: cst.ImportFrom) -> str:
-            n = u.Infra.cst_module_name(node.module)
-            return (
-                n
-                if not node.relative
-                else u.Infra.resolve_relative_module(
-                    current_module=self._current_module,
-                    level=len(node.relative),
-                    module_name=n,
-                )
-            )
-
-        def _add(self, n: str) -> None:
-            if n == self._package_name or n.startswith(f"{self._package_name}."):
-                if n in self._known_modules or n == self._package_name:
-                    self.imported_modules.add(n)
-
     class Analyzer(cst.CSTVisitor):
-        """Identify circular Tier 0 aliases."""
+        """Analyze imports and names to identify circular Tier 0 aliases."""
 
         def __init__(
             self,
@@ -109,68 +52,64 @@ class FlextInfraTransformerTier0ImportFixer:
             self._file_path = file_path
             self._tier0_modules = {n.removesuffix(".py") for n in tier0_modules}
             self._core_aliases = set(core_aliases)
-            self._pkg_name, self._alias_map = "", {}
-            self._import_depth = self._annot_depth = self._alias_depth = (
-                self._tc_depth
-            ) = 0
-            self._self_aliases, self._runtime_aliases = set(), set()
+            self._import_depth = 0
+            self._annotation_depth = 0
+            self._type_alias_depth = 0
+            self._type_checking_depth = 0
+            self._self_import_aliases: set[str] = set()
+            self._runtime_aliases: set[str] = set()
 
         def build_analysis(self) -> FlextInfraTransformerTier0ImportFixer.Analysis:
-            pkg_dir, self._pkg_name = u.Infra.package_context(self._file_path)
-            if not self._pkg_name:
+            """Process visited nodes and build violation analysis."""
+            pkg_dir, pkg_name = u.Infra.package_context(self._file_path)
+            if not pkg_name:
                 return FlextInfraTransformerTier0ImportFixer.Analysis(
-                    "", self._file_path
+                    package_name="", file_path=self._file_path
                 )
-            self._alias_map = u.Infra.discover_project_aliases(
+
+            alias_map = u.Infra.discover_project_aliases(
                 pkg_dir.parent if pkg_dir.name == "src" else pkg_dir
             )
-            self._alias_map.update(
-                u.Infra.extract_lazy_import_map(pkg_dir / "__init__.py")
-            )
-            ans = FlextInfraTransformerTier0ImportFixer.Analysis(
-                self._pkg_name, self._file_path, self._alias_map
-            )
-            if u.Infra.cst_is_module_toplevel(self._file_path):
-                ans.category_a.update(self._self_aliases)
-                return ans
-            agg = self._detect_aggregator()
-            for a in sorted(self._self_aliases):
-                mod = self._alias_map.get(a, "")
-                if a in self._core_aliases or (agg and mod == agg):
-                    ans.category_b.add(a)
-                elif mod in self._tier0_modules:
-                    ans.category_a.add(a)
-                elif a in self._runtime_aliases:
-                    ans.category_d.add(a)
-                else:
-                    ans.category_c.add(a)
-            return ans
+            alias_map.update(u.Infra.extract_lazy_import_map(pkg_dir / "__init__.py"))
 
-        def _detect_aggregator(self) -> str:
-            for p in self._file_path.parts:
-                if p.startswith("_") and not p.startswith("__"):
-                    return p.lstrip("_")
-            return ""
+            analysis = FlextInfraTransformerTier0ImportFixer.Analysis(
+                package_name=pkg_name,
+                file_path=self._file_path,
+                alias_to_module=alias_map,
+            )
+
+            if u.Infra.cst_is_module_toplevel(self._file_path):
+                analysis.category_a.update(self._self_import_aliases)
+                return analysis
+
+            for alias in sorted(self._self_import_aliases):
+                if alias in self._core_aliases:
+                    analysis.category_b.add(alias)
+                elif alias in self._runtime_aliases:
+                    analysis.category_d.add(alias)
+                else:
+                    analysis.category_c.add(alias)
+            return analysis
 
         @override
         def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
             self._import_depth += 1
-            _, pkg = u.Infra.package_context(self._file_path)
+            _, pkg_name = u.Infra.package_context(self._file_path)
             if (
-                not pkg
+                not pkg_name
                 or not node.module
                 or node.relative
-                or u.Infra.cst_module_name(node.module) != pkg
+                or u.Infra.cst_module_name(node.module) != pkg_name
             ):
                 return
             if isinstance(node.names, cst.ImportStar):
                 return
-            for i in node.names:
-                b = u.Infra.cst_asname_to_local(i.asname) or (
-                    i.name.value if isinstance(i.name, cst.Name) else ""
+            for item in node.names:
+                bound = u.Infra.cst_asname_to_local(item.asname) or (
+                    item.name.value if isinstance(item.name, cst.Name) else ""
                 )
-                if len(b) == 1 and b.islower():
-                    self._self_aliases.add(b)
+                if len(bound) == 1 and bound.islower():
+                    self._self_import_aliases.add(bound)
 
         @override
         def leave_ImportFrom(self, node: cst.ImportFrom) -> None:
@@ -178,42 +117,43 @@ class FlextInfraTransformerTier0ImportFixer:
 
         @override
         def visit_Annotation(self, node: cst.Annotation) -> None:
-            self._annot_depth += 1
+            self._annotation_depth += 1
 
         @override
         def leave_Annotation(self, node: cst.Annotation) -> None:
-            self._annot_depth = max(0, self._annot_depth - 1)
+            self._annotation_depth = max(0, self._annotation_depth - 1)
 
         @override
         def visit_TypeAlias(self, node: cst.TypeAlias) -> None:
-            self._alias_depth += 1
+            self._type_alias_depth += 1
 
         @override
         def leave_TypeAlias(self, node: cst.TypeAlias) -> None:
-            self._alias_depth = max(0, self._alias_depth - 1)
+            self._type_alias_depth = max(0, self._type_alias_depth - 1)
 
         @override
         def visit_If(self, node: cst.If) -> None:
             if u.Infra.cst_is_type_checking_test(node.test):
-                self._tc_depth += 1
+                self._type_checking_depth += 1
 
         @override
         def leave_If(self, node: cst.If) -> None:
             if u.Infra.cst_is_type_checking_test(node.test):
-                self._tc_depth = max(0, self._tc_depth - 1)
+                self._type_checking_depth = max(0, self._type_checking_depth - 1)
 
         @override
         def visit_Name(self, node: cst.Name) -> None:
-            if node.value in self._self_aliases and self._import_depth == 0:
-                if self._alias_depth > 0 or not (
-                    self._annot_depth > 0 or self._tc_depth > 0
-                ):
-                    self._runtime_aliases.add(node.value)
+            if node.value not in self._self_import_aliases or self._import_depth > 0:
+                return
+            if self._type_alias_depth > 0 or not (
+                self._annotation_depth > 0 or self._type_checking_depth > 0
+            ):
+                self._runtime_aliases.add(node.value)
 
     class Transformer(cst.CSTTransformer):
-        """Rewrite Tier 0 imports."""
+        """Rewrite Tier 0 imports to remove circularity and enforce order."""
 
-        _CLS_MAP = {
+        _CLASS_IMPORTS_MAP = {
             "FlextRuntime": "flext_core.runtime",
             "FlextUtilitiesGuardsTypeCore": "flext_core._utilities.guards_type_core",
             "FlextUtilitiesGuards": "flext_core._utilities.guards",
@@ -234,33 +174,35 @@ class FlextInfraTransformerTier0ImportFixer:
             alias_to_submodule: dict[str, str],
             core_package: str,
         ) -> None:
-            self.ans, self._pkg, self._core = (
-                analysis,
-                analysis.package_name,
-                core_package,
-            )
-            self._rem = (
+            self.analysis = analysis
+            self._package_name = analysis.package_name
+            self._core_package = core_package
+            self._root_remove = (
                 set(analysis.category_b)
                 | set(analysis.category_c)
                 | set(analysis.category_d)
             )
-            self._core_pnd, self._tc_pnd, self._dir_pnd = (
-                set(analysis.category_b),
-                set(analysis.category_c),
-                {},
-            )
+            self._core_pending = set(analysis.category_b)
+            self._type_checking_pending = set(analysis.category_c)
+            self._direct_pending: dict[str, set[str]] = {}
             for a in sorted(analysis.category_d):
-                s = alias_to_submodule.get(a, analysis.alias_to_module.get(a, ""))
-                if s:
-                    self._dir_pnd.setdefault(s, set()).add(a)
-            self.changes, self._tc_present, self._miss_cls = [], False, set()
+                sub = alias_to_submodule.get(a, analysis.alias_to_module.get(a, ""))
+                if sub:
+                    self._direct_pending.setdefault(sub, set()).add(a)
+            self._changes: list[str] = []
+            self._type_checking_import_present = False
+            self._missing_classes: set[str] = set()
+
+        @property
+        def changes(self) -> list[str]:
+            return self._changes
 
         @override
         def visit_Module(self, node: cst.Module) -> None:
-            cde = node.code
-            for n in self._CLS_MAP:
-                if n in cde and f"import {n}" not in cde:
-                    self._miss_cls.add(n)
+            src = node.code
+            for n in self._CLASS_IMPORTS_MAP:
+                if n in src and f"import {n}" not in src:
+                    self._missing_classes.add(n)
 
         @override
         def leave_ImportFrom(
@@ -270,48 +212,54 @@ class FlextInfraTransformerTier0ImportFixer:
             if mod == "typing" and "TYPE_CHECKING" in u.Infra.cst_collect_bound_names(
                 updated
             ):
-                self._tc_present = True
-            if mod == self._pkg:
-                return self._rw_root(updated)
-            if mod == self._core:
-                return self._mrg(updated, self._core_pnd)
-            for s, p in self._dir_pnd.items():
-                if mod == f"{self._pkg}.{s}":
-                    return self._mrg(updated, p)
+                self._type_checking_import_present = True
+            if mod == self._package_name:
+                return self._rewrite_root_self_import(updated)
+            if mod == self._core_package:
+                return self._merge_into_import(updated, self._core_pending)
+            for sub, pnd in self._direct_pending.items():
+                if mod == f"{self._package_name}.{sub}":
+                    return self._merge_into_import(updated, pnd)
             return updated
 
         @override
         def leave_Module(self, orig: cst.Module, updated: cst.Module) -> cst.Module:
-            bdy = list(updated.body)
-            if not self._tc_present and self._tc_pnd:
-                bdy.insert(
-                    self._idx(bdy), u.Infra.cst_import_line("typing", ["TYPE_CHECKING"])
+            stmts = list(updated.body)
+            if not self._type_checking_import_present and self._type_checking_pending:
+                stmts.insert(
+                    self._idx(stmts),
+                    u.Infra.cst_import_line("typing", ["TYPE_CHECKING"]),
                 )
-                self._tc_present = True
-                self.changes.append("Added TYPE_CHECKING import")
-            adds = self._build_adds()
-            if adds:
-                bdy[self._idx(bdy) : self._idx(bdy)] = adds
-            if self._tc_pnd:
-                bdy.insert(
-                    self._idx(bdy),
+                self._type_checking_import_present = True
+                self._changes.append("Added 'from typing import TYPE_CHECKING'")
+
+            additions = self._build_additions()
+            if additions:
+                stmts[self._idx(stmts) : self._idx(stmts)] = additions
+
+            if self._type_checking_pending:
+                stmts.insert(
+                    self._idx(stmts),
                     cst.If(
                         test=cst.Name("TYPE_CHECKING"),
                         body=cst.IndentedBlock(
                             body=[
-                                u.Infra.cst_import_line(self._pkg, list(self._tc_pnd))
+                                u.Infra.cst_import_line(
+                                    self._package_name,
+                                    list(self._type_checking_pending),
+                                )
                             ]
                         ),
                     ),
                 )
-                self.changes.append(f"Added TYPE_CHECKING block for {self._pkg}")
-            return updated.with_changes(body=tuple(bdy))
+                self._changes.append(
+                    f"Added TYPE_CHECKING block for {self._package_name}"
+                )
+            return updated.with_changes(body=tuple(stmts))
 
-        def _rw_root(
+        def _rewrite_root_self_import(
             self, node: cst.ImportFrom
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-            if isinstance(node.names, cst.ImportStar):
-                return node
             rem = [
                 i
                 for i in node.names
@@ -319,50 +267,52 @@ class FlextInfraTransformerTier0ImportFixer:
                     u.Infra.cst_asname_to_local(i.asname)
                     or (i.name.value if isinstance(i.name, cst.Name) else "")
                 )
-                not in self._rem
+                not in self._root_remove
             ]
-            return (
-                node.with_changes(names=tuple(rem))
-                if rem
-                else cst.RemovalSentinel.REMOVE
-            )
+            if not rem:
+                return cst.RemovalSentinel.REMOVE
+            return node.with_changes(names=tuple(rem))
 
-        def _mrg(self, node: cst.ImportFrom, p: set[str]) -> cst.ImportFrom:
-            if isinstance(node.names, cst.ImportStar):
-                return node
+        def _merge_into_import(
+            self, node: cst.ImportFrom, pnd: set[str]
+        ) -> cst.ImportFrom:
             ext = u.Infra.cst_collect_bound_names(node)
-            add = [cst.ImportAlias(name=cst.Name(a)) for a in sorted(p - ext)]
+            add = [cst.ImportAlias(name=cst.Name(a)) for a in sorted(pnd - ext)]
             if not add:
                 return node
-            p.clear()
+            pnd.clear()
             return node.with_changes(names=tuple(list(node.names) + add))
 
-        def _build_adds(self) -> list[cst.BaseStatement]:
+        def _build_additions(self) -> list[cst.BaseStatement]:
             res: list[cst.BaseStatement] = []
-            if self._core_pnd:
-                res.append(u.Infra.cst_import_line(self._core, sorted(self._core_pnd)))
-                self._core_pnd.clear()
+            if self._core_pending:
+                res.append(
+                    u.Infra.cst_import_line(
+                        self._core_package, sorted(self._core_pending)
+                    )
+                )
+                self._core_pending.clear()
             res.extend(
-                u.Infra.cst_import_line(f"{self._pkg}.{s}", sorted(self._dir_pnd[s]))
-                for s in sorted(self._dir_pnd)
-                if self._dir_pnd[s]
+                u.Infra.cst_import_line(
+                    f"{self._package_name}.{sub}", sorted(self._direct_pending[sub])
+                )
+                for sub in sorted(self._direct_pending)
+                if self._direct_pending[sub]
             )
             res.extend(
-                u.Infra.cst_import_line(self._CLS_MAP[n], [n])
-                for n in sorted(self._miss_cls)
+                u.Infra.cst_import_line(self._CLASS_IMPORTS_MAP[n], [n])
+                for n in sorted(self._missing_classes)
             )
             return res
 
-        def _idx(
-            self, bdy: Sequence[cst.BaseStatement | cst.BaseCompoundStatement]
-        ) -> int:
+        def _idx(self, body: Sequence[cst.BaseStatement]) -> int:
             i = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
-                bdy
+                body
             )
             while (
-                i < len(bdy)
-                and isinstance(bdy[i], cst.SimpleStatementLine)
-                and isinstance(bdy[i].body[0], (cst.Import, cst.ImportFrom))
+                i < len(body)
+                and isinstance(body[i], cst.SimpleStatementLine)
+                and isinstance(body[i].body[0], (cst.Import, cst.ImportFrom))
             ):
                 i += 1
             return i

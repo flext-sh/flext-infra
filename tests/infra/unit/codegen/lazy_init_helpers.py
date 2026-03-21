@@ -10,7 +10,7 @@ import ast
 from collections.abc import Callable
 from pathlib import Path
 
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra import u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -30,22 +30,22 @@ class TestInferPackage:
     def test_src_path(self) -> None:
         """Test inference from src/ path."""
         path = Path("/workspace/src/test_pkg/__init__.py")
-        u.Tests.Matchers.that(u.Infra.infer_package(path), eq="test_pkg")
+        tm.that(u.Infra.infer_package(path), eq="test_pkg")
 
     def test_deeply_nested_src_path(self) -> None:
         """Test inference from deeply nested src/ path."""
         path = Path("/workspace/src/a/b/c/d/__init__.py")
-        u.Tests.Matchers.that(u.Infra.infer_package(path), eq="a.b.c.d")
+        tm.that(u.Infra.infer_package(path), eq="a.b.c.d")
 
     def test_tests_path(self) -> None:
         """Test inference from tests/ path."""
         path = Path("/workspace/tests/unit/__init__.py")
-        u.Tests.Matchers.that(u.Infra.infer_package(path), eq="tests.unit")
+        tm.that(u.Infra.infer_package(path), eq="tests.unit")
 
     def test_without_src_directory(self) -> None:
         """Test when path doesn't contain /src/."""
         path = Path("/workspace/lib/test/__init__.py")
-        u.Tests.Matchers.that(u.Infra.infer_package(path), eq="")
+        tm.that(u.Infra.infer_package(path), eq="")
 
 
 class TestReadExistingDocstring:
@@ -56,34 +56,34 @@ class TestReadExistingDocstring:
         init_file = tmp_path / "__init__.py"
         init_file.write_text('"""Package docstring."""\nx = 1\n')
         result = _read_existing_docstring(init_file)
-        u.Tests.Matchers.that(result, contains="Package docstring")
+        tm.that(result, contains="Package docstring")
 
     def test_without_docstring(self, tmp_path: Path) -> None:
         """Test returns empty when no docstring exists."""
         init_file = tmp_path / "__init__.py"
         init_file.write_text("x = 1\ny = 2\n")
         result = _read_existing_docstring(init_file)
-        u.Tests.Matchers.that(result, eq="")
+        tm.that(result, eq="")
 
     def test_nonexistent_file(self, tmp_path: Path) -> None:
         """Test returns empty when file doesn't exist."""
         init_file = tmp_path / "__init__.py"
         result = _read_existing_docstring(init_file)
-        u.Tests.Matchers.that(result, eq="")
+        tm.that(result, eq="")
 
     def test_with_syntax_error(self, tmp_path: Path) -> None:
         """Test returns empty on syntax error."""
         init_file = tmp_path / "__init__.py"
         init_file.write_text("invalid syntax ][")
         result = _read_existing_docstring(init_file)
-        u.Tests.Matchers.that(result, eq="")
+        tm.that(result, eq="")
 
     def test_with_single_quotes(self, tmp_path: Path) -> None:
         """Test preserves single-quote docstring style."""
         init_file = tmp_path / "__init__.py"
         init_file.write_text("'''Module docstring.'''\nx = 1\n")
         result = _read_existing_docstring(init_file)
-        u.Tests.Matchers.that(result, contains="Module docstring")
+        tm.that(result, contains="Module docstring")
 
 
 class TestBuildSiblingExportIndex:
@@ -95,9 +95,9 @@ class TestBuildSiblingExportIndex:
             '"""Models."""\n\n__all__ = ["Foo", "Bar"]\n\nclass Foo: pass\nclass Bar: pass\n',
         )
         index = _build_sibling_export_index(tmp_path, "test_pkg")
-        u.Tests.Matchers.that(index, contains="Foo")
-        u.Tests.Matchers.that(index, contains="Bar")
-        u.Tests.Matchers.that(index["Foo"], eq=("test_pkg.models", "Foo"))
+        tm.that(index, contains="Foo")
+        tm.that(index, contains="Bar")
+        tm.that(index["Foo"], eq=("test_pkg.models", "Foo"))
 
     def test_without_all_falls_back_to_ast(self, tmp_path: Path) -> None:
         """Test scanning sibling files without __all__ uses AST."""
@@ -105,8 +105,8 @@ class TestBuildSiblingExportIndex:
             "class PublicService:\n    pass\n\ndef public_func():\n    pass\n",
         )
         index = _build_sibling_export_index(tmp_path, "test_pkg")
-        u.Tests.Matchers.that(index, contains="PublicService")
-        u.Tests.Matchers.that(index, contains="public_func")
+        tm.that(index, contains="PublicService")
+        tm.that(index, contains="public_func")
 
     def test_skips_init_and_main(self, tmp_path: Path) -> None:
         """Test that __init__.py and __main__.py are skipped."""
@@ -116,17 +116,17 @@ class TestBuildSiblingExportIndex:
             '__all__ = ["Model"]\nclass Model: pass\n',
         )
         index = _build_sibling_export_index(tmp_path, "test_pkg")
-        u.Tests.Matchers.that(index, excludes="Init")
-        u.Tests.Matchers.that(index, excludes="main")
-        u.Tests.Matchers.that(index, contains="Model")
+        tm.that(index, excludes="Init")
+        tm.that(index, excludes="main")
+        tm.that(index, contains="Model")
 
     def test_skips_private_files(self, tmp_path: Path) -> None:
         """Test that _private.py files are skipped."""
         (tmp_path / "_internal.py").write_text("class Internal: pass\n")
         (tmp_path / "public.py").write_text("class Public: pass\n")
         index = _build_sibling_export_index(tmp_path, "test_pkg")
-        u.Tests.Matchers.that(index, excludes="Internal")
-        u.Tests.Matchers.that(index, contains="Public")
+        tm.that(index, excludes="Internal")
+        tm.that(index, contains="Public")
 
     def test_skips_version_file(self, tmp_path: Path) -> None:
         """Test that __version__.py is skipped (handled separately)."""
@@ -135,8 +135,8 @@ class TestBuildSiblingExportIndex:
             '__all__ = ["Model"]\nclass Model: pass\n',
         )
         index = _build_sibling_export_index(tmp_path, "test_pkg")
-        u.Tests.Matchers.that(index, excludes="__version__")
-        u.Tests.Matchers.that(index, contains="Model")
+        tm.that(index, excludes="__version__")
+        tm.that(index, contains="Model")
 
     def test_handles_syntax_error_gracefully(self, tmp_path: Path) -> None:
         """Test that syntax errors in sibling files are skipped."""
@@ -145,7 +145,7 @@ class TestBuildSiblingExportIndex:
             '__all__ = ["Good"]\nclass Good: pass\n',
         )
         index = _build_sibling_export_index(tmp_path, "test_pkg")
-        u.Tests.Matchers.that(index, contains="Good")
+        tm.that(index, contains="Good")
 
 
 class TestExtractExports:
@@ -156,29 +156,29 @@ class TestExtractExports:
         code = '__all__ = ["Foo", "Bar"]'
         tree = ast.parse(code)
         has_all, exports = u.Infra.extract_exports(tree)
-        u.Tests.Matchers.that(has_all, eq=True)
-        u.Tests.Matchers.that(exports, eq=["Foo", "Bar"])
+        tm.that(has_all, eq=True)
+        tm.that(exports, eq=["Foo", "Bar"])
 
     def test_with_tuple_all(self) -> None:
         """Test __all__ as tuple."""
         code = '__all__ = ("Foo", "Bar")'
         tree = ast.parse(code)
         has_all, exports = u.Infra.extract_exports(tree)
-        u.Tests.Matchers.that(has_all, eq=True)
-        u.Tests.Matchers.that(exports, eq=["Foo", "Bar"])
+        tm.that(has_all, eq=True)
+        tm.that(exports, eq=["Foo", "Bar"])
 
     def test_with_non_string_elements(self) -> None:
         """Test ignores non-string elements."""
         code = '__all__ = ["Foo", 123, "Bar"]'
         tree = ast.parse(code)
         has_all, exports = u.Infra.extract_exports(tree)
-        u.Tests.Matchers.that(has_all, eq=True)
-        u.Tests.Matchers.that(exports, eq=["Foo", "Bar"])
+        tm.that(has_all, eq=True)
+        tm.that(exports, eq=["Foo", "Bar"])
 
     def test_without_all(self) -> None:
         """Test when __all__ is missing."""
         code = "x = 1"
         tree = ast.parse(code)
         has_all, exports = u.Infra.extract_exports(tree)
-        u.Tests.Matchers.that(has_all, eq=False)
-        u.Tests.Matchers.that(exports, eq=[])
+        tm.that(has_all, eq=False)
+        tm.that(exports, eq=[])

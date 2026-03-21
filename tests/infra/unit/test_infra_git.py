@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesGit
 
@@ -47,11 +47,11 @@ class TestFlextInfraGitService:
 
     def test_current_branch_success(self, git_repo: Path) -> None:
         result = FlextInfraUtilitiesGit.git_current_branch(git_repo)
-        u.Tests.Matchers.ok(result, is_=str)
+        tm.ok(result, is_=str)
 
     def test_current_branch_failure(self, tmp_path: Path) -> None:
         result = FlextInfraUtilitiesGit.git_current_branch(tmp_path)
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
     def test_tag_exists_true(self, git_repo: Path) -> None:
         subprocess.run(
@@ -61,23 +61,23 @@ class TestFlextInfraGitService:
             capture_output=True,
         )
         result = FlextInfraUtilitiesGit.git_tag_exists(git_repo, "v1.0.0")
-        u.Tests.Matchers.ok(result, eq=True)
+        tm.ok(result, eq=True)
 
     def test_tag_exists_false(self, git_repo: Path) -> None:
         result = FlextInfraUtilitiesGit.git_tag_exists(git_repo, "v9.9.9")
-        u.Tests.Matchers.ok(result, eq=False)
+        tm.ok(result, eq=False)
 
     def test_tag_exists_failure(self, tmp_path: Path) -> None:
         result = FlextInfraUtilitiesGit.git_tag_exists(tmp_path, "v1.0.0")
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
     def test_run_arbitrary_command(self, git_repo: Path) -> None:
         result = FlextInfraUtilitiesGit.git_run(["log", "--oneline"], cwd=git_repo)
-        u.Tests.Matchers.ok(result, is_=str)
+        tm.ok(result, is_=str)
 
     def test_run_command_failure(self, tmp_path: Path) -> None:
         result = FlextInfraUtilitiesGit.git_run(["log"], cwd=tmp_path)
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
 
 class TestRemovedCompatibilityMethods:
@@ -105,17 +105,17 @@ class TestGitTagOperations:
             capture_output=True,
         )
         result = FlextInfraUtilitiesGit.git_list_tags(git_repo)
-        u.Tests.Matchers.ok(result, has="v1.0.0")
+        tm.ok(result, has="v1.0.0")
 
     def test_list_tags_failure(self, tmp_path: Path) -> None:
         result = FlextInfraUtilitiesGit.git_list_tags(tmp_path)
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
     def test_create_tag(self, git_repo: Path) -> None:
         result = FlextInfraUtilitiesGit.git_create_tag(git_repo, "v3.0.0")
-        u.Tests.Matchers.ok(result, eq=True)
+        tm.ok(result, eq=True)
         verify = FlextInfraUtilitiesGit.git_tag_exists(git_repo, "v3.0.0")
-        u.Tests.Matchers.ok(verify, eq=True)
+        tm.ok(verify, eq=True)
 
 
 class TestGitPush:
@@ -128,4 +128,4 @@ class TestGitPush:
             branch="main",
             set_upstream=True,
         )
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)

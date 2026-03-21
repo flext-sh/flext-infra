@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tf, tm
 
 from flext_infra import FlextInfraUtilitiesVersioning
 
@@ -36,7 +36,7 @@ def test_parse_semver_valid(
     version: str,
     expected: tuple[int, int, int],
 ) -> None:
-    u.Tests.Matchers.ok(service.parse_semver(version), eq=expected)
+    tm.ok(service.parse_semver(version), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -48,11 +48,11 @@ def test_parse_semver_invalid(
     service: FlextInfraUtilitiesVersioning,
     version: str,
 ) -> None:
-    u.Tests.Matchers.fail(service.parse_semver(version), has="invalid semver")
+    tm.fail(service.parse_semver(version), has="invalid semver")
 
 
 def test_parse_semver_result_type(service: FlextInfraUtilitiesVersioning) -> None:
-    u.Tests.Matchers.ok(service.parse_semver("1.2.3"), is_=tuple)
+    tm.ok(service.parse_semver("1.2.3"), is_=tuple)
 
 
 @pytest.mark.parametrize(
@@ -71,7 +71,7 @@ def test_bump_version_valid(
     bump_type: str,
     expected: str,
 ) -> None:
-    u.Tests.Matchers.ok(service.bump_version(version, bump_type), eq=expected)
+    tm.ok(service.bump_version(version, bump_type), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -88,11 +88,11 @@ def test_bump_version_invalid(
     bump_type: str,
     error: str,
 ) -> None:
-    u.Tests.Matchers.fail(service.bump_version(version, bump_type), has=error)
+    tm.fail(service.bump_version(version, bump_type), has=error)
 
 
 def test_bump_version_result_type(service: FlextInfraUtilitiesVersioning) -> None:
-    u.Tests.Matchers.ok(service.bump_version("1.2.3", "major"), is_=str)
+    tm.ok(service.bump_version("1.2.3", "major"), is_=str)
 
 
 @pytest.mark.parametrize(
@@ -105,7 +105,7 @@ def test_release_tag_from_branch_valid(
     branch: str,
     expected: str,
 ) -> None:
-    u.Tests.Matchers.ok(service.release_tag_from_branch(branch), eq=expected)
+    tm.ok(service.release_tag_from_branch(branch), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -117,7 +117,7 @@ def test_release_tag_from_branch_invalid(
     service: FlextInfraUtilitiesVersioning,
     branch: str,
 ) -> None:
-    u.Tests.Matchers.fail(
+    tm.fail(
         service.release_tag_from_branch(branch),
         has="does not match release pattern",
     )
@@ -126,7 +126,7 @@ def test_release_tag_from_branch_invalid(
 def test_release_tag_from_branch_result_type(
     service: FlextInfraUtilitiesVersioning,
 ) -> None:
-    u.Tests.Matchers.ok(service.release_tag_from_branch("release/1.2.3"), is_=str)
+    tm.ok(service.release_tag_from_branch("release/1.2.3"), is_=str)
 
 
 @pytest.mark.parametrize(
@@ -154,15 +154,15 @@ def test_current_workspace_version(
     error: str,
 ) -> None:
     if content is not None:
-        u.Tests.Files.create_incontent, "pyproject.toml", tmp_path
+        tf.create_in(content, "pyproject.toml", tmp_path)
     result = service.current_workspace_version(tmp_path)
     if expected:
-        u.Tests.Matchers.ok(result, eq=expected)
+        tm.ok(result, eq=expected)
         return
     if error:
-        u.Tests.Matchers.fail(result, has=error)
+        tm.fail(result, has=error)
         return
-    u.Tests.Matchers.fail(result)
+    tm.fail(result)
 
 
 @pytest.mark.parametrize(
@@ -182,14 +182,14 @@ def test_replace_project_version(
     error: str,
 ) -> None:
     if content is not None:
-        u.Tests.Files.create_in(content, "pyproject.toml", tmp_path)
+        tf.create_in(content, "pyproject.toml", tmp_path)
     result = service.replace_project_version(tmp_path, "2.0.0")
     if error:
-        u.Tests.Matchers.fail(result, has=error)
+        tm.fail(result, has=error)
         return
     if not expect_success:
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
         return
-    u.Tests.Matchers.ok(result, eq=True)
+    tm.ok(result, eq=True)
     if content is not None:
-        u.Tests.Matchers.ok(service.current_workspace_version(tmp_path), eq="2.0.0")
+        tm.ok(service.current_workspace_version(tmp_path), eq="2.0.0")

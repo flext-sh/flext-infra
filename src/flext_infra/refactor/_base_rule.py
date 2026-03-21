@@ -14,7 +14,7 @@ from pathlib import Path
 import libcst as cst
 from pydantic import JsonValue
 
-from flext_infra.constants import c
+from flext_infra import c
 
 
 class FlextInfraRefactorRule:

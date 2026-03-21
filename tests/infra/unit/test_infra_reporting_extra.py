@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesReporting
 
@@ -51,7 +51,7 @@ class TestFlextInfraReportingServiceExtra:
         report_dir.mkdir(parents=True)
         run_id = "run-2025-01-01"
         result = service.create_latest_symlink(report_dir, run_id)
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         link = result.value
         assert link.name == "latest"
         assert link.is_symlink()
@@ -68,9 +68,9 @@ class TestFlextInfraReportingServiceExtra:
         run_id_1 = "run-2025-01-01"
         run_id_2 = "run-2025-01-02"
         result1 = service.create_latest_symlink(report_dir, run_id_1)
-        u.Tests.Matchers.ok(result1)
+        tm.ok(result1)
         result2 = service.create_latest_symlink(report_dir, run_id_2)
-        u.Tests.Matchers.ok(result2)
+        tm.ok(result2)
         link = result2.value
         assert link.is_symlink()
         assert link.resolve().name == run_id_2
@@ -86,7 +86,7 @@ class TestFlextInfraReportingServiceExtra:
         readonly_dir.chmod(292)
         try:
             result = service.create_latest_symlink(readonly_dir, "run-id")
-            u.Tests.Matchers.fail(result)
+            tm.fail(result)
             assert result.error is not None and "symlink" in result.error.lower()
         finally:
             readonly_dir.chmod(493)

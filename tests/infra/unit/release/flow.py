@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import t, u
+from flext_tests import tm
 
 import flext_infra.release.__main__ as _main_mod
 from flext_core import r, t
@@ -84,7 +84,7 @@ class TestReleaseMainFlow:
             _argv(tmp_path, "--phase", "validate", "--interactive", "0"),
         )
         _patch_main_deps(monkeypatch, tmp_path)
-        u.Tests.Matchers.that(main(), eq=0)
+        tm.that(main(), eq=0)
 
     def test_main_workspace_root_failure(
         self,
@@ -103,8 +103,8 @@ class TestReleaseMainFlow:
             root_result=r[Path].fail("not found"),
             error_calls=errors,
         )
-        u.Tests.Matchers.that(main(), eq=1)
-        u.Tests.Matchers.that(len(errors), eq=1)
+        tm.that(main(), eq=1)
+        tm.that(len(errors), eq=1)
 
     def test_main_version_resolution_failure(
         self,
@@ -133,8 +133,8 @@ class TestReleaseMainFlow:
         errors: list[str] = []
         _patch_main_deps(monkeypatch, tmp_path, error_calls=errors)
         monkeypatch.setattr(_main_mod, "FlextInfraUtilitiesVersioning", _FailVs)
-        u.Tests.Matchers.that(main(), eq=1)
-        u.Tests.Matchers.that(len(errors), eq=1)
+        tm.that(main(), eq=1)
+        tm.that(len(errors), eq=1)
 
     def test_main_release_failure(
         self,
@@ -153,8 +153,8 @@ class TestReleaseMainFlow:
             release_result=r[bool].fail("release failed"),
             error_calls=errors,
         )
-        u.Tests.Matchers.that(main(), eq=1)
-        u.Tests.Matchers.that(len(errors), eq=1)
+        tm.that(main(), eq=1)
+        tm.that(len(errors), eq=1)
 
     def test_main_all_phases(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -164,10 +164,8 @@ class TestReleaseMainFlow:
         )
         calls: list[SimpleNamespace] = []
         _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        u.Tests.Matchers.that(main(), eq=0)
-        u.Tests.Matchers.that(
-            calls[0].phases, eq=["validate", "version", "build", "publish"]
-        )
+        tm.that(main(), eq=0)
+        tm.that(calls[0].phases, eq=["validate", "version", "build", "publish"])
 
     def test_main_with_push(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -177,8 +175,8 @@ class TestReleaseMainFlow:
         )
         calls: list[SimpleNamespace] = []
         _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        u.Tests.Matchers.that(main(), eq=0)
-        u.Tests.Matchers.that(calls[0].push, eq=True)
+        tm.that(main(), eq=0)
+        tm.that(calls[0].push, eq=True)
 
     def test_main_with_dry_run(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -188,8 +186,8 @@ class TestReleaseMainFlow:
         )
         calls: list[SimpleNamespace] = []
         _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        u.Tests.Matchers.that(main(), eq=0)
-        u.Tests.Matchers.that(calls[0].dry_run, eq=True)
+        tm.that(main(), eq=0)
+        tm.that(calls[0].dry_run, eq=True)
 
     def test_main_with_projects(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -199,5 +197,5 @@ class TestReleaseMainFlow:
         )
         calls: list[SimpleNamespace] = []
         _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        u.Tests.Matchers.that(main(), eq=0)
-        u.Tests.Matchers.that(calls[0].project_names, eq=["proj1", "proj2"])
+        tm.that(main(), eq=0)
+        tm.that(calls[0].project_names, eq=["proj1", "proj2"])

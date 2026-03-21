@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
@@ -56,8 +56,8 @@ class TestConfigFixerRunMethods:
         monkeypatch.setattr(FlextInfraConfigFixer, "process_file", _proc)
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         result = fixer.run(["project1"], verbose=True)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value) > 0, eq=True)
+        tm.ok(result)
+        tm.that(len(result.value) > 0, eq=True)
 
     def test_run_with_dry_run(
         self,
@@ -76,7 +76,7 @@ class TestConfigFixerRunMethods:
         monkeypatch.setattr(FlextInfraConfigFixer, "find_pyproject_files", _find)
         monkeypatch.setattr(FlextInfraConfigFixer, "process_file", _fake_process)
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
-        u.Tests.Matchers.ok(fixer.run(["project1"], dry_run=True))
+        tm.ok(fixer.run(["project1"], dry_run=True))
 
 
 class TestProcessFileReadError:
@@ -95,23 +95,21 @@ class TestProcessFileReadError:
             raise OSError(msg)
 
         monkeypatch.setattr(Path, "read_text", _raise)
-        u.Tests.Matchers.fail(
-            fixer.process_file(tmp_path / "pyproject.toml"), has="read error"
-        )
+        tm.fail(fixer.process_file(tmp_path / "pyproject.toml"), has="read error")
 
     def test_parse_error(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("invalid toml {")
-        u.Tests.Matchers.fail(fixer.process_file(pyproject), has="parse")
+        tm.fail(fixer.process_file(pyproject), has="parse")
 
     def test_no_tool_section(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[build-system]\n")
         result = fixer.process_file(pyproject)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value), eq=0)
+        tm.ok(result)
+        tm.that(len(result.value), eq=0)
 
     def test_write_error(
         self,
@@ -139,7 +137,7 @@ class TestProcessFileReadError:
 
         monkeypatch.setattr(FlextInfraConfigFixer, "_fix_search_paths_tk", _fake_fix)
         monkeypatch.setattr(Path, "write_text", _raise_on_write)
-        u.Tests.Matchers.fail(fixer.process_file(pyproject), has="write error")
+        tm.fail(fixer.process_file(pyproject), has="write error")
 
 
 class TestConfigFixerPathResolution:
@@ -150,14 +148,14 @@ class TestConfigFixerPathResolution:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[tool]\npyrefly = "string"\n')
         result = fixer.process_file(pyproject)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(result.value, eq=[])
+        tm.ok(result)
+        tm.that(result.value, eq=[])
 
     def test_empty_projects(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         result = fixer.run(projects=[], dry_run=False, verbose=False)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(result.value, eq=[])
+        tm.ok(result)
+        tm.that(result.value, eq=[])
 
 
 class TestConfigFixerRunWithVerbose:
@@ -169,15 +167,15 @@ class TestConfigFixerRunWithVerbose:
         pyproject.write_text(
             '[tool.pyrefly]\nsearch_paths = ["src"]\nignore = true\n',
         )
-        u.Tests.Matchers.ok(fixer.run(projects=[], dry_run=False, verbose=True))
+        tm.ok(fixer.run(projects=[], dry_run=False, verbose=True))
 
     def test_empty_fixes_skips_logging(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[tool]\n")
         result = fixer.run(projects=[], dry_run=False, verbose=True)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(result.value, eq=[])
+        tm.ok(result)
+        tm.that(result.value, eq=[])
 
     def test_relative_to_error(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
@@ -185,4 +183,4 @@ class TestConfigFixerRunWithVerbose:
         pyproject.write_text(
             '[tool.pyrefly]\nsearch_paths = ["src"]\nignore = true\n',
         )
-        u.Tests.Matchers.ok(fixer.run(projects=[], dry_run=False, verbose=True))
+        tm.ok(fixer.run(projects=[], dry_run=False, verbose=True))

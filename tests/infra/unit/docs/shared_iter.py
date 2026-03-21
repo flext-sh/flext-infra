@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra.docs.shared import FlextInfraDocsShared
 
@@ -19,7 +19,7 @@ class TestIterMarkdownFiles:
     def test_empty_directory(self, tmp_path: Path) -> None:
         """Test iter_markdown_files with empty directory."""
         files = FlextInfraDocsShared.iter_markdown_files(tmp_path)
-        u.Tests.Matchers.that(len(files) >= 0, eq=True)
+        tm.that(len(files) >= 0, eq=True)
 
     def test_finds_markdown(self, tmp_path: Path) -> None:
         """Test iter_markdown_files finds markdown files."""
@@ -27,7 +27,7 @@ class TestIterMarkdownFiles:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "README.md").write_text("# Test\n")
         files = FlextInfraDocsShared.iter_markdown_files(tmp_path)
-        u.Tests.Matchers.that(len(files) > 0, eq=True)
+        tm.that(len(files) > 0, eq=True)
 
     def test_excludes_hidden(self, tmp_path: Path) -> None:
         """Test iter_markdown_files excludes hidden directories."""
@@ -37,7 +37,7 @@ class TestIterMarkdownFiles:
         hidden_dir.mkdir(parents=True, exist_ok=True)
         (hidden_dir / "test.md").write_text("# Hidden\n")
         files = FlextInfraDocsShared.iter_markdown_files(tmp_path)
-        u.Tests.Matchers.that(any(".hidden" in str(f) for f in files), eq=False)
+        tm.that(any(".hidden" in str(f) for f in files), eq=False)
 
     def test_nested_structure(self, tmp_path: Path) -> None:
         """Test iter_markdown_files with nested directory structure."""
@@ -45,7 +45,7 @@ class TestIterMarkdownFiles:
         nested_dir.mkdir(parents=True, exist_ok=True)
         (nested_dir / "guide.md").write_text("# Guide\n")
         files = FlextInfraDocsShared.iter_markdown_files(tmp_path)
-        u.Tests.Matchers.that(len(files) > 0, eq=True)
+        tm.that(len(files) > 0, eq=True)
 
     def test_returns_sorted_list(self, tmp_path: Path) -> None:
         """Test iter_markdown_files returns sorted list."""
@@ -54,14 +54,14 @@ class TestIterMarkdownFiles:
         (docs_dir / "z.md").write_text("# Z")
         (docs_dir / "a.md").write_text("# A")
         files = FlextInfraDocsShared.iter_markdown_files(tmp_path)
-        u.Tests.Matchers.that(len(files) >= 2, eq=True)
+        tm.that(len(files) >= 2, eq=True)
         str_files = [str(f) for f in files]
-        u.Tests.Matchers.that(str_files, eq=sorted(str_files))
+        tm.that(str_files, eq=sorted(str_files))
 
     def test_no_docs_dir(self, tmp_path: Path) -> None:
         """Test iter_markdown_files when docs dir doesn't exist."""
         files = FlextInfraDocsShared.iter_markdown_files(tmp_path)
-        u.Tests.Matchers.that(len(files) >= 0, eq=True)
+        tm.that(len(files) >= 0, eq=True)
 
     def test_docs_at_root(self, tmp_path: Path) -> None:
         """Test iter_markdown_files finds docs at root."""
@@ -69,7 +69,7 @@ class TestIterMarkdownFiles:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("# Test")
         files = FlextInfraDocsShared.iter_markdown_files(tmp_path)
-        u.Tests.Matchers.that(len(files) > 0, eq=True)
+        tm.that(len(files) > 0, eq=True)
 
     def test_excludes_node_modules(self, tmp_path: Path) -> None:
         """Test iter_markdown_files excludes node_modules."""
@@ -79,7 +79,7 @@ class TestIterMarkdownFiles:
         nm_dir.mkdir(parents=True, exist_ok=True)
         (nm_dir / "test.md").write_text("# Test")
         files = FlextInfraDocsShared.iter_markdown_files(tmp_path)
-        u.Tests.Matchers.that(any("node_modules" in str(f) for f in files), eq=False)
+        tm.that(any("node_modules" in str(f) for f in files), eq=False)
 
 
 class TestSelectedProjectNames:
@@ -92,7 +92,7 @@ class TestSelectedProjectNames:
             "test-proj",
             None,
         )
-        u.Tests.Matchers.that(names, eq=["test-proj"])
+        tm.that(names, eq=["test-proj"])
 
     def test_with_projects_comma(self, tmp_path: Path) -> None:
         """Test _selected_project_names with comma-separated projects."""
@@ -101,8 +101,8 @@ class TestSelectedProjectNames:
             None,
             "proj1,proj2,proj3",
         )
-        u.Tests.Matchers.that("proj1" in names, eq=True)
-        u.Tests.Matchers.that("proj2" in names, eq=True)
+        tm.that("proj1" in names, eq=True)
+        tm.that("proj2" in names, eq=True)
 
     def test_with_projects_space(self, tmp_path: Path) -> None:
         """Test _selected_project_names with space-separated projects."""
@@ -111,23 +111,23 @@ class TestSelectedProjectNames:
             None,
             "proj1 proj2 proj3",
         )
-        u.Tests.Matchers.that("proj1" in names, eq=True)
-        u.Tests.Matchers.that("proj2" in names, eq=True)
+        tm.that("proj1" in names, eq=True)
+        tm.that("proj2" in names, eq=True)
 
     def test_no_filter(self, tmp_path: Path) -> None:
         """Test _selected_project_names with no filter discovers projects."""
         names = FlextInfraDocsShared._selected_project_names(tmp_path, None, None)
-        u.Tests.Matchers.that(len(names) >= 0, eq=True)
+        tm.that(len(names) >= 0, eq=True)
 
     def test_empty_string(self, tmp_path: Path) -> None:
         """Test _selected_project_names with empty string."""
         names = FlextInfraDocsShared._selected_project_names(tmp_path, None, "")
-        u.Tests.Matchers.that(len(names) >= 0, eq=True)
+        tm.that(len(names) >= 0, eq=True)
 
     def test_whitespace_only(self, tmp_path: Path) -> None:
         """Test _selected_project_names with whitespace-only string."""
         names = FlextInfraDocsShared._selected_project_names(tmp_path, None, "   ")
-        u.Tests.Matchers.that(len(names) >= 0, eq=True)
+        tm.that(len(names) >= 0, eq=True)
 
     def test_mixed_separators(self, tmp_path: Path) -> None:
         """Test _selected_project_names with mixed separators."""
@@ -136,5 +136,5 @@ class TestSelectedProjectNames:
             None,
             "proj1, proj2, proj3",
         )
-        u.Tests.Matchers.that("proj1" in names, eq=True)
-        u.Tests.Matchers.that("proj2" in names, eq=True)
+        tm.that("proj1" in names, eq=True)
+        tm.that("proj2" in names, eq=True)

@@ -14,12 +14,7 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
-from algar_oud_mig.base import s
-
-from flext_core.result import r
-from flext_infra._utilities.output import output
-from flext_infra.constants import c
-from flext_infra.utilities import u
+from flext_infra import c, output, r, s, u
 
 
 @unique

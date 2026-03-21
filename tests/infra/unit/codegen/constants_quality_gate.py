@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra.codegen import __main__ as codegen_main
 from flext_infra.codegen.constants_quality_gate import (
@@ -26,7 +26,7 @@ class TestConstantsQualityGateCLIDispatch:
         """main() dispatches constants-quality-gate command to handler."""
         argv = ["constants-quality-gate", "--workspace", str(tmp_path)]
         result = codegen_main.main(argv)
-        u.Tests.Matchers.that(result, is_=int)
+        tm.that(result, is_=int)
 
     def test_parses_before_report_flag(self, tmp_path: Path) -> None:
         """main() parses baseline comparison flags for quality gate."""
@@ -41,7 +41,7 @@ class TestConstantsQualityGateCLIDispatch:
             "json",
         ]
         result = codegen_main.main(argv)
-        u.Tests.Matchers.that(result, is_=int)
+        tm.that(result, is_=int)
 
     def test_json_format_exits_with_int(self, tmp_path: Path) -> None:
         """JSON mode returns an integer exit code."""
@@ -53,7 +53,7 @@ class TestConstantsQualityGateCLIDispatch:
             "json",
         ]
         result = codegen_main.main(argv)
-        u.Tests.Matchers.that(result, is_=int)
+        tm.that(result, is_=int)
 
     def test_text_format_exits_with_int(self, tmp_path: Path) -> None:
         """Text mode returns an integer exit code."""
@@ -65,7 +65,7 @@ class TestConstantsQualityGateCLIDispatch:
             "text",
         ]
         result = codegen_main.main(argv)
-        u.Tests.Matchers.that(result, is_=int)
+        tm.that(result, is_=int)
 
 
 class TestConstantsQualityGateVerdict:
@@ -73,14 +73,14 @@ class TestConstantsQualityGateVerdict:
 
     def test_success_verdict_accepts_pass(self) -> None:
         """is_success_verdict returns True for PASS."""
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraCodegenConstantsQualityGate.is_success_verdict("PASS"),
             eq=True,
         )
 
     def test_success_verdict_accepts_conditional_pass(self) -> None:
         """is_success_verdict returns True for CONDITIONAL_PASS."""
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraCodegenConstantsQualityGate.is_success_verdict(
                 "CONDITIONAL_PASS",
             ),
@@ -89,7 +89,7 @@ class TestConstantsQualityGateVerdict:
 
     def test_success_verdict_rejects_fail(self) -> None:
         """is_success_verdict returns False for FAIL."""
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraCodegenConstantsQualityGate.is_success_verdict("FAIL"),
             eq=False,
         )

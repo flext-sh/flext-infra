@@ -11,7 +11,7 @@ from io import StringIO
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
-from flext_tests import t, u
+from flext_tests import tm
 
 from flext_core import r, t
 from flext_infra.basemk.__main__ import _build_config, main
@@ -22,24 +22,24 @@ def test_basemk_main_with_no_command(monkeypatch: MonkeyPatch) -> None:
     """Test main() with no command prints help and returns 1."""
     monkeypatch.setattr(sys, "argv", ["basemk"])
     result = main(argv=[])
-    u.Tests.Matchers.that(result, eq=1)
+    tm.that(result, eq=1)
 
 
 def test_basemk_main_with_generate_command(monkeypatch: MonkeyPatch) -> None:
     """Test main() with generate command succeeds."""
     monkeypatch.setattr(sys, "stdout", StringIO())
     result = main(argv=["generate"])
-    u.Tests.Matchers.that(result, eq=0)
+    tm.that(result, eq=0)
 
 
 def test_basemk_main_with_output_file(tmp_path: Path) -> None:
     """Test main() writes to output file when specified."""
     output_file = tmp_path / "base.mk"
     result = main(argv=["generate", "--output", str(output_file)])
-    u.Tests.Matchers.that(result, eq=0)
-    u.Tests.Matchers.that(output_file.exists(), eq=True)
+    tm.that(result, eq=0)
+    tm.that(output_file.exists(), eq=True)
     content = output_file.read_text(encoding="utf-8")
-    u.Tests.Matchers.that(len(content) > 0, eq=True)
+    tm.that(len(content) > 0, eq=True)
 
 
 def test_basemk_main_with_project_name(tmp_path: Path) -> None:
@@ -48,14 +48,14 @@ def test_basemk_main_with_project_name(tmp_path: Path) -> None:
     result = main(
         argv=["generate", "--project-name", "my-project", "--output", str(output_file)],
     )
-    u.Tests.Matchers.that(result, eq=0)
-    u.Tests.Matchers.that(output_file.exists(), eq=True)
+    tm.that(result, eq=0)
+    tm.that(output_file.exists(), eq=True)
 
 
 def test_basemk_main_with_invalid_command() -> None:
     """Test main() with invalid command returns 2."""
     result = main(argv=["invalid"])
-    u.Tests.Matchers.that(result, eq=2)
+    tm.that(result, eq=2)
 
 
 def test_basemk_main_ensures_structlog_configured(
@@ -74,21 +74,21 @@ def test_basemk_main_ensures_structlog_configured(
     )
     monkeypatch.setattr(sys, "stdout", StringIO())
     main(argv=["generate"])
-    u.Tests.Matchers.that(call_count >= 1, eq=True)
+    tm.that(call_count >= 1, eq=True)
 
 
 def test_basemk_build_config_with_none() -> None:
     """Test _build_config returns None when project_name is None."""
     result = _build_config(None)
-    u.Tests.Matchers.that(result is None, eq=True)
+    tm.that(result is None, eq=True)
 
 
 def test_basemk_build_config_with_project_name() -> None:
     """Test _build_config returns config with project name."""
     result = _build_config("my-project")
-    u.Tests.Matchers.that(result is not None, eq=True)
+    tm.that(result is not None, eq=True)
     assert result is not None
-    u.Tests.Matchers.that(result.project_name, eq="my-project")
+    tm.that(result.project_name, eq="my-project")
 
 
 def test_basemk_main_with_none_argv(monkeypatch: MonkeyPatch) -> None:
@@ -96,14 +96,14 @@ def test_basemk_main_with_none_argv(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "argv", ["basemk", "generate"])
     monkeypatch.setattr(sys, "stdout", StringIO())
     result = main(argv=None)
-    u.Tests.Matchers.that(result, eq=0)
+    tm.that(result, eq=0)
 
 
 def test_basemk_main_output_to_stdout(monkeypatch: MonkeyPatch) -> None:
     """Test main() outputs to stdout when no output file specified."""
     monkeypatch.setattr(sys, "stdout", StringIO())
     result = main(argv=["generate"])
-    u.Tests.Matchers.that(result, eq=0)
+    tm.that(result, eq=0)
 
 
 def test_basemk_main_with_generation_failure(
@@ -117,14 +117,14 @@ def test_basemk_main_with_generation_failure(
 
     monkeypatch.setattr(FlextInfraBaseMkGenerator, "generate", mock_generate)
     result = main(argv=["generate"])
-    u.Tests.Matchers.that(result, eq=1)
+    tm.that(result, eq=1)
 
 
 def test_basemk_main_with_help(monkeypatch: MonkeyPatch) -> None:
     """Test main() with --help returns 0."""
     monkeypatch.setattr(sys, "stdout", StringIO())
     result = main(argv=["--help"])
-    u.Tests.Matchers.that(result, eq=0)
+    tm.that(result, eq=0)
 
 
 def test_basemk_main_with_write_failure(
@@ -139,4 +139,4 @@ def test_basemk_main_with_write_failure(
 
     monkeypatch.setattr(FlextInfraBaseMkGenerator, "write", mock_write)
     result = main(argv=["generate", "--output", str(output_file)])
-    u.Tests.Matchers.that(result, eq=1)
+    tm.that(result, eq=1)

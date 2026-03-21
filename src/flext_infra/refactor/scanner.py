@@ -8,12 +8,8 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_core.result import r
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m, r, t, u
 from flext_infra.refactor._top_level_class_collector import TopLevelClassCollector
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 type RConfigMapping = r[t.Infra.ContainerDict]
 type RListPath = r[list[Path]]

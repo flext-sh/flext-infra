@@ -8,11 +8,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.constants import c
-from flext_infra.transformers.import_insertion import (
-    FlextInfraTransformerImportInsertion,
-)
-from flext_infra.utilities import u
+from flext_infra import FlextInfraTransformerImportInsertion, c, u
 
 _PAIR_LENGTH = 2
 

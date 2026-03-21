@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import override
 
 import pytest
-from flext_tests import m, t, u
+from flext_tests import tf, tm
 
 from flext_core import r
 from flext_infra import m, t
@@ -73,11 +73,11 @@ def test_sync_success_scenarios(
     gitignore: str,
 ) -> None:
     if base_mk:
-        u.Tests.Files.create_in(base_mk, "base.mk", tmp_path)
+        tf.create_in(base_mk, "base.mk", tmp_path)
     if gitignore:
-        u.Tests.Files.create_in(gitignore, ".gitignore", tmp_path)
-    u.Tests.Matchers.ok(svc.sync(workspace_root=tmp_path))
-    u.Tests.Matchers.that((tmp_path / "base.mk").exists(), eq=True)
+        tf.create_in(gitignore, ".gitignore", tmp_path)
+    tm.ok(svc.sync(workspace_root=tmp_path))
+    tm.that((tmp_path / "base.mk").exists(), eq=True)
 
 
 @pytest.mark.parametrize(
@@ -89,7 +89,7 @@ def test_sync_success_scenarios(
     ids=["missing-project-root", "project-root-not-found"],
 )
 def test_sync_root_validation(project_root: Path | None, expected_error: str) -> None:
-    u.Tests.Matchers.fail(_S().sync(workspace_root=project_root), has=expected_error)
+    tm.fail(_S().sync(workspace_root=project_root), has=expected_error)
 
 
 @pytest.mark.parametrize(
@@ -111,7 +111,7 @@ def test_cli_result_by_project_root(
         "argv",
         [str(tmp_path) if part == "{tmp}" else part for part in argv],
     )
-    u.Tests.Matchers.that(FlextInfraSyncService.main(), eq=expected)
+    tm.that(FlextInfraSyncService.main(), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -131,7 +131,7 @@ def test_sync_error_scenarios(
     expected_error: str,
 ) -> None:
     setup_fn(svc, monkeypatch)
-    u.Tests.Matchers.fail(svc.sync(workspace_root=tmp_path), has=expected_error)
+    tm.fail(svc.sync(workspace_root=tmp_path), has=expected_error)
 
 
 def test_gitignore_sync_failure(
@@ -148,15 +148,13 @@ def test_gitignore_sync_failure(
         "_ensure_gitignore_entries",
         _ensure,
     )
-    u.Tests.Matchers.fail(
-        service.sync(workspace_root=tmp_path), has=".gitignore sync failed"
-    )
+    tm.fail(service.sync(workspace_root=tmp_path), has=".gitignore sync failed")
 
 
 def test_atomic_write_ok(tmp_path: Path) -> None:
     target = tmp_path / "test.txt"
-    u.Tests.Matchers.ok(_S._atomic_write(target, "test content"), eq=True)
-    u.Tests.Matchers.that(target.read_text(encoding="utf-8"), eq="test content")
+    tm.ok(_S._atomic_write(target, "test content"), eq=True)
+    tm.that(target.read_text(encoding="utf-8"), eq="test content")
 
 
 def test_atomic_write_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -169,9 +167,7 @@ def test_atomic_write_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         "NamedTemporaryFile",
         _temp,
     )
-    u.Tests.Matchers.fail(
-        _S._atomic_write(tmp_path / "t.txt", "c"), has="atomic write failed"
-    )
+    tm.fail(_S._atomic_write(tmp_path / "t.txt", "c"), has="atomic write failed")
 
 
 @pytest.mark.parametrize(
@@ -189,13 +185,13 @@ def test_sync_basemk_scenarios(
     expected: bool | str,
 ) -> None:
     service = _S()
-    u.Tests.Files.create_in("# Same content\n", "base.mk", tmp_path)
+    tf.create_in("# Same content\n", "base.mk", tmp_path)
     service._generator = _stub_gen(generated, fail=not ok_result)
     result = service._sync_basemk(tmp_path, None)
     if ok_result:
-        u.Tests.Matchers.ok(result, eq=expected)
+        tm.ok(result, eq=expected)
         return
-    u.Tests.Matchers.fail(result, has=str(expected))
+    tm.fail(result, has=str(expected))
 
 
 @pytest.mark.parametrize(
@@ -212,18 +208,18 @@ def test_gitignore_entry_scenarios(
     entries: list[str],
     expected: bool,
 ) -> None:
-    u.Tests.Files.create_in(initial_content, ".gitignore", tmp_path)
-    u.Tests.Matchers.ok(_S()._ensure_gitignore_entries(tmp_path, entries), eq=expected)
+    tf.create_in(initial_content, ".gitignore", tmp_path)
+    tm.ok(_S()._ensure_gitignore_entries(tmp_path, entries), eq=expected)
     content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     for entry in entries:
-        u.Tests.Matchers.that(content, has=entry)
+        tm.that(content, has=entry)
 
 
 def test_gitignore_write_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    u.Tests.Files.create_in("*.pyc\n", ".gitignore", tmp_path)
+    tf.create_in("*.pyc\n", ".gitignore", tmp_path)
 
     def _open(*_args: t.Scalar, **_kwargs: t.Scalar) -> None:
         msg = "Write failed"
@@ -234,7 +230,7 @@ def test_gitignore_write_failure(
         "open",
         _open,
     )
-    u.Tests.Matchers.fail(
+    tm.fail(
         _S()._ensure_gitignore_entries(tmp_path, [".reports/"]),
         has=".gitignore update failed",
     )

@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
-from flext_tests import t, u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -85,13 +85,9 @@ def test_migrator_dry_run_reports_changes_without_writes(tmp_path: Path) -> None
     h.write_project(project_root)
     migrator = _build_migrator(_project(project_root), "NEW_BASE\n")
     result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-    migrations = u.Tests.Matchers.ok(result)
-    u.Tests.Matchers.that(
-        any(c.startswith("[DRY-RUN]") for c in migrations[0].changes), eq=True
-    )
-    u.Tests.Matchers.that(
-        (project_root / "base.mk").read_text(encoding="utf-8"), eq="OLD_BASE\n"
-    )
+    migrations = tm.ok(result)
+    tm.that(any(c.startswith("[DRY-RUN]") for c in migrations[0].changes), eq=True)
+    tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="OLD_BASE\n")
 
 
 def test_migrator_apply_updates_project_files(tmp_path: Path) -> None:
@@ -100,14 +96,12 @@ def test_migrator_apply_updates_project_files(tmp_path: Path) -> None:
     h.write_project(project_root)
     migrator = _build_migrator(_project(project_root), "NEW_BASE\n")
     result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-    migrations = u.Tests.Matchers.ok(result)
-    u.Tests.Matchers.that(migrations[0].errors, eq=[])
-    u.Tests.Matchers.that((project_root / "base.mk").exists(), eq=False)
+    migrations = tm.ok(result)
+    tm.that(migrations[0].errors, eq=[])
+    tm.that((project_root / "base.mk").exists(), eq=False)
     makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
-    u.Tests.Matchers.that(
-        "scripts/check/workspace_check.py" not in makefile_text, eq=True
-    )
-    u.Tests.Matchers.that("python -m flext_infra check run" in makefile_text, eq=True)
+    tm.that("scripts/check/workspace_check.py" not in makefile_text, eq=True)
+    tm.that("python -m flext_infra check run" in makefile_text, eq=True)
 
 
 def test_migrator_handles_missing_pyproject_gracefully(tmp_path: Path) -> None:
@@ -118,8 +112,8 @@ def test_migrator_handles_missing_pyproject_gracefully(tmp_path: Path) -> None:
     (project_root / "Makefile").write_text("", encoding="utf-8")
     migrator = _build_migrator(_project(project_root), "NEW_BASE\n")
     result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-    u.Tests.Matchers.ok(result)
-    u.Tests.Matchers.that((project_root / "base.mk").exists(), eq=False)
+    tm.ok(result)
+    tm.that((project_root / "base.mk").exists(), eq=False)
 
 
 def test_migrator_preserves_custom_makefile_content(tmp_path: Path) -> None:
@@ -130,27 +124,27 @@ def test_migrator_preserves_custom_makefile_content(tmp_path: Path) -> None:
     (project_root / "Makefile").write_text(custom, encoding="utf-8")
     migrator = _build_migrator(_project(project_root), "NEW_BASE\n")
     result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     text = (project_root / "Makefile").read_text(encoding="utf-8")
-    u.Tests.Matchers.that(text, has="custom-target")
-    u.Tests.Matchers.that(text, has="@echo 'custom'")
+    tm.that(text, has="custom-target")
+    tm.that(text, has="@echo 'custom'")
 
 
 def test_migrator_execute_returns_failure() -> None:
-    u.Tests.Matchers.fail(FlextInfraProjectMigrator().execute())
+    tm.fail(FlextInfraProjectMigrator().execute())
 
 
 def test_migrator_workspace_root_not_exists(tmp_path: Path) -> None:
     migrator = FlextInfraProjectMigrator()
     result = migrator.migrate(workspace_root=tmp_path / "nonexistent", dry_run=False)
-    u.Tests.Matchers.fail(result, has="does not exist")
+    tm.fail(result, has="does not exist")
 
 
 def test_migrator_discovery_failure(tmp_path: Path) -> None:
     migrator = FlextInfraProjectMigrator()
     migrator._discovery = _StubDiscovery(error="Discovery failed")
     result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-    u.Tests.Matchers.fail(result, has="Discovery failed")
+    tm.fail(result, has="Discovery failed")
 
 
 def test_migrator_workspace_root_project_detection(tmp_path: Path) -> None:
@@ -163,8 +157,8 @@ def test_migrator_workspace_root_project_detection(tmp_path: Path) -> None:
     migrator._discovery = _StubDiscovery([])
     migrator._generator = _StubGenerator("base.mk")
     result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-    migrations = u.Tests.Matchers.ok(result)
-    u.Tests.Matchers.that(len(migrations), gte=1)
+    migrations = tm.ok(result)
+    tm.that(len(migrations), gte=1)
 
 
 def test_migrator_no_changes_needed(tmp_path: Path) -> None:
@@ -182,5 +176,5 @@ def test_migrator_no_changes_needed(tmp_path: Path) -> None:
     )
     migrator = _build_migrator(_project(project_root), "base.mk")
     result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-    migrations = u.Tests.Matchers.ok(result)
-    u.Tests.Matchers.that("no changes needed" in migrations[0].changes, eq=True)
+    migrations = tm.ok(result)
+    tm.that("no changes needed" in migrations[0].changes, eq=True)

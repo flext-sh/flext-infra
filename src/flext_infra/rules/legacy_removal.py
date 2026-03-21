@@ -9,16 +9,14 @@ from typing import override
 import libcst as cst
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra.constants import c
-from flext_infra.refactor.rule import FlextInfraRefactorRule
-from flext_infra.transformers.alias_remover import FlextInfraRefactorAliasRemover
-from flext_infra.transformers.deprecated_remover import (
+from flext_infra import (
+    FlextInfraRefactorAliasRemover,
     FlextInfraRefactorDeprecatedRemover,
-)
-from flext_infra.transformers.import_bypass_remover import (
     FlextInfraRefactorImportBypassRemover,
+    FlextInfraRefactorRule,
+    c,
+    t,
 )
-from flext_infra.typings import t
 
 
 class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):

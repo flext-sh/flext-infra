@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m
 
 from .mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from .mro_migration_scanner import FlextInfraRefactorMROMigrationScanner

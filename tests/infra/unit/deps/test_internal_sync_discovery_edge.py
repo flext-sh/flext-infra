@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from flext_tests import t, u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
@@ -39,7 +39,7 @@ class TestCollectInternalDepsEdgeCases:
             service = FlextInfraInternalDependencySyncService()
             _set_toml_sequence(service, [value])
             result = service.collect_internal_deps(tmp_path)
-            u.Tests.Matchers.ok(result)
+            tm.ok(result)
             return result
 
         one_result = _collect(
@@ -92,9 +92,9 @@ class TestCollectInternalDepsEdgeCases:
         four = four_result.value
         five = five_result.value
         six = six_result.value
-        u.Tests.Matchers.that("flext-core" in one, eq=True)
-        u.Tests.Matchers.that("flext-core" in two, eq=True)
-        u.Tests.Matchers.that("external-lib" in three, eq=False)
-        u.Tests.Matchers.that(len(four), eq=0)
-        u.Tests.Matchers.that(len(five), eq=0)
-        u.Tests.Matchers.that(len(six), eq=0)
+        tm.that("flext-core" in one, eq=True)
+        tm.that("flext-core" in two, eq=True)
+        tm.that("external-lib" in three, eq=False)
+        tm.that(len(four), eq=0)
+        tm.that(len(five), eq=0)
+        tm.that(len(six), eq=0)

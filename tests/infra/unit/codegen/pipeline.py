@@ -12,7 +12,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
@@ -134,7 +134,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     flexcore_package = flexcore / "src" / "flexcore"
-    u.Tests.Matchers.that(flexcore_package.joinpath("constants.py").exists(), eq=False)
+    tm.that(flexcore_package.joinpath("constants.py").exists(), eq=False)
     census_service = FlextInfraCodegenCensus(workspace_root=tmp_path)
     scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
     fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
@@ -144,44 +144,38 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     scaffold_by_project_first = {
         result.project: result for result in scaffold_results_first
     }
-    u.Tests.Matchers.that("project-a" in scaffold_by_project_first, eq=True)
-    u.Tests.Matchers.that("project-b" in scaffold_by_project_first, eq=True)
-    u.Tests.Matchers.that("project-c" in scaffold_by_project_first, eq=True)
+    tm.that("project-a" in scaffold_by_project_first, eq=True)
+    tm.that("project-b" in scaffold_by_project_first, eq=True)
+    tm.that("project-c" in scaffold_by_project_first, eq=True)
     scaffold_results_second = scaffolder.run()
     scaffold_by_project_second = {
         result.project: result for result in scaffold_results_second
     }
-    u.Tests.Matchers.that(
-        len(scaffold_by_project_second["project-a"].files_created), eq=0
-    )
-    u.Tests.Matchers.that(
-        len(scaffold_by_project_second["project-b"].files_created), eq=0
-    )
-    u.Tests.Matchers.that(
-        len(scaffold_by_project_second["project-c"].files_created), eq=0
-    )
+    tm.that(len(scaffold_by_project_second["project-a"].files_created), eq=0)
+    tm.that(len(scaffold_by_project_second["project-b"].files_created), eq=0)
+    tm.that(len(scaffold_by_project_second["project-c"].files_created), eq=0)
     fix_results = fixer.run()
     fix_by_project = {result.project: result for result in fix_results}
-    u.Tests.Matchers.that("project-a" in fix_by_project, eq=True)
-    u.Tests.Matchers.that("project-b" in fix_by_project, eq=True)
-    u.Tests.Matchers.that("project-c" in fix_by_project, eq=True)
+    tm.that("project-a" in fix_by_project, eq=True)
+    tm.that("project-b" in fix_by_project, eq=True)
+    tm.that("project-c" in fix_by_project, eq=True)
     project_b_fixed = fix_by_project["project-b"]
-    u.Tests.Matchers.that(len(project_b_fixed.violations_fixed), gt=0)
-    u.Tests.Matchers.that(
+    tm.that(len(project_b_fixed.violations_fixed), gt=0)
+    tm.that(
         any(v.rule == "NS-002" for v in project_b_fixed.violations_fixed),
         eq=True,
     )
     unmapped_count = lazy_init.run()
-    u.Tests.Matchers.that(unmapped_count, gte=0)
+    tm.that(unmapped_count, gte=0)
     census_after = census_service.run()
     before_total = sum(report.total for report in census_before)
     after_total = sum(report.total for report in census_after)
-    u.Tests.Matchers.that(after_total, lte=before_total)
+    tm.that(after_total, lte=before_total)
     for py_file in tmp_path.rglob("*.py"):
         source = py_file.read_text(encoding="utf-8")
         tree = ast.parse(source)
-        u.Tests.Matchers.that(type(tree).__name__, eq="Module")
-    u.Tests.Matchers.that(flexcore_package.joinpath("constants.py").exists(), eq=False)
+        tm.that(type(tree).__name__, eq="Module")
+    tm.that(flexcore_package.joinpath("constants.py").exists(), eq=False)
 
 
 __all__: list[str] = []

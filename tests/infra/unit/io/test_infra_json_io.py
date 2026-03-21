@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tf, tm
 from pydantic import BaseModel
 
 from flext_infra import FlextInfraUtilitiesIo
@@ -49,10 +49,10 @@ class TestFlextInfraJsonService:
         service = FlextInfraUtilitiesIo()
         result = service.read_json(json_file)
         if should_succeed:
-            u.Tests.Matchers.ok(result)
-            u.Tests.Matchers.that(str(result.value), has=expected_fragment)
+            tm.ok(result)
+            tm.that(str(result.value), has=expected_fragment)
             return
-        u.Tests.Matchers.fail(result, has=expected_fragment)
+        tm.fail(result, has=expected_fragment)
 
     @pytest.mark.parametrize(
         ("path_parts", "payload", "sort_keys", "ensure_ascii", "expected"),
@@ -94,22 +94,22 @@ class TestFlextInfraJsonService:
             sort_keys=sort_keys,
             ensure_ascii=ensure_ascii,
         )
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(json_file.exists(), eq=True)
-        u.Tests.Matchers.that(json_file.read_text(encoding="utf-8"), has=expected)
+        tm.ok(result)
+        tm.that(json_file.exists(), eq=True)
+        tm.that(json_file.read_text(encoding="utf-8"), has=expected)
         if sort_keys:
             content = json_file.read_text(encoding="utf-8")
-            u.Tests.Matchers.that(content.index('"a"') < content.index('"z"'), eq=True)
+            tm.that(content.index('"a"') < content.index('"z"'), eq=True)
 
     def test_write_permission_error(self, tmp_path: Path) -> None:
         """Test write failure on permission error."""
         json_file = tmp_path / "readonly.json"
-        _ = u.Tests.Files.create_in("{}", "readonly.json", tmp_path)
+        _ = tf.create_in("{}", "readonly.json", tmp_path)
         json_file.chmod(292)
         service = FlextInfraUtilitiesIo()
         try:
             result = service.write_json(json_file, {"key": "value"})
-            u.Tests.Matchers.fail(result)
+            tm.fail(result)
         finally:
             json_file.chmod(420)
 
@@ -118,8 +118,8 @@ class TestFlextInfraJsonService:
         json_file = tmp_path / "test.json"
         service = FlextInfraUtilitiesIo()
         result = service.write_json(json_file, {"key": "value"})
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(result.value, eq=True)
+        tm.ok(result)
+        tm.that(result.value, eq=True)
 
     def test_removed_direct_api_methods_raise_attribute_error(self) -> None:
         """Direct-return compatibility methods are no longer available."""

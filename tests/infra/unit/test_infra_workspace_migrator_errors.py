@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import t, u
+from flext_tests import tm
 
 from flext_core import t
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
@@ -49,8 +49,8 @@ class TestMigratorWriteFailures:
 
         monkeypatch.setattr(Path, "write_text", _write_fail)
         result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-        migration = u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(
+        migration = tm.ok(result)
+        tm.that(
             any("Write failed" in err for err in migration[0].errors),
             eq=True,
         )
@@ -75,8 +75,8 @@ class TestMigratorWriteFailures:
 
         monkeypatch.setattr(Path, "write_text", _write_fail)
         result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-        migration = u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(
+        migration = tm.ok(result)
+        tm.that(
             any("Write failed" in err for err in migration[0].errors),
             eq=True,
         )
@@ -100,8 +100,8 @@ class TestMigratorWriteFailures:
 
         monkeypatch.setattr(Path, "write_text", _selective_write)
         result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-        migration = u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(
+        migration = tm.ok(result)
+        tm.that(
             any("Makefile write failed" in err for err in migration[0].errors),
             eq=True,
         )
@@ -123,8 +123,8 @@ class TestMigratorWriteFailures:
 
         monkeypatch.setattr(Path, "write_text", _selective_write)
         result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-        migration = u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(
+        migration = tm.ok(result)
+        tm.that(
             any("pyproject write failed" in err for err in migration[0].errors),
             eq=True,
         )
@@ -154,8 +154,8 @@ class TestMigratorReadFailures:
 
         monkeypatch.setattr(Path, "read_text", _selective_read)
         result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-        migration = u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(
+        migration = tm.ok(result)
+        tm.that(
             any(".gitignore read failed" in err for err in migration[0].errors),
             eq=True,
         )
@@ -171,8 +171,8 @@ class TestMigratorReadFailures:
         migrator._discovery = _StubDiscovery([proj])
         migrator._generator = _StubGenerator(fail="Generation failed")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-        migration = u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(
+        migration = tm.ok(result)
+        tm.that(
             any("Generation failed" in err for err in migration[0].errors),
             eq=True,
         )
@@ -187,8 +187,8 @@ class TestMigratorReadFailures:
         (root / ".gitignore").write_text("", encoding="utf-8")
         migrator = _build_migrator(_project(root), "base.mk")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=False)
-        migration = u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(
+        migration = tm.ok(result)
+        tm.that(
             any("parse failed" in err for err in migration[0].errors),
             eq=True,
         )

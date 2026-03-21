@@ -8,12 +8,14 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.refactor.mro_migrator import FlextInfraRefactorMROMigrationTransformer
-from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
-from flext_infra.refactor.rule import FlextInfraRefactorRule
-from flext_infra.utilities import u
+from flext_infra import (
+    FlextInfraRefactorMROMigrationTransformer,
+    FlextInfraRefactorMROResolver,
+    FlextInfraRefactorRule,
+    c,
+    m,
+    u,
+)
 
 
 class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):

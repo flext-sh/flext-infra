@@ -9,7 +9,7 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
-from flext_tests import u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -49,7 +49,7 @@ def test_generator_execute_returns_generated_content() -> None:
     """Test execute() method returns generated content."""
     gen = FlextInfraBaseMkGenerator(template_engine=_SuccessRenderer())
     result = gen.execute()
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert "help:" in result.value
 
 
@@ -57,7 +57,7 @@ def test_generator_generate_with_none_config_uses_default() -> None:
     """Test generate() with None config uses default configuration."""
     gen = FlextInfraBaseMkGenerator(template_engine=_SuccessRenderer())
     result = gen.generate(config=None)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
 
 
 def test_generator_generate_with_basemk_config_object() -> None:
@@ -74,7 +74,7 @@ def test_generator_generate_with_basemk_config_object() -> None:
     )
     gen = FlextInfraBaseMkGenerator(template_engine=_SuccessRenderer())
     result = gen.generate(config=config)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
 
 
 def test_generator_generate_with_dict_config() -> None:
@@ -91,7 +91,7 @@ def test_generator_generate_with_dict_config() -> None:
     )
     gen = FlextInfraBaseMkGenerator(template_engine=_SuccessRenderer())
     result = gen.generate(config=config)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
 
 
 def test_generator_generate_with_invalid_dict_config() -> None:
@@ -99,7 +99,7 @@ def test_generator_generate_with_invalid_dict_config() -> None:
     invalid_config = {"invalid_key": "value"}
     gen = FlextInfraBaseMkGenerator(template_engine=_SuccessRenderer())
     result = gen.generate(config=invalid_config)
-    u.Tests.Matchers.fail(result)
+    tm.fail(result)
     assert isinstance(result.error, str)
     assert isinstance(result.error, str)
     assert "validation failed" in result.error
@@ -109,7 +109,7 @@ def test_generator_generate_propagates_render_failure() -> None:
     """Test generate() propagates template render failures."""
     gen = FlextInfraBaseMkGenerator(template_engine=_FailureRenderer())
     result = gen.generate()
-    u.Tests.Matchers.fail(result)
+    tm.fail(result)
     assert isinstance(result.error, str)
     assert "render error" in result.error
 
@@ -120,7 +120,7 @@ def test_generator_write_to_file(tmp_path: Path) -> None:
     content = "all:\n\t@echo 'test'\n"
     gen = FlextInfraBaseMkGenerator()
     result = gen.write(content, output=output_path)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert output_path.exists()
     assert output_path.read_text(encoding="utf-8") == content
 
@@ -131,7 +131,7 @@ def test_generator_write_creates_parent_directories(tmp_path: Path) -> None:
     content = "all:\n\t@echo 'test'\n"
     gen = FlextInfraBaseMkGenerator()
     result = gen.write(content, output=output_path)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert output_path.exists()
 
 
@@ -141,7 +141,7 @@ def test_generator_write_to_stream() -> None:
     content = "all:\n\t@echo 'test'\n"
     gen = FlextInfraBaseMkGenerator()
     result = gen.write(content, stream=stream)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert stream.getvalue() == content
 
 
@@ -150,6 +150,6 @@ def test_generator_write_fails_without_output_or_stream() -> None:
     content = "all:\n\t@echo 'test'\n"
     gen = FlextInfraBaseMkGenerator()
     result = gen.write(content, output=None, stream=None)
-    u.Tests.Matchers.fail(result)
+    tm.fail(result)
     assert isinstance(result.error, str)
     assert "stdout stream is required" in result.error

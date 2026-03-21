@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra.deps import detection
@@ -100,13 +100,13 @@ class TestModuleLevelWrappers:
         assert hdep.classify_issues([]).dep001 == []
 
     def test_build_project_report_wrapper(self) -> None:
-        u.Tests.Matchers.that(
+        tm.that(
             hdep.build_project_report("proj", []).project,
             eq="proj",
         )
 
     def test_module_to_types_package_wrapper(self) -> None:
-        u.Tests.Matchers.that(
+        tm.that(
             hdep.module_to_types_package("yaml", {}),
             eq="types-pyyaml",
         )
@@ -126,7 +126,7 @@ def test_discover_projects_wrapper(
     stub = _StubService()
     monkeypatch.setattr(detection, "_service", stub)
     result = hdep.discover_project_paths(tmp_path)
-    u.Tests.Matchers.that(result.is_success, eq=True)
+    tm.that(result.is_success, eq=True)
     assert stub.called["discover_project_paths"][1] is None
 
 
@@ -135,11 +135,11 @@ def test_run_deptry_wrapper(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(detection, "_service", stub)
     venv_bin = tmp_path / "venv" / "bin"
     venv_bin.mkdir(parents=True)
-    u.Tests.Matchers.that(
+    tm.that(
         hdep.run_deptry(tmp_path, venv_bin).is_success,
         eq=True,
     )
-    u.Tests.Matchers.that(str(stub.called["run_deptry"][0]), eq=str(tmp_path))
+    tm.that(str(stub.called["run_deptry"][0]), eq=str(tmp_path))
 
 
 def test_run_pip_check_wrapper(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -147,11 +147,11 @@ def test_run_pip_check_wrapper(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(detection, "_service", stub)
     venv_bin = tmp_path / "venv" / "bin"
     venv_bin.mkdir(parents=True)
-    u.Tests.Matchers.that(
+    tm.that(
         hdep.run_pip_check(tmp_path, venv_bin).is_success,
         eq=True,
     )
-    u.Tests.Matchers.that(str(stub.called["run_pip_check"][0]), eq=str(tmp_path))
+    tm.that(str(stub.called["run_pip_check"][0]), eq=str(tmp_path))
 
 
 def test_run_mypy_stub_hints_wrapper(
@@ -162,14 +162,14 @@ def test_run_mypy_stub_hints_wrapper(
     monkeypatch.setattr(detection, "_service", stub)
     venv_bin = tmp_path / "venv" / "bin"
     venv_bin.mkdir(parents=True)
-    u.Tests.Matchers.that(
+    tm.that(
         hdep.run_mypy_stub_hints(
             tmp_path,
             venv_bin,
         ).is_success,
         eq=True,
     )
-    u.Tests.Matchers.that(str(stub.called["run_mypy_stub_hints"][0]), eq=str(tmp_path))
+    tm.that(str(stub.called["run_mypy_stub_hints"][0]), eq=str(tmp_path))
 
 
 def test_get_current_typings_from_pyproject_wrapper(
@@ -178,13 +178,11 @@ def test_get_current_typings_from_pyproject_wrapper(
 ) -> None:
     stub = _StubService()
     monkeypatch.setattr(detection, "_service", stub)
-    u.Tests.Matchers.that(
+    tm.that(
         hdep.get_current_typings_from_pyproject(tmp_path),
         eq=["types-requests"],
     )
-    u.Tests.Matchers.that(
-        str(stub.called["get_current_typings_from_pyproject"][0]), eq=str(tmp_path)
-    )
+    tm.that(str(stub.called["get_current_typings_from_pyproject"][0]), eq=str(tmp_path))
 
 
 def test_get_required_typings_wrapper(
@@ -195,11 +193,11 @@ def test_get_required_typings_wrapper(
     monkeypatch.setattr(detection, "_service", stub)
     venv_bin = tmp_path / "venv" / "bin"
     venv_bin.mkdir(parents=True)
-    u.Tests.Matchers.that(
+    tm.that(
         hdep.get_required_typings(
             tmp_path,
             venv_bin,
         ).is_success,
         eq=True,
     )
-    u.Tests.Matchers.that(str(stub.called["get_required_typings"][0]), eq=str(tmp_path))
+    tm.that(str(stub.called["get_required_typings"][0]), eq=str(tmp_path))

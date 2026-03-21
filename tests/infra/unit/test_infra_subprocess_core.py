@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import m, u
+from flext_tests import tm
 
 from flext_infra import FlextInfraUtilitiesSubprocess, m
 
@@ -68,21 +68,21 @@ def test_run_raw_cases(
     cwd = tmp_path if use_tmp_path else None
     result = runner.run_raw(command, cwd=cwd, timeout=timeout, env=env)
     if expect_success:
-        output = u.Tests.Matchers.ok(result)
+        output = tm.ok(result)
         assert isinstance(output, m.Infra.CommandOutput)
         if stdout_has:
-            u.Tests.Matchers.that(output.stdout, has=stdout_has)
+            tm.that(output.stdout, has=stdout_has)
         if stderr_has:
-            u.Tests.Matchers.that(output.stderr, has=stderr_has)
+            tm.that(output.stderr, has=stderr_has)
         if use_tmp_path:
-            u.Tests.Matchers.that(output.stdout.strip(), eq=str(tmp_path))
+            tm.that(output.stdout.strip(), eq=str(tmp_path))
         if exit_code is not None:
-            u.Tests.Matchers.that(output.exit_code, eq=exit_code)
+            tm.that(output.exit_code, eq=exit_code)
         return
     if error_has:
-        u.Tests.Matchers.fail(result, has=error_has)
+        tm.fail(result, has=error_has)
         return
-    u.Tests.Matchers.fail(result)
+    tm.fail(result)
 
 
 @pytest.mark.parametrize(
@@ -126,13 +126,13 @@ def test_run_cases(
     cwd = tmp_path if use_tmp_path else None
     result = runner.run(command, cwd=cwd, timeout=timeout, env=env)
     if expect_success:
-        output = u.Tests.Matchers.ok(result)
+        output = tm.ok(result)
         if stdout_has:
-            u.Tests.Matchers.that(output.stdout, has=stdout_has)
+            tm.that(output.stdout, has=stdout_has)
         if use_tmp_path:
-            u.Tests.Matchers.that(output.stdout.strip(), eq=str(tmp_path))
+            tm.that(output.stdout.strip(), eq=str(tmp_path))
         return
-    u.Tests.Matchers.fail(result, has=error_has)
+    tm.fail(result, has=error_has)
 
 
 @pytest.mark.parametrize(
@@ -177,13 +177,13 @@ def test_capture_cases(
     cwd = tmp_path if use_tmp_path else None
     result = runner.capture(command, cwd=cwd, timeout=timeout, env=env)
     if expect_success:
-        output = u.Tests.Matchers.ok(result)
+        output = tm.ok(result)
         if use_tmp_path:
-            u.Tests.Matchers.that(output, eq=str(tmp_path))
+            tm.that(output, eq=str(tmp_path))
             return
-        u.Tests.Matchers.that(output, eq=expected)
+        tm.that(output, eq=expected)
         return
     if error_has:
-        u.Tests.Matchers.fail(result, has=error_has)
+        tm.fail(result, has=error_has)
         return
-    u.Tests.Matchers.fail(result)
+    tm.fail(result)

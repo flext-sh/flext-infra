@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
 
@@ -52,13 +52,11 @@ class TestNormalizeStringList:
 
     def test_none_returns_empty(self) -> None:
         """None returns empty list."""
-        u.Tests.Matchers.that(_normalize_string_list(None, "test"), eq=[])
+        tm.that(_normalize_string_list(None, "test"), eq=[])
 
     def test_valid_list(self) -> None:
         """Valid string list passes through."""
-        u.Tests.Matchers.that(
-            _normalize_string_list(["a", "b", "c"], "test"), eq=["a", "b", "c"]
-        )
+        tm.that(_normalize_string_list(["a", "b", "c"], "test"), eq=["a", "b", "c"])
 
     def test_invalid_input_raises(self) -> None:
         """Non-string items and non-list values raise TypeError."""
@@ -78,9 +76,9 @@ class TestSkillValidatorCore:
         validator = FlextInfraSkillValidator()
         skills = tmp_path / ".claude" / "skills" / "test-skill"
         skills.mkdir(parents=True)
-        report = u.Tests.Matchers.ok(validator.validate(tmp_path, "test-skill"))
-        u.Tests.Matchers.that(report.passed, eq=False)
-        u.Tests.Matchers.that(report.summary, contains="no rules.yml")
+        report = tm.ok(validator.validate(tmp_path, "test-skill"))
+        tm.that(report.passed, eq=False)
+        tm.that(report.summary, contains="no rules.yml")
 
     def test_validate_invalid_scan_targets(self, tmp_path: Path) -> None:
         """Non-dict scan_targets returns failure."""
@@ -88,9 +86,7 @@ class TestSkillValidatorCore:
         skill = tmp_path / ".claude" / "skills" / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("scan_targets: [item1, item2]")
-        u.Tests.Matchers.fail(
-            validator.validate(tmp_path, "test-skill"), has="scan_targets"
-        )
+        tm.fail(validator.validate(tmp_path, "test-skill"), has="scan_targets")
 
     def test_validate_invalid_rules_not_list(self, tmp_path: Path) -> None:
         """Non-list rules returns failure."""
@@ -98,9 +94,7 @@ class TestSkillValidatorCore:
         skill = tmp_path / ".claude" / "skills" / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules: {not: a_list}")
-        u.Tests.Matchers.fail(
-            validator.validate(tmp_path, "test-skill"), has="rules must be a list"
-        )
+        tm.fail(validator.validate(tmp_path, "test-skill"), has="rules must be a list")
 
     def test_validate_non_dict_rule_skipped(self, tmp_path: Path) -> None:
         """Non-dict rule objects are skipped."""
@@ -108,8 +102,8 @@ class TestSkillValidatorCore:
         skill = tmp_path / ".claude" / "skills" / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules:\n  - not_a_dict\n  - another_string")
-        report = u.Tests.Matchers.ok(validator.validate(tmp_path, "test-skill"))
-        u.Tests.Matchers.that(report.passed, eq=True)
+        report = tm.ok(validator.validate(tmp_path, "test-skill"))
+        tm.that(report.passed, eq=True)
 
     def test_validate_exception_returns_failure(self, tmp_path: Path) -> None:
         """Invalid YAML content returns failure."""
@@ -117,7 +111,7 @@ class TestSkillValidatorCore:
         skill = tmp_path / ".claude" / "skills" / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
-        u.Tests.Matchers.fail(
+        tm.fail(
             validator.validate(tmp_path, "test-skill"),
             has="skill validation failed",
         )
@@ -133,7 +127,7 @@ class TestSkillValidatorRenderTemplate:
             "/absolute/path/{skill}/file.json",
             "my-skill",
         )
-        u.Tests.Matchers.that(str(result), eq="/absolute/path/my-skill/file.json")
+        tm.that(str(result), eq="/absolute/path/my-skill/file.json")
 
     def test_relative_path(self, tmp_path: Path) -> None:
         """Relative path template resolves with skill name."""
@@ -142,8 +136,8 @@ class TestSkillValidatorRenderTemplate:
             ".reports/{skill}/report.json",
             "my-skill",
         )
-        u.Tests.Matchers.that("my-skill" in str(result), eq=True)
-        u.Tests.Matchers.that("report.json" in str(result), eq=True)
+        tm.that("my-skill" in str(result), eq=True)
+        tm.that("report.json" in str(result), eq=True)
 
 
 class TestSkillValidatorAstGrepCount:
@@ -156,12 +150,8 @@ class TestSkillValidatorAstGrepCount:
         skill.mkdir()
         empty = {"id": "t", "type": "ast-grep", "file": ""}
         missing = {"id": "t", "type": "ast-grep", "file": "nonexistent.yml"}
-        u.Tests.Matchers.that(
-            v._run_ast_grep_count(empty, skill, tmp_path, [], []), eq=0
-        )
-        u.Tests.Matchers.that(
-            v._run_ast_grep_count(missing, skill, tmp_path, [], []), eq=0
-        )
+        tm.that(v._run_ast_grep_count(empty, skill, tmp_path, [], []), eq=0)
+        tm.that(v._run_ast_grep_count(missing, skill, tmp_path, [], []), eq=0)
 
     def test_with_include_globs(self, tmp_path: Path) -> None:
         """Include globs are passed to runner."""
@@ -186,12 +176,8 @@ class TestSkillValidatorAstGrepCount:
         skill.mkdir()
         empty = {"id": "t", "type": "custom", "script": ""}
         missing = {"id": "t", "type": "custom", "script": "nonexistent.py"}
-        u.Tests.Matchers.that(
-            v._run_custom_count(empty, skill, tmp_path, "baseline"), eq=0
-        )
-        u.Tests.Matchers.that(
-            v._run_custom_count(missing, skill, tmp_path, "baseline"), eq=0
-        )
+        tm.that(v._run_custom_count(empty, skill, tmp_path, "baseline"), eq=0)
+        tm.that(v._run_custom_count(missing, skill, tmp_path, "baseline"), eq=0)
 
 
 __all__: list[str] = []

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import m, u
+from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests.infra.models import m
@@ -26,7 +26,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues) >= 0, eq=True)
 
     def test_forbidden_term_issues_root_scope(self, tmp_path: Path) -> None:
         """Test forbidden_term_issues filters by docs/ for root scope."""
@@ -40,7 +40,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues) >= 0, eq=True)
 
     def test_forbidden_term_issues_project_scope(self, tmp_path: Path) -> None:
         """Test forbidden_term_issues filters by project name."""
@@ -54,7 +54,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues) >= 0, eq=True)
 
     def test_forbidden_term_issues_root_scope_non_docs_file(
         self,
@@ -69,7 +69,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues) >= 0, eq=True)
 
     def test_forbidden_term_issues_non_flext_scope(self, tmp_path: Path) -> None:
         """Test forbidden_term_issues skips non-flext scopes."""
@@ -81,7 +81,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues) >= 0, eq=True)
 
 
 class TestAuditorScope:
@@ -102,8 +102,8 @@ class TestAuditorScope:
             max_issues_default=None,
             max_issues_by_scope={},
         )
-        u.Tests.Matchers.that(report.phase, eq="audit")
-        u.Tests.Matchers.that("links" in report.checks, eq=True)
+        tm.that(report.phase, eq="audit")
+        tm.that("links" in report.checks, eq=True)
 
     def test_audit_scope_with_forbidden_terms_check(self, tmp_path: Path) -> None:
         """Test audit_scope runs forbidden-terms check."""
@@ -120,8 +120,8 @@ class TestAuditorScope:
             max_issues_default=None,
             max_issues_by_scope={},
         )
-        u.Tests.Matchers.that(report.phase, eq="audit")
-        u.Tests.Matchers.that("forbidden-terms" in report.checks, eq=True)
+        tm.that(report.phase, eq="audit")
+        tm.that("forbidden-terms" in report.checks, eq=True)
 
     def test_audit_scope_strict_mode_passes(self, tmp_path: Path) -> None:
         """Test audit_scope passes in strict mode with no issues."""
@@ -138,7 +138,7 @@ class TestAuditorScope:
             max_issues_default=None,
             max_issues_by_scope={},
         )
-        u.Tests.Matchers.that(report.passed, eq=True)
+        tm.that(report.passed, eq=True)
 
     def test_audit_scope_non_strict_mode_always_passes(self, tmp_path: Path) -> None:
         """Test audit_scope passes in non-strict mode."""
@@ -155,7 +155,7 @@ class TestAuditorScope:
             max_issues_default=None,
             max_issues_by_scope={},
         )
-        u.Tests.Matchers.that(report.passed, eq=True)
+        tm.that(report.passed, eq=True)
 
     def test_audit_scope_with_budget_limit(self, tmp_path: Path) -> None:
         """Test audit_scope respects issue budget."""
@@ -172,7 +172,7 @@ class TestAuditorScope:
             max_issues_default=0,
             max_issues_by_scope={},
         )
-        u.Tests.Matchers.that(report.phase, eq="audit")
+        tm.that(report.phase, eq="audit")
 
     def test_audit_scope_with_scope_specific_budget(self, tmp_path: Path) -> None:
         """Test audit_scope uses scope-specific budget."""
@@ -189,4 +189,4 @@ class TestAuditorScope:
             max_issues_default=10,
             max_issues_by_scope={"test": 5},
         )
-        u.Tests.Matchers.that(report.phase, eq="audit")
+        tm.that(report.phase, eq="audit")

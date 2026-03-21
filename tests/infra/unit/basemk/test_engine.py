@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 from _pytest.capture import CaptureFixture
-from flext_tests import t, u
+from flext_tests import tm
 from jinja2 import TemplateError
 
 from flext_core import r, t
@@ -51,7 +51,7 @@ def test_generator_renders_with_config_override() -> None:
         test_command="pytest",
     )
     result = FlextInfraBaseMkGenerator().generate(config)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert "PROJECT_NAME ?= sample-project" in result.value
 
 
@@ -59,7 +59,7 @@ def test_generator_fails_for_invalid_make_syntax() -> None:
     result = FlextInfraBaseMkGenerator(
         template_engine=_InvalidTemplateEngine(),
     ).generate()
-    u.Tests.Matchers.fail(result)
+    tm.fail(result)
     assert result.error is not None
     assert "validation failed" in result.error
 
@@ -68,7 +68,7 @@ def test_generator_write_saves_output_file(tmp_path: Path) -> None:
     output_path = tmp_path / "base.mk"
     content = "all:\n\t@true\n"
     result = FlextInfraBaseMkGenerator().write(content, output=output_path)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert output_path.read_text(encoding="utf-8") == content
 
 
@@ -93,7 +93,7 @@ def test_basemk_engine_render_all_returns_string() -> None:
     """Test engine.render_all() returns string."""
     engine = FlextInfraBaseMkTemplateEngine()
     result = engine.render_all()
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert isinstance(result.value, str) and len(result.value) > 0
 
 
@@ -111,7 +111,7 @@ def test_basemk_engine_render_all_with_valid_config() -> None:
     )
     engine = FlextInfraBaseMkTemplateEngine()
     result = engine.render_all(config=config)
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert "PROJECT_NAME ?= test-project" in result.value
 
 
@@ -119,7 +119,7 @@ def test_basemk_engine_execute_calls_render_all() -> None:
     """Test engine.execute() calls render_all()."""
     engine = FlextInfraBaseMkTemplateEngine()
     result = engine.execute()
-    u.Tests.Matchers.ok(result)
+    tm.ok(result)
     assert isinstance(result.value, str)
     assert len(result.value) > 0
 
@@ -136,7 +136,7 @@ def test_basemk_engine_render_all_handles_template_error(
     engine = FlextInfraBaseMkTemplateEngine()
     monkeypatch.setattr(engine._environment, "get_template", mock_get_template)
     result = engine.render_all()
-    u.Tests.Matchers.fail(result)
+    tm.fail(result)
     assert isinstance(result.error, str)
     assert isinstance(result.error, str)
     assert "template render failed" in result.error

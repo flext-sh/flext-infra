@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra import FlextInfraInternalDependencySyncService
 from flext_infra.deps import internal_sync
@@ -24,11 +24,11 @@ class TestEnsureCheckoutEdgeCases:
             raise OSError(msg)
 
         monkeypatch.setattr(internal_sync.shutil, "rmtree", _raise_rmtree)
-        error = u.Tests.Matchers.fail(
+        error = tm.fail(
             FlextInfraInternalDependencySyncService().ensure_checkout(
                 dep_path,
                 "https://github.com/test/repo.git",
                 "main",
             ),
         )
-        u.Tests.Matchers.that(error, contains="cleanup failed")
+        tm.that(error, contains="cleanup failed")

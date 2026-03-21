@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import override
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_infra.workspace.maintenance.python_version import (
     FlextInfraPythonVersionEnforcer,
@@ -65,32 +65,26 @@ class TestEnforcerExecute:
     """Tests for execute() with real workspace structures."""
 
     def test_check_only_success(self, tmp_path: Path) -> None:
-        u.Tests.Matchers.ok(
-            _svc(_ws(tmp_path / "ws")).execute(check_only=True, verbose=False), eq=0
-        )
+        tm.ok(_svc(_ws(tmp_path / "ws")).execute(check_only=True, verbose=False), eq=0)
 
     def test_enforce_mode(self, tmp_path: Path) -> None:
-        u.Tests.Matchers.ok(
-            _svc(_ws(tmp_path / "ws")).execute(check_only=False, verbose=False), eq=0
-        )
+        tm.ok(_svc(_ws(tmp_path / "ws")).execute(check_only=False, verbose=False), eq=0)
 
     def test_verbose_mode(self, tmp_path: Path) -> None:
         svc = _svc(_ws(tmp_path / "ws"))
-        u.Tests.Matchers.ok(svc.execute(check_only=True, verbose=True))
-        u.Tests.Matchers.that(svc.verbose, eq=True)
+        tm.ok(svc.execute(check_only=True, verbose=True))
+        tm.that(svc.verbose, eq=True)
 
     def test_failure_on_workspace_mismatch(self, tmp_path: Path) -> None:
-        u.Tests.Matchers.fail(
-            _svc(_ws(tmp_path / "ws", minor=_BAD)).execute(check_only=True)
-        )
+        tm.fail(_svc(_ws(tmp_path / "ws", minor=_BAD)).execute(check_only=True))
 
     def test_failure_on_project_mismatch(self, tmp_path: Path) -> None:
         ws = _ws(tmp_path / "ws")
         _proj(ws, "project-a", minor=_BAD)
-        u.Tests.Matchers.fail(_svc(ws).execute(check_only=True, verbose=False))
+        tm.fail(_svc(ws).execute(check_only=True, verbose=False))
 
     def test_empty_workspace(self, tmp_path: Path) -> None:
-        u.Tests.Matchers.ok(_svc(_ws(tmp_path / "ws")).execute(check_only=True))
+        tm.ok(_svc(_ws(tmp_path / "ws")).execute(check_only=True))
 
 
 class TestReadRequiredMinor:
@@ -106,7 +100,7 @@ class TestReadRequiredMinor:
         tmp_path: Path,
     ) -> None:
         ws = _ws(tmp_path / "ws")
-        u.Tests.Matchers.that(enforcer._read_required_minor(ws), eq=_MINOR)
+        tm.that(enforcer._read_required_minor(ws), eq=_MINOR)
 
     def test_fallback_to_13(
         self,
@@ -115,7 +109,7 @@ class TestReadRequiredMinor:
     ) -> None:
         d = tmp_path / "empty"
         d.mkdir()
-        u.Tests.Matchers.that(enforcer._read_required_minor(d), eq=13)
+        tm.that(enforcer._read_required_minor(d), eq=13)
 
     def test_malformed_pyproject(
         self,
@@ -125,7 +119,7 @@ class TestReadRequiredMinor:
         d = tmp_path / "bad"
         d.mkdir()
         (d / "pyproject.toml").write_text("# No field\n", encoding="utf-8")
-        u.Tests.Matchers.that(enforcer._read_required_minor(d), eq=13)
+        tm.that(enforcer._read_required_minor(d), eq=13)
 
 
 class TestWorkspaceRoot:
@@ -145,7 +139,7 @@ class TestWorkspaceRoot:
         f.parent.mkdir(parents=True)
         f.touch()
         resolved = enforcer._workspace_root_from_file(f)
-        u.Tests.Matchers.that(str(resolved.resolve()), eq=str(ws.resolve()))
+        tm.that(str(resolved.resolve()), eq=str(ws.resolve()))
 
     def test_not_found(
         self,
@@ -177,7 +171,7 @@ class TestEnsurePythonVersionFile:
             encoding="utf-8",
         )
         enforcer.check_only = True
-        u.Tests.Matchers.that(
+        tm.that(
             enforcer._ensure_python_version_file(p, required_minor=_MINOR),
             eq=False,
         )
@@ -195,9 +189,7 @@ class TestEnsurePythonVersionFile:
         )
         enforcer.check_only = True
         enforcer.verbose = False
-        u.Tests.Matchers.that(
-            enforcer._ensure_python_version_file(p, required_minor=_MINOR), eq=True
-        )
+        tm.that(enforcer._ensure_python_version_file(p, required_minor=_MINOR), eq=True)
 
     def test_enforce_mode_mismatch(
         self,
@@ -211,7 +203,7 @@ class TestEnsurePythonVersionFile:
             encoding="utf-8",
         )
         enforcer.check_only = False
-        u.Tests.Matchers.that(
+        tm.that(
             enforcer._ensure_python_version_file(p, required_minor=_MINOR),
             eq=False,
         )
@@ -224,4 +216,4 @@ class TestDiscoverProjects:
         d = tmp_path / "empty"
         d.mkdir()
         enforcer = FlextInfraPythonVersionEnforcer()
-        u.Tests.Matchers.that(enforcer._discover_projects(d), eq=[])
+        tm.that(enforcer._discover_projects(d), eq=[])

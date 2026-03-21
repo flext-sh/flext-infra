@@ -7,9 +7,7 @@ import re
 import tomllib
 from pathlib import Path
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import c, m, u
 
 
 class ProjectClassifier:

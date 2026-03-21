@@ -9,17 +9,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import c, m, u
+from flext_tests import tm
 
 from tests.infra import c, m
 
 
 class TestExcludedProjects:
     def test_flexcore_in_excluded_set(self) -> None:
-        u.Tests.Matchers.that("flexcore" in c.Infra.EXCLUDED_PROJECTS, eq=True)
+        tm.that("flexcore" in c.Infra.EXCLUDED_PROJECTS, eq=True)
 
     def test_excluded_set_is_frozenset(self) -> None:
-        u.Tests.Matchers.that(type(c.Infra.EXCLUDED_PROJECTS).__name__, eq="frozenset")
+        tm.that(type(c.Infra.EXCLUDED_PROJECTS).__name__, eq="frozenset")
 
 
 class TestViolationPattern:
@@ -27,7 +27,7 @@ class TestViolationPattern:
         match = c.Infra.VIOLATION_PATTERN.match(
             "[NS-001-001] src/file.py:10 — msg",
         )
-        u.Tests.Matchers.that(match is not None, eq=True)
+        tm.that(match is not None, eq=True)
         assert match is not None
         assert set(match.groupdict().keys()) == {"rule", "module", "line", "message"}
 
@@ -45,20 +45,20 @@ class TestCensusViolationModel:
             message="Test message",
             fixable=True,
         )
-        u.Tests.Matchers.that(v.module, eq="src/file.py")
-        u.Tests.Matchers.that(v.rule, eq="NS-001")
-        u.Tests.Matchers.that(v.line, eq=10)
-        u.Tests.Matchers.that(v.message, eq="Test message")
-        u.Tests.Matchers.that(v.fixable, eq=True)
+        tm.that(v.module, eq="src/file.py")
+        tm.that(v.rule, eq="NS-001")
+        tm.that(v.line, eq=10)
+        tm.that(v.message, eq="Test message")
+        tm.that(v.fixable, eq=True)
 
 
 class TestCensusReportModel:
     def test_empty_report(self) -> None:
         report = _CR(project="test-project", violations=[], total=0, fixable=0)
-        u.Tests.Matchers.that(report.project, eq="test-project")
-        u.Tests.Matchers.that(report.total, eq=0)
-        u.Tests.Matchers.that(report.fixable, eq=0)
-        u.Tests.Matchers.that(report.violations, eq=[])
+        tm.that(report.project, eq="test-project")
+        tm.that(report.total, eq=0)
+        tm.that(report.fixable, eq=0)
+        tm.that(report.violations, eq=[])
 
     def test_report_with_mixed_violations(self) -> None:
         violations = [
@@ -72,8 +72,8 @@ class TestCensusReportModel:
             total=len(violations),
             fixable=sum(1 for v in violations if v.fixable),
         )
-        u.Tests.Matchers.that(report.total, eq=3)
-        u.Tests.Matchers.that(report.fixable, eq=2)
+        tm.that(report.total, eq=3)
+        tm.that(report.fixable, eq=2)
 
 
 __all__: list[str] = []

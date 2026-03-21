@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import m, t, u
+from flext_tests import tf, tm
 
 from flext_core import r, t
 from flext_infra.docs.fixer import FlextInfraDocFixer
@@ -32,7 +32,7 @@ class TestFixerCore:
     ) -> None:
         """Test that fix returns r."""
         result = fixer.fix(tmp_path)
-        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_fix_with_valid_scope_returns_success(
         self,
@@ -41,8 +41,8 @@ class TestFixerCore:
     ) -> None:
         """Test fix with valid scope returns success."""
         result = fixer.fix(tmp_path)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value) >= 0, eq=True)
+        tm.ok(result)
+        tm.that(len(result.value) >= 0, eq=True)
 
     def test_fix_report_structure(
         self,
@@ -53,27 +53,25 @@ class TestFixerCore:
         result = fixer.fix(tmp_path)
         if result.is_success and result.value:
             report = result.value[0]
-            u.Tests.Matchers.that(hasattr(report, "scope"), eq=True)
-            u.Tests.Matchers.that(hasattr(report, "changed_files"), eq=True)
-            u.Tests.Matchers.that(hasattr(report, "applied"), eq=True)
-            u.Tests.Matchers.that(hasattr(report, "items"), eq=True)
+            tm.that(hasattr(report, "scope"), eq=True)
+            tm.that(hasattr(report, "changed_files"), eq=True)
+            tm.that(hasattr(report, "applied"), eq=True)
+            tm.that(hasattr(report, "items"), eq=True)
 
     def test_fix_item_structure(self) -> None:
         """Test FixItem model structure."""
         item = m.Infra.DocsPhaseItem(phase="fix", file="README.md", links=2, toc=1)
-        u.Tests.Matchers.that(item.file, eq="README.md")
-        u.Tests.Matchers.that(item.links, eq=2)
-        u.Tests.Matchers.that(item.toc, eq=1)
+        tm.that(item.file, eq="README.md")
+        tm.that(item.links, eq=2)
+        tm.that(item.toc, eq=1)
 
     def test_fix_report_frozen(self) -> None:
         """Test FixReport is frozen (immutable)."""
-        u.Tests.Matchers.that(
-            m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True
-        )
+        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     def test_fix_item_frozen(self) -> None:
         """Test FixItem is frozen (immutable)."""
-        u.Tests.Matchers.that(m.Infra.DocsPhaseItem.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.DocsPhaseItem.model_config.get("frozen"), eq=True)
 
     @pytest.mark.parametrize(
         ("project", "projects", "apply", "output_dir"),
@@ -95,9 +93,7 @@ class TestFixerCore:
         output_dir: str,
     ) -> None:
         if apply:
-            _ = u.Tests.Files.create_in(
-                "# Test\n\nSome content here.\n", "README.md", tmp_path
-            )
+            _ = tf.create_in("# Test\n\nSome content here.\n", "README.md", tmp_path)
         output_dir_value = (
             str(tmp_path / output_dir) if output_dir == "custom_output" else output_dir
         )
@@ -108,7 +104,7 @@ class TestFixerCore:
             output_dir=output_dir_value,
             apply=apply,
         )
-        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_fix_report_changed_files_count(self) -> None:
         """Test FixReport changed_files field."""
@@ -118,7 +114,7 @@ class TestFixerCore:
             changed_files=5,
             applied=True,
         )
-        u.Tests.Matchers.that(report.changed_files, eq=5)
+        tm.that(report.changed_files, eq=5)
 
     @pytest.mark.parametrize(
         ("changed_files", "applied"),
@@ -132,7 +128,7 @@ class TestFixerCore:
             changed_files=changed_files,
             applied=applied,
         )
-        u.Tests.Matchers.that(report.applied, eq=applied)
+        tm.that(report.applied, eq=applied)
 
     def test_fix_report_items_list(self) -> None:
         """Test FixReport items list."""
@@ -147,8 +143,8 @@ class TestFixerCore:
             applied=True,
             items=items,
         )
-        u.Tests.Matchers.that(len(report.items), eq=2)
-        u.Tests.Matchers.that(report.items[0].model_dump().get("file"), eq="file1.md")
+        tm.that(len(report.items), eq=2)
+        tm.that(report.items[0].model_dump().get("file"), eq="file1.md")
 
     def test_fix_with_scope_failure_returns_failure(
         self,
@@ -166,4 +162,4 @@ class TestFixerCore:
 
         monkeypatch.setattr(FlextInfraDocsShared, "build_scopes", mock_build_scopes)
         result = fixer.fix(tmp_path)
-        u.Tests.Matchers.fail(result, has="Scope error")
+        tm.fail(result, has="Scope error")

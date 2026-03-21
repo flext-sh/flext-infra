@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import m, u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync, FlextInfraUtilitiesDiscovery, m
@@ -54,7 +54,7 @@ def test_main_project_invalid_toml(
         _discover_project,
     )
     monkeypatch.setattr(sys, "argv", ["prog"])
-    u.Tests.Matchers.that(path_sync_module.main(), eq=1)
+    tm.that(path_sync_module.main(), eq=1)
 
 
 def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -75,7 +75,7 @@ def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         _discover_project,
     )
     monkeypatch.setattr(sys, "argv", ["prog"])
-    u.Tests.Matchers.that(path_sync_module.main(), eq=0)
+    tm.that(path_sync_module.main(), eq=0)
 
 
 def test_main_project_non_string_name(
@@ -99,7 +99,7 @@ def test_main_project_non_string_name(
         _discover_project,
     )
     monkeypatch.setattr(sys, "argv", ["prog"])
-    u.Tests.Matchers.that(path_sync_module.main(), eq=0)
+    tm.that(path_sync_module.main(), eq=0)
 
 
 def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -114,7 +114,7 @@ def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         _discover_fail,
     )
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
-    u.Tests.Matchers.that(path_sync_module.main(), eq=1)
+    tm.that(path_sync_module.main(), eq=1)
 
 
 def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -142,7 +142,7 @@ def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
         _discover_none,
     )
     monkeypatch.setattr(FlextInfraDependencyPathSync, "rewrite_dep_paths", _rewrite_ok)
-    u.Tests.Matchers.that(path_sync_module.main(), eq=0)
+    tm.that(path_sync_module.main(), eq=0)
 
 
 def test_workspace_root_fallback(
@@ -156,7 +156,7 @@ def test_workspace_root_fallback(
         return deep / "test.py"
 
     monkeypatch.setattr(Path, "resolve", _resolve)
-    u.Tests.Matchers.that(_workspace_root().is_absolute(), eq=True)
+    tm.that(_workspace_root().is_absolute(), eq=True)
 
 
 def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -191,8 +191,8 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         _rewrite_changes,
     )
     monkeypatch.setattr(path_sync_module, "output", recorder)
-    u.Tests.Matchers.that(path_sync_module.main(), eq=0)
-    u.Tests.Matchers.that(any("[DRY-RUN]" in call for call in recorder.calls), eq=True)
+    tm.that(path_sync_module.main(), eq=0)
+    tm.that(any("[DRY-RUN]" in call for call in recorder.calls), eq=True)
 
 
 def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -227,5 +227,5 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         _rewrite_changes,
     )
     monkeypatch.setattr(path_sync_module, "output", recorder)
-    u.Tests.Matchers.that(path_sync_module.main(), eq=0)
-    u.Tests.Matchers.that(len(recorder.calls) > 0, eq=True)
+    tm.that(path_sync_module.main(), eq=0)
+    tm.that(len(recorder.calls) > 0, eq=True)

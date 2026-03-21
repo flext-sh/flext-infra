@@ -18,23 +18,22 @@ import libcst as cst
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
 from flext_core import r
+from flext_infra import c, t
 from flext_infra._utilities.io import FlextInfraUtilitiesIo
 from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
-from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactor:
     """CST/refactor helpers for code analysis.
 
-        Usage via namespace::
+    Usage via namespace::
 
-    from flext_infra.utilities import u
+        from flext_infra import u
 
-            name = u.Infra.dotted_name(cst_expr)
+        name = u.Infra.dotted_name(cst_expr)
     """
 
     _CONTAINER_DICT_ADAPTER: TypeAdapter[dict[str, t.Infra.InfraValue]] | None = None

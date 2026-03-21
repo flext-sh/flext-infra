@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import m, u
+from flext_tests import tm
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from tests.infra.models import m
@@ -30,7 +30,7 @@ class TestBuilderCore:
     ) -> None:
         """Test that build returns r."""
         result = builder.build(tmp_path)
-        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.is_success or result.is_failure, eq=True)
 
     def test_build_with_valid_scope_returns_success(
         self,
@@ -39,8 +39,8 @@ class TestBuilderCore:
     ) -> None:
         """Test build with valid scope returns success."""
         result = builder.build(tmp_path)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value) >= 0, eq=True)
+        tm.ok(result)
+        tm.that(len(result.value) >= 0, eq=True)
 
     def test_build_report_structure(
         self,
@@ -51,16 +51,14 @@ class TestBuilderCore:
         result = builder.build(tmp_path)
         if result.is_success and result.value:
             report = result.value[0]
-            u.Tests.Matchers.that(hasattr(report, "scope"), eq=True)
-            u.Tests.Matchers.that(hasattr(report, "result"), eq=True)
-            u.Tests.Matchers.that(hasattr(report, "reason"), eq=True)
-            u.Tests.Matchers.that(hasattr(report, "site_dir"), eq=True)
+            tm.that(hasattr(report, "scope"), eq=True)
+            tm.that(hasattr(report, "result"), eq=True)
+            tm.that(hasattr(report, "reason"), eq=True)
+            tm.that(hasattr(report, "site_dir"), eq=True)
 
     def test_build_report_frozen(self) -> None:
         """Test BuildReport is frozen (immutable)."""
-        u.Tests.Matchers.that(
-            m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True
-        )
+        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     @pytest.mark.parametrize(
         "kwargs",
@@ -80,7 +78,7 @@ class TestBuilderCore:
         if "output_dir" in params:
             params["output_dir"] = str(tmp_path / params["output_dir"])
         result = builder.build(tmp_path, **params)
-        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
+        tm.that(result.is_success or result.is_failure, eq=True)
 
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
     def test_build_report_result_field_values(self, status: str) -> None:
@@ -92,7 +90,7 @@ class TestBuilderCore:
             reason="Test reason",
             site_dir="/tmp/site",
         )
-        u.Tests.Matchers.that(report.result, eq=status)
+        tm.that(report.result, eq=status)
 
     def test_build_report_site_dir_field(self) -> None:
         """Test BuildReport site_dir field."""
@@ -103,7 +101,7 @@ class TestBuilderCore:
             reason="Build successful",
             site_dir="/path/to/site",
         )
-        u.Tests.Matchers.that(report.site_dir, eq="/path/to/site")
+        tm.that(report.site_dir, eq="/path/to/site")
 
     def test_build_with_multiple_projects_returns_list(
         self,
@@ -113,4 +111,4 @@ class TestBuilderCore:
         """Test build with multiple projects returns list of reports."""
         result = builder.build(tmp_path, projects="proj1,proj2")
         if result.is_success:
-            u.Tests.Matchers.that(len(result.value) >= 0, eq=True)
+            tm.that(len(result.value) >= 0, eq=True)

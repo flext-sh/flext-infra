@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import FlextLogger, r
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c
 from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import m
 
 logger = FlextLogger.create_module_logger(__name__)
 

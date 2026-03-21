@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import t, u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
@@ -75,7 +75,7 @@ class TestSyncMethodEdgeCasesMore:
             "ensure_checkout",
             _ensure_checkout_fail,
         )
-        u.Tests.Matchers.fail(service.sync(tmp_path))
+        tm.fail(service.sync(tmp_path))
 
     def test_sync_no_dependencies(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"\n')
@@ -84,4 +84,4 @@ class TestSyncMethodEdgeCasesMore:
             service,
             [r[t.Infra.TomlConfig].ok({"project": {"name": "test"}})],
         )
-        u.Tests.Matchers.ok(service.sync(tmp_path), eq=0)
+        tm.ok(service.sync(tmp_path), eq=0)

@@ -13,10 +13,7 @@ from typing import TYPE_CHECKING
 
 import orjson
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.refactor.analysis import FlextInfraRefactorViolationAnalyzer
-from flext_infra.utilities import u
+from flext_infra import FlextInfraRefactorViolationAnalyzer, c, m, u
 
 if TYPE_CHECKING:
     from flext_infra.refactor.engine import FlextInfraRefactorEngine

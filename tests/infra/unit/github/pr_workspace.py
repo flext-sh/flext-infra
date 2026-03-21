@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra.github import pr_workspace as pw_mod
@@ -40,7 +40,7 @@ class TestFlextInfraPrWorkspaceManager:
             reporting=StubReporting(),
         )
         result = manager.has_changes(tmp_path)
-        u.Tests.Matchers.ok(result, eq=True)
+        tm.ok(result, eq=True)
 
     def test_has_changes_false(
         self,
@@ -60,7 +60,7 @@ class TestFlextInfraPrWorkspaceManager:
             reporting=StubReporting(),
         )
         result = manager.has_changes(tmp_path)
-        u.Tests.Matchers.ok(result, eq=False)
+        tm.ok(result, eq=False)
 
     def test_has_changes_command_failure(
         self,
@@ -84,7 +84,7 @@ class TestFlextInfraPrWorkspaceManager:
             reporting=StubReporting(),
         )
         result = manager.has_changes(tmp_path)
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
     def test_checkout_branch_success(
         self,
@@ -105,10 +105,10 @@ class TestFlextInfraPrWorkspaceManager:
             reporting=StubReporting(),
         )
         result = manager.checkout_branch(tmp_path, "feature/test")
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(calls), eq=1)
-        u.Tests.Matchers.that(str(calls[0][0]), eq=str(tmp_path))
-        u.Tests.Matchers.that(calls[0][1], eq="feature/test")
+        tm.ok(result)
+        tm.that(len(calls), eq=1)
+        tm.that(str(calls[0][0]), eq=str(tmp_path))
+        tm.that(calls[0][1], eq="feature/test")
 
     def test_checkout_branch_empty(
         self,
@@ -133,8 +133,8 @@ class TestFlextInfraPrWorkspaceManager:
             reporting=StubReporting(),
         )
         result = manager.checkout_branch(tmp_path, "")
-        u.Tests.Matchers.ok(result, eq=True)
-        u.Tests.Matchers.that(len(calls), eq=0)
+        tm.ok(result, eq=True)
+        tm.that(len(calls), eq=0)
 
     def test_checkout_branch_failure(
         self,
@@ -158,14 +158,14 @@ class TestFlextInfraPrWorkspaceManager:
             reporting=StubReporting(),
         )
         result = manager.checkout_branch(tmp_path, "feature")
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
     def test_default_initialization(self) -> None:
         """Test manager initializes with default dependencies."""
         manager = FlextInfraPrWorkspaceManager()
-        u.Tests.Matchers.that(getattr(manager, "_runner", None), none=False)
-        u.Tests.Matchers.that(getattr(manager, "_selector", None), none=False)
-        u.Tests.Matchers.that(getattr(manager, "_reporting", None), none=False)
+        tm.that(getattr(manager, "_runner", None), none=False)
+        tm.that(getattr(manager, "_selector", None), none=False)
+        tm.that(getattr(manager, "_reporting", None), none=False)
 
 
 class TestCheckpoint:
@@ -194,8 +194,8 @@ class TestCheckpoint:
             reporting=StubReporting(),
         )
         result = manager.checkpoint(tmp_path, "feature")
-        u.Tests.Matchers.ok(result, eq=True)
-        u.Tests.Matchers.that(len(git_add_calls), eq=0)
+        tm.ok(result, eq=True)
+        tm.that(len(git_add_calls), eq=0)
 
     def test_checkpoint_failure(
         self,
@@ -219,7 +219,7 @@ class TestCheckpoint:
             reporting=StubReporting(),
         )
         result = manager.checkpoint(tmp_path, "feature")
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
 
 class TestRunPr:
@@ -233,8 +233,8 @@ class TestRunPr:
             reporting=reporting,
         )
         result = manager.run_pr(tmp_path, tmp_path, {"action": "status"})
-        value = u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(value.status, eq="OK")
+        value = tm.ok(result)
+        tm.that(value.status, eq="OK")
 
     def test_subproject(self, tmp_path: Path) -> None:
         """Test run_pr for subproject."""
@@ -248,7 +248,7 @@ class TestRunPr:
             reporting=reporting,
         )
         result = manager.run_pr(sub, tmp_path, {"action": "status"})
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
 
     def test_command_failure(self, tmp_path: Path) -> None:
         """Test run_pr command failure."""
@@ -260,7 +260,7 @@ class TestRunPr:
             reporting=reporting,
         )
         result = manager.run_pr(tmp_path, tmp_path, {"action": "status"})
-        u.Tests.Matchers.fail(result)
+        tm.fail(result)
 
     def test_nonzero_exit(self, tmp_path: Path) -> None:
         """Test run_pr with non-zero exit code."""
@@ -272,5 +272,5 @@ class TestRunPr:
             reporting=reporting,
         )
         result = manager.run_pr(tmp_path, tmp_path, {"action": "status"})
-        value = u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(value.exit_code, eq=1)
+        value = tm.ok(result)
+        tm.that(value.exit_code, eq=1)

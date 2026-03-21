@@ -8,7 +8,7 @@ from typing import override
 import libcst as cst
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
-from flext_infra.utilities import u
+from flext_infra import u
 
 
 class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):

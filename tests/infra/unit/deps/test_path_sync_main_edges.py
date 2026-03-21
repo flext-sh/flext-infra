@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import m, u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync
@@ -43,7 +43,7 @@ class TestMainEdgeCases:
             _discover_none,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
+        tm.that(path_sync_module.main(), eq=0)
 
     def test_main_with_changes(
         self,
@@ -90,7 +90,7 @@ class TestMainEdgeCases:
             rewrite_stub,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
+        tm.that(path_sync_module.main(), eq=0)
 
     def test_main_root_project_name_extraction(
         self,
@@ -112,7 +112,7 @@ class TestMainEdgeCases:
             _discover_none,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
+        tm.that(path_sync_module.main(), eq=0)
 
     def test_main_project_name_extraction(
         self,
@@ -155,7 +155,7 @@ class TestMainEdgeCases:
             _rewrite_ok,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
+        tm.that(path_sync_module.main(), eq=0)
 
     def test_main_invalid_project_toml(
         self,
@@ -165,7 +165,7 @@ class TestMainEdgeCases:
         (tmp_path / "pyproject.toml").write_text("invalid toml [[[")
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        u.Tests.Matchers.that(path_sync_module.main(), eq=1)
+        tm.that(path_sync_module.main(), eq=1)
 
     def test_main_missing_root_pyproject(
         self,
@@ -184,7 +184,7 @@ class TestMainEdgeCases:
             _discover_none,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
+        tm.that(path_sync_module.main(), eq=0)
 
     def test_main_project_without_pyproject(
         self,
@@ -208,4 +208,4 @@ class TestMainEdgeCases:
             _discover_project,
         )
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
-        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
+        tm.that(path_sync_module.main(), eq=0)

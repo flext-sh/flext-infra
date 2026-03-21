@@ -11,7 +11,7 @@ from collections.abc import Callable
 from types import ModuleType, SimpleNamespace
 
 import pytest
-from flext_tests import t, u
+from flext_tests import tm
 
 from flext_infra.deps import __main__ as main_mod
 from flext_infra.deps.__main__ import _SUBCOMMAND_MODULES, _main_impl, main
@@ -55,7 +55,7 @@ class TestMainSubcommandDispatch:
         name: str,
     ) -> None:
         _patch_dispatch(monkeypatch, ["prog", name, "--workspace", "."])
-        u.Tests.Matchers.that(_main_impl(), eq=0)
+        tm.that(_main_impl(), eq=0)
 
 
 class TestMainModuleImport:
@@ -89,7 +89,7 @@ class TestMainModuleImport:
             ),
         )
         _main_impl()
-        u.Tests.Matchers.that(imported[0], eq=expected_module)
+        tm.that(imported[0], eq=expected_module)
 
 
 class TestMainSysArgvModification:
@@ -99,13 +99,13 @@ class TestMainSysArgvModification:
     ) -> None:
         _patch_dispatch(monkeypatch, ["prog", "detect", "--arg1", "value1"])
         _main_impl()
-        u.Tests.Matchers.that("detect" in sys.argv[0], eq=True)
+        tm.that("detect" in sys.argv[0], eq=True)
 
     def test_passes_remaining_args(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_dispatch(monkeypatch, ["prog", "detect", "-q", "--no-fail"])
         _main_impl()
-        u.Tests.Matchers.that("-q" in sys.argv, eq=True)
-        u.Tests.Matchers.that("--no-fail" in sys.argv, eq=True)
+        tm.that("-q" in sys.argv, eq=True)
+        tm.that("--no-fail" in sys.argv, eq=True)
 
 
 class TestMainDelegation:
@@ -124,9 +124,9 @@ class TestMainDelegation:
             "u",
             SimpleNamespace(Infra=SimpleNamespace(run_cli=fake_run_cli)),
         )
-        u.Tests.Matchers.that(main(), eq=0)
-        u.Tests.Matchers.that(len(received), eq=1)
-        u.Tests.Matchers.that(received[0] is main_mod._main_impl, eq=True)
+        tm.that(main(), eq=0)
+        tm.that(len(received), eq=1)
+        tm.that(received[0] is main_mod._main_impl, eq=True)
 
 
 class TestMainExceptionHandling:
@@ -149,10 +149,10 @@ class TestMainExceptionHandling:
                 import_module=_stub_import(error_mod),
             ),
         )
-        u.Tests.Matchers.that(main(), eq=1)
+        tm.that(main(), eq=1)
 
 
 def test_string_zero_return_value(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test string '0' return value normalization (edge case)."""
     _patch_dispatch(monkeypatch, ["prog", "detect", "--workspace", "."], "0")
-    u.Tests.Matchers.that(_main_impl(), eq=0)
+    tm.that(_main_impl(), eq=0)

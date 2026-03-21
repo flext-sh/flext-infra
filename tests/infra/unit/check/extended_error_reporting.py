@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import m, u
+from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests.infra import m
@@ -43,9 +43,9 @@ class TestErrorReporting:
         h.mk_project(tmp_path, "p1")
 
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value), eq=1)
-        u.Tests.Matchers.that(result.value[0].total_errors, eq=1)
+        tm.ok(result)
+        tm.that(len(result.value), eq=1)
+        tm.that(result.value[0].total_errors, eq=1)
 
     def test_skips_projects_with_no_errors(
         self,
@@ -67,10 +67,10 @@ class TestErrorReporting:
         h.mk_project(tmp_path, "p1")
         h.mk_project(tmp_path, "p2")
         result = checker.run_projects(["p1", "p2"], ["lint"], reports_dir=reports_dir)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(len(result.value), eq=2)
-        u.Tests.Matchers.that(result.value[0].total_errors, eq=1)
-        u.Tests.Matchers.that(result.value[1].total_errors, eq=0)
+        tm.ok(result)
+        tm.that(len(result.value), eq=2)
+        tm.that(result.value[0].total_errors, eq=1)
+        tm.that(result.value[1].total_errors, eq=0)
 
 
 class TestMarkdownReportEmptyGates:
@@ -99,10 +99,10 @@ class TestMarkdownReportEmptyGates:
             ["lint", "format"],
             reports_dir=reports_dir,
         )
-        u.Tests.Matchers.ok(result)
+        tm.ok(result)
         md_path = reports_dir / "check-report.md"
-        u.Tests.Matchers.that(md_path.exists(), eq=True)
-        u.Tests.Matchers.that(md_path.read_text(), contains="lint")
+        tm.that(md_path.exists(), eq=True)
+        tm.that(md_path.read_text(), contains="lint")
 
 
 class TestMypyEmptyLinesInOutput:
@@ -145,8 +145,8 @@ class TestMypyEmptyLinesInOutput:
         monkeypatch.setattr(checker, "_existing_check_dirs", _fake_existing_dirs)
         monkeypatch.setattr(checker, "_dirs_with_py", staticmethod(_fake_dirs_with_py))
         result = checker._run_mypy(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
-        u.Tests.Matchers.that(len(result.issues), eq=2)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=2)
 
 
 class TestGoFmtEmptyLinesInOutput:
@@ -184,8 +184,8 @@ class TestGoFmtEmptyLinesInOutput:
 
         monkeypatch.setattr(FlextInfraWorkspaceChecker, "_run", _fake_run)
         result = checker._run_go(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
-        u.Tests.Matchers.that(len(result.issues), eq=2)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=2)
 
 
 class TestRuffFormatDuplicateFiles:
@@ -216,5 +216,5 @@ class TestRuffFormatDuplicateFiles:
 
         monkeypatch.setattr(FlextInfraWorkspaceChecker, "_run", _fake_run)
         result = checker._run_ruff_format(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
-        u.Tests.Matchers.that(len(result.issues), eq=2)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=2)

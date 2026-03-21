@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from flext_tests import t, u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
@@ -61,7 +61,7 @@ class TestSyncMethodEdgeCases:
                 }),
             ],
         )
-        u.Tests.Matchers.fail(service.sync(tmp_path))
+        tm.fail(service.sync(tmp_path))
 
     def test_sync_with_workspace_mode_and_gitmodules(
         self,
@@ -106,7 +106,7 @@ class TestSyncMethodEdgeCases:
             "ensure_checkout",
             _ensure_checkout,
         )
-        u.Tests.Matchers.that(service.sync(project).is_success, eq=True)
+        tm.that(service.sync(project).is_success, eq=True)
 
     def test_sync_with_synthesized_repo_map(
         self,
@@ -147,7 +147,7 @@ class TestSyncMethodEdgeCases:
         )
         monkeypatch.setattr(service, "resolve_ref", _resolve_ref)
         monkeypatch.setattr(service, "ensure_checkout", _ensure_checkout)
-        u.Tests.Matchers.that(service.sync(tmp_path).is_success, eq=True)
+        tm.that(service.sync(tmp_path).is_success, eq=True)
 
     def test_sync_missing_repo_mapping(
         self,
@@ -176,7 +176,7 @@ class TestSyncMethodEdgeCases:
             return None
 
         monkeypatch.setattr(service, "infer_owner_from_origin", _infer_owner)
-        u.Tests.Matchers.fail(service.sync(tmp_path))
+        tm.fail(service.sync(tmp_path))
 
     def test_sync_symlink_failure(
         self,
@@ -218,4 +218,4 @@ class TestSyncMethodEdgeCases:
             "ensure_symlink",
             _ensure_symlink_fail,
         )
-        u.Tests.Matchers.fail(service.sync(project))
+        tm.fail(service.sync(project))

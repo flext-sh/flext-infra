@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import m, u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
@@ -40,9 +40,9 @@ class TestDiscoverProjects:
             _StubSelector(r[list[m.Infra.ProjectInfo]].ok([proj])),
         )
         result = service.discover_project_paths(tmp_path)
-        u.Tests.Matchers.that(result.is_success, eq=True)
+        tm.that(result.is_success, eq=True)
         if result.is_success:
-            u.Tests.Matchers.that(len(result.value), eq=1)
+            tm.that(len(result.value), eq=1)
 
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         service = FlextInfraDependencyDetectionService()
@@ -51,7 +51,7 @@ class TestDiscoverProjects:
             "selector",
             _StubSelector(r[list[m.Infra.ProjectInfo]].fail("failed")),
         )
-        u.Tests.Matchers.fail(service.discover_project_paths(tmp_path))
+        tm.fail(service.discover_project_paths(tmp_path))
 
     def test_filters_without_pyproject(
         self,
@@ -71,6 +71,6 @@ class TestDiscoverProjects:
             _StubSelector(r[list[m.Infra.ProjectInfo]].ok([proj])),
         )
         result = service.discover_project_paths(tmp_path)
-        u.Tests.Matchers.that(result.is_success, eq=True)
+        tm.that(result.is_success, eq=True)
         if result.is_success:
-            u.Tests.Matchers.that(result.value, eq=[])
+            tm.that(result.value, eq=[])

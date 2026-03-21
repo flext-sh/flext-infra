@@ -15,10 +15,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, JsonValue
 
-from flext_core.result import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import c, m, r, u
 
 
 class FlextInfraDocsShared:

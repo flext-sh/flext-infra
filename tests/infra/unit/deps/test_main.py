@@ -15,7 +15,7 @@ from collections.abc import Callable
 from types import ModuleType, SimpleNamespace
 
 import pytest
-from flext_tests import t, u
+from flext_tests import tm
 
 from flext_infra.deps import __main__ as deps_main
 from flext_infra.deps.__main__ import _SUBCOMMAND_MODULES, _main_impl, main
@@ -64,7 +64,7 @@ class TestSubcommandMapping:
 
     def test_subcommands_count(self) -> None:
         """Test correct number of subcommands."""
-        u.Tests.Matchers.that(len(_SUBCOMMAND_MODULES), eq=5)
+        tm.that(len(_SUBCOMMAND_MODULES), eq=5)
 
     @pytest.mark.parametrize(
         ("name", "module"),
@@ -73,18 +73,14 @@ class TestSubcommandMapping:
     )
     def test_subcommand_mapping(self, name: str, module: str) -> None:
         """Test each subcommand maps to correct module."""
-        u.Tests.Matchers.that(
-            name in _SUBCOMMAND_MODULES, eq=True, msg=f"Missing subcommand: {name}"
-        )
-        u.Tests.Matchers.that(_SUBCOMMAND_MODULES[name], eq=module)
+        tm.that(name in _SUBCOMMAND_MODULES, eq=True, msg=f"Missing subcommand: {name}")
+        tm.that(_SUBCOMMAND_MODULES[name], eq=module)
 
     @pytest.mark.parametrize("name", list(EXPECTED_SUBCOMMAND_MODULES.keys()))
     def test_subcommand_module_importable(self, name: str) -> None:
         """Test each subcommand module can be imported."""
         module = importlib.import_module(_SUBCOMMAND_MODULES[name])
-        u.Tests.Matchers.that(
-            hasattr(module, "main"), eq=True, msg=f"{name} module has no main()"
-        )
+        tm.that(hasattr(module, "main"), eq=True, msg=f"{name} module has no main()")
 
 
 class TestMainHelpAndErrors:
@@ -93,13 +89,13 @@ class TestMainHelpAndErrors:
     def test_main_with_help_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test main with -h flag returns 0."""
         monkeypatch.setattr(sys, "argv", ["prog", "-h"])
-        u.Tests.Matchers.that(main(), eq=0)
+        tm.that(main(), eq=0)
 
     def test_main_with_no_arguments(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test main with no arguments returns 0 after help."""
         monkeypatch.setattr(sys, "argv", ["prog"])
         result = main()
-        u.Tests.Matchers.that(result, eq=0)
+        tm.that(result, eq=0)
 
     def test_main_with_unknown_subcommand(
         self,
@@ -107,7 +103,7 @@ class TestMainHelpAndErrors:
     ) -> None:
         """Test main with unknown subcommand returns parser exit code."""
         monkeypatch.setattr(sys, "argv", ["prog", "unknown"])
-        u.Tests.Matchers.that(main(), eq=2)
+        tm.that(main(), eq=2)
 
 
 class TestMainReturnValues:
@@ -133,4 +129,4 @@ class TestMainReturnValues:
         """Test _main_impl normalizes subcommand return values."""
         _patch_dispatch(monkeypatch, ["prog", "detect", "--workspace", "."], return_val)
         result = _main_impl()
-        u.Tests.Matchers.that(result, eq=expected)
+        tm.that(result, eq=expected)

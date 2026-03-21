@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import tomlkit
 import tomlkit.items
-from flext_tests import t, u
+from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import t, u
@@ -36,7 +36,7 @@ def doc() -> TOMLDocument:
     ],
 )
 def test_dep_name(raw: str, expected: str) -> None:
-    u.Tests.Matchers.that(dep_name(raw), eq=expected)
+    tm.that(dep_name(raw), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -56,10 +56,10 @@ def test_dedupe_specs(
     check_sorted: bool,
 ) -> None:
     deduped = dedupe_specs(specs)
-    u.Tests.Matchers.that(deduped, length=expected_length)
+    tm.that(deduped, length=expected_length)
     names = [dep_name(spec) for spec in deduped]
     for expected_name in expected_names:
-        u.Tests.Matchers.that(names, has=expected_name)
+        tm.that(names, has=expected_name)
     if check_sorted and len(deduped) > 1:
         assert dep_name(deduped[0]) < dep_name(deduped[1])
 
@@ -73,12 +73,12 @@ def test_dedupe_specs(
     ],
 )
 def test_unwrap_item(value: t.Infra.InfraValue, expected: t.Infra.InfraValue) -> None:
-    u.Tests.Matchers.that(unwrap_item(value), eq=expected)
+    tm.that(unwrap_item(value), eq=expected)
 
 
 def test_unwrap_item_toml_item(doc: TOMLDocument) -> None:
     doc["key"] = "value"
-    u.Tests.Matchers.that(unwrap_item(doc["key"]), eq="value")
+    tm.that(unwrap_item(doc["key"]), eq="value")
 
 
 def _toml_item(value: str | int | list[str]) -> tomlkit.items.Item:
@@ -116,16 +116,16 @@ def _toml_table_item() -> tomlkit.items.Item:
     ],
 )
 def test_as_string_list(value: tomlkit.items.Item | None, expected: list[str]) -> None:
-    u.Tests.Matchers.that(as_string_list(value), eq=expected)
+    tm.that(as_string_list(value), eq=expected)
 
 
 def test_as_string_list_toml_item(doc: TOMLDocument) -> None:
     doc["items"] = ["a", "b"]
     items_array: tomlkit.items.Item = _toml_item(["a", "b"])
-    u.Tests.Matchers.that(as_string_list(items_array), eq=["a", "b"])
+    tm.that(as_string_list(items_array), eq=["a", "b"])
     doc["value"] = 42
     int_val: tomlkit.items.Item = _toml_item(42)
-    u.Tests.Matchers.that(as_string_list(int_val), eq=[])
+    tm.that(as_string_list(int_val), eq=[])
 
 
 @pytest.mark.parametrize(
@@ -133,7 +133,7 @@ def test_as_string_list_toml_item(doc: TOMLDocument) -> None:
     [(["a", "b", "c"], 3), ([], 0), (["single"], 1)],
 )
 def test_array(items: list[str], expected: int) -> None:
-    u.Tests.Matchers.that(len(array(items)), eq=expected)
+    tm.that(len(array(items)), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -151,10 +151,10 @@ def test_ensure_table(mode: str) -> None:
     if mode == "replace-non-table":
         parent["key"] = "string_value"
         _ = ensure_table(parent, "key")
-        u.Tests.Matchers.that("key" in parent, eq=True)
+        tm.that("key" in parent, eq=True)
         return
     _ = ensure_table(parent, "key")
-    u.Tests.Matchers.that("key" in parent, eq=True)
+    tm.that("key" in parent, eq=True)
 
 
 def _doc_with_optional_deps(optional_deps: dict[str, list[str]]) -> TOMLDocument:
@@ -187,14 +187,14 @@ def test_project_dev_groups(
     expected_docs: list[str],
 ) -> None:
     groups = project_dev_groups(_doc_with_optional_deps(optional_deps))
-    u.Tests.Matchers.that(groups.get("dev", []), eq=expected_dev)
-    u.Tests.Matchers.that(groups.get("docs", []), eq=expected_docs)
+    tm.that(groups.get("dev", []), eq=expected_dev)
+    tm.that(groups.get("docs", []), eq=expected_docs)
 
 
 def test_project_dev_groups_missing_sections(doc: TOMLDocument) -> None:
-    u.Tests.Matchers.that(project_dev_groups(doc), eq={})
+    tm.that(project_dev_groups(doc), eq={})
     doc["project"] = {"name": "test"}
-    u.Tests.Matchers.that(project_dev_groups(doc), eq={})
+    tm.that(project_dev_groups(doc), eq={})
 
 
 @pytest.mark.parametrize(
@@ -221,6 +221,6 @@ def test_canonical_dev_dependencies(
     expect_pytest: bool,
 ) -> None:
     result = canonical_dev_dependencies(_doc_with_optional_deps(optional_deps))
-    u.Tests.Matchers.that(result, length=expected_length)
+    tm.that(result, length=expected_length)
     if expect_pytest:
         assert any("pytest" in item for item in result)

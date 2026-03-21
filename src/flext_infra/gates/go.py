@@ -6,9 +6,8 @@ import time
 from pathlib import Path
 from typing import override
 
-from flext_infra.constants import c
+from flext_infra import c, m
 from flext_infra.gates._base_gate import FlextInfraGate, FlextInfraGateContext
-from flext_infra.models import m
 
 
 class FlextInfraGoGate(FlextInfraGate):

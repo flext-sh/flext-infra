@@ -10,7 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_tests import m, t, u
+from flext_tests import tm
 
 from flext_core import r, t
 from flext_infra.docs.builder import FlextInfraDocBuilder
@@ -52,7 +52,7 @@ class TestBuilderScope:
             report_dir=tmp_path / "reports",
         )
         report = builder._build_scope(scope)
-        u.Tests.Matchers.that(report.scope, eq="test")
+        tm.that(report.scope, eq="test")
 
     def test_build_scope_without_mkdocs_config(
         self,
@@ -66,7 +66,7 @@ class TestBuilderScope:
             report_dir=tmp_path / "reports",
         )
         report = builder._build_scope(scope)
-        u.Tests.Matchers.that(report.result, eq="SKIP")
+        tm.that(report.result, eq="SKIP")
 
     def test_run_mkdocs_no_config(
         self,
@@ -80,8 +80,8 @@ class TestBuilderScope:
             report_dir=tmp_path / "reports",
         )
         report = builder._run_mkdocs(scope)
-        u.Tests.Matchers.that(report.result, eq="SKIP")
-        u.Tests.Matchers.that("mkdocs.yml not found" in report.reason, eq=True)
+        tm.that(report.result, eq="SKIP")
+        tm.that("mkdocs.yml not found" in report.reason, eq=True)
 
     def test_run_mkdocs_with_command_failure(
         self,
@@ -96,8 +96,8 @@ class TestBuilderScope:
             report_dir=tmp_path / "reports",
         )
         report = builder._run_mkdocs(scope)
-        u.Tests.Matchers.that(report.scope, eq="test")
-        u.Tests.Matchers.that(len(report.result) > 0, eq=True)
+        tm.that(report.scope, eq="test")
+        tm.that(len(report.result) > 0, eq=True)
 
     def test_run_mkdocs_with_success_exit_code(
         self,
@@ -121,8 +121,8 @@ class TestBuilderScope:
         mock_runner = _RunnerStub(command_output)
         monkeypatch.setattr(builder, "_runner", mock_runner)
         report = builder._run_mkdocs(scope)
-        u.Tests.Matchers.that(report.result, eq="OK")
-        u.Tests.Matchers.that("build succeeded" in report.reason, eq=True)
+        tm.that(report.result, eq="OK")
+        tm.that("build succeeded" in report.reason, eq=True)
 
     def test_write_reports_creates_json_and_markdown(
         self,
@@ -145,8 +145,8 @@ class TestBuilderScope:
             site_dir="/tmp/site",
         )
         builder._write_reports(scope, report)
-        u.Tests.Matchers.that((report_dir / "build-summary.json").exists(), eq=True)
-        u.Tests.Matchers.that((report_dir / "build-report.md").exists(), eq=True)
+        tm.that((report_dir / "build-summary.json").exists(), eq=True)
+        tm.that((report_dir / "build-report.md").exists(), eq=True)
 
     def test_build_with_scope_failure_returns_failure(
         self,
@@ -164,7 +164,7 @@ class TestBuilderScope:
 
         monkeypatch.setattr(FlextInfraDocsShared, "build_scopes", mock_build_scopes)
         result = builder.build(tmp_path)
-        u.Tests.Matchers.fail(result, has="Scope error")
+        tm.fail(result, has="Scope error")
 
     def test_build_multiple_scopes(
         self,
@@ -174,4 +174,4 @@ class TestBuilderScope:
         """Test build returns multiple reports for multiple scopes."""
         result = builder.build(tmp_path, projects="proj1,proj2,proj3")
         if result.is_success:
-            u.Tests.Matchers.that(len(result.value) >= 0, eq=True)
+            tm.that(len(result.value) >= 0, eq=True)

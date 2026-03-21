@@ -4,7 +4,7 @@ import types
 from pathlib import Path
 
 import pytest
-from flext_tests import u
+from flext_tests import tm
 
 import flext_infra.deps as detector_module
 import flext_infra.deps.detector as detector_main_module
@@ -144,7 +144,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             ["types-requests"],
             run_result,
         )
-        u.Tests.Matchers.ok(
+        tm.ok(
             detector.run([
                 "--workspace",
                 str(tmp_path),
@@ -154,7 +154,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
                 "--no-pip-check",
             ]),
         )
-        u.Tests.Matchers.that(len(calls), eq=1)
+        tm.that(len(calls), eq=1)
 
     def test_run_with_apply_typings_non_string_package(
         self,
@@ -168,7 +168,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             ["types-requests", 123, None],
             run_result,
         )
-        u.Tests.Matchers.ok(
+        tm.ok(
             detector.run([
                 "--workspace",
                 str(tmp_path),
@@ -178,7 +178,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
                 "--no-pip-check",
             ]),
         )
-        u.Tests.Matchers.that(len(calls), eq=3)
+        tm.that(len(calls), eq=3)
 
     def test_run_with_apply_typings_poetry_add_failure(
         self,
@@ -192,9 +192,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             ["types-requests"],
             run_result,
         )
-        u.Tests.Matchers.ok(
-            detector.run(["--typings", "--apply-typings", "--no-pip-check"])
-        )
+        tm.ok(detector.run(["--typings", "--apply-typings", "--no-pip-check"]))
 
     def test_run_with_apply_typings_poetry_add_failure_result(
         self,
@@ -207,9 +205,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             ["types-requests"],
             r[types.SimpleNamespace].fail("poetry add failed"),
         )
-        u.Tests.Matchers.ok(
-            detector.run(["--typings", "--apply-typings", "--no-pip-check"])
-        )
+        tm.ok(detector.run(["--typings", "--apply-typings", "--no-pip-check"]))
 
 
 class TestMainFunction:
@@ -218,4 +214,4 @@ class TestMainFunction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(detector_main_module, "main", lambda: 1)
-        u.Tests.Matchers.that(detector_main_module.main(), eq=1)
+        tm.that(detector_main_module.main(), eq=1)

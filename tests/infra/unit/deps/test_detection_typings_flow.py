@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from flext_tests import m, t, u
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra import FlextInfraUtilitiesSubprocess, FlextInfraUtilitiesTomlParse
@@ -47,26 +47,16 @@ class _StubRunRaw:
 class TestModuleAndTypingsFlow:
     def test_module_to_types_package(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        u.Tests.Matchers.that(
-            service.module_to_types_package("yaml", {}), eq="types-pyyaml"
-        )
-        u.Tests.Matchers.that(
-            service.module_to_types_package("flext_core", {}), eq=None
-        )
+        tm.that(service.module_to_types_package("yaml", {}), eq="types-pyyaml")
+        tm.that(service.module_to_types_package("flext_core", {}), eq=None)
         module_to_package: dict[str, t.Infra.InfraValue] = {"yaml": "custom-types-yaml"}
         typing_libraries: dict[str, t.Infra.InfraValue] = {
             "module_to_package": module_to_package,
         }
         limits: dict[str, t.Infra.TomlValue] = {"typing_libraries": typing_libraries}
-        u.Tests.Matchers.that(
-            service.module_to_types_package("yaml", limits), eq="custom-types-yaml"
-        )
-        u.Tests.Matchers.that(
-            service.module_to_types_package("unknown_module", {}), eq=None
-        )
-        u.Tests.Matchers.that(
-            service.module_to_types_package("yaml.parser", {}), eq="types-pyyaml"
-        )
+        tm.that(service.module_to_types_package("yaml", limits), eq="custom-types-yaml")
+        tm.that(service.module_to_types_package("unknown_module", {}), eq=None)
+        tm.that(service.module_to_types_package("yaml.parser", {}), eq="types-pyyaml")
 
     def test_get_current_typings_from_pyproject(
         self,
@@ -93,7 +83,7 @@ class TestModuleAndTypingsFlow:
             _StubReadPlain([r[dict[str, t.Infra.TomlValue]].ok(payload)]),
         )
         got = service.get_current_typings_from_pyproject(Path("/dummy"))
-        u.Tests.Matchers.that(got, eq=[])
+        tm.that(got, eq=[])
 
     def test_get_current_typings_from_pyproject_variants(
         self,
@@ -126,10 +116,10 @@ class TestModuleAndTypingsFlow:
             ]),
         )
         path = Path("/dummy")
-        u.Tests.Matchers.that(service.get_current_typings_from_pyproject(path), eq=[])
-        u.Tests.Matchers.that(service.get_current_typings_from_pyproject(path), eq=[])
-        u.Tests.Matchers.that(service.get_current_typings_from_pyproject(path), eq=[])
-        u.Tests.Matchers.that(service.get_current_typings_from_pyproject(path), eq=[])
+        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
+        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
+        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
+        tm.that(service.get_current_typings_from_pyproject(path), eq=[])
 
     def test_get_required_typings_paths(
         self,
@@ -156,7 +146,7 @@ class TestModuleAndTypingsFlow:
                 }),
             ]),
         )
-        u.Tests.Matchers.ok(service.get_required_typings(tmp_path, venv_bin))
+        tm.ok(service.get_required_typings(tmp_path, venv_bin))
         monkeypatch.setattr(
             FlextInfraUtilitiesTomlParse,
             "read_plain",
@@ -165,9 +155,7 @@ class TestModuleAndTypingsFlow:
                 r[dict[str, t.Infra.TomlValue]].ok({}),
             ]),
         )
-        u.Tests.Matchers.ok(
-            service.get_required_typings(tmp_path, venv_bin, include_mypy=False)
-        )
+        tm.ok(service.get_required_typings(tmp_path, venv_bin, include_mypy=False))
         monkeypatch.setattr(
             FlextInfraUtilitiesSubprocess,
             "run_raw",
@@ -178,4 +166,4 @@ class TestModuleAndTypingsFlow:
             "read_plain",
             _StubReadPlain([r[dict[str, t.Infra.TomlValue]].ok({})]),
         )
-        u.Tests.Matchers.fail(service.get_required_typings(tmp_path, venv_bin))
+        tm.fail(service.get_required_typings(tmp_path, venv_bin))

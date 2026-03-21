@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tomlkit
-from flext_tests import u
+from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
@@ -9,7 +9,7 @@ from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
 
 class TestRewritePoetry:
     def test_rewrite_poetry_no_tool(self) -> None:
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 TOMLDocument(),
                 is_root=True,
@@ -21,7 +21,7 @@ class TestRewritePoetry:
     def test_rewrite_poetry_no_poetry(self) -> None:
         doc = TOMLDocument()
         doc["tool"] = tomlkit.table()
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 doc,
                 is_root=True,
@@ -33,7 +33,7 @@ class TestRewritePoetry:
     def test_rewrite_poetry_no_dependencies(self) -> None:
         doc = TOMLDocument()
         doc["tool"] = {"poetry": tomlkit.table()}
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 doc,
                 is_root=True,
@@ -45,7 +45,7 @@ class TestRewritePoetry:
     def test_rewrite_poetry_non_dict_dependencies(self) -> None:
         doc = TOMLDocument()
         doc["tool"] = {"poetry": {"dependencies": "not-a-dict"}}
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 doc,
                 is_root=True,
@@ -66,13 +66,13 @@ class TestRewritePoetry:
             is_root=True,
             mode="workspace",
         )
-        u.Tests.Matchers.that(len(changes) > 0, eq=True)
-        u.Tests.Matchers.that(doc.as_string(), contains='path = "flext-core"')
+        tm.that(len(changes) > 0, eq=True)
+        tm.that(doc.as_string(), contains='path = "flext-core"')
 
     def test_rewrite_poetry_skip_non_path_dep(self) -> None:
         doc = TOMLDocument()
         doc["tool"] = {"poetry": {"dependencies": {"requests": {"version": "^2.0.0"}}}}
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 doc,
                 is_root=True,
@@ -84,7 +84,7 @@ class TestRewritePoetry:
     def test_rewrite_poetry_non_dict_value(self) -> None:
         doc = TOMLDocument()
         doc["tool"] = {"poetry": {"dependencies": {"requests": "^2.0.0"}}}
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 doc,
                 is_root=True,
@@ -96,7 +96,7 @@ class TestRewritePoetry:
     def test_rewrite_poetry_empty_path(self) -> None:
         doc = TOMLDocument()
         doc["tool"] = {"poetry": {"dependencies": {"flext-core": {"path": ""}}}}
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 doc,
                 is_root=True,
@@ -108,7 +108,7 @@ class TestRewritePoetry:
     def test_rewrite_poetry_non_string_path(self) -> None:
         doc = TOMLDocument()
         doc["tool"] = {"poetry": {"dependencies": {"flext-core": {"path": 123}}}}
-        u.Tests.Matchers.that(
+        tm.that(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 doc,
                 is_root=True,
@@ -129,8 +129,8 @@ class TestRewritePoetry:
             is_root=False,
             mode="workspace",
         )
-        u.Tests.Matchers.that(len(changes) > 0, eq=True)
-        u.Tests.Matchers.that(doc.as_string(), contains='path = "../flext-core"')
+        tm.that(len(changes) > 0, eq=True)
+        tm.that(doc.as_string(), contains='path = "../flext-core"')
 
 
 def test_rewrite_poetry_with_non_dict_value() -> None:
@@ -142,7 +142,7 @@ def test_rewrite_poetry_with_non_dict_value() -> None:
     tool = tomlkit.table()
     tool["poetry"] = poetry
     doc["tool"] = tool
-    u.Tests.Matchers.that(
+    tm.that(
         len(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 doc,
@@ -155,7 +155,7 @@ def test_rewrite_poetry_with_non_dict_value() -> None:
 
 
 def test_rewrite_poetry_no_tool_table() -> None:
-    u.Tests.Matchers.that(
+    tm.that(
         len(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 tomlkit.document(),
@@ -170,7 +170,7 @@ def test_rewrite_poetry_no_tool_table() -> None:
 def test_rewrite_poetry_no_poetry_table() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
-    u.Tests.Matchers.that(
+    tm.that(
         len(
             FlextInfraDependencyPathSync._rewrite_poetry(
                 doc,

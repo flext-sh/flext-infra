@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import m, t, u
+from flext_tests import tm
 
 from flext_core import r, t
 from flext_infra.docs.auditor import FlextInfraDocAuditor
@@ -37,7 +37,7 @@ class TestAuditorScopeFailure:
 
         monkeypatch.setattr(FlextInfraDocsShared, "build_scopes", mock_build_scopes)
         result = auditor.audit(tmp_path)
-        u.Tests.Matchers.fail(result, has="scope build error")
+        tm.fail(result, has="scope build error")
 
 
 class TestAuditorMainCli:
@@ -59,7 +59,7 @@ class TestAuditorMainCli:
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
         result = FlextInfraDocAuditor.main()
-        u.Tests.Matchers.that(result, eq=1)
+        tm.that(result, eq=1)
 
     def test_main_with_failed_reports(
         self,
@@ -85,7 +85,7 @@ class TestAuditorMainCli:
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
         result = FlextInfraDocAuditor.main()
-        u.Tests.Matchers.that(result, eq=1)
+        tm.that(result, eq=1)
 
     def test_main_with_success_reports(
         self,
@@ -111,7 +111,7 @@ class TestAuditorMainCli:
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
         result = FlextInfraDocAuditor.main()
-        u.Tests.Matchers.that(result, eq=0)
+        tm.that(result, eq=0)
 
     def test_main_with_all_cli_arguments(
         self,
@@ -153,7 +153,7 @@ class TestAuditorMainCli:
             ],
         )
         result = FlextInfraDocAuditor.main()
-        u.Tests.Matchers.that(result, eq=0)
+        tm.that(result, eq=0)
 
     def test_main_entry_point_returns_zero(
         self,
@@ -179,4 +179,4 @@ class TestAuditorMainCli:
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
         result = FlextInfraDocAuditor.main()
-        u.Tests.Matchers.that(result, eq=0)
+        tm.that(result, eq=0)
