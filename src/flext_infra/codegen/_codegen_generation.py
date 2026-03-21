@@ -10,7 +10,24 @@ from collections import defaultdict
 from collections.abc import Mapping
 from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+
 from flext_infra import c
+
+# ---------------------------------------------------------------------------
+# Shared Jinja2 environment (module-level singleton, loaded once)
+# ---------------------------------------------------------------------------
+
+_TEMPLATE_ROOT = Path(__file__).resolve().parent.parent / "templates"
+
+_ENV = Environment(
+    loader=FileSystemLoader(str(_TEMPLATE_ROOT)),
+    trim_blocks=False,
+    lstrip_blocks=False,
+    keep_trailing_newline=False,
+    undefined=StrictUndefined,
+    autoescape=select_autoescape(),
+)
 
 
 class FlextInfraCodegenGeneration:
@@ -185,8 +202,7 @@ class FlextInfraCodegenGeneration:
         """Generate complete module file with lazy imports and type hints.
 
         Assembles all components (docstring, imports, lazy import table, __all__,
-        __getattr__, __dir__) into a single module file. Handles special cases
-        for core internal packages and L0 typings modules.
+        __getattr__, __dir__) into a single module file using Jinja2 templates.
 
         Args:
             docstring_source: Module docstring text (empty string for none).
@@ -200,56 +216,28 @@ class FlextInfraCodegenGeneration:
             Complete Python module file as a single string.
 
         """
+        tpl = c.Infra.Templates
         lazy_filtered: dict[str, tuple[str, str]] = {
             name: val
             for name, val in filtered.items()
             if name not in eager_typevar_names
         }
-        groups: dict[str, list[tuple[str, str]]] = defaultdict(list)
-        for export_name in sorted(lazy_filtered):
-            mod, attr = lazy_filtered[export_name]
-            groups[mod].append((export_name, attr))
-        out: list[str] = [c.Infra.AUTOGEN_HEADER]
-        if docstring_source:
-            out.extend([docstring_source, ""])
-        is_core_internal = current_pkg.startswith(
-            c.Infra.Packages.CORE_UNDERSCORE + ".",
-        )
+
+        # --- determine L0 vs standard ---
         is_l0_typings = current_pkg.startswith(
             c.Infra.Packages.CORE_UNDERSCORE + "._typings",
         )
-        if is_l0_typings:
-            out.extend([
-                "# L0-OVERRIDE — inline lazy to avoid circular: _typings -> _utilities.lazy -> typings -> _typings",
-                "from __future__ import annotations",
-                "",
-                "import importlib",
-                "import sys",
-                "",
-                "from typing import TYPE_CHECKING",
-            ])
-        elif current_pkg == c.Infra.Packages.CORE_UNDERSCORE or is_core_internal:
-            lazy_import = (
-                "from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr"
-            )
-            out.extend([
-                "from __future__ import annotations",
-                "",
-                "from typing import TYPE_CHECKING",
-                "",
-                lazy_import,
-            ])
-        else:
-            lazy_import = (
-                "from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr"
-            )
-            out.extend([
-                "from __future__ import annotations",
-                "",
-                "from typing import TYPE_CHECKING",
-                "",
-                lazy_import,
-            ])
+
+        # --- header + docstring ---
+        out: list[str] = [c.Infra.AUTOGEN_HEADER]
+        if docstring_source:
+            out.extend([docstring_source, ""])
+
+        # --- preamble (from .j2 template) ---
+        preamble_name = tpl.PREAMBLE_L0 if is_l0_typings else tpl.PREAMBLE_STANDARD
+        out.extend(_ENV.get_template(preamble_name).render().splitlines())
+
+        # --- eager TypeVar imports ---
         if eager_typevar_names:
             typings_mod = f"{current_pkg}.typings"
             sorted_tvars = sorted(eager_typevar_names)
@@ -261,125 +249,39 @@ class FlextInfraCodegenGeneration:
             else:
                 out.append(eager_line)
         out.append("")
-        out.extend(
-            FlextInfraCodegenGeneration.generate_type_checking(
-                groups,
-                include_flext_types=not is_l0_typings,
-                current_pkg=current_pkg,
-            ),
+
+        # --- TYPE_CHECKING block ---
+        groups: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        for export_name in sorted(lazy_filtered):
+            mod, attr = lazy_filtered[export_name]
+            groups[mod].append((export_name, attr))
+
+        type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
+            groups,
+            include_flext_types=not is_l0_typings,
+            current_pkg=current_pkg,
         )
-        out.append("")
-        for name, value in sorted(inline_constants.items()):
-            out.append(f'{name} = "{value}"')
-        if inline_constants:
-            out.append("")
-        out.extend([
-            "_LAZY_IMPORTS: dict[str, tuple[str, str]] = {",
-        ])
-        for exp in sorted(exports):
-            if exp in lazy_filtered:
-                mod, attr = lazy_filtered[exp]
-                out.append(f'    "{exp}": ("{mod}", "{attr}"),')
-        out.extend(["}", ""])
-        out.append("__all__ = [")
-        out.extend(f'    "{exp}",' for exp in sorted(exports))
-        out.extend(["]", "", ""])
-        if is_l0_typings:
-            out.extend(FlextInfraCodegenGeneration._getattr_block_l0())
-        else:
-            out.extend(FlextInfraCodegenGeneration._getattr_block_standard())
+
+        # --- body (inline constants + _LAZY_IMPORTS + __all__) from .j2 ---
+        lazy_entries = [
+            (exp, lazy_filtered[exp][0], lazy_filtered[exp][1])
+            for exp in sorted(exports)
+            if exp in lazy_filtered
+        ]
+        body = _ENV.get_template(tpl.BODY).render(
+            type_checking_lines="\n".join(type_checking_lines),
+            inline_constants=sorted(inline_constants.items()),
+            lazy_entries=lazy_entries,
+            exports=sorted(exports),
+        )
+        out.extend(body.splitlines())
+        out.extend(["", ""])
+
+        # --- getattr block (from .j2 template) ---
+        getattr_name = tpl.GETATTR_L0 if is_l0_typings else tpl.GETATTR_STANDARD
+        out.extend(_ENV.get_template(getattr_name).render().splitlines())
+
         return "\n".join(out)
-
-    @staticmethod
-    def _getattr_block_standard() -> list[str]:
-        """Generate standard __getattr__ and __dir__ implementation block.
-
-        Creates PEP 562 module-level __getattr__ for lazy loading with a
-        persistent ``_LAZY_CACHE`` for performance, and __dir__ for attribute
-        discovery, using the lazy_getattr utility.
-
-        Returns:
-            List of code lines implementing lazy attribute access with caching.
-
-        """
-        return [
-            "_LAZY_CACHE: dict[str, object] = {}",
-            "",
-            "",
-            "def __getattr__(name: str) -> FlextTypes.ModuleExport:",
-            '    """Lazy-load module attributes on first access (PEP 562).',
-            "",
-            "    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated",
-            "    accesses during process lifetime.",
-            "",
-            "    Args:",
-            "        name: Attribute name requested by dir()/import.",
-            "",
-            "    Returns:",
-            "        Lazy-loaded module export type.",
-            "",
-            "    Raises:",
-            "        AttributeError: If attribute not registered.",
-            '    """',
-            "    if name in _LAZY_CACHE:",
-            "        return _LAZY_CACHE[name]",
-            "",
-            "    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)",
-            "    _LAZY_CACHE[name] = value",
-            "    return value",
-            "",
-            "",
-            "def __dir__() -> list[str]:",
-            '    """Return list of available attributes for dir() and autocomplete.',
-            "",
-            "    Returns:",
-            "        List of public names from module exports.",
-            '    """',
-            "    return sorted(__all__)",
-            "",
-            "",
-            "cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)",
-        ]
-
-    @staticmethod
-    def _getattr_block_l0() -> list[str]:
-        """Generate L0 typings module __getattr__ and __dir__ implementation block.
-
-        Creates custom __getattr__ for L0 typings modules to avoid circular imports
-        while maintaining lazy loading. Cleans up submodule namespace references
-        to prevent import confusion.
-
-        Returns:
-            List of code lines implementing L0-specific lazy attribute access.
-
-        """
-        return [
-            "def __getattr__(name: str) -> type:",
-            "    if name in _LAZY_IMPORTS:",
-            "        module_path, attr_name = _LAZY_IMPORTS[name]",
-            "        module = importlib.import_module(module_path)",
-            "        value = getattr(module, attr_name)",
-            "        globals()[name] = value",
-            "        return value",
-            '    msg = f"module {__name__!r} has no attribute {name!r}"',
-            "    raise AttributeError(msg)",
-            "",
-            "",
-            "def __dir__() -> list[str]:",
-            "    return sorted(__all__)",
-            "",
-            "",
-            "_current = sys.modules.get(__name__)",
-            "if _current is not None:",
-            '    _parts = __name__.split(".")',
-            "    for _mod_path, _ in _LAZY_IMPORTS.values():",
-            "        if _mod_path:",
-            '            _mp = _mod_path.split(".")',
-            "            if len(_mp) > len(_parts) and _mp[: len(_parts)] == _parts:",
-            "                _sub = getattr(_current, _mp[len(_parts)], None)",
-            "                if _sub is not None and isinstance(_sub, type(sys)):",
-            "                    delattr(_current, _mp[len(_parts)])",
-        ]
 
 
 __all__ = ["FlextInfraCodegenGeneration"]

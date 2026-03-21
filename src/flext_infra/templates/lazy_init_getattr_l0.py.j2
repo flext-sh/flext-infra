@@ -1,0 +1,25 @@
+def __getattr__(name: str) -> type:
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        module = importlib.import_module(module_path)
+        value = getattr(module, attr_name)
+        globals()[name] = value
+        return value
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
+
+
+def __dir__() -> list[str]:
+    return sorted(__all__)
+
+
+_current = sys.modules.get(__name__)
+if _current is not None:
+    _parts = __name__.split(".")
+    for _mod_path, _ in _LAZY_IMPORTS.values():
+        if _mod_path:
+            _mp = _mod_path.split(".")
+            if len(_mp) > len(_parts) and _mp[: len(_parts)] == _parts:
+                _sub = getattr(_current, _mp[len(_parts)], None)
+                if _sub is not None and isinstance(_sub, type(sys)):
+                    delattr(_current, _mp[len(_parts)])

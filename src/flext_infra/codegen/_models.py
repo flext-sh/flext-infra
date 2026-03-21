@@ -136,13 +136,17 @@ class FlextInfraCodegenModels:
         """Per-project quality gate findings."""
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-        violations_total: Annotated[t.NonNegativeInt, Field(description="Total violations")]
+        violations_total: Annotated[
+            t.NonNegativeInt, Field(description="Total violations")
+        ]
         fixable_violations: Annotated[
             t.NonNegativeInt,
             Field(description="Auto-fixable violations"),
         ]
         validator_passed: Annotated[bool, Field(description="Whether validator passed")]
-        mro_failures: Annotated[t.NonNegativeInt, Field(description="MRO failure count")]
+        mro_failures: Annotated[
+            t.NonNegativeInt, Field(description="MRO failure count")
+        ]
         layer_violations: Annotated[
             t.NonNegativeInt,
             Field(description="Layer violation count"),

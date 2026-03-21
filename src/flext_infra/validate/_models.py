@@ -76,14 +76,20 @@ class FlextInfraCoreModels:
                 description="Missing external imports without stubs",
             ),
         ]
-        total_missing: Annotated[t.NonNegativeInt, Field(description="Total missing imports")]
+        total_missing: Annotated[
+            t.NonNegativeInt, Field(description="Total missing imports")
+        ]
 
     class PytestDiagnostics(FlextModels.ArbitraryTypesModel):
         """Extracted diagnostics summary from junit XML and pytest logs."""
 
-        failed_count: Annotated[t.NonNegativeInt, Field(description="Failed test case count")]
+        failed_count: Annotated[
+            t.NonNegativeInt, Field(description="Failed test case count")
+        ]
         error_count: Annotated[t.NonNegativeInt, Field(description="Error trace count")]
-        warning_count: Annotated[t.NonNegativeInt, Field(description="Warning line count")]
+        warning_count: Annotated[
+            t.NonNegativeInt, Field(description="Warning line count")
+        ]
         skipped_count: Annotated[
             t.NonNegativeInt,
             Field(description="Skipped test case count"),

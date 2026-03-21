@@ -101,7 +101,9 @@ class FlextInfraTypingCensusModels:
                 description="Unused model violations",
             ),
         ]
-        models_scanned: Annotated[t.NonNegativeInt, Field(description="Total models scanned")]
+        models_scanned: Annotated[
+            t.NonNegativeInt, Field(description="Total models scanned")
+        ]
 
     class ViolationCensusRecord(FlextModels.FrozenStrictModel):
         """Single violation record in census."""
@@ -110,9 +112,7 @@ class FlextInfraTypingCensusModels:
 
         file: Annotated[t.NonEmptyStr, Field(description="Source file path")]
         line: Annotated[t.PositiveInt, Field(description="Line number")]
-        kind: Annotated[
-            t.NonEmptyStr, Field(description="Violation kind identifier")
-        ]
+        kind: Annotated[t.NonEmptyStr, Field(description="Violation kind identifier")]
         detail: Annotated[
             str,
             Field(default="", description="Human-readable detail"),

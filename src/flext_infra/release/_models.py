@@ -40,7 +40,9 @@ class FlextInfraReleaseModels:
         """Aggregated build report payload written to JSON."""
 
         version: Annotated[t.NonEmptyStr, Field(description="Release version")]
-        total: Annotated[t.NonNegativeInt, Field(description="Total projects attempted")]
+        total: Annotated[
+            t.NonNegativeInt, Field(description="Total projects attempted")
+        ]
         failures: Annotated[
             t.NonNegativeInt,
             Field(description="Total projects with non-zero exit"),

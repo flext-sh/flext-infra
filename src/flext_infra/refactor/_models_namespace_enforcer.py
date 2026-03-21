@@ -498,7 +498,9 @@ class FlextInfraNamespaceEnforcerModels:
         total_runtime_alias_violations: Annotated[t.NonNegativeInt, Field(default=0)]
         total_future_violations: Annotated[t.NonNegativeInt, Field(default=0)]
         total_manual_typing_violations: Annotated[t.NonNegativeInt, Field(default=0)]
-        total_compatibility_alias_violations: Annotated[t.NonNegativeInt, Field(default=0)]
+        total_compatibility_alias_violations: Annotated[
+            t.NonNegativeInt, Field(default=0)
+        ]
         total_class_placement_violations: Annotated[t.NonNegativeInt, Field(default=0)]
         total_mro_completeness_violations: Annotated[t.NonNegativeInt, Field(default=0)]
         total_parse_failures: Annotated[t.NonNegativeInt, Field(default=0)]

@@ -175,7 +175,9 @@ class FlextInfraRefactorAstGrepModels:
                 description="Loose declarations remaining after run",
             ),
         ]
-        mro_failures: Annotated[t.NonNegativeInt, Field(description="MRO validation failures")]
+        mro_failures: Annotated[
+            t.NonNegativeInt, Field(description="MRO validation failures")
+        ]
         stash_ref: Annotated[
             str,
             Field(default="", description="Git stash rollback ref"),

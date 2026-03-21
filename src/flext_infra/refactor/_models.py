@@ -145,7 +145,9 @@ class FlextInfraRefactorModels(
         model_config = ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, Field(description="Class name")]
-        line: Annotated[t.NonNegativeInt, Field(description="Line number (0 = unknown)")]
+        line: Annotated[
+            t.NonNegativeInt, Field(description="Line number (0 = unknown)")
+        ]
         is_top_level: Annotated[
             bool,
             Field(description="Whether class is at module top level"),
@@ -198,7 +200,9 @@ class FlextInfraRefactorModels(
 
         project_kind: Annotated[
             t.NonEmptyStr,
-            Field(description="Project kind (core, domain, platform, integration, app)"),
+            Field(
+                description="Project kind (core, domain, platform, integration, app)"
+            ),
         ]
         family_chains: Annotated[
             dict[str, list[str]],
@@ -421,7 +425,9 @@ class FlextInfraRefactorModels(
     class ClassNestingReport(FlextModels.ArbitraryTypesModel):
         """Aggregated class-nesting analysis report."""
 
-        violations_count: Annotated[t.NonNegativeInt, Field(description="Total violations")]
+        violations_count: Annotated[
+            t.NonNegativeInt, Field(description="Total violations")
+        ]
         confidence_counts: Annotated[
             dict[str, int],
             Field(
@@ -538,7 +544,9 @@ class FlextInfraRefactorModels(
         """One ranked hotspot entry in violation analysis output."""
 
         file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        total: Annotated[t.NonNegativeInt, Field(description="Total violations in file")]
+        total: Annotated[
+            t.NonNegativeInt, Field(description="Total violations in file")
+        ]
         counts: Annotated[
             dict[str, int],
             Field(
@@ -734,7 +742,9 @@ class FlextInfraRefactorModels(
             t.NonNegativeInt,
             Field(description="u.Class.method count"),
         ]
-        direct: Annotated[t.NonNegativeInt, Field(description="Direct class.method count")]
+        direct: Annotated[
+            t.NonNegativeInt, Field(description="Direct class.method count")
+        ]
         total: Annotated[t.NonNegativeInt, Field(description="Total usages")]
 
     class CensusClassSummary(FlextModels.ArbitraryTypesModel):
@@ -819,7 +829,9 @@ class FlextInfraRefactorModels(
             t.NonNegativeInt,
             Field(description="Number of public methods"),
         ]
-        total_usages: Annotated[t.NonNegativeInt, Field(description="Total usage records")]
+        total_usages: Annotated[
+            t.NonNegativeInt, Field(description="Total usage records")
+        ]
         total_unused: Annotated[
             t.NonNegativeInt,
             Field(description="Methods with zero usages"),

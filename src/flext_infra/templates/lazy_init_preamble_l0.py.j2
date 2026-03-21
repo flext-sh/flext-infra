@@ -1,0 +1,7 @@
+# L0-OVERRIDE — inline lazy to avoid circular: _typings -> _utilities.lazy -> typings -> _typings
+from __future__ import annotations
+
+import importlib
+import sys
+
+from typing import TYPE_CHECKING

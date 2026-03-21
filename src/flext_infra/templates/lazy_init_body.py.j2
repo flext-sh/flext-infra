@@ -1,0 +1,20 @@
+{%- if type_checking_lines %}
+{{ type_checking_lines }}
+{% endif %}
+{%- for name, value in inline_constants %}
+{{ name }} = "{{ value }}"
+{%- endfor %}
+{%- if inline_constants %}
+
+{% endif %}
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+{%- for name, mod, attr in lazy_entries %}
+    "{{ name }}": ("{{ mod }}", "{{ attr }}"),
+{%- endfor %}
+}
+
+__all__ = [
+{%- for name in exports %}
+    "{{ name }}",
+{%- endfor %}
+]
