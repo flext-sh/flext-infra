@@ -1,0 +1,66 @@
+src/flext_infra/utilities.py
+  368fb8be6b85b0b7 13-33,36-38
+src/flext_infra/transformers/tier0_import_fixer.py
+  368fb8be6b85b0b7 41,44-49,51,57-60,65-67,69,71-72,76,81,86,88-89,92-93,98
+src/flext_infra/rules/tier0_import_fix.py
+  368fb8be6b85b0b7 25,42
+src/flext_infra/refactor/safety.py
+  368fb8be6b85b0b7 9
+src/flext_infra/_utilities/parsing.py
+  3ab1359410d1bc65 25,28
+  368fb8be6b85b0b7 24,26-27,29-30
+src/flext_infra/validate/namespace_validator.py
+  368fb8be6b85b0b7 16-17
+src/flext_infra/refactor/_detectors/internal_import_detector.py
+  368fb8be6b85b0b7 109
+src/flext_infra/refactor/_detectors/compatibility_alias_detector.py
+  368fb8be6b85b0b7 99
+src/flext_infra/refactor/_post_check_gate.py
+  368fb8be6b85b0b7 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "8ef6ce15fcb6fd817b7f91d2996a25d6bb5d2388",
+  "prompts": {
+    "368fb8be6b85b0b7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f74ae14fffeVDeXScl43zDHl2",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 401,
+      "total_deletions": 92,
+      "accepted_lines": 324,
+      "overriden_lines": 27
+    },
+    "3ab1359410d1bc65": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f23a6d11ffe4RlkL9GscigNLi",
+        "model": "google/gemini-3.1-pro-preview"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 56,
+      "total_deletions": 21,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    },
+    "b279a83971a44010": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2f73d7affffeiDJJeKXYaEabip",
+        "model": "anthropic/claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 522,
+      "total_deletions": 54,
+      "accepted_lines": 412,
+      "overriden_lines": 1
+    }
+  }
+}
