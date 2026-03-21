@@ -1,0 +1,35 @@
+src/flext_infra/templates/lazy_init_getattr_standard.py.j2
+  1557cde67c9eb455 1-36
+src/flext_infra/templates/lazy_init_preamble_l0.py.j2
+  1557cde67c9eb455 1-7
+src/flext_infra/codegen/_codegen_generation.py
+  1557cde67c9eb455 13-14,17-19,21,23-31,205,219,225-226,230-240,253-257,259-263,265-269,271-278,280-282,284
+src/flext_infra/templates/lazy_init_preamble_standard.py.j2
+  1557cde67c9eb455 1-5
+src/flext_infra/templates/lazy_init_getattr_l0.py.j2
+  1557cde67c9eb455 1-25
+src/flext_infra/templates/lazy_init_body.py.j2
+  1557cde67c9eb455 1-20
+src/flext_infra/codegen/_constants.py
+  1557cde67c9eb455 93,95-98,100-101,103-104,106-107,109-110,112-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "37a35969f711b670314a297a8b5290d671c37cdd",
+  "prompts": {
+    "1557cde67c9eb455": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c2f0bae-d656-4965-a9c5-b52eaf07bc46",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 165,
+      "overriden_lines": 0
+    }
+  }
+}
