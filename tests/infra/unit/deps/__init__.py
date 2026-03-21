@@ -122,14 +122,7 @@ if TYPE_CHECKING:
         test_consolidate_groups_phase_apply_with_empty_poetry_group,
     )
     from .test_modernizer_helpers import (
-        array,
-        as_string_list,
-        canonical_dev_dependencies,
-        dedupe_specs,
-        dep_name,
         doc,
-        ensure_table,
-        project_dev_groups,
         test_array,
         test_as_string_list,
         test_as_string_list_toml_item,
@@ -141,7 +134,6 @@ if TYPE_CHECKING:
         test_project_dev_groups_missing_sections,
         test_unwrap_item,
         test_unwrap_item_toml_item,
-        unwrap_item,
     )
     from .test_modernizer_main import (
         TestFlextInfraPyprojectModernizer,
@@ -511,26 +503,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_internal_sync_workspace",
         "TestWorkspaceRootFromParents",
     ),
-    "array": ("tests.infra.unit.deps.test_modernizer_helpers", "array"),
-    "as_string_list": (
-        "tests.infra.unit.deps.test_modernizer_helpers",
-        "as_string_list",
-    ),
-    "canonical_dev_dependencies": (
-        "tests.infra.unit.deps.test_modernizer_helpers",
-        "canonical_dev_dependencies",
-    ),
-    "dedupe_specs": ("tests.infra.unit.deps.test_modernizer_helpers", "dedupe_specs"),
-    "dep_name": ("tests.infra.unit.deps.test_modernizer_helpers", "dep_name"),
     "doc": ("tests.infra.unit.deps.test_modernizer_helpers", "doc"),
-    "ensure_table": ("tests.infra.unit.deps.test_modernizer_helpers", "ensure_table"),
     "extract_dep_name": (
         "tests.infra.unit.deps.test_path_sync_helpers",
         "extract_dep_name",
-    ),
-    "project_dev_groups": (
-        "tests.infra.unit.deps.test_modernizer_helpers",
-        "project_dev_groups",
     ),
     "pyright_content": (
         "tests.infra.unit.deps.test_extra_paths_sync",
@@ -802,7 +778,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_path_sync_main_more",
         "test_workspace_root_fallback",
     ),
-    "unwrap_item": ("tests.infra.unit.deps.test_modernizer_helpers", "unwrap_item"),
 }
 
 __all__ = [
@@ -884,15 +859,8 @@ __all__ = [
     "TestWorkspaceRoot",
     "TestWorkspaceRootFromEnv",
     "TestWorkspaceRootFromParents",
-    "array",
-    "as_string_list",
-    "canonical_dev_dependencies",
-    "dedupe_specs",
-    "dep_name",
     "doc",
-    "ensure_table",
     "extract_dep_name",
-    "project_dev_groups",
     "pyright_content",
     "rewrite_dep_paths",
     "test_array",
@@ -962,7 +930,6 @@ __all__ = [
     "test_unwrap_item_toml_item",
     "test_workspace_root_doc_construction",
     "test_workspace_root_fallback",
-    "unwrap_item",
 ]
 
 

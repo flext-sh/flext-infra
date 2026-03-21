@@ -124,8 +124,87 @@ class FlextInfraUtilitiesOutput:
         sys.stdout.flush()
 
 
+class OutputBackend:
+    def __init__(self, *, use_color: bool, use_unicode: bool, stream: TextIO) -> None:
+        self._use_color = use_color
+        self._use_unicode = use_unicode
+        self._stream = stream
+
+    def _fmt(self, level: str, color: str, message: str) -> None:
+        reset = c.Infra.Style.RESET if self._use_color else ""
+        clr = color if self._use_color else ""
+        self._stream.write(f"{clr}{level}{reset}: {message}\n")
+
+    def info(self, msg: str) -> None:
+        self._fmt("INFO", c.Infra.Style.BLUE, msg)
+
+    def error(self, msg: str, detail: str | None = None) -> None:
+        self._fmt("ERROR", c.Infra.Style.RED, msg)
+        if detail:
+            self._stream.write(f"  {detail}\n")
+
+    def warning(self, msg: str) -> None:
+        self._fmt("WARN", c.Infra.Style.YELLOW, msg)
+
+    def debug(self, msg: str) -> None:
+        self._fmt("DEBUG", c.Infra.Style.GREEN, msg)
+
+    def header(self, title: str) -> None:
+        sep = "═" if self._use_unicode else "="
+        line = sep * 60
+        self._stream.write(
+            f"\n{c.Infra.Style.BOLD if self._use_color else ''}{line}\n  {title}\n{line}{c.Infra.Style.RESET if self._use_color else ''}\n"
+        )
+
+    def progress(self, idx: int, total: int, proj: str, verb: str) -> None:
+        width = len(str(total))
+        self._stream.write(f"[{idx:0{width}d}/{total:0{width}d}] {proj} {verb} ...\n")
+
+    def status(self, verb: str, proj: str, result: bool, elapsed: float) -> None:
+        symbol = (
+            (c.Infra.Style.OK if (result and self._use_unicode) else "[OK]")
+            if result
+            else (c.Infra.Style.FAIL if self._use_unicode else "[FAIL]")
+        )
+        color = (
+            (c.Infra.Style.GREEN if result else c.Infra.Style.RED)
+            if self._use_color
+            else ""
+        )
+        reset = c.Infra.Style.RESET if self._use_color else ""
+        self._stream.write(
+            f"  {color}{symbol}{reset} {verb:<8} {proj:<24} {elapsed:.2f}s\n"
+        )
+
+    def summary(
+        self,
+        verb: str,
+        total: int,
+        success: int,
+        failed: int,
+        skipped: int,
+        elapsed: float,
+    ) -> None:
+        header = (
+            f"── {verb} summary ──" if self._use_unicode else f"-- {verb} summary --"
+        )
+        self._stream.write(
+            f"\n{header}\nTotal: {total}  Success: {success}  Failed: {failed}  Skipped: {skipped}  ({elapsed:.2f}s)\n"
+        )
+
+    def gate_result(self, gate: str, count: int, passed: bool, elapsed: float) -> None:
+        symbol = (
+            (c.Infra.Style.OK if passed else c.Infra.Style.FAIL)
+            if self._use_unicode
+            else ("[OK]" if passed else "[FAIL]")
+        )
+        self._stream.write(
+            f"    {symbol} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n"
+        )
+
+
 # Initialize default state
 FlextInfraUtilitiesOutput.setup()
 output: Final[type[FlextInfraUtilitiesOutput]] = FlextInfraUtilitiesOutput
 
-__all__ = ["FlextInfraUtilitiesOutput", "output"]
+__all__ = ["FlextInfraUtilitiesOutput", "OutputBackend", "output"]

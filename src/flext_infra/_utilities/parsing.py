@@ -13,6 +13,14 @@ class FlextInfraUtilitiesParsing:
     """Static parsing utilities for Python source analysis."""
 
     @staticmethod
+    def parse_ast_from_source(source: str) -> ast.Module | None:
+        """Parse source text into an AST module."""
+        try:
+            return ast.parse(source)
+        except SyntaxError:
+            return None
+
+    @staticmethod
     def parse_module_ast(file_path: Path) -> ast.Module | None:
         """Parse a Python file into an AST module."""
         try:

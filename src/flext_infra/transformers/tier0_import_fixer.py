@@ -16,7 +16,10 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraTransformerImportInsertion, u
+from flext_infra.transformers.import_insertion import (
+    FlextInfraTransformerImportInsertion,
+)
+from flext_infra.utilities import u
 
 
 class FlextInfraTransformerTier0ImportFixer:
@@ -318,4 +321,15 @@ class FlextInfraTransformerTier0ImportFixer:
             return i
 
 
-__all__ = ["FlextInfraTransformerTier0ImportFixer"]
+Tier0ImportAnalysis = FlextInfraTransformerTier0ImportFixer.Analysis
+Tier0ImportAnalyzer = FlextInfraTransformerTier0ImportFixer.Analyzer
+Tier0ImportContextDiscovery = FlextInfraTransformerTier0ImportFixer.Analyzer
+Tier0ImportFixer = FlextInfraTransformerTier0ImportFixer.Transformer
+
+__all__ = [
+    "FlextInfraTransformerTier0ImportFixer",
+    "Tier0ImportAnalysis",
+    "Tier0ImportAnalyzer",
+    "Tier0ImportContextDiscovery",
+    "Tier0ImportFixer",
+]

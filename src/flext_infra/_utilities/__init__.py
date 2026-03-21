@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
+    from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.io import FlextInfraUtilitiesIo
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.output import (
@@ -55,6 +56,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraUtilitiesFormatting",
     ),
     "FlextInfraUtilitiesGit": ("flext_infra._utilities.git", "FlextInfraUtilitiesGit"),
+    "FlextInfraUtilitiesGithub": (
+        "flext_infra._utilities.github",
+        "FlextInfraUtilitiesGithub",
+    ),
     "FlextInfraUtilitiesIo": ("flext_infra._utilities.io", "FlextInfraUtilitiesIo"),
     "FlextInfraUtilitiesIteration": (
         "flext_infra._utilities.iteration",
@@ -129,6 +134,7 @@ __all__ = [
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesFormatting",
     "FlextInfraUtilitiesGit",
+    "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesIo",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesOutput",

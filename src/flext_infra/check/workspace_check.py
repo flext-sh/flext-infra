@@ -12,18 +12,17 @@ from typing import override
 from pydantic import JsonValue
 
 from flext_core import r, s
-from flext_infra import (
-    FlextInfraUtilitiesCli,
-    FlextInfraUtilitiesIo,
-    FlextInfraUtilitiesPaths,
-    FlextInfraUtilitiesReporting,
-    c,
-    m,
-    output,
-)
+from flext_infra._utilities.cli import FlextInfraUtilitiesCli
+from flext_infra._utilities.io import FlextInfraUtilitiesIo
+from flext_infra._utilities.output import output
+from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
+from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
+from flext_infra.constants import c
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.gates._base_gate import FlextInfraGateContext
 from flext_infra.gates._gate_registry import FlextInfraGateRegistry
+from flext_infra.models import m
+from flext_infra.utilities import u
 
 
 class FlextInfraWorkspaceChecker(s[bool]):
@@ -170,7 +169,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
             return 1 if failed_projects else 0
         if args.command == "fix-pyrefly-config":
             fixer = FlextInfraConfigFixer()
-            fix_result: r[bool] = fixer.run(
+            fix_result: r[list[str]] = fixer.run(
                 projects=args.projects,
                 dry_run=args.dry_run,
                 verbose=args.verbose,

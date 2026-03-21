@@ -9,11 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_core import t
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.infra import t
+from tests.infra import m, t, u
 
 from ._shared_fixtures import create_gate_execution
 
@@ -30,15 +28,15 @@ class TestLintAndFormatPublicMethods:
         def _fake_run_gate(
             requested_gate_name: str,
             _project_dir: Path,
-        ) -> GateExecution:
+        ) -> m.Infra.GateExecution:
             del _project_dir
             return create_gate_execution(gate=requested_gate_name, passed=True)
 
         monkeypatch.setattr(checker, "_run_gate", _fake_run_gate)
         run_public = checker.lint if gate_name == "lint" else checker.format
         result = run_public(target_dir)
-        tm.ok(result)
-        tm.that(result.value.gate, eq=gate_name)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(result.value.gate, eq=gate_name)
 
     def test_lint_public_method(
         self,
@@ -88,7 +86,11 @@ class TestCheckProjectRunners:
             def __init__(self, gate_name: str) -> None:
                 self._gate_name = gate_name
 
-            def check(self, _project_dir: Path, _ctx: t.Scalar) -> GateExecution:
+            def check(
+                self,
+                _project_dir: Path,
+                _ctx: t.Scalar,
+            ) -> m.Infra.GateExecution:
                 del _project_dir, _ctx
                 called[self._gate_name] = True
                 return create_gate_execution(gate=self._gate_name, passed=True)
@@ -101,9 +103,9 @@ class TestCheckProjectRunners:
         result = checker._check_project(
             tmp_path, ["lint", "format", "pyrefly"], tmp_path
         )
-        tm.that(called["lint"], eq=True)
-        tm.that(called["format"], eq=True)
-        tm.that(called["pyrefly"], eq=True)
-        tm.that("lint" in result.gates, eq=True)
-        tm.that("format" in result.gates, eq=True)
-        tm.that("pyrefly" in result.gates, eq=True)
+        u.Tests.Matchers.that(called["lint"], eq=True)
+        u.Tests.Matchers.that(called["format"], eq=True)
+        u.Tests.Matchers.that(called["pyrefly"], eq=True)
+        u.Tests.Matchers.that("lint" in result.gates, eq=True)
+        u.Tests.Matchers.that("format" in result.gates, eq=True)
+        u.Tests.Matchers.that("pyrefly" in result.gates, eq=True)

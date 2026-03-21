@@ -13,7 +13,7 @@ import io
 
 from flext_tests import tm
 
-from flext_infra import u
+from flext_infra import u as iu
 from flext_infra._utilities.output import OutputBackend
 
 
@@ -48,15 +48,15 @@ class TestMroFacadeMethods:
     """Tests for u.Infra MRO facade methods."""
 
     def test_output_methods_accessible_via_mro(self) -> None:
-        tm.that(callable(u.Infra.info), eq=True)
-        tm.that(callable(u.Infra.error), eq=True)
-        tm.that(callable(u.Infra.warning), eq=True)
-        tm.that(callable(u.Infra.status), eq=True)
-        tm.that(callable(u.Infra.summary), eq=True)
-        tm.that(callable(u.Infra.header), eq=True)
-        tm.that(callable(u.Infra.progress), eq=True)
-        tm.that(callable(u.Infra.debug), eq=True)
-        tm.that(callable(u.Infra.gate_result), eq=True)
+        tm.that(callable(iu.Infra.info), eq=True)
+        tm.that(callable(iu.Infra.error), eq=True)
+        tm.that(callable(iu.Infra.warning), eq=True)
+        tm.that(callable(iu.Infra.status), eq=True)
+        tm.that(callable(iu.Infra.summary), eq=True)
+        tm.that(callable(iu.Infra.header), eq=True)
+        tm.that(callable(iu.Infra.progress), eq=True)
+        tm.that(callable(iu.Infra.debug), eq=True)
+        tm.that(callable(iu.Infra.gate_result), eq=True)
 
 
 class TestInfraOutputEdgeCases:

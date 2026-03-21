@@ -6,15 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra.check.workspace_check import (
     FlextInfraWorkspaceChecker,
-    ProjectResult,
 )
-from tests.infra import m
-
-from ...models import m
+from tests.infra import m, u
 
 
 class TestWorkspaceCheckerMarkdownReport:
@@ -38,15 +33,15 @@ class TestWorkspaceCheckerMarkdownReport:
             severity="error",
         )
         gate_exec = m.Infra.GateExecution(result=gate, issues=[issue], raw_output="")
-        project = ProjectResult(project="p", gates={"lint": gate_exec})
+        project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_markdown_report(
             [project],
             ["lint"],
             "2025-01-01 00:00:00 UTC",
         )
-        tm.that(report, contains="p")
-        tm.that(report, contains="E1")
-        tm.that(report, contains="Error")
+        u.Tests.Matchers.that(report, contains="p")
+        u.Tests.Matchers.that(report, contains="E1")
+        u.Tests.Matchers.that(report, contains="Error")
 
     def test_markdown_report_no_errors(self) -> None:
         checker = FlextInfraWorkspaceChecker()
@@ -58,14 +53,14 @@ class TestWorkspaceCheckerMarkdownReport:
             duration=0.0,
         )
         gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
-        project = ProjectResult(project="p", gates={"lint": gate_exec})
+        project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_markdown_report(
             [project],
             ["lint"],
             "2025-01-01 00:00:00 UTC",
         )
-        tm.that(report, contains="FLEXT Check Report")
-        tm.that(report, contains="p")
+        u.Tests.Matchers.that(report, contains="FLEXT Check Report")
+        u.Tests.Matchers.that(report, contains="p")
 
     def test_markdown_report_multiple_projects(self) -> None:
         checker = FlextInfraWorkspaceChecker()
@@ -94,16 +89,16 @@ class TestWorkspaceCheckerMarkdownReport:
         )
         exec2 = m.Infra.GateExecution(result=gate2, issues=[issue], raw_output="")
         projects = [
-            ProjectResult(project="p1", gates={"lint": exec1}),
-            ProjectResult(project="p2", gates={"lint": exec2}),
+            m.Infra.ProjectResult(project="p1", gates={"lint": exec1}),
+            m.Infra.ProjectResult(project="p2", gates={"lint": exec2}),
         ]
         report = checker.generate_markdown_report(
             projects,
             ["lint"],
             "2025-01-01 00:00:00 UTC",
         )
-        tm.that(report, contains="p1")
-        tm.that(report, contains="p2")
+        u.Tests.Matchers.that(report, contains="p1")
+        u.Tests.Matchers.that(report, contains="p2")
 
 
 class TestWorkspaceCheckerSARIFReport:
@@ -119,10 +114,10 @@ class TestWorkspaceCheckerSARIFReport:
             duration=0.0,
         )
         gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
-        project = ProjectResult(project="p", gates={"lint": gate_exec})
+        project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_sarif_report([project], ["lint"])
         assert isinstance(report, dict)
-        tm.that("runs" in report, eq=True)
+        u.Tests.Matchers.that("runs" in report, eq=True)
 
     def test_sarif_report_with_issues(self) -> None:
         checker = FlextInfraWorkspaceChecker()
@@ -142,10 +137,10 @@ class TestWorkspaceCheckerSARIFReport:
             severity="error",
         )
         gate_exec = m.Infra.GateExecution(result=gate, issues=[issue], raw_output="")
-        project = ProjectResult(project="p", gates={"lint": gate_exec})
+        project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_sarif_report([project], ["lint"])
         assert isinstance(report, dict)
-        tm.that("runs" in report, eq=True)
+        u.Tests.Matchers.that("runs" in report, eq=True)
 
 
 class TestWorkspaceCheckerSARIFReportEdgeCases:
@@ -161,10 +156,10 @@ class TestWorkspaceCheckerSARIFReportEdgeCases:
             duration=0.0,
         )
         exec1 = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
-        project = ProjectResult(project="p", gates={"lint": exec1})
+        project = m.Infra.ProjectResult(project="p", gates={"lint": exec1})
         report = checker.generate_sarif_report([project], ["format"])
         assert isinstance(report, dict)
-        tm.that("runs" in report, eq=True)
+        u.Tests.Matchers.that("runs" in report, eq=True)
 
     def test_markdown_report_with_max_display_issues(self) -> None:
         checker = FlextInfraWorkspaceChecker()
@@ -187,13 +182,13 @@ class TestWorkspaceCheckerSARIFReportEdgeCases:
             for i in range(100)
         ]
         exec1 = m.Infra.GateExecution(result=gate, issues=issues, raw_output="")
-        project = ProjectResult(project="p", gates={"lint": exec1})
+        project = m.Infra.ProjectResult(project="p", gates={"lint": exec1})
         report = checker.generate_markdown_report(
             [project],
             ["lint"],
             "2025-01-01 00:00:00 UTC",
         )
-        tm.that("more errors" in report or len(issues) > 0, eq=True)
+        u.Tests.Matchers.that("more errors" in report or len(issues) > 0, eq=True)
 
 
 class TestMarkdownReportSkipsEmptyGates:
@@ -217,13 +212,15 @@ class TestMarkdownReportSkipsEmptyGates:
         )
         exec1 = m.Infra.GateExecution(result=gate1, issues=[], raw_output="")
         exec2 = m.Infra.GateExecution(result=gate2, issues=[], raw_output="")
-        project = ProjectResult(project="p", gates={"lint": exec1, "format": exec2})
+        project = m.Infra.ProjectResult(
+            project="p", gates={"lint": exec1, "format": exec2}
+        )
         report = checker.generate_markdown_report(
             [project],
             ["lint", "format"],
             "2025-01-01",
         )
-        tm.that(report, contains="# FLEXT Check Report")
+        u.Tests.Matchers.that(report, contains="# FLEXT Check Report")
 
 
 class TestMarkdownReportWithErrors:
@@ -247,9 +244,9 @@ class TestMarkdownReportWithErrors:
             duration=0.0,
         )
         exec1 = m.Infra.GateExecution(result=gate1, issues=[issue], raw_output="")
-        project = ProjectResult(project="p", gates={"lint": exec1})
+        project = m.Infra.ProjectResult(project="p", gates={"lint": exec1})
         report = checker.generate_markdown_report([project], ["lint"], "2025-01-01")
-        tm.that(report, contains="test.py")
+        u.Tests.Matchers.that(report, contains="test.py")
 
 
 class TestWorkspaceCheckerMarkdownReportEdgeCases:
@@ -282,5 +279,5 @@ class TestWorkspaceCheckerMarkdownReportEdgeCases:
             result=gate_with_issues, issues=[issue], raw_output=""
         )
         exec2 = m.Infra.GateExecution(result=gate_no_issues, issues=[], raw_output="")
-        tm.that(len(exec1.issues) > 0, eq=True)
-        tm.that(len(exec2.issues), eq=0)
+        u.Tests.Matchers.that(len(exec1.issues) > 0, eq=True)
+        u.Tests.Matchers.that(len(exec2.issues), eq=0)

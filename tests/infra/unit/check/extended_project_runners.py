@@ -9,12 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
-from flext_core import r, t
-from flext_infra import u
+from flext_core import r
+from flext_infra import u as infra_u
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.infra import t
+from tests.infra import m, t, u
 
 from ._shared_fixtures import create_gate_execution
 
@@ -34,7 +33,11 @@ class TestCheckProjectRunners:
             def __init__(self, gate_name: str) -> None:
                 self._gate_name = gate_name
 
-            def check(self, _project_dir: Path, _ctx: t.Scalar) -> GateExecution:
+            def check(
+                self,
+                _project_dir: Path,
+                _ctx: t.Scalar,
+            ) -> m.Infra.GateExecution:
                 called[self._gate_name] = True
                 return create_gate_execution(gate=self._gate_name)
 
@@ -46,12 +49,12 @@ class TestCheckProjectRunners:
         result = checker._check_project(
             tmp_path, ["lint", "format", "pyrefly"], tmp_path
         )
-        tm.that(called["lint"], eq=True)
-        tm.that(called["format"], eq=True)
-        tm.that(called["pyrefly"], eq=True)
-        tm.that("lint" in result.gates, eq=True)
-        tm.that("format" in result.gates, eq=True)
-        tm.that("pyrefly" in result.gates, eq=True)
+        u.Tests.Matchers.that(called["lint"], eq=True)
+        u.Tests.Matchers.that(called["format"], eq=True)
+        u.Tests.Matchers.that(called["pyrefly"], eq=True)
+        u.Tests.Matchers.that("lint" in result.gates, eq=True)
+        u.Tests.Matchers.that("format" in result.gates, eq=True)
+        u.Tests.Matchers.that("pyrefly" in result.gates, eq=True)
 
 
 class TestJsonWriteFailure:
@@ -69,15 +72,15 @@ class TestJsonWriteFailure:
             del _a, _kw
             return r[bool].fail("write error")
 
-        monkeypatch.setattr(u.Infra, "write_json", _fake_write_json)
+        monkeypatch.setattr(infra_u.Infra, "write_json", _fake_write_json)
 
-        def _fake_lint(_project_dir: Path) -> GateExecution:
+        def _fake_lint(_project_dir: Path) -> m.Infra.GateExecution:
             del _project_dir
             return create_gate_execution("lint", "p", passed=True)
 
         monkeypatch.setattr(checker, "_run_ruff_lint", _fake_lint)
         result = checker.run_projects(["test-project"], ["lint"])
-        tm.fail(result, has="write error")
+        u.Tests.Matchers.fail(result, has="write error")
 
 
 class TestLintAndFormatPublicMethods:
@@ -92,14 +95,14 @@ class TestLintAndFormatPublicMethods:
         def _fake_run_gate(
             requested_gate_name: str,
             _project_dir: Path,
-        ) -> GateExecution:
+        ) -> m.Infra.GateExecution:
             return create_gate_execution(requested_gate_name, "p", passed=True)
 
         monkeypatch.setattr(checker, "_run_gate", _fake_run_gate)
         run_public = checker.lint if gate_name == "lint" else checker.format
         result = run_public(target_dir)
-        tm.ok(result)
-        tm.that(result.value.gate, eq=gate_name)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(result.value.gate, eq=gate_name)
 
     def test_lint_public_method(
         self,

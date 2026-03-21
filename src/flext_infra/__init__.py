@@ -27,7 +27,6 @@ if TYPE_CHECKING:
         deps,
         docs,
         gates,
-        github,
         refactor,
         release,
         rules,
@@ -50,6 +49,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
+    from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.io import FlextInfraUtilitiesIo
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.output import (
@@ -498,8 +498,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.workspace.orchestrator",
         "FlextInfraOrchestratorService",
     ),
-    "FlextInfraPrManager": ("flext_infra.github.pr", "FlextInfraPrManager"),
-    "FlextInfraPrWorkspaceManager": ("flext_infra.github.pr_workspace",),
     "FlextInfraProjectMigrator": (
         "flext_infra.workspace.migrator",
         "FlextInfraProjectMigrator",
@@ -766,6 +764,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraUtilitiesFormatting",
     ),
     "FlextInfraUtilitiesGit": ("flext_infra._utilities.git", "FlextInfraUtilitiesGit"),
+    "FlextInfraUtilitiesGithub": (
+        "flext_infra._utilities.github",
+        "FlextInfraUtilitiesGithub",
+    ),
     "FlextInfraUtilitiesIo": ("flext_infra._utilities.io", "FlextInfraUtilitiesIo"),
     "FlextInfraUtilitiesIteration": (
         "flext_infra._utilities.iteration",
@@ -831,7 +833,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra._utilities.yaml",
         "FlextInfraUtilitiesYaml",
     ),
-    "FlextInfraWorkflowSyncer": ("flext_infra.github.workflows",),
     "FlextInfraWorkspaceChecker": (
         "flext_infra.check.services",
         "FlextInfraWorkspaceChecker",
@@ -975,7 +976,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "docs": ("flext_infra.docs", ""),
     "e": ("flext_core", "e"),
     "gates": ("flext_infra.gates", ""),
-    "github": ("flext_infra.github", ""),
     "h": ("flext_core", "h"),
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "m": ("flext_infra.models", "FlextInfraModels"),
@@ -1125,6 +1125,7 @@ __all__ = [
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesFormatting",
     "FlextInfraUtilitiesGit",
+    "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesIo",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesOutput",
@@ -1198,7 +1199,6 @@ __all__ = [
     "docs",
     "e",
     "gates",
-    "github",
     "h",
     "logger",
     "m",
