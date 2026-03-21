@@ -12,6 +12,10 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
+
     from .test_infra_container import (
         TestInfraContainerFunctions,
         TestInfraMroPattern,
@@ -19,18 +23,9 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "TestInfraContainerFunctions": (
-        "tests.infra.unit.container.test_infra_container",
-        "TestInfraContainerFunctions",
-    ),
-    "TestInfraMroPattern": (
-        "tests.infra.unit.container.test_infra_container",
-        "TestInfraMroPattern",
-    ),
-    "TestInfraServiceRetrieval": (
-        "tests.infra.unit.container.test_infra_container",
-        "TestInfraServiceRetrieval",
-    ),
+    "TestInfraContainerFunctions": ("tests.infra.unit.container.test_infra_container", "TestInfraContainerFunctions"),
+    "TestInfraMroPattern": ("tests.infra.unit.container.test_infra_container", "TestInfraMroPattern"),
+    "TestInfraServiceRetrieval": ("tests.infra.unit.container.test_infra_container", "TestInfraServiceRetrieval"),
 }
 
 __all__ = [
@@ -40,7 +35,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:

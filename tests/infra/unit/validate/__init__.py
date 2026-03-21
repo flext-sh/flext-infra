@@ -12,19 +12,23 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from .basemk_validator import (
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
+
+    from .basemk_validator_tests import (
         TestBaseMkValidatorCore,
         TestBaseMkValidatorEdgeCases,
         TestBaseMkValidatorSha256,
         v,
     )
-    from .init import TestCoreModuleInit
-    from .inventory import (
+    from .init_tests import TestCoreModuleInit
+    from .inventory_tests import (
         TestInventoryServiceCore,
         TestInventoryServiceReports,
         TestInventoryServiceScripts,
     )
-    from .main import (
+    from .main_tests import (
         TestMainBaseMkValidate,
         TestMainCliRouting,
         TestMainInventory,
@@ -35,15 +39,15 @@ if TYPE_CHECKING:
         TestPytestDiagLogParsing,
         TestPytestDiagParseXml,
     )
-    from .scanner import TestScannerCore, TestScannerHelpers, TestScannerMultiFile
-    from .skill_validator import (
+    from .scanner_tests import TestScannerCore, TestScannerHelpers, TestScannerMultiFile
+    from .skill_validator_tests import (
         TestNormalizeStringList,
         TestSafeLoadYaml,
         TestSkillValidatorAstGrepCount,
         TestSkillValidatorCore,
         TestSkillValidatorRenderTemplate,
     )
-    from .stub_chain import (
+    from .stub_chain_tests import (
         TestStubChainAnalyze,
         TestStubChainCore,
         TestStubChainDiscoverProjects,
@@ -53,98 +57,35 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "TestBaseMkValidatorCore": (
-        "tests.infra.unit.validate.basemk_validator",
-        "TestBaseMkValidatorCore",
-    ),
-    "TestBaseMkValidatorEdgeCases": (
-        "tests.infra.unit.validate.basemk_validator",
-        "TestBaseMkValidatorEdgeCases",
-    ),
-    "TestBaseMkValidatorSha256": (
-        "tests.infra.unit.validate.basemk_validator",
-        "TestBaseMkValidatorSha256",
-    ),
-    "TestCoreModuleInit": ("tests.infra.unit.validate.init", "TestCoreModuleInit"),
-    "TestInventoryServiceCore": (
-        "tests.infra.unit.validate.inventory",
-        "TestInventoryServiceCore",
-    ),
-    "TestInventoryServiceReports": (
-        "tests.infra.unit.validate.inventory",
-        "TestInventoryServiceReports",
-    ),
-    "TestInventoryServiceScripts": (
-        "tests.infra.unit.validate.inventory",
-        "TestInventoryServiceScripts",
-    ),
-    "TestMainBaseMkValidate": (
-        "tests.infra.unit.validate.main",
-        "TestMainBaseMkValidate",
-    ),
-    "TestMainCliRouting": ("tests.infra.unit.validate.main", "TestMainCliRouting"),
-    "TestMainInventory": ("tests.infra.unit.validate.main", "TestMainInventory"),
-    "TestMainScan": ("tests.infra.unit.validate.main", "TestMainScan"),
-    "TestNormalizeStringList": (
-        "tests.infra.unit.validate.skill_validator",
-        "TestNormalizeStringList",
-    ),
-    "TestPytestDiagExtractorCore": (
-        "tests.infra.unit.validate.pytest_diag",
-        "TestPytestDiagExtractorCore",
-    ),
-    "TestPytestDiagLogParsing": (
-        "tests.infra.unit.validate.pytest_diag",
-        "TestPytestDiagLogParsing",
-    ),
-    "TestPytestDiagParseXml": (
-        "tests.infra.unit.validate.pytest_diag",
-        "TestPytestDiagParseXml",
-    ),
-    "TestSafeLoadYaml": (
-        "tests.infra.unit.validate.skill_validator",
-        "TestSafeLoadYaml",
-    ),
-    "TestScannerCore": ("tests.infra.unit.validate.scanner", "TestScannerCore"),
-    "TestScannerHelpers": ("tests.infra.unit.validate.scanner", "TestScannerHelpers"),
-    "TestScannerMultiFile": (
-        "tests.infra.unit.validate.scanner",
-        "TestScannerMultiFile",
-    ),
-    "TestSkillValidatorAstGrepCount": (
-        "tests.infra.unit.validate.skill_validator",
-        "TestSkillValidatorAstGrepCount",
-    ),
-    "TestSkillValidatorCore": (
-        "tests.infra.unit.validate.skill_validator",
-        "TestSkillValidatorCore",
-    ),
-    "TestSkillValidatorRenderTemplate": (
-        "tests.infra.unit.validate.skill_validator",
-        "TestSkillValidatorRenderTemplate",
-    ),
-    "TestStubChainAnalyze": (
-        "tests.infra.unit.validate.stub_chain",
-        "TestStubChainAnalyze",
-    ),
-    "TestStubChainCore": ("tests.infra.unit.validate.stub_chain", "TestStubChainCore"),
-    "TestStubChainDiscoverProjects": (
-        "tests.infra.unit.validate.stub_chain",
-        "TestStubChainDiscoverProjects",
-    ),
-    "TestStubChainIsInternal": (
-        "tests.infra.unit.validate.stub_chain",
-        "TestStubChainIsInternal",
-    ),
-    "TestStubChainStubExists": (
-        "tests.infra.unit.validate.stub_chain",
-        "TestStubChainStubExists",
-    ),
-    "TestStubChainValidate": (
-        "tests.infra.unit.validate.stub_chain",
-        "TestStubChainValidate",
-    ),
-    "v": ("tests.infra.unit.validate.basemk_validator", "v"),
+    "TestBaseMkValidatorCore": ("tests.infra.unit.validate.basemk_validator_tests", "TestBaseMkValidatorCore"),
+    "TestBaseMkValidatorEdgeCases": ("tests.infra.unit.validate.basemk_validator_tests", "TestBaseMkValidatorEdgeCases"),
+    "TestBaseMkValidatorSha256": ("tests.infra.unit.validate.basemk_validator_tests", "TestBaseMkValidatorSha256"),
+    "TestCoreModuleInit": ("tests.infra.unit.validate.init_tests", "TestCoreModuleInit"),
+    "TestInventoryServiceCore": ("tests.infra.unit.validate.inventory_tests", "TestInventoryServiceCore"),
+    "TestInventoryServiceReports": ("tests.infra.unit.validate.inventory_tests", "TestInventoryServiceReports"),
+    "TestInventoryServiceScripts": ("tests.infra.unit.validate.inventory_tests", "TestInventoryServiceScripts"),
+    "TestMainBaseMkValidate": ("tests.infra.unit.validate.main_tests", "TestMainBaseMkValidate"),
+    "TestMainCliRouting": ("tests.infra.unit.validate.main_tests", "TestMainCliRouting"),
+    "TestMainInventory": ("tests.infra.unit.validate.main_tests", "TestMainInventory"),
+    "TestMainScan": ("tests.infra.unit.validate.main_tests", "TestMainScan"),
+    "TestNormalizeStringList": ("tests.infra.unit.validate.skill_validator_tests", "TestNormalizeStringList"),
+    "TestPytestDiagExtractorCore": ("tests.infra.unit.validate.pytest_diag", "TestPytestDiagExtractorCore"),
+    "TestPytestDiagLogParsing": ("tests.infra.unit.validate.pytest_diag", "TestPytestDiagLogParsing"),
+    "TestPytestDiagParseXml": ("tests.infra.unit.validate.pytest_diag", "TestPytestDiagParseXml"),
+    "TestSafeLoadYaml": ("tests.infra.unit.validate.skill_validator_tests", "TestSafeLoadYaml"),
+    "TestScannerCore": ("tests.infra.unit.validate.scanner_tests", "TestScannerCore"),
+    "TestScannerHelpers": ("tests.infra.unit.validate.scanner_tests", "TestScannerHelpers"),
+    "TestScannerMultiFile": ("tests.infra.unit.validate.scanner_tests", "TestScannerMultiFile"),
+    "TestSkillValidatorAstGrepCount": ("tests.infra.unit.validate.skill_validator_tests", "TestSkillValidatorAstGrepCount"),
+    "TestSkillValidatorCore": ("tests.infra.unit.validate.skill_validator_tests", "TestSkillValidatorCore"),
+    "TestSkillValidatorRenderTemplate": ("tests.infra.unit.validate.skill_validator_tests", "TestSkillValidatorRenderTemplate"),
+    "TestStubChainAnalyze": ("tests.infra.unit.validate.stub_chain_tests", "TestStubChainAnalyze"),
+    "TestStubChainCore": ("tests.infra.unit.validate.stub_chain_tests", "TestStubChainCore"),
+    "TestStubChainDiscoverProjects": ("tests.infra.unit.validate.stub_chain_tests", "TestStubChainDiscoverProjects"),
+    "TestStubChainIsInternal": ("tests.infra.unit.validate.stub_chain_tests", "TestStubChainIsInternal"),
+    "TestStubChainStubExists": ("tests.infra.unit.validate.stub_chain_tests", "TestStubChainStubExists"),
+    "TestStubChainValidate": ("tests.infra.unit.validate.stub_chain_tests", "TestStubChainValidate"),
+    "v": ("tests.infra.unit.validate.basemk_validator_tests", "v"),
 }
 
 __all__ = [
@@ -180,7 +121,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:

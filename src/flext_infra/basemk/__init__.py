@@ -18,18 +18,16 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
+
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "FlextInfraBaseMkGenerator": (
-        "flext_infra.basemk.generator",
-        "FlextInfraBaseMkGenerator",
-    ),
-    "FlextInfraBaseMkTemplateEngine": (
-        "flext_infra.basemk.engine",
-        "FlextInfraBaseMkTemplateEngine",
-    ),
+    "FlextInfraBaseMkGenerator": ("flext_infra.basemk.generator", "FlextInfraBaseMkGenerator"),
+    "FlextInfraBaseMkTemplateEngine": ("flext_infra.basemk.engine", "FlextInfraBaseMkTemplateEngine"),
 }
 
 __all__ = [
@@ -38,7 +36,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:

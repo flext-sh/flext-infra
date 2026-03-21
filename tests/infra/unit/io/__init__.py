@@ -12,6 +12,10 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
+
     from .test_infra_json_io import SampleModel, TestFlextInfraJsonService
     from .test_infra_output_edge_cases import (
         TestInfraOutputEdgeCases,
@@ -31,50 +35,17 @@ if TYPE_CHECKING:
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ANSI_RE": ("tests.infra.unit.io.test_infra_output_formatting", "ANSI_RE"),
     "SampleModel": ("tests.infra.unit.io.test_infra_json_io", "SampleModel"),
-    "TestFlextInfraJsonService": (
-        "tests.infra.unit.io.test_infra_json_io",
-        "TestFlextInfraJsonService",
-    ),
-    "TestInfraOutputEdgeCases": (
-        "tests.infra.unit.io.test_infra_output_edge_cases",
-        "TestInfraOutputEdgeCases",
-    ),
-    "TestInfraOutputHeader": (
-        "tests.infra.unit.io.test_infra_output_formatting",
-        "TestInfraOutputHeader",
-    ),
-    "TestInfraOutputMessages": (
-        "tests.infra.unit.io.test_infra_output_formatting",
-        "TestInfraOutputMessages",
-    ),
-    "TestInfraOutputNoColor": (
-        "tests.infra.unit.io.test_infra_output_edge_cases",
-        "TestInfraOutputNoColor",
-    ),
-    "TestInfraOutputProgress": (
-        "tests.infra.unit.io.test_infra_output_formatting",
-        "TestInfraOutputProgress",
-    ),
-    "TestInfraOutputStatus": (
-        "tests.infra.unit.io.test_infra_output_formatting",
-        "TestInfraOutputStatus",
-    ),
-    "TestInfraOutputSummary": (
-        "tests.infra.unit.io.test_infra_output_formatting",
-        "TestInfraOutputSummary",
-    ),
-    "TestMroFacadeMethods": (
-        "tests.infra.unit.io.test_infra_output_edge_cases",
-        "TestMroFacadeMethods",
-    ),
-    "TestShouldUseColor": (
-        "tests.infra.unit.io.test_infra_terminal_detection",
-        "TestShouldUseColor",
-    ),
-    "TestShouldUseUnicode": (
-        "tests.infra.unit.io.test_infra_terminal_detection",
-        "TestShouldUseUnicode",
-    ),
+    "TestFlextInfraJsonService": ("tests.infra.unit.io.test_infra_json_io", "TestFlextInfraJsonService"),
+    "TestInfraOutputEdgeCases": ("tests.infra.unit.io.test_infra_output_edge_cases", "TestInfraOutputEdgeCases"),
+    "TestInfraOutputHeader": ("tests.infra.unit.io.test_infra_output_formatting", "TestInfraOutputHeader"),
+    "TestInfraOutputMessages": ("tests.infra.unit.io.test_infra_output_formatting", "TestInfraOutputMessages"),
+    "TestInfraOutputNoColor": ("tests.infra.unit.io.test_infra_output_edge_cases", "TestInfraOutputNoColor"),
+    "TestInfraOutputProgress": ("tests.infra.unit.io.test_infra_output_formatting", "TestInfraOutputProgress"),
+    "TestInfraOutputStatus": ("tests.infra.unit.io.test_infra_output_formatting", "TestInfraOutputStatus"),
+    "TestInfraOutputSummary": ("tests.infra.unit.io.test_infra_output_formatting", "TestInfraOutputSummary"),
+    "TestMroFacadeMethods": ("tests.infra.unit.io.test_infra_output_edge_cases", "TestMroFacadeMethods"),
+    "TestShouldUseColor": ("tests.infra.unit.io.test_infra_terminal_detection", "TestShouldUseColor"),
+    "TestShouldUseUnicode": ("tests.infra.unit.io.test_infra_terminal_detection", "TestShouldUseUnicode"),
 }
 
 __all__ = [
@@ -94,7 +65,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:

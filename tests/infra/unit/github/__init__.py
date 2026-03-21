@@ -12,98 +12,80 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from .linter import TestFlextInfraWorkflowLinter
-    from .main import TestRunLint, TestRunWorkflows, run_lint, run_pr, run_workflows
-    from .main_dispatch import TestRunPrWorkspace, run_pr_workspace
-    from .main_integration import TestMain, main
-    from .pr import TestCreate, TestFlextInfraPrManager, TestStatus
-    from .pr_cli import TestMainFunction, TestParseArgs, TestSelectorFunction
-    from .pr_init import TestGithubInit
-    from .pr_operations import (
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
+
+    from .linter_tests import TestFlextInfraWorkflowLinter
+    from .main_dispatch_tests import TestRunPrWorkspace
+    from .main_integration_tests import TestMain
+    from .main_tests import (
+        TestRunLint,
+        TestRunWorkflows,
+        main,
+        run_lint,
+        run_pr,
+        run_pr_workspace,
+        run_workflows,
+    )
+    from .pr_cli_tests import TestMainFunction, TestParseArgs, TestSelectorFunction
+    from .pr_init_tests import TestGithubInit
+    from .pr_operations_tests import (
         TestChecks,
         TestClose,
         TestMerge,
         TestTriggerRelease,
         TestView,
     )
-    from .pr_workspace import (
+    from .pr_tests import TestCreate, TestFlextInfraPrManager, TestStatus
+    from .pr_workspace_orchestrate_tests import TestOrchestrate, TestStaticMethods
+    from .pr_workspace_tests import (
         TestCheckpoint,
         TestFlextInfraPrWorkspaceManager,
         TestRunPr,
     )
-    from .pr_workspace_orchestrate import TestOrchestrate, TestStaticMethods
-    from .workflows import (
+    from .workflows_tests import (
         TestFlextInfraWorkflowSyncer,
         TestRenderTemplate,
         TestSyncOperation,
         TestSyncProject,
     )
-    from .workflows_workspace import TestSyncWorkspace, TestWriteReport
+    from .workflows_workspace_tests import TestSyncWorkspace, TestWriteReport
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "TestCheckpoint": ("tests.infra.unit.github.pr_workspace", "TestCheckpoint"),
-    "TestChecks": ("tests.infra.unit.github.pr_operations", "TestChecks"),
-    "TestClose": ("tests.infra.unit.github.pr_operations", "TestClose"),
-    "TestCreate": ("tests.infra.unit.github.pr", "TestCreate"),
-    "TestFlextInfraPrManager": (
-        "tests.infra.unit.github.pr",
-        "TestFlextInfraPrManager",
-    ),
-    "TestFlextInfraPrWorkspaceManager": (
-        "tests.infra.unit.github.pr_workspace",
-        "TestFlextInfraPrWorkspaceManager",
-    ),
-    "TestFlextInfraWorkflowLinter": (
-        "tests.infra.unit.github.linter",
-        "TestFlextInfraWorkflowLinter",
-    ),
-    "TestFlextInfraWorkflowSyncer": (
-        "tests.infra.unit.github.workflows",
-        "TestFlextInfraWorkflowSyncer",
-    ),
-    "TestGithubInit": ("tests.infra.unit.github.pr_init", "TestGithubInit"),
-    "TestMain": ("tests.infra.unit.github.main_integration", "TestMain"),
-    "TestMainFunction": ("tests.infra.unit.github.pr_cli", "TestMainFunction"),
-    "TestMerge": ("tests.infra.unit.github.pr_operations", "TestMerge"),
-    "TestOrchestrate": (
-        "tests.infra.unit.github.pr_workspace_orchestrate",
-        "TestOrchestrate",
-    ),
-    "TestParseArgs": ("tests.infra.unit.github.pr_cli", "TestParseArgs"),
-    "TestRenderTemplate": ("tests.infra.unit.github.workflows", "TestRenderTemplate"),
-    "TestRunLint": ("tests.infra.unit.github.main", "TestRunLint"),
-    "TestRunPr": ("tests.infra.unit.github.pr_workspace", "TestRunPr"),
-    "TestRunPrWorkspace": (
-        "tests.infra.unit.github.main_dispatch",
-        "TestRunPrWorkspace",
-    ),
-    "TestRunWorkflows": ("tests.infra.unit.github.main", "TestRunWorkflows"),
-    "TestSelectorFunction": ("tests.infra.unit.github.pr_cli", "TestSelectorFunction"),
-    "TestStaticMethods": (
-        "tests.infra.unit.github.pr_workspace_orchestrate",
-        "TestStaticMethods",
-    ),
-    "TestStatus": ("tests.infra.unit.github.pr", "TestStatus"),
-    "TestSyncOperation": ("tests.infra.unit.github.workflows", "TestSyncOperation"),
-    "TestSyncProject": ("tests.infra.unit.github.workflows", "TestSyncProject"),
-    "TestSyncWorkspace": (
-        "tests.infra.unit.github.workflows_workspace",
-        "TestSyncWorkspace",
-    ),
-    "TestTriggerRelease": (
-        "tests.infra.unit.github.pr_operations",
-        "TestTriggerRelease",
-    ),
-    "TestView": ("tests.infra.unit.github.pr_operations", "TestView"),
-    "TestWriteReport": (
-        "tests.infra.unit.github.workflows_workspace",
-        "TestWriteReport",
-    ),
-    "main": ("tests.infra.unit.github.main_integration", "main"),
-    "run_lint": ("tests.infra.unit.github.main", "run_lint"),
-    "run_pr": ("tests.infra.unit.github.main", "run_pr"),
-    "run_pr_workspace": ("tests.infra.unit.github.main_dispatch", "run_pr_workspace"),
-    "run_workflows": ("tests.infra.unit.github.main", "run_workflows"),
+    "TestCheckpoint": ("tests.infra.unit.github.pr_workspace_tests", "TestCheckpoint"),
+    "TestChecks": ("tests.infra.unit.github.pr_operations_tests", "TestChecks"),
+    "TestClose": ("tests.infra.unit.github.pr_operations_tests", "TestClose"),
+    "TestCreate": ("tests.infra.unit.github.pr_tests", "TestCreate"),
+    "TestFlextInfraPrManager": ("tests.infra.unit.github.pr_tests", "TestFlextInfraPrManager"),
+    "TestFlextInfraPrWorkspaceManager": ("tests.infra.unit.github.pr_workspace_tests", "TestFlextInfraPrWorkspaceManager"),
+    "TestFlextInfraWorkflowLinter": ("tests.infra.unit.github.linter_tests", "TestFlextInfraWorkflowLinter"),
+    "TestFlextInfraWorkflowSyncer": ("tests.infra.unit.github.workflows_tests", "TestFlextInfraWorkflowSyncer"),
+    "TestGithubInit": ("tests.infra.unit.github.pr_init_tests", "TestGithubInit"),
+    "TestMain": ("tests.infra.unit.github.main_integration_tests", "TestMain"),
+    "TestMainFunction": ("tests.infra.unit.github.pr_cli_tests", "TestMainFunction"),
+    "TestMerge": ("tests.infra.unit.github.pr_operations_tests", "TestMerge"),
+    "TestOrchestrate": ("tests.infra.unit.github.pr_workspace_orchestrate_tests", "TestOrchestrate"),
+    "TestParseArgs": ("tests.infra.unit.github.pr_cli_tests", "TestParseArgs"),
+    "TestRenderTemplate": ("tests.infra.unit.github.workflows_tests", "TestRenderTemplate"),
+    "TestRunLint": ("tests.infra.unit.github.main_tests", "TestRunLint"),
+    "TestRunPr": ("tests.infra.unit.github.pr_workspace_tests", "TestRunPr"),
+    "TestRunPrWorkspace": ("tests.infra.unit.github.main_dispatch_tests", "TestRunPrWorkspace"),
+    "TestRunWorkflows": ("tests.infra.unit.github.main_tests", "TestRunWorkflows"),
+    "TestSelectorFunction": ("tests.infra.unit.github.pr_cli_tests", "TestSelectorFunction"),
+    "TestStaticMethods": ("tests.infra.unit.github.pr_workspace_orchestrate_tests", "TestStaticMethods"),
+    "TestStatus": ("tests.infra.unit.github.pr_tests", "TestStatus"),
+    "TestSyncOperation": ("tests.infra.unit.github.workflows_tests", "TestSyncOperation"),
+    "TestSyncProject": ("tests.infra.unit.github.workflows_tests", "TestSyncProject"),
+    "TestSyncWorkspace": ("tests.infra.unit.github.workflows_workspace_tests", "TestSyncWorkspace"),
+    "TestTriggerRelease": ("tests.infra.unit.github.pr_operations_tests", "TestTriggerRelease"),
+    "TestView": ("tests.infra.unit.github.pr_operations_tests", "TestView"),
+    "TestWriteReport": ("tests.infra.unit.github.workflows_workspace_tests", "TestWriteReport"),
+    "main": ("tests.infra.unit.github.main_tests", "main"),
+    "run_lint": ("tests.infra.unit.github.main_tests", "run_lint"),
+    "run_pr": ("tests.infra.unit.github.main_tests", "run_pr"),
+    "run_pr_workspace": ("tests.infra.unit.github.main_tests", "run_pr_workspace"),
+    "run_workflows": ("tests.infra.unit.github.main_tests", "run_workflows"),
 }
 
 __all__ = [
@@ -143,7 +125,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:

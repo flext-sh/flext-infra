@@ -12,20 +12,18 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
+
     from .test_infra_discovery import TestFlextInfraDiscoveryService
     from .test_infra_discovery_edge_cases import (
         TestFlextInfraDiscoveryServiceUncoveredLines,
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "TestFlextInfraDiscoveryService": (
-        "tests.infra.unit.discovery.test_infra_discovery",
-        "TestFlextInfraDiscoveryService",
-    ),
-    "TestFlextInfraDiscoveryServiceUncoveredLines": (
-        "tests.infra.unit.discovery.test_infra_discovery_edge_cases",
-        "TestFlextInfraDiscoveryServiceUncoveredLines",
-    ),
+    "TestFlextInfraDiscoveryService": ("tests.infra.unit.discovery.test_infra_discovery", "TestFlextInfraDiscoveryService"),
+    "TestFlextInfraDiscoveryServiceUncoveredLines": ("tests.infra.unit.discovery.test_infra_discovery_edge_cases", "TestFlextInfraDiscoveryServiceUncoveredLines"),
 }
 
 __all__ = [
@@ -34,7 +32,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:

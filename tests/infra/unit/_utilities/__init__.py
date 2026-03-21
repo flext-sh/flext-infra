@@ -12,6 +12,10 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
+
     from .test_discovery_consolidated import (
         TestDiscoveryDiscoverProjects,
         TestDiscoveryFindAllPyprojectFiles,
@@ -30,54 +34,18 @@ if TYPE_CHECKING:
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "MockScanner": ("tests.infra.unit._utilities.test_scanning", "MockScanner"),
-    "TestDiscoveryDiscoverProjects": (
-        "tests.infra.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryDiscoverProjects",
-    ),
-    "TestDiscoveryFindAllPyprojectFiles": (
-        "tests.infra.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryFindAllPyprojectFiles",
-    ),
-    "TestDiscoveryIterPythonFiles": (
-        "tests.infra.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryIterPythonFiles",
-    ),
-    "TestDiscoveryProjectRoots": (
-        "tests.infra.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryProjectRoots",
-    ),
-    "TestFormattingRunRuffFix": (
-        "tests.infra.unit._utilities.test_formatting",
-        "TestFormattingRunRuffFix",
-    ),
-    "TestIterWorkspacePythonModules": (
-        "tests.infra.unit._utilities.test_iteration",
-        "TestIterWorkspacePythonModules",
-    ),
-    "TestParsingModuleAst": (
-        "tests.infra.unit._utilities.test_parsing",
-        "TestParsingModuleAst",
-    ),
-    "TestParsingModuleCst": (
-        "tests.infra.unit._utilities.test_parsing",
-        "TestParsingModuleCst",
-    ),
-    "TestSafetyCheckpoint": (
-        "tests.infra.unit._utilities.test_safety",
-        "TestSafetyCheckpoint",
-    ),
-    "TestSafetyRollback": (
-        "tests.infra.unit._utilities.test_safety",
-        "TestSafetyRollback",
-    ),
-    "TestSafetyWorkspaceValidation": (
-        "tests.infra.unit._utilities.test_safety",
-        "TestSafetyWorkspaceValidation",
-    ),
-    "TestScanFileBatch": (
-        "tests.infra.unit._utilities.test_scanning",
-        "TestScanFileBatch",
-    ),
+    "TestDiscoveryDiscoverProjects": ("tests.infra.unit._utilities.test_discovery_consolidated", "TestDiscoveryDiscoverProjects"),
+    "TestDiscoveryFindAllPyprojectFiles": ("tests.infra.unit._utilities.test_discovery_consolidated", "TestDiscoveryFindAllPyprojectFiles"),
+    "TestDiscoveryIterPythonFiles": ("tests.infra.unit._utilities.test_discovery_consolidated", "TestDiscoveryIterPythonFiles"),
+    "TestDiscoveryProjectRoots": ("tests.infra.unit._utilities.test_discovery_consolidated", "TestDiscoveryProjectRoots"),
+    "TestFormattingRunRuffFix": ("tests.infra.unit._utilities.test_formatting", "TestFormattingRunRuffFix"),
+    "TestIterWorkspacePythonModules": ("tests.infra.unit._utilities.test_iteration", "TestIterWorkspacePythonModules"),
+    "TestParsingModuleAst": ("tests.infra.unit._utilities.test_parsing", "TestParsingModuleAst"),
+    "TestParsingModuleCst": ("tests.infra.unit._utilities.test_parsing", "TestParsingModuleCst"),
+    "TestSafetyCheckpoint": ("tests.infra.unit._utilities.test_safety", "TestSafetyCheckpoint"),
+    "TestSafetyRollback": ("tests.infra.unit._utilities.test_safety", "TestSafetyRollback"),
+    "TestSafetyWorkspaceValidation": ("tests.infra.unit._utilities.test_safety", "TestSafetyWorkspaceValidation"),
+    "TestScanFileBatch": ("tests.infra.unit._utilities.test_scanning", "TestScanFileBatch"),
     "TestScanModels": ("tests.infra.unit._utilities.test_scanning", "TestScanModels"),
 }
 
@@ -99,7 +67,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:

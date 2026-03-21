@@ -12,17 +12,20 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from .flow import TestReleaseMainFlow
-    from .main import TestReleaseMainParsing
-    from .orchestrator import TestReleaseOrchestratorExecute
-    from .orchestrator_git import (
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
+
+    from .flow_tests import TestReleaseMainFlow
+    from .main_tests import TestReleaseMainParsing
+    from .orchestrator_git_tests import (
         TestCollectChanges,
         TestCreateBranches,
         TestCreateTag,
         TestPreviousTag,
         TestPushRelease,
     )
-    from .orchestrator_helpers import (
+    from .orchestrator_helpers_tests import (
         TestBuildTargets,
         TestBumpNextDev,
         TestDispatchPhase,
@@ -31,94 +34,45 @@ if TYPE_CHECKING:
         TestUpdateChangelog,
         TestVersionFiles,
     )
-    from .orchestrator_phases import TestPhaseBuild, TestPhaseValidate, TestPhaseVersion
-    from .orchestrator_publish import TestPhasePublish, workspace_root
-    from .release_init import TestReleaseInit
-    from .version_resolution import (
+    from .orchestrator_phases_tests import (
+        TestPhaseBuild,
+        TestPhaseValidate,
+        TestPhaseVersion,
+    )
+    from .orchestrator_publish_tests import TestPhasePublish
+    from .orchestrator_tests import TestReleaseOrchestratorExecute, workspace_root
+    from .release_init_tests import TestReleaseInit
+    from .version_resolution_tests import (
         TestReleaseMainTagResolution,
         TestReleaseMainVersionResolution,
         TestResolveVersionInteractive,
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "TestBuildTargets": (
-        "tests.infra.unit.release.orchestrator_helpers",
-        "TestBuildTargets",
-    ),
-    "TestBumpNextDev": (
-        "tests.infra.unit.release.orchestrator_helpers",
-        "TestBumpNextDev",
-    ),
-    "TestCollectChanges": (
-        "tests.infra.unit.release.orchestrator_git",
-        "TestCollectChanges",
-    ),
-    "TestCreateBranches": (
-        "tests.infra.unit.release.orchestrator_git",
-        "TestCreateBranches",
-    ),
-    "TestCreateTag": ("tests.infra.unit.release.orchestrator_git", "TestCreateTag"),
-    "TestDispatchPhase": (
-        "tests.infra.unit.release.orchestrator_helpers",
-        "TestDispatchPhase",
-    ),
-    "TestGenerateNotes": (
-        "tests.infra.unit.release.orchestrator_helpers",
-        "TestGenerateNotes",
-    ),
-    "TestPhaseBuild": (
-        "tests.infra.unit.release.orchestrator_phases",
-        "TestPhaseBuild",
-    ),
-    "TestPhasePublish": (
-        "tests.infra.unit.release.orchestrator_publish",
-        "TestPhasePublish",
-    ),
-    "TestPhaseValidate": (
-        "tests.infra.unit.release.orchestrator_phases",
-        "TestPhaseValidate",
-    ),
-    "TestPhaseVersion": (
-        "tests.infra.unit.release.orchestrator_phases",
-        "TestPhaseVersion",
-    ),
-    "TestPreviousTag": ("tests.infra.unit.release.orchestrator_git", "TestPreviousTag"),
-    "TestPushRelease": ("tests.infra.unit.release.orchestrator_git", "TestPushRelease"),
-    "TestReleaseInit": ("tests.infra.unit.release.release_init", "TestReleaseInit"),
-    "TestReleaseMainFlow": ("tests.infra.unit.release.flow", "TestReleaseMainFlow"),
-    "TestReleaseMainParsing": (
-        "tests.infra.unit.release.main",
-        "TestReleaseMainParsing",
-    ),
-    "TestReleaseMainTagResolution": (
-        "tests.infra.unit.release.version_resolution",
-        "TestReleaseMainTagResolution",
-    ),
-    "TestReleaseMainVersionResolution": (
-        "tests.infra.unit.release.version_resolution",
-        "TestReleaseMainVersionResolution",
-    ),
-    "TestReleaseOrchestratorExecute": (
-        "tests.infra.unit.release.orchestrator",
-        "TestReleaseOrchestratorExecute",
-    ),
-    "TestResolveVersionInteractive": (
-        "tests.infra.unit.release.version_resolution",
-        "TestResolveVersionInteractive",
-    ),
-    "TestRunMake": ("tests.infra.unit.release.orchestrator_helpers", "TestRunMake"),
-    "TestUpdateChangelog": (
-        "tests.infra.unit.release.orchestrator_helpers",
-        "TestUpdateChangelog",
-    ),
-    "TestVersionFiles": (
-        "tests.infra.unit.release.orchestrator_helpers",
-        "TestVersionFiles",
-    ),
-    "workspace_root": (
-        "tests.infra.unit.release.orchestrator_publish",
-        "workspace_root",
-    ),
+    "TestBuildTargets": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestBuildTargets"),
+    "TestBumpNextDev": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestBumpNextDev"),
+    "TestCollectChanges": ("tests.infra.unit.release.orchestrator_git_tests", "TestCollectChanges"),
+    "TestCreateBranches": ("tests.infra.unit.release.orchestrator_git_tests", "TestCreateBranches"),
+    "TestCreateTag": ("tests.infra.unit.release.orchestrator_git_tests", "TestCreateTag"),
+    "TestDispatchPhase": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestDispatchPhase"),
+    "TestGenerateNotes": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestGenerateNotes"),
+    "TestPhaseBuild": ("tests.infra.unit.release.orchestrator_phases_tests", "TestPhaseBuild"),
+    "TestPhasePublish": ("tests.infra.unit.release.orchestrator_publish_tests", "TestPhasePublish"),
+    "TestPhaseValidate": ("tests.infra.unit.release.orchestrator_phases_tests", "TestPhaseValidate"),
+    "TestPhaseVersion": ("tests.infra.unit.release.orchestrator_phases_tests", "TestPhaseVersion"),
+    "TestPreviousTag": ("tests.infra.unit.release.orchestrator_git_tests", "TestPreviousTag"),
+    "TestPushRelease": ("tests.infra.unit.release.orchestrator_git_tests", "TestPushRelease"),
+    "TestReleaseInit": ("tests.infra.unit.release.release_init_tests", "TestReleaseInit"),
+    "TestReleaseMainFlow": ("tests.infra.unit.release.flow_tests", "TestReleaseMainFlow"),
+    "TestReleaseMainParsing": ("tests.infra.unit.release.main_tests", "TestReleaseMainParsing"),
+    "TestReleaseMainTagResolution": ("tests.infra.unit.release.version_resolution_tests", "TestReleaseMainTagResolution"),
+    "TestReleaseMainVersionResolution": ("tests.infra.unit.release.version_resolution_tests", "TestReleaseMainVersionResolution"),
+    "TestReleaseOrchestratorExecute": ("tests.infra.unit.release.orchestrator_tests", "TestReleaseOrchestratorExecute"),
+    "TestResolveVersionInteractive": ("tests.infra.unit.release.version_resolution_tests", "TestResolveVersionInteractive"),
+    "TestRunMake": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestRunMake"),
+    "TestUpdateChangelog": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestUpdateChangelog"),
+    "TestVersionFiles": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestVersionFiles"),
+    "workspace_root": ("tests.infra.unit.release.orchestrator_tests", "workspace_root"),
 }
 
 __all__ = [
@@ -149,7 +103,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:

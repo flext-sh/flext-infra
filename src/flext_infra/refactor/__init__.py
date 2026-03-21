@@ -11,6 +11,10 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
+
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
     from flext_infra.refactor import _detectors
     from flext_infra.refactor._detectors.class_placement_detector import (
         ClassPlacementDetector,
@@ -322,7 +326,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:

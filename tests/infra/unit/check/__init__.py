@@ -12,7 +12,11 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from .cli import (
+
+if TYPE_CHECKING:
+    from flext_core.typings import FlextTypes
+
+    from .cli_tests import (
         test_resolve_gates_maps_type_alias,
         test_run_cli_run_returns_one_for_fail,
         test_run_cli_run_returns_two_for_error,
@@ -20,13 +24,19 @@ if TYPE_CHECKING:
         test_run_cli_with_fail_fast_flag,
         test_run_cli_with_multiple_projects,
     )
-    from .extended_cli_entry import (
+    from .extended_cli_entry_tests import (
         TestCheckMainEntryPoint,
         TestFixPyrelfyCLI,
         TestRunCLIExtended,
         TestWorkspaceCheckCLI,
     )
-    from .extended_config_fixer import (
+    from .extended_config_fixer_errors_tests import (
+        TestConfigFixerPathResolution,
+        TestConfigFixerRunMethods,
+        TestConfigFixerRunWithVerbose,
+        TestProcessFileReadError,
+    )
+    from .extended_config_fixer_tests import (
         TestConfigFixerEnsureProjectExcludes,
         TestConfigFixerExecute,
         TestConfigFixerFindPyprojectFiles,
@@ -36,44 +46,38 @@ if TYPE_CHECKING:
         TestConfigFixerRun,
         TestConfigFixerToArray,
     )
-    from .extended_config_fixer_errors import (
-        TestConfigFixerPathResolution,
-        TestConfigFixerRunMethods,
-        TestConfigFixerRunWithVerbose,
-        TestProcessFileReadError,
-    )
-    from .extended_error_reporting import (
+    from .extended_error_reporting_tests import (
         TestErrorReporting,
         TestGoFmtEmptyLinesInOutput,
         TestMarkdownReportEmptyGates,
         TestMypyEmptyLinesInOutput,
         TestRuffFormatDuplicateFiles,
     )
-    from .extended_gate_bandit_markdown import (
+    from .extended_gate_bandit_markdown_tests import (
         TestWorkspaceCheckerRunBandit,
         TestWorkspaceCheckerRunMarkdown,
     )
-    from .extended_gate_go_cmd import (
+    from .extended_gate_go_cmd_tests import (
         TestWorkspaceCheckerCollectMarkdownFiles,
         TestWorkspaceCheckerRunCommand,
         TestWorkspaceCheckerRunGo,
         run_command_failure_check,
     )
-    from .extended_gate_mypy_pyright import (
+    from .extended_gate_mypy_pyright_tests import (
         TestWorkspaceCheckerRunMypy,
         TestWorkspaceCheckerRunPyright,
     )
-    from .extended_models import (
+    from .extended_models_tests import (
         TestCheckIssueFormatted,
         TestProjectResultProperties,
         TestWorkspaceCheckerErrorSummary,
     )
-    from .extended_project_runners import TestJsonWriteFailure
-    from .extended_projects import (
+    from .extended_project_runners_tests import TestJsonWriteFailure
+    from .extended_projects_tests import (
         TestCheckProjectRunners,
         TestLintAndFormatPublicMethods,
     )
-    from .extended_reports import (
+    from .extended_reports_tests import (
         TestMarkdownReportSkipsEmptyGates,
         TestMarkdownReportWithErrors,
         TestWorkspaceCheckerMarkdownReport,
@@ -81,32 +85,32 @@ if TYPE_CHECKING:
         TestWorkspaceCheckerSARIFReport,
         TestWorkspaceCheckerSARIFReportEdgeCases,
     )
-    from .extended_resolve_gates import (
+    from .extended_resolve_gates_tests import (
         TestWorkspaceCheckerParseGateCSV,
         TestWorkspaceCheckerResolveGates,
     )
-    from .extended_run_projects import (
+    from .extended_run_projects_tests import (
         CheckProjectStub,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
         TestRunSingleProject,
     )
-    from .extended_runners import TestRunMypy, TestRunPyrefly
-    from .extended_runners_extra import (
+    from .extended_runners_extra_tests import (
         GateClass,
         TestRunBandit,
         TestRunMarkdown,
         TestRunPyright,
     )
-    from .extended_runners_go import RunCallable, TestRunGo
-    from .extended_runners_ruff import (
+    from .extended_runners_go_tests import RunCallable, TestRunGo
+    from .extended_runners_ruff_tests import (
         TestCollectMarkdownFiles,
         TestRunCommand,
         TestRunRuffFormat,
         TestRunRuffLint,
     )
-    from .extended_workspace_init import (
+    from .extended_runners_tests import TestRunMypy, TestRunPyrefly
+    from .extended_workspace_init_tests import (
         TestWorkspaceCheckerBuildGateResult,
         TestWorkspaceCheckerDirsWithPy,
         TestWorkspaceCheckerExecute,
@@ -115,311 +119,97 @@ if TYPE_CHECKING:
         TestWorkspaceCheckerInitOSError,
         TestWorkspaceCheckerResolveWorkspaceRootFallback,
     )
-    from .fix_pyrefly_config import test_fix_pyrefly_config_main_executes_real_cli_help
-    from .init import TestFlextInfraCheck
-    from .main import test_check_main_executes_real_cli
-    from .pyrefly import TestFlextInfraConfigFixer
-    from .workspace import TestFlextInfraWorkspaceChecker
-    from .workspace_check import (
+    from .fix_pyrefly_config_tests import (
+        test_fix_pyrefly_config_main_executes_real_cli_help,
+    )
+    from .init_tests import TestFlextInfraCheck
+    from .main_tests import test_check_main_executes_real_cli
+    from .pyrefly_tests import TestFlextInfraConfigFixer
+    from .workspace_check_tests import (
         test_workspace_check_main_returns_error_without_projects,
     )
+    from .workspace_tests import TestFlextInfraWorkspaceChecker
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "CheckProjectStub": (
-        "tests.infra.unit.check.extended_run_projects",
-        "CheckProjectStub",
-    ),
-    "GateClass": ("tests.infra.unit.check.extended_runners_extra", "GateClass"),
-    "RunCallable": ("tests.infra.unit.check.extended_runners_go", "RunCallable"),
-    "TestCheckIssueFormatted": (
-        "tests.infra.unit.check.extended_models",
-        "TestCheckIssueFormatted",
-    ),
-    "TestCheckMainEntryPoint": (
-        "tests.infra.unit.check.extended_cli_entry",
-        "TestCheckMainEntryPoint",
-    ),
-    "TestCheckProjectRunners": (
-        "tests.infra.unit.check.extended_projects",
-        "TestCheckProjectRunners",
-    ),
-    "TestCollectMarkdownFiles": (
-        "tests.infra.unit.check.extended_runners_ruff",
-        "TestCollectMarkdownFiles",
-    ),
-    "TestConfigFixerEnsureProjectExcludes": (
-        "tests.infra.unit.check.extended_config_fixer",
-        "TestConfigFixerEnsureProjectExcludes",
-    ),
-    "TestConfigFixerExecute": (
-        "tests.infra.unit.check.extended_config_fixer",
-        "TestConfigFixerExecute",
-    ),
-    "TestConfigFixerFindPyprojectFiles": (
-        "tests.infra.unit.check.extended_config_fixer",
-        "TestConfigFixerFindPyprojectFiles",
-    ),
-    "TestConfigFixerFixSearchPaths": (
-        "tests.infra.unit.check.extended_config_fixer",
-        "TestConfigFixerFixSearchPaths",
-    ),
-    "TestConfigFixerPathResolution": (
-        "tests.infra.unit.check.extended_config_fixer_errors",
-        "TestConfigFixerPathResolution",
-    ),
-    "TestConfigFixerProcessFile": (
-        "tests.infra.unit.check.extended_config_fixer",
-        "TestConfigFixerProcessFile",
-    ),
-    "TestConfigFixerRemoveIgnoreSubConfig": (
-        "tests.infra.unit.check.extended_config_fixer",
-        "TestConfigFixerRemoveIgnoreSubConfig",
-    ),
-    "TestConfigFixerRun": (
-        "tests.infra.unit.check.extended_config_fixer",
-        "TestConfigFixerRun",
-    ),
-    "TestConfigFixerRunMethods": (
-        "tests.infra.unit.check.extended_config_fixer_errors",
-        "TestConfigFixerRunMethods",
-    ),
-    "TestConfigFixerRunWithVerbose": (
-        "tests.infra.unit.check.extended_config_fixer_errors",
-        "TestConfigFixerRunWithVerbose",
-    ),
-    "TestConfigFixerToArray": (
-        "tests.infra.unit.check.extended_config_fixer",
-        "TestConfigFixerToArray",
-    ),
-    "TestErrorReporting": (
-        "tests.infra.unit.check.extended_error_reporting",
-        "TestErrorReporting",
-    ),
-    "TestFixPyrelfyCLI": (
-        "tests.infra.unit.check.extended_cli_entry",
-        "TestFixPyrelfyCLI",
-    ),
-    "TestFlextInfraCheck": ("tests.infra.unit.check.init", "TestFlextInfraCheck"),
-    "TestFlextInfraConfigFixer": (
-        "tests.infra.unit.check.pyrefly",
-        "TestFlextInfraConfigFixer",
-    ),
-    "TestFlextInfraWorkspaceChecker": (
-        "tests.infra.unit.check.workspace",
-        "TestFlextInfraWorkspaceChecker",
-    ),
-    "TestGoFmtEmptyLinesInOutput": (
-        "tests.infra.unit.check.extended_error_reporting",
-        "TestGoFmtEmptyLinesInOutput",
-    ),
-    "TestJsonWriteFailure": (
-        "tests.infra.unit.check.extended_project_runners",
-        "TestJsonWriteFailure",
-    ),
-    "TestLintAndFormatPublicMethods": (
-        "tests.infra.unit.check.extended_projects",
-        "TestLintAndFormatPublicMethods",
-    ),
-    "TestMarkdownReportEmptyGates": (
-        "tests.infra.unit.check.extended_error_reporting",
-        "TestMarkdownReportEmptyGates",
-    ),
-    "TestMarkdownReportSkipsEmptyGates": (
-        "tests.infra.unit.check.extended_reports",
-        "TestMarkdownReportSkipsEmptyGates",
-    ),
-    "TestMarkdownReportWithErrors": (
-        "tests.infra.unit.check.extended_reports",
-        "TestMarkdownReportWithErrors",
-    ),
-    "TestMypyEmptyLinesInOutput": (
-        "tests.infra.unit.check.extended_error_reporting",
-        "TestMypyEmptyLinesInOutput",
-    ),
-    "TestProcessFileReadError": (
-        "tests.infra.unit.check.extended_config_fixer_errors",
-        "TestProcessFileReadError",
-    ),
-    "TestProjectResultProperties": (
-        "tests.infra.unit.check.extended_models",
-        "TestProjectResultProperties",
-    ),
-    "TestRuffFormatDuplicateFiles": (
-        "tests.infra.unit.check.extended_error_reporting",
-        "TestRuffFormatDuplicateFiles",
-    ),
-    "TestRunBandit": ("tests.infra.unit.check.extended_runners_extra", "TestRunBandit"),
-    "TestRunCLIExtended": (
-        "tests.infra.unit.check.extended_cli_entry",
-        "TestRunCLIExtended",
-    ),
-    "TestRunCommand": (
-        "tests.infra.unit.check.extended_runners_ruff",
-        "TestRunCommand",
-    ),
-    "TestRunGo": ("tests.infra.unit.check.extended_runners_go", "TestRunGo"),
-    "TestRunMarkdown": (
-        "tests.infra.unit.check.extended_runners_extra",
-        "TestRunMarkdown",
-    ),
-    "TestRunMypy": ("tests.infra.unit.check.extended_runners", "TestRunMypy"),
-    "TestRunProjectsBehavior": (
-        "tests.infra.unit.check.extended_run_projects",
-        "TestRunProjectsBehavior",
-    ),
-    "TestRunProjectsReports": (
-        "tests.infra.unit.check.extended_run_projects",
-        "TestRunProjectsReports",
-    ),
-    "TestRunProjectsValidation": (
-        "tests.infra.unit.check.extended_run_projects",
-        "TestRunProjectsValidation",
-    ),
-    "TestRunPyrefly": ("tests.infra.unit.check.extended_runners", "TestRunPyrefly"),
-    "TestRunPyright": (
-        "tests.infra.unit.check.extended_runners_extra",
-        "TestRunPyright",
-    ),
-    "TestRunRuffFormat": (
-        "tests.infra.unit.check.extended_runners_ruff",
-        "TestRunRuffFormat",
-    ),
-    "TestRunRuffLint": (
-        "tests.infra.unit.check.extended_runners_ruff",
-        "TestRunRuffLint",
-    ),
-    "TestRunSingleProject": (
-        "tests.infra.unit.check.extended_run_projects",
-        "TestRunSingleProject",
-    ),
-    "TestWorkspaceCheckCLI": (
-        "tests.infra.unit.check.extended_cli_entry",
-        "TestWorkspaceCheckCLI",
-    ),
-    "TestWorkspaceCheckerBuildGateResult": (
-        "tests.infra.unit.check.extended_workspace_init",
-        "TestWorkspaceCheckerBuildGateResult",
-    ),
-    "TestWorkspaceCheckerCollectMarkdownFiles": (
-        "tests.infra.unit.check.extended_gate_go_cmd",
-        "TestWorkspaceCheckerCollectMarkdownFiles",
-    ),
-    "TestWorkspaceCheckerDirsWithPy": (
-        "tests.infra.unit.check.extended_workspace_init",
-        "TestWorkspaceCheckerDirsWithPy",
-    ),
-    "TestWorkspaceCheckerErrorSummary": (
-        "tests.infra.unit.check.extended_models",
-        "TestWorkspaceCheckerErrorSummary",
-    ),
-    "TestWorkspaceCheckerExecute": (
-        "tests.infra.unit.check.extended_workspace_init",
-        "TestWorkspaceCheckerExecute",
-    ),
-    "TestWorkspaceCheckerExistingCheckDirs": (
-        "tests.infra.unit.check.extended_workspace_init",
-        "TestWorkspaceCheckerExistingCheckDirs",
-    ),
-    "TestWorkspaceCheckerInitOSError": (
-        "tests.infra.unit.check.extended_workspace_init",
-        "TestWorkspaceCheckerInitOSError",
-    ),
-    "TestWorkspaceCheckerInitialization": (
-        "tests.infra.unit.check.extended_workspace_init",
-        "TestWorkspaceCheckerInitialization",
-    ),
-    "TestWorkspaceCheckerMarkdownReport": (
-        "tests.infra.unit.check.extended_reports",
-        "TestWorkspaceCheckerMarkdownReport",
-    ),
-    "TestWorkspaceCheckerMarkdownReportEdgeCases": (
-        "tests.infra.unit.check.extended_reports",
-        "TestWorkspaceCheckerMarkdownReportEdgeCases",
-    ),
-    "TestWorkspaceCheckerParseGateCSV": (
-        "tests.infra.unit.check.extended_resolve_gates",
-        "TestWorkspaceCheckerParseGateCSV",
-    ),
-    "TestWorkspaceCheckerResolveGates": (
-        "tests.infra.unit.check.extended_resolve_gates",
-        "TestWorkspaceCheckerResolveGates",
-    ),
-    "TestWorkspaceCheckerResolveWorkspaceRootFallback": (
-        "tests.infra.unit.check.extended_workspace_init",
-        "TestWorkspaceCheckerResolveWorkspaceRootFallback",
-    ),
-    "TestWorkspaceCheckerRunBandit": (
-        "tests.infra.unit.check.extended_gate_bandit_markdown",
-        "TestWorkspaceCheckerRunBandit",
-    ),
-    "TestWorkspaceCheckerRunCommand": (
-        "tests.infra.unit.check.extended_gate_go_cmd",
-        "TestWorkspaceCheckerRunCommand",
-    ),
-    "TestWorkspaceCheckerRunGo": (
-        "tests.infra.unit.check.extended_gate_go_cmd",
-        "TestWorkspaceCheckerRunGo",
-    ),
-    "TestWorkspaceCheckerRunMarkdown": (
-        "tests.infra.unit.check.extended_gate_bandit_markdown",
-        "TestWorkspaceCheckerRunMarkdown",
-    ),
-    "TestWorkspaceCheckerRunMypy": (
-        "tests.infra.unit.check.extended_gate_mypy_pyright",
-        "TestWorkspaceCheckerRunMypy",
-    ),
-    "TestWorkspaceCheckerRunPyright": (
-        "tests.infra.unit.check.extended_gate_mypy_pyright",
-        "TestWorkspaceCheckerRunPyright",
-    ),
-    "TestWorkspaceCheckerSARIFReport": (
-        "tests.infra.unit.check.extended_reports",
-        "TestWorkspaceCheckerSARIFReport",
-    ),
-    "TestWorkspaceCheckerSARIFReportEdgeCases": (
-        "tests.infra.unit.check.extended_reports",
-        "TestWorkspaceCheckerSARIFReportEdgeCases",
-    ),
-    "run_command_failure_check": (
-        "tests.infra.unit.check.extended_gate_go_cmd",
-        "run_command_failure_check",
-    ),
-    "test_check_main_executes_real_cli": (
-        "tests.infra.unit.check.main",
-        "test_check_main_executes_real_cli",
-    ),
-    "test_fix_pyrefly_config_main_executes_real_cli_help": (
-        "tests.infra.unit.check.fix_pyrefly_config",
-        "test_fix_pyrefly_config_main_executes_real_cli_help",
-    ),
-    "test_resolve_gates_maps_type_alias": (
-        "tests.infra.unit.check.cli",
-        "test_resolve_gates_maps_type_alias",
-    ),
-    "test_run_cli_run_returns_one_for_fail": (
-        "tests.infra.unit.check.cli",
-        "test_run_cli_run_returns_one_for_fail",
-    ),
-    "test_run_cli_run_returns_two_for_error": (
-        "tests.infra.unit.check.cli",
-        "test_run_cli_run_returns_two_for_error",
-    ),
-    "test_run_cli_run_returns_zero_for_pass": (
-        "tests.infra.unit.check.cli",
-        "test_run_cli_run_returns_zero_for_pass",
-    ),
-    "test_run_cli_with_fail_fast_flag": (
-        "tests.infra.unit.check.cli",
-        "test_run_cli_with_fail_fast_flag",
-    ),
-    "test_run_cli_with_multiple_projects": (
-        "tests.infra.unit.check.cli",
-        "test_run_cli_with_multiple_projects",
-    ),
-    "test_workspace_check_main_returns_error_without_projects": (
-        "tests.infra.unit.check.workspace_check",
-        "test_workspace_check_main_returns_error_without_projects",
-    ),
+    "CheckProjectStub": ("tests.infra.unit.check.extended_run_projects_tests", "CheckProjectStub"),
+    "GateClass": ("tests.infra.unit.check.extended_runners_extra_tests", "GateClass"),
+    "RunCallable": ("tests.infra.unit.check.extended_runners_go_tests", "RunCallable"),
+    "TestCheckIssueFormatted": ("tests.infra.unit.check.extended_models_tests", "TestCheckIssueFormatted"),
+    "TestCheckMainEntryPoint": ("tests.infra.unit.check.extended_cli_entry_tests", "TestCheckMainEntryPoint"),
+    "TestCheckProjectRunners": ("tests.infra.unit.check.extended_projects_tests", "TestCheckProjectRunners"),
+    "TestCollectMarkdownFiles": ("tests.infra.unit.check.extended_runners_ruff_tests", "TestCollectMarkdownFiles"),
+    "TestConfigFixerEnsureProjectExcludes": ("tests.infra.unit.check.extended_config_fixer_tests", "TestConfigFixerEnsureProjectExcludes"),
+    "TestConfigFixerExecute": ("tests.infra.unit.check.extended_config_fixer_tests", "TestConfigFixerExecute"),
+    "TestConfigFixerFindPyprojectFiles": ("tests.infra.unit.check.extended_config_fixer_tests", "TestConfigFixerFindPyprojectFiles"),
+    "TestConfigFixerFixSearchPaths": ("tests.infra.unit.check.extended_config_fixer_tests", "TestConfigFixerFixSearchPaths"),
+    "TestConfigFixerPathResolution": ("tests.infra.unit.check.extended_config_fixer_errors_tests", "TestConfigFixerPathResolution"),
+    "TestConfigFixerProcessFile": ("tests.infra.unit.check.extended_config_fixer_tests", "TestConfigFixerProcessFile"),
+    "TestConfigFixerRemoveIgnoreSubConfig": ("tests.infra.unit.check.extended_config_fixer_tests", "TestConfigFixerRemoveIgnoreSubConfig"),
+    "TestConfigFixerRun": ("tests.infra.unit.check.extended_config_fixer_tests", "TestConfigFixerRun"),
+    "TestConfigFixerRunMethods": ("tests.infra.unit.check.extended_config_fixer_errors_tests", "TestConfigFixerRunMethods"),
+    "TestConfigFixerRunWithVerbose": ("tests.infra.unit.check.extended_config_fixer_errors_tests", "TestConfigFixerRunWithVerbose"),
+    "TestConfigFixerToArray": ("tests.infra.unit.check.extended_config_fixer_tests", "TestConfigFixerToArray"),
+    "TestErrorReporting": ("tests.infra.unit.check.extended_error_reporting_tests", "TestErrorReporting"),
+    "TestFixPyrelfyCLI": ("tests.infra.unit.check.extended_cli_entry_tests", "TestFixPyrelfyCLI"),
+    "TestFlextInfraCheck": ("tests.infra.unit.check.init_tests", "TestFlextInfraCheck"),
+    "TestFlextInfraConfigFixer": ("tests.infra.unit.check.pyrefly_tests", "TestFlextInfraConfigFixer"),
+    "TestFlextInfraWorkspaceChecker": ("tests.infra.unit.check.workspace_tests", "TestFlextInfraWorkspaceChecker"),
+    "TestGoFmtEmptyLinesInOutput": ("tests.infra.unit.check.extended_error_reporting_tests", "TestGoFmtEmptyLinesInOutput"),
+    "TestJsonWriteFailure": ("tests.infra.unit.check.extended_project_runners_tests", "TestJsonWriteFailure"),
+    "TestLintAndFormatPublicMethods": ("tests.infra.unit.check.extended_projects_tests", "TestLintAndFormatPublicMethods"),
+    "TestMarkdownReportEmptyGates": ("tests.infra.unit.check.extended_error_reporting_tests", "TestMarkdownReportEmptyGates"),
+    "TestMarkdownReportSkipsEmptyGates": ("tests.infra.unit.check.extended_reports_tests", "TestMarkdownReportSkipsEmptyGates"),
+    "TestMarkdownReportWithErrors": ("tests.infra.unit.check.extended_reports_tests", "TestMarkdownReportWithErrors"),
+    "TestMypyEmptyLinesInOutput": ("tests.infra.unit.check.extended_error_reporting_tests", "TestMypyEmptyLinesInOutput"),
+    "TestProcessFileReadError": ("tests.infra.unit.check.extended_config_fixer_errors_tests", "TestProcessFileReadError"),
+    "TestProjectResultProperties": ("tests.infra.unit.check.extended_models_tests", "TestProjectResultProperties"),
+    "TestRuffFormatDuplicateFiles": ("tests.infra.unit.check.extended_error_reporting_tests", "TestRuffFormatDuplicateFiles"),
+    "TestRunBandit": ("tests.infra.unit.check.extended_runners_extra_tests", "TestRunBandit"),
+    "TestRunCLIExtended": ("tests.infra.unit.check.extended_cli_entry_tests", "TestRunCLIExtended"),
+    "TestRunCommand": ("tests.infra.unit.check.extended_runners_ruff_tests", "TestRunCommand"),
+    "TestRunGo": ("tests.infra.unit.check.extended_runners_go_tests", "TestRunGo"),
+    "TestRunMarkdown": ("tests.infra.unit.check.extended_runners_extra_tests", "TestRunMarkdown"),
+    "TestRunMypy": ("tests.infra.unit.check.extended_runners_tests", "TestRunMypy"),
+    "TestRunProjectsBehavior": ("tests.infra.unit.check.extended_run_projects_tests", "TestRunProjectsBehavior"),
+    "TestRunProjectsReports": ("tests.infra.unit.check.extended_run_projects_tests", "TestRunProjectsReports"),
+    "TestRunProjectsValidation": ("tests.infra.unit.check.extended_run_projects_tests", "TestRunProjectsValidation"),
+    "TestRunPyrefly": ("tests.infra.unit.check.extended_runners_tests", "TestRunPyrefly"),
+    "TestRunPyright": ("tests.infra.unit.check.extended_runners_extra_tests", "TestRunPyright"),
+    "TestRunRuffFormat": ("tests.infra.unit.check.extended_runners_ruff_tests", "TestRunRuffFormat"),
+    "TestRunRuffLint": ("tests.infra.unit.check.extended_runners_ruff_tests", "TestRunRuffLint"),
+    "TestRunSingleProject": ("tests.infra.unit.check.extended_run_projects_tests", "TestRunSingleProject"),
+    "TestWorkspaceCheckCLI": ("tests.infra.unit.check.extended_cli_entry_tests", "TestWorkspaceCheckCLI"),
+    "TestWorkspaceCheckerBuildGateResult": ("tests.infra.unit.check.extended_workspace_init_tests", "TestWorkspaceCheckerBuildGateResult"),
+    "TestWorkspaceCheckerCollectMarkdownFiles": ("tests.infra.unit.check.extended_gate_go_cmd_tests", "TestWorkspaceCheckerCollectMarkdownFiles"),
+    "TestWorkspaceCheckerDirsWithPy": ("tests.infra.unit.check.extended_workspace_init_tests", "TestWorkspaceCheckerDirsWithPy"),
+    "TestWorkspaceCheckerErrorSummary": ("tests.infra.unit.check.extended_models_tests", "TestWorkspaceCheckerErrorSummary"),
+    "TestWorkspaceCheckerExecute": ("tests.infra.unit.check.extended_workspace_init_tests", "TestWorkspaceCheckerExecute"),
+    "TestWorkspaceCheckerExistingCheckDirs": ("tests.infra.unit.check.extended_workspace_init_tests", "TestWorkspaceCheckerExistingCheckDirs"),
+    "TestWorkspaceCheckerInitOSError": ("tests.infra.unit.check.extended_workspace_init_tests", "TestWorkspaceCheckerInitOSError"),
+    "TestWorkspaceCheckerInitialization": ("tests.infra.unit.check.extended_workspace_init_tests", "TestWorkspaceCheckerInitialization"),
+    "TestWorkspaceCheckerMarkdownReport": ("tests.infra.unit.check.extended_reports_tests", "TestWorkspaceCheckerMarkdownReport"),
+    "TestWorkspaceCheckerMarkdownReportEdgeCases": ("tests.infra.unit.check.extended_reports_tests", "TestWorkspaceCheckerMarkdownReportEdgeCases"),
+    "TestWorkspaceCheckerParseGateCSV": ("tests.infra.unit.check.extended_resolve_gates_tests", "TestWorkspaceCheckerParseGateCSV"),
+    "TestWorkspaceCheckerResolveGates": ("tests.infra.unit.check.extended_resolve_gates_tests", "TestWorkspaceCheckerResolveGates"),
+    "TestWorkspaceCheckerResolveWorkspaceRootFallback": ("tests.infra.unit.check.extended_workspace_init_tests", "TestWorkspaceCheckerResolveWorkspaceRootFallback"),
+    "TestWorkspaceCheckerRunBandit": ("tests.infra.unit.check.extended_gate_bandit_markdown_tests", "TestWorkspaceCheckerRunBandit"),
+    "TestWorkspaceCheckerRunCommand": ("tests.infra.unit.check.extended_gate_go_cmd_tests", "TestWorkspaceCheckerRunCommand"),
+    "TestWorkspaceCheckerRunGo": ("tests.infra.unit.check.extended_gate_go_cmd_tests", "TestWorkspaceCheckerRunGo"),
+    "TestWorkspaceCheckerRunMarkdown": ("tests.infra.unit.check.extended_gate_bandit_markdown_tests", "TestWorkspaceCheckerRunMarkdown"),
+    "TestWorkspaceCheckerRunMypy": ("tests.infra.unit.check.extended_gate_mypy_pyright_tests", "TestWorkspaceCheckerRunMypy"),
+    "TestWorkspaceCheckerRunPyright": ("tests.infra.unit.check.extended_gate_mypy_pyright_tests", "TestWorkspaceCheckerRunPyright"),
+    "TestWorkspaceCheckerSARIFReport": ("tests.infra.unit.check.extended_reports_tests", "TestWorkspaceCheckerSARIFReport"),
+    "TestWorkspaceCheckerSARIFReportEdgeCases": ("tests.infra.unit.check.extended_reports_tests", "TestWorkspaceCheckerSARIFReportEdgeCases"),
+    "run_command_failure_check": ("tests.infra.unit.check.extended_gate_go_cmd_tests", "run_command_failure_check"),
+    "test_check_main_executes_real_cli": ("tests.infra.unit.check.main_tests", "test_check_main_executes_real_cli"),
+    "test_fix_pyrefly_config_main_executes_real_cli_help": ("tests.infra.unit.check.fix_pyrefly_config_tests", "test_fix_pyrefly_config_main_executes_real_cli_help"),
+    "test_resolve_gates_maps_type_alias": ("tests.infra.unit.check.cli_tests", "test_resolve_gates_maps_type_alias"),
+    "test_run_cli_run_returns_one_for_fail": ("tests.infra.unit.check.cli_tests", "test_run_cli_run_returns_one_for_fail"),
+    "test_run_cli_run_returns_two_for_error": ("tests.infra.unit.check.cli_tests", "test_run_cli_run_returns_two_for_error"),
+    "test_run_cli_run_returns_zero_for_pass": ("tests.infra.unit.check.cli_tests", "test_run_cli_run_returns_zero_for_pass"),
+    "test_run_cli_with_fail_fast_flag": ("tests.infra.unit.check.cli_tests", "test_run_cli_with_fail_fast_flag"),
+    "test_run_cli_with_multiple_projects": ("tests.infra.unit.check.cli_tests", "test_run_cli_with_multiple_projects"),
+    "test_workspace_check_main_returns_error_without_projects": ("tests.infra.unit.check.workspace_check_tests", "test_workspace_check_main_returns_error_without_projects"),
 }
 
 __all__ = [
@@ -505,7 +295,7 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, object] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:
