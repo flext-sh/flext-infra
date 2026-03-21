@@ -5,8 +5,9 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import libcst as cst
+
 from flext_infra import (
-    FlextInfraCodegenTransforms,
     FlextInfraRefactorMROReferenceRewriter,
     c,
     m,
@@ -52,8 +53,12 @@ class FlextInfraRefactorMROImportRewriter:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except OSError:
             return None
-        tree = u.Infra.parse_ast_from_source(source)
-        if tree is None:
+        try:
+            cst_tree = cst.parse_module(source)
+        except cst.ParserSyntaxError:
+            return None
+        ast_tree = u.Infra.parse_ast_from_source(source)
+        if ast_tree is None:
             return None
         imported_symbols: dict[str, m.Infra.MROImportRewrite] = {}
         module_aliases: dict[str, str] = {}
@@ -61,7 +66,7 @@ class FlextInfraRefactorMROImportRewriter:
         module_facade_alias: dict[str, str] = {}
         facade_imports_needed: set[str] = set()
         facade_import_objects: dict[str, m.Infra.MROImportRewrite] = {}
-        for stmt in tree.body:
+        for stmt in ast_tree.body:
             if isinstance(stmt, ast.ImportFrom):
                 module_name = stmt.module
                 if module_name is None or module_name not in moved_index:
@@ -138,46 +143,12 @@ class FlextInfraRefactorMROImportRewriter:
             module_facades=facade_aliases,
             moved_index=moved_index,
         )
-        rewritten = rewriter.visit(tree)
-        if not isinstance(rewritten, ast.Module):
+        rewritten_cst = cst_tree.visit(rewriter)
+        if not isinstance(rewritten_cst, cst.Module):
             return None
-        rewritten.body = [
-            stmt
-            for stmt in rewritten.body
-            if not (
-                isinstance(stmt, ast.ImportFrom)
-                and stmt.module in moved_index
-                and (len(stmt.names) == 0)
-            )
-        ]
-        existing_imports: set[str] = set()
-        for stmt in rewritten.body:
-            if isinstance(stmt, ast.ImportFrom) and stmt.module is not None:
-                for alias in stmt.names:
-                    if alias.name != "*":
-                        key = f"{stmt.module}:{alias.name}:{alias.asname or ''}"
-                        existing_imports.add(key)
-        imports_to_add = sorted(facade_imports_needed - existing_imports)
-        if len(imports_to_add) > 0:
-            insert_at = FlextInfraCodegenTransforms.find_insert_position(rewritten)
-            for offset, facade_key in enumerate(imports_to_add):
-                facade_import = facade_import_objects[facade_key]
-                rewritten.body.insert(
-                    insert_at + offset,
-                    ast.ImportFrom(
-                        module=facade_import.module,
-                        names=[
-                            ast.alias(
-                                name=facade_import.import_name,
-                                asname=facade_import.as_name,
-                            ),
-                        ],
-                        level=0,
-                    ),
-                )
-        if rewriter.replacements == 0 and len(imports_to_add) == 0:
+        if rewriter.replacements == 0 and len(facade_imports_needed) == 0:
             return None
-        rendered = ast.unparse(ast.fix_missing_locations(rewritten))
+        rendered = rewritten_cst.code
         if apply and rendered != source:
             _ = file_path.write_text(f"{rendered}\n", encoding=c.Infra.Encoding.DEFAULT)
         return m.Infra.MRORewriteResult(

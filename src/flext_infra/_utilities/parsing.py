@@ -29,6 +29,14 @@ class FlextInfraUtilitiesParsing:
             return None
 
     @staticmethod
+    def parse_cst_from_source(source: str) -> cst.Module | None:
+        """Parse source text into a CST module."""
+        try:
+            return cst.parse_module(source)
+        except cst.ParserSyntaxError:
+            return None
+
+    @staticmethod
     def parse_module_cst(file_path: Path) -> cst.Module | None:
         """Parse a Python file into a CST module."""
         try:

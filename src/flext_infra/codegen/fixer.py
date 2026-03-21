@@ -831,7 +831,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 if not discovered_src.is_dir():
                     continue
                 for py_file in sorted(discovered_src.rglob("*.py")):
-                    used_names, _ = (
+                    used_names, _, _ = (
                         FlextInfraCodegenConstantDetection.scan_constant_usages(
                             file_path=py_file,
                             project=project.name,
@@ -840,9 +840,11 @@ class FlextInfraCodegenFixer(s[bool]):
                     all_used_names.update(used_names)
         else:
             for py_file in sorted(src_dir.rglob("*.py")):
-                used_names, _ = FlextInfraCodegenConstantDetection.scan_constant_usages(
-                    file_path=py_file,
-                    project=pkg_dir.name,
+                used_names, _, _ = (
+                    FlextInfraCodegenConstantDetection.scan_constant_usages(
+                        file_path=py_file,
+                        project=pkg_dir.name,
+                    )
                 )
                 all_used_names.update(used_names)
 
@@ -893,7 +895,7 @@ class FlextInfraCodegenFixer(s[bool]):
         for py_file in sorted(src_dir.rglob("*.py")):
             if py_file.name == "constants.py":
                 continue
-            _, direct_refs = FlextInfraCodegenConstantDetection.scan_constant_usages(
+            _, direct_refs, _ = FlextInfraCodegenConstantDetection.scan_constant_usages(
                 file_path=py_file, project=pkg_dir.name
             )
             if not direct_refs:
