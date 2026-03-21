@@ -13,12 +13,41 @@ from flext_infra.constants import FlextInfraConstants as c
 
 
 class FlextInfraUtilitiesIteration:
+    """Static helpers for discovering and iterating Python projects in workspace.
+
+    Core concept: A "project" is a directory with Makefile (or go.mod)
+    AND at least one configured source directory (src/, tests/, examples/, scripts/).
+
+    Used by: build orchestration, validation, and code generation tools.
+    """
+
     @staticmethod
     def discover_project_roots(
         workspace_root: Path,
         *,
         scan_dirs: frozenset[str] | None = None,
     ) -> list[Path]:
+        """Discover all project directories under workspace root.
+
+        Algorithm:
+          1. Check if workspace_root itself looks like a project
+          2. Scan immediate children for project-like directories
+          3. Return sorted list, or fallback to [workspace_root] if has src/
+
+        The fallback handles workspaces where all code is in workspace_root/src
+        rather than organized into subdirectory projects.
+
+        Args:
+            workspace_root: Root directory to start search from.
+            scan_dirs: Directory names indicating a project exists (e.g., "src", "tests").
+                Must be frozenset for use as constant. Defaults to standard project dirs.
+
+        Returns:
+            List of project root paths sorted by name.
+            Includes workspace_root itself if it looks like a project.
+            At minimum returns [workspace_root] if workspace_root/src/ exists.
+
+        """
         roots: list[Path] = []
         effective_scan_dirs = scan_dirs or c.Infra.MRO_SCAN_DIRECTORIES
 
@@ -107,6 +136,38 @@ class FlextInfraUtilitiesIteration:
         include_scripts: bool = True,
         src_dirs: frozenset[str] | None = None,
     ) -> r[list[Path]]:
+        """Discover and iterate all Python files across workspace projects.
+
+        Unlike iter_directory_python_files() which scans a single directory,
+        this discovers all projects in workspace and iterates selectively:
+          - By default includes src/, tests/, examples/, scripts/
+          - Can exclude specific directories (e.g., skip tests)
+          - Handles discovery failure gracefully (returns Result type)
+          - Accepts pre-discovered project roots for caching
+
+        Algorithm:
+          1. Discover project roots (unless project_roots provided)
+          2. For each root, collect files from enabled directories
+          3. Deduplicate (set) and sort results
+
+        Args:
+            workspace_root: Workspace root to discover from.
+            project_roots: Pre-discovered project paths to skip discovery phase.
+                Useful for caching results across multiple calls.
+            include_tests: Include tests/ directories (default True).
+            include_examples: Include examples/ directories (default True).
+            include_scripts: Include scripts/ directories (default True).
+            src_dirs: Which subdirectories to scan. Defaults to standard locations.
+                src/ is always included regardless of include_* flags.
+
+        Returns:
+            Result[list[Path]] - Success contains sorted unique file paths.
+            Failure if: workspace inaccessible, discovery fails, or OSError.
+
+        Raises:
+            None (all errors captured in Result.fail()).
+
+        """
         try:
             roots = (
                 project_roots
