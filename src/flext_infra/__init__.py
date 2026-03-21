@@ -157,11 +157,7 @@ if TYPE_CHECKING:
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.shared import FlextInfraDocsShared
     from flext_infra.docs.validator import FlextInfraDocValidator
-    from flext_infra.gates._base_gate import (
-        FlextInfraGate,
-        FlextInfraGateContext,
-        FlextInfraGateProtocol,
-    )
+    from flext_infra.gates._base_gate import FlextInfraGate, FlextInfraGateContext
     from flext_infra.gates._gate_registry import FlextInfraGateRegistry
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.go import FlextInfraGoGate
@@ -649,10 +645,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "FlextInfraGate": ("flext_infra.gates._base_gate", "FlextInfraGate"),
     "FlextInfraGateContext": ("flext_infra.gates._base_gate", "FlextInfraGateContext"),
-    "FlextInfraGateProtocol": (
-        "flext_infra.gates._base_gate",
-        "FlextInfraGateProtocol",
-    ),
     "FlextInfraGateRegistry": (
         "flext_infra.gates._gate_registry",
         "FlextInfraGateRegistry",
@@ -1329,7 +1321,6 @@ __all__ = [
     "FlextInfraExtraPathsManager",
     "FlextInfraGate",
     "FlextInfraGateContext",
-    "FlextInfraGateProtocol",
     "FlextInfraGateRegistry",
     "FlextInfraGithubConstants",
     "FlextInfraGithubModels",

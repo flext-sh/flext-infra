@@ -15,6 +15,19 @@ class FlextInfraCodegenConstantDetection:
     MIN_QUOTED_LITERAL_LEN: Final[int] = 2
     MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 2
 
+    @staticmethod
+    def _infer_project_name(py_file: Path, root_path: Path) -> str:
+        """Extract project name from file path (src/PROJECT_NAME/...)."""
+        try:
+            parts = py_file.relative_to(root_path).parts
+            if "src" in parts:
+                src_idx = parts.index("src")
+                if src_idx + 1 < len(parts):
+                    return parts[src_idx + 1].replace("_", "-")
+            return "unknown"
+        except ValueError:
+            return "unknown"
+
     class RenderContext:
         def __init__(self, source: str) -> None:
             self._render_module = cst.parse_module("")
@@ -205,10 +218,6 @@ class FlextInfraCodegenConstantDetection:
         return ""
 
     @staticmethod
-    def is_mro_passthrough(value_repr: str) -> bool:
-        return bool(re.match(r"Flext\w*Constants\.", value_repr))
-
-    @staticmethod
     def extract_constant_definitions(
         file_path: Path,
         project: str,
@@ -252,19 +261,9 @@ class FlextInfraCodegenConstantDetection:
             if any(excl in py_file.parts for excl in exclude_packages):
                 continue
 
-            # Infer project name from path structure
-            try:
-                parts = py_file.relative_to(root_path).parts
-                if "src" in parts:
-                    src_idx = parts.index("src")
-                    if src_idx + 1 < len(parts):
-                        project_name = parts[src_idx + 1].replace("_", "-")
-                    else:
-                        project_name = "unknown"
-                else:
-                    project_name = "unknown"
-            except ValueError:
-                project_name = "unknown"
+            project_name = FlextInfraCodegenConstantDetection._infer_project_name(
+                py_file, root_path
+            )
 
             defs = FlextInfraCodegenConstantDetection.extract_constant_definitions(
                 py_file,
@@ -344,19 +343,9 @@ class FlextInfraCodegenConstantDetection:
             if any(excl in py_file.parts for excl in exclude_packages):
                 continue
 
-            # Infer project name
-            try:
-                parts = py_file.relative_to(root_path).parts
-                if "src" in parts:
-                    src_idx = parts.index("src")
-                    if src_idx + 1 < len(parts):
-                        project_name = parts[src_idx + 1].replace("_", "-")
-                    else:
-                        project_name = "unknown"
-                else:
-                    project_name = "unknown"
-            except ValueError:
-                project_name = "unknown"
+            project_name = FlextInfraCodegenConstantDetection._infer_project_name(
+                py_file, root_path
+            )
 
             _, _, all_refs = FlextInfraCodegenConstantDetection.scan_constant_usages(
                 py_file,
@@ -399,9 +388,7 @@ class FlextInfraCodegenConstantDetection:
             )
             for definition in definitions
             if definition.name not in all_used_names
-            and not FlextInfraCodegenConstantDetection.is_mro_passthrough(
-                definition.value_repr,
-            )
+            and not re.match(r"Flext\w*Constants\.", definition.value_repr)
         ]
 
     @staticmethod
@@ -460,110 +447,6 @@ class FlextInfraCodegenConstantDetection:
                     )
 
         return duplicates
-
-    @staticmethod
-    def build_constant_usage_map(
-        definitions: list[m.Infra.ConstantDefinition],
-        all_usages: dict[str, list[tuple[str, int]]],
-    ) -> dict[str, list[dict[str, object]]]:
-        """Build a map of where each constant is used.
-
-        Args:
-            definitions: All constant definitions
-            all_usages: Map of constant_name -> [(file_path, line_number), ...]
-
-        Returns:
-            Map of constant_name -> [usage_info, ...]
-
-        """
-        usage_map: dict[str, list[dict[str, object]]] = {}
-
-        for defn in definitions:
-            constant_key = defn.name
-            if constant_key not in all_usages:
-                usage_map[constant_key] = []
-            else:
-                usage_map[constant_key] = [
-                    {
-                        "file": file_path,
-                        "line": line_num,
-                    }
-                    for file_path, line_num in all_usages[constant_key]
-                ]
-
-        return usage_map
-
-    @staticmethod
-    def build_self_import_graph(pkg_dir: Path) -> dict[str, set[str]]:
-        """Scans ``from pkg.module import X`` only (real cycle risk).
-
-        Lazy-safe ``from pkg import X`` via ``__getattr__`` excluded (AGENTS.md §2.2).
-        """
-        package_name = pkg_dir.name
-        module_stems = {
-            py_file.stem
-            for py_file in pkg_dir.glob("*.py")
-            if py_file.name != "__init__.py"
-        }
-        graph: dict[str, set[str]] = {}
-        for py_file in pkg_dir.glob("*.py"):
-            if py_file.name == "__init__.py":
-                continue
-            stem = py_file.stem
-            deps: set[str] = set()
-            try:
-                source = py_file.read_text("utf-8")
-                tree = cst.parse_module(source)
-            except (cst.ParserSyntaxError, UnicodeDecodeError):
-                continue
-            for stmt in tree.body:
-                if not isinstance(stmt, cst.SimpleStatementLine):
-                    continue
-                for small in stmt.body:
-                    if not isinstance(small, cst.ImportFrom):
-                        continue
-                    if isinstance(small.names, cst.ImportStar):
-                        continue
-                    mod = tree.code_for_node(small.module) if small.module else ""
-                    if not mod.startswith(f"{package_name}."):
-                        continue
-                    target_mod = mod.split(".")[-1]
-                    if target_mod in module_stems and target_mod != stem:
-                        deps.add(target_mod)
-            if deps:
-                graph[stem] = deps
-        return graph
-
-    @staticmethod
-    def find_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
-        cycles: list[list[str]] = []
-        visited: set[str] = set()
-        path: list[str] = []
-        path_set: set[str] = set()
-
-        def _dfs(node: str) -> None:
-            if node in path_set:
-                idx = path.index(node)
-                cycles.append([*path[idx:], node])
-                return
-            if node in visited:
-                return
-            visited.add(node)
-            path.append(node)
-            path_set.add(node)
-            for neighbor in graph.get(node, set()):
-                _dfs(neighbor)
-            path.pop()
-            path_set.remove(node)
-
-        for start in graph:
-            _dfs(start)
-        return cycles
-
-    @staticmethod
-    def detect_import_cycles(pkg_dir: Path) -> list[list[str]]:
-        det = FlextInfraCodegenConstantDetection
-        return det.find_cycles(det.build_self_import_graph(pkg_dir))
 
     @staticmethod
     def resolve_parent_package(pkg_dir: Path) -> str:
@@ -716,45 +599,42 @@ class FlextInfraCodegenConstantDetection:
         return used_names, usage_map
 
     @staticmethod
+    def _analyze_class_internal(
+        class_path: str,
+        root_path: Path,
+        exclude_patterns: frozenset[str],
+        max_files: int,
+    ) -> tuple[dict, set[str], dict]:
+        """Shared logic: extract attributes and usages for a class."""
+        attrs = FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
+            class_path
+        )
+        if not attrs:
+            return {}, set(), {}
+        simple_class_name = class_path.rsplit(".", 1)[-1]
+        used_attrs, usage_map = (
+            FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
+                root_path, simple_class_name, exclude_patterns, max_files
+            )
+        )
+        return attrs, used_attrs, usage_map
+
+    @staticmethod
     def analyze_class_object_census(
         class_path: str,
         root_path: Path,
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
         max_files: int = 5000,
     ) -> dict:
-        """Comprehensive census of all objects in a class (constants, enums, types, etc).
-
-        Analyzes ANY Python class for: constants, enums, types, classes, and their usages.
-
-        Args:
-            class_path: Full class path (e.g., 'flext_core.FlextConstants')
-            root_path: Root directory to scan for usages
-            exclude_patterns: Directory patterns to exclude
-            max_files: Maximum files to scan
-
-        Returns:
-            Dict with statistics: total_objects, by_type, used, unused, usage_details
-
-        """
-        # Extract all attributes
-        attrs = FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
-            class_path,
+        """Comprehensive census of all objects in a class."""
+        attrs, used_attrs, usage_map = (
+            FlextInfraCodegenConstantDetection._analyze_class_internal(
+                class_path, root_path, exclude_patterns, max_files
+            )
         )
         if not attrs:
             return {}
 
-        # Get usages
-        simple_class_name = class_path.rsplit(".", 1)[-1]
-        used_attrs, usage_map = (
-            FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
-                root_path,
-                simple_class_name,
-                exclude_patterns,
-                max_files,
-            )
-        )
-
-        # Categorize by type
         by_type: dict = {}
         for attr_name, attr_def in attrs.items():
             attr_type = attr_def.type_annotation
@@ -781,27 +661,14 @@ class FlextInfraCodegenConstantDetection:
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
         max_files: int = 2000,
     ) -> list[dict]:
-        """Propose fixes to deduplicate constant values across a class.
-
-        Returns list of fix proposals. Each fix shows:
-        - value: the duplicated value
-        - canonical: the most-used constant name
-        - duplicates: list of other names to be replaced
-        """
-        # Extract attributes
-        attrs = FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
-            class_path,
+        """Propose fixes to deduplicate constant values across a class."""
+        attrs, _, usage_map = (
+            FlextInfraCodegenConstantDetection._analyze_class_internal(
+                class_path, root_path, exclude_patterns, max_files
+            )
         )
         if not attrs:
             return []
-
-        simple_class_name = class_path.rsplit(".", 1)[-1]
-        _, usage_map = FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
-            root_path,
-            simple_class_name,
-            exclude_patterns,
-            max_files,
-        )
 
         # Group by value
         by_value: dict = {}
@@ -845,6 +712,7 @@ class FlextInfraCodegenConstantDetection:
         fix_proposal: dict,
         root_path: Path,
         class_path: str,
+        *,
         dry_run: bool = True,
     ) -> dict:
         """Apply a single deduplication fix.

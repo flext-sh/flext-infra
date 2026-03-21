@@ -485,8 +485,8 @@ class FlextInfraNamespaceEnforcerModels:
         workspace: Annotated[str, Field(min_length=1)]
         projects: Annotated[
             list[FlextInfraNamespaceEnforcerModels.ProjectEnforcementReport],
-            Field(description="Project enforcement reports"),
-        ] = []
+            Field(default_factory=list, description="Project enforcement reports"),
+        ]
         total_facades_missing: Annotated[int, Field(default=0, ge=0)]
         total_loose_objects: Annotated[int, Field(default=0, ge=0)]
         total_import_violations: Annotated[int, Field(default=0, ge=0)]

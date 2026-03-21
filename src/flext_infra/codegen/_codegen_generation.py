@@ -74,6 +74,7 @@ class FlextInfraCodegenGeneration:
         *,
         include_flext_types: bool = True,
         current_pkg: str = "",
+        include_symbol_imports: bool = True,
     ) -> list[str]:
         lines: list[str] = ["if TYPE_CHECKING:"]
         if include_flext_types:
@@ -91,10 +92,12 @@ class FlextInfraCodegenGeneration:
                 (item for item in items if not item[1]),
                 key=operator.itemgetter(0),
             )
-            sorted_items = sorted(
-                (item for item in items if item[1]),
-                key=lambda x: (x[1], x[0] != x[1]),
-            )
+            sorted_items: list[tuple[str, str]] = []
+            if include_symbol_imports:
+                sorted_items = sorted(
+                    (item for item in items if item[1]),
+                    key=lambda x: (x[1], x[0] != x[1]),
+                )
             for export_name, _ in alias_items:
                 if rendered_mod.startswith(".") and rendered_mod != ".":
                     parent_mod, _, child_name = rendered_mod.rpartition(".")
@@ -207,6 +210,7 @@ class FlextInfraCodegenGeneration:
                 groups,
                 include_flext_types=not is_l0_typings,
                 current_pkg=current_pkg,
+                include_symbol_imports=not current_pkg.startswith("tests"),
             ),
         )
         out.append("")

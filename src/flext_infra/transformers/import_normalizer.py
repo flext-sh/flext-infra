@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 from collections import deque
 from collections.abc import Callable, Mapping, Sequence
@@ -156,8 +157,12 @@ class FlextInfraTransformerImportNormalizer:
             file_module = ""
             if package_dir is not None and len(package_name) > 0:
                 try:
-                    file_module = u.Infra.file_to_module(
-                        file_path, package_dir, package_name
+                    file_module = (
+                        FlextInfraTransformerImportNormalizer.Helper.file_to_module(
+                            file_path=file_path,
+                            package_dir=package_dir,
+                            package_name=package_name,
+                        )
                     )
                 except ValueError:
                     file_module = ""
@@ -214,6 +219,7 @@ class FlextInfraTransformerImportNormalizer:
             project_root: Path | None,
             alias_map: dict[str, tuple[str, ...]] | None,
         ) -> dict[str, str]:
+            """Build alias-to-module map from project facades and lazy exports."""
             init_path = package_dir / "__init__.py"
             alias_to_module = dict(u.Infra.extract_lazy_import_map(init_path))
             if project_root is not None:
@@ -238,7 +244,11 @@ class FlextInfraTransformerImportNormalizer:
             package_dir: Path,
             package_name: str,
         ) -> dict[str, frozenset[str]]:
-            graph = u.Infra.build_import_graph(package_dir, package_name)
+            """Build module reachability map from import graph traversal."""
+            graph = FlextInfraTransformerImportNormalizer.Helper.build_import_graph(
+                package_dir=package_dir,
+                package_name=package_name,
+            )
             reachability: dict[str, frozenset[str]] = {}
             for module_name in graph:
                 visited: set[str] = set()
@@ -253,6 +263,60 @@ class FlextInfraTransformerImportNormalizer:
             return reachability
 
         @staticmethod
+        def file_to_module(
+            *, file_path: Path, package_dir: Path, package_name: str
+        ) -> str:
+            """Convert a file path to its absolute Python module path."""
+            relative = file_path.resolve().relative_to(package_dir.parent.resolve())
+            module_parts = list(relative.with_suffix("").parts)
+            if module_parts[-1] == "__init__":
+                module_parts = module_parts[:-1]
+            if not module_parts or module_parts[0] != package_name:
+                msg = f"{file_path} is outside package {package_name}"
+                raise ValueError(msg)
+            return ".".join(module_parts)
+
+        @staticmethod
+        def build_import_graph(
+            *,
+            package_dir: Path,
+            package_name: str,
+        ) -> dict[str, frozenset[str]]:
+            """Build direct intra-package import graph from source files."""
+            graph: dict[str, set[str]] = {}
+            for py_file in package_dir.rglob("*.py"):
+                try:
+                    source = py_file.read_text(encoding="utf-8")
+                    tree = ast.parse(source)
+                except (OSError, SyntaxError, UnicodeDecodeError):
+                    continue
+                try:
+                    module_name = (
+                        FlextInfraTransformerImportNormalizer.Helper.file_to_module(
+                            file_path=py_file,
+                            package_dir=package_dir,
+                            package_name=package_name,
+                        )
+                    )
+                except ValueError:
+                    continue
+                imports: set[str] = set()
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ImportFrom) and node.module:
+                        if node.module.startswith(f"{package_name}."):
+                            imports.add(node.module)
+                        elif node.module == package_name:
+                            imports.add(package_name)
+                    elif isinstance(node, ast.Import):
+                        for alias in node.names:
+                            if alias.name.startswith(f"{package_name}."):
+                                imports.add(alias.name)
+                            elif alias.name == package_name:
+                                imports.add(package_name)
+                graph[module_name] = imports
+            return {name: frozenset(imports) for name, imports in graph.items()}
+
+        @staticmethod
         def file_tier(
             *,
             file_path: Path,
@@ -260,6 +324,7 @@ class FlextInfraTransformerImportNormalizer:
             facade_to_alias: Mapping[str, str],
             alias_tiers: Mapping[str, int],
         ) -> int:
+            """Infer architectural tier for a file based on facade/paths."""
             declared_alias = facade_to_alias.get(file_path.name, "")
             if declared_alias in alias_tiers:
                 return alias_tiers[declared_alias]

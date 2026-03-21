@@ -440,6 +440,8 @@ class FlextInfraCodegenLazyInit(s[int]):
         """
         if name.startswith("_"):
             return False
+        if name == "__init__":
+            return False
         if name == "main":
             return False
         # Skip ALL_CAPS constants (e.g., BLUE, BOLD, SYM_ARROW)
@@ -466,7 +468,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             subdir_key = str(subdir)
             if subdir_key not in dir_exports:
                 continue
-            if subdir.name not in lazy_map:
+            if subdir.name != "__init__" and subdir.name not in lazy_map:
                 submodule = (
                     f"{current_pkg}.{subdir.name}" if current_pkg else subdir.name
                 )
