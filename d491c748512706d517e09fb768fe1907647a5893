@@ -1,0 +1,23 @@
+src/flext_infra/codegen/_constants.py
+  1557cde67c9eb455 92-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "d491c748512706d517e09fb768fe1907647a5893",
+  "prompts": {
+    "1557cde67c9eb455": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c2f0bae-d656-4965-a9c5-b52eaf07bc46",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 119,
+      "total_deletions": 0,
+      "accepted_lines": 119,
+      "overriden_lines": 0
+    }
+  }
+}
