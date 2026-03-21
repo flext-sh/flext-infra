@@ -1,9 +1,9 @@
 """Constants for FLEXT infra tests.
 
-Provides FlextInfraTestConstants, extending FlextTestConstants with infra-specific
+Provides FlextInfraTestConstants, extending FlextTestsConstants with infra-specific
 constants for infrastructure testing, project names, and test markers.
 
-Copyright (FlextTestConstants) 2025 FLEXT Team. All rights reserved.
+Copyright (FlextTestsConstants) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
@@ -11,31 +11,31 @@ from __future__ import annotations
 
 from typing import Final
 
-from flext_tests import FlextTestConstants
+from flext_tests import FlextTestsConstants
 
 from flext_infra import FlextInfraConstants
 
 
-class FlextInfraTestConstants(FlextTestConstants):
-    """Constants for FLEXT infra tests - extends FlextTestConstants.
+class FlextInfraTestConstants(FlextTestsConstants):
+    """Constants for FLEXT infra tests - extends FlextTestsConstants.
 
     Architecture layer: Layer 0 foundation constants with infra test extensions.
-    Architecture: Extends FlextTestConstants with infra-specific constants.
-    All base constants from FlextTestConstants are available through inheritance.
+    Architecture: Extends FlextTestsConstants with infra-specific constants.
+    All base constants from FlextTestsConstants are available through inheritance.
     """
 
     class Infra(FlextInfraConstants.Infra):
         """Infra-specific test constants namespace.
 
         All infra-specific test constants are organized under this namespace.
-        Access via FlextTestConstants.Infra.*
+        Access via FlextTestsConstants.Infra.*
         """
 
         class Tests:
             """Test-specific constants namespace with infra extensions.
 
             All test-specific constants are organized under this namespace.
-            Access via FlextTestConstants.Infra.Tests.* for infra test constants.
+            Access via FlextTestsConstants.Infra.Tests.* for infra test constants.
             """
 
             class Projects:
