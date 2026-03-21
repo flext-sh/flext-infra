@@ -112,7 +112,7 @@ class FlextInfraCodegenCommand:
         census = FlextInfraCodegenCensus(workspace_root=cli.workspace)
         reports = census.run()
         if cli.output_format == "json":
-            output.write(
+            output.info(
                 json.dumps({
                     c.Infra.ReportKeys.PROJECTS: [rpt.model_dump() for rpt in reports],
                     "total_violations": sum(rpt.total for rpt in reports),
@@ -189,7 +189,7 @@ class FlextInfraCodegenCommand:
         generator.run(check_only=cli.dry_run)
         reports_after = census.run()
         if cli.output_format == "json":
-            output.write(
+            output.info(
                 json.dumps({
                     "census_before": {
                         "total_violations": sum(r.total for r in reports_before),
