@@ -17,7 +17,6 @@ from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests.infra import m
 
 from ...models import m
 from ._shared_fixtures import patch_python_dir_detection

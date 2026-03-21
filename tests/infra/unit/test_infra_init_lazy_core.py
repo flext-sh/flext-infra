@@ -10,6 +10,10 @@ import pytest
 
 import flext_infra
 from flext_infra import c
+from flext_infra.__version__ import (
+    __version__ as version,
+    __version_info__ as version_info,
+)
 
 
 class TestFlextInfraInitLazyLoading:
@@ -87,15 +91,11 @@ class TestFlextInfraInitLazyLoading:
 
     def test_lazy_import_version_string(self) -> None:
         """Test lazy loading of __version__."""
-        from flext_infra.__version__ import __version__ as version
-
         assert isinstance(version, str)
         assert len(version) > 0
 
     def test_lazy_import_version_info(self) -> None:
         """Test lazy loading of __version_info__."""
-        from flext_infra.__version__ import __version_info__ as version_info
-
         assert isinstance(version_info, tuple)
         assert len(version_info) > 0
 

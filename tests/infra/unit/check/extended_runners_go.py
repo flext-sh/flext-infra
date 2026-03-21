@@ -14,7 +14,6 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.infra import m
 from tests.infra.models import m
 
 from ... import h

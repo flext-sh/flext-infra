@@ -17,7 +17,7 @@ from flext_infra.check.workspace_check import (
     FlextInfraWorkspaceChecker,
 )
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from tests.infra import m, t
+from tests.infra import m
 
 
 class TestWorkspaceCheckerInitialization:
