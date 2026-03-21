@@ -635,10 +635,10 @@ class_nesting:
     target_name: FlextInfraDocGenerator
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraDocScope
+  - loose_name: DocScope
     current_file: flext-core/src/flext_infra/docs/shared.py
     target_namespace: FlextDocsShared
-    target_name: FlextInfraDocScope
+    target_name: DocScope
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraDocsShared

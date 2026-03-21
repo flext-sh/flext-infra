@@ -10,15 +10,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from pydantic import BaseModel
-
 from flext_core import FlextRuntime, r
-from flext_infra import FlextInfraUtilitiesDiscovery, m, output, t
+from flext_infra import FlextInfraUtilitiesDiscovery, m, output
 
 
 class FlextInfraUtilitiesCli:
@@ -42,14 +39,6 @@ class FlextInfraUtilitiesCli:
         check: bool = False
         project: str | None = None
         projects: str | None = None
-
-        @property
-        def dry_run(self) -> bool:
-            return not self.apply
-
-        @property
-        def mode_label(self) -> str:
-            return "apply" if self.apply else "dry-run"
 
         def project_names(self) -> list[str] | None:
             """Extract project names from single or comma-separated project string.
@@ -361,75 +350,6 @@ class FlextInfraUtilitiesCli:
             return 0
         output.error(result.error or failure_msg)
         return 1
-
-    @staticmethod
-    def emit(
-        data: BaseModel | Mapping[str, t.Scalar],
-        *,
-        text_fn: Callable[..., str] | None = None,
-        cli: FlextInfraUtilitiesCli.CliArgs,
-    ) -> None:
-        """Emit formatted data to stdout based on output format.
-
-        Outputs machine-readable payload to stdout. Diagnostic/status messages
-        go to stderr via the output module.
-
-        Args:
-            data: BaseModel instance or mapping of scalar values to emit.
-            text_fn: Optional formatter function for text output. If provided
-                and output_format is "text", used to format data. Otherwise,
-                str(data) is used.
-            cli: CliArgs instance specifying output format and other options.
-
-        """
-        if cli.output_format == "json":
-            # JSON output: use model_dump_json() for BaseModel, json.dumps() for Mapping
-            if isinstance(data, BaseModel):
-                output.write(data.model_dump_json())
-            else:
-                output.write(json.dumps(data))
-        elif cli.output_format == "text":
-            # Text output: use text_fn if provided, otherwise str(data)
-            if text_fn is not None:
-                output.write(text_fn(data))
-            else:
-                output.write(str(data))
-
-    @staticmethod
-    def iter_projects(
-        cli: FlextInfraUtilitiesCli.CliArgs,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        """Discover and filter projects based on CLI arguments.
-
-        Calls discover_projects() and filters by project_names() if specified.
-        Returns sorted list of ProjectInfo wrapped in r[T].
-
-        Args:
-            cli: CliArgs instance with workspace and project selection.
-
-        Returns:
-            Result containing sorted list of ProjectInfo, or failure if discovery fails.
-
-        """
-        # Discover all projects in workspace
-        discovery_result = FlextInfraUtilitiesCli._discover_projects_impl(cli.workspace)
-        if discovery_result.is_failure:
-            return discovery_result
-
-        projects = discovery_result.value
-        project_names = cli.project_names()
-
-        # Filter by project names if specified
-        if project_names is not None:
-            filtered = [p for p in projects if p.name in project_names]
-            return r[list[m.Infra.ProjectInfo]].ok(
-                sorted(filtered, key=lambda p: p.name),
-            )
-
-        # Return all projects sorted
-        return r[list[m.Infra.ProjectInfo]].ok(
-            sorted(projects, key=lambda p: p.name),
-        )
 
     @staticmethod
     def _discover_projects_impl(

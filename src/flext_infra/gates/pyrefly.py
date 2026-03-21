@@ -27,7 +27,6 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.PYREFLY][1]
 
     @override
-    @override
     def check(
         self,
         project_dir: Path,

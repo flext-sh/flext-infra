@@ -99,7 +99,7 @@ class FlextInfraDocAuditor:
 
     @staticmethod
     def to_markdown(
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         issues: list[m.Infra.AuditIssue],
     ) -> list[str]:
         """Format audit issues as a markdown report."""
@@ -167,7 +167,7 @@ class FlextInfraDocAuditor:
 
     def audit_scope(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         *,
         check: str,
         strict: bool,
@@ -250,7 +250,7 @@ class FlextInfraDocAuditor:
 
     def broken_link_issues(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
     ) -> list[m.Infra.AuditIssue]:
         """Collect broken internal-link issues for markdown files in scope."""
         issues: list[m.Infra.AuditIssue] = []
@@ -289,7 +289,7 @@ class FlextInfraDocAuditor:
 
     def forbidden_term_issues(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
     ) -> list[m.Infra.AuditIssue]:
         """Collect forbidden-term issues for markdown files in scope."""
         issues: list[m.Infra.AuditIssue] = []

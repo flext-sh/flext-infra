@@ -1,6 +1,7 @@
-"""Module skeleton for TestsFlextInfraTypes.
+"""Type system for FLEXT infra tests.
 
-Test type aliases for flextinfra.
+Provides FlextInfraTestTypes, extending FlextTestTypes with infra-specific
+type definitions for infrastructure testing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,8 +9,31 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import FlextTestsTypes
+from flext_tests import FlextTestTypes
+
+from flext_infra import FlextInfraTypes
 
 
-class TestsFlextInfraTypes(FlextTestsTypes):
-    """Test type aliases for flextinfra."""
+class FlextInfraTestTypes(FlextTestTypes):
+    """Type system for FLEXT infra tests - extends FlextTestTypes.
+
+    Architecture: Extends FlextTestTypes with infra-specific type definitions.
+    All base types from FlextTestTypes are available through inheritance.
+    """
+
+    class Infra(FlextInfraTypes.Infra):
+        """Infra-specific type definitions namespace."""
+
+        class Tests:
+            """Test-specific type definitions namespace with infra extensions."""
+
+            type ProjectName = str
+            "Type for project names in infra testing."
+            type DockerImageName = str
+            "Type for Docker image names."
+            type TestMarker = str
+            "Type for test markers (infra, integration, docker, etc.)."
+
+
+t = FlextInfraTestTypes
+__all__ = ["FlextInfraTestTypes", "t"]

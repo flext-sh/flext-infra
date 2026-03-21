@@ -105,7 +105,7 @@ class FlextInfraDocFixer:
 
     def _fix_scope(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         *,
         apply: bool,
     ) -> m.Infra.DocsPhaseReport:

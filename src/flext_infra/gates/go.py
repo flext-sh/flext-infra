@@ -22,7 +22,6 @@ class FlextInfraGoGate(FlextInfraGate):
     tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.GO][1]
 
     @override
-    @override
     def check(
         self,
         project_dir: Path,

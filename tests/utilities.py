@@ -1,6 +1,7 @@
-"""Module skeleton for TestsFlextInfraUtilities.
+"""Test utilities for FLEXT infra tests.
 
-Test utilities for flextinfra.
+Provides FlextInfraTestUtilities, extending FlextTestUtilities with infra-specific
+helper functions for infrastructure testing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,8 +9,51 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import FlextTestsUtilities
+import shutil
+
+from flext_tests import FlextTestsUtilities as FlextTestUtilities
+
+from flext_infra import FlextInfraUtilities
 
 
-class TestsFlextInfraUtilities(FlextTestsUtilities):
-    """Test utilities for flextinfra."""
+class FlextInfraTestUtilities(FlextTestUtilities):
+    """Infra test utilities extending FlextTestUtilities with infra-specific helpers.
+
+    Architecture: Extends FlextTestUtilities with infra-specific utility functions.
+    All base utilities from FlextTestUtilities are available through inheritance.
+    """
+
+    class Infra(FlextInfraUtilities.Infra):
+        """Infra-specific utilities namespace."""
+
+        class Tests:
+            """Test-specific utilities namespace with infra extensions."""
+
+            @staticmethod
+            def is_docker_available() -> bool:
+                """Check if Docker is available on the system.
+
+                Returns:
+                    True if Docker is available, False otherwise.
+
+                """
+                return shutil.which("docker") is not None
+
+            @staticmethod
+            def is_project_valid(project_name: str) -> bool:
+                """Check if a project name is valid for infra testing.
+
+                Args:
+                    project_name: Name of the project to validate.
+
+                Returns:
+                    True if project name is valid, False otherwise.
+
+                """
+                if not project_name:
+                    return False
+                return project_name.replace("-", "").replace("_", "").isalnum()
+
+
+u = FlextInfraTestUtilities
+__all__ = ["FlextInfraTestUtilities", "u"]

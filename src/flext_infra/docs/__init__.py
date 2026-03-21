@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from flext_infra.docs.builder import FlextInfraDocBuilder
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
-    from flext_infra.docs.shared import FlextInfraDocsShared
     from flext_infra.docs.validator import FlextInfraDocValidator
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
@@ -31,7 +30,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraDocFixer": ("flext_infra.docs.fixer", "FlextInfraDocFixer"),
     "FlextInfraDocGenerator": ("flext_infra.docs.generator", "FlextInfraDocGenerator"),
     "FlextInfraDocValidator": ("flext_infra.docs.validator", "FlextInfraDocValidator"),
-    "FlextInfraDocsShared": ("flext_infra.docs.shared", "FlextInfraDocsShared"),
     "main": ("flext_infra.docs.auditor", "main"),
 }
 
@@ -41,7 +39,6 @@ __all__ = [
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
     "FlextInfraDocValidator",
-    "FlextInfraDocsShared",
     "main",
 ]
 

@@ -17,18 +17,6 @@ class FlextInfraUtilitiesSafety:
     """Static safety helpers for git-backed workspace protection."""
 
     @staticmethod
-    def validate_workspace_clean(workspace_root: Path) -> r[bool]:
-        """Check if workspace has no uncommitted changes.
-
-        Returns success with True when workspace is clean, False when dirty.
-        """
-        has_changes = FlextInfraUtilitiesGit.git_has_changes(workspace_root)
-        return has_changes.fold(
-            on_failure=lambda e: r[bool].fail(e or "git status failed"),
-            on_success=lambda v: r[bool].ok(not v),
-        )
-
-    @staticmethod
     def create_checkpoint(
         workspace_root: Path,
         *,

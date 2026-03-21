@@ -37,7 +37,7 @@ class FlextInfraDocValidator:
 
     @staticmethod
     def _maybe_write_todo(
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         *,
         apply_mode: bool,
     ) -> bool:
@@ -73,7 +73,7 @@ class FlextInfraDocValidator:
             r with list of ValidateReport objects.
 
         """
-        scopes_result: r[list[m.Infra.FlextInfraDocScope]] = u.Infra.build_scopes(
+        scopes_result: r[list[m.Infra.DocScope]] = u.Infra.build_scopes(
             workspace_root=workspace_root,
             project=project,
             projects=projects,
@@ -122,7 +122,7 @@ class FlextInfraDocValidator:
 
     def _validate_scope(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         *,
         check: str,
         apply_mode: bool,

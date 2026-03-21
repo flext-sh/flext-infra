@@ -25,7 +25,6 @@ class FlextInfraPyrightGate(FlextInfraGate):
     tool_url: str = "https://github.com/microsoft/pyright"
 
     @override
-    @override
     def check(
         self,
         project_dir: Path,

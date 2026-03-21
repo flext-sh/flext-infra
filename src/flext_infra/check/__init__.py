@@ -11,16 +11,16 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
-    from flext_infra.check.services import (
-        FlextInfraConfigFixer,
+    from flext_infra.check.workspace_check import (
         FlextInfraWorkspaceChecker,
+        build_parser,
+        main,
+        run_cli,
     )
-    from flext_infra.check.workspace_check import build_parser, main, run_cli
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "FlextInfraConfigFixer": ("flext_infra.check.services", "FlextInfraConfigFixer"),
     "FlextInfraWorkspaceChecker": (
-        "flext_infra.check.services",
+        "flext_infra.check.workspace_check",
         "FlextInfraWorkspaceChecker",
     ),
     "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
@@ -29,7 +29,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 }
 
 __all__ = [
-    "FlextInfraConfigFixer",
     "FlextInfraWorkspaceChecker",
     "build_parser",
     "main",

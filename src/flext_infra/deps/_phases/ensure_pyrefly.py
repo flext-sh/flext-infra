@@ -7,7 +7,7 @@ from pathlib import Path
 import tomlkit
 from tomlkit.items import Item, Table
 
-from flext_infra import c, m, u
+from flext_infra import FlextInfraExtraPathsManager, c, m, u
 
 
 class EnsurePyreflyConfigPhase:
@@ -51,12 +51,16 @@ class EnsurePyreflyConfigPhase:
             changes.append("tool.pyrefly.ignore-errors-in-generated-code enabled")
         if project_dir is not None:
             local_dirs = u.Infra.discover_python_dirs(project_dir)
+            manager = FlextInfraExtraPathsManager()
+            dep_paths = manager.get_dep_paths(doc, is_root=is_root)
             if is_root:
                 expected_search = sorted(
-                    set(local_dirs + ["typings"]),
+                    set(local_dirs + ["typings"] + dep_paths),
                 )
             else:
-                expected_search = sorted(set(["."] + local_dirs))
+                expected_search = sorted(
+                    set(["."] + local_dirs + dep_paths),
+                )
         else:
             expected_search = ["."]
         current_search = u.Infra.as_string_list(

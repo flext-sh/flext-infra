@@ -5,14 +5,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flext_infra import FlextInfraCodegenCensus, c, m, t, u
+from flext_infra import FlextInfraCodegenCensus, m, t, u
 
 
 class FlextInfraCodegenConstantsQualityGate:
     """Run final constants migration checks with before/after comparison."""
-
-    _REPORT_DIR: Path = Path(c.Infra.QualityGate.REPORT_DIR)
-    _PASS_VERDICTS: tuple[str, ...] = c.Infra.QualityGate.PASS_VERDICTS
 
     def __init__(
         self,
@@ -165,7 +162,10 @@ class FlextInfraCodegenConstantsQualityGate:
     @staticmethod
     def is_success_verdict(verdict: str) -> bool:
         """Return True for verdicts that should exit with status 0."""
-        return verdict in FlextInfraCodegenConstantsQualityGate._PASS_VERDICTS
+        return (
+            verdict
+            in FlextInfraCodegenConstantsQualityGate.c.Infra.QualityGate.PASS_VERDICTS
+        )
 
 
 __all__ = ["FlextInfraCodegenConstantsQualityGate"]

@@ -121,7 +121,7 @@ class FlextInfraDocGenerator:
 
     def _generate_project_guides(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         workspace_root: Path,
         *,
         apply: bool,
@@ -148,7 +148,7 @@ class FlextInfraDocGenerator:
 
     def _generate_project_mkdocs(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         *,
         apply: bool,
     ) -> list[m.Infra.GeneratedFile]:
@@ -189,7 +189,7 @@ class FlextInfraDocGenerator:
 
     def _generate_root_docs(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         *,
         apply: bool,
     ) -> list[m.Infra.GeneratedFile]:
@@ -223,7 +223,7 @@ class FlextInfraDocGenerator:
 
     def _generate_scope(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         *,
         apply: bool,
         workspace_root: Path,

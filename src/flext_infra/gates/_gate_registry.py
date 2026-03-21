@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.gates._base_gate import FlextInfraGate
-from flext_infra.gates.bandit import FlextInfraBanditGate
-from flext_infra.gates.go import FlextInfraGoGate
-from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from flext_infra.gates.mypy import FlextInfraMypyGate
-from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+from flext_infra import (
+    FlextInfraBanditGate,
+    FlextInfraGate,
+    FlextInfraGoGate,
+    FlextInfraMarkdownGate,
+    FlextInfraMypyGate,
+    FlextInfraPyreflyGate,
+    FlextInfraPyrightGate,
+    FlextInfraRuffFormatGate,
+    FlextInfraRuffLintGate,
+)
 
 _GATES: tuple[type[FlextInfraGate], ...] = (
     FlextInfraRuffLintGate,

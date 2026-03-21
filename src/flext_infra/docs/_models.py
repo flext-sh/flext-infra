@@ -15,7 +15,9 @@ from flext_infra import t
 class FlextInfraDocsModels:
     """Models for documentation services."""
 
-    class _DocsPhaseItemModel(BaseModel):
+    class DocsPhaseItemModel(BaseModel):
+        """Unified item payload for docs phase reports."""
+
         model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
         phase: Annotated[
@@ -52,7 +54,7 @@ class FlextInfraDocsModels:
             Field(default=False, description="Generated file write flag"),
         ] = False
 
-    class FlextInfraDocScope(FlextModels.ArbitraryTypesModel):
+    class DocScope(FlextModels.ArbitraryTypesModel):
         """Documentation scope targeting a project or workspace root."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Scope name")]
@@ -78,9 +80,6 @@ class FlextInfraDocsModels:
             bool,
             Field(default=False, description="Whether file was written"),
         ] = False
-
-    class DocsPhaseItem(_DocsPhaseItemModel):
-        """Unified item payload for docs phase reports."""
 
     class DocsPhaseReport(FlextModels.FrozenStrictModel):
         """Unified report payload for docs phases."""

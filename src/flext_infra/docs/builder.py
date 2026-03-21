@@ -30,7 +30,7 @@ class FlextInfraDocBuilder:
 
     @staticmethod
     def _write_reports(
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
         report: m.Infra.DocsPhaseReport,
     ) -> None:
         """Persist build JSON summary and markdown report."""
@@ -88,7 +88,7 @@ class FlextInfraDocBuilder:
 
     def _build_scope(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
     ) -> m.Infra.DocsPhaseReport:
         """Run mkdocs build --strict for a single scope."""
         report = self._run_mkdocs(scope)
@@ -104,7 +104,7 @@ class FlextInfraDocBuilder:
 
     def _run_mkdocs(
         self,
-        scope: m.Infra.FlextInfraDocScope,
+        scope: m.Infra.DocScope,
     ) -> m.Infra.DocsPhaseReport:
         """Run mkdocs build --strict and return the result."""
         config = scope.path / "mkdocs.yml"

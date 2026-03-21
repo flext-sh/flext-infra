@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import FlextInfraUtilitiesIo, FlextInfraUtilitiesSubprocess, c, m
+from flext_infra import FlextInfraUtilitiesSubprocess, c
 
 
 class FlextInfraUtilitiesGit:
@@ -117,44 +116,6 @@ class FlextInfraUtilitiesGit:
         return FlextInfraUtilitiesSubprocess.run_checked(
             [c.Infra.Cli.GIT, "tag", "-a", tag, "-m", msg or f"release: {tag}"],
             cwd=root,
-        )
-
-    @staticmethod
-    def git_list_tags(root: Path, *, sort: str = "-v:refname") -> r[str]:
-        return FlextInfraUtilitiesSubprocess.capture(
-            [c.Infra.Cli.GIT, "tag", f"--sort={sort}"], cwd=root
-        )
-
-    @staticmethod
-    def lint_workflows(
-        root: Path, *, report_path: Path | None = None, strict: bool = False
-    ) -> r[m.Infra.WorkflowLintResult]:
-        """Run actionlint and return results."""
-        exe = shutil.which("actionlint")
-        if not exe:
-            res = m.Infra.WorkflowLintResult(status="skipped", reason="not installed")
-            if report_path:
-                FlextInfraUtilitiesIo.write_json(report_path, res, sort_keys=True)
-            return r[m.Infra.WorkflowLintResult].ok(res)
-
-        out_res = FlextInfraUtilitiesSubprocess.run_raw([exe], cwd=root)
-        if out_res.is_success:
-            p = m.Infra.WorkflowLintResult(
-                status="ok",
-                exit_code=out_res.value.exit_code,
-                stdout=out_res.value.stdout,
-                stderr=out_res.value.stderr,
-            )
-        else:
-            p = m.Infra.WorkflowLintResult(
-                status="fail", exit_code=1, detail=out_res.error or ""
-            )
-        if report_path:
-            FlextInfraUtilitiesIo.write_json(report_path, p, sort_keys=True)
-        return (
-            r[m.Infra.WorkflowLintResult].fail(out_res.error or "lint failed")
-            if p.status == "fail" and strict
-            else r[m.Infra.WorkflowLintResult].ok(p)
         )
 
 

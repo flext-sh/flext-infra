@@ -143,28 +143,6 @@ class FlextInfraUtilitiesVersioning:
         ))
 
     @staticmethod
-    def release_tag_from_branch(branch: str) -> r[str]:
-        """Extract a release tag name from a branch name.
-
-        Supports ``release/X.Y.Z`` and ``X.Y.Z-dev`` patterns.
-
-        Args:
-            branch: The branch name.
-
-        Returns:
-            r[str] with the tag name (e.g., "v1.2.3"),
-            or failure if no pattern matches.
-
-        """
-        if branch.startswith("release/"):
-            tag = f"v{branch.removeprefix('release/')}"
-            return r[str].ok(tag)
-        match = c.Infra.Versioning.DEV_BRANCH_RE.match(branch)
-        if match:
-            return r[str].ok(f"v{match.group(1)}")
-        return r[str].fail(f"branch '{branch}' does not match release pattern")
-
-    @staticmethod
     def replace_project_version(project_path: Path, version: str) -> r[bool]:
         """Update the version field in a project's pyproject.toml.
 

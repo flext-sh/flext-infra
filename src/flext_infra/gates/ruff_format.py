@@ -21,7 +21,6 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.FORMAT][1]
 
     @override
-    @override
     def check(
         self,
         project_dir: Path,
@@ -88,7 +87,6 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             raw_output=result.stderr,
         )
 
-    @override
     @override
     def fix(
         self,

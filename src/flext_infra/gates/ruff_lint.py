@@ -25,7 +25,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.LINT][1]
 
     @override
-    @override
     def check(
         self,
         project_dir: Path,

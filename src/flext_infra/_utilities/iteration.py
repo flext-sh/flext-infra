@@ -86,17 +86,6 @@ class FlextInfraUtilitiesIteration:
         return roots
 
     @staticmethod
-    def _discover_project_roots(
-        workspace_root: Path,
-        *,
-        scan_dirs: frozenset[str] | None = None,
-    ) -> list[Path]:
-        return FlextInfraUtilitiesIteration.discover_project_roots(
-            workspace_root=workspace_root,
-            scan_dirs=scan_dirs,
-        )
-
-    @staticmethod
     def iter_directory_python_files(
         directory: Path,
         *,

@@ -74,40 +74,5 @@ class FlextInfraUtilitiesYaml:
             msg = f"rules.yml must be a mapping: {path}: {exc}"
             raise TypeError(msg) from exc
 
-    @staticmethod
-    def normalize_string_list(value: t.Infra.InfraValue, field: str) -> list[str]:
-        """Validate and normalize a list[str] config field.
-
-        Args:
-            value: The container value to normalize.
-            field: Field name for error messages.
-
-        Returns:
-            Normalized list of strings.
-
-        Raises:
-            TypeError: If value is not a list of strings.
-
-        """
-        if value is None:
-            return []
-        if isinstance(value, list):
-            try:
-                typed_items = (
-                    FlextInfraUtilitiesYaml._get_list_adapter().validate_python(value)
-                )
-            except ValidationError as exc:
-                msg = f"{field} must be list[str]: {exc}"
-                raise TypeError(msg) from exc
-            out: list[str] = []
-            for item in typed_items:
-                if not isinstance(item, str):
-                    msg = f"{field} must be list[str]"
-                    raise TypeError(msg)
-                out.append(item)
-            return out
-        msg = f"{field} must be list[str]"
-        raise TypeError(msg)
-
 
 __all__ = ["FlextInfraUtilitiesYaml"]

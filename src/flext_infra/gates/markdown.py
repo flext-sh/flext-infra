@@ -97,7 +97,6 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         )
 
     @override
-    @override
     def check(
         self,
         project_dir: Path,
@@ -106,7 +105,6 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         _ = ctx
         return self._run_markdown(project_dir, fix=False)
 
-    @override
     @override
     def fix(
         self,

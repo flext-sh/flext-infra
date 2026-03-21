@@ -24,7 +24,6 @@ class FlextInfraMypyGate(FlextInfraGate):
     tool_url: str = "https://mypy.readthedocs.io/"
 
     @override
-    @override
     def check(
         self,
         project_dir: Path,
