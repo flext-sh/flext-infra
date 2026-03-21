@@ -12,11 +12,7 @@ from typing import override
 from pydantic import JsonValue
 
 from flext_core import r, s
-from flext_infra._utilities.cli import FlextInfraUtilitiesCli
-from flext_infra._utilities.io import FlextInfraUtilitiesIo
 from flext_infra._utilities.output import output
-from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
-from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
 from flext_infra.constants import c
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.gates._base_gate import FlextInfraGateContext
@@ -45,7 +41,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         )
         self._workspace_root = self._resolve_workspace_root(workspace_root)
         self._registry = FlextInfraGateRegistry.default()
-        report_dir = FlextInfraUtilitiesReporting.get_report_dir(
+        report_dir = u.Infra.get_report_dir(
             self._workspace_root,
             c.Infra.Toml.PROJECT,
             c.Infra.Verbs.CHECK,
@@ -116,7 +112,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
     @staticmethod
     def build_parser() -> argparse.ArgumentParser:
         """Build the workspace check CLI parser."""
-        parser, subs = FlextInfraUtilitiesCli.create_subcommand_parser(
+        parser, subs = u.Infra.create_subcommand_parser(
             "flext-infra check",
             "FLEXT check utilities",
             subcommands={
@@ -148,7 +144,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         """Run the subcommand-based workspace check CLI."""
         parser = FlextInfraWorkspaceChecker.build_parser()
         args = parser.parse_args(argv)
-        cli = FlextInfraUtilitiesCli.resolve(args)
+        cli = u.Infra.resolve(args)
         if args.command == c.Infra.Verbs.RUN:
             checker = FlextInfraWorkspaceChecker(workspace_root=cli.workspace)
             gates = FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
@@ -184,7 +180,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
     @staticmethod
     def main(argv: list[str] | None = None) -> int:
         """Run the legacy workspace check CLI entrypoint."""
-        parser = FlextInfraUtilitiesCli.create_parser(
+        parser = u.Infra.create_parser(
             "flext-infra check-workspace",
             "FLEXT Workspace Check",
             include_apply=False,
@@ -280,7 +276,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         )
         sarif_path = report_base / "check-report.sarif"
         sarif_payload = self.generate_sarif_report(results, resolved_gates)
-        json_write_result = FlextInfraUtilitiesIo.write_json(sarif_path, sarif_payload)
+        json_write_result = u.Infra.write_json(sarif_path, sarif_payload)
         if json_write_result.is_failure:
             return r[list[m.Infra.ProjectResult]].fail(
                 json_write_result.error or "failed to write sarif report",
@@ -369,7 +365,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
     def _resolve_workspace_root(self, workspace_root: Path | None) -> Path:
         if workspace_root is not None:
             return workspace_root.resolve()
-        result = FlextInfraUtilitiesPaths.workspace_root()
+        result = u.Infra.workspace_root()
         return result.value if result.is_success else Path.cwd().resolve()
 
     def _run_bandit(self, project_dir: Path) -> m.Infra.GateExecution:

@@ -11,13 +11,13 @@ from flext_infra import (
     FlextInfraRefactorClassNestingReconstructor,
     FlextInfraRefactorClassNestingTransformer,
     HelperConsolidationTransformer,
+    PostCheckGate,
     PreCheckGate,
     c,
     m,
     t,
     u,
 )
-from flext_infra.refactor._post_check_gate import PostCheckGate
 
 
 class ClassNestingRefactorRule:

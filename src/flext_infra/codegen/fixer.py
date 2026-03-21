@@ -24,7 +24,6 @@ from flext_infra import (
     FlextInfraNamespaceValidator,
     FlextInfraRefactorEngine,
     FlextInfraRefactorMigrateToClassMRO,
-    FlextInfraUtilitiesParsing,
     NamespaceEnforcementRewriter,
     NamespaceSourceDetector,
     c,
@@ -490,7 +489,7 @@ class FlextInfraCodegenFixer(s[bool]):
         files_modified: set[str],
     ) -> None:
         """Fix Rule 1 — move loose Final constants to constants.py."""
-        tree = FlextInfraUtilitiesParsing.parse_module_ast(source_file)
+        tree = u.Infra.parse_module_ast(source_file)
         if tree is None:
             return
         finals = FlextInfraCodegenTransforms.find_standalone_finals(tree)
@@ -499,7 +498,7 @@ class FlextInfraCodegenFixer(s[bool]):
         target_path = pkg_dir / "constants.py"
         if not target_path.exists():
             return
-        target_tree = FlextInfraUtilitiesParsing.parse_module_ast(target_path)
+        target_tree = u.Infra.parse_module_ast(target_path)
         if target_tree is None:
             return
         nodes_to_move: list[ast.AnnAssign] = []
@@ -592,7 +591,7 @@ class FlextInfraCodegenFixer(s[bool]):
         files_modified: set[str],
     ) -> None:
         """Fix Rule 2 — move loose TypeVars/TypeAliases to typings.py."""
-        tree = FlextInfraUtilitiesParsing.parse_module_ast(source_file)
+        tree = u.Infra.parse_module_ast(source_file)
         if tree is None:
             return
         typevars = FlextInfraCodegenTransforms.find_standalone_typevars(tree)
@@ -602,7 +601,7 @@ class FlextInfraCodegenFixer(s[bool]):
         target_path = pkg_dir / "typings.py"
         if not target_path.exists():
             return
-        target_tree = FlextInfraUtilitiesParsing.parse_module_ast(target_path)
+        target_tree = u.Infra.parse_module_ast(target_path)
         if target_tree is None:
             return
         nodes_to_move: list[ast.stmt] = []
@@ -726,7 +725,7 @@ class FlextInfraCodegenFixer(s[bool]):
 
     @staticmethod
     def _resolve_parent_constants_class(constants_file: Path) -> str:
-        tree = FlextInfraUtilitiesParsing.parse_module_ast(constants_file)
+        tree = u.Infra.parse_module_ast(constants_file)
         if tree is None:
             return ""
         for node in tree.body:

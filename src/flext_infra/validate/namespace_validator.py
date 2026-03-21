@@ -13,7 +13,7 @@ import ast
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import FlextInfraUtilitiesIteration, FlextInfraUtilitiesParsing, c, m
+from flext_infra import c, m
 
 __all__ = ["FlextInfraNamespaceValidator"]
 
@@ -320,7 +320,7 @@ class FlextInfraNamespaceValidator:
                 continue
             result.extend(
                 py_file
-                for py_file in FlextInfraUtilitiesIteration.iter_directory_python_files(
+                for py_file in u.Infra.iter_directory_python_files(
                     base_dir,
                 )
                 if not self._is_exempt_file(py_file)
@@ -375,4 +375,4 @@ class FlextInfraNamespaceValidator:
 
     def _parse_file(self, path: Path) -> ast.Module | None:
         """Parse a Python file into an AST, returning None on failure."""
-        return FlextInfraUtilitiesParsing.parse_module_ast(path)
+        return u.Infra.parse_module_ast(path)

@@ -28,11 +28,8 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import ClassVar, override
 
-from flext_core import r
-from flext_core.service import FlextService
-from flext_infra import c
-from flext_infra._utilities.output import output
-from flext_infra.utilities import u
+from flext_core import FlextService, r
+from flext_infra import c, output, u
 
 
 class FlextInfraMainCLI(FlextService[int]):

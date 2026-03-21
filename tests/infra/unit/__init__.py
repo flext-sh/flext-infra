@@ -995,11 +995,11 @@ if TYPE_CHECKING:
         TestScannerMultiFile,
     )
     from .validate.skill_validator_tests import (
-        TestNormalizeStringList,
         TestSafeLoadYaml,
         TestSkillValidatorAstGrepCount,
         TestSkillValidatorCore,
         TestSkillValidatorRenderTemplate,
+        TestStringList,
     )
     from .validate.stub_chain_tests import (
         TestStubChainAnalyze,
@@ -1880,10 +1880,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.check.extended_error_reporting_tests",
         "TestMypyEmptyLinesInOutput",
     ),
-    "TestNormalizeStringList": (
-        "tests.infra.unit.validate.skill_validator_tests",
-        "TestNormalizeStringList",
-    ),
     "TestOrchestratorBasic": (
         "tests.infra.unit.test_infra_workspace_orchestrator",
         "TestOrchestratorBasic",
@@ -2213,6 +2209,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestSkillValidatorRenderTemplate": (
         "tests.infra.unit.validate.skill_validator_tests",
         "TestSkillValidatorRenderTemplate",
+    ),
+    "TestStringList": (
+        "tests.infra.unit.validate.skill_validator_tests",
+        "TestStringList",
     ),
     "TestStubChainAnalyze": (
         "tests.infra.unit.validate.stub_chain_tests",
@@ -3934,7 +3934,6 @@ __all__ = [
     "TestModuleLevelWrappers",
     "TestMroFacadeMethods",
     "TestMypyEmptyLinesInOutput",
-    "TestNormalizeStringList",
     "TestOrchestratorBasic",
     "TestOrchestratorFailures",
     "TestOrchestratorGateNormalization",
@@ -4031,6 +4030,7 @@ __all__ = [
     "TestSkillValidatorAstGrepCount",
     "TestSkillValidatorCore",
     "TestSkillValidatorRenderTemplate",
+    "TestStringList",
     "TestStubChainAnalyze",
     "TestStubChainCore",
     "TestStubChainDiscoverProjects",

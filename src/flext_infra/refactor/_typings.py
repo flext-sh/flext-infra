@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from flext_infra.models import m
+from flext_infra import m
 
 
 class FlextInfraRectorTypes:

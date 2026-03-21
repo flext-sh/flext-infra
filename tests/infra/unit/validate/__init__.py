@@ -37,11 +37,11 @@ if TYPE_CHECKING:
     )
     from .scanner_tests import TestScannerCore, TestScannerHelpers, TestScannerMultiFile
     from .skill_validator_tests import (
-        TestNormalizeStringList,
         TestSafeLoadYaml,
         TestSkillValidatorAstGrepCount,
         TestSkillValidatorCore,
         TestSkillValidatorRenderTemplate,
+        TestStringList,
     )
     from .stub_chain_tests import (
         TestStubChainAnalyze,
@@ -91,10 +91,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "TestMainInventory": ("tests.infra.unit.validate.main_tests", "TestMainInventory"),
     "TestMainScan": ("tests.infra.unit.validate.main_tests", "TestMainScan"),
-    "TestNormalizeStringList": (
-        "tests.infra.unit.validate.skill_validator_tests",
-        "TestNormalizeStringList",
-    ),
     "TestPytestDiagExtractorCore": (
         "tests.infra.unit.validate.pytest_diag",
         "TestPytestDiagExtractorCore",
@@ -131,6 +127,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestSkillValidatorRenderTemplate": (
         "tests.infra.unit.validate.skill_validator_tests",
         "TestSkillValidatorRenderTemplate",
+    ),
+    "TestStringList": (
+        "tests.infra.unit.validate.skill_validator_tests",
+        "TestStringList",
     ),
     "TestStubChainAnalyze": (
         "tests.infra.unit.validate.stub_chain_tests",
@@ -171,7 +171,6 @@ __all__ = [
     "TestMainCliRouting",
     "TestMainInventory",
     "TestMainScan",
-    "TestNormalizeStringList",
     "TestPytestDiagExtractorCore",
     "TestPytestDiagLogParsing",
     "TestPytestDiagParseXml",
@@ -182,6 +181,7 @@ __all__ = [
     "TestSkillValidatorAstGrepCount",
     "TestSkillValidatorCore",
     "TestSkillValidatorRenderTemplate",
+    "TestStringList",
     "TestStubChainAnalyze",
     "TestStubChainCore",
     "TestStubChainDiscoverProjects",

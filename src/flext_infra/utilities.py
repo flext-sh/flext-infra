@@ -13,6 +13,7 @@ from flext_core import FlextUtilities
 from flext_infra import (
     FlextInfraRefactorTransformerPolicyUtilities,
     FlextInfraUtilitiesCli,
+    FlextInfraUtilitiesCodegen,
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesGit,
@@ -22,6 +23,7 @@ from flext_infra import (
     FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesPaths,
     FlextInfraUtilitiesPatterns,
+    FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesReporting,
     FlextInfraUtilitiesSafety,
     FlextInfraUtilitiesScanning,
@@ -34,8 +36,6 @@ from flext_infra import (
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
 )
-from flext_infra.codegen._utilities import FlextInfraUtilitiesCodegen
-from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
 
 
 class FlextInfraUtilities(FlextUtilities):

@@ -15,14 +15,7 @@ from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import FlextLogger
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesToml,
-    c,
-    m,
-    r,
-    u,
-)
+from flext_infra import c, m, r, u
 
 
 class _FlextInfraOutput:
@@ -50,30 +43,19 @@ class FlextInfraDependencyPathSync:
     def __init__(self) -> None:
         """Initialize the dependency path sync service with TOML service."""
         self._root = self.ROOT
-        self._discovery = FlextInfraUtilitiesDiscovery()
-        self._toml = FlextInfraUtilitiesToml()
 
     def set_workspace_root(self, workspace_root: Path) -> None:
         """Configure workspace root for path resolution."""
         self._root = workspace_root
 
     def _discover_projects(self) -> r[list[m.Infra.ProjectInfo]]:
-        try:
-            return self._discovery.discover_projects(self._root)
-        except TypeError:
-            return FlextInfraUtilitiesDiscovery.discover_projects(self._root)
+        return u.Infra.discover_projects(self._root)
 
     def _read_document(self, path: Path) -> r[TOMLDocument]:
-        try:
-            return self._toml.read_document(path)
-        except TypeError:
-            return FlextInfraUtilitiesToml.read_document(path)
+        return u.Infra.read_document(path)
 
     def _write_document(self, path: Path, doc: TOMLDocument) -> r[bool]:
-        try:
-            return self._toml.write_document(path, doc)
-        except TypeError:
-            return FlextInfraUtilitiesToml.write_document(path, doc)
+        return u.Infra.write_document(path, doc)
 
     @staticmethod
     def detect_mode(project_root: Path) -> str:

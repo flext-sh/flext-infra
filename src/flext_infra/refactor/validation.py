@@ -6,8 +6,8 @@ from flext_infra import (
     FlextInfraRefactorCliSupport,
     FlextInfraRefactorMROMigrationValidator,
     FlextInfraRefactorRuleDefinitionValidator,
+    PostCheckGate,
 )
-from flext_infra.refactor._post_check_gate import PostCheckGate
 
 __all__ = [
     "FlextInfraRefactorCliSupport",

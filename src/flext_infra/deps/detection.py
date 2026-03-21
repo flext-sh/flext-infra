@@ -6,22 +6,15 @@ import contextlib
 import os
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_core import FlextLogger, r
-from flext_infra import (
-    FlextInfraUtilitiesIo,
-    FlextInfraUtilitiesPatterns,
-    FlextInfraUtilitiesSelection,
-    FlextInfraUtilitiesSubprocess,
-    FlextInfraUtilitiesToml,
-    FlextInfraUtilitiesTomlParse,
-    c,
-    m,
-    p,
-    t,
-)
+from flext_infra import c, m, p, t, u
+
+if TYPE_CHECKING:
+    from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 
 
 class FlextInfraDependencyDetectionService:
@@ -46,12 +39,12 @@ class FlextInfraDependencyDetectionService:
     ) -> r[list[m.Infra.ProjectInfo]]:
         if self.selector is not None:
             return self.selector.resolve_projects(workspace_root, names)
-        return FlextInfraUtilitiesSelection.resolve_projects(workspace_root, names)
+        return u.Infra.resolve_projects(workspace_root, names)
 
     def _read_plain(self, path: Path) -> r[t.Infra.TomlConfig]:
         if self.toml is not None:
             return self.toml.read_plain(path)
-        return FlextInfraUtilitiesTomlParse.read_plain(path)
+        return u.Infra.read_plain(path)
 
     def _run_raw(
         self,
@@ -63,9 +56,7 @@ class FlextInfraDependencyDetectionService:
     ) -> r[m.Infra.CommandOutput]:
         if self.runner is not None:
             return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
-        return FlextInfraUtilitiesSubprocess.run_raw(
-            cmd, cwd=cwd, timeout=timeout, env=env
-        )
+        return u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
 
     @staticmethod
     def to_infra_value(
@@ -114,7 +105,7 @@ class FlextInfraDependencyDetectionService:
     ) -> t.Infra.TomlConfig:
         if value is None:
             return {}
-        mapped_value = FlextInfraUtilitiesToml.as_toml_mapping(value)
+        mapped_value = u.Infra.as_toml_mapping(value)
         if mapped_value is None:
             return {}
         normalized: t.Infra.TomlConfig = {}
@@ -376,7 +367,7 @@ class FlextInfraDependencyDetectionService:
     ) -> str | None:
         """Map a module name to its corresponding types-* package."""
         root = module_name.split(".", 1)[0]
-        if root.startswith(FlextInfraUtilitiesPatterns.INTERNAL_PREFIXES):
+        if root.startswith(u.Infra.INTERNAL_PREFIXES):
             return None
         typing_libraries = limits.get(c.Infra.Toml.TYPING_LIBRARIES)
         if typing_libraries is not None and isinstance(typing_libraries, Mapping):
@@ -436,7 +427,7 @@ class FlextInfraDependencyDetectionService:
         issues: list[t.Infra.IssueMap] = []
         if out_file.exists():
             raw = out_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            loaded_result = FlextInfraUtilitiesIo.parse(raw) if raw.strip() else None
+            loaded_result = u.Infra.parse(raw) if raw.strip() else None
             if (
                 loaded_result is not None
                 and loaded_result.is_success
@@ -497,12 +488,12 @@ class FlextInfraDependencyDetectionService:
         output = f"{cmd_result.stdout}\n{cmd_result.stderr}"
         hinted = {
             match.group(1).strip()
-            for match in FlextInfraUtilitiesPatterns.MYPY_HINT_RE.finditer(output)
+            for match in u.Infra.MYPY_HINT_RE.finditer(output)
             if match.group(1).strip()
         }
         missing = {
             match.group(1).strip()
-            for match in FlextInfraUtilitiesPatterns.MYPY_STUB_RE.finditer(output)
+            for match in u.Infra.MYPY_STUB_RE.finditer(output)
             if match.group(1).strip()
         }
         return r[tuple[list[str], list[str]]].ok((sorted(hinted), sorted(missing)))

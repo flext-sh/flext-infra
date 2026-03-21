@@ -13,8 +13,6 @@ import libcst as cst
 
 from flext_infra import c, m, u
 
-__all__ = ["CensusImportDiscoveryVisitor", "CensusUsageCollector"]
-
 
 class CensusImportDiscoveryVisitor(cst.CSTVisitor):
     """Discover family alias and direct class imports via LibCST.
@@ -142,3 +140,6 @@ class CensusUsageCollector(cst.CSTVisitor):
                 project=self.project_name,
             ),
         )
+
+
+__all__ = ["CensusImportDiscoveryVisitor", "CensusUsageCollector"]

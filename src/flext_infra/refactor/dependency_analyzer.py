@@ -4,43 +4,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, u
-from flext_infra.refactor._models_namespace_enforcer import (
-    FlextInfraNamespaceEnforcerModels as nem,
-)
-
-from ._detectors.class_placement_detector import (
+from flext_infra import (
     ClassPlacementDetector,
-)
-from ._detectors.compatibility_alias_detector import (
     CompatibilityAliasDetector,
-)
-from ._detectors.cyclic_import_detector import CyclicImportDetector
-from ._detectors.dependency_analyzer_base import DependencyAnalyzer
-from ._detectors.future_annotations_detector import (
+    CyclicImportDetector,
+    DependencyAnalyzer,
+    FlextInfraNamespaceEnforcerModels as nem,
     FutureAnnotationsDetector,
-)
-from ._detectors.import_alias_detector import ImportAliasDetector
-from ._detectors.internal_import_detector import (
+    ImportAliasDetector,
     InternalImportDetector,
-)
-from ._detectors.loose_object_detector import LooseObjectDetector
-from ._detectors.manual_protocol_detector import (
+    LooseObjectDetector,
     ManualProtocolDetector,
-)
-from ._detectors.manual_typing_alias_detector import (
     ManualTypingAliasDetector,
-)
-from ._detectors.mro_completeness_detector import (
     MROCompletenessDetector,
-)
-from ._detectors.namespace_facade_scanner import (
     NamespaceFacadeScanner,
-)
-from ._detectors.namespace_source_detector import (
     NamespaceSourceDetector,
+    RuntimeAliasDetector,
+    c,
+    m,
+    u,
 )
-from ._detectors.runtime_alias_detector import RuntimeAliasDetector
 
 
 class FlextInfraRefactorDependencyAnalyzerFacade:

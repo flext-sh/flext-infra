@@ -16,12 +16,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra._utilities.output import output
-from flext_infra.utilities import u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_infra import (
+    FlextInfraOrchestratorService,
+    FlextInfraProjectMigrator,
+    FlextInfraSyncService,
+    FlextInfraWorkspaceDetector,
+    output,
+    u,
+)
 
 if TYPE_CHECKING:
     from flext_infra import m

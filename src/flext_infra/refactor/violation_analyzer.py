@@ -10,13 +10,13 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import ViolationCensusVisitor, c, m, u
-from flext_infra.refactor._function_dependency_collector import (
+from flext_infra import (
     FunctionDependencyCollector,
-)
-from flext_infra.refactor._import_dependency_collector import ImportDependencyCollector
-from flext_infra.refactor.class_nesting_analyzer import (
-    FlextInfraRefactorClassNestingAnalyzer,
+    ImportDependencyCollector,
+    ViolationCensusVisitor,
+    c,
+    m,
+    u,
 )
 
 
@@ -57,7 +57,7 @@ class FlextInfraRefactorViolationAnalyzer:
                 pass
             if file_counts:
                 per_file[str(file_path)] = file_counts
-        class_nesting = FlextInfraRefactorClassNestingAnalyzer.analyze_files(files)
+        class_nesting = u.Infra.analyze_files(files)
         class_nesting_count = class_nesting.violations_count
         if class_nesting_count > 0:
             totals[c.Infra.ReportKeys.CLASS_NESTING] += class_nesting_count

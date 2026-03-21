@@ -61,7 +61,7 @@ class EnsurePyreflyConfigPhase:
                     set(local_dirs + ["typings"]),
                 )
             else:
-                expected_search = ["."] + local_dirs
+                expected_search = sorted(set(["."] + local_dirs))
         else:
             expected_search = ["."]
         current_search = u.Infra.as_string_list(

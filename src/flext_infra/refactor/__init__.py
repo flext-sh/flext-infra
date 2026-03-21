@@ -62,11 +62,10 @@ if TYPE_CHECKING:
     from flext_infra.refactor._detectors.runtime_alias_detector import (
         RuntimeAliasDetector,
     )
-    from flext_infra.refactor.analysis import (
-        FlextInfraRefactorClassNestingAnalyzer,
-        FlextInfraRefactorViolationAnalyzer,
-    )
     from flext_infra.refactor.census import FlextInfraRefactorCensus
+    from flext_infra.refactor.class_nesting_analyzer import (
+        FlextInfraRefactorClassNestingAnalyzer,
+    )
     from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
     from flext_infra.refactor.dependency_analyzer import (
         FlextInfraRefactorDependencyAnalyzerFacade,
@@ -108,6 +107,9 @@ if TYPE_CHECKING:
     from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
     from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
     from flext_infra.refactor.validation import PostCheckGate
+    from flext_infra.refactor.violation_analyzer import (
+        FlextInfraRefactorViolationAnalyzer,
+    )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ClassPlacementDetector": (
@@ -139,7 +141,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraRefactorCensus",
     ),
     "FlextInfraRefactorClassNestingAnalyzer": (
-        "flext_infra.refactor.analysis",
+        "flext_infra.refactor.class_nesting_analyzer",
         "FlextInfraRefactorClassNestingAnalyzer",
     ),
     "FlextInfraRefactorCliSupport": (
@@ -216,7 +218,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraRefactorSafetyManager",
     ),
     "FlextInfraRefactorViolationAnalyzer": (
-        "flext_infra.refactor.analysis",
+        "flext_infra.refactor.violation_analyzer",
         "FlextInfraRefactorViolationAnalyzer",
     ),
     "FutureAnnotationsDetector": (

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import overload
 
-from flext_infra import FlextInfraUtilitiesSafety, c, m, p, r, u
+from flext_infra import c, m, p, r, u
 
 type RBool = r[bool]
 type RStr = r[str]
@@ -48,7 +48,7 @@ class FlextInfraRefactorSafetyManager:
     ) -> RStr:
         """Stash current state and return the stash reference."""
         self._last_workspace_root = project_root
-        return FlextInfraUtilitiesSafety.create_checkpoint(project_root, label=label)
+        return u.Infra.create_checkpoint(project_root, label=label)
 
     def validate_transform(self, files_changed: list[Path]) -> RBool:
         """Run semantic validation after a transformation batch."""
@@ -95,7 +95,7 @@ class FlextInfraRefactorSafetyManager:
     ) -> RStr:
         """Stash uncommitted changes and return the stash reference."""
         self._last_workspace_root = workspace_root
-        return FlextInfraUtilitiesSafety.create_checkpoint(workspace_root, label=label)
+        return u.Infra.create_checkpoint(workspace_root, label=label)
 
     @overload
     def rollback(self, workspace_root: Path, stash_ref: str = "") -> RBool: ...
@@ -214,7 +214,7 @@ class FlextInfraRefactorSafetyManager:
         return files_changed[0].parent if files_changed else None
 
     def _rollback_to_stash(self, workspace_root: Path, stash_ref: str) -> RBool:
-        return FlextInfraUtilitiesSafety.rollback_to_checkpoint(
+        return u.Infra.rollback_to_checkpoint(
             workspace_root,
             stash_ref,
         )

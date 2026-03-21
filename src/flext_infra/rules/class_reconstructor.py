@@ -11,13 +11,13 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import (
     FlextInfraRefactorClassReconstructor,
+    FlextInfraRefactorRule,
     NestedClassPropagationTransformer,
     c,
     m,
     t,
     u,
 )
-from flext_infra.refactor._base_rule import FlextInfraRefactorRule
 
 
 class PreCheckGate:

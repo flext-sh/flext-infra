@@ -13,8 +13,7 @@ from typing import Annotated, override
 import libcst as cst
 from pydantic import ConfigDict, Field
 
-from flext_infra import t, u
-from flext_infra.models import FlextModels
+from flext_infra import m, t, u
 
 _UNKNOWN_TIER = 99
 
@@ -22,7 +21,7 @@ _UNKNOWN_TIER = 99
 class FlextInfraTransformerImportNormalizer:
     """Namespace for import normalization logic and classes."""
 
-    class Violation(FlextModels.ArbitraryTypesModel):
+    class Violation(m.ArbitraryTypesModel):
         model_config = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
@@ -31,7 +30,7 @@ class FlextInfraTransformerImportNormalizer:
         suggested_import: Annotated[t.NonEmptyStr, Field()]
         violation_type: Annotated[str, Field(pattern="^(deep|wrong_source)$")]
 
-    class Context(FlextModels.ArbitraryTypesModel):
+    class Context(m.ArbitraryTypesModel):
         file_path: Path
         file_module: str
         project_package: str

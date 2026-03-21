@@ -17,15 +17,7 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 from tomlkit import items
 
 from flext_core import FlextLogger, r, s
-from flext_infra import (
-    FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesIo,
-    FlextInfraUtilitiesPaths,
-    FlextInfraUtilitiesToml,
-    c,
-    output,
-    t,
-)
+from flext_infra import c, output, t, u
 
 _logger = FlextLogger.create_module_logger(__name__)
 
@@ -53,7 +45,7 @@ class FlextInfraConfigFixer(s[bool]):
     @staticmethod
     def _to_array(items_list: list[str]) -> items.Array:
         items_infra: list[t.Infra.InfraValue] = list(items_list)
-        serialized_result = FlextInfraUtilitiesIo.serialize(items_infra)
+        serialized_result = u.Infra.serialize(items_infra)
         if serialized_result.is_failure:
             return tomlkit.array()
         inline_doc = tomlkit.parse(f"items = {serialized_result.value}\n")
@@ -74,14 +66,14 @@ class FlextInfraConfigFixer(s[bool]):
         project_paths: list[Path] | None = None,
     ) -> r[list[Path]]:
         """Find pyproject.toml files for selected projects."""
-        return FlextInfraUtilitiesDiscovery.find_all_pyproject_files(
+        return u.Infra.find_all_pyproject_files(
             self._workspace_root,
             project_paths=project_paths,
         )
 
     def process_file(self, path: Path, *, dry_run: bool = False) -> r[list[str]]:
         """Process one pyproject.toml file and apply fixes."""
-        document_result = FlextInfraUtilitiesToml.read_document(path)
+        document_result = u.Infra.read_document(path)
         if document_result.is_failure:
             return r[list[str]].fail(
                 document_result.error or f"failed to read {path}",
@@ -120,7 +112,7 @@ class FlextInfraConfigFixer(s[bool]):
             new_doc = tomlkit.document()
             for key, value in doc_data.items():
                 new_doc[str(key)] = value
-            write_result = FlextInfraUtilitiesToml.write_document(path, new_doc)
+            write_result = u.Infra.write_document(path, new_doc)
             if write_result.is_failure:
                 return r[list[str]].fail(
                     write_result.error or f"failed to write {path}",
@@ -283,7 +275,7 @@ class FlextInfraConfigFixer(s[bool]):
     def _resolve_workspace_root(self, workspace_root: Path | None) -> Path:
         if workspace_root is not None:
             return workspace_root.resolve()
-        result = FlextInfraUtilitiesPaths.workspace_root()
+        result = u.Infra.workspace_root()
         return result.value if result.is_success else Path.cwd().resolve()
 
     @staticmethod

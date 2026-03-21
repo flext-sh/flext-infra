@@ -9,14 +9,7 @@ from pydantic import TypeAdapter, ValidationError
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import (
-    FlextInfraDependencyPathSync,
-    FlextInfraUtilitiesPaths,
-    FlextInfraUtilitiesToml,
-    c,
-    r,
-    u,
-)
+from flext_infra import FlextInfraDependencyPathSync, c, r, u
 
 
 class FlextInfraExtraPathsManager:
@@ -29,8 +22,6 @@ class FlextInfraExtraPathsManager:
         """Initialize the extra paths manager with path resolver and TOML service."""
         super().__init__()
         self.root = workspace_root or self.ROOT
-        self.resolver = FlextInfraUtilitiesPaths()
-        self.toml = FlextInfraUtilitiesToml()
 
     @staticmethod
     def _table_get(container: TOMLDocument | Table, key: str) -> Item | None:
@@ -157,11 +148,9 @@ class FlextInfraExtraPathsManager:
     def _discover_local_python_dirs(project_dir: Path) -> list[str]:
         """Dynamically discover directories with Python files in a project.
 
-        Delegates to the SSOT discovery in FlextInfraUtilitiesDiscovery.
+        Delegates to the SSOT discovery in u.Infra.
         """
-        from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-
-        return FlextInfraUtilitiesDiscovery.discover_python_dirs(project_dir)
+        return u.Infra.discover_python_dirs(project_dir)
 
     def sync_one(
         self,
@@ -173,7 +162,7 @@ class FlextInfraExtraPathsManager:
         """Synchronize pyright and mypy paths for single pyproject.toml."""
         if not pyproject_path.exists():
             return r[bool].fail(f"pyproject not found: {pyproject_path}")
-        doc_result = self.toml.read_document(pyproject_path)
+        doc_result = u.Infra.read_document(pyproject_path)
         if doc_result.is_failure:
             return r[bool].fail(doc_result.error or f"failed to read {pyproject_path}")
         doc: TOMLDocument = doc_result.value
@@ -184,18 +173,18 @@ class FlextInfraExtraPathsManager:
         local_dirs = self._discover_local_python_dirs(project_dir)
 
         if is_root:
-            # For root: combine local dirs + typings + dep paths
             pyright_base = sorted(set(local_dirs + ["typings", "typings/generated"]))
-            mypy_base = sorted(
-                set(local_dirs + ["typings", "typings/generated"]),
-            )
+            mypy_base = sorted(set(local_dirs + ["typings", "typings/generated"]))
         else:
-            # For child projects: "." + local dirs + typings refs + dep paths
-            pyright_base = ["."] + local_dirs + ["../typings", "../typings/generated"]
-            mypy_base = ["."] + local_dirs + ["../typings", "../typings/generated"]
+            pyright_base = sorted(
+                set(["."] + local_dirs + ["../typings", "../typings/generated"]),
+            )
+            mypy_base = sorted(
+                set(["."] + local_dirs + ["../typings", "../typings/generated"]),
+            )
 
-        pyright_extra = pyright_base + dep_paths
-        mypy_path = mypy_base + dep_paths
+        pyright_extra = sorted(set(pyright_base + dep_paths))
+        mypy_path = sorted(set(mypy_base + dep_paths))
         tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
         if tool_table is None:
             return r[bool].fail(f"no [tool] section in {pyproject_path}")
@@ -240,7 +229,7 @@ class FlextInfraExtraPathsManager:
         tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
         doc[c.Infra.Toml.TOOL] = tool_table
         if changed and (not dry_run):
-            write_result = self.toml.write_document(pyproject_path, doc)
+            write_result = u.Infra.write_document(pyproject_path, doc)
             if write_result.is_failure:
                 return r[bool].fail(
                     write_result.error or f"failed to write {pyproject_path}",
@@ -273,11 +262,15 @@ class FlextInfraExtraPathsManager:
                 set(local_dirs + ["typings", "typings/generated"]),
             )
         else:
-            pyright_base = ["."] + local_dirs + ["../typings", "../typings/generated"]
-            mypy_base = ["."] + local_dirs + ["../typings", "../typings/generated"]
+            pyright_base = sorted(
+                set(["."] + local_dirs + ["../typings", "../typings/generated"]),
+            )
+            mypy_base = sorted(
+                set(["."] + local_dirs + ["../typings", "../typings/generated"]),
+            )
 
-        pyright_extra = pyright_base + dep_paths
-        mypy_path = mypy_base + dep_paths
+        pyright_extra = sorted(set(pyright_base + dep_paths))
+        mypy_path = sorted(set(mypy_base + dep_paths))
         tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
         if tool_table is None:
             return changes

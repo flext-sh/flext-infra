@@ -16,10 +16,7 @@ from typing import ClassVar, override
 
 import libcst as cst
 
-from flext_infra.transformers.import_insertion import (
-    FlextInfraTransformerImportInsertion,
-)
-from flext_infra.utilities import u
+from flext_infra import FlextInfraTransformerImportInsertion, u
 
 
 class FlextInfraTransformerTier0ImportFixer:

@@ -15,16 +15,14 @@ from typing import override
 
 from flext_core import r, s
 from flext_infra import (
+    FlextInfraCodegenConstantDetection,
+    FlextInfraCodegenGovernance,
     FlextInfraNamespaceValidator,
-    FlextInfraUtilitiesDiscovery,
     c,
     m,
     p,
+    u,
 )
-from flext_infra.codegen._codegen_constant_visitor import (
-    FlextInfraCodegenConstantDetection,
-)
-from flext_infra.codegen._codegen_governance import FlextInfraCodegenGovernance
 
 
 class FlextInfraCodegenCensus(s[bool]):
@@ -150,8 +148,7 @@ class FlextInfraCodegenCensus(s[bool]):
             return []
 
         # Standard path: analyze all projects
-        discovery = FlextInfraUtilitiesDiscovery()
-        projects_result = discovery.discover_projects(workspace)
+        projects_result = u.Infra.discover_projects(workspace)
         if not projects_result.is_success:
             return []
         reports: list[m.Infra.CensusReport] = []

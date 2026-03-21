@@ -11,14 +11,15 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from flext_infra import u
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
 
-_safe_load_yaml = FlextInfraSkillValidator._safe_load_yaml
-_normalize_string_list = FlextInfraSkillValidator._normalize_string_list
+_safe_load_yaml = u.Infra.safe_load_yaml
+_string_list = u.Infra.string_list
 
 
 class TestSafeLoadYaml:
-    """Test _safe_load_yaml helper function."""
+    """Test u.Infra.safe_load_yaml helper function."""
 
     def test_valid_yaml(self, tmp_path: Path) -> None:
         """Valid YAML file loads correctly."""
@@ -47,25 +48,27 @@ class TestSafeLoadYaml:
             _safe_load_yaml(tmp_path / "str.yml")
 
 
-class TestNormalizeStringList:
-    """Test _normalize_string_list helper function."""
+class TestStringList:
+    """Test u.Infra.string_list helper function."""
 
     def test_none_returns_empty(self) -> None:
         """None returns empty list."""
-        tm.that(_normalize_string_list(None, "test"), eq=[])
+        tm.that(_string_list(None), eq=[])
 
     def test_valid_list(self) -> None:
         """Valid string list passes through."""
-        tm.that(_normalize_string_list(["a", "b", "c"], "test"), eq=["a", "b", "c"])
+        tm.that(_string_list(["a", "b", "c"]), eq=["a", "b", "c"])
+
+    def test_string_wraps_to_list(self) -> None:
+        """Bare string is wrapped into a single-element list."""
+        tm.that(_string_list("not a list"), eq=["not a list"])
 
     def test_invalid_input_raises(self) -> None:
-        """Non-string items and non-list values raise TypeError."""
-        with pytest.raises(TypeError, match="test_field must be list\\[str\\]"):
-            _normalize_string_list(["a", 123, "c"], "test_field")
-        with pytest.raises(TypeError, match="test_field must be list\\[str\\]"):
-            _normalize_string_list("not a list", "test_field")
-        with pytest.raises(TypeError, match="test_field must be list\\[str\\]"):
-            _normalize_string_list({"key": "value"}, "test_field")
+        """Non-string items and non-list values raise."""
+        with pytest.raises(TypeError):
+            _string_list(["a", 123, "c"])
+        with pytest.raises(ValueError, match="expected list"):
+            _string_list({"key": "value"})
 
 
 class TestSkillValidatorCore:

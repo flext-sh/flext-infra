@@ -16,7 +16,7 @@ import orjson
 from flext_infra import FlextInfraRefactorViolationAnalyzer, c, m, u
 
 if TYPE_CHECKING:
-    from flext_infra.refactor.engine import FlextInfraRefactorEngine
+    from flext_infra import FlextInfraRefactorEngine
 
 
 class FlextInfraRefactorCliSupport:

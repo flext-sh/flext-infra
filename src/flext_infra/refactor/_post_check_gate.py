@@ -4,13 +4,8 @@ import ast
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, t
-from flext_infra.utilities import u
-
-if TYPE_CHECKING:
-    from flext_infra import m
+from flext_infra import c, m, t, u
 
 
 class PostCheckGate:

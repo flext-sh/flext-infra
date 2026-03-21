@@ -8,8 +8,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, r, t, u
-from flext_infra.refactor._top_level_class_collector import TopLevelClassCollector
+from flext_infra import TopLevelClassCollector, c, m, r, t, u
 
 from ._models import RDictPathGrep
 

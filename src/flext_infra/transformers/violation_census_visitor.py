@@ -7,8 +7,6 @@ from typing import override
 
 import libcst as cst
 
-__all__ = ["ViolationCensusVisitor"]
-
 _DICT_KEY_VALUE_ARITY = 2
 
 
@@ -265,3 +263,6 @@ class ViolationCensusVisitor(cst.CSTVisitor):
                 return f"{left}.{expr.attr.value}"
             return expr.attr.value
         return ""
+
+
+__all__ = ["ViolationCensusVisitor"]

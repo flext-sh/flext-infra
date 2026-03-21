@@ -239,11 +239,10 @@ if TYPE_CHECKING:
     from flext_infra.refactor._top_level_class_collector import TopLevelClassCollector
     from flext_infra.refactor._typings import FlextInfraRectorTypes
     from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
-    from flext_infra.refactor.analysis import (
-        FlextInfraRefactorClassNestingAnalyzer,
-        FlextInfraRefactorViolationAnalyzer,
-    )
     from flext_infra.refactor.census import FlextInfraRefactorCensus
+    from flext_infra.refactor.class_nesting_analyzer import (
+        FlextInfraRefactorClassNestingAnalyzer,
+    )
     from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
     from flext_infra.refactor.dependency_analyzer import (
         FlextInfraRefactorDependencyAnalyzerFacade,
@@ -281,6 +280,9 @@ if TYPE_CHECKING:
     )
     from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
     from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+    from flext_infra.refactor.violation_analyzer import (
+        FlextInfraRefactorViolationAnalyzer,
+    )
     from flext_infra.release._constants import FlextInfraReleaseConstants
     from flext_infra.release._models import FlextInfraReleaseModels
     from flext_infra.release._reporting import FlextInfraReleaseReporting
@@ -715,7 +717,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraRefactorCensus",
     ),
     "FlextInfraRefactorClassNestingAnalyzer": (
-        "flext_infra.refactor.analysis",
+        "flext_infra.refactor.class_nesting_analyzer",
         "FlextInfraRefactorClassNestingAnalyzer",
     ),
     "FlextInfraRefactorClassNestingReconstructor": (
@@ -911,7 +913,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraRefactorTypingUnifier",
     ),
     "FlextInfraRefactorViolationAnalyzer": (
-        "flext_infra.refactor.analysis",
+        "flext_infra.refactor.violation_analyzer",
         "FlextInfraRefactorViolationAnalyzer",
     ),
     "FlextInfraReleaseConstants": (

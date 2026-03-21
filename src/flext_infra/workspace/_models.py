@@ -9,7 +9,7 @@ from typing import Annotated
 from pydantic import Field
 
 from flext_core import FlextModels
-from flext_infra.typings import FlextInfraTypes as t
+from flext_infra import t
 
 
 class FlextInfraWorkspaceModels:

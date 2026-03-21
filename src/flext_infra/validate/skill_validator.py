@@ -15,7 +15,7 @@ from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraUtilitiesYaml, c, m, p, r, t, u
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraSkillValidator:
@@ -37,37 +37,6 @@ class FlextInfraSkillValidator:
         if candidate.is_absolute():
             return candidate
         return (workspace_root / candidate).resolve()
-
-    @staticmethod
-    def _safe_load_yaml(path: Path) -> Mapping[str, t.Infra.InfraValue]:
-        """Load YAML file safely; delegates to ``u.Infra``."""
-        return FlextInfraUtilitiesYaml.safe_load_yaml(path)
-
-    @staticmethod
-    def _normalize_string_list(
-        value: t.Infra.InfraValue | None,
-        field: str,
-    ) -> list[str]:
-        """Validate and normalize a list[str] config field; delegates to ``u.Infra``."""
-        if value is None:
-            return []
-        if isinstance(value, list):
-            try:
-                typed_items: list[JsonValue] = TypeAdapter(
-                    list[JsonValue],
-                ).validate_python(value)
-            except ValidationError as exc:
-                msg = f"{field} must be list[str]: {exc}"
-                raise TypeError(msg) from exc
-            out: list[str] = []
-            for item in typed_items:
-                if not isinstance(item, str):
-                    msg = f"{field} must be list[str]"
-                    raise TypeError(msg)
-                out.append(item)
-            return out
-        msg = f"{field} must be list[str]"
-        raise TypeError(msg)
 
     @staticmethod
     def _normalize_str_object_mapping(
@@ -112,20 +81,18 @@ class FlextInfraSkillValidator:
                         summary=f"no rules.yml for {skill_name}",
                     ),
                 )
-            rules = self._safe_load_yaml(rules_path)
+            rules = u.Infra.safe_load_yaml(rules_path)
             scan_targets_raw = rules.get("scan_targets", {})
             scan_targets = self._normalize_str_object_mapping(scan_targets_raw)
             if not scan_targets and scan_targets_raw not in ({}, None):
                 return r[m.Infra.ValidationReport].fail(
                     f"scan_targets must be a mapping: {rules_path}",
                 )
-            include_globs = self._normalize_string_list(
+            include_globs = u.Infra.string_list(
                 scan_targets.get("include", ["**/*.py"]),
-                "scan_targets.include",
             ) or ["**/*"]
-            exclude_globs = self._normalize_string_list(
+            exclude_globs = u.Infra.string_list(
                 scan_targets.get(c.Infra.Toml.EXCLUDE, []),
-                "scan_targets.exclude",
             )
             rules_list_obj = rules.get(c.Infra.ReportKeys.RULES, [])
             if not isinstance(rules_list_obj, list):

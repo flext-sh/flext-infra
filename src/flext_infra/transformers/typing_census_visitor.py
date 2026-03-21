@@ -7,8 +7,6 @@ from typing import override
 
 import libcst as cst
 
-__all__ = ["TypingAnnotationCensusVisitor"]
-
 _PAIR_LENGTH = 2
 
 
@@ -269,3 +267,6 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
             and key_node.value == "str"
             and self._is_object_name(value_node)
         )
+
+
+__all__ = ["TypingAnnotationCensusVisitor"]

@@ -9,7 +9,6 @@ from flext_infra.codegen._codegen_constant_visitor import (
     FlextInfraCodegenConstantDetection,
 )
 from flext_infra.codegen._codegen_metrics import FlextInfraCodegenMetrics
-from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.models import m
 
 
@@ -161,6 +160,8 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     def quality_gate_detect_duplicate_constant_groups(
         workspace_root: Path,
     ) -> list[m.Infra.DuplicateConstantGroup]:
+        from flext_infra.codegen.census import FlextInfraCodegenCensus  # noqa: PLC0415
+
         all_definitions: list[m.Infra.ConstantDefinition] = []
         for report in FlextInfraCodegenCensus(workspace_root=workspace_root).run():
             project_root = workspace_root / report.project
