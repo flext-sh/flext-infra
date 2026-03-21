@@ -17,7 +17,7 @@ from pathlib import Path
 from flext_infra import FlextInfraUtilitiesParsing, FlextInfraUtilitiesRefactor, c
 
 
-class FlextInfraCodegenTransforms:
+class FlextInfraUtilitiesCodegenTransforms:
     """Utility helpers for AST-based code transformations."""
 
     @staticmethod
@@ -53,7 +53,7 @@ class FlextInfraCodegenTransforms:
             level=0,
         )
         _ = ast.fix_missing_locations(new_import)
-        insert_idx = FlextInfraCodegenTransforms.find_insert_position(tree)
+        insert_idx = FlextInfraUtilitiesCodegenTransforms.find_insert_position(tree)
         tree.body.insert(insert_idx, new_import)
 
     @staticmethod
@@ -142,7 +142,9 @@ class FlextInfraCodegenTransforms:
         docstring: str,
     ) -> str:
         """Generate a minimal base module file with correct imports."""
-        import_line = FlextInfraCodegenTransforms._resolve_base_class_import(base_class)
+        import_line = FlextInfraUtilitiesCodegenTransforms._resolve_base_class_import(
+            base_class
+        )
         return f'"""Module skeleton for {class_name}.\n\n{docstring}\n\nCopyright (c) 2025 FLEXT Team. All rights reserved.\nSPDX-License-Identifier: MIT\n"""\n\nfrom __future__ import annotations\n\n{import_line}\n\n\nclass {class_name}({base_class}):\n    """{docstring}"""\n'
 
     @staticmethod
@@ -193,9 +195,11 @@ class FlextInfraCodegenTransforms:
         Called AFTER copy_required_imports to verify the copy succeeded.
         A name is available if it's imported or defined in the target module.
         """
-        names_used = FlextInfraCodegenTransforms.get_top_level_names_in_node(node)
-        node_name = FlextInfraCodegenTransforms.get_node_name(node)
-        type_params = FlextInfraCodegenTransforms.get_type_param_names(node)
+        names_used = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
+            node
+        )
+        node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
+        type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(node)
         names_used = frozenset(
             n for n in names_used if n != node_name and n not in type_params
         )
@@ -213,14 +217,16 @@ class FlextInfraCodegenTransforms:
                     if imported_name != "*":
                         available.add(imported_name)
             else:
-                name = FlextInfraCodegenTransforms.get_node_name(stmt)
+                name = FlextInfraUtilitiesCodegenTransforms.get_node_name(stmt)
                 if name:
                     available.add(name)
         return all(n in available for n in names_used)
 
     @staticmethod
     def _all_deps_resolvable(node: ast.stmt, target_tree: ast.Module) -> bool:
-        return FlextInfraCodegenTransforms.all_deps_resolvable(node, target_tree)
+        return FlextInfraUtilitiesCodegenTransforms.all_deps_resolvable(
+            node, target_tree
+        )
 
     @staticmethod
     def copy_required_imports(
@@ -233,9 +239,11 @@ class FlextInfraCodegenTransforms:
         Mutates target_tree for analysis accumulation only - the tree is
         never written to disk via ast.unparse.
         """
-        names_used = FlextInfraCodegenTransforms.get_top_level_names_in_node(node)
-        node_name = FlextInfraCodegenTransforms.get_node_name(node)
-        type_params = FlextInfraCodegenTransforms.get_type_param_names(node)
+        names_used = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
+            node
+        )
+        node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
+        type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(node)
         names_used = frozenset(
             n for n in names_used if n != node_name and n not in type_params
         )
@@ -294,7 +302,7 @@ class FlextInfraCodegenTransforms:
         source_tree: ast.Module,
         target_tree: ast.Module,
     ) -> None:
-        FlextInfraCodegenTransforms.copy_required_imports(
+        FlextInfraUtilitiesCodegenTransforms.copy_required_imports(
             node,
             source_tree,
             target_tree,
@@ -314,9 +322,11 @@ class FlextInfraCodegenTransforms:
         from first-party imports and those names are NOT already available in
         the target module, moving the node is unsafe.
         """
-        names_used = FlextInfraCodegenTransforms.get_top_level_names_in_node(node)
-        node_name = FlextInfraCodegenTransforms.get_node_name(node)
-        type_params = FlextInfraCodegenTransforms.get_type_param_names(node)
+        names_used = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
+            node
+        )
+        node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
+        type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(node)
         names_used = frozenset(
             n for n in names_used if n != node_name and n not in type_params
         )
@@ -334,7 +344,7 @@ class FlextInfraCodegenTransforms:
                     if imported != "*":
                         target_available.add(imported)
             else:
-                found = FlextInfraCodegenTransforms.get_node_name(stmt)
+                found = FlextInfraUtilitiesCodegenTransforms.get_node_name(stmt)
                 if found:
                     target_available.add(found)
         missing = names_used - target_available
@@ -360,7 +370,7 @@ class FlextInfraCodegenTransforms:
         source_tree: ast.Module,
         target_tree: ast.Module,
     ) -> bool:
-        return FlextInfraCodegenTransforms.needs_first_party_import(
+        return FlextInfraUtilitiesCodegenTransforms.needs_first_party_import(
             node,
             source_tree,
             target_tree,
@@ -380,9 +390,13 @@ class FlextInfraCodegenTransforms:
         """
         all_names: set[str] = set()
         for node in nodes:
-            names = FlextInfraCodegenTransforms.get_top_level_names_in_node(node)
-            node_name = FlextInfraCodegenTransforms.get_node_name(node)
-            type_params = FlextInfraCodegenTransforms.get_type_param_names(node)
+            names = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
+                node
+            )
+            node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
+            type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(
+                node
+            )
             all_names.update(
                 n for n in names if n != node_name and n not in type_params
             )
@@ -420,7 +434,7 @@ class FlextInfraCodegenTransforms:
         source_tree: ast.Module,
         target_text: str,
     ) -> list[str]:
-        return FlextInfraCodegenTransforms.collect_import_texts_for_nodes(
+        return FlextInfraUtilitiesCodegenTransforms.collect_import_texts_for_nodes(
             nodes,
             source_lines,
             source_tree,
@@ -484,7 +498,7 @@ class FlextInfraCodegenTransforms:
                     if imported != "*":
                         available.add(imported)
                 continue
-            found_name = FlextInfraCodegenTransforms.get_node_name(stmt)
+            found_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(stmt)
             if found_name:
                 available.add(found_name)
         filtered = [
@@ -513,7 +527,9 @@ class FlextInfraCodegenTransforms:
 
     @staticmethod
     def _prune_stale_all_assignment(*, path: Path) -> bool:
-        return FlextInfraCodegenTransforms.prune_stale_all_assignment(path=path)
+        return FlextInfraUtilitiesCodegenTransforms.prune_stale_all_assignment(
+            path=path
+        )
 
     @staticmethod
     def is_used_in_context(node: ast.stmt, tree: ast.Module) -> bool:

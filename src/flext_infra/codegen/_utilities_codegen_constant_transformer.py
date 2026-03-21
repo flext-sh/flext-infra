@@ -142,8 +142,13 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             updated_node: cst.Attribute,
         ) -> cst.BaseExpression:
             del original_node
-            chain = FlextInfraUtilitiesCodegenConstantDetection.attribute_chain(updated_node)
-            if len(chain) < FlextInfraUtilitiesCodegenConstantTransformation.MIN_ATTRIBUTE_CHAIN:
+            chain = FlextInfraUtilitiesCodegenConstantDetection.attribute_chain(
+                updated_node
+            )
+            if (
+                len(chain)
+                < FlextInfraUtilitiesCodegenConstantTransformation.MIN_ATTRIBUTE_CHAIN
+            ):
                 return updated_node
             if chain[0] != self._target_class:
                 return updated_node
@@ -405,7 +410,9 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             return False, []
 
         package_name = pkg_dir.name
-        parent_pkg = FlextInfraUtilitiesCodegenConstantDetection.resolve_parent_package(pkg_dir)
+        parent_pkg = FlextInfraUtilitiesCodegenConstantDetection.resolve_parent_package(
+            pkg_dir
+        )
         if parent_pkg.startswith(f"{package_name}.") or parent_pkg == package_name:
             return False, []
         cycle_edges: set[tuple[str, str]] = set()

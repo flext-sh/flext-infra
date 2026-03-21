@@ -194,7 +194,7 @@ class FlextInfraExtraPathsManager:
         if pyright_table is None:
             return r[bool].fail(f"no [tool.pyright] section in {pyproject_path}")
         mypy_table = self._as_table(self._table_get(tool_table, c.Infra.Toml.MYPY))
-        pyrefly_table = self._as_table(
+        self._as_table(
             self._table_get(tool_table, c.Infra.Toml.PYREFLY),
         )
         changed = False
@@ -212,20 +212,7 @@ class FlextInfraExtraPathsManager:
                 mypy_table["mypy_path"] = mypy_path
                 tool_table[c.Infra.Toml.MYPY] = mypy_table
                 changed = True
-        if not is_root and pyrefly_table is not None:
-            base_search: list[str] = ["."] + dep_paths
-            current_search = self._as_string_list(
-                self._table_get(pyrefly_table, c.Infra.Toml.SEARCH_PATH),
-            )
-            seen: set[str] = set(base_search)
-            for path_value in current_search:
-                if path_value not in seen:
-                    base_search.append(path_value)
-                    seen.add(path_value)
-            if base_search != current_search:
-                pyrefly_table[c.Infra.Toml.SEARCH_PATH] = base_search
-                tool_table[c.Infra.Toml.PYREFLY] = pyrefly_table
-                changed = True
+        # NOTE: pyrefly search-path is handled by EnsurePyreflyConfigPhase (SSOT).
         tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
         doc[c.Infra.Toml.TOOL] = tool_table
         if changed and (not dry_run):
@@ -280,7 +267,7 @@ class FlextInfraExtraPathsManager:
         if pyright_table is None:
             return changes
         mypy_table = self._as_table(self._table_get(tool_table, c.Infra.Toml.MYPY))
-        pyrefly_table = self._as_table(
+        self._as_table(
             self._table_get(tool_table, c.Infra.Toml.PYREFLY),
         )
         current_pyright = self._as_string_list(
@@ -297,20 +284,7 @@ class FlextInfraExtraPathsManager:
                 mypy_table["mypy_path"] = mypy_path
                 tool_table[c.Infra.Toml.MYPY] = mypy_table
                 changes.append("synchronized mypy mypy_path")
-        if not is_root and pyrefly_table is not None:
-            base_search: list[str] = ["."] + dep_paths
-            current_search = self._as_string_list(
-                self._table_get(pyrefly_table, c.Infra.Toml.SEARCH_PATH),
-            )
-            seen: set[str] = set(base_search)
-            for path_value in current_search:
-                if path_value not in seen:
-                    base_search.append(path_value)
-                    seen.add(path_value)
-            if base_search != current_search:
-                pyrefly_table[c.Infra.Toml.SEARCH_PATH] = base_search
-                tool_table[c.Infra.Toml.PYREFLY] = pyrefly_table
-                changes.append("synchronized pyrefly search-path")
+        # NOTE: pyrefly search-path is handled by EnsurePyreflyConfigPhase (SSOT).
         tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
         doc[c.Infra.Toml.TOOL] = tool_table
         return changes

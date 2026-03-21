@@ -8,7 +8,7 @@ from typing import override
 import libcst as cst
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
-from flext_infra import FlextInfraTransformerImportInsertion, c, u
+from flext_infra import c, u
 
 
 class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
@@ -119,7 +119,7 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
                 ),
             ],
         )
-        insert_idx = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
+        insert_idx = u.Infra.index_after_docstring_and_future_imports(
             updated_node.body,
         )
         body = list(updated_node.body)

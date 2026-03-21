@@ -14,8 +14,8 @@ from typing import override
 
 from flext_core import r, s
 from flext_infra import (
-    FlextInfraCodegenTransforms,
     FlextInfraNamespaceValidator,
+    FlextInfraUtilitiesCodegenTransforms,
     c,
     m,
     u,
@@ -143,7 +143,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
                 continue
             class_name = f"{test_prefix}{prefix}{suffix}"
             docstring = f"{doc_suffix} for {prefix.lower()}."
-            content = FlextInfraCodegenTransforms.generate_module_skeleton(
+            content = FlextInfraUtilitiesCodegenTransforms.generate_module_skeleton(
                 class_name=class_name,
                 base_class=base_class,
                 docstring=docstring,

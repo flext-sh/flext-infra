@@ -383,10 +383,10 @@ class_nesting:
     target_name: FlextInfraCodegenScaffolder
     confidence: medium
     reason: top_level_class_without_namespace_prefix
-  - loose_name: FlextInfraCodegenTransforms
-    current_file: flext-core/src/flext_infra/codegen/transforms.py
+  - loose_name: FlextInfraUtilitiesCodegenTransforms
+    current_file: flext-core/src/flext_infra/codegen._utilities_transforms.py
     target_namespace: FlextCodegenTransforms
-    target_name: FlextInfraCodegenTransforms
+    target_name: FlextInfraUtilitiesCodegenTransforms
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraConstants

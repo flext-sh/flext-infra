@@ -7,7 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraTransformerImportInsertion
+from flext_infra import u
 
 
 class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
@@ -74,7 +74,7 @@ class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
         if not unique_hoisted:
             return updated_node
         body = list(updated_node.body)
-        insert_idx = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
+        insert_idx = u.Infra.index_after_docstring_and_future_imports(
             body,
         )
         new_body = body[:insert_idx] + unique_hoisted + body[insert_idx:]

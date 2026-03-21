@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-    from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraCodegenCensus": (
@@ -50,10 +49,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.codegen.scaffolder",
         "FlextInfraCodegenScaffolder",
     ),
-    "FlextInfraCodegenTransforms": (
-        "flext_infra.codegen.transforms",
-        "FlextInfraCodegenTransforms",
-    ),
 }
 
 __all__ = [
@@ -63,7 +58,6 @@ __all__ = [
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
-    "FlextInfraCodegenTransforms",
 ]
 
 

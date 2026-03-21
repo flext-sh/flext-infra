@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+    from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
     from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
     from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
+    from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
     from flext_infra._utilities.scanning import FlextInfraUtilitiesScanning
@@ -50,6 +52,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraUtilitiesDiscovery": (
         "flext_infra._utilities.discovery",
         "FlextInfraUtilitiesDiscovery",
+    ),
+    "FlextInfraUtilitiesDocs": (
+        "flext_infra._utilities.docs",
+        "FlextInfraUtilitiesDocs",
     ),
     "FlextInfraUtilitiesFormatting": (
         "flext_infra._utilities.formatting",
@@ -80,6 +86,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraUtilitiesPatterns": (
         "flext_infra._utilities.patterns",
         "FlextInfraUtilitiesPatterns",
+    ),
+    "FlextInfraUtilitiesRelease": (
+        "flext_infra._utilities.release",
+        "FlextInfraUtilitiesRelease",
     ),
     "FlextInfraUtilitiesReporting": (
         "flext_infra._utilities.reporting",
@@ -132,6 +142,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 __all__ = [
     "FlextInfraUtilitiesCli",
     "FlextInfraUtilitiesDiscovery",
+    "FlextInfraUtilitiesDocs",
     "FlextInfraUtilitiesFormatting",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGithub",
@@ -141,6 +152,7 @@ __all__ = [
     "FlextInfraUtilitiesParsing",
     "FlextInfraUtilitiesPaths",
     "FlextInfraUtilitiesPatterns",
+    "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesScanning",

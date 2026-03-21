@@ -15,7 +15,7 @@ from pathlib import Path
 from pydantic import JsonValue
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraDocsShared, c, m, r, u
+from flext_infra import c, m, r, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -74,7 +74,7 @@ class FlextInfraDocFixer:
             r with list of FixReport objects.
 
         """
-        scopes_result = FlextInfraDocsShared.build_scopes(
+        scopes_result = u.Infra.build_scopes(
             workspace_root=workspace_root,
             project=project,
             projects=projects,
@@ -111,7 +111,7 @@ class FlextInfraDocFixer:
     ) -> m.Infra.DocsPhaseReport:
         """Run link and TOC fixes across all markdown files in scope."""
         items: list[m.Infra.DocsPhaseItem] = []
-        for md in FlextInfraDocsShared.iter_markdown_files(scope.path):
+        for md in u.Infra.iter_markdown_files(scope.path):
             item = self._process_file(md, apply=apply)
             if item.links or item.toc:
                 rel = md.relative_to(scope.path).as_posix()
@@ -147,7 +147,7 @@ class FlextInfraDocFixer:
             "|---|---:|---:|",
             *[f"| {item.file} | {item.links} | {item.toc} |" for item in items],
         ]
-        _ = FlextInfraDocsShared.write_markdown(
+        _ = u.Infra.write_markdown(
             scope.report_dir / "fix-report.md",
             lines,
         )

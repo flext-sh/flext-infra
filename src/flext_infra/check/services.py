@@ -1,17 +1,14 @@
-"""FLEXT infrastructure check services."""
+"""FLEXT infrastructure check services.
+
+Re-exports FlextInfraWorkspaceChecker and FlextInfraConfigFixer
+for backwards-compatible imports.
+"""
 
 from __future__ import annotations
 
-from flext_infra import FlextInfraConfigFixer, FlextInfraWorkspaceChecker, m
-
-CheckIssue = m.Infra.Issue
-GateExecution = m.Infra.GateExecution
-ProjectResult = m.Infra.ProjectResult
+from flext_infra import FlextInfraConfigFixer, FlextInfraWorkspaceChecker
 
 __all__ = [
-    "CheckIssue",
     "FlextInfraConfigFixer",
     "FlextInfraWorkspaceChecker",
-    "GateExecution",
-    "ProjectResult",
 ]

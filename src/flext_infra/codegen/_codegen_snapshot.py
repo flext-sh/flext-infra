@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraCodegenCoercion,
-    FlextInfraCodegenTransforms,
+    FlextInfraUtilitiesCodegenTransforms,
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactor,
@@ -105,11 +105,13 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
             extracted.append(block)
             ranges.append((start, end))
 
-        import_texts = FlextInfraCodegenTransforms.collect_import_texts_for_nodes(
-            nodes_moved,
-            source_lines,
-            source_tree,
-            target_text,
+        import_texts = (
+            FlextInfraUtilitiesCodegenTransforms.collect_import_texts_for_nodes(
+                nodes_moved,
+                source_lines,
+                source_tree,
+                target_text,
+            )
         )
 
         for start, end in sorted(ranges, key=operator.itemgetter(0), reverse=True):

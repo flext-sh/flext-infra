@@ -57,9 +57,7 @@ class FlextInfraUtilitiesCodegenGovernance:
 
     @staticmethod
     def get_constants_class_pattern() -> str:
-        return (
-            FlextInfraUtilitiesCodegenGovernance.load_governance_config().constants_class_pattern
-        )
+        return FlextInfraUtilitiesCodegenGovernance.load_governance_config().constants_class_pattern
 
     @staticmethod
     def is_rule_fixable(rule_id: str, module: str) -> bool:

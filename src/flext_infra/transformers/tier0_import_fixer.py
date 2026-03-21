@@ -16,7 +16,7 @@ from typing import ClassVar, override
 
 import libcst as cst
 
-from flext_infra import FlextInfraTransformerImportInsertion, u
+from flext_infra import u
 
 
 class FlextInfraTransformerTier0ImportFixer:
@@ -309,9 +309,7 @@ class FlextInfraTransformerTier0ImportFixer:
             return res
 
         def _idx(self, body: Sequence[cst.BaseStatement]) -> int:
-            i = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
-                body
-            )
+            i = u.Infra.index_after_docstring_and_future_imports(body)
             while (
                 i < len(body)
                 and isinstance(body[i], cst.SimpleStatementLine)

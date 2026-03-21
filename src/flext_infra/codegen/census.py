@@ -15,9 +15,9 @@ from typing import override
 
 from flext_core import r, s
 from flext_infra import (
+    FlextInfraNamespaceValidator,
     FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraUtilitiesCodegenGovernance,
-    FlextInfraNamespaceValidator,
     c,
     m,
     p,
@@ -180,11 +180,9 @@ class FlextInfraCodegenCensus(s[bool]):
         src_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
         if src_dir.is_dir() and not self._class_to_analyze:
             # Extract all constant definitions (any class with Final)
-            all_defs = (
-                FlextInfraUtilitiesCodegenConstantDetection.extract_all_constant_definitions(
-                    src_dir.parent,
-                    frozenset({".mypy_cache", "__pycache__"}),
-                )
+            all_defs = FlextInfraUtilitiesCodegenConstantDetection.extract_all_constant_definitions(
+                src_dir.parent,
+                frozenset({".mypy_cache", "__pycache__"}),
             )
 
             # Detect duplicates
@@ -192,20 +190,26 @@ class FlextInfraCodegenCensus(s[bool]):
             for defs in all_defs.values():
                 flat_defs.extend(defs)
 
-            duplicates = FlextInfraUtilitiesCodegenConstantDetection.detect_duplicate_constants(
-                flat_defs,
+            duplicates = (
+                FlextInfraUtilitiesCodegenConstantDetection.detect_duplicate_constants(
+                    flat_defs,
+                )
             )
 
             # Count usage
-            all_usage_map = FlextInfraUtilitiesCodegenConstantDetection.scan_all_constant_usages(
-                src_dir.parent,
-                frozenset({".mypy_cache", "__pycache__"}),
+            all_usage_map = (
+                FlextInfraUtilitiesCodegenConstantDetection.scan_all_constant_usages(
+                    src_dir.parent,
+                    frozenset({".mypy_cache", "__pycache__"}),
+                )
             )
 
             # Add census info to violations as info (not violations, just counts)
-            unused = FlextInfraUtilitiesCodegenConstantDetection.detect_unused_constants(
-                flat_defs,
-                set(all_usage_map.keys()),
+            unused = (
+                FlextInfraUtilitiesCodegenConstantDetection.detect_unused_constants(
+                    flat_defs,
+                    set(all_usage_map.keys()),
+                )
             )
 
             violations.append(

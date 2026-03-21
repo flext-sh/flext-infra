@@ -7,7 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraTransformerImportInsertion
+from flext_infra import u
 
 
 class TypingAnnotationReplacer(cst.CSTTransformer):
@@ -179,7 +179,7 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
             ],
         )
         body = list(updated_node.body)
-        insert_idx = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
+        insert_idx = u.Infra.index_after_docstring_and_future_imports(
             body,
         )
         new_body = body[:insert_idx] + [new_import] + body[insert_idx:]

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pydantic import TypeAdapter
 
-from flext_infra import FlextInfraCodegenTransforms, c, t
+from flext_infra import FlextInfraUtilitiesCodegenTransforms, c, t
 
 
-class FlextInfraCodegenCoercion(FlextInfraCodegenTransforms):
+class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
     container_mapping_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
         dict[str, t.Infra.InfraValue],
     )

@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraDocsShared, c, m, r, u
+from flext_infra import c, m, r, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -86,7 +86,7 @@ class FlextInfraDocGenerator:
             r with list of GenerateReport objects.
 
         """
-        scopes_result = FlextInfraDocsShared.build_scopes(
+        scopes_result = u.Infra.build_scopes(
             workspace_root=workspace_root,
             project=project,
             projects=projects,
@@ -255,7 +255,7 @@ class FlextInfraDocGenerator:
                 ],
             },
         )
-        _ = FlextInfraDocsShared.write_markdown(
+        _ = u.Infra.write_markdown(
             scope.report_dir / "generate-report.md",
             [
                 "# Docs Generate Report",

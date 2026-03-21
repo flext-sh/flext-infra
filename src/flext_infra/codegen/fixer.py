@@ -19,14 +19,12 @@ from typing import override
 
 from flext_core import r, s
 from flext_infra import (
-    FlextInfraUtilitiesCodegenConstantDetection,
-    FlextInfraUtilitiesCodegenConstantTransformation,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenSnapshot,
-    FlextInfraCodegenTransforms,
     FlextInfraNamespaceValidator,
     FlextInfraRefactorEngine,
     FlextInfraRefactorMigrateToClassMRO,
+    FlextInfraUtilitiesCodegenTransforms,
     NamespaceEnforcementRewriter,
     NamespaceSourceDetector,
     c,
@@ -421,7 +419,9 @@ class FlextInfraCodegenFixer(s[bool]):
                 continue
             if path.name == c.Infra.Files.INIT_PY:
                 continue
-            if FlextInfraCodegenTransforms.prune_stale_all_assignment(path=path):
+            if FlextInfraUtilitiesCodegenTransforms.prune_stale_all_assignment(
+                path=path
+            ):
                 files_modified.add(str(path))
 
     def _normalize_rewritten_python_files(self, *, files_modified: set[str]) -> None:
@@ -488,7 +488,7 @@ class FlextInfraCodegenFixer(s[bool]):
         tree = u.Infra.parse_module_ast(source_file)
         if tree is None:
             return
-        finals = FlextInfraCodegenTransforms.find_standalone_finals(tree)
+        finals = FlextInfraUtilitiesCodegenTransforms.find_standalone_finals(tree)
         if not finals:
             return
         target_path = pkg_dir / "constants.py"
@@ -523,7 +523,7 @@ class FlextInfraCodegenFixer(s[bool]):
             target_name = ""
             if isinstance(node.target, ast.Name):
                 target_name = node.target.id
-            if FlextInfraCodegenTransforms.name_exists_in_module(
+            if FlextInfraUtilitiesCodegenTransforms.name_exists_in_module(
                 target_name,
                 target_tree,
             ):
@@ -537,8 +537,12 @@ class FlextInfraCodegenFixer(s[bool]):
                     ),
                 )
                 continue
-            FlextInfraCodegenTransforms.copy_required_imports(node, tree, target_tree)
-            if not FlextInfraCodegenTransforms.all_deps_resolvable(node, target_tree):
+            FlextInfraUtilitiesCodegenTransforms.copy_required_imports(
+                node, tree, target_tree
+            )
+            if not FlextInfraUtilitiesCodegenTransforms.all_deps_resolvable(
+                node, target_tree
+            ):
                 violations_skipped.append(
                     m.Infra.CensusViolation(
                         module=str(source_file),
@@ -550,7 +554,9 @@ class FlextInfraCodegenFixer(s[bool]):
                 )
                 continue
             # Insert into target_tree for analysis accumulation
-            insert_idx = FlextInfraCodegenTransforms.find_insert_position(target_tree)
+            insert_idx = FlextInfraUtilitiesCodegenTransforms.find_insert_position(
+                target_tree
+            )
             target_tree.body.insert(insert_idx, node)
             violations_fixed.append(
                 m.Infra.CensusViolation(
@@ -590,8 +596,10 @@ class FlextInfraCodegenFixer(s[bool]):
         tree = u.Infra.parse_module_ast(source_file)
         if tree is None:
             return
-        typevars = FlextInfraCodegenTransforms.find_standalone_typevars(tree)
-        typealiases = FlextInfraCodegenTransforms.find_standalone_typealiases(tree)
+        typevars = FlextInfraUtilitiesCodegenTransforms.find_standalone_typevars(tree)
+        typealiases = FlextInfraUtilitiesCodegenTransforms.find_standalone_typealiases(
+            tree
+        )
         if not typevars and not typealiases:
             return
         target_path = pkg_dir / "typings.py"
@@ -620,7 +628,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 continue
             nodes_to_move.append(tv_node)
         for alias_node in typealiases:
-            target_name = FlextInfraCodegenTransforms.get_node_name(alias_node)
+            target_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(alias_node)
             if target_name.startswith("_"):
                 violations_skipped.append(
                     m.Infra.CensusViolation(
@@ -639,10 +647,10 @@ class FlextInfraCodegenFixer(s[bool]):
         actually_moved: list[ast.stmt] = []
         moved_names: list[str] = []
         for move_node in nodes_to_move:
-            target_name = FlextInfraCodegenTransforms.get_node_name(move_node)
+            target_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(move_node)
             if not target_name:
                 continue
-            if FlextInfraCodegenTransforms.name_exists_in_module(
+            if FlextInfraUtilitiesCodegenTransforms.name_exists_in_module(
                 target_name,
                 target_tree,
             ):
@@ -656,7 +664,7 @@ class FlextInfraCodegenFixer(s[bool]):
                     ),
                 )
                 continue
-            if FlextInfraCodegenTransforms.needs_first_party_import(
+            if FlextInfraUtilitiesCodegenTransforms.needs_first_party_import(
                 move_node,
                 tree,
                 target_tree,
@@ -671,12 +679,12 @@ class FlextInfraCodegenFixer(s[bool]):
                     ),
                 )
                 continue
-            FlextInfraCodegenTransforms.copy_required_imports(
+            FlextInfraUtilitiesCodegenTransforms.copy_required_imports(
                 move_node,
                 tree,
                 target_tree,
             )
-            if not FlextInfraCodegenTransforms.all_deps_resolvable(
+            if not FlextInfraUtilitiesCodegenTransforms.all_deps_resolvable(
                 move_node,
                 target_tree,
             ):
@@ -691,7 +699,9 @@ class FlextInfraCodegenFixer(s[bool]):
                 )
                 continue
             # Insert into target_tree for analysis accumulation
-            insert_idx = FlextInfraCodegenTransforms.find_insert_position(target_tree)
+            insert_idx = FlextInfraUtilitiesCodegenTransforms.find_insert_position(
+                target_tree
+            )
             target_tree.body.insert(insert_idx, move_node)
             kind = "TypeVar" if isinstance(move_node, ast.Assign) else "TypeAlias"
             violations_fixed.append(
@@ -743,11 +753,11 @@ class FlextInfraCodegenFixer(s[bool]):
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
             return
-        definitions = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
+        definitions = u.Infra.extract_constant_definitions(
             file_path=constants_file,
             project=pkg_dir.name,
         )
-        hardcoded = FlextInfraUtilitiesCodegenConstantDetection.detect_hardcoded_canonicals(
+        hardcoded = u.Infra.detect_hardcoded_canonicals(
             definitions,
         )
         if not hardcoded:
@@ -767,7 +777,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 for definition in hardcoded
             )
             return
-        modified, _ = FlextInfraUtilitiesCodegenConstantTransformation.replace_canonical_values(
+        modified, _ = u.Infra.replace_canonical_values(
             file_path=constants_file,
             parent_class=parent_class,
             definitions=hardcoded,
@@ -810,7 +820,7 @@ class FlextInfraCodegenFixer(s[bool]):
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
             return
-        definitions = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
+        definitions = u.Infra.extract_constant_definitions(
             file_path=constants_file,
             project=pkg_dir.name,
         )
@@ -826,30 +836,26 @@ class FlextInfraCodegenFixer(s[bool]):
                 if not discovered_src.is_dir():
                     continue
                 for py_file in sorted(discovered_src.rglob("*.py")):
-                    used_names, _, _ = (
-                        FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
-                            file_path=py_file,
-                            project=project.name,
-                        )
+                    used_names, _, _ = u.Infra.scan_constant_usages(
+                        file_path=py_file,
+                        project=project.name,
                     )
                     all_used_names.update(used_names)
         else:
             for py_file in sorted(src_dir.rglob("*.py")):
-                used_names, _, _ = (
-                    FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
-                        file_path=py_file,
-                        project=pkg_dir.name,
-                    )
+                used_names, _, _ = u.Infra.scan_constant_usages(
+                    file_path=py_file,
+                    project=pkg_dir.name,
                 )
                 all_used_names.update(used_names)
 
-        unused = FlextInfraUtilitiesCodegenConstantDetection.detect_unused_constants(
+        unused = u.Infra.detect_unused_constants(
             definitions=definitions,
             all_used_names=all_used_names,
         )
         if not unused:
             return
-        modified, _ = FlextInfraUtilitiesCodegenConstantTransformation.remove_unused_constants(
+        modified, _ = u.Infra.remove_unused_constants(
             file_path=constants_file,
             unused=unused,
         )
@@ -890,16 +896,14 @@ class FlextInfraCodegenFixer(s[bool]):
         for py_file in sorted(src_dir.rglob("*.py")):
             if py_file.name == "constants.py":
                 continue
-            _, direct_refs, _ = FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
+            _, direct_refs, _ = u.Infra.scan_constant_usages(
                 file_path=py_file, project=pkg_dir.name
             )
             if not direct_refs:
                 continue
-            modified, _ = (
-                FlextInfraUtilitiesCodegenConstantTransformation.normalize_constant_aliases(
-                    file_path=py_file,
-                    project_import=project_import,
-                )
+            modified, _ = u.Infra.normalize_constant_aliases(
+                file_path=py_file,
+                project_import=project_import,
             )
             if modified:
                 files_modified.add(str(py_file))

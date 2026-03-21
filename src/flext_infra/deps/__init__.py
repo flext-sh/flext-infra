@@ -33,9 +33,7 @@ if TYPE_CHECKING:
     from flext_infra.deps._phases.ensure_pytest import EnsurePytestConfigPhase
     from flext_infra.deps._phases.ensure_ruff import EnsureRuffConfigPhase
     from flext_infra.deps._phases.inject_comments import InjectCommentsPhase
-    from flext_infra.deps.detection import (
-        FlextInfraDependencyDetectionService,
-    )
+    from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector, main
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer

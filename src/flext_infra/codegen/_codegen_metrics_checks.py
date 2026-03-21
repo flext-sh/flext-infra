@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_infra import (
-    FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraCodegenMetrics,
+    FlextInfraUtilitiesCodegenConstantDetection,
     c,
     m,
     t,
@@ -171,11 +171,9 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
             )
             if not constants_file.is_file():
                 continue
-            definitions = (
-                FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
-                    constants_file,
-                    report.project,
-                )
+            definitions = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
+                constants_file,
+                report.project,
             )
             all_definitions.extend(definitions)
         name_to_defs: dict[str, list[m.Infra.ConstantDefinition]] = {}

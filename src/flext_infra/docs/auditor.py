@@ -18,7 +18,7 @@ from pathlib import Path
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraDocsShared, c, m, output, r, t, u
+from flext_infra import c, m, output, r, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -107,7 +107,7 @@ class FlextInfraDocAuditor:
             "# Docs Audit Report",
             "",
             f"Scope: {scope.name}",
-            f"Files scanned: {len(FlextInfraDocsShared.iter_markdown_files(scope.path))}",
+            f"Files scanned: {len(u.Infra.iter_markdown_files(scope.path))}",
             f"Issues: {len(issues)}",
             "",
             "| file | type | severity | message |",
@@ -142,7 +142,7 @@ class FlextInfraDocAuditor:
             r with list of AuditReport objects.
 
         """
-        scopes_result = FlextInfraDocsShared.build_scopes(
+        scopes_result = u.Infra.build_scopes(
             workspace_root=workspace_root,
             project=project,
             projects=projects,
@@ -208,7 +208,7 @@ class FlextInfraDocAuditor:
             scope.report_dir / "audit-summary.json",
             summary_payload,
         )
-        _ = FlextInfraDocsShared.write_markdown(
+        _ = u.Infra.write_markdown(
             scope.report_dir / "audit-report.md",
             self.to_markdown(scope, issues),
         )
@@ -254,7 +254,7 @@ class FlextInfraDocAuditor:
     ) -> list[m.Infra.AuditIssue]:
         """Collect broken internal-link issues for markdown files in scope."""
         issues: list[m.Infra.AuditIssue] = []
-        for md_file in FlextInfraDocsShared.iter_markdown_files(scope.path):
+        for md_file in u.Infra.iter_markdown_files(scope.path):
             content = md_file.read_text(
                 encoding=c.Infra.Encoding.DEFAULT,
                 errors=c.Infra.Toml.IGNORE,
@@ -294,7 +294,7 @@ class FlextInfraDocAuditor:
         """Collect forbidden-term issues for markdown files in scope."""
         issues: list[m.Infra.AuditIssue] = []
         terms: tuple[str, ...] = ()
-        for md_file in FlextInfraDocsShared.iter_markdown_files(scope.path):
+        for md_file in u.Infra.iter_markdown_files(scope.path):
             rel = md_file.relative_to(scope.path).as_posix()
             rel_lower = rel.lower()
             if scope.name == c.Infra.ReportKeys.ROOT:

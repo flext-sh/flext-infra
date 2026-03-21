@@ -14,7 +14,7 @@ from pathlib import Path
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraDocsShared, c, m, r, u
+from flext_infra import c, m, r, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -73,13 +73,11 @@ class FlextInfraDocValidator:
             r with list of ValidateReport objects.
 
         """
-        scopes_result: r[list[m.Infra.FlextInfraDocScope]] = (
-            FlextInfraDocsShared.build_scopes(
-                workspace_root=workspace_root,
-                project=project,
-                projects=projects,
-                output_dir=output_dir,
-            )
+        scopes_result: r[list[m.Infra.FlextInfraDocScope]] = u.Infra.build_scopes(
+            workspace_root=workspace_root,
+            project=project,
+            projects=projects,
+            output_dir=output_dir,
         )
         if scopes_result.is_failure:
             return r[list[m.Infra.DocsPhaseReport]].fail(
@@ -164,7 +162,7 @@ class FlextInfraDocValidator:
             scope.report_dir / "validate-summary.json",
             payload,
         )
-        _ = FlextInfraDocsShared.write_markdown(
+        _ = u.Infra.write_markdown(
             scope.report_dir / "validate-report.md",
             [
                 "# Docs Validate Report",

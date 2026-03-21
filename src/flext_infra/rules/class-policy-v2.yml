@@ -1778,16 +1778,16 @@ rules:
   - project_kind: core
     facade_family: u
     module_family: other_private
-    source_symbol: FlextInfraCodegenTransforms
+    source_symbol: FlextInfraUtilitiesCodegenTransforms
     target_facade_class: FlextCodegenTransforms
-    target_namespace_path: FlextCodegenTransforms.FlextInfraCodegenTransforms
+    target_namespace_path: FlextCodegenTransforms.FlextInfraUtilitiesCodegenTransforms
     expected_base_chain: *id006
     forbidden_targets: []
     confidence: 0.7
     pre_checks:
       - type: source_symbol_is_class
         params:
-          symbol: FlextInfraCodegenTransforms
+          symbol: FlextInfraUtilitiesCodegenTransforms
       - type: target_facade_exists
         params:
           facade: FlextCodegenTransforms

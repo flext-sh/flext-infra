@@ -6,6 +6,7 @@ from flext_infra import (
     FlextInfraUtilitiesCodegenConstantTransformation,
     FlextInfraUtilitiesCodegenExecution,
     FlextInfraUtilitiesCodegenGovernance,
+    FlextInfraUtilitiesCodegenTransforms,
 )
 
 
@@ -15,6 +16,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraUtilitiesCodegenConstantTransformation,
     FlextInfraUtilitiesCodegenGovernance,
+    FlextInfraUtilitiesCodegenTransforms,
 ): ...
 
 

@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraDocsShared, c, m, p, r, u
+from flext_infra import c, m, p, r, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -38,7 +38,7 @@ class FlextInfraDocBuilder:
             scope.report_dir / "build-summary.json",
             {c.Infra.ReportKeys.SUMMARY: report.model_dump()},
         )
-        _ = FlextInfraDocsShared.write_markdown(
+        _ = u.Infra.write_markdown(
             scope.report_dir / "build-report.md",
             [
                 "# Docs Build Report",
@@ -70,7 +70,7 @@ class FlextInfraDocBuilder:
             r with list of BuildReport objects.
 
         """
-        scopes_result = FlextInfraDocsShared.build_scopes(
+        scopes_result = u.Infra.build_scopes(
             workspace_root=workspace_root,
             project=project,
             projects=projects,

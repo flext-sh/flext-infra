@@ -162,7 +162,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             return [expr.value]
         if isinstance(expr, cst.Attribute):
             return [
-                *FlextInfraUtilitiesCodegenConstantDetection.attribute_chain(expr.value),
+                *FlextInfraUtilitiesCodegenConstantDetection.attribute_chain(
+                    expr.value
+                ),
                 expr.attr.value,
             ]
         return []
@@ -180,7 +182,10 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
     @staticmethod
     def str_literal(value_repr: str) -> str | None:
-        if len(value_repr) < FlextInfraUtilitiesCodegenConstantDetection.MIN_QUOTED_LITERAL_LEN:
+        if (
+            len(value_repr)
+            < FlextInfraUtilitiesCodegenConstantDetection.MIN_QUOTED_LITERAL_LEN
+        ):
             return None
         if value_repr[0] != value_repr[-1]:
             return None
@@ -192,7 +197,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     def semantic_name_matches(name: str, canonical_ref: str) -> bool:
         if not canonical_ref:
             return False
-        semantic_names = FlextInfraUtilitiesCodegenGovernance.get_semantic_names(canonical_ref)
+        semantic_names = FlextInfraUtilitiesCodegenGovernance.get_semantic_names(
+            canonical_ref
+        )
         return name in semantic_names
 
     @staticmethod
@@ -200,17 +207,21 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         det = FlextInfraUtilitiesCodegenConstantDetection
         int_value = det.int_literal(value_repr)
         if int_value is not None:
-            candidate = FlextInfraUtilitiesCodegenGovernance.get_canonical_int_values().get(
-                int_value,
-                "",
+            candidate = (
+                FlextInfraUtilitiesCodegenGovernance.get_canonical_int_values().get(
+                    int_value,
+                    "",
+                )
             )
             return candidate if det.semantic_name_matches(name, candidate) else ""
 
         str_value = det.str_literal(value_repr)
         if str_value is not None:
-            candidate = FlextInfraUtilitiesCodegenGovernance.get_canonical_str_values().get(
-                str_value,
-                "",
+            candidate = (
+                FlextInfraUtilitiesCodegenGovernance.get_canonical_str_values().get(
+                    str_value,
+                    "",
+                )
             )
             return candidate if det.semantic_name_matches(name, candidate) else ""
 
@@ -260,8 +271,10 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             if any(excl in py_file.parts for excl in exclude_packages):
                 continue
 
-            project_name = FlextInfraUtilitiesCodegenConstantDetection._infer_project_name(
-                py_file, root_path
+            project_name = (
+                FlextInfraUtilitiesCodegenConstantDetection._infer_project_name(
+                    py_file, root_path
+                )
             )
 
             defs = FlextInfraUtilitiesCodegenConstantDetection.extract_constant_definitions(
@@ -342,14 +355,18 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             if any(excl in py_file.parts for excl in exclude_packages):
                 continue
 
-            project_name = FlextInfraUtilitiesCodegenConstantDetection._infer_project_name(
-                py_file, root_path
+            project_name = (
+                FlextInfraUtilitiesCodegenConstantDetection._infer_project_name(
+                    py_file, root_path
+                )
             )
 
-            _, _, all_refs = FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
-                py_file,
-                project_name,
-                collect_all_refs=True,
+            _, _, all_refs = (
+                FlextInfraUtilitiesCodegenConstantDetection.scan_constant_usages(
+                    py_file,
+                    project_name,
+                    collect_all_refs=True,
+                )
             )
 
             for constant_name, line_num in all_refs:

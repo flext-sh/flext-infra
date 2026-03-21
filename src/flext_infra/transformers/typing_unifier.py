@@ -8,7 +8,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraTransformerImportInsertion, c, u
+from flext_infra import c, u
 
 _PAIR_LENGTH = 2
 
@@ -219,7 +219,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
             ],
         )
         body = list(module.body)
-        insert_idx = FlextInfraTransformerImportInsertion.index_after_docstring_and_future_imports(
+        insert_idx = u.Infra.index_after_docstring_and_future_imports(
             body,
         )
         self.changes.append("Added import: from flext_core import t")

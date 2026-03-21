@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import override
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraReleaseReporting, c, m, r, s, u
+from flext_infra import c, m, r, s, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -141,7 +141,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         if notes_result.is_failure:
             return notes_result
         if not dry_run:
-            changelog_result = FlextInfraReleaseReporting.update_changelog(
+            changelog_result = u.Infra.update_changelog(
                 workspace_root,
                 version,
                 tag,
@@ -387,7 +387,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         project_list: list[m.Infra.ProjectInfo] = (
             projects_result.value if projects_result.is_success else []
         )
-        return FlextInfraReleaseReporting.generate_notes(
+        return u.Infra.generate_notes(
             version,
             tag,
             project_list,

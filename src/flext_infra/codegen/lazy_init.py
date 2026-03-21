@@ -25,8 +25,6 @@ from typing import ClassVar, override
 
 from flext_core import r, s
 from flext_infra import (
-    FlextInfraUtilitiesCodegenAstParsing,
-    FlextInfraUtilitiesCodegenConstantTransformation,
     FlextInfraCodegenGeneration,
     c,
     output,
@@ -117,9 +115,7 @@ class FlextInfraCodegenLazyInit(s[int]):
                 init_file = pkg_dir / "__init__.py"
                 if not init_file.is_file():
                     continue
-                modified, changes = (
-                    FlextInfraUtilitiesCodegenConstantTransformation.break_import_cycles(pkg_dir)
-                )
+                modified, changes = u.Infra.break_import_cycles(pkg_dir)
                 if modified:
                     for change in changes:
                         output.info(f"  CYCLE-FIX: {change}")
@@ -182,7 +178,7 @@ class FlextInfraCodegenLazyInit(s[int]):
 
         """
         init_path = pkg_dir / "__init__.py"
-        current_pkg = FlextInfraUtilitiesCodegenAstParsing.infer_package(init_path)
+        current_pkg = u.Infra.infer_package(init_path)
         if not current_pkg:
             return (None, {})
 
@@ -365,7 +361,7 @@ class FlextInfraCodegenLazyInit(s[int]):
                 continue
 
             # Prefer __all__ when available
-            has_all, all_exports = FlextInfraUtilitiesCodegenAstParsing.extract_exports(
+            has_all, all_exports = u.Infra.extract_exports(
                 sibling_tree,
             )
             if has_all and all_exports:
@@ -509,7 +505,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         if tree is None:
             return ({}, {})
 
-        inline = FlextInfraUtilitiesCodegenAstParsing.extract_inline_constants(tree)
+        inline = u.Infra.extract_inline_constants(tree)
         ver_mod = f"{current_pkg}.__version__" if current_pkg else "__version__"
 
         lazy: dict[str, tuple[str, str]] = {}
