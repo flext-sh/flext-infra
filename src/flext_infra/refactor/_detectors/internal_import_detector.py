@@ -1,3 +1,12 @@
+"""Detector for identifying imports of private modules or symbols.
+
+This module detects imports that violate encapsulation by importing from
+private modules (containing `._`) or importing private symbols (starting with `_`).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
@@ -14,20 +23,37 @@ from flext_infra.refactor._models_namespace_enforcer import (
 
 
 class InternalImportDetector(p.Infra.Scanner):
-    """Detect imports of private modules or symbols across boundaries."""
+    """Detector for private module and symbol import violations.
+
+    Identifies imports that expose private implementation details by importing
+    from private modules or importing symbols with underscore prefixes.
+    """
 
     def __init__(
         self,
         *,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the InternalImportDetector scanner.
+
+        Args:
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for internal import violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected private import violations.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
@@ -56,7 +82,16 @@ class InternalImportDetector(p.Infra.Scanner):
         file_path: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.InternalImportViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect internal import violations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of InternalImportViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             _parse_failures=parse_failures,
@@ -69,7 +104,16 @@ class InternalImportDetector(p.Infra.Scanner):
         file_path: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.InternalImportViolation]:
-        """Scan a file for private module or symbol imports."""
+        """Scan a file for private module or symbol imports.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of InternalImportViolation for each private import found.
+
+        """
         try:
             tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
         except cst.ParserSyntaxError:
@@ -115,6 +159,15 @@ class InternalImportDetector(p.Infra.Scanner):
 
     @staticmethod
     def _module_to_str(module: cst.BaseExpression | None) -> str:
+        """Convert a module expression to its dotted string representation.
+
+        Args:
+            module: A libcst expression or None to convert to string.
+
+        Returns:
+            Dotted module name (e.g., 'a.b.c').
+
+        """
         if module is None:
             return ""
         if isinstance(module, cst.Name):
@@ -134,6 +187,15 @@ class InternalImportDetector(p.Infra.Scanner):
     def _iter_simple_statements(
         body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
     ) -> Iterator[cst.BaseSmallStatement]:
+        """Iterate over simple statements from a module or compound body.
+
+        Args:
+            body: Sequence of statement lines or compound statements.
+
+        Yields:
+            Individual small statements from simple statement lines.
+
+        """
         for item in body:
             if isinstance(item, cst.SimpleStatementLine):
                 yield from item.body

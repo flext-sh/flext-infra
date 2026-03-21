@@ -1,3 +1,12 @@
+"""Detector for identifying Pydantic model classes outside canonical locations.
+
+This module provides detection of BaseModel subclasses that are defined outside
+the standard canonical model files (_models.py, models.py) or _models/ directories.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -18,7 +27,12 @@ if TYPE_CHECKING:
 
 
 class ClassPlacementDetector(p.Infra.Scanner):
-    """Detect BaseModel subclasses outside canonical model files."""
+    """Detector for Pydantic model class placement violations.
+
+    Scans Python files to identify BaseModel subclasses defined outside
+    canonical model files (models.py, _models.py) or _models/ directories.
+    Enforces namespace consistency by catching models in non-standard locations.
+    """
 
     PYDANTIC_BASE_NAMES: ClassVar[frozenset[str]] = frozenset(
         {
@@ -40,13 +54,26 @@ class ClassPlacementDetector(p.Infra.Scanner):
         *,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the ClassPlacementDetector scanner.
+
+        Args:
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for class placement violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected violations with standardized format.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
@@ -69,7 +96,16 @@ class ClassPlacementDetector(p.Infra.Scanner):
         file_path: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ClassPlacementViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect class placement violations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of ClassPlacementViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             _parse_failures=parse_failures,
@@ -82,7 +118,16 @@ class ClassPlacementDetector(p.Infra.Scanner):
         file_path: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ClassPlacementViolation]:
-        """Scan a file for BaseModel subclasses outside canonical model files."""
+        """Scan a file for BaseModel subclasses outside canonical locations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of ClassPlacementViolation for each misplaced model class found.
+
+        """
         _ = _parse_failures
         if file_path.name in cls.CANONICAL_MODEL_FILES:
             return []
@@ -121,7 +166,17 @@ class ClassPlacementDetector(p.Infra.Scanner):
 
     @staticmethod
     def is_pydantic_model_class(node: cst.ClassDef) -> tuple[bool, str]:
-        """Return (is_model, base_class_name) for known Pydantic ancestors."""
+        """Check if a class definition is a Pydantic model.
+
+        Args:
+            node: A libcst ClassDef node to inspect.
+
+        Returns:
+            Tuple of (is_pydantic_model, base_class_name) where is_pydantic_model
+            is True if the class inherits from a known Pydantic base, and
+            base_class_name is the name of the Pydantic base class found.
+
+        """
         for arg in node.bases:
             base_name = ClassPlacementDetector._base_expr_name(arg.value)
             if base_name in ClassPlacementDetector.PYDANTIC_BASE_NAMES:
@@ -130,6 +185,15 @@ class ClassPlacementDetector(p.Infra.Scanner):
 
     @staticmethod
     def _base_expr_name(base_expr: cst.BaseExpression) -> str:
+        """Extract the base class name from a class base expression.
+
+        Args:
+            base_expr: A libcst expression representing a base class.
+
+        Returns:
+            The name of the base class, or empty string if unable to extract.
+
+        """
         if isinstance(base_expr, cst.Subscript):
             return ClassPlacementDetector._base_expr_name(base_expr.value)
         if isinstance(base_expr, cst.Name):
@@ -143,6 +207,15 @@ class ClassPlacementDetector(p.Infra.Scanner):
 
     @staticmethod
     def _module_to_str(module: cst.BaseExpression | None) -> str:
+        """Convert a module expression to its dotted string representation.
+
+        Args:
+            module: A libcst expression or None to convert to string.
+
+        Returns:
+            Dotted string representation of the module (e.g., 'a.b.c').
+
+        """
         if module is None:
             return ""
         if isinstance(module, cst.Name):
@@ -164,6 +237,16 @@ class ClassPlacementDetector(p.Infra.Scanner):
         node: cst.CSTNode,
         positions: Mapping[cst.CSTNode, CodeRange],
     ) -> int:
+        """Get the line number of a CST node.
+
+        Args:
+            node: A libcst node to locate.
+            positions: Mapping from CST nodes to their code ranges.
+
+        Returns:
+            The line number of the node, or 1 if not found in positions.
+
+        """
         code_range = positions.get(node)
         if code_range is None:
             return 1

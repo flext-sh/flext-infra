@@ -1,3 +1,12 @@
+"""Detector for identifying type aliases outside canonical typings locations.
+
+This module detects type alias definitions (TypeAlias, PEP 695) that are located
+outside the canonical typing files/directories where they should be centralized.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -21,20 +30,37 @@ class ManualTypingAliasDetector(
     FlextInfraRefactorDetectorPythonModuleLoaderMixin,
     p.Infra.Scanner,
 ):
-    """Detect type aliases defined outside canonical typings files."""
+    """Detector for type aliases outside canonical typings locations.
+
+    Identifies PEP 695 type aliases and TypeAlias assignments defined outside
+    the canonical typing files/directories where they should be centralized.
+    """
 
     def __init__(
         self,
         *,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the ManualTypingAliasDetector scanner.
+
+        Args:
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for typing alias placement violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected typing alias violations.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
@@ -60,7 +86,16 @@ class ManualTypingAliasDetector(
         file_path: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ManualTypingAliasViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect type alias placement violations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of ManualTypingAliasViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             _parse_failures=parse_failures,
@@ -73,7 +108,16 @@ class ManualTypingAliasDetector(
         file_path: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ManualTypingAliasViolation]:
-        """Scan a file for type aliases outside canonical locations."""
+        """Scan a file for type aliases outside canonical locations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of ManualTypingAliasViolation for each misplaced alias found.
+
+        """
         _ = _parse_failures
         if file_path.suffix != ".py":
             return []
@@ -128,12 +172,30 @@ class ManualTypingAliasDetector(
 
     @staticmethod
     def _type_alias_name(*, stmt: cst.BaseSmallStatement) -> str:
+        """Extract the name of a PEP 695 type alias statement.
+
+        Args:
+            stmt: The statement to check for a type alias.
+
+        Returns:
+            The name of the type alias, or empty string if not a type alias.
+
+        """
         if hasattr(cst, "TypeAlias") and isinstance(stmt, cst.TypeAlias):
             return stmt.name.value
         return ""
 
     @staticmethod
     def _annotation_contains_type_alias(*, annotation: cst.BaseExpression) -> bool:
+        """Check if an annotation contains a TypeAlias reference.
+
+        Args:
+            annotation: The annotation expression to check.
+
+        Returns:
+            True if the annotation references TypeAlias, False otherwise.
+
+        """
         if isinstance(annotation, cst.Subscript):
             return ManualTypingAliasDetector._annotation_contains_type_alias(
                 annotation=annotation.value,
@@ -144,6 +206,15 @@ class ManualTypingAliasDetector(
 
     @staticmethod
     def _module_to_str(module: cst.BaseExpression | None) -> str:
+        """Convert a module expression to its dotted string representation.
+
+        Args:
+            module: A libcst expression or None to convert to string.
+
+        Returns:
+            Dotted module name (e.g., 'typing.TypeAlias').
+
+        """
         if module is None:
             return ""
         if isinstance(module, cst.Name):
@@ -165,6 +236,16 @@ class ManualTypingAliasDetector(
         node: cst.CSTNode,
         positions: Mapping[cst.CSTNode, CodeRange],
     ) -> int:
+        """Get the line number of a CST node.
+
+        Args:
+            node: A libcst node to locate.
+            positions: Mapping from CST nodes to their code ranges.
+
+        Returns:
+            The line number of the node, or 1 if not found in positions.
+
+        """
         code_range = positions.get(node)
         if code_range is None:
             return 1

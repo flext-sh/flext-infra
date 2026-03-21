@@ -1,3 +1,12 @@
+"""Scanner for identifying namespace facade class patterns in projects.
+
+This module scans projects for the presence and status of namespace facade classes
+that organize constants, types, protocols, models, and utilities.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
@@ -12,7 +21,11 @@ from flext_infra.refactor._models_namespace_enforcer import (
 
 
 class NamespaceFacadeScanner:
-    """Scan projects for namespace facade class patterns."""
+    """Scanner for namespace facade class patterns in projects.
+
+    Identifies and reports the status of namespace facade classes used to
+    organize code into family groups (constants, types, protocols, models, utilities).
+    """
 
     @classmethod
     def scan_project(
@@ -22,7 +35,17 @@ class NamespaceFacadeScanner:
         project_name: str,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.FacadeStatus]:
-        """Scan a project for namespace facade classes and return their status."""
+        """Scan a project for namespace facade classes and return their status.
+
+        Args:
+            project_root: Root directory of the project to scan.
+            project_name: Name of the project being scanned.
+            parse_failures: Optional list to track parse failures.
+
+        Returns:
+            List of FacadeStatus objects for each family's facade class.
+
+        """
         results: list[nem.FacadeStatus] = []
         class_stem = cls.project_class_stem(project_name=project_name)
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
@@ -55,6 +78,19 @@ class NamespaceFacadeScanner:
         suffix: str,
         _parse_failures: list[nem.ParseFailureViolation] | None,
     ) -> tuple[str, str, int]:
+        """Find a facade class for a given family in a project.
+
+        Args:
+            project_root: Root directory of the project.
+            family: The family identifier (e.g., 'c', 't', 'p', 'm', 'u').
+            expected_class: Expected class name for the facade.
+            suffix: Suffix that facade class names should have.
+            _parse_failures: Optional list to track parse failures.
+
+        Returns:
+            Tuple of (class_name, file_path, symbol_count) or ('', '', 0) if not found.
+
+        """
         file_pattern = c.Infra.FAMILY_FILES[family]
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
@@ -73,6 +109,15 @@ class NamespaceFacadeScanner:
 
     @classmethod
     def _count_class_symbols(cls, node: cst.ClassDef) -> int:
+        """Count the number of symbols in a class.
+
+        Args:
+            node: A ClassDef node to analyze.
+
+        Returns:
+            Count of methods, nested classes, and attributes.
+
+        """
         if not isinstance(node.body, cst.IndentedBlock):
             return 0
         count = 0
@@ -91,6 +136,15 @@ class NamespaceFacadeScanner:
         cls,
         body: Sequence[cst.BaseStatement | cst.BaseCompoundStatement],
     ) -> Iterator[cst.ClassDef]:
+        """Recursively walk and yield all class definitions.
+
+        Args:
+            body: Sequence of statements to walk through.
+
+        Yields:
+            ClassDef nodes found in the body and nested classes.
+
+        """
         for item in body:
             if isinstance(item, cst.ClassDef):
                 yield item
@@ -99,6 +153,15 @@ class NamespaceFacadeScanner:
 
     @staticmethod
     def _module_to_str(module: cst.BaseExpression | None) -> str:
+        """Convert a module expression to its dotted string representation.
+
+        Args:
+            module: A libcst expression or None to convert to string.
+
+        Returns:
+            Dotted module name (e.g., 'a.b.c').
+
+        """
         if module is None:
             return ""
         if isinstance(module, cst.Name):
@@ -116,7 +179,15 @@ class NamespaceFacadeScanner:
 
     @staticmethod
     def project_class_stem(*, project_name: str) -> str:
-        """Derive the class name stem from a project name."""
+        """Derive the facade class name stem from a project name.
+
+        Args:
+            project_name: The name of the project.
+
+        Returns:
+            The class stem to be used for namespace facade classes.
+
+        """
         normalized = project_name.strip().lower().replace("_", "-")
         if normalized == "flext-core":
             return "Flext"

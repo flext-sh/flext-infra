@@ -1,3 +1,12 @@
+"""Detector for facade classes missing local MRO composition bases.
+
+This module detects namespace facade classes that are missing bases from their
+corresponding family modules, which violates the namespace composition pattern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 import operator
@@ -17,7 +26,11 @@ from flext_infra.refactor._models_namespace_enforcer import (
 class MROCompletenessDetector(
     p.Infra.Scanner,
 ):
-    """Detect facade classes missing local MRO composition bases."""
+    """Detector for facade classes missing MRO composition bases.
+
+    Identifies namespace facade classes that lack bases from their family modules,
+    ensuring complete composition of constants, types, protocols, models, and utilities.
+    """
 
     FAMILY_DIR_BY_ALIAS: ClassVar[dict[str, str]] = {
         "c": "_constants",
@@ -32,13 +45,26 @@ class MROCompletenessDetector(
         *,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the MROCompletenessDetector scanner.
+
+        Args:
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for MRO completeness violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected MRO violations.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
@@ -67,7 +93,16 @@ class MROCompletenessDetector(
         file_path: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.MROCompletenessViolation]:
-        """Scan a file and return typed MRO completeness violations."""
+        """Detect MRO completeness violations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of MROCompletenessViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             _parse_failures=parse_failures,
@@ -80,7 +115,16 @@ class MROCompletenessDetector(
         file_path: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.MROCompletenessViolation]:
-        """Scan a facade file for missing local composition bases."""
+        """Scan a facade file for missing local composition bases.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of MROCompletenessViolation for each missing base found.
+
+        """
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None:
             return []
@@ -138,6 +182,16 @@ class MROCompletenessDetector(
 
     @staticmethod
     def _resolve_facade_class_name(*, tree: cst.Module, family: str) -> str | None:
+        """Resolve the facade class name for a family.
+
+        Args:
+            tree: The CST module to analyze.
+            family: The family identifier (e.g., 'c', 't', 'p', 'm', 'u').
+
+        Returns:
+            The facade class name, or None if not found.
+
+        """
         for item in tree.body:
             if not isinstance(item, cst.SimpleStatementLine):
                 continue
@@ -166,6 +220,16 @@ class MROCompletenessDetector(
         tree: cst.Module,
         class_name: str,
     ) -> cst.ClassDef | None:
+        """Find a top-level class definition by name.
+
+        Args:
+            tree: The CST module to search.
+            class_name: The name of the class to find.
+
+        Returns:
+            The ClassDef node if found, None otherwise.
+
+        """
         for stmt in tree.body:
             if isinstance(stmt, cst.ClassDef) and stmt.name.value == class_name:
                 return stmt
@@ -173,6 +237,15 @@ class MROCompletenessDetector(
 
     @staticmethod
     def _extract_base_name(base: cst.Arg) -> str:
+        """Extract the base class name from a class base argument.
+
+        Args:
+            base: A class base argument node.
+
+        Returns:
+            The base class name, or empty string if unable to extract.
+
+        """
         value = base.value
         if isinstance(value, cst.Name):
             return value.value
@@ -184,6 +257,15 @@ class MROCompletenessDetector(
 
     @staticmethod
     def _expr_to_base_name(value: cst.BaseExpression) -> str:
+        """Convert an expression to a base class name.
+
+        Args:
+            value: An expression node to convert.
+
+        Returns:
+            The base class name, or empty string if unable to extract.
+
+        """
         if isinstance(value, cst.Name):
             return value.value
         if isinstance(value, cst.Attribute):
@@ -199,6 +281,18 @@ class MROCompletenessDetector(
         family: str,
         _parse_failures: list[nem.ParseFailureViolation] | None,
     ) -> set[tuple[str, int]]:
+        """Collect candidate base classes from the family module.
+
+        Args:
+            file_path: Path to the facade file.
+            facade_name: Name of the facade class.
+            family: The family identifier.
+            _parse_failures: Optional list to track parse failures.
+
+        Returns:
+            Set of (class_name, line_number) tuples for candidate bases.
+
+        """
         candidates: set[tuple[str, int]] = set()
         facade_prefix = facade_name
         candidates.update(

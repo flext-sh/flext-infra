@@ -1,3 +1,12 @@
+"""Utilities for loading and parsing Python modules in detectors.
+
+This module provides tools for reading Python source files, parsing them into ASTs,
+and building standardized scan results from violation data.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
@@ -10,6 +19,8 @@ from flext_infra import c, m, u
 
 
 class FlextInfraRefactorDetectorModuleLoader:
+    """Loader for parsing Python modules and handling parse failures."""
+
     @staticmethod
     def load_python_module(
         file_path: Path,
@@ -17,6 +28,17 @@ class FlextInfraRefactorDetectorModuleLoader:
         stage: str,
         parse_failures: list[m.Infra.ParseFailureViolation] | None,
     ) -> m.Infra.ParsedPythonModule | None:
+        """Load and parse a Python module from a file.
+
+        Args:
+            file_path: Path to the Python file to load.
+            stage: Processing stage name for error tracking.
+            parse_failures: Optional list to accumulate parse failure violations.
+
+        Returns:
+            ParsedPythonModule with source and AST, or None if parsing failed.
+
+        """
         try:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except UnicodeDecodeError as exc:
@@ -58,6 +80,16 @@ class FlextInfraRefactorDetectorModuleLoader:
         error_type: str,
         detail: str,
     ) -> None:
+        """Record a parse failure violation.
+
+        Args:
+            parse_failures: Optional list to accumulate violations.
+            file_path: Path to the file that failed to parse.
+            stage: Processing stage where the failure occurred.
+            error_type: Type of error encountered.
+            detail: Detailed error message.
+
+        """
         if parse_failures is None:
             return
         parse_failures.append(
@@ -71,15 +103,30 @@ class FlextInfraRefactorDetectorModuleLoader:
 
 
 class ViolationWithLine(Protocol):
-    def model_dump(self) -> dict[str, JsonValue]: ...
+    """Protocol for violations that have a line number."""
+
+    def model_dump(self) -> dict[str, JsonValue]:
+        """Dump violation data to a dictionary."""
+        ...
 
 
 _V = TypeVar("_V", bound=ViolationWithLine)
 
 
 class DetectorScanResultBuilder:
+    """Builder for constructing standardized detector scan results."""
+
     @staticmethod
     def _coerce_violation_line(value: JsonValue | None) -> int:
+        """Convert a JSON value to an integer line number.
+
+        Args:
+            value: The value to convert to a line number.
+
+        Returns:
+            Integer line number, or 0 if conversion fails.
+
+        """
         if isinstance(value, bool):
             return int(value)
         if isinstance(value, int):
@@ -102,6 +149,19 @@ class DetectorScanResultBuilder:
         violations: Sequence[_V],
         message_builder: Callable[[_V], str],
     ) -> m.Infra.ScanResult:
+        """Build a standardized scan result from typed violations.
+
+        Args:
+            file_path: Path to the scanned file.
+            detector_name: Name of the detector that found the violations.
+            rule_id: Identifier for the violation rule.
+            violations: Sequence of violations to include.
+            message_builder: Function to convert violations to message strings.
+
+        Returns:
+            ScanResult with standardized violation format.
+
+        """
         return m.Infra.ScanResult(
             file_path=file_path,
             violations=[

@@ -1,3 +1,7 @@
+"""Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT.
+"""
+
 from __future__ import annotations
 
 import operator
@@ -9,6 +13,8 @@ from flext_infra import c
 
 
 class FlextInfraCodegenGeneration:
+    """Generate Python module files with lazy import infrastructure."""
+
     @staticmethod
     def resolve_unmapped(
         exports_set: set[str],
@@ -16,6 +22,19 @@ class FlextInfraCodegenGeneration:
         current_pkg: str,
         pkg_dir: Path,
     ) -> None:
+        """Resolve unmapped exports by matching them to known suffixes or version files.
+
+        Updates the filtered dictionary in-place by resolving unmapped aliases to their
+        actual module and attribute paths. Handles special cases like `__version__` and
+        `__version_info__`.
+
+        Args:
+            exports_set: Set of all exported names.
+            filtered: Dictionary mapping export names to (module_path, attr_name) tuples.
+            current_pkg: Current package name for resolving version files.
+            pkg_dir: Package directory path to check for `__version__.py`.
+
+        """
         unmapped = exports_set - set(filtered)
         if not unmapped:
             return
@@ -45,9 +64,16 @@ class FlextInfraCodegenGeneration:
     def _render_type_checking_module(mod: str, current_pkg: str) -> str:
         """Render module path for TYPE_CHECKING imports.
 
-        For local ``tests`` packages, use relative imports so static analyzers
-        resolve project-local modules without requiring an installed top-level
-        ``tests`` package.
+        Converts module paths to relative imports for test packages to enable
+        static analysis without requiring an installed top-level ``tests`` package.
+
+        Args:
+            mod: Module path to render.
+            current_pkg: Current package name to determine relative import strategy.
+
+        Returns:
+            Rendered module path (absolute or relative).
+
         """
         if not current_pkg.startswith("tests"):
             return mod
@@ -74,8 +100,21 @@ class FlextInfraCodegenGeneration:
         *,
         include_flext_types: bool = True,
         current_pkg: str = "",
-        include_symbol_imports: bool = True,
     ) -> list[str]:
+        """Generate TYPE_CHECKING import block for type hints.
+
+        Creates Python code for conditional imports guarded by TYPE_CHECKING,
+        organizing imports by module with proper spacing between top-level packages.
+
+        Args:
+            groups: Mapping of module paths to lists of (export_name, attr_name) tuples.
+            include_flext_types: Whether to import FlextTypes from flext_core.
+            current_pkg: Current package name for module path rendering.
+
+        Returns:
+            List of code lines forming the TYPE_CHECKING block.
+
+        """
         lines: list[str] = ["if TYPE_CHECKING:"]
         if include_flext_types:
             lines.append("    from flext_core.typings import FlextTypes")
@@ -92,12 +131,10 @@ class FlextInfraCodegenGeneration:
                 (item for item in items if not item[1]),
                 key=operator.itemgetter(0),
             )
-            sorted_items: list[tuple[str, str]] = []
-            if include_symbol_imports:
-                sorted_items = sorted(
-                    (item for item in items if item[1]),
-                    key=lambda x: (x[1], x[0] != x[1]),
-                )
+            sorted_items = sorted(
+                (item for item in items if item[1]),
+                key=lambda x: (x[1], x[0] != x[1]),
+            )
             for export_name, _ in alias_items:
                 if rendered_mod.startswith(".") and rendered_mod != ".":
                     parent_mod, _, child_name = rendered_mod.rpartition(".")
@@ -144,6 +181,24 @@ class FlextInfraCodegenGeneration:
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
     ) -> str:
+        """Generate complete module file with lazy imports and type hints.
+
+        Assembles all components (docstring, imports, lazy import table, __all__,
+        __getattr__, __dir__) into a single module file. Handles special cases
+        for core internal packages and L0 typings modules.
+
+        Args:
+            docstring_source: Module docstring text (empty string for none).
+            exports: List of all exported names.
+            filtered: Mapping of export names to (module_path, attr_name) tuples.
+            inline_constants: Mapping of constant names to their string values.
+            current_pkg: Current package name for import strategy selection.
+            eager_typevar_names: Type variable names to import eagerly (not lazily).
+
+        Returns:
+            Complete Python module file as a single string.
+
+        """
         lazy_filtered: dict[str, tuple[str, str]] = {
             name: val
             for name, val in filtered.items()
@@ -210,7 +265,6 @@ class FlextInfraCodegenGeneration:
                 groups,
                 include_flext_types=not is_l0_typings,
                 current_pkg=current_pkg,
-                include_symbol_imports=not current_pkg.startswith("tests"),
             ),
         )
         out.append("")
@@ -237,6 +291,15 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _getattr_block_standard() -> list[str]:
+        """Generate standard __getattr__ and __dir__ implementation block.
+
+        Creates PEP 562 module-level __getattr__ for lazy loading and __dir__
+        for attribute discovery, using the lazy_getattr utility.
+
+        Returns:
+            List of code lines implementing lazy attribute access.
+
+        """
         return [
             "def __getattr__(name: str) -> FlextTypes.ModuleExport:",
             '    """Lazy-load module attributes on first access (PEP 562)."""',
@@ -253,6 +316,16 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def _getattr_block_l0() -> list[str]:
+        """Generate L0 typings module __getattr__ and __dir__ implementation block.
+
+        Creates custom __getattr__ for L0 typings modules to avoid circular imports
+        while maintaining lazy loading. Cleans up submodule namespace references
+        to prevent import confusion.
+
+        Returns:
+            List of code lines implementing L0-specific lazy attribute access.
+
+        """
         return [
             "def __getattr__(name: str) -> type:",
             "    if name in _LAZY_IMPORTS:",

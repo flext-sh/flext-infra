@@ -1,3 +1,13 @@
+"""Detector for identifying removable compatibility alias assignments.
+
+This module detects simple assignment statements that create compatibility
+aliases (e.g., NewName = OldName) which may be candidates for removal after
+refactoring.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
@@ -17,20 +27,37 @@ if TYPE_CHECKING:
 
 
 class CompatibilityAliasDetector(p.Infra.Scanner):
-    """Detect compatibility alias assignments that may be removable."""
+    """Detector for compatibility alias assignment statements.
+
+    Identifies simple name-to-name assignments that create compatibility aliases,
+    particularly those where both names are capitalized (suggesting class aliases).
+    """
 
     def __init__(
         self,
         *,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the CompatibilityAliasDetector scanner.
+
+        Args:
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for compatibility alias violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected aliases with standardized format.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
@@ -53,7 +80,16 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         file_path: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.CompatibilityAliasViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect compatibility aliases in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of CompatibilityAliasViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             _parse_failures=parse_failures,
@@ -66,7 +102,16 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         file_path: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.CompatibilityAliasViolation]:
-        """Scan a file for compatibility aliases that may be removable."""
+        """Scan a file for removable compatibility aliases.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of CompatibilityAliasViolation for each alias found.
+
+        """
         if file_path.suffix != ".py":
             return []
         try:
@@ -109,6 +154,15 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
     def _iter_simple_statements(
         body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
     ) -> Iterator[cst.BaseSmallStatement]:
+        """Iterate over simple statements from a module or compound body.
+
+        Args:
+            body: Sequence of statement lines or compound statements.
+
+        Yields:
+            Individual small statements from simple statement lines.
+
+        """
         for item in body:
             if isinstance(item, cst.SimpleStatementLine):
                 yield from item.body

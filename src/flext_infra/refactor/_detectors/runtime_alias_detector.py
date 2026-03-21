@@ -1,3 +1,12 @@
+"""Detector for identifying missing or duplicate runtime alias assignments.
+
+This module detects namespace facade files that are missing or have duplicate
+runtime alias assignments (e.g., c = Constants, t = Types).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
@@ -14,7 +23,11 @@ from flext_infra.refactor._models_namespace_enforcer import (
 
 
 class RuntimeAliasDetector(p.Infra.Scanner):
-    """Detect missing or duplicate runtime alias assignments."""
+    """Detector for missing or duplicate runtime alias assignments.
+
+    Identifies namespace facade files that lack or have duplicate runtime alias
+    assignments that expose family modules to the namespace.
+    """
 
     def __init__(
         self,
@@ -22,14 +35,28 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         project_name: str,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the RuntimeAliasDetector scanner.
+
+        Args:
+            project_name: Name of the project being scanned.
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._project_name = project_name
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for runtime alias violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected runtime alias violations.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             project_name=self._project_name,
@@ -60,7 +87,17 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         project_name: str,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.RuntimeAliasViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect runtime alias violations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            project_name: Name of the project being scanned.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of RuntimeAliasViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             project_name=project_name,
@@ -75,7 +112,17 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         project_name: str,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.RuntimeAliasViolation]:
-        """Scan a file for missing or duplicate runtime alias assignments."""
+        """Scan a file for missing or duplicate runtime alias assignments.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            project_name: Name of the project being scanned.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of RuntimeAliasViolation for missing or duplicate aliases.
+
+        """
         if file_path.name not in c.Infra.NAMESPACE_FILE_TO_FAMILY:
             return []
         if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
@@ -124,12 +171,30 @@ class RuntimeAliasDetector(p.Infra.Scanner):
 
     @staticmethod
     def _family_for_file(*, file_name: str) -> str:
+        """Get the family identifier for a namespace file name.
+
+        Args:
+            file_name: The file name to look up.
+
+        Returns:
+            The family identifier ('c', 't', 'p', 'm', 'u'), or empty string if not found.
+
+        """
         return c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_name, "")
 
     @staticmethod
     def _iter_simple_statements(
         body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
     ) -> Iterator[cst.BaseSmallStatement]:
+        """Iterate over simple statements from a module or compound body.
+
+        Args:
+            body: Sequence of statement lines or compound statements.
+
+        Yields:
+            Individual small statements from simple statement lines.
+
+        """
         for item in body:
             if isinstance(item, cst.SimpleStatementLine):
                 yield from item.body

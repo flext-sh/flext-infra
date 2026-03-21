@@ -1,3 +1,12 @@
+"""Detector for identifying loose top-level objects outside namespace classes.
+
+This module detects module-level objects (functions, constants, type aliases) that
+should be organized inside namespace classes following the flext namespace pattern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -17,7 +26,11 @@ from .namespace_facade_scanner import NamespaceFacadeScanner
 
 
 class LooseObjectDetector(p.Infra.Scanner):
-    """Detect loose top-level objects that should be inside namespace classes."""
+    """Detector for loose top-level objects outside namespace classes.
+
+    Identifies module-level functions, constants, and type aliases that should be
+    organized inside appropriate namespace classes (e.g., ProjectUtilities, ProjectConstants).
+    """
 
     ALLOWED_TOP_LEVEL = frozenset({"__all__", "__version__", "__version_info__"})
 
@@ -27,14 +40,28 @@ class LooseObjectDetector(p.Infra.Scanner):
         project_name: str,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the LooseObjectDetector scanner.
+
+        Args:
+            project_name: Name of the project being scanned.
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._project_name = project_name
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for loose top-level object violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected loose object violations.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             project_name=self._project_name,
@@ -64,7 +91,17 @@ class LooseObjectDetector(p.Infra.Scanner):
         project_name: str,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.LooseObjectViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect loose objects in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            project_name: Name of the project being scanned.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of LooseObjectViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             project_name=project_name,
@@ -79,7 +116,17 @@ class LooseObjectDetector(p.Infra.Scanner):
         project_name: str,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.LooseObjectViolation]:
-        """Scan a file for loose top-level objects outside namespace classes."""
+        """Scan a file for loose top-level objects outside namespace classes.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            project_name: Name of the project being scanned.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of LooseObjectViolation for each loose object found.
+
+        """
         _ = _parse_failures
         if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
@@ -119,6 +166,19 @@ class LooseObjectDetector(p.Infra.Scanner):
         class_stem: str,
         positions: Mapping[cst.CSTNode, CodeRange],
     ) -> nem.LooseObjectViolation | None:
+        """Check a statement for loose objects outside namespace classes.
+
+        Args:
+            stmt: The statement to check.
+            namespace_classes: Set of existing namespace class names.
+            file_path: Path to the file being scanned.
+            class_stem: The class stem for suggested namespace classes.
+            positions: Mapping of nodes to their code ranges.
+
+        Returns:
+            LooseObjectViolation if a loose object is found, None otherwise.
+
+        """
         if isinstance(stmt, cst.SimpleStatementLine):
             for small_stmt in stmt.body:
                 violation = cls._check_small_statement(
@@ -160,6 +220,18 @@ class LooseObjectDetector(p.Infra.Scanner):
         class_stem: str,
         positions: Mapping[cst.CSTNode, CodeRange],
     ) -> nem.LooseObjectViolation | None:
+        """Check a small statement for loose objects.
+
+        Args:
+            stmt: The small statement to check.
+            file_path: Path to the file being scanned.
+            class_stem: The class stem for suggested namespace classes.
+            positions: Mapping of nodes to their code ranges.
+
+        Returns:
+            LooseObjectViolation if a loose object is found, None otherwise.
+
+        """
         if isinstance(stmt, (cst.Import, cst.ImportFrom)):
             return None
         if isinstance(stmt, cst.Expr) and isinstance(
@@ -214,6 +286,15 @@ class LooseObjectDetector(p.Infra.Scanner):
 
     @staticmethod
     def _type_alias_name(*, stmt: cst.BaseSmallStatement) -> str:
+        """Extract the name of a type alias statement.
+
+        Args:
+            stmt: The statement to check for a type alias.
+
+        Returns:
+            The name of the type alias, or empty string if not a type alias.
+
+        """
         if hasattr(cst, "TypeAlias") and isinstance(stmt, cst.TypeAlias):
             return stmt.name.value
         if (
@@ -227,6 +308,15 @@ class LooseObjectDetector(p.Infra.Scanner):
 
     @staticmethod
     def _find_namespace_classes(*, tree: cst.Module) -> set[str]:
+        """Find all namespace classes in a module.
+
+        Args:
+            tree: The CST module to scan.
+
+        Returns:
+            Set of namespace class names found.
+
+        """
         classes: set[str] = set()
         for stmt in tree.body:
             LooseObjectDetector._collect_namespace_classes(node=stmt, classes=classes)
@@ -234,6 +324,13 @@ class LooseObjectDetector(p.Infra.Scanner):
 
     @staticmethod
     def _collect_namespace_classes(*, node: cst.CSTNode, classes: set[str]) -> None:
+        """Recursively collect namespace class names from a node.
+
+        Args:
+            node: The CST node to inspect.
+            classes: Set to accumulate found namespace class names.
+
+        """
         if isinstance(node, cst.ClassDef):
             for suffix in c.Infra.FAMILY_SUFFIXES.values():
                 if node.name.value.endswith(suffix):
@@ -244,6 +341,15 @@ class LooseObjectDetector(p.Infra.Scanner):
 
     @staticmethod
     def _module_to_str(module: cst.BaseExpression | None) -> str:
+        """Convert a module expression to its dotted string representation.
+
+        Args:
+            module: A libcst expression or None to convert to string.
+
+        Returns:
+            Dotted module name (e.g., 'a.b.c').
+
+        """
         if module is None:
             return ""
         if isinstance(module, cst.Name):
@@ -265,6 +371,16 @@ class LooseObjectDetector(p.Infra.Scanner):
         node: cst.CSTNode,
         positions: Mapping[cst.CSTNode, CodeRange],
     ) -> int:
+        """Get the line number of a CST node.
+
+        Args:
+            node: A libcst node to locate.
+            positions: Mapping from CST nodes to their code ranges.
+
+        Returns:
+            The line number of the node, or 1 if not found in positions.
+
+        """
         code_range = positions.get(node)
         if code_range is None:
             return 1

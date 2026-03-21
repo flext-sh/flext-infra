@@ -1,3 +1,13 @@
+"""Detector for identifying cyclic import dependencies in projects.
+
+This module detects circular import cycles by analyzing import statements
+across all Python files in a project and using topological sorting to identify
+dependency cycles.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from graphlib import CycleError, TopologicalSorter
@@ -13,7 +23,12 @@ from flext_infra.utilities import u
 
 
 class CyclicImportDetector:
-    """Detect cyclic import dependencies within a project."""
+    """Detector for cyclic import dependencies at project level.
+
+    Analyzes import dependencies across all Python files in a project's source
+    directories and identifies circular import cycles using topological sorting.
+    Note: This detector operates at project level, not file level.
+    """
 
     # NOTE: CyclicImportDetector operates at project level, not file level — does not implement Scanner
 
@@ -24,7 +39,16 @@ class CyclicImportDetector:
         project_root: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.CyclicImportViolation]:
-        """Scan a project for cyclic import dependencies."""
+        """Scan a project for cyclic import dependencies.
+
+        Args:
+            project_root: Root directory of the project to scan.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of CyclicImportViolation objects for each cycle detected.
+
+        """
         scan_dirs = [
             project_root / directory_name
             for directory_name in c.Infra.MRO_SCAN_DIRECTORIES
@@ -107,6 +131,15 @@ class CyclicImportDetector:
 
     @staticmethod
     def _discover_package_roots(*, scan_dirs: list[Path]) -> set[str]:
+        """Discover Python package names from scan directories.
+
+        Args:
+            scan_dirs: List of directories to scan for packages.
+
+        Returns:
+            Set of package root names found.
+
+        """
         roots: set[str] = set()
         for scan_dir in scan_dirs:
             if (scan_dir / "__init__.py").is_file():
@@ -126,6 +159,16 @@ class CyclicImportDetector:
 
     @staticmethod
     def _module_name_for_scan_dir(*, scan_dir: Path, base_module_name: str) -> str:
+        """Compute fully qualified module name for a file in a scan directory.
+
+        Args:
+            scan_dir: The scan directory being analyzed.
+            base_module_name: The base module name relative to the scan directory.
+
+        Returns:
+            The fully qualified module name, or empty string if not applicable.
+
+        """
         if not base_module_name:
             return ""
         if scan_dir.name == c.Infra.Paths.DEFAULT_SRC_DIR:
@@ -136,6 +179,16 @@ class CyclicImportDetector:
 
     @staticmethod
     def _file_to_module(*, file_path: Path, src_dir: Path) -> str:
+        """Convert a file path to its module name.
+
+        Args:
+            file_path: The Python file path to convert.
+            src_dir: The source directory root.
+
+        Returns:
+            Dotted module name, or empty string if path is not in src_dir.
+
+        """
         try:
             rel = file_path.relative_to(src_dir)
         except ValueError:
@@ -147,6 +200,15 @@ class CyclicImportDetector:
 
     @staticmethod
     def _module_to_str(module: cst.BaseExpression | None) -> str:
+        """Convert a module expression to its dotted string representation.
+
+        Args:
+            module: A libcst expression or None to convert to string.
+
+        Returns:
+            Dotted module name (e.g., 'package.submodule').
+
+        """
         if module is None:
             return ""
         if isinstance(module, cst.Name):

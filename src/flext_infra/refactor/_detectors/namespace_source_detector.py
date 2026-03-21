@@ -1,3 +1,9 @@
+"""Detector for identifying alias imports from wrong source packages.
+
+This module detects imports that import public aliases from internal/wrong source
+packages instead of the correct canonical source.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,17 +18,35 @@ from flext_infra.refactor._models_namespace_enforcer import (
 
 @runtime_checkable
 class _ImportNormalizerTransformerLike(Protocol):
+    """Protocol for import normalizer transformer compatibility checking."""
+
     @staticmethod
     def detect_file(
         *,
         file_path: Path,
         project_package: str,
         alias_map: dict[str, tuple[str, ...]] | None = None,
-    ) -> list[object]: ...
+    ) -> list[object]:
+        """Detect import violations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            project_package: The project package name.
+            alias_map: Optional mapping of packages to their public aliases.
+
+        Returns:
+            List of violation objects found.
+
+        """
+        ...
 
 
 class NamespaceSourceDetector(p.Infra.Scanner):
-    """Detect alias imports from wrong source packages."""
+    """Detector for alias imports from wrong source packages.
+
+    Identifies imports that source public aliases from internal or wrong packages
+    instead of the canonical/correct source package.
+    """
 
     def __init__(
         self,
@@ -31,7 +55,14 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         project_root: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the NamespaceSourceDetector scanner.
+
+        Args:
+            project_name: Name of the project being scanned.
+            project_root: Root directory of the project.
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._project_name = project_name
         self._project_root = project_root
@@ -39,7 +70,15 @@ class NamespaceSourceDetector(p.Infra.Scanner):
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for namespace source violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected source violations.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             project_name=self._project_name,
@@ -72,7 +111,18 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         project_root: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.NamespaceSourceViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect namespace source violations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            project_name: Name of the project being scanned.
+            project_root: Root directory of the project.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of NamespaceSourceViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             project_name=project_name,

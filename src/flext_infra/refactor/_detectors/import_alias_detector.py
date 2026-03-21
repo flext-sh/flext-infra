@@ -1,3 +1,12 @@
+"""Detector for identifying deep imports that should use top-level aliases.
+
+This module detects import statements using deep module paths that could be
+replaced with shorter alias imports from the package's public API.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,17 +25,35 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class _ImportNormalizerTransformerLike(Protocol):
+    """Protocol for import normalizer transformer compatibility checking."""
+
     @staticmethod
     def detect_file(
         *,
         file_path: Path,
         project_package: str,
         alias_map: dict[str, tuple[str, ...]] | None = None,
-    ) -> list[object]: ...
+    ) -> list[object]:
+        """Detect import violations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            project_package: The project package name.
+            alias_map: Optional mapping of packages to their public aliases.
+
+        Returns:
+            List of violation objects found.
+
+        """
+        ...
 
 
 class ImportAliasDetector(p.Infra.Scanner):
-    """Detect deep import paths that should use top-level aliases."""
+    """Detector for deep import paths that should use top-level aliases.
+
+    Identifies deep imports (e.g., `from package.submodule.impl import Class`)
+    that could be simplified using top-level aliases (e.g., `from package import Class`).
+    """
 
     _alias_cache: ClassVar[dict[str, tuple[str, ...]] | None] = None
 
@@ -34,6 +61,15 @@ class ImportAliasDetector(p.Infra.Scanner):
     def _get_alias_map(
         cls, workspace_root: Path | None = None
     ) -> dict[str, tuple[str, ...]]:
+        """Get the cached mapping of packages to their public aliases.
+
+        Args:
+            workspace_root: Optional workspace root to discover aliases from.
+
+        Returns:
+            Dict mapping package names to tuples of public alias names.
+
+        """
         if cls._alias_cache is not None:
             return cls._alias_cache
         root = workspace_root if workspace_root is not None else Path.cwd()
@@ -42,6 +78,16 @@ class ImportAliasDetector(p.Infra.Scanner):
 
     @classmethod
     def _suggest_alias_import(cls, *, package: str, imported_names: list[str]) -> str:
+        """Suggest an alias import statement for the given names.
+
+        Args:
+            package: The package name being imported from.
+            imported_names: List of names being imported.
+
+        Returns:
+            Suggested import statement using available aliases.
+
+        """
         alias_map = cls._get_alias_map()
         allowed = alias_map.get(package, ())
         allowed_set = set(allowed)
@@ -51,6 +97,15 @@ class ImportAliasDetector(p.Infra.Scanner):
 
     @staticmethod
     def parse_imported_names(import_clause: str) -> list[str]:
+        """Parse imported names from an import clause string.
+
+        Args:
+            import_clause: The import clause (e.g., 'A, B as C, D').
+
+        Returns:
+            List of original names being imported.
+
+        """
         no_comment = import_clause.split("#", maxsplit=1)[0].strip()
         normalized_clause = no_comment.replace("(", "").replace(")", "")
         names: list[str] = []
@@ -65,6 +120,15 @@ class ImportAliasDetector(p.Infra.Scanner):
 
     @classmethod
     def _discover_package(cls, file_path: Path) -> str:
+        """Discover the package name for a file path.
+
+        Args:
+            file_path: Path to the Python file.
+
+        Returns:
+            The top-level package name, or empty string if not found.
+
+        """
         src_dir_name = c.Infra.Paths.DEFAULT_SRC_DIR
         parts = file_path.resolve().parts
         try:
@@ -81,13 +145,26 @@ class ImportAliasDetector(p.Infra.Scanner):
         *,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the ImportAliasDetector scanner.
+
+        Args:
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for import alias violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected alias violations.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
@@ -110,7 +187,16 @@ class ImportAliasDetector(p.Infra.Scanner):
         file_path: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ImportAliasViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect import alias violations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of ImportAliasViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             _parse_failures=parse_failures,
@@ -123,7 +209,16 @@ class ImportAliasDetector(p.Infra.Scanner):
         file_path: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ImportAliasViolation]:
-        """Scan a file for deep import paths that should use aliases."""
+        """Scan a file for deep import paths that should use aliases.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of ImportAliasViolation for each deep import found.
+
+        """
         _ = _parse_failures
         transformers_module = __import__(
             "flext_infra.transformers",

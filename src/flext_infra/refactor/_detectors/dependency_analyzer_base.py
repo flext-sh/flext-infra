@@ -1,3 +1,13 @@
+"""Analyzer for building inter-project import dependency graphs.
+
+This module analyzes import statements across projects in a workspace to build
+import dependency graphs and determine transformation order based on topological
+sorting.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 import sys
@@ -15,10 +25,20 @@ from .import_collector import ImportCollector
 
 
 class DependencyAnalyzer:
-    """Build inter-project import graphs from workspace source trees."""
+    """Analyzer for inter-project import dependency graphs in workspaces.
+
+    Discovers projects within a workspace, indexes their packages, and builds
+    import dependency graphs by analyzing import statements across source files.
+    Supports topological sorting for transformation order determination.
+    """
 
     def __init__(self, workspace_root: Path) -> None:
-        """Initialize analyzer for the given workspace root."""
+        """Initialize the DependencyAnalyzer.
+
+        Args:
+            workspace_root: Root directory of the workspace containing projects.
+
+        """
         super().__init__()
         self._workspace_root = workspace_root.resolve()
         self._stdlib_roots = set(sys.stdlib_module_names)
@@ -27,7 +47,12 @@ class DependencyAnalyzer:
         self._graph_cache: dict[str, list[str]] | None = None
 
     def build_import_graph(self) -> r[dict[str, list[str]]]:
-        """Build and cache the inter-project import graph."""
+        """Build and cache the inter-project import dependency graph.
+
+        Returns:
+            Result containing a dict mapping project names to their dependencies.
+
+        """
         if self._graph_cache is not None:
             return r[dict[str, list[str]]].ok(self._graph_cache)
         graph: dict[str, set[str]] = {p.name: set() for p in self._projects}
@@ -49,7 +74,15 @@ class DependencyAnalyzer:
         return r[dict[str, list[str]]].ok(ordered)
 
     def find_consumers(self, class_name: str) -> r[list[Path]]:
-        """Find all files importing the given class name."""
+        """Find all files that import the given class name.
+
+        Args:
+            class_name: The name of the class to find consumers for.
+
+        Returns:
+            Result containing a sorted list of file paths importing the class.
+
+        """
         consumers: set[Path] = set()
         for project in self._projects:
             for fp in self._find_import_candidate_files(project):
@@ -62,7 +95,12 @@ class DependencyAnalyzer:
         return r[list[Path]].ok(sorted(consumers))
 
     def determine_transformation_order(self) -> r[list[str]]:
-        """Return topologically sorted project order."""
+        """Determine topologically sorted transformation order for projects.
+
+        Returns:
+            Result containing list of project names in dependency order.
+
+        """
         graph_result = self.build_import_graph()
         if graph_result.is_failure:
             return r[list[str]].fail(graph_result.error or "graph build failed")
@@ -76,6 +114,12 @@ class DependencyAnalyzer:
             return r[list[str]].ok(sorted(graph))
 
     def _discover_projects(self) -> list[m.Infra.RefactorProjectInfo]:
+        """Discover all projects in the workspace.
+
+        Returns:
+            List of RefactorProjectInfo for each discovered project.
+
+        """
         projects: list[m.Infra.RefactorProjectInfo] = []
         for candidate in sorted(self._workspace_root.iterdir()):
             if not candidate.is_dir() or candidate.name.startswith("."):
@@ -94,6 +138,15 @@ class DependencyAnalyzer:
         return projects
 
     def _discover_package_roots(self, src_path: Path) -> set[str]:
+        """Discover package root names in a source directory.
+
+        Args:
+            src_path: Path to the source directory to scan.
+
+        Returns:
+            Set of package root names found.
+
+        """
         roots: set[str] = set()
         for pkg_dir in src_path.iterdir():
             if pkg_dir.name.startswith("."):
@@ -112,6 +165,15 @@ class DependencyAnalyzer:
         self,
         projects: list[m.Infra.RefactorProjectInfo],
     ) -> dict[str, str]:
+        """Build a mapping from package names to owning project names.
+
+        Args:
+            projects: List of projects to index.
+
+        Returns:
+            Dict mapping package name to project name.
+
+        """
         idx: dict[str, str] = {}
         for proj in projects:
             for pkg in proj.package_roots:
@@ -122,6 +184,15 @@ class DependencyAnalyzer:
         self,
         project: m.Infra.RefactorProjectInfo,
     ) -> list[Path]:
+        """Find all Python files with import statements in a project.
+
+        Args:
+            project: The project to scan for import statements.
+
+        Returns:
+            Sorted list of file paths containing imports.
+
+        """
         grep_files = self._scan_import_files_with_ast_grep(project.src_path)
         if grep_files.is_success and grep_files.value:
             path_set: set[Path] = grep_files.value
@@ -140,6 +211,15 @@ class DependencyAnalyzer:
         )
 
     def _scan_import_files_with_ast_grep(self, src_path: Path) -> r[set[Path]]:
+        """Scan source directory for files with import statements using ast-grep.
+
+        Args:
+            src_path: Path to the source directory to scan.
+
+        Returns:
+            Result containing set of file paths with import statements.
+
+        """
         files: set[Path] = set()
         for pattern in ("import $MODULE", "from $MODULE import $$$"):
             result = self._run_ast_grep(src_path, pattern)
@@ -159,6 +239,16 @@ class DependencyAnalyzer:
         src_path: Path,
         pattern: str,
     ) -> r[list[m.Infra.AstGrepMatchEnvelope]]:
+        """Run ast-grep with the given pattern on source directory.
+
+        Args:
+            src_path: Path to the source directory to scan.
+            pattern: The ast-grep pattern to match.
+
+        Returns:
+            Result containing list of ast-grep match envelopes.
+
+        """
         cmd = [
             "sg",
             "--pattern",
@@ -187,6 +277,15 @@ class DependencyAnalyzer:
             return r[list[m.Infra.AstGrepMatchEnvelope]].fail(str(exc))
 
     def _parse_imports(self, file_path: Path) -> r[m.Infra.FileImportData]:
+        """Parse a Python file and extract its import information.
+
+        Args:
+            file_path: Path to the Python file to parse.
+
+        Returns:
+            Result containing FileImportData with imported modules and symbols.
+
+        """
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             return r[m.Infra.FileImportData].fail(f"{file_path}: parse_failed")

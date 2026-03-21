@@ -68,22 +68,30 @@ class FlextInfraUtilitiesPatterns:
 
     @staticmethod
     def _is_str_pattern(value: re.Pattern[str] | None) -> TypeIs[re.Pattern[str]]:
+        """Check if value is a compiled regex pattern.
+
+        Args:
+            value: Value to check.
+
+        Returns:
+            True if value is a compiled re.Pattern[str].
+
+        """
         return isinstance(value, re.Pattern)
 
     @staticmethod
     def matches(pattern_name: str, text: str) -> bool:
         """Check if a pattern matches text.
 
+        Dynamically retrieves a pattern class variable by name and searches
+        the text against it.
+
         Args:
-            pattern_name: Name of the pattern (e.g., 'MYPY_HINT_RE').
+            pattern_name: Name of the pattern class variable (e.g., 'MYPY_HINT_RE').
             text: Text to match against.
 
         Returns:
-            True if the pattern matches, False otherwise.
-
-        Example:
-            >>> FlextInfraUtilitiesPatterns.matches("MYPY_HINT_RE", text)
-            True
+            True if the pattern matches, False if pattern not found or no match.
 
         """
         pattern_obj: re.Pattern[str] | None = getattr(

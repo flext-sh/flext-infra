@@ -1,3 +1,9 @@
+"""Detector for identifying missing future annotations imports.
+
+This module detects Python files that lack the 'from __future__ import annotations'
+statement, which is needed for proper PEP 563 deferred evaluation of annotations.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
@@ -14,20 +20,37 @@ from flext_infra.refactor._models_namespace_enforcer import (
 
 
 class FutureAnnotationsDetector(p.Infra.Scanner):
-    """Detect Python files missing the future annotations import."""
+    """Detector for missing future annotations imports.
+
+    Scans Python files to identify those missing the required
+    'from __future__ import annotations' statement at the top.
+    """
 
     def __init__(
         self,
         *,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the FutureAnnotationsDetector scanner.
+
+        Args:
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for missing future annotations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing violations if future annotations are missing.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
@@ -53,7 +76,16 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         file_path: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.FutureAnnotationsViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect missing future annotations in a file.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of FutureAnnotationsViolation if missing from the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             _parse_failures=parse_failures,
@@ -66,7 +98,16 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         file_path: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.FutureAnnotationsViolation]:
-        """Scan a file for missing future annotations import."""
+        """Scan a file for missing future annotations import.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List with single FutureAnnotationsViolation if import is missing.
+
+        """
         if file_path.name == "py.typed":
             return []
         try:
@@ -115,6 +156,15 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
 
     @staticmethod
     def _module_to_str(module: cst.BaseExpression | None) -> str:
+        """Convert a module expression to its dotted string representation.
+
+        Args:
+            module: A libcst expression or None to convert to string.
+
+        Returns:
+            Dotted module name (e.g., '__future__').
+
+        """
         if module is None:
             return ""
         if isinstance(module, cst.Name):
@@ -134,6 +184,15 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
     def _iter_simple_statements(
         body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
     ) -> Iterator[cst.BaseSmallStatement]:
+        """Iterate over simple statements from a module or compound body.
+
+        Args:
+            body: Sequence of statement lines or compound statements.
+
+        Yields:
+            Individual small statements from simple statement lines.
+
+        """
         for item in body:
             if isinstance(item, cst.SimpleStatementLine):
                 yield from item.body

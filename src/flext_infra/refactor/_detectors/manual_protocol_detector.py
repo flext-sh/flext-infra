@@ -1,3 +1,12 @@
+"""Detector for identifying Protocol classes outside canonical locations.
+
+This module detects typing.Protocol subclasses defined outside the canonical
+protocol files/directories where they should be centralized for maintainability.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -18,7 +27,11 @@ if TYPE_CHECKING:
 
 
 class ManualProtocolDetector(p.Infra.Scanner):
-    """Detect Protocol classes defined outside canonical protocol files."""
+    """Detector for Protocol classes outside canonical locations.
+
+    Scans for typing.Protocol subclasses that are defined outside the canonical
+    protocol files/directories where they should be centralized.
+    """
 
     CANONICAL_FILE_NAMES = c.Infra.NAMESPACE_CANONICAL_PROTOCOL_FILES
     CANONICAL_DIR_NAME = c.Infra.NAMESPACE_CANONICAL_PROTOCOL_DIR
@@ -28,13 +41,26 @@ class ManualProtocolDetector(p.Infra.Scanner):
         *,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize scanner with project configuration."""
+        """Initialize the ManualProtocolDetector scanner.
+
+        Args:
+            parse_failures: Optional list of previous parse failures to track.
+
+        """
         super().__init__()
         self._parse_failures = parse_failures
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return protocol-standardized scan output."""
+        """Scan a file for Protocol class placement violations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+
+        Returns:
+            ScanResult containing detected protocol violations.
+
+        """
         violations = type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
@@ -57,7 +83,16 @@ class ManualProtocolDetector(p.Infra.Scanner):
         file_path: Path,
         parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ManualProtocolViolation]:
-        """Scan a file and return typed namespace violations."""
+        """Detect Protocol classes outside canonical locations.
+
+        Args:
+            file_path: Path to the Python file to analyze.
+            parse_failures: Optional list of previous parse failures.
+
+        Returns:
+            List of ManualProtocolViolation objects found in the file.
+
+        """
         return cls.scan_file_impl(
             file_path=file_path,
             _parse_failures=parse_failures,
@@ -70,7 +105,16 @@ class ManualProtocolDetector(p.Infra.Scanner):
         file_path: Path,
         _parse_failures: list[nem.ParseFailureViolation] | None = None,
     ) -> list[nem.ManualProtocolViolation]:
-        """Scan a file for Protocol classes outside canonical locations."""
+        """Scan a file for Protocol classes outside canonical locations.
+
+        Args:
+            file_path: Path to the Python file to scan.
+            _parse_failures: Unused parameter for interface compatibility.
+
+        Returns:
+            List of ManualProtocolViolation for each misplaced Protocol found.
+
+        """
         _ = _parse_failures
         in_canonical_file = file_path.name in cls.CANONICAL_FILE_NAMES
         in_canonical_dir = cls.CANONICAL_DIR_NAME in file_path.parts
@@ -101,7 +145,15 @@ class ManualProtocolDetector(p.Infra.Scanner):
 
     @staticmethod
     def is_protocol_class(node: cst.ClassDef) -> bool:
-        """Return whether the class definition inherits from Protocol."""
+        """Check if a class definition inherits from Protocol.
+
+        Args:
+            node: A libcst ClassDef node to inspect.
+
+        Returns:
+            True if the class inherits from Protocol, False otherwise.
+
+        """
         for base_arg in node.bases:
             if ManualProtocolDetector._base_expr_name(base_arg.value) == "Protocol":
                 return True
@@ -109,6 +161,15 @@ class ManualProtocolDetector(p.Infra.Scanner):
 
     @staticmethod
     def _base_expr_name(base_expr: cst.BaseExpression) -> str:
+        """Extract the base class name from a class base expression.
+
+        Args:
+            base_expr: A libcst expression representing a base class.
+
+        Returns:
+            The name of the base class, or empty string if unable to extract.
+
+        """
         if isinstance(base_expr, cst.Subscript):
             return ManualProtocolDetector._base_expr_name(base_expr.value)
         if isinstance(base_expr, cst.Name):
@@ -122,6 +183,15 @@ class ManualProtocolDetector(p.Infra.Scanner):
 
     @staticmethod
     def _module_to_str(module: cst.BaseExpression | None) -> str:
+        """Convert a module expression to its dotted string representation.
+
+        Args:
+            module: A libcst expression or None to convert to string.
+
+        Returns:
+            Dotted string representation of the module (e.g., 'a.b.c').
+
+        """
         if module is None:
             return ""
         if isinstance(module, cst.Name):
@@ -143,6 +213,16 @@ class ManualProtocolDetector(p.Infra.Scanner):
         node: cst.CSTNode,
         positions: Mapping[cst.CSTNode, CodeRange],
     ) -> int:
+        """Get the line number of a CST node.
+
+        Args:
+            node: A libcst node to locate.
+            positions: Mapping from CST nodes to their code ranges.
+
+        Returns:
+            The line number of the node, or 1 if not found in positions.
+
+        """
         code_range = positions.get(node)
         if code_range is None:
             return 1
