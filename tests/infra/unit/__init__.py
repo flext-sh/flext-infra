@@ -731,6 +731,11 @@ if TYPE_CHECKING:
         test_pattern_rule_removes_nested_type_object_cast_chain,
         test_pattern_rule_skips_overload_signatures,
     )
+    from .refactor.test_infra_refactor_project_classifier import (
+        test_expected_dependency_bases_by_family_preserves_internal_dependency_order,
+        test_read_project_metadata_preserves_pep621_dependency_order,
+        test_read_project_metadata_preserves_poetry_dependency_order,
+    )
     from .refactor.test_infra_refactor_safety import (
         EngineSafetyStub,
         test_refactor_project_integrates_safety_manager,
@@ -2739,6 +2744,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_modernizer_helpers",
         "test_ensure_table",
     ),
+    "test_expected_dependency_bases_by_family_preserves_internal_dependency_order": (
+        "tests.infra.unit.refactor.test_infra_refactor_project_classifier",
+        "test_expected_dependency_bases_by_family_preserves_internal_dependency_order",
+    ),
     "test_extract_dep_name": (
         "tests.infra.unit.deps.test_path_sync_helpers",
         "test_extract_dep_name",
@@ -3262,6 +3271,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_project_without_src_returns_empty": (
         "tests.infra.unit.codegen.autofix_workspace",
         "test_project_without_src_returns_empty",
+    ),
+    "test_read_project_metadata_preserves_pep621_dependency_order": (
+        "tests.infra.unit.refactor.test_infra_refactor_project_classifier",
+        "test_read_project_metadata_preserves_pep621_dependency_order",
+    ),
+    "test_read_project_metadata_preserves_poetry_dependency_order": (
+        "tests.infra.unit.refactor.test_infra_refactor_project_classifier",
+        "test_read_project_metadata_preserves_poetry_dependency_order",
     ),
     "test_refactor_files_skips_non_python_inputs": (
         "tests.infra.unit.refactor.test_infra_refactor_engine",
@@ -4195,6 +4212,7 @@ __all__ = [
     "test_ensure_pytest_config_phase_apply_minversion",
     "test_ensure_pytest_config_phase_apply_python_classes",
     "test_ensure_table",
+    "test_expected_dependency_bases_by_family_preserves_internal_dependency_order",
     "test_extract_dep_name",
     "test_extract_requirement_name",
     "test_files_modified_tracks_affected_files",
@@ -4326,6 +4344,8 @@ __all__ = [
     "test_project_dev_groups_missing_sections",
     "test_project_without_alias_facade_has_no_violation",
     "test_project_without_src_returns_empty",
+    "test_read_project_metadata_preserves_pep621_dependency_order",
+    "test_read_project_metadata_preserves_poetry_dependency_order",
     "test_refactor_files_skips_non_python_inputs",
     "test_refactor_project_integrates_safety_manager",
     "test_refactor_project_scans_tests_and_scripts_dirs",

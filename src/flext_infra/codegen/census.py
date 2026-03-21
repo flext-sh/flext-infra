@@ -101,6 +101,31 @@ class FlextInfraCodegenCensus(s[bool]):
         workspace = (
             workspace_root if workspace_root is not None else self._workspace_root
         )
+
+        # Pre-scan class attributes once (if analyzing a class)
+        class_analysis: dict[str, set] | None = None
+        if self._class_to_analyze:
+            simple_class_name = self._class_to_analyze.rsplit(".", 1)[-1]
+            class_attrs = (
+                FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
+                    self._class_to_analyze,
+                )
+            )
+            if class_attrs:
+                used_attrs, _ = (
+                    FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
+                        workspace,
+                        simple_class_name,
+                        frozenset({".mypy_cache", "__pycache__", ".git", ".reports"}),
+                        max_files=5000,
+                    )
+                )
+                class_analysis = {
+                    "class_name": simple_class_name,
+                    "total_attrs": len(class_attrs),
+                    "used_attrs": used_attrs,
+                }
+
         discovery = FlextInfraUtilitiesDiscovery()
         projects_result = discovery.discover_projects(workspace)
         if not projects_result.is_success:
@@ -110,13 +135,14 @@ class FlextInfraCodegenCensus(s[bool]):
         for project in discovered:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue
-            report = self._census_project(project)
+            report = self._census_project(project, class_analysis)
             reports.append(report)
         return reports
 
     def _census_project(
         self,
         project: p.Infra.ProjectInfo,
+        class_analysis: dict[str, set] | None = None,
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
         validator = FlextInfraNamespaceValidator()
@@ -175,39 +201,24 @@ class FlextInfraCodegenCensus(s[bool]):
                 )
             )
 
-        # Census class attributes with MRO (if class_to_analyze provided or default)
-        class_to_analyze = self._class_to_analyze or (
-            "flext_core.FlextConstants" if project.name == "flext-core" else None
-        )
-        if class_to_analyze:
-            class_attrs = (
-                FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
-                    class_to_analyze,
+        # Census class attributes (use pre-computed analysis)
+        if class_analysis and project.name == "flext-core":
+            class_name = class_analysis["class_name"]
+            total_attrs = class_analysis["total_attrs"]
+            used_attrs_count = len(class_analysis["used_attrs"])
+            unused_attrs = total_attrs - used_attrs_count
+            violations.append(
+                m.Infra.CensusViolation(
+                    module=f"census:{class_name}",
+                    rule="CENSUS",
+                    line=0,
+                    message=(
+                        f"{class_name}: {total_attrs} attributes (with MRO), "
+                        f"{used_attrs_count} used, {unused_attrs} unused"
+                    ),
+                    fixable=False,
                 )
             )
-            if class_attrs:
-                # Extract simple class name from full path
-                simple_class_name = class_to_analyze.rsplit(".", 1)[-1]
-                used_attrs, _ = (
-                    FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
-                        self._workspace_root,
-                        simple_class_name,
-                        frozenset({".mypy_cache", "__pycache__"}),
-                    )
-                )
-                unused_attrs = len(class_attrs) - len(used_attrs)
-                violations.append(
-                    m.Infra.CensusViolation(
-                        module=f"census:{simple_class_name}",
-                        rule="CENSUS",
-                        line=0,
-                        message=(
-                            f"{simple_class_name}: {len(class_attrs)} attributes (with MRO), "
-                            f"{len(used_attrs)} used, {unused_attrs} unused"
-                        ),
-                        fixable=False,
-                    )
-                )
 
         return m.Infra.CensusReport(
             project=project.name,

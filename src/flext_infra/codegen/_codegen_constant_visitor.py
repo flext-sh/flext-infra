@@ -645,6 +645,7 @@ class FlextInfraCodegenConstantDetection:
         root_path: Path,
         class_name: str,
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
+        max_files: int = 10000,
     ) -> tuple[set[str], dict[str, list[tuple[str, int]]]]:
         """Scan workspace for usages of a specific class's attributes.
 
@@ -652,6 +653,7 @@ class FlextInfraCodegenConstantDetection:
             root_path: Root directory to scan
             class_name: Class name to search for (e.g., 'FlextConstants')
             exclude_patterns: Directory patterns to exclude
+            max_files: Maximum files to scan (default 10000)
 
         Returns:
             Tuple of (used_attribute_names, usage_map with file+line)
@@ -661,8 +663,11 @@ class FlextInfraCodegenConstantDetection:
         usage_map: dict[str, list[tuple[str, int]]] = {}
 
         pattern = re.compile(rf"{re.escape(class_name)}\.(\w+)")
+        files_scanned = 0
 
         for py_file in root_path.rglob("*.py"):
+            if files_scanned >= max_files:
+                break
             if any(excl in py_file.parts for excl in exclude_patterns):
                 continue
             try:
@@ -670,6 +675,7 @@ class FlextInfraCodegenConstantDetection:
             except (UnicodeDecodeError, OSError):
                 continue
 
+            files_scanned += 1
             for line_num, line in enumerate(source.split("\n"), 1):
                 for match in pattern.finditer(line):
                     attr_name = match.group(1)

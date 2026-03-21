@@ -119,6 +119,11 @@ if TYPE_CHECKING:
         test_pattern_rule_removes_nested_type_object_cast_chain,
         test_pattern_rule_skips_overload_signatures,
     )
+    from .test_infra_refactor_project_classifier import (
+        test_expected_dependency_bases_by_family_preserves_internal_dependency_order,
+        test_read_project_metadata_preserves_pep621_dependency_order,
+        test_read_project_metadata_preserves_poetry_dependency_order,
+    )
     from .test_infra_refactor_safety import (
         EngineSafetyStub,
         test_refactor_project_integrates_safety_manager,
@@ -240,6 +245,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_ensure_future_annotations_moves_existing_import_to_top": (
         "tests.infra.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_ensure_future_annotations_moves_existing_import_to_top",
+    ),
+    "test_expected_dependency_bases_by_family_preserves_internal_dependency_order": (
+        "tests.infra.unit.refactor.test_infra_refactor_project_classifier",
+        "test_expected_dependency_bases_by_family_preserves_internal_dependency_order",
     ),
     "test_import_alias_detector_skips_facade_and_subclass_files": (
         "tests.infra.unit.refactor.test_infra_refactor_namespace_aliases",
@@ -432,6 +441,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_project_without_alias_facade_has_no_violation": (
         "tests.infra.unit.refactor.test_infra_refactor_namespace_source",
         "test_project_without_alias_facade_has_no_violation",
+    ),
+    "test_read_project_metadata_preserves_pep621_dependency_order": (
+        "tests.infra.unit.refactor.test_infra_refactor_project_classifier",
+        "test_read_project_metadata_preserves_pep621_dependency_order",
+    ),
+    "test_read_project_metadata_preserves_poetry_dependency_order": (
+        "tests.infra.unit.refactor.test_infra_refactor_project_classifier",
+        "test_read_project_metadata_preserves_poetry_dependency_order",
     ),
     "test_refactor_files_skips_non_python_inputs": (
         "tests.infra.unit.refactor.test_infra_refactor_engine",
@@ -638,6 +655,7 @@ __all__ = [
     "test_engine_always_enables_class_nesting_file_rule",
     "test_ensure_future_annotations_after_docstring",
     "test_ensure_future_annotations_moves_existing_import_to_top",
+    "test_expected_dependency_bases_by_family_preserves_internal_dependency_order",
     "test_import_alias_detector_skips_facade_and_subclass_files",
     "test_import_alias_detector_skips_nested_private_and_as_renames",
     "test_import_alias_detector_skips_private_and_class_imports",
@@ -686,6 +704,8 @@ __all__ = [
     "test_preserves_used_imports_when_import_precedes_usage",
     "test_preserves_used_typing_imports",
     "test_project_without_alias_facade_has_no_violation",
+    "test_read_project_metadata_preserves_pep621_dependency_order",
+    "test_read_project_metadata_preserves_poetry_dependency_order",
     "test_refactor_files_skips_non_python_inputs",
     "test_refactor_project_integrates_safety_manager",
     "test_refactor_project_scans_tests_and_scripts_dirs",
