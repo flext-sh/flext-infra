@@ -18,9 +18,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
-
-
-if TYPE_CHECKING:
     from flext_infra.deps import _phases
     from flext_infra.deps._phases.consolidate_groups import ConsolidateGroupsPhase
     from flext_infra.deps._phases.ensure_coverage import EnsureCoverageConfigPhase

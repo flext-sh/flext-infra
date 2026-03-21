@@ -12,8 +12,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-
-if TYPE_CHECKING:
     from .test_infra_refactor_analysis import (
         test_build_impact_map_extracts_rename_entries,
         test_build_impact_map_extracts_signature_entries,

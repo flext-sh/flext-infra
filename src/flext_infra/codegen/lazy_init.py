@@ -76,10 +76,10 @@ class FlextInfraCodegenLazyInit(s[int]):
     def run(self, *, check_only: bool = False) -> int:
         """Process all package directories in the workspace.
 
-        Discovers package directories under ``src/``, ``tests/``,
-        ``examples/``, and ``scripts/``, processes them bottom-up
-        (deepest first), and generates PEP 562 lazy-import
-        ``__init__.py`` files.
+        Dynamically discovers ALL package directories with Python files
+        (including but not limited to ``src/``, ``tests/``, ``examples/``,
+        ``scripts/``, ``docs/``, ``tools/``, etc.), processes them bottom-up
+        (deepest first), and generates PEP 562 lazy-import ``__init__.py`` files.
 
         Args:
             check_only: If True, only report without writing.

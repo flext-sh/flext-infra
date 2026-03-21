@@ -11,11 +11,12 @@ from pydantic import TypeAdapter, ValidationError
 from flext_infra import c, m, r, t, u
 from flext_infra.refactor._top_level_class_collector import TopLevelClassCollector
 
+from ._models import RDictPathGrep
+
 type RConfigMapping = r[t.Infra.ContainerDict]
 type RListPath = r[list[Path]]
 type RPath = r[Path]
 type RListClassOccurrence = r[list[m.Infra.ClassOccurrence]]
-type RDictPathGrep = r[dict[Path, dict[str, int]]]
 
 
 class FlextInfraRefactorLooseClassScanner:

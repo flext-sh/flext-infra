@@ -139,15 +139,19 @@ class FlextInfraUtilitiesIteration:
         """Discover and iterate all Python files across workspace projects.
 
         Unlike iter_directory_python_files() which scans a single directory,
-        this discovers all projects in workspace and iterates selectively:
-          - By default includes src/, tests/, examples/, scripts/
-          - Can exclude specific directories (e.g., skip tests)
+        this discovers all projects in workspace and iterates dynamically:
+          - Includes src/, tests/, examples/, scripts/ by default (with toggles)
+          - ALSO dynamically discovers ANY other directories with Python files
+          - Can exclude specific standard directories (e.g., skip tests)
           - Handles discovery failure gracefully (returns Result type)
           - Accepts pre-discovered project roots for caching
 
         Algorithm:
           1. Discover project roots (unless project_roots provided)
-          2. For each root, collect files from enabled directories
+          2. For each root, collect files from:
+             a. Explicitly specified directories (src, tests, examples, scripts)
+                if enabled via include_* flags
+             b. ANY other subdirectories containing Python files (dynamic)
           3. Deduplicate (set) and sort results
 
         Args:
@@ -175,6 +179,7 @@ class FlextInfraUtilitiesIteration:
                     workspace_root=workspace_root,
                 )
             )
+            # Dynamic directory discovery: scan all subdirectories with Python files
             selected_dirs = src_dirs or frozenset(
                 {
                     c.Infra.Paths.DEFAULT_SRC_DIR,
@@ -183,6 +188,7 @@ class FlextInfraUtilitiesIteration:
                     c.Infra.Directories.SCRIPTS,
                 },
             )
+            # Build include flags for known directories
             include_flags = {
                 c.Infra.Paths.DEFAULT_SRC_DIR: True,
                 c.Infra.Directories.TESTS: include_tests,
@@ -191,12 +197,45 @@ class FlextInfraUtilitiesIteration:
             }
             files: list[Path] = []
             for project_root in roots:
+                # First: include explicitly specified directories if enabled
                 for dir_name, enabled in include_flags.items():
                     if (not enabled) or (dir_name not in selected_dirs):
                         continue
                     directory = project_root / dir_name
                     if directory.is_dir():
                         files.extend(directory.rglob(c.Infra.Extensions.PYTHON_GLOB))
+
+                # Second: dynamically discover any other directories with Python files
+                # (for extensibility - docs/, tools/, etc.)
+                for subdir in project_root.iterdir():
+                    if not subdir.is_dir():
+                        continue
+                    dir_name = subdir.name
+                    # Skip known system dirs and those already processed
+                    if dir_name in {
+                        "src",
+                        "tests",
+                        "examples",
+                        "scripts",  # Already handled above
+                        ".",
+                        "..",
+                        "__pycache__",
+                        ".git",
+                        ".venv",
+                        "node_modules",
+                        "vendor",
+                        "build",
+                        "dist",
+                    }:
+                        continue
+                    # Skip dotfiles/hidden directories
+                    if dir_name.startswith("."):
+                        continue
+                    # Check if directory contains Python files
+                    py_files = list(subdir.rglob(c.Infra.Extensions.PYTHON_GLOB))
+                    if py_files:
+                        files.extend(py_files)
+
             return r[list[Path]].ok(sorted(set(files)))
         except OSError as exc:
             return r[list[Path]].fail(f"python file iteration failed: {exc}")

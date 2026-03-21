@@ -116,18 +116,62 @@ class FlextInfraExtraPathsManager:
         )
 
     def get_dep_paths(self, doc: TOMLDocument, *, is_root: bool = False) -> list[str]:
-        """Resolve path dependencies to src directory paths."""
+        """Resolve path dependencies to all Python directory paths dynamically.
+
+        Scans each dependency for directories containing Python files
+        (not just src/) and includes all of them in extraPaths.
+        """
         raw_paths = self.path_dep_paths(doc)
         resolved: list[str] = []
         for path_value in raw_paths:
             if not path_value:
                 continue
             name = FlextInfraDependencyPathSync.extract_dep_name(path_value)
-            if is_root:
-                resolved.append(f"{name}/src")
+            prefix = f"{name}" if is_root else f"../{name}"
+
+            # Dynamically discover all directories with Python files
+            dep_dir = self.root / name
+            if dep_dir.is_dir():
+                for subdir in sorted(dep_dir.iterdir()):
+                    if not subdir.is_dir():
+                        continue
+                    if subdir.name.startswith(".") or subdir.name in {
+                        "__pycache__",
+                        "node_modules",
+                        "vendor",
+                        "build",
+                        "dist",
+                        ".venv",
+                    }:
+                        continue
+                    # Check if this directory contains Python files
+                    has_py = any(subdir.rglob("*.py"))
+                    if has_py:
+                        resolved.append(f"{prefix}/{subdir.name}")
             else:
-                resolved.append(f"../{name}/src")
+                # Fallback: just add src/ if directory doesn't exist
+                resolved.append(f"{prefix}/src")
         return resolved
+
+    def _discover_local_python_dirs(self, project_dir: Path) -> list[str]:
+        """Dynamically discover directories with Python files in a project."""
+        dirs: list[str] = []
+        for subdir in sorted(project_dir.iterdir()):
+            if not subdir.is_dir():
+                continue
+            if subdir.name.startswith(".") or subdir.name in {
+                "__pycache__",
+                "node_modules",
+                "vendor",
+                "build",
+                "dist",
+                ".venv",
+            }:
+                continue
+            has_py = any(subdir.rglob("*.py"))
+            if has_py:
+                dirs.append(subdir.name)
+        return dirs
 
     def sync_one(
         self,
@@ -144,16 +188,22 @@ class FlextInfraExtraPathsManager:
             return r[bool].fail(doc_result.error or f"failed to read {pyproject_path}")
         doc: TOMLDocument = doc_result.value
         dep_paths = self.get_dep_paths(doc, is_root=is_root)
-        pyright_extra = (
-            c.Infra.PYRIGHT_BASE_ROOT + dep_paths
-            if is_root
-            else c.Infra.PYRIGHT_BASE_PROJECT + dep_paths
-        )
-        mypy_path = (
-            c.Infra.MYPY_BASE_ROOT + dep_paths
-            if is_root
-            else c.Infra.MYPY_BASE_PROJECT + dep_paths
-        )
+
+        # Dynamically build base paths from actual directory contents
+        project_dir = pyproject_path.parent
+        local_dirs = self._discover_local_python_dirs(project_dir)
+
+        if is_root:
+            # For root: combine local dirs + typings + dep paths
+            pyright_base = sorted(set(local_dirs + ["typings", "typings/generated"]))
+            mypy_base = ["typings", "typings/generated", "src"]
+        else:
+            # For child projects: "." + local dirs + typings refs + dep paths
+            pyright_base = ["."] + local_dirs + ["../typings", "../typings/generated"]
+            mypy_base = [".", "../typings", "../typings/generated", "src"]
+
+        pyright_extra = pyright_base + dep_paths
+        mypy_path = mypy_base + dep_paths
         tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
         if tool_table is None:
             return r[bool].fail(f"no [tool] section in {pyproject_path}")

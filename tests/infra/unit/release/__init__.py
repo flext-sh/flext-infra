@@ -12,8 +12,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-
-if TYPE_CHECKING:
     from .flow_tests import TestReleaseMainFlow
     from .main_tests import TestReleaseMainParsing
     from .orchestrator_git_tests import (

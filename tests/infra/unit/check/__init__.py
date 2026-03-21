@@ -12,8 +12,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-
-if TYPE_CHECKING:
     from .cli_tests import (
         test_resolve_gates_maps_type_alias,
         test_run_cli_run_returns_one_for_fail,
