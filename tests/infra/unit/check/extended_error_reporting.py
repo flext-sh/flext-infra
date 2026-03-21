@@ -12,7 +12,6 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.infra import m
 
 from ... import h
 from ...models import m
@@ -35,7 +34,7 @@ class TestErrorReporting:
         reports_dir = tmp_path / "reports"
         issue = make_issue(file="test.py")
         gate_exec = make_gate_exec(issues=[issue])
-        project = ProjectResult(project="p1", gates={"lint": gate_exec})
+        project = m.Infra.ProjectResult(project="p1", gates={"lint": gate_exec})
 
         monkeypatch.setattr(
             checker, "_check_project", create_check_project_stub(project)
@@ -57,8 +56,8 @@ class TestErrorReporting:
         issue = make_issue(file="test.py")
         exec_with = make_gate_exec(issues=[issue])
         exec_without = make_gate_exec(issues=[])
-        project1 = ProjectResult(project="p1", gates={"lint": exec_with})
-        project2 = ProjectResult(project="p2", gates={"lint": exec_without})
+        project1 = m.Infra.ProjectResult(project="p1", gates={"lint": exec_with})
+        project2 = m.Infra.ProjectResult(project="p2", gates={"lint": exec_without})
         monkeypatch.setattr(
             checker,
             "_check_project",
@@ -86,7 +85,7 @@ class TestMarkdownReportEmptyGates:
         issue = make_issue(file="test.py")
         exec_with = make_gate_exec(issues=[issue])
         exec_without = make_gate_exec(issues=[])
-        project = ProjectResult(
+        project = m.Infra.ProjectResult(
             project="p1",
             gates={"lint": exec_with, "format": exec_without},
         )

@@ -15,14 +15,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from flext_core import r, t
+from flext_core import r
 from flext_infra import m as infra_models
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from tests.infra import m, t
+from tests.infra import t
 
 from ...helpers import h
 from ...models import m
@@ -41,12 +41,12 @@ def create_gate_execution(
     *,
     passed: bool = True,
     issues: list[m.Infra.Issue] | None = None,
-) -> GateExecution:
+) -> m.Infra.GateExecution:
     """Factory for GateExecution with standard defaults.
 
     Single Responsibility: Create consistent test execution results.
     """
-    return GateExecution(
+    return m.Infra.GateExecution(
         result=m.Infra.GateResult(
             gate=gate,
             project=project,
@@ -224,9 +224,9 @@ def create_fake_run_projects(
     return RunProjectsMock(passed=passed, error_msg=error_msg)
 
 
-def create_check_project_stub() -> Callable[
-    [Path, list[str], Path], m.Infra.ProjectResult
-]:
+def create_check_project_stub(
+    project: m.Infra.ProjectResult,
+) -> Callable[[Path, list[str], Path], m.Infra.ProjectResult]:
     """Factory for _check_project stub that returns fixed project result.
 
     Single Responsibility: Create consistent project checking mocks.

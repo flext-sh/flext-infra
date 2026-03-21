@@ -23,7 +23,6 @@ from flext_infra.check.workspace_check import (
     FlextInfraWorkspaceChecker,
     ProjectResult,
 )
-from tests.infra import m, t
 
 from ...models import m
 

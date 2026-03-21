@@ -13,7 +13,7 @@ from flext_infra.models import m
 
 class FlextInfraCodegenConstantDetection:
     MIN_QUOTED_LITERAL_LEN: Final[int] = 2
-    MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 3
+    MIN_DIRECT_REFERENCE_CHAIN: Final[int] = 2
 
     class RenderContext:
         def __init__(self, source: str) -> None:
@@ -102,8 +102,8 @@ class FlextInfraCodegenConstantDetection:
             det = FlextInfraCodegenConstantDetection
             root = det.root_name(node)
 
-            # Track all c.* usage (generic)
-            if isinstance(node.value, cst.Attribute) and root == "c":
+            # Track all c.* usage (generic) - both c.X and c.X.Y
+            if root == "c":
                 constant_name = node.attr.value
                 self.used_constants.add(constant_name)
                 if self._collect_all_refs:
@@ -863,6 +863,7 @@ class FlextInfraCodegenConstantDetection:
 
         files_modified = 0
         replaced_names: list = []
+        replaced_details: list = []  # Track file, line, old_name for each replacement
 
         # Replace each duplicate
         duplicates = fix_proposal.get("duplicates", [])
@@ -889,10 +890,24 @@ class FlextInfraCodegenConstantDetection:
 
                 modified = False
                 new_content = content
+                lines = content.split("\n")
+
                 for old_pattern, new_pattern in patterns:
-                    if old_pattern in new_content:
-                        new_content = new_content.replace(old_pattern, new_pattern)
-                        modified = True
+                    if old_pattern not in new_content:
+                        continue
+
+                    # Find all occurrences with line numbers
+                    for line_idx, line in enumerate(lines, 1):
+                        if old_pattern in line:
+                            # Track this replacement
+                            replaced_details.append({
+                                "file": str(py_file),
+                                "line": line_idx,
+                                "old_name": dup_name,
+                            })
+                            # Do the replacement
+                            new_content = new_content.replace(old_pattern, new_pattern)
+                            modified = True
 
                 if modified and not dry_run:
                     py_file.write_text(new_content, encoding="utf-8")
@@ -902,6 +917,7 @@ class FlextInfraCodegenConstantDetection:
             "status": "success",
             "canonical": canonical_name,
             "replaced": replaced_names,
+            "replaced_details": replaced_details,
             "files_modified": files_modified,
         }
 

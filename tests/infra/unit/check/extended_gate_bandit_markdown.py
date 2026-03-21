@@ -21,7 +21,6 @@ from tests.infra import m
 from ._shared_fixtures import create_checker_project, patch_gate_run
 
 GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
-_m.Infra.GateExecution = m.Infra.GateExecution
 
 # Local aliases for backward compatibility
 _create_checker_project = create_checker_project
@@ -47,10 +46,10 @@ def _run_failed_gate_check(
     monkeypatch: pytest.MonkeyPatch,
     *,
     gate_class: GateClass,
-    gate_runner: Callable[[FlextInfraWorkspaceChecker, Path], _m.Infra.GateExecution],
+    gate_runner: Callable[[FlextInfraWorkspaceChecker, Path], m.Infra.GateExecution],
     stdout: str = "",
     stderr: str = "",
-) -> _m.Infra.GateExecution:
+) -> m.Infra.GateExecution:
     """Helper to run gate check with failure setup."""
     patch_gate_run(
         monkeypatch,
@@ -62,7 +61,7 @@ def _run_failed_gate_check(
     return gate_runner(checker, project_dir)
 
 
-def _assert_failed_single_issue(result: _m.Infra.GateExecution) -> None:
+def _assert_failed_single_issue(result: m.Infra.GateExecution) -> None:
     tm.that(result.result.passed, eq=False)
     tm.that(len(result.issues), eq=1)
 

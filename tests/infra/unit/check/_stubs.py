@@ -82,9 +82,9 @@ def make_gate_exec(
     project: str = "p",
     passed: bool = True,
     issues: list[m.Infra.Issue] | None = None,
-) -> GateExecution:
+) -> m.Infra.GateExecution:
     """Create a _GateExecution with defaults."""
-    return GateExecution(
+    return m.Infra.GateExecution(
         result=m.Infra.GateResult(
             gate=gate,
             project=project,
@@ -117,10 +117,10 @@ def make_issue(
 
 def make_project(
     name: str = "p",
-    gates: dict[str, GateExecution] | None = None,
-) -> ProjectResult:
+    gates: dict[str, m.Infra.GateExecution] | None = None,
+) -> m.Infra.ProjectResult:
     """Create a _ProjectResult with defaults."""
-    return ProjectResult(
+    return m.Infra.ProjectResult(
         project=name,
         gates=gates or {"lint": make_gate_exec()},
     )
