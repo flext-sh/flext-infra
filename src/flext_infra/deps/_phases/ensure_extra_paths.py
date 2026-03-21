@@ -7,28 +7,27 @@ from pathlib import Path
 import tomlkit
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.utilities import u
 
 
 class EnsureExtraPathsPhase:
-    """Ensure pyright/mypy extra paths are synchronized via extra_paths.sync_one."""
+    """Ensure pyright/mypy extra paths are synchronized.
+
+    Modifies the in-memory doc directly (like all other phases) so the
+    modernizer writes a single consistent file at the end.
+    """
 
     def apply(
         self,
-        _doc: tomlkit.TOMLDocument,
+        doc: tomlkit.TOMLDocument,
         *,
         path: Path,
         is_root: bool,
         dry_run: bool = False,
     ) -> list[str]:
-        result = FlextInfraExtraPathsManager.sync_one_path(
-            path,
-            dry_run=dry_run,
+        _ = dry_run
+        manager = FlextInfraExtraPathsManager()
+        return manager.sync_doc(
+            doc,
+            project_dir=path.parent,
             is_root=is_root,
         )
-        if result.is_failure:
-            u.Infra.warning(f"extra_paths sync failed for {path}: {result.error}")
-            return []
-        if result.value:
-            return ["synchronized extra paths (pyright/mypy)"]
-        return []

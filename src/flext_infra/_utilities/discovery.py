@@ -257,6 +257,39 @@ class FlextInfraUtilitiesDiscovery:
         return result
 
     @staticmethod
+    def discover_python_dirs(
+        project_dir: Path,
+        *,
+        skip_dirs: frozenset[str] | None = None,
+    ) -> list[str]:
+        """Discover all directories containing Python files in a project.
+
+        SSOT discovery function used by all tool config phases
+        (pyright, ruff, pyrefly, mypy, extra_paths) and codegen.
+
+        Args:
+            project_dir: Project root directory to scan.
+            skip_dirs: Directory names to skip. Defaults to c.Infra.SKIP_DIRS.
+
+        Returns:
+            Sorted list of directory names that contain at least one .py file.
+
+        """
+        if not project_dir.is_dir():
+            return []
+        effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
+        dirs: list[str] = []
+        for subdir in sorted(project_dir.iterdir()):
+            if not subdir.is_dir():
+                continue
+            if subdir.name.startswith(".") or subdir.name in effective_skip:
+                continue
+            has_py = any(subdir.rglob("*.py"))
+            if has_py:
+                dirs.append(subdir.name)
+        return dirs
+
+    @staticmethod
     def discover_src_package_dir(project_root: Path) -> tuple[str, Path] | None:
         """Find the main package directory inside src/."""
         src_dir = project_root / "src"

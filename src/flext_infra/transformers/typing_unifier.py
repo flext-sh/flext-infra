@@ -34,7 +34,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
 
     @override
     def visit_ImportFrom(self, node: cst.ImportFrom) -> bool:
-        module_name = u.Infra.module_name_from_expr(node.module)
+        module_name = u.Infra.cst_module_name(node.module)
         if module_name == "typing":
             names = node.names
             if isinstance(names, cst.ImportStar):
@@ -181,7 +181,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         only = stmt.body[0]
         if not isinstance(only, cst.ImportFrom):
             return stmt
-        module_name = u.Infra.module_name_from_expr(only.module)
+        module_name = u.Infra.cst_module_name(only.module)
         if module_name != "typing":
             return stmt
         if isinstance(only.names, cst.ImportStar):

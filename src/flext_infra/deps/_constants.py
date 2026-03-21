@@ -10,28 +10,9 @@ from typing import Final
 class FlextInfraDepsConstants:
     """Deps infrastructure constants."""
 
-    PYRIGHT_BASE_ROOT: Final[list[str]] = [
-        "scripts",
-        "src",
-        "typings",
-        "typings/generated",
-    ]
-    MYPY_BASE_ROOT: Final[list[str]] = ["typings", "typings/generated", "src"]
-    PYRIGHT_BASE_PROJECT: Final[list[str]] = [
-        ".",
-        "src",
-        "tests",
-        "examples",
-        "scripts",
-        "../typings",
-        "../typings/generated",
-    ]
-    MYPY_BASE_PROJECT: Final[list[str]] = [
-        ".",
-        "../typings",
-        "../typings/generated",
-        "src",
-    ]
+    # NOTE: Hardcoded base path constants removed.
+    # All tool config phases now use dynamic discovery via
+    # u.Infra.discover_python_dirs() (SSOT in FlextInfraUtilitiesDiscovery).
     GIT_REF_RE: Final[re.Pattern[str]] = re.compile(
         r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$",
     )

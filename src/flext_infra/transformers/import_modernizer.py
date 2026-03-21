@@ -43,7 +43,7 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         updated_node: cst.ImportFrom,
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
         """Replace forbidden imports and capture symbol replacement map."""
-        module_name = u.Infra.module_name_from_expr(original_node.module)
+        module_name = u.Infra.cst_module_name(original_node.module)
         if module_name == c.Infra.Packages.CORE_UNDERSCORE:
             imported_aliases = self._extract_import_aliases(original_node.names)
             for imported_alias in imported_aliases:

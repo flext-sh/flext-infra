@@ -26,13 +26,12 @@ class EnsurePyrightConfigPhase:
         *,
         is_root: bool,
         workspace_root: Path | None,
+        project_dir: Path | None = None,
     ) -> list[dict[str, str]]:
-        default_envs: list[dict[str, str]] = [
-            {"root": c.Infra.Paths.DEFAULT_SRC_DIR, "reportPrivateUsage": "error"},
-            {"root": c.Infra.Directories.TESTS, "reportPrivateUsage": "none"},
-        ]
-        if not is_root or workspace_root is None:
-            return default_envs
+        if not is_root:
+            return self._expected_envs_for_project(project_dir)
+        if workspace_root is None:
+            return self._expected_envs_for_project(project_dir)
 
         expected_envs: list[dict[str, str]] = []
         root_src = workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR
@@ -93,6 +92,30 @@ class EnsurePyrightConfigPhase:
                 })
         return expected_envs or default_envs
 
+    @staticmethod
+    def _expected_envs_for_project(
+        project_dir: Path | None,
+    ) -> list[dict[str, str]]:
+        """Build executionEnvironments dynamically from discovered dirs."""
+        if project_dir is None:
+            return [
+                {"root": c.Infra.Paths.DEFAULT_SRC_DIR, "reportPrivateUsage": "error"},
+                {"root": c.Infra.Directories.TESTS, "reportPrivateUsage": "none"},
+            ]
+        discovered = u.Infra.discover_python_dirs(project_dir)
+        envs: list[dict[str, str]] = []
+        for dir_name in discovered:
+            if dir_name == c.Infra.Paths.DEFAULT_SRC_DIR:
+                envs.append({"root": dir_name, "reportPrivateUsage": "error"})
+            else:
+                envs.append({"root": dir_name, "reportPrivateUsage": "none"})
+        if not envs:
+            return [
+                {"root": c.Infra.Paths.DEFAULT_SRC_DIR, "reportPrivateUsage": "error"},
+                {"root": c.Infra.Directories.TESTS, "reportPrivateUsage": "none"},
+            ]
+        return envs
+
     def _override_for_kind(
         self,
         project_kind: str,
@@ -114,6 +137,7 @@ class EnsurePyrightConfigPhase:
         *,
         is_root: bool,
         workspace_root: Path | None = None,
+        project_dir: Path | None = None,
         project_kind: str = "core",
     ) -> list[str]:
         changes: list[str] = []
@@ -129,6 +153,7 @@ class EnsurePyrightConfigPhase:
         expected_envs = self._expected_envs(
             is_root=is_root,
             workspace_root=workspace_root,
+            project_dir=project_dir,
         )
         if is_root:
             if (

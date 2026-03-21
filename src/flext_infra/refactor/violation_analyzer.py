@@ -144,7 +144,7 @@ class FlextInfraRefactorViolationAnalyzer:
                 dependencies.add(imported)
         decorator_dependencies: set[str] = set()
         for decorator in function.decorators:
-            decorator_root = u.Infra.root_name(decorator.decorator)
+            decorator_root = u.Infra.cst_root_name(decorator.decorator)
             if not decorator_root:
                 continue
             imported = local_to_import.get(decorator_root)

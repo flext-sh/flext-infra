@@ -52,7 +52,7 @@ class FlextInfraRefactorMROReferenceRewriter(cst.CSTTransformer):
         """Rewrite attribute access on module aliases to their moved location."""
         del original_node
         # Walk up to get the root name
-        root_name = u.Infra.root_name(updated_node.value)
+        root_name = u.Infra.cst_root_name(updated_node.value)
         if not root_name:
             return updated_node
 

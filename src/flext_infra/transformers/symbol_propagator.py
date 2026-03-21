@@ -38,7 +38,7 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.ImportFrom:
-        module_name = u.Infra.module_name_from_expr(original_node.module)
+        module_name = u.Infra.cst_module_name(original_node.module)
         next_node = updated_node
         if module_name in self._module_renames:
             next_module = u.Infra.module_expr_from_dotted(

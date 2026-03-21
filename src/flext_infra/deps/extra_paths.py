@@ -153,25 +153,15 @@ class FlextInfraExtraPathsManager:
                 resolved.append(f"{prefix}/src")
         return resolved
 
-    def _discover_local_python_dirs(self, project_dir: Path) -> list[str]:
-        """Dynamically discover directories with Python files in a project."""
-        dirs: list[str] = []
-        for subdir in sorted(project_dir.iterdir()):
-            if not subdir.is_dir():
-                continue
-            if subdir.name.startswith(".") or subdir.name in {
-                "__pycache__",
-                "node_modules",
-                "vendor",
-                "build",
-                "dist",
-                ".venv",
-            }:
-                continue
-            has_py = any(subdir.rglob("*.py"))
-            if has_py:
-                dirs.append(subdir.name)
-        return dirs
+    @staticmethod
+    def _discover_local_python_dirs(project_dir: Path) -> list[str]:
+        """Dynamically discover directories with Python files in a project.
+
+        Delegates to the SSOT discovery in FlextInfraUtilitiesDiscovery.
+        """
+        from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+
+        return FlextInfraUtilitiesDiscovery.discover_python_dirs(project_dir)
 
     def sync_one(
         self,
@@ -196,11 +186,13 @@ class FlextInfraExtraPathsManager:
         if is_root:
             # For root: combine local dirs + typings + dep paths
             pyright_base = sorted(set(local_dirs + ["typings", "typings/generated"]))
-            mypy_base = ["typings", "typings/generated", "src"]
+            mypy_base = sorted(
+                set(local_dirs + ["typings", "typings/generated"]),
+            )
         else:
             # For child projects: "." + local dirs + typings refs + dep paths
             pyright_base = ["."] + local_dirs + ["../typings", "../typings/generated"]
-            mypy_base = [".", "../typings", "../typings/generated", "src"]
+            mypy_base = ["."] + local_dirs + ["../typings", "../typings/generated"]
 
         pyright_extra = pyright_base + dep_paths
         mypy_path = mypy_base + dep_paths
@@ -254,6 +246,81 @@ class FlextInfraExtraPathsManager:
                     write_result.error or f"failed to write {pyproject_path}",
                 )
         return r[bool].ok(changed)
+
+    def sync_doc(
+        self,
+        doc: TOMLDocument,
+        *,
+        project_dir: Path,
+        is_root: bool = False,
+    ) -> list[str]:
+        """Synchronize extra paths on an in-memory TOMLDocument.
+
+        Used by EnsureExtraPathsPhase to modify the doc in-place
+        without reading/writing to disk (avoiding overwrite by modernizer).
+
+        Returns:
+            List of change descriptions.
+
+        """
+        changes: list[str] = []
+        dep_paths = self.get_dep_paths(doc, is_root=is_root)
+        local_dirs = self._discover_local_python_dirs(project_dir)
+
+        if is_root:
+            pyright_base = sorted(set(local_dirs + ["typings", "typings/generated"]))
+            mypy_base = sorted(
+                set(local_dirs + ["typings", "typings/generated"]),
+            )
+        else:
+            pyright_base = ["."] + local_dirs + ["../typings", "../typings/generated"]
+            mypy_base = ["."] + local_dirs + ["../typings", "../typings/generated"]
+
+        pyright_extra = pyright_base + dep_paths
+        mypy_path = mypy_base + dep_paths
+        tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
+        if tool_table is None:
+            return changes
+        pyright_table = self._as_table(
+            self._table_get(tool_table, c.Infra.Toml.PYRIGHT),
+        )
+        if pyright_table is None:
+            return changes
+        mypy_table = self._as_table(self._table_get(tool_table, c.Infra.Toml.MYPY))
+        pyrefly_table = self._as_table(
+            self._table_get(tool_table, c.Infra.Toml.PYREFLY),
+        )
+        current_pyright = self._as_string_list(
+            self._table_get(pyright_table, "extraPaths"),
+        )
+        if current_pyright != pyright_extra:
+            pyright_table["extraPaths"] = pyright_extra
+            changes.append("synchronized pyright extraPaths")
+        if mypy_table is not None:
+            current_mypy = self._as_string_list(
+                self._table_get(mypy_table, "mypy_path"),
+            )
+            if current_mypy != mypy_path:
+                mypy_table["mypy_path"] = mypy_path
+                tool_table[c.Infra.Toml.MYPY] = mypy_table
+                changes.append("synchronized mypy mypy_path")
+        if not is_root and pyrefly_table is not None:
+            base_search: list[str] = ["."] + dep_paths
+            current_search = self._as_string_list(
+                self._table_get(pyrefly_table, c.Infra.Toml.SEARCH_PATH),
+            )
+            seen: set[str] = set(base_search)
+            for path_value in current_search:
+                if path_value not in seen:
+                    base_search.append(path_value)
+                    seen.add(path_value)
+            if base_search != current_search:
+                pyrefly_table[c.Infra.Toml.SEARCH_PATH] = base_search
+                tool_table[c.Infra.Toml.PYREFLY] = pyrefly_table
+                changes.append("synchronized pyrefly search-path")
+        tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
+        doc[c.Infra.Toml.TOOL] = tool_table
+        return changes
 
     @staticmethod
     def sync_one_path(

@@ -40,7 +40,7 @@ class CensusImportDiscoveryVisitor(cst.CSTVisitor):
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         if node.module is None:
             return
-        module_str = u.Infra.dotted_name(node.module)
+        module_str = u.Infra.cst_module_name(node.module)
         if not module_str:
             return
         if isinstance(node.names, cst.ImportStar):
@@ -48,7 +48,9 @@ class CensusImportDiscoveryVisitor(cst.CSTVisitor):
         for alias in node.names:
             imported_name = alias.name.value if isinstance(alias.name, cst.Name) else ""
             local_name = (
-                u.Infra.asname_to_local(alias.asname) if alias.asname else imported_name
+                u.Infra.cst_asname_to_local(alias.asname)
+                if alias.asname
+                else imported_name
             )
             if not local_name:
                 local_name = imported_name
@@ -111,7 +113,7 @@ class CensusUsageCollector(cst.CSTVisitor):
 
         if (
             isinstance(value, cst.Attribute)
-            and u.Infra.root_name(value) in self.alias_locals
+            and u.Infra.cst_root_name(value) in self.alias_locals
         ):
             inner_name = value.attr.value
             base_class = self.inner_class_map.get(inner_name, "")

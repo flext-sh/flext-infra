@@ -112,7 +112,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
                 continue
             for small_stmt in stmt.body:
                 if isinstance(small_stmt, cst.ImportFrom):
-                    module_name = u.Infra.module_name_from_expr(small_stmt.module)
+                    module_name = u.Infra.cst_module_name(small_stmt.module)
                     if module_name == c.Infra.Packages.CORE_UNDERSCORE:
                         continue
                     if isinstance(small_stmt.names, cst.ImportStar):

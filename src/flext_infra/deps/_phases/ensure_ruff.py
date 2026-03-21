@@ -29,7 +29,6 @@ class EnsureRuffConfigPhase:
         path: Path,
         workspace_root: Path,
     ) -> list[str]:
-        _ = workspace_root
         changes: list[str] = []
         tool: Item | Container | None = None
         if c.Infra.Toml.TOOL in doc:
@@ -59,10 +58,10 @@ class EnsureRuffConfigPhase:
             if u.Infra.unwrap_item(u.Infra.get(ruff, key)) != value:
                 ruff[key] = value
                 changes.append(f"tool.ruff.{key} set")
-        if sorted(u.Infra.as_string_list(u.Infra.get(ruff, "src"))) != sorted(
-            ruff_cfg.src,
-        ):
-            ruff["src"] = u.Infra.array(sorted(ruff_cfg.src))
+        discovered_src = sorted(u.Infra.discover_python_dirs(path.parent))
+        effective_src = discovered_src or sorted(ruff_cfg.src)
+        if sorted(u.Infra.as_string_list(u.Infra.get(ruff, "src"))) != effective_src:
+            ruff["src"] = u.Infra.array(effective_src)
             changes.append("tool.ruff.src set")
 
         ruff_format = u.Infra.ensure_table(ruff, "format")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import tomlkit
@@ -20,7 +21,13 @@ class EnsurePyreflyConfigPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         self._tool_config = tool_config
 
-    def apply(self, doc: tomlkit.TOMLDocument, *, is_root: bool) -> list[str]:
+    def apply(
+        self,
+        doc: tomlkit.TOMLDocument,
+        *,
+        is_root: bool,
+        project_dir: Path | None = None,
+    ) -> list[str]:
         changes: list[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:
@@ -47,7 +54,16 @@ class EnsurePyreflyConfigPhase:
         ):
             pyrefly[c.Infra.Toml.IGNORE_ERRORS_IN_GENERATED] = True
             changes.append("tool.pyrefly.ignore-errors-in-generated-code enabled")
-        expected_search = ["."]
+        if project_dir is not None:
+            local_dirs = u.Infra.discover_python_dirs(project_dir)
+            if is_root:
+                expected_search = sorted(
+                    set(local_dirs + ["typings"]),
+                )
+            else:
+                expected_search = ["."] + local_dirs
+        else:
+            expected_search = ["."]
         current_search = u.Infra.as_string_list(
             u.Infra.get(pyrefly, c.Infra.Toml.SEARCH_PATH),
         )
