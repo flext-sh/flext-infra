@@ -170,7 +170,9 @@ class FlextInfraCodegenGeneration:
                 "from typing import TYPE_CHECKING",
             ])
         elif current_pkg == c.Infra.Packages.CORE_UNDERSCORE or is_core_internal:
-            lazy_import = "from flext_core._utilities.lazy import cleanup_submodule_namespace, lazy_getattr"
+            lazy_import = (
+                "from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr"
+            )
             out.extend([
                 "from __future__ import annotations",
                 "",

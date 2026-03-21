@@ -127,7 +127,7 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: dict[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "flext_core")
-        tm.that(content, contains="flext_core._utilities.lazy")
+        tm.that(content, contains="flext_core.lazy")
 
     def test_with_other_package(self) -> None:
         """Test uses correct lazy import for non-core packages."""

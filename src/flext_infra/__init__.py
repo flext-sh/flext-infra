@@ -45,916 +45,690 @@ if TYPE_CHECKING:
         __version__,
         __version_info__,
     )
-    from flext_infra._utilities.cli import FlextInfraUtilitiesCli
-    from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-    from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
-    from flext_infra._utilities.git import FlextInfraUtilitiesGit
-    from flext_infra._utilities.github import FlextInfraUtilitiesGithub
-    from flext_infra._utilities.io import FlextInfraUtilitiesIo
-    from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-    from flext_infra._utilities.output import (
+    from flext_infra._utilities import (
+        FlextInfraUtilitiesCli,
+        FlextInfraUtilitiesDiscovery,
+        FlextInfraUtilitiesFormatting,
+        FlextInfraUtilitiesGit,
+        FlextInfraUtilitiesGithub,
+        FlextInfraUtilitiesIo,
+        FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesOutput,
+        FlextInfraUtilitiesParsing,
+        FlextInfraUtilitiesPaths,
+        FlextInfraUtilitiesPatterns,
+        FlextInfraUtilitiesReporting,
+        FlextInfraUtilitiesSafety,
+        FlextInfraUtilitiesScanning,
+        FlextInfraUtilitiesSelection,
+        FlextInfraUtilitiesSubprocess,
+        FlextInfraUtilitiesTemplates,
+        FlextInfraUtilitiesTerminal,
+        FlextInfraUtilitiesToml,
+        FlextInfraUtilitiesTomlParse,
+        FlextInfraUtilitiesVersioning,
+        FlextInfraUtilitiesYaml,
         OutputBackend,
         output,
     )
-    from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-    from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
-    from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
-    from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
-    from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-    from flext_infra._utilities.scanning import FlextInfraUtilitiesScanning
-    from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
-    from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-    from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
-    from flext_infra._utilities.terminal import FlextInfraUtilitiesTerminal
-    from flext_infra._utilities.toml import FlextInfraUtilitiesToml
-    from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
-    from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-    from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
-    from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
-    from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-    from flext_infra.check.services import (
+    from flext_infra.basemk import (
+        FlextInfraBaseMkGenerator,
+        FlextInfraBaseMkTemplateEngine,
+    )
+    from flext_infra.check import (
         CheckIssue,
         FlextInfraConfigFixer,
         FlextInfraWorkspaceChecker,
         GateExecution,
         ProjectResult,
+        build_parser,
+        run_cli,
     )
-    from flext_infra.check.workspace_check import build_parser, run_cli
-    from flext_infra.codegen.census import FlextInfraCodegenCensus
-    from flext_infra.codegen.constants_quality_gate import (
+    from flext_infra.codegen import (
+        FlextInfraCodegenCensus,
         FlextInfraCodegenConstantsQualityGate,
+        FlextInfraCodegenFixer,
+        FlextInfraCodegenLazyInit,
+        FlextInfraCodegenPyTyped,
+        FlextInfraCodegenScaffolder,
+        FlextInfraCodegenTransforms,
     )
-    from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-    from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-    from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-    from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-    from flext_infra.codegen.transforms import FlextInfraCodegenTransforms
     from flext_infra.constants import FlextInfraConstants, FlextInfraConstants as c
-    from flext_infra.deps._phases.consolidate_groups import ConsolidateGroupsPhase
-    from flext_infra.deps._phases.ensure_coverage import EnsureCoverageConfigPhase
-    from flext_infra.deps._phases.ensure_extra_paths import EnsureExtraPathsPhase
-    from flext_infra.deps._phases.ensure_formatting import EnsureFormattingToolingPhase
-    from flext_infra.deps._phases.ensure_mypy import EnsureMypyConfigPhase
-    from flext_infra.deps._phases.ensure_namespace import EnsureNamespaceToolingPhase
-    from flext_infra.deps._phases.ensure_pydantic_mypy import (
+    from flext_infra.deps import (
+        ConsolidateGroupsPhase,
+        EnsureCoverageConfigPhase,
+        EnsureExtraPathsPhase,
+        EnsureFormattingToolingPhase,
+        EnsureMypyConfigPhase,
+        EnsureNamespaceToolingPhase,
         EnsurePydanticMypyConfigPhase,
-    )
-    from flext_infra.deps._phases.ensure_pyrefly import EnsurePyreflyConfigPhase
-    from flext_infra.deps._phases.ensure_pyright import EnsurePyrightConfigPhase
-    from flext_infra.deps._phases.ensure_pytest import EnsurePytestConfigPhase
-    from flext_infra.deps._phases.ensure_ruff import EnsureRuffConfigPhase
-    from flext_infra.deps._phases.inject_comments import InjectCommentsPhase
-    from flext_infra.deps.detection import (
+        EnsurePyreflyConfigPhase,
+        EnsurePyrightConfigPhase,
+        EnsurePytestConfigPhase,
+        EnsureRuffConfigPhase,
         FlextInfraDependencyDetectionHelpers,
         FlextInfraDependencyDetectionService,
-        dm,
-    )
-    from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from flext_infra.deps.internal_sync import (
+        FlextInfraDependencyPathSync,
+        FlextInfraDependencyToolConfig,
+        FlextInfraExtraPathsManager,
         FlextInfraInternalDependencySyncService,
+        FlextInfraPyprojectModernizer,
+        FlextInfraRuntimeDevDependencyDetector,
+        InjectCommentsPhase,
+        dm,
         shutil,
     )
-    from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
-    from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
-    from flext_infra.docs.auditor import FlextInfraDocAuditor
-    from flext_infra.docs.builder import FlextInfraDocBuilder
-    from flext_infra.docs.fixer import FlextInfraDocFixer
-    from flext_infra.docs.generator import FlextInfraDocGenerator
-    from flext_infra.docs.shared import FlextInfraDocsShared
-    from flext_infra.docs.validator import FlextInfraDocValidator
-    from flext_infra.gates.bandit import FlextInfraBanditGate
-    from flext_infra.gates.go import FlextInfraGoGate
-    from flext_infra.gates.markdown import FlextInfraMarkdownGate
-    from flext_infra.gates.mypy import FlextInfraMypyGate
-    from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-    from flext_infra.gates.pyright import FlextInfraPyrightGate
-    from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-    from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+    from flext_infra.docs import (
+        FlextInfraDocAuditor,
+        FlextInfraDocBuilder,
+        FlextInfraDocFixer,
+        FlextInfraDocGenerator,
+        FlextInfraDocsShared,
+        FlextInfraDocValidator,
+    )
+    from flext_infra.gates import (
+        FlextInfraBanditGate,
+        FlextInfraGoGate,
+        FlextInfraMarkdownGate,
+        FlextInfraMypyGate,
+        FlextInfraPyreflyGate,
+        FlextInfraPyrightGate,
+        FlextInfraRuffFormatGate,
+        FlextInfraRuffLintGate,
+    )
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
-    from flext_infra.refactor._detectors.import_collector import ImportCollector
-    from flext_infra.refactor._detectors.module_loader import (
-        DetectorScanResultBuilder,
-        FlextInfraRefactorDetectorModuleLoader,
-    )
-    from flext_infra.refactor._detectors.python_module_loader_mixin import (
-        FlextInfraRefactorDetectorPythonModuleLoaderMixin,
-    )
-    from flext_infra.refactor.analysis import (
-        FlextInfraRefactorClassNestingAnalyzer,
-        FlextInfraRefactorViolationAnalyzer,
-    )
-    from flext_infra.refactor.census import FlextInfraRefactorCensus
-    from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
-    from flext_infra.refactor.dependency_analyzer import (
+    from flext_infra.refactor import (
         ClassPlacementDetector,
         CompatibilityAliasDetector,
         CyclicImportDetector,
         DependencyAnalyzer,
+        DetectorScanResultBuilder,
+        FlextInfraNamespaceEnforcer,
+        FlextInfraRefactorCensus,
+        FlextInfraRefactorClassNestingAnalyzer,
+        FlextInfraRefactorCliSupport,
         FlextInfraRefactorDependencyAnalyzerFacade,
+        FlextInfraRefactorDetectorModuleLoader,
+        FlextInfraRefactorDetectorPythonModuleLoaderMixin,
+        FlextInfraRefactorEngine,
+        FlextInfraRefactorLooseClassScanner,
+        FlextInfraRefactorMigrateToClassMRO,
+        FlextInfraRefactorMROImportRewriter,
+        FlextInfraRefactorMROMigrationScanner,
+        FlextInfraRefactorMROMigrationTransformer,
+        FlextInfraRefactorMROMigrationValidator,
+        FlextInfraRefactorMROResolver,
+        FlextInfraRefactorOutputRenderer,
+        FlextInfraRefactorPydanticCentralizer,
+        FlextInfraRefactorPydanticCentralizerAnalysis,
+        FlextInfraRefactorRule,
+        FlextInfraRefactorRuleDefinitionValidator,
+        FlextInfraRefactorRuleLoader,
+        FlextInfraRefactorSafetyManager,
+        FlextInfraRefactorViolationAnalyzer,
         FutureAnnotationsDetector,
         ImportAliasDetector,
+        ImportCollector,
         InternalImportDetector,
         LooseObjectDetector,
         ManualProtocolDetector,
         ManualTypingAliasDetector,
         MROCompletenessDetector,
+        NamespaceEnforcementRewriter,
         NamespaceFacadeScanner,
         NamespaceSourceDetector,
+        PostCheckGate,
+        ProjectClassifier,
         RuntimeAliasDetector,
     )
-    from flext_infra.refactor.engine import FlextInfraRefactorEngine
-    from flext_infra.refactor.migrate_to_class_mro import (
-        FlextInfraRefactorMigrateToClassMRO,
-    )
-    from flext_infra.refactor.mro_import_rewriter import (
-        FlextInfraRefactorMROImportRewriter,
-    )
-    from flext_infra.refactor.mro_migration_scanner import (
-        FlextInfraRefactorMROMigrationScanner,
-    )
-    from flext_infra.refactor.mro_migration_validator import (
-        FlextInfraRefactorMROMigrationValidator,
-    )
-    from flext_infra.refactor.mro_migrator import (
-        FlextInfraRefactorMROMigrationTransformer,
-    )
-    from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
-    from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-    from flext_infra.refactor.namespace_rewriter import NamespaceEnforcementRewriter
-    from flext_infra.refactor.output import FlextInfraRefactorOutputRenderer
-    from flext_infra.refactor.project_classifier import ProjectClassifier
-    from flext_infra.refactor.pydantic_centralizer import (
-        FlextInfraRefactorPydanticCentralizer,
-    )
-    from flext_infra.refactor.pydantic_centralizer_analysis import (
-        FlextInfraRefactorPydanticCentralizerAnalysis,
-    )
-    from flext_infra.refactor.rule import (
-        FlextInfraRefactorRule,
-        FlextInfraRefactorRuleLoader,
-    )
-    from flext_infra.refactor.rule_definition_validator import (
-        FlextInfraRefactorRuleDefinitionValidator,
-    )
-    from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-    from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
-    from flext_infra.refactor.validation import PostCheckGate
-    from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-    from flext_infra.rules.class_nesting import ClassNestingRefactorRule
-    from flext_infra.rules.class_reconstructor import (
+    from flext_infra.release import FlextInfraReleaseOrchestrator
+    from flext_infra.rules import (
+        ClassNestingRefactorRule,
         FlextInfraRefactorClassNestingReconstructor,
         FlextInfraRefactorClassReconstructorRule,
-        PreCheckGate,
-    )
-    from flext_infra.rules.ensure_future_annotations import (
         FlextInfraRefactorEnsureFutureAnnotationsRule,
-    )
-    from flext_infra.rules.import_modernizer import (
         FlextInfraRefactorImportModernizerRule,
-    )
-    from flext_infra.rules.legacy_removal import FlextInfraRefactorLegacyRemovalRule
-    from flext_infra.rules.mro_class_migration import (
+        FlextInfraRefactorLegacyRemovalRule,
         FlextInfraRefactorMROClassMigrationRule,
-    )
-    from flext_infra.rules.mro_redundancy_checker import (
         FlextInfraRefactorMRORedundancyChecker,
-    )
-    from flext_infra.rules.pattern_corrections import (
         FlextInfraRefactorPatternCorrectionsRule,
-    )
-    from flext_infra.rules.symbol_propagation import (
         FlextInfraRefactorSignaturePropagationRule,
         FlextInfraRefactorSignaturePropagator,
         FlextInfraRefactorSymbolPropagationRule,
-    )
-    from flext_infra.rules.tier0_import_fix import FlextInfraRefactorTier0ImportFixRule
-    from flext_infra.rules.type_alias_unification import (
-        FlextInfraRefactorTypingUnificationRule,
-    )
-    from flext_infra.rules.typing_census import (
+        FlextInfraRefactorTier0ImportFixRule,
         FlextInfraRefactorTypingAnnotationFixRule,
+        FlextInfraRefactorTypingUnificationRule,
+        PreCheckGate,
     )
-    from flext_infra.transformers.alias_remover import FlextInfraRefactorAliasRemover
-    from flext_infra.transformers.census_visitors import (
+    from flext_infra.transformers import (
         CensusImportDiscoveryVisitor,
         CensusUsageCollector,
-    )
-    from flext_infra.transformers.class_nesting import (
+        FlextInfraRefactorAliasRemover,
         FlextInfraRefactorClassNestingTransformer,
-    )
-    from flext_infra.transformers.class_reconstructor import (
         FlextInfraRefactorClassReconstructor,
-    )
-    from flext_infra.transformers.deprecated_remover import (
         FlextInfraRefactorDeprecatedRemover,
-    )
-    from flext_infra.transformers.helper_consolidation import (
-        HelperConsolidationTransformer,
-    )
-    from flext_infra.transformers.import_bypass_remover import (
         FlextInfraRefactorImportBypassRemover,
-    )
-    from flext_infra.transformers.import_insertion import (
-        FlextInfraTransformerImportInsertion,
-    )
-    from flext_infra.transformers.import_modernizer import (
         FlextInfraRefactorImportModernizer,
-    )
-    from flext_infra.transformers.import_normalizer import (
-        FlextInfraTransformerImportNormalizer,
-    )
-    from flext_infra.transformers.lazy_import_fixer import (
         FlextInfraRefactorLazyImportFixer,
-    )
-    from flext_infra.transformers.mro_private_inline import (
         FlextInfraRefactorMROPrivateInlineTransformer,
         FlextInfraRefactorMROQualifiedReferenceTransformer,
-    )
-    from flext_infra.transformers.mro_reference_rewriter import (
         FlextInfraRefactorMROReferenceRewriter,
-    )
-    from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
-    from flext_infra.transformers.nested_class_propagation import (
-        NestedClassPropagationTransformer,
-    )
-    from flext_infra.transformers.policy import (
-        FlextInfraRefactorTransformerPolicyUtilities,
-    )
-    from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
-    from flext_infra.transformers.symbol_propagator import (
+        FlextInfraRefactorMRORemover,
         FlextInfraRefactorSymbolPropagator,
-    )
-    from flext_infra.transformers.tier0_import_fixer import (
+        FlextInfraRefactorTransformerPolicyUtilities,
+        FlextInfraRefactorTypingUnifier,
+        FlextInfraTransformerImportInsertion,
+        FlextInfraTransformerImportNormalizer,
         FlextInfraTransformerTier0ImportFixer,
+        HelperConsolidationTransformer,
+        ModelDefinitionCollector,
+        ModelReferenceCollector,
+        NestedClassPropagationTransformer,
+        ProjectAliasDiscovery,
         Tier0ImportAnalysis,
         Tier0ImportAnalyzer,
         Tier0ImportContextDiscovery,
         Tier0ImportFixer,
-    )
-    from flext_infra.transformers.typing_annotation_replacer import (
-        TypingAnnotationReplacer,
-    )
-    from flext_infra.transformers.typing_census_visitor import (
         TypingAnnotationCensusVisitor,
+        TypingAnnotationReplacer,
+        UnusedModelRemover,
+        ViolationCensusVisitor,
     )
-    from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-    from flext_infra.transformers.unused_model_remover import UnusedModelRemover
-    from flext_infra.transformers.unused_model_visitor import (
-        ModelDefinitionCollector,
-        ModelReferenceCollector,
-    )
-    from flext_infra.transformers.violation_census_visitor import ViolationCensusVisitor
     from flext_infra.typings import FlextInfraTypes, FlextInfraTypes as t
     from flext_infra.utilities import FlextInfraUtilities, FlextInfraUtilities as u
-    from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
-    from flext_infra.validate.inventory import FlextInfraInventoryService
-    from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-    from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
-    from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-    from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-    from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
-    from flext_infra.workspace import maintenance
-    from flext_infra.workspace.detector import (
+    from flext_infra.validate import (
+        FlextInfraBaseMkValidator,
+        FlextInfraInventoryService,
+        FlextInfraNamespaceValidator,
+        FlextInfraPytestDiagExtractor,
+        FlextInfraSkillValidator,
+        FlextInfraStubSupplyChain,
+        FlextInfraTextPatternScanner,
+    )
+    from flext_infra.workspace import (
+        FlextInfraOrchestratorService,
+        FlextInfraProjectMigrator,
+        FlextInfraPythonVersionEnforcer,
+        FlextInfraSyncService,
         FlextInfraWorkspaceDetector,
         WorkspaceMode,
-    )
-    from flext_infra.workspace.maintenance.python_version import (
-        FlextInfraPythonVersionEnforcer,
         logger,
+        maintenance,
     )
-    from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-    from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-    from flext_infra.workspace.sync import FlextInfraSyncService
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "CensusImportDiscoveryVisitor": (
-        "flext_infra.transformers.census_visitors",
+        "flext_infra.transformers",
         "CensusImportDiscoveryVisitor",
     ),
-    "CensusUsageCollector": (
-        "flext_infra.transformers.census_visitors",
-        "CensusUsageCollector",
-    ),
-    "CheckIssue": ("flext_infra.check.services", "CheckIssue"),
-    "ClassNestingRefactorRule": (
-        "flext_infra.rules.class_nesting",
-        "ClassNestingRefactorRule",
-    ),
-    "ClassPlacementDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "ClassPlacementDetector",
-    ),
+    "CensusUsageCollector": ("flext_infra.transformers", "CensusUsageCollector"),
+    "CheckIssue": ("flext_infra.check", "CheckIssue"),
+    "ClassNestingRefactorRule": ("flext_infra.rules", "ClassNestingRefactorRule"),
+    "ClassPlacementDetector": ("flext_infra.refactor", "ClassPlacementDetector"),
     "CompatibilityAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor",
         "CompatibilityAliasDetector",
     ),
-    "ConsolidateGroupsPhase": (
-        "flext_infra.deps._phases.consolidate_groups",
-        "ConsolidateGroupsPhase",
-    ),
-    "CyclicImportDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "CyclicImportDetector",
-    ),
-    "DependencyAnalyzer": (
-        "flext_infra.refactor.dependency_analyzer",
-        "DependencyAnalyzer",
-    ),
-    "DetectorScanResultBuilder": (
-        "flext_infra.refactor._detectors.module_loader",
-        "DetectorScanResultBuilder",
-    ),
-    "EnsureCoverageConfigPhase": (
-        "flext_infra.deps._phases.ensure_coverage",
-        "EnsureCoverageConfigPhase",
-    ),
-    "EnsureExtraPathsPhase": (
-        "flext_infra.deps._phases.ensure_extra_paths",
-        "EnsureExtraPathsPhase",
-    ),
+    "ConsolidateGroupsPhase": ("flext_infra.deps", "ConsolidateGroupsPhase"),
+    "CyclicImportDetector": ("flext_infra.refactor", "CyclicImportDetector"),
+    "DependencyAnalyzer": ("flext_infra.refactor", "DependencyAnalyzer"),
+    "DetectorScanResultBuilder": ("flext_infra.refactor", "DetectorScanResultBuilder"),
+    "EnsureCoverageConfigPhase": ("flext_infra.deps", "EnsureCoverageConfigPhase"),
+    "EnsureExtraPathsPhase": ("flext_infra.deps", "EnsureExtraPathsPhase"),
     "EnsureFormattingToolingPhase": (
-        "flext_infra.deps._phases.ensure_formatting",
+        "flext_infra.deps",
         "EnsureFormattingToolingPhase",
     ),
-    "EnsureMypyConfigPhase": (
-        "flext_infra.deps._phases.ensure_mypy",
-        "EnsureMypyConfigPhase",
-    ),
-    "EnsureNamespaceToolingPhase": (
-        "flext_infra.deps._phases.ensure_namespace",
-        "EnsureNamespaceToolingPhase",
-    ),
+    "EnsureMypyConfigPhase": ("flext_infra.deps", "EnsureMypyConfigPhase"),
+    "EnsureNamespaceToolingPhase": ("flext_infra.deps", "EnsureNamespaceToolingPhase"),
     "EnsurePydanticMypyConfigPhase": (
-        "flext_infra.deps._phases.ensure_pydantic_mypy",
+        "flext_infra.deps",
         "EnsurePydanticMypyConfigPhase",
     ),
-    "EnsurePyreflyConfigPhase": (
-        "flext_infra.deps._phases.ensure_pyrefly",
-        "EnsurePyreflyConfigPhase",
-    ),
-    "EnsurePyrightConfigPhase": (
-        "flext_infra.deps._phases.ensure_pyright",
-        "EnsurePyrightConfigPhase",
-    ),
-    "EnsurePytestConfigPhase": (
-        "flext_infra.deps._phases.ensure_pytest",
-        "EnsurePytestConfigPhase",
-    ),
-    "EnsureRuffConfigPhase": (
-        "flext_infra.deps._phases.ensure_ruff",
-        "EnsureRuffConfigPhase",
-    ),
-    "FlextInfraBanditGate": ("flext_infra.gates.bandit", "FlextInfraBanditGate"),
-    "FlextInfraBaseMkGenerator": (
-        "flext_infra.basemk.generator",
-        "FlextInfraBaseMkGenerator",
-    ),
+    "EnsurePyreflyConfigPhase": ("flext_infra.deps", "EnsurePyreflyConfigPhase"),
+    "EnsurePyrightConfigPhase": ("flext_infra.deps", "EnsurePyrightConfigPhase"),
+    "EnsurePytestConfigPhase": ("flext_infra.deps", "EnsurePytestConfigPhase"),
+    "EnsureRuffConfigPhase": ("flext_infra.deps", "EnsureRuffConfigPhase"),
+    "FlextInfraBanditGate": ("flext_infra.gates", "FlextInfraBanditGate"),
+    "FlextInfraBaseMkGenerator": ("flext_infra.basemk", "FlextInfraBaseMkGenerator"),
     "FlextInfraBaseMkTemplateEngine": (
-        "flext_infra.basemk.engine",
+        "flext_infra.basemk",
         "FlextInfraBaseMkTemplateEngine",
     ),
-    "FlextInfraBaseMkValidator": (
-        "flext_infra.validate.basemk_validator",
-        "FlextInfraBaseMkValidator",
-    ),
-    "FlextInfraCodegenCensus": (
-        "flext_infra.codegen.census",
-        "FlextInfraCodegenCensus",
-    ),
+    "FlextInfraBaseMkValidator": ("flext_infra.validate", "FlextInfraBaseMkValidator"),
+    "FlextInfraCodegenCensus": ("flext_infra.codegen", "FlextInfraCodegenCensus"),
     "FlextInfraCodegenConstantsQualityGate": (
-        "flext_infra.codegen.constants_quality_gate",
+        "flext_infra.codegen",
         "FlextInfraCodegenConstantsQualityGate",
     ),
-    "FlextInfraCodegenFixer": ("flext_infra.codegen.fixer", "FlextInfraCodegenFixer"),
-    "FlextInfraCodegenLazyInit": (
-        "flext_infra.codegen.lazy_init",
-        "FlextInfraCodegenLazyInit",
-    ),
-    "FlextInfraCodegenPyTyped": (
-        "flext_infra.codegen.py_typed",
-        "FlextInfraCodegenPyTyped",
-    ),
+    "FlextInfraCodegenFixer": ("flext_infra.codegen", "FlextInfraCodegenFixer"),
+    "FlextInfraCodegenLazyInit": ("flext_infra.codegen", "FlextInfraCodegenLazyInit"),
+    "FlextInfraCodegenPyTyped": ("flext_infra.codegen", "FlextInfraCodegenPyTyped"),
     "FlextInfraCodegenScaffolder": (
-        "flext_infra.codegen.scaffolder",
+        "flext_infra.codegen",
         "FlextInfraCodegenScaffolder",
     ),
     "FlextInfraCodegenTransforms": (
-        "flext_infra.codegen.transforms",
+        "flext_infra.codegen",
         "FlextInfraCodegenTransforms",
     ),
-    "FlextInfraConfigFixer": ("flext_infra.check.services", "FlextInfraConfigFixer"),
+    "FlextInfraConfigFixer": ("flext_infra.check", "FlextInfraConfigFixer"),
     "FlextInfraConstants": ("flext_infra.constants", "FlextInfraConstants"),
     "FlextInfraDependencyDetectionHelpers": (
-        "flext_infra.deps.detection",
+        "flext_infra.deps",
         "FlextInfraDependencyDetectionHelpers",
     ),
     "FlextInfraDependencyDetectionService": (
-        "flext_infra.deps.detection",
+        "flext_infra.deps",
         "FlextInfraDependencyDetectionService",
     ),
     "FlextInfraDependencyPathSync": (
-        "flext_infra.deps.path_sync",
+        "flext_infra.deps",
         "FlextInfraDependencyPathSync",
     ),
     "FlextInfraDependencyToolConfig": (
-        "flext_infra.deps.tool_config",
+        "flext_infra.deps",
         "FlextInfraDependencyToolConfig",
     ),
-    "FlextInfraDocAuditor": ("flext_infra.docs.auditor", "FlextInfraDocAuditor"),
-    "FlextInfraDocBuilder": ("flext_infra.docs.builder", "FlextInfraDocBuilder"),
-    "FlextInfraDocFixer": ("flext_infra.docs.fixer", "FlextInfraDocFixer"),
-    "FlextInfraDocGenerator": ("flext_infra.docs.generator", "FlextInfraDocGenerator"),
-    "FlextInfraDocValidator": ("flext_infra.docs.validator", "FlextInfraDocValidator"),
-    "FlextInfraDocsShared": ("flext_infra.docs.shared", "FlextInfraDocsShared"),
-    "FlextInfraExtraPathsManager": (
-        "flext_infra.deps.extra_paths",
-        "FlextInfraExtraPathsManager",
-    ),
-    "FlextInfraGoGate": ("flext_infra.gates.go", "FlextInfraGoGate"),
+    "FlextInfraDocAuditor": ("flext_infra.docs", "FlextInfraDocAuditor"),
+    "FlextInfraDocBuilder": ("flext_infra.docs", "FlextInfraDocBuilder"),
+    "FlextInfraDocFixer": ("flext_infra.docs", "FlextInfraDocFixer"),
+    "FlextInfraDocGenerator": ("flext_infra.docs", "FlextInfraDocGenerator"),
+    "FlextInfraDocValidator": ("flext_infra.docs", "FlextInfraDocValidator"),
+    "FlextInfraDocsShared": ("flext_infra.docs", "FlextInfraDocsShared"),
+    "FlextInfraExtraPathsManager": ("flext_infra.deps", "FlextInfraExtraPathsManager"),
+    "FlextInfraGoGate": ("flext_infra.gates", "FlextInfraGoGate"),
     "FlextInfraInternalDependencySyncService": (
-        "flext_infra.deps.internal_sync",
+        "flext_infra.deps",
         "FlextInfraInternalDependencySyncService",
     ),
     "FlextInfraInventoryService": (
-        "flext_infra.validate.inventory",
+        "flext_infra.validate",
         "FlextInfraInventoryService",
     ),
-    "FlextInfraMarkdownGate": ("flext_infra.gates.markdown", "FlextInfraMarkdownGate"),
+    "FlextInfraMarkdownGate": ("flext_infra.gates", "FlextInfraMarkdownGate"),
     "FlextInfraModels": ("flext_infra.models", "FlextInfraModels"),
-    "FlextInfraMypyGate": ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
+    "FlextInfraMypyGate": ("flext_infra.gates", "FlextInfraMypyGate"),
     "FlextInfraNamespaceEnforcer": (
-        "flext_infra.refactor.namespace_enforcer",
+        "flext_infra.refactor",
         "FlextInfraNamespaceEnforcer",
     ),
     "FlextInfraNamespaceValidator": (
-        "flext_infra.validate.namespace_validator",
+        "flext_infra.validate",
         "FlextInfraNamespaceValidator",
     ),
     "FlextInfraOrchestratorService": (
-        "flext_infra.workspace.orchestrator",
+        "flext_infra.workspace",
         "FlextInfraOrchestratorService",
     ),
-    "FlextInfraProjectMigrator": (
-        "flext_infra.workspace.migrator",
-        "FlextInfraProjectMigrator",
-    ),
+    "FlextInfraProjectMigrator": ("flext_infra.workspace", "FlextInfraProjectMigrator"),
     "FlextInfraProtocols": ("flext_infra.protocols", "FlextInfraProtocols"),
     "FlextInfraPyprojectModernizer": (
-        "flext_infra.deps.modernizer",
+        "flext_infra.deps",
         "FlextInfraPyprojectModernizer",
     ),
-    "FlextInfraPyreflyGate": ("flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"),
-    "FlextInfraPyrightGate": ("flext_infra.gates.pyright", "FlextInfraPyrightGate"),
+    "FlextInfraPyreflyGate": ("flext_infra.gates", "FlextInfraPyreflyGate"),
+    "FlextInfraPyrightGate": ("flext_infra.gates", "FlextInfraPyrightGate"),
     "FlextInfraPytestDiagExtractor": (
-        "flext_infra.validate.pytest_diag",
+        "flext_infra.validate",
         "FlextInfraPytestDiagExtractor",
     ),
     "FlextInfraPythonVersionEnforcer": (
-        "flext_infra.workspace.maintenance.python_version",
+        "flext_infra.workspace",
         "FlextInfraPythonVersionEnforcer",
     ),
     "FlextInfraRefactorAliasRemover": (
-        "flext_infra.transformers.alias_remover",
+        "flext_infra.transformers",
         "FlextInfraRefactorAliasRemover",
     ),
-    "FlextInfraRefactorCensus": (
-        "flext_infra.refactor.census",
-        "FlextInfraRefactorCensus",
-    ),
+    "FlextInfraRefactorCensus": ("flext_infra.refactor", "FlextInfraRefactorCensus"),
     "FlextInfraRefactorClassNestingAnalyzer": (
-        "flext_infra.refactor.analysis",
+        "flext_infra.refactor",
         "FlextInfraRefactorClassNestingAnalyzer",
     ),
     "FlextInfraRefactorClassNestingReconstructor": (
-        "flext_infra.rules.class_reconstructor",
+        "flext_infra.rules",
         "FlextInfraRefactorClassNestingReconstructor",
     ),
     "FlextInfraRefactorClassNestingTransformer": (
-        "flext_infra.transformers.class_nesting",
+        "flext_infra.transformers",
         "FlextInfraRefactorClassNestingTransformer",
     ),
     "FlextInfraRefactorClassReconstructor": (
-        "flext_infra.transformers.class_reconstructor",
+        "flext_infra.transformers",
         "FlextInfraRefactorClassReconstructor",
     ),
     "FlextInfraRefactorClassReconstructorRule": (
-        "flext_infra.rules.class_reconstructor",
+        "flext_infra.rules",
         "FlextInfraRefactorClassReconstructorRule",
     ),
     "FlextInfraRefactorCliSupport": (
-        "flext_infra.refactor.cli_support",
+        "flext_infra.refactor",
         "FlextInfraRefactorCliSupport",
     ),
     "FlextInfraRefactorDependencyAnalyzerFacade": (
-        "flext_infra.refactor.dependency_analyzer",
+        "flext_infra.refactor",
         "FlextInfraRefactorDependencyAnalyzerFacade",
     ),
     "FlextInfraRefactorDeprecatedRemover": (
-        "flext_infra.transformers.deprecated_remover",
+        "flext_infra.transformers",
         "FlextInfraRefactorDeprecatedRemover",
     ),
     "FlextInfraRefactorDetectorModuleLoader": (
-        "flext_infra.refactor._detectors.module_loader",
+        "flext_infra.refactor",
         "FlextInfraRefactorDetectorModuleLoader",
     ),
     "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
-        "flext_infra.refactor._detectors.python_module_loader_mixin",
+        "flext_infra.refactor",
         "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     ),
-    "FlextInfraRefactorEngine": (
-        "flext_infra.refactor.engine",
-        "FlextInfraRefactorEngine",
-    ),
+    "FlextInfraRefactorEngine": ("flext_infra.refactor", "FlextInfraRefactorEngine"),
     "FlextInfraRefactorEnsureFutureAnnotationsRule": (
-        "flext_infra.rules.ensure_future_annotations",
+        "flext_infra.rules",
         "FlextInfraRefactorEnsureFutureAnnotationsRule",
     ),
     "FlextInfraRefactorImportBypassRemover": (
-        "flext_infra.transformers.import_bypass_remover",
+        "flext_infra.transformers",
         "FlextInfraRefactorImportBypassRemover",
     ),
     "FlextInfraRefactorImportModernizer": (
-        "flext_infra.transformers.import_modernizer",
+        "flext_infra.transformers",
         "FlextInfraRefactorImportModernizer",
     ),
     "FlextInfraRefactorImportModernizerRule": (
-        "flext_infra.rules.import_modernizer",
+        "flext_infra.rules",
         "FlextInfraRefactorImportModernizerRule",
     ),
     "FlextInfraRefactorLazyImportFixer": (
-        "flext_infra.transformers.lazy_import_fixer",
+        "flext_infra.transformers",
         "FlextInfraRefactorLazyImportFixer",
     ),
     "FlextInfraRefactorLegacyRemovalRule": (
-        "flext_infra.rules.legacy_removal",
+        "flext_infra.rules",
         "FlextInfraRefactorLegacyRemovalRule",
     ),
     "FlextInfraRefactorLooseClassScanner": (
-        "flext_infra.refactor.scanner",
+        "flext_infra.refactor",
         "FlextInfraRefactorLooseClassScanner",
     ),
     "FlextInfraRefactorMROClassMigrationRule": (
-        "flext_infra.rules.mro_class_migration",
+        "flext_infra.rules",
         "FlextInfraRefactorMROClassMigrationRule",
     ),
     "FlextInfraRefactorMROImportRewriter": (
-        "flext_infra.refactor.mro_import_rewriter",
+        "flext_infra.refactor",
         "FlextInfraRefactorMROImportRewriter",
     ),
     "FlextInfraRefactorMROMigrationScanner": (
-        "flext_infra.refactor.mro_migration_scanner",
+        "flext_infra.refactor",
         "FlextInfraRefactorMROMigrationScanner",
     ),
     "FlextInfraRefactorMROMigrationTransformer": (
-        "flext_infra.refactor.mro_migrator",
+        "flext_infra.refactor",
         "FlextInfraRefactorMROMigrationTransformer",
     ),
     "FlextInfraRefactorMROMigrationValidator": (
-        "flext_infra.refactor.mro_migration_validator",
+        "flext_infra.refactor",
         "FlextInfraRefactorMROMigrationValidator",
     ),
     "FlextInfraRefactorMROPrivateInlineTransformer": (
-        "flext_infra.transformers.mro_private_inline",
+        "flext_infra.transformers",
         "FlextInfraRefactorMROPrivateInlineTransformer",
     ),
     "FlextInfraRefactorMROQualifiedReferenceTransformer": (
-        "flext_infra.transformers.mro_private_inline",
+        "flext_infra.transformers",
         "FlextInfraRefactorMROQualifiedReferenceTransformer",
     ),
     "FlextInfraRefactorMRORedundancyChecker": (
-        "flext_infra.rules.mro_redundancy_checker",
+        "flext_infra.rules",
         "FlextInfraRefactorMRORedundancyChecker",
     ),
     "FlextInfraRefactorMROReferenceRewriter": (
-        "flext_infra.transformers.mro_reference_rewriter",
+        "flext_infra.transformers",
         "FlextInfraRefactorMROReferenceRewriter",
     ),
     "FlextInfraRefactorMRORemover": (
-        "flext_infra.transformers.mro_remover",
+        "flext_infra.transformers",
         "FlextInfraRefactorMRORemover",
     ),
     "FlextInfraRefactorMROResolver": (
-        "flext_infra.refactor.mro_resolver",
+        "flext_infra.refactor",
         "FlextInfraRefactorMROResolver",
     ),
     "FlextInfraRefactorMigrateToClassMRO": (
-        "flext_infra.refactor.migrate_to_class_mro",
+        "flext_infra.refactor",
         "FlextInfraRefactorMigrateToClassMRO",
     ),
     "FlextInfraRefactorOutputRenderer": (
-        "flext_infra.refactor.output",
+        "flext_infra.refactor",
         "FlextInfraRefactorOutputRenderer",
     ),
     "FlextInfraRefactorPatternCorrectionsRule": (
-        "flext_infra.rules.pattern_corrections",
+        "flext_infra.rules",
         "FlextInfraRefactorPatternCorrectionsRule",
     ),
     "FlextInfraRefactorPydanticCentralizer": (
-        "flext_infra.refactor.pydantic_centralizer",
+        "flext_infra.refactor",
         "FlextInfraRefactorPydanticCentralizer",
     ),
     "FlextInfraRefactorPydanticCentralizerAnalysis": (
-        "flext_infra.refactor.pydantic_centralizer_analysis",
+        "flext_infra.refactor",
         "FlextInfraRefactorPydanticCentralizerAnalysis",
     ),
-    "FlextInfraRefactorRule": ("flext_infra.refactor.rule", "FlextInfraRefactorRule"),
+    "FlextInfraRefactorRule": ("flext_infra.refactor", "FlextInfraRefactorRule"),
     "FlextInfraRefactorRuleDefinitionValidator": (
-        "flext_infra.refactor.rule_definition_validator",
+        "flext_infra.refactor",
         "FlextInfraRefactorRuleDefinitionValidator",
     ),
     "FlextInfraRefactorRuleLoader": (
-        "flext_infra.refactor.rule",
+        "flext_infra.refactor",
         "FlextInfraRefactorRuleLoader",
     ),
     "FlextInfraRefactorSafetyManager": (
-        "flext_infra.refactor.safety",
+        "flext_infra.refactor",
         "FlextInfraRefactorSafetyManager",
     ),
     "FlextInfraRefactorSignaturePropagationRule": (
-        "flext_infra.rules.symbol_propagation",
+        "flext_infra.rules",
         "FlextInfraRefactorSignaturePropagationRule",
     ),
     "FlextInfraRefactorSignaturePropagator": (
-        "flext_infra.rules.symbol_propagation",
+        "flext_infra.rules",
         "FlextInfraRefactorSignaturePropagator",
     ),
     "FlextInfraRefactorSymbolPropagationRule": (
-        "flext_infra.rules.symbol_propagation",
+        "flext_infra.rules",
         "FlextInfraRefactorSymbolPropagationRule",
     ),
     "FlextInfraRefactorSymbolPropagator": (
-        "flext_infra.transformers.symbol_propagator",
+        "flext_infra.transformers",
         "FlextInfraRefactorSymbolPropagator",
     ),
     "FlextInfraRefactorTier0ImportFixRule": (
-        "flext_infra.rules.tier0_import_fix",
+        "flext_infra.rules",
         "FlextInfraRefactorTier0ImportFixRule",
     ),
     "FlextInfraRefactorTransformerPolicyUtilities": (
-        "flext_infra.transformers.policy",
+        "flext_infra.transformers",
         "FlextInfraRefactorTransformerPolicyUtilities",
     ),
     "FlextInfraRefactorTypingAnnotationFixRule": (
-        "flext_infra.rules.typing_census",
+        "flext_infra.rules",
         "FlextInfraRefactorTypingAnnotationFixRule",
     ),
     "FlextInfraRefactorTypingUnificationRule": (
-        "flext_infra.rules.type_alias_unification",
+        "flext_infra.rules",
         "FlextInfraRefactorTypingUnificationRule",
     ),
     "FlextInfraRefactorTypingUnifier": (
-        "flext_infra.transformers.typing_unifier",
+        "flext_infra.transformers",
         "FlextInfraRefactorTypingUnifier",
     ),
     "FlextInfraRefactorViolationAnalyzer": (
-        "flext_infra.refactor.analysis",
+        "flext_infra.refactor",
         "FlextInfraRefactorViolationAnalyzer",
     ),
     "FlextInfraReleaseOrchestrator": (
-        "flext_infra.release.orchestrator",
+        "flext_infra.release",
         "FlextInfraReleaseOrchestrator",
     ),
-    "FlextInfraRuffFormatGate": (
-        "flext_infra.gates.ruff_format",
-        "FlextInfraRuffFormatGate",
-    ),
-    "FlextInfraRuffLintGate": ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
+    "FlextInfraRuffFormatGate": ("flext_infra.gates", "FlextInfraRuffFormatGate"),
+    "FlextInfraRuffLintGate": ("flext_infra.gates", "FlextInfraRuffLintGate"),
     "FlextInfraRuntimeDevDependencyDetector": (
-        "flext_infra.deps.detector",
+        "flext_infra.deps",
         "FlextInfraRuntimeDevDependencyDetector",
     ),
-    "FlextInfraSkillValidator": (
-        "flext_infra.validate.skill_validator",
-        "FlextInfraSkillValidator",
-    ),
-    "FlextInfraStubSupplyChain": (
-        "flext_infra.validate.stub_chain",
-        "FlextInfraStubSupplyChain",
-    ),
-    "FlextInfraSyncService": ("flext_infra.workspace.sync", "FlextInfraSyncService"),
+    "FlextInfraSkillValidator": ("flext_infra.validate", "FlextInfraSkillValidator"),
+    "FlextInfraStubSupplyChain": ("flext_infra.validate", "FlextInfraStubSupplyChain"),
+    "FlextInfraSyncService": ("flext_infra.workspace", "FlextInfraSyncService"),
     "FlextInfraTextPatternScanner": (
-        "flext_infra.validate.scanner",
+        "flext_infra.validate",
         "FlextInfraTextPatternScanner",
     ),
     "FlextInfraTransformerImportInsertion": (
-        "flext_infra.transformers.import_insertion",
+        "flext_infra.transformers",
         "FlextInfraTransformerImportInsertion",
     ),
     "FlextInfraTransformerImportNormalizer": (
-        "flext_infra.transformers.import_normalizer",
+        "flext_infra.transformers",
         "FlextInfraTransformerImportNormalizer",
     ),
     "FlextInfraTransformerTier0ImportFixer": (
-        "flext_infra.transformers.tier0_import_fixer",
+        "flext_infra.transformers",
         "FlextInfraTransformerTier0ImportFixer",
     ),
     "FlextInfraTypes": ("flext_infra.typings", "FlextInfraTypes"),
     "FlextInfraUtilities": ("flext_infra.utilities", "FlextInfraUtilities"),
-    "FlextInfraUtilitiesCli": ("flext_infra._utilities.cli", "FlextInfraUtilitiesCli"),
+    "FlextInfraUtilitiesCli": ("flext_infra._utilities", "FlextInfraUtilitiesCli"),
     "FlextInfraUtilitiesDiscovery": (
-        "flext_infra._utilities.discovery",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesDiscovery",
     ),
     "FlextInfraUtilitiesFormatting": (
-        "flext_infra._utilities.formatting",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesFormatting",
     ),
-    "FlextInfraUtilitiesGit": ("flext_infra._utilities.git", "FlextInfraUtilitiesGit"),
+    "FlextInfraUtilitiesGit": ("flext_infra._utilities", "FlextInfraUtilitiesGit"),
     "FlextInfraUtilitiesGithub": (
-        "flext_infra._utilities.github",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesGithub",
     ),
-    "FlextInfraUtilitiesIo": ("flext_infra._utilities.io", "FlextInfraUtilitiesIo"),
+    "FlextInfraUtilitiesIo": ("flext_infra._utilities", "FlextInfraUtilitiesIo"),
     "FlextInfraUtilitiesIteration": (
-        "flext_infra._utilities.iteration",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesIteration",
     ),
     "FlextInfraUtilitiesOutput": (
-        "flext_infra._utilities.output",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesOutput",
     ),
     "FlextInfraUtilitiesParsing": (
-        "flext_infra._utilities.parsing",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesParsing",
     ),
-    "FlextInfraUtilitiesPaths": (
-        "flext_infra._utilities.paths",
-        "FlextInfraUtilitiesPaths",
-    ),
+    "FlextInfraUtilitiesPaths": ("flext_infra._utilities", "FlextInfraUtilitiesPaths"),
     "FlextInfraUtilitiesPatterns": (
-        "flext_infra._utilities.patterns",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesPatterns",
     ),
     "FlextInfraUtilitiesReporting": (
-        "flext_infra._utilities.reporting",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesReporting",
     ),
     "FlextInfraUtilitiesSafety": (
-        "flext_infra._utilities.safety",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesSafety",
     ),
     "FlextInfraUtilitiesScanning": (
-        "flext_infra._utilities.scanning",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesScanning",
     ),
     "FlextInfraUtilitiesSelection": (
-        "flext_infra._utilities.selection",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesSelection",
     ),
     "FlextInfraUtilitiesSubprocess": (
-        "flext_infra._utilities.subprocess",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesSubprocess",
     ),
     "FlextInfraUtilitiesTemplates": (
-        "flext_infra._utilities.templates",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesTemplates",
     ),
     "FlextInfraUtilitiesTerminal": (
-        "flext_infra._utilities.terminal",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesTerminal",
     ),
-    "FlextInfraUtilitiesToml": (
-        "flext_infra._utilities.toml",
-        "FlextInfraUtilitiesToml",
-    ),
+    "FlextInfraUtilitiesToml": ("flext_infra._utilities", "FlextInfraUtilitiesToml"),
     "FlextInfraUtilitiesTomlParse": (
-        "flext_infra._utilities.toml_parse",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesTomlParse",
     ),
     "FlextInfraUtilitiesVersioning": (
-        "flext_infra._utilities.versioning",
+        "flext_infra._utilities",
         "FlextInfraUtilitiesVersioning",
     ),
-    "FlextInfraUtilitiesYaml": (
-        "flext_infra._utilities.yaml",
-        "FlextInfraUtilitiesYaml",
-    ),
-    "FlextInfraWorkspaceChecker": (
-        "flext_infra.check.services",
-        "FlextInfraWorkspaceChecker",
-    ),
+    "FlextInfraUtilitiesYaml": ("flext_infra._utilities", "FlextInfraUtilitiesYaml"),
+    "FlextInfraWorkspaceChecker": ("flext_infra.check", "FlextInfraWorkspaceChecker"),
     "FlextInfraWorkspaceDetector": (
-        "flext_infra.workspace.detector",
+        "flext_infra.workspace",
         "FlextInfraWorkspaceDetector",
     ),
-    "FutureAnnotationsDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "FutureAnnotationsDetector",
-    ),
-    "GateExecution": ("flext_infra.check.services", "GateExecution"),
+    "FutureAnnotationsDetector": ("flext_infra.refactor", "FutureAnnotationsDetector"),
+    "GateExecution": ("flext_infra.check", "GateExecution"),
     "HelperConsolidationTransformer": (
-        "flext_infra.transformers.helper_consolidation",
+        "flext_infra.transformers",
         "HelperConsolidationTransformer",
     ),
-    "ImportAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "ImportAliasDetector",
-    ),
-    "ImportCollector": (
-        "flext_infra.refactor._detectors.import_collector",
-        "ImportCollector",
-    ),
-    "InjectCommentsPhase": (
-        "flext_infra.deps._phases.inject_comments",
-        "InjectCommentsPhase",
-    ),
-    "InternalImportDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "InternalImportDetector",
-    ),
-    "LooseObjectDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "LooseObjectDetector",
-    ),
-    "MROCompletenessDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "MROCompletenessDetector",
-    ),
-    "ManualProtocolDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "ManualProtocolDetector",
-    ),
-    "ManualTypingAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "ManualTypingAliasDetector",
-    ),
+    "ImportAliasDetector": ("flext_infra.refactor", "ImportAliasDetector"),
+    "ImportCollector": ("flext_infra.refactor", "ImportCollector"),
+    "InjectCommentsPhase": ("flext_infra.deps", "InjectCommentsPhase"),
+    "InternalImportDetector": ("flext_infra.refactor", "InternalImportDetector"),
+    "LooseObjectDetector": ("flext_infra.refactor", "LooseObjectDetector"),
+    "MROCompletenessDetector": ("flext_infra.refactor", "MROCompletenessDetector"),
+    "ManualProtocolDetector": ("flext_infra.refactor", "ManualProtocolDetector"),
+    "ManualTypingAliasDetector": ("flext_infra.refactor", "ManualTypingAliasDetector"),
     "ModelDefinitionCollector": (
-        "flext_infra.transformers.unused_model_visitor",
+        "flext_infra.transformers",
         "ModelDefinitionCollector",
     ),
-    "ModelReferenceCollector": (
-        "flext_infra.transformers.unused_model_visitor",
-        "ModelReferenceCollector",
-    ),
+    "ModelReferenceCollector": ("flext_infra.transformers", "ModelReferenceCollector"),
     "NamespaceEnforcementRewriter": (
-        "flext_infra.refactor.namespace_rewriter",
+        "flext_infra.refactor",
         "NamespaceEnforcementRewriter",
     ),
-    "NamespaceFacadeScanner": (
-        "flext_infra.refactor.dependency_analyzer",
-        "NamespaceFacadeScanner",
-    ),
-    "NamespaceSourceDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "NamespaceSourceDetector",
-    ),
+    "NamespaceFacadeScanner": ("flext_infra.refactor", "NamespaceFacadeScanner"),
+    "NamespaceSourceDetector": ("flext_infra.refactor", "NamespaceSourceDetector"),
     "NestedClassPropagationTransformer": (
-        "flext_infra.transformers.nested_class_propagation",
+        "flext_infra.transformers",
         "NestedClassPropagationTransformer",
     ),
-    "OutputBackend": ("flext_infra._utilities.output", "OutputBackend"),
-    "PostCheckGate": ("flext_infra.refactor.validation", "PostCheckGate"),
-    "PreCheckGate": ("flext_infra.rules.class_reconstructor", "PreCheckGate"),
-    "ProjectAliasDiscovery": (
-        "flext_infra.transformers.project_discovery",
-        "ProjectAliasDiscovery",
-    ),
-    "ProjectClassifier": (
-        "flext_infra.refactor.project_classifier",
-        "ProjectClassifier",
-    ),
-    "ProjectResult": ("flext_infra.check.services", "ProjectResult"),
-    "RuntimeAliasDetector": (
-        "flext_infra.refactor.dependency_analyzer",
-        "RuntimeAliasDetector",
-    ),
-    "Tier0ImportAnalysis": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportAnalysis",
-    ),
-    "Tier0ImportAnalyzer": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportAnalyzer",
-    ),
+    "OutputBackend": ("flext_infra._utilities", "OutputBackend"),
+    "PostCheckGate": ("flext_infra.refactor", "PostCheckGate"),
+    "PreCheckGate": ("flext_infra.rules", "PreCheckGate"),
+    "ProjectAliasDiscovery": ("flext_infra.transformers", "ProjectAliasDiscovery"),
+    "ProjectClassifier": ("flext_infra.refactor", "ProjectClassifier"),
+    "ProjectResult": ("flext_infra.check", "ProjectResult"),
+    "RuntimeAliasDetector": ("flext_infra.refactor", "RuntimeAliasDetector"),
+    "Tier0ImportAnalysis": ("flext_infra.transformers", "Tier0ImportAnalysis"),
+    "Tier0ImportAnalyzer": ("flext_infra.transformers", "Tier0ImportAnalyzer"),
     "Tier0ImportContextDiscovery": (
-        "flext_infra.transformers.tier0_import_fixer",
+        "flext_infra.transformers",
         "Tier0ImportContextDiscovery",
     ),
-    "Tier0ImportFixer": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportFixer",
-    ),
+    "Tier0ImportFixer": ("flext_infra.transformers", "Tier0ImportFixer"),
     "TypingAnnotationCensusVisitor": (
-        "flext_infra.transformers.typing_census_visitor",
+        "flext_infra.transformers",
         "TypingAnnotationCensusVisitor",
     ),
     "TypingAnnotationReplacer": (
-        "flext_infra.transformers.typing_annotation_replacer",
+        "flext_infra.transformers",
         "TypingAnnotationReplacer",
     ),
-    "UnusedModelRemover": (
-        "flext_infra.transformers.unused_model_remover",
-        "UnusedModelRemover",
-    ),
-    "ViolationCensusVisitor": (
-        "flext_infra.transformers.violation_census_visitor",
-        "ViolationCensusVisitor",
-    ),
-    "WorkspaceMode": ("flext_infra.workspace.detector", "WorkspaceMode"),
+    "UnusedModelRemover": ("flext_infra.transformers", "UnusedModelRemover"),
+    "ViolationCensusVisitor": ("flext_infra.transformers", "ViolationCensusVisitor"),
+    "WorkspaceMode": ("flext_infra.workspace", "WorkspaceMode"),
     "__all__": ("flext_infra.__version__", "__all__"),
     "__author__": ("flext_infra.__version__", "__author__"),
     "__author_email__": ("flext_infra.__version__", "__author_email__"),
@@ -966,29 +740,29 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "__version_info__": ("flext_infra.__version__", "__version_info__"),
     "_utilities": ("flext_infra._utilities", ""),
     "basemk": ("flext_infra.basemk", ""),
-    "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
+    "build_parser": ("flext_infra.check", "build_parser"),
     "c": ("flext_infra.constants", "FlextInfraConstants"),
     "check": ("flext_infra.check", ""),
     "codegen": ("flext_infra.codegen", ""),
     "d": ("flext_core", "d"),
     "deps": ("flext_infra.deps", ""),
-    "dm": ("flext_infra.deps.detection", "dm"),
+    "dm": ("flext_infra.deps", "dm"),
     "docs": ("flext_infra.docs", ""),
     "e": ("flext_core", "e"),
     "gates": ("flext_infra.gates", ""),
     "h": ("flext_core", "h"),
-    "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
+    "logger": ("flext_infra.workspace", "logger"),
     "m": ("flext_infra.models", "FlextInfraModels"),
-    "maintenance": ("flext_infra.workspace.maintenance", ""),
-    "output": ("flext_infra._utilities.output", "output"),
+    "maintenance": ("flext_infra.workspace", "maintenance"),
+    "output": ("flext_infra._utilities", "output"),
     "p": ("flext_infra.protocols", "FlextInfraProtocols"),
     "r": ("flext_core", "r"),
     "refactor": ("flext_infra.refactor", ""),
     "release": ("flext_infra.release", ""),
     "rules": ("flext_infra.rules", ""),
-    "run_cli": ("flext_infra.check.workspace_check", "run_cli"),
+    "run_cli": ("flext_infra.check", "run_cli"),
     "s": ("flext_core", "s"),
-    "shutil": ("flext_infra.deps.internal_sync", "shutil"),
+    "shutil": ("flext_infra.deps", "shutil"),
     "t": ("flext_infra.typings", "FlextInfraTypes"),
     "transformers": ("flext_infra.transformers", ""),
     "u": ("flext_infra.utilities", "FlextInfraUtilities"),
