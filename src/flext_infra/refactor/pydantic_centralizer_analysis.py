@@ -6,7 +6,8 @@ import ast
 import operator
 from pathlib import Path
 
-from flext_infra import m, u
+from flext_infra.models import m
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorPydanticCentralizerAnalysis:

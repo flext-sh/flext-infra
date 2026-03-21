@@ -15,7 +15,11 @@ from pathlib import Path
 from pydantic import JsonValue
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraDocsShared, c, m, r, u
+from flext_core.result import r
+from flext_infra.constants import c
+from flext_infra.docs.shared import FlextInfraDocsShared
+from flext_infra.models import m
+from flext_infra.utilities import u
 
 logger = FlextLogger.create_module_logger(__name__)
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from flext_tests import tm
+from flext_tests import c, m, u
 
 from flext_core import r
 from flext_infra import c
@@ -28,25 +28,31 @@ class TestOrchestratorBasic:
         self,
         orchestrator: FlextInfraOrchestratorService,
     ) -> None:
-        tm.ok(orchestrator.orchestrate(["project-a", "project-b"], "check"), len=2)
+        u.Tests.Matchers.ok(
+            orchestrator.orchestrate(["project-a", "project-b"], "check"), len=2
+        )
 
     def test_fail_fast(self, orchestrator: FlextInfraOrchestratorService) -> None:
-        tm.ok(orchestrator.orchestrate(["p-a", "p-b", "p-c"], "test", fail_fast=True))
+        u.Tests.Matchers.ok(
+            orchestrator.orchestrate(["p-a", "p-b", "p-c"], "test", fail_fast=True)
+        )
 
     def test_continues_without_fail_fast(
         self,
         orchestrator: FlextInfraOrchestratorService,
     ) -> None:
-        tm.ok(orchestrator.orchestrate(["p-a", "p-b"], "test", fail_fast=False), len=2)
+        u.Tests.Matchers.ok(
+            orchestrator.orchestrate(["p-a", "p-b"], "test", fail_fast=False), len=2
+        )
 
     def test_execute_returns_failure(self) -> None:
-        tm.fail(FlextInfraOrchestratorService().execute())
+        u.Tests.Matchers.fail(FlextInfraOrchestratorService().execute())
 
     def test_empty_project_list(
         self,
         orchestrator: FlextInfraOrchestratorService,
     ) -> None:
-        tm.ok(orchestrator.orchestrate([], "check"), len=0)
+        u.Tests.Matchers.ok(orchestrator.orchestrate([], "check"), len=0)
 
 
 class TestOrchestratorFailures:
@@ -70,7 +76,7 @@ class TestOrchestratorFailures:
             "_run_project",
             _run_project_fail,
         )
-        tm.ok(
+        u.Tests.Matchers.ok(
             orchestrator.orchestrate(["p-a", "p-b", "p-c"], "test", fail_fast=True),
             len=3,
         )
@@ -96,7 +102,9 @@ class TestOrchestratorFailures:
             "_run_project",
             _run_project_raise,
         )
-        tm.fail(orchestrator.orchestrate(["p-a"], "test"), has="Orchestration failed")
+        u.Tests.Matchers.fail(
+            orchestrator.orchestrate(["p-a"], "test"), has="Orchestration failed"
+        )
 
     def test_run_project_failure_with_fail_fast(
         self,
@@ -119,7 +127,7 @@ class TestOrchestratorFailures:
             return r[m.Infra.CommandOutput].ok(_cmd_out(0))
 
         monkeypatch.setattr(FlextInfraOrchestratorService, "_run_project", _run_project)
-        tm.ok(
+        u.Tests.Matchers.ok(
             orchestrator.orchestrate(["p1", "p2", "p3"], "test", fail_fast=True),
             len=3,
         )
@@ -140,7 +148,7 @@ class TestOrchestratorGateNormalization:
             make_args=["CHECK_GATES=lint,pyrefly,mypy,pyright,security"],
         )
 
-        tm.that(
+        u.Tests.Matchers.that(
             normalized,
             eq=["CHECK_GATES=lint,type,security"],
         )
@@ -162,4 +170,4 @@ class TestOrchestratorGateNormalization:
             make_args=make_args,
         )
 
-        tm.that(normalized, eq=make_args)
+        u.Tests.Matchers.that(normalized, eq=make_args)

@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
@@ -99,7 +99,7 @@ class TestRunPyrefly:
             has_python_dirs=True,
         )
         result = checker._run_pyrefly(proj_dir, reports_dir)
-        tm.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
 
     def test_run_pyrefly_with_errors(
         self,
@@ -124,8 +124,8 @@ class TestRunPyrefly:
             has_python_dirs=True,
         )
         result = checker._run_pyrefly(proj_dir, reports_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
     def test_run_pyrefly_with_invalid_json(
         self,
@@ -148,7 +148,7 @@ class TestRunPyrefly:
             has_python_dirs=True,
         )
         result = checker._run_pyrefly(proj_dir, reports_dir)
-        tm.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
 
     def test_run_pyrefly_with_error_count_fallback(
         self,
@@ -169,8 +169,8 @@ class TestRunPyrefly:
             has_python_dirs=True,
         )
         result = checker._run_pyrefly(proj_dir, reports_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=3)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=3)
 
     def test_run_pyrefly_with_list_output(
         self,
@@ -195,7 +195,7 @@ class TestRunPyrefly:
             has_python_dirs=True,
         )
         result = checker._run_pyrefly(proj_dir, reports_dir)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
 
 class TestRunMypy:
@@ -213,8 +213,8 @@ class TestRunMypy:
             has_python_dirs=False,
         )
         result = checker._run_mypy(proj_dir)
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(len(result.issues), eq=0)
 
     def test_run_mypy_with_json_output(
         self,
@@ -235,8 +235,8 @@ class TestRunMypy:
             has_python_dirs=True,
         )
         result = checker._run_mypy(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
     def test_run_mypy_skips_empty_lines(
         self,
@@ -258,5 +258,5 @@ class TestRunMypy:
             has_python_dirs=True,
         )
         result = checker._run_mypy(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=2)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=2)

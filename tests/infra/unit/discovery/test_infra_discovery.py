@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_core import r
 from flext_infra import FlextInfraUtilitiesDiscovery, m
@@ -49,7 +49,7 @@ class TestFlextInfraDiscoveryService:
         workspace_with_projects: Path,
     ) -> None:
         result = service.discover_projects(workspace_with_projects)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         projects = result.value
         assert len(projects) == 2
         assert projects[0].name == "project1"
@@ -64,7 +64,7 @@ class TestFlextInfraDiscoveryService:
         tmp_path: Path,
     ) -> None:
         result = service.discover_projects(tmp_path)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         assert result.value == []
 
     def test_discover_projects_nonexistent_path(
@@ -73,7 +73,7 @@ class TestFlextInfraDiscoveryService:
     ) -> None:
         nonexistent = Path("/nonexistent/path/to/workspace")
         result = service.discover_projects(nonexistent)
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
         assert isinstance(result.error, str)
         assert isinstance(result.error, str)
         assert "discovery failed" in result.error
@@ -90,7 +90,7 @@ class TestFlextInfraDiscoveryService:
         (tmp_path / "project2" / "subdir").mkdir()
         (tmp_path / "project2" / "subdir" / "pyproject.toml").touch()
         result = service.find_all_pyproject_files(tmp_path)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         files = result.value
         assert len(files) == 3
         assert all(f.name == "pyproject.toml" for f in files)
@@ -108,7 +108,7 @@ class TestFlextInfraDiscoveryService:
             tmp_path,
             skip_dirs=frozenset({"skip_me"}),
         )
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         files = result.value
         assert len(files) == 1
         assert "skip_me" not in str(files[0])
@@ -125,7 +125,7 @@ class TestFlextInfraDiscoveryService:
         (proj1 / "pyproject.toml").touch()
         (proj2 / "pyproject.toml").touch()
         result = service.find_all_pyproject_files(tmp_path, project_paths=[proj1])
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         files = result.value
         assert len(files) == 1
         assert files[0].parent == proj1
@@ -137,7 +137,7 @@ class TestFlextInfraDiscoveryService:
     ) -> None:
         result = service.discover_projects(workspace_with_projects)
         assert isinstance(result, type(r[list[m.Infra.ProjectInfo]].ok([])))
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         projects: list[m.Infra.ProjectInfo] = result.value
         for item in projects:
             assert isinstance(item, m.Infra.ProjectInfo)
@@ -148,7 +148,7 @@ class TestFlextInfraDiscoveryService:
         tmp_path: Path,
     ) -> None:
         result = service.discover_projects(tmp_path)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         assert result.value == []
 
 

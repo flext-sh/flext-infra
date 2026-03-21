@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests.infra.models import m
@@ -25,8 +25,8 @@ class TestAuditorToMarkdown:
             report_dir=Path(),
         )
         result = FlextInfraDocAuditor.to_markdown(scope, [])
-        tm.that(len(result) >= 0, eq=True)
-        tm.that("# Docs Audit Report" in result, eq=True)
+        u.Tests.Matchers.that(len(result) >= 0, eq=True)
+        u.Tests.Matchers.that("# Docs Audit Report" in result, eq=True)
 
     def test_to_markdown_with_issues(self) -> None:
         """Test to_markdown with issues."""
@@ -42,8 +42,8 @@ class TestAuditorToMarkdown:
             message="Link not found",
         )
         result = FlextInfraDocAuditor.to_markdown(scope, [issue])
-        tm.that(len(result) >= 0, eq=True)
-        tm.that(any("README.md" in line for line in result), eq=True)
+        u.Tests.Matchers.that(len(result) >= 0, eq=True)
+        u.Tests.Matchers.that(any("README.md" in line for line in result), eq=True)
 
 
 class TestAuditorBrokenLinks:
@@ -58,7 +58,7 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
 
     def test_broken_link_issues_with_valid_links(self, tmp_path: Path) -> None:
         """Test broken_link_issues ignores valid links."""
@@ -72,7 +72,7 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
 
     def test_broken_link_issues_with_external_links(self, tmp_path: Path) -> None:
         """Test broken_link_issues ignores external links."""
@@ -86,7 +86,7 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
 
     def test_broken_link_issues_with_fragments(self, tmp_path: Path) -> None:
         """Test broken_link_issues ignores fragment-only links."""
@@ -100,7 +100,7 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
 
     def test_broken_link_issues_in_code_blocks(self, tmp_path: Path) -> None:
         """Test broken_link_issues ignores links in code blocks."""
@@ -114,7 +114,7 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
 
     def test_broken_link_issues_with_should_skip_target_true(
         self,
@@ -131,7 +131,7 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
 
     def test_broken_link_issues_with_missing_target(self, tmp_path: Path) -> None:
         """Test broken_link_issues reports missing targets."""
@@ -145,8 +145,10 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(len(issues) > 0, eq=True)
-        tm.that(any("missing.md" in issue.message for issue in issues), eq=True)
+        u.Tests.Matchers.that(len(issues) > 0, eq=True)
+        u.Tests.Matchers.that(
+            any("missing.md" in issue.message for issue in issues), eq=True
+        )
 
     def test_broken_link_issues_skips_some_text(self, tmp_path: Path) -> None:
         """Test broken_link_issues skips plain text brackets."""
@@ -160,7 +162,7 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
 
     def test_broken_link_issues_with_space_in_url_skips(self, tmp_path: Path) -> None:
         """Test broken_link_issues skips URLs with spaces."""
@@ -174,5 +176,5 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
-        tm.that(len(issues), eq=0)
+        u.Tests.Matchers.that(len(issues) >= 0, eq=True)
+        u.Tests.Matchers.that(len(issues), eq=0)

@@ -4,7 +4,7 @@ import types
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 import flext_infra.deps as detector_module
 from flext_core import r
@@ -120,7 +120,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunDetect:
         result = _setup_detector(monkeypatch, tmp_path, _DepsStub([])).run([
             "--no-pip-check",
         ])
-        tm.that(tm.ok(result), eq=2)
+        u.Tests.Matchers.that(tm.ok(result), eq=2)
 
     def test_run_with_deptry_missing(
         self,
@@ -133,7 +133,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunDetect:
             _DepsStub([tmp_path / "proj-a"]),
             deptry_exists=False,
         ).run(["--no-pip-check"])
-        tm.that(tm.ok(result), eq=3)
+        u.Tests.Matchers.that(tm.ok(result), eq=3)
 
     def test_run_with_projects_and_deptry(
         self,
@@ -147,4 +147,4 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunDetect:
         ).run(
             ["--no-pip-check", "--dry-run"],
         )
-        tm.that(tm.ok(result), eq=0)
+        u.Tests.Matchers.that(tm.ok(result), eq=0)

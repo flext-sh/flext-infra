@@ -12,7 +12,10 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, r
+from flext_core.result import r
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.constants import c
+from flext_infra.models import m
 
 
 class FlextInfraBaseMkValidator:

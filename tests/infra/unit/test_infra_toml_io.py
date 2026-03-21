@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import cast
 
 import tomlkit
-from flext_tests import tm
+from flext_tests import t, u
 from tomlkit.items import Table
 
 from flext_infra import FlextInfraUtilitiesToml, t
@@ -36,9 +36,11 @@ class TestFlextInfraTomlRead:
         tm.that(cast("t.Tests.Matcher.MatcherKwargValue", section["number"]), eq=42)
 
     def test_read_nonexistent_file(self, tmp_path: Path) -> None:
-        toml_file = tmp_path / "missing.toml"
-        service = FlextInfraUtilitiesToml()
-        tm.that(service.read(toml_file), none=True)
+        tmp_path / "missing.toml"
+        FlextInfraUtilitiesToml()
+        u.Tests.Matchers.that(
+            cast("t.Tests.Matcher.MatcherKwargValue", section["key"]), eq="value"
+        )
 
     def test_read_invalid_toml(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "invalid.toml"
@@ -83,8 +85,10 @@ class TestFlextInfraTomlDocument:
         doc = tomlkit.document()
         doc["section"] = {"key": "value"}
         result = service.write_document(toml_file, doc)
-        tm.ok(result)
-        tm.that(toml_file.exists(), eq=True)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
+            cast("t.Tests.Matcher.MatcherKwargValue", section["number"]), eq=42
+        )
 
     def test_write_creates_parent_directories(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "nested" / "deep" / "file.toml"
@@ -96,11 +100,11 @@ class TestFlextInfraTomlDocument:
 
     def test_write_preserves_formatting(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "formatted.toml"
-        service = FlextInfraUtilitiesToml()
+        FlextInfraUtilitiesToml()
         doc = tomlkit.document()
         doc.add(tomlkit.comment("Configuration file"))
         doc["section"] = {"key": "value"}
-        tm.ok(service.write_document(toml_file, doc))
+        u.Tests.Matchers.ok(result)
         content = toml_file.read_text(encoding="utf-8")
         tm.that(content, has="Configuration file")
 
@@ -123,7 +127,7 @@ class TestFlextInfraTomlDocument:
         toml_file.write_text('[section]\nkey = "old"\n', encoding="utf-8")
         service = FlextInfraUtilitiesToml()
         read_result = service.read_document(toml_file)
-        tm.ok(read_result)
+        u.Tests.Matchers.ok(service.write_document(toml_file, doc))
         doc = read_result.value
         section_obj = doc["section"]
         assert isinstance(section_obj, Table)
@@ -132,16 +136,12 @@ class TestFlextInfraTomlDocument:
         assert isinstance(section_obj, Table)
         section = section_obj
         section["key"] = "new"
-        tm.ok(service.write_document(toml_file, doc))
+        u.Tests.Matchers.ok(service.write_document(toml_file, doc))
         verify_doc = service.read(toml_file)
         assert verify_doc is not None, "expected persisted TOML document"
         verify_section_obj = verify_doc["section"]
         assert isinstance(verify_section_obj, Table)
-        verify_section = verify_section_obj
-        tm.that(
-            cast("t.Tests.Matcher.MatcherKwargValue", verify_section["key"]),
-            eq="new",
-        )
+        u.Tests.Matchers.that(service.read(toml_file), none=True)
 
 
 class TestFlextInfraTomlHelpers:
@@ -149,26 +149,30 @@ class TestFlextInfraTomlHelpers:
 
     def test_array_creates_multiline(self) -> None:
         arr = FlextInfraUtilitiesToml.array(["a", "b", "c"])
-        arr_text = arr.as_string()
-        tm.that(arr_text, has='"a"')
-        tm.that(arr_text, has='"b"')
-        tm.that(arr_text, has='"c"')
+        arr.as_string()
+        u.Tests.Matchers.that(service.read(toml_file), none=True)
+        u.Tests.Matchers.that(
+            cast("t.Tests.Matcher.MatcherKwargValue", section["key"]), eq="value"
+        )
+        u.Tests.Matchers.that(toml_file.exists(), eq=True)
 
     def test_ensure_table_reuses_existing(self) -> None:
         parent = tomlkit.table()
         existing = tomlkit.table()
         existing["key"] = "value"
         parent["section"] = existing
-        table = FlextInfraUtilitiesToml.ensure_table(parent, "section")
-        tm.that(cast("t.Tests.Matcher.MatcherKwargValue", table["key"]), eq="value")
+        FlextInfraUtilitiesToml.ensure_table(parent, "section")
+        u.Tests.Matchers.that(toml_file.exists(), eq=True)
 
     def test_as_toml_mapping_and_get_helpers(self) -> None:
-        mapping: dict[str, t.Infra.InfraValue] = {"key": "value"}
-        tm.that(FlextInfraUtilitiesToml.as_toml_mapping(mapping), eq=mapping)
-        tm.that(FlextInfraUtilitiesToml.as_toml_mapping("bad"), none=True)
+        u.Tests.Matchers.that(content, has="Configuration file")
+        u.Tests.Matchers.that(
+            cast("t.Tests.Matcher.MatcherKwargValue", verify_section["key"]),
+            eq="new",
+        )
         doc = tomlkit.document()
         doc["a"] = 1
         doc["b"] = [1, 2]
-        tm.that(FlextInfraUtilitiesToml.get(doc, "a"), eq=1)
-        tm.that(FlextInfraUtilitiesToml.get(doc, "b"), eq=[1, 2])
-        tm.that(FlextInfraUtilitiesToml.get(doc, 123), none=True)
+        u.Tests.Matchers.that(arr_text, has='"a"')
+        u.Tests.Matchers.that(arr_text, has='"b"')
+        u.Tests.Matchers.that(arr_text, has='"c"')

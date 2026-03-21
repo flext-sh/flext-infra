@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import u
 
 from flext_core import r
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
@@ -31,7 +31,7 @@ class TestFlextInfraWorkspaceChecker:
         """Test that execute() returns failure with helpful message."""
         checker = FlextInfraWorkspaceChecker()
         result = checker.execute()
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
         assert isinstance(result.error, str)
         assert isinstance(result.error, str)
         assert "Use run()" in result.error or "Use run_projects()" in result.error
@@ -39,20 +39,20 @@ class TestFlextInfraWorkspaceChecker:
     def test_resolve_gates_with_valid_gates(self) -> None:
         """Test that resolve_gates normalizes valid gate names."""
         result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "type"])
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         assert "lint" in result.value
         assert "pyrefly" in result.value
 
     def test_resolve_gates_deduplicates(self) -> None:
         """Test that resolve_gates removes duplicate gate names."""
         result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         assert result.value.count("lint") == 1
 
     def test_resolve_gates_with_invalid_gate(self) -> None:
         """Test that resolve_gates fails on invalid gate name."""
         result = FlextInfraWorkspaceChecker.resolve_gates(["invalid_gate"])
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
 
     def test_run_projects_with_missing_projects(self, tmp_path: Path) -> None:
         """Test that run_projects handles missing project directories gracefully."""
@@ -62,7 +62,7 @@ class TestFlextInfraWorkspaceChecker:
             ["lint"],
             reports_dir=tmp_path / "reports",
         )
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         assert len(result.value) == 0
 
     def test_run_projects_creates_reports_dir(self, tmp_path: Path) -> None:
@@ -70,7 +70,7 @@ class TestFlextInfraWorkspaceChecker:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         reports_dir = tmp_path / "reports"
         result = checker.run_projects([], ["lint"], reports_dir=reports_dir)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
         assert reports_dir.exists()
 
     def test_lint_returns_gate_result(self, tmp_path: Path) -> None:
@@ -78,11 +78,11 @@ class TestFlextInfraWorkspaceChecker:
         checker = FlextInfraWorkspaceChecker()
         result = checker.lint(tmp_path)
         assert isinstance(result, r)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_format_returns_gate_result(self, tmp_path: Path) -> None:
         """Test that format() returns a GateResult."""
         checker = FlextInfraWorkspaceChecker()
         result = checker.format(tmp_path)
         assert isinstance(result, r)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)

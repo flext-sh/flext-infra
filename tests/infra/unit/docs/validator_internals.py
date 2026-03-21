@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_infra.docs.validator import FlextInfraDocValidator
 from tests.infra.models import m
@@ -39,7 +39,7 @@ class TestValidateScope:
             check="adr-skill",
             apply_mode=False,
         )
-        tm.that(report.scope, eq="root")
+        u.Tests.Matchers.that(report.scope, eq="root")
 
     def test_without_config(
         self,
@@ -51,7 +51,7 @@ class TestValidateScope:
             check="all",
             apply_mode=False,
         )
-        tm.that(report.scope, eq="test")
+        u.Tests.Matchers.that(report.scope, eq="test")
 
     def test_all_check(
         self,
@@ -63,7 +63,7 @@ class TestValidateScope:
             check="all",
             apply_mode=False,
         )
-        tm.that(report.scope, eq="test")
+        u.Tests.Matchers.that(report.scope, eq="test")
 
     def test_adr_check_failure(
         self,
@@ -80,7 +80,7 @@ class TestValidateScope:
             check="adr",
             apply_mode=False,
         )
-        tm.that(report.scope, eq="test")
+        u.Tests.Matchers.that(report.scope, eq="test")
 
     def test_adr_skill_check_failure(
         self,
@@ -101,8 +101,8 @@ class TestValidateScope:
             check="adr-skill",
             apply_mode=False,
         )
-        tm.that(report.scope, eq="root")
-        tm.that(report.result, eq="FAIL")
+        u.Tests.Matchers.that(report.scope, eq="root")
+        u.Tests.Matchers.that(report.result, eq="FAIL")
 
 
 class TestAdrHelpers:
@@ -113,7 +113,7 @@ class TestAdrHelpers:
     ) -> None:
         sf = tmp_path / "SKILL.md"
         sf.write_text("# Skill\n\nADR: This is an ADR reference.\n")
-        tm.that(validator._has_adr_reference(sf), eq=True)
+        u.Tests.Matchers.that(validator._has_adr_reference(sf), eq=True)
 
     def test_has_adr_without_text(
         self,
@@ -122,7 +122,7 @@ class TestAdrHelpers:
     ) -> None:
         sf = tmp_path / "SKILL.md"
         sf.write_text("# Skill\n\nNo architecture decision record here.\n")
-        tm.that(validator._has_adr_reference(sf), eq=False)
+        u.Tests.Matchers.that(validator._has_adr_reference(sf), eq=False)
 
     def test_adr_check_no_config(
         self,
@@ -130,7 +130,7 @@ class TestAdrHelpers:
         tmp_path: Path,
     ) -> None:
         code, _missing = validator._run_adr_skill_check(tmp_path)
-        tm.that(code >= 0, eq=True)
+        u.Tests.Matchers.that(code >= 0, eq=True)
 
     def test_adr_check_with_config(
         self,
@@ -143,7 +143,7 @@ class TestAdrHelpers:
             '{"docs_validation": {"required_skills": ["test-skill"]}}',
         )
         code, _missing = validator._run_adr_skill_check(tmp_path)
-        tm.that(code >= 0, eq=True)
+        u.Tests.Matchers.that(code >= 0, eq=True)
 
     def test_adr_check_with_missing_skills(
         self,
@@ -152,7 +152,7 @@ class TestAdrHelpers:
     ) -> None:
         (tmp_path / ".claude/skills").mkdir(parents=True, exist_ok=True)
         code, _missing = validator._run_adr_skill_check(tmp_path)
-        tm.that(code >= 0, eq=True)
+        u.Tests.Matchers.that(code >= 0, eq=True)
 
 
 class TestMaybeWriteTodo:
@@ -161,7 +161,7 @@ class TestMaybeWriteTodo:
         validator: FlextInfraDocValidator,
         tmp_path: Path,
     ) -> None:
-        tm.that(
+        u.Tests.Matchers.that(
             validator._maybe_write_todo(
                 _scope(tmp_path, "root"),
                 apply_mode=True,
@@ -174,7 +174,7 @@ class TestMaybeWriteTodo:
         validator: FlextInfraDocValidator,
         tmp_path: Path,
     ) -> None:
-        tm.that(
+        u.Tests.Matchers.that(
             validator._maybe_write_todo(
                 _scope(tmp_path),
                 apply_mode=False,
@@ -188,5 +188,5 @@ class TestMaybeWriteTodo:
         tmp_path: Path,
     ) -> None:
         result = validator._maybe_write_todo(_scope(tmp_path), apply_mode=True)
-        tm.that(result, eq=True)
-        tm.that((tmp_path / "TODOS.md").exists(), eq=True)
+        u.Tests.Matchers.that(result, eq=True)
+        u.Tests.Matchers.that((tmp_path / "TODOS.md").exists(), eq=True)

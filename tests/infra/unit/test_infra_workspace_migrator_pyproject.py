@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import u
 
 from tests.infra.unit.test_infra_workspace_migrator import (
     _build_migrator,
@@ -27,8 +27,8 @@ class TestMigratorFlextCore:
         (root / ".gitignore").write_text("", encoding="utf-8")
         migrator = _build_migrator(_project(root, "flext-core"), "base.mk")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-        migration = tm.ok(result)
-        tm.that(
+        migration = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
             any("unchanged for flext-core" in c for c in migration[0].changes),
             eq=True,
         )
@@ -43,8 +43,8 @@ class TestMigratorFlextCore:
         (root / ".gitignore").write_text("", encoding="utf-8")
         migrator = _build_migrator(_project(root, "flext-core"), "base")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-        migration = tm.ok(result)
-        tm.that(
+        migration = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
             any(
                 "[DRY-RUN]" in c and "unchanged for flext-core" in c
                 for c in migration[0].changes
@@ -67,8 +67,8 @@ class TestMigratorPoetryDeps:
         (root / ".gitignore").write_text("", encoding="utf-8")
         migrator = _build_migrator(_project(root), "base.mk")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-        migration = tm.ok(result)
-        tm.that(
+        migration = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
             any("already includes" in c for c in migration[0].changes),
             eq=True,
         )
@@ -83,8 +83,8 @@ class TestMigratorPoetryDeps:
         (root / ".gitignore").write_text("", encoding="utf-8")
         migrator = _build_migrator(_project(root), "base")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-        migration = tm.ok(result)
-        tm.that(
+        migration = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
             any("flext-core dependency" in c for c in migration[0].changes),
             eq=True,
         )
@@ -102,8 +102,8 @@ class TestMigratorPoetryDeps:
         (root / ".gitignore").write_text("", encoding="utf-8")
         migrator = _build_migrator(_project(root), "base")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-        migration = tm.ok(result)
-        tm.that(
+        migration = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
             any("flext-core dependency" in c for c in migration[0].changes),
             eq=True,
         )
@@ -119,8 +119,8 @@ class TestMigratorDryRun:
         (root / ".gitignore").write_text("", encoding="utf-8")
         migrator = _build_migrator(_project(root), "base")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-        migration = tm.ok(result)
-        tm.that(
+        migration = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
             any(
                 "[DRY-RUN]" in c and "Makefile not found" in c
                 for c in migration[0].changes
@@ -137,8 +137,8 @@ class TestMigratorDryRun:
         (root / ".gitignore").write_text("", encoding="utf-8")
         migrator = _build_migrator(_project(root), "base")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-        migration = tm.ok(result)
-        tm.that(
+        migration = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
             any(
                 "[DRY-RUN]" in c and "pyproject.toml not found" in c
                 for c in migration[0].changes
@@ -159,8 +159,8 @@ class TestMigratorDryRun:
         )
         migrator = _build_migrator(_project(root), "base")
         result = migrator.migrate(workspace_root=tmp_path, dry_run=True)
-        migration = tm.ok(result)
-        tm.that(
+        migration = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
             any(
                 "[DRY-RUN]" in c and ".gitignore already normalized" in c
                 for c in migration[0].changes
@@ -177,7 +177,7 @@ class TestMigratorDryRun:
         (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
         (root / ".gitignore").write_text("", encoding="utf-8")
         migrator = _build_migrator(_project(root), "base.mk")
-        tm.ok(migrator.migrate(workspace_root=tmp_path, dry_run=False))
+        u.Tests.Matchers.ok(migrator.migrate(workspace_root=tmp_path, dry_run=False))
 
 
 __all__: list[str] = []

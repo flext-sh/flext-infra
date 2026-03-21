@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, t, u
 
 from flext_core import r
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
@@ -57,7 +57,9 @@ class TestLoadDependencyLimits:
             "toml",
             _StubToml([r[t.Infra.TomlConfig].fail("not found")]),
         )
-        tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), eq={})
+        u.Tests.Matchers.that(
+            service.load_dependency_limits(Path("/fake/limits.toml")), eq={}
+        )
 
     def test_unconvertible_values_skipped(
         self,
@@ -82,7 +84,7 @@ class TestLoadDependencyLimits:
         )
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert "key" in result
-        tm.that(result["key"], eq=None)
+        u.Tests.Matchers.that(result["key"], eq=None)
 
 
 class TestRunMypyStubHints:
@@ -90,7 +92,9 @@ class TestRunMypyStubHints:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        tm.that(tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin)), eq=([], []))
+        u.Tests.Matchers.that(
+            tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin)), eq=([], [])
+        )
 
     def test_runner_failure(
         self,
@@ -106,7 +110,7 @@ class TestRunMypyStubHints:
             "runner",
             _StubRunner(r[m.Infra.CommandOutput].fail("mypy crash")),
         )
-        tm.fail(service.run_mypy_stub_hints(tmp_path, venv_bin))
+        u.Tests.Matchers.fail(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
     def test_parses_hints(
         self,
@@ -127,7 +131,7 @@ class TestRunMypyStubHints:
             "runner",
             _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
-        tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin))
+        u.Tests.Matchers.ok(service.run_mypy_stub_hints(tmp_path, venv_bin))
 
     def test_run_mypy_stub_hints_with_timeout(
         self,
@@ -141,5 +145,7 @@ class TestRunMypyStubHints:
         out = m.Infra.CommandOutput(exit_code=0, stdout="", stderr="")
         runner = _StubRunner(r[m.Infra.CommandOutput].ok(out))
         monkeypatch.setattr(service, "runner", runner)
-        tm.ok(service.run_mypy_stub_hints(tmp_path, venv_bin, timeout=600))
-        tm.that(runner.last_kwargs["timeout"], eq=600)
+        u.Tests.Matchers.ok(
+            service.run_mypy_stub_hints(tmp_path, venv_bin, timeout=600)
+        )
+        u.Tests.Matchers.that(runner.last_kwargs["timeout"], eq=600)

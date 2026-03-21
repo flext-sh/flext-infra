@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_core import r
 from flext_infra import m
@@ -49,8 +49,8 @@ class TestOrchestrate:
             checkpoint=False,
             branch="",
         )
-        value = tm.ok(result)
-        tm.that(value.fail, eq=0)
+        value = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(value.fail, eq=0)
 
     def test_project_resolution_failure(self, tmp_path: Path) -> None:
         selector = StubSelector(
@@ -62,7 +62,7 @@ class TestOrchestrate:
             reporting=StubReporting(),
         )
         result = manager.orchestrate(tmp_path)
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
 
     def test_fail_fast(self, tmp_path: Path) -> None:
         runner = StubRunner(run_to_file_returns=[r[int].ok(1)])
@@ -89,8 +89,8 @@ class TestOrchestrate:
             checkpoint=False,
             branch="",
         )
-        value = tm.ok(result)
-        tm.that(value.fail >= 1, eq=True)
+        value = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(value.fail >= 1, eq=True)
 
     def test_include_root(self, tmp_path: Path) -> None:
         runner = StubRunner(run_to_file_returns=[r[int].ok(0)])
@@ -109,8 +109,8 @@ class TestOrchestrate:
             checkpoint=False,
             branch="",
         )
-        value = tm.ok(result)
-        tm.that(value.total, eq=1)
+        value = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(value.total, eq=1)
 
     def test_orchestrate_with_checkpoint(
         self,
@@ -157,8 +157,8 @@ class TestOrchestrate:
             checkpoint=True,
             branch="test-branch",
         )
-        tm.ok(result)
-        tm.that(len(has_changes_calls) >= 1, eq=True)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(len(has_changes_calls) >= 1, eq=True)
 
     def test_orchestrate_failure_handling(self, tmp_path: Path) -> None:
         runner = StubRunner(run_to_file_returns=[r[int].fail("command error")])
@@ -182,22 +182,22 @@ class TestOrchestrate:
             checkpoint=False,
             branch="",
         )
-        value = tm.ok(result)
-        tm.that(value.fail, eq=1)
+        value = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(value.fail, eq=1)
 
 
 class TestStaticMethods:
     def test_repo_display_name_root(self, tmp_path: Path) -> None:
         display_name = getattr(FlextInfraPrWorkspaceManager, "_repo_display_name")
         result = display_name(tmp_path, tmp_path)
-        tm.that(result, eq=tmp_path.name)
+        u.Tests.Matchers.that(result, eq=tmp_path.name)
 
     def test_repo_display_name_subproject(self, tmp_path: Path) -> None:
         sub = tmp_path / "my-project"
         sub.mkdir()
         display_name = getattr(FlextInfraPrWorkspaceManager, "_repo_display_name")
         result = display_name(sub, tmp_path)
-        tm.that(result, eq="my-project")
+        u.Tests.Matchers.that(result, eq="my-project")
 
     def test_build_root_command(self, tmp_path: Path) -> None:
         build_root_command = getattr(
@@ -208,9 +208,9 @@ class TestStaticMethods:
             tmp_path,
             {"action": "create", "head": "feature", "title": "Test"},
         )
-        tm.that("python" in cmd, eq=True)
-        tm.that("--action" in cmd, eq=True)
-        tm.that("create" in cmd, eq=True)
+        u.Tests.Matchers.that("python" in cmd, eq=True)
+        u.Tests.Matchers.that("--action" in cmd, eq=True)
+        u.Tests.Matchers.that("create" in cmd, eq=True)
 
     def test_build_subproject_command(self, tmp_path: Path) -> None:
         build_subproject_command = getattr(
@@ -218,9 +218,9 @@ class TestStaticMethods:
             "_build_subproject_command",
         )
         cmd = build_subproject_command(tmp_path, {"action": "status", "head": "feat"})
-        tm.that("make" in cmd, eq=True)
-        tm.that("-C" in cmd, eq=True)
-        tm.that("PR_ACTION=status" in cmd, eq=True)
+        u.Tests.Matchers.that("make" in cmd, eq=True)
+        u.Tests.Matchers.that("-C" in cmd, eq=True)
+        u.Tests.Matchers.that("PR_ACTION=status" in cmd, eq=True)
 
     def test_build_root_command_defaults(self, tmp_path: Path) -> None:
         build_root_command = getattr(
@@ -228,8 +228,8 @@ class TestStaticMethods:
             "_build_root_command",
         )
         cmd = build_root_command(tmp_path, {})
-        tm.that("--action" in cmd, eq=True)
-        tm.that("status" in cmd, eq=True)
+        u.Tests.Matchers.that("--action" in cmd, eq=True)
+        u.Tests.Matchers.that("status" in cmd, eq=True)
 
     def test_build_subproject_command_no_optional(self, tmp_path: Path) -> None:
         build_subproject_command = getattr(
@@ -237,5 +237,5 @@ class TestStaticMethods:
             "_build_subproject_command",
         )
         cmd = build_subproject_command(tmp_path, {})
-        tm.that("make" in cmd, eq=True)
-        tm.that(not [c for c in cmd if c.startswith("PR_HEAD=")], eq=True)
+        u.Tests.Matchers.that("make" in cmd, eq=True)
+        u.Tests.Matchers.that(not [c for c in cmd if c.startswith("PR_HEAD=")], eq=True)

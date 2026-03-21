@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra import u
 from flext_infra.validate.__main__ import (
@@ -51,7 +51,7 @@ class TestMainBaseMkValidate:
     def test_success(self, tmp_path: Path) -> None:
         """basemk-validate succeeds with matching base.mk."""
         (tmp_path / "base.mk").write_text("# root")
-        tm.that(_run_basemk_validate(_cli_args(tmp_path)), eq=0)
+        u.Tests.Matchers.that(_run_basemk_validate(_cli_args(tmp_path)), eq=0)
 
     def test_with_violations(self, tmp_path: Path) -> None:
         """basemk-validate returns 1 with mismatched base.mk."""
@@ -60,11 +60,11 @@ class TestMainBaseMkValidate:
         proj.mkdir()
         (proj / "pyproject.toml").write_text("")
         (proj / "base.mk").write_text("# different")
-        tm.that(_run_basemk_validate(_cli_args(tmp_path)), eq=1)
+        u.Tests.Matchers.that(_run_basemk_validate(_cli_args(tmp_path)), eq=1)
 
     def test_missing_root_basemk(self, tmp_path: Path) -> None:
         """basemk-validate returns 1 when root base.mk missing."""
-        tm.that(_run_basemk_validate(_cli_args(tmp_path)), eq=1)
+        u.Tests.Matchers.that(_run_basemk_validate(_cli_args(tmp_path)), eq=1)
 
 
 class TestMainInventory:
@@ -72,13 +72,17 @@ class TestMainInventory:
 
     def test_success(self, tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
-        tm.that(_run_inventory(_cli_args(tmp_path), output_dir=None), eq=0)
+        u.Tests.Matchers.that(
+            _run_inventory(_cli_args(tmp_path), output_dir=None), eq=0
+        )
 
     def test_with_output_dir(self, tmp_path: Path) -> None:
         """Inventory succeeds with output directory."""
         output = tmp_path / "output"
         output.mkdir()
-        tm.that(_run_inventory(_cli_args(tmp_path), output_dir=str(output)), eq=0)
+        u.Tests.Matchers.that(
+            _run_inventory(_cli_args(tmp_path), output_dir=str(output)), eq=0
+        )
 
 
 class TestMainScan:
@@ -87,7 +91,7 @@ class TestMainScan:
     def test_no_violations(self, tmp_path: Path) -> None:
         """Scan returns 0 when no violations found."""
         (tmp_path / "test.txt").write_text("hello world")
-        tm.that(
+        u.Tests.Matchers.that(
             _run_scan(
                 _cli_args(tmp_path),
                 pattern="NONEXISTENT_PATTERN",
@@ -101,7 +105,7 @@ class TestMainScan:
     def test_with_violations(self, tmp_path: Path) -> None:
         """Scan returns 1 when violations found."""
         (tmp_path / "test.txt").write_text("TODO fix this")
-        tm.that(
+        u.Tests.Matchers.that(
             _run_scan(
                 _cli_args(tmp_path),
                 pattern="TODO",
@@ -118,17 +122,17 @@ class TestMainCliRouting:
 
     def test_help_flag(self) -> None:
         """--help returns 0."""
-        tm.that(_cli("--help").returncode, eq=0)
+        u.Tests.Matchers.that(_cli("--help").returncode, eq=0)
 
     def test_basemk_validate_routing(self, tmp_path: Path) -> None:
         """basemk-validate subcommand routes correctly."""
         result = _cli("basemk-validate", "--root", str(tmp_path))
-        tm.that(result.returncode in {0, 1}, eq=True)
+        u.Tests.Matchers.that(result.returncode in {0, 1}, eq=True)
 
     def test_inventory_routing(self, tmp_path: Path) -> None:
         """Inventory subcommand routes correctly."""
         result = _cli("inventory", "--root", str(tmp_path))
-        tm.that(result.returncode in {0, 1}, eq=True)
+        u.Tests.Matchers.that(result.returncode in {0, 1}, eq=True)
 
     def test_scan_routing(self, tmp_path: Path) -> None:
         """Scan subcommand routes correctly."""
@@ -142,15 +146,15 @@ class TestMainCliRouting:
             "--include",
             "*.txt",
         )
-        tm.that(result.returncode in {0, 1}, eq=True)
+        u.Tests.Matchers.that(result.returncode in {0, 1}, eq=True)
 
     def test_no_command_returns_1(self) -> None:
         """No subcommand returns exit code 1."""
-        tm.that(_cli().returncode, eq=1)
+        u.Tests.Matchers.that(_cli().returncode, eq=1)
 
     def test_unknown_command_returns_error(self) -> None:
         """Unknown subcommand returns non-zero exit code."""
-        tm.that(_cli("unknown").returncode != 0, eq=True)
+        u.Tests.Matchers.that(_cli("unknown").returncode != 0, eq=True)
 
     def test_skill_validate_routing(self, tmp_path: Path) -> None:
         """skill-validate subcommand routes correctly."""
@@ -161,12 +165,12 @@ class TestMainCliRouting:
             "--root",
             str(tmp_path),
         )
-        tm.that(result.returncode in {0, 1}, eq=True)
+        u.Tests.Matchers.that(result.returncode in {0, 1}, eq=True)
 
     def test_stub_validate_routing(self, tmp_path: Path) -> None:
         """stub-validate subcommand routes correctly."""
         result = _cli("stub-validate", "--root", str(tmp_path))
-        tm.that(result.returncode in {0, 1}, eq=True)
+        u.Tests.Matchers.that(result.returncode in {0, 1}, eq=True)
 
 
 __all__: list[str] = []

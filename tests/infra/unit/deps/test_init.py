@@ -6,7 +6,7 @@ Tests lazy loading and __getattr__ fallthrough behavior.
 from __future__ import annotations
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 import flext_infra.deps as deps_mod
 
@@ -22,4 +22,4 @@ class TestFlextInfraDeps:
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""
         exports = dir(deps_mod)
-        tm.that(len(exports) > 0, eq=True)
+        u.Tests.Matchers.that(len(exports) > 0, eq=True)

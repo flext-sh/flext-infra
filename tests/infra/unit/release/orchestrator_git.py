@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import r, t
 from flext_infra.release import orchestrator as _orch_mod
@@ -48,14 +48,16 @@ class TestCreateBranches:
         FakeUtilsNamespace.Infra.reset()
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._create_branches(workspace_root, "1.0.0", []))
+        u.Tests.Matchers.ok(orchestrator._create_branches(workspace_root, "1.0.0", []))
 
     def test_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         FakeUtilsNamespace.Infra.reset()
         FakeUtilsNamespace.Infra._git_checkout_result = r[bool].fail("git failed")
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._create_branches(workspace_root, "1.0.0", []))
+        u.Tests.Matchers.fail(
+            orchestrator._create_branches(workspace_root, "1.0.0", [])
+        )
 
     def test_project_failure(
         self,
@@ -82,7 +84,9 @@ class TestCreateBranches:
             _selection_factory,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._create_branches(workspace_root, "1.0.0", ["proj1"]))
+        u.Tests.Matchers.fail(
+            orchestrator._create_branches(workspace_root, "1.0.0", ["proj1"])
+        )
 
 
 class TestCreateTag:
@@ -96,7 +100,7 @@ class TestCreateTag:
         FakeUtilsNamespace.Infra.reset()
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._create_tag(workspace_root, "v1.0.0"))
+        u.Tests.Matchers.ok(orchestrator._create_tag(workspace_root, "v1.0.0"))
 
     def test_skips_existing(
         self,
@@ -107,7 +111,7 @@ class TestCreateTag:
         FakeUtilsNamespace.Infra._git_tag_exists_result = r[bool].ok(True)
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._create_tag(workspace_root, "v1.0.0"))
+        u.Tests.Matchers.ok(orchestrator._create_tag(workspace_root, "v1.0.0"))
 
     def test_check_failure(
         self,
@@ -120,7 +124,7 @@ class TestCreateTag:
         )
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._create_tag(workspace_root, "v1.0.0"))
+        u.Tests.Matchers.fail(orchestrator._create_tag(workspace_root, "v1.0.0"))
 
 
 class TestPushRelease:
@@ -134,7 +138,7 @@ class TestPushRelease:
         FakeUtilsNamespace.Infra.reset()
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._push_release(workspace_root, "v1.0.0"))
+        u.Tests.Matchers.ok(orchestrator._push_release(workspace_root, "v1.0.0"))
 
     def test_branch_failure(
         self,
@@ -145,7 +149,7 @@ class TestPushRelease:
         FakeUtilsNamespace.Infra._git_run_checked_result = r[bool].fail("push failed")
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._push_release(workspace_root, "v1.0.0"))
+        u.Tests.Matchers.fail(orchestrator._push_release(workspace_root, "v1.0.0"))
 
 
 class TestPreviousTag:
@@ -157,7 +161,7 @@ class TestPreviousTag:
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
         result = orchestrator._previous_tag(workspace_root, "v1.0.0")
-        tm.ok(result, eq="v0.9.0")
+        u.Tests.Matchers.ok(result, eq="v0.9.0")
 
     def test_no_previous(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         FakeUtilsNamespace.Infra.reset()
@@ -165,14 +169,14 @@ class TestPreviousTag:
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
         result = orchestrator._previous_tag(workspace_root, "v1.0.0")
-        tm.ok(result, eq="")
+        u.Tests.Matchers.ok(result, eq="")
 
     def test_git_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         FakeUtilsNamespace.Infra.reset()
         FakeUtilsNamespace.Infra._git_run_result = r[str].fail("git error")
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._previous_tag(workspace_root, "v1.0.0"))
+        u.Tests.Matchers.fail(orchestrator._previous_tag(workspace_root, "v1.0.0"))
 
 
 class TestCollectChanges:
@@ -185,11 +189,13 @@ class TestCollectChanges:
         )
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator._collect_changes(workspace_root, "v0.9.0", "v1.0.0"))
+        u.Tests.Matchers.ok(
+            orchestrator._collect_changes(workspace_root, "v0.9.0", "v1.0.0")
+        )
 
     def test_git_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         FakeUtilsNamespace.Infra.reset()
         FakeUtilsNamespace.Infra._git_run_result = r[str].fail("git error")
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator._collect_changes(workspace_root, "", "HEAD"))
+        u.Tests.Matchers.fail(orchestrator._collect_changes(workspace_root, "", "HEAD"))

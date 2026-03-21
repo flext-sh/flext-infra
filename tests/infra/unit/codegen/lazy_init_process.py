@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 
@@ -30,10 +30,10 @@ class TestProcessDirectory:
             check_only=False,
             dir_exports=dir_exports,
         )
-        tm.that(result, eq=0)
-        tm.that(exports, contains="TestModel")
+        u.Tests.Matchers.that(result, eq=0)
+        u.Tests.Matchers.that(exports, contains="TestModel")
         init_content = (src_dir / "__init__.py").read_text()
-        tm.that(init_content, contains="TestModel")
+        u.Tests.Matchers.that(init_content, contains="TestModel")
 
     def test_check_only_does_not_write(self, tmp_path: Path) -> None:
         """Test _process_directory in check_only mode doesn't write files."""
@@ -49,10 +49,10 @@ class TestProcessDirectory:
             check_only=True,
             dir_exports=dir_exports,
         )
-        tm.that(result, eq=0)
-        tm.that(exports, contains="TestModel")
+        u.Tests.Matchers.that(result, eq=0)
+        u.Tests.Matchers.that(exports, contains="TestModel")
         # __init__.py should NOT have been created
-        tm.that((src_dir / "__init__.py").exists(), eq=False)
+        u.Tests.Matchers.that((src_dir / "__init__.py").exists(), eq=False)
 
     def test_skips_directory_without_package(self, tmp_path: Path) -> None:
         """Test _process_directory skips dirs that can't infer package."""
@@ -66,8 +66,8 @@ class TestProcessDirectory:
             check_only=False,
             dir_exports=dir_exports,
         )
-        tm.that(result, eq=None)
-        tm.that(exports, eq={})
+        u.Tests.Matchers.that(result, eq=None)
+        u.Tests.Matchers.that(exports, eq={})
 
     def test_includes_child_exports(self, tmp_path: Path) -> None:
         """Test _process_directory includes child subdirectory exports."""
@@ -88,9 +88,9 @@ class TestProcessDirectory:
             check_only=False,
             dir_exports=dir_exports,
         )
-        tm.that(result, eq=0)
-        tm.that(exports, contains="ParentModel")
-        tm.that(exports, contains="ChildService")
+        u.Tests.Matchers.that(result, eq=0)
+        u.Tests.Matchers.that(exports, contains="ParentModel")
+        u.Tests.Matchers.that(exports, contains="ChildService")
 
     def test_handles_version_file(self, tmp_path: Path) -> None:
         """Test _process_directory handles __version__.py correctly."""
@@ -109,7 +109,7 @@ class TestProcessDirectory:
             check_only=False,
             dir_exports=dir_exports,
         )
-        tm.that(result, eq=0)
+        u.Tests.Matchers.that(result, eq=0)
         content = (src_dir / "__init__.py").read_text()
-        tm.that(content, contains='__version__ = "1.0.0"')
-        tm.that(content, contains="__version_info__")
+        u.Tests.Matchers.that(content, contains='__version__ = "1.0.0"')
+        u.Tests.Matchers.that(content, contains="__version_info__")

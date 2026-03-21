@@ -4,7 +4,7 @@ import types
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 import flext_infra as detector_module
 from flext_core import r
@@ -96,7 +96,7 @@ class TestDetectorReportFlags:
         tmp_path: Path,
     ) -> None:
         detector = _setup(monkeypatch, tmp_path, _DepsStub(tmp_path / "proj-a", 5, 1))
-        tm.that(tm.ok(detector.run(["--dry-run"])), eq=1)
+        u.Tests.Matchers.that(tm.ok(detector.run(["--dry-run"])), eq=1)
 
     def test_run_with_no_fail_flag_with_issues(
         self,
@@ -104,7 +104,7 @@ class TestDetectorReportFlags:
         tmp_path: Path,
     ) -> None:
         detector = _setup(monkeypatch, tmp_path, _DepsStub(tmp_path / "proj-a", 5, 1))
-        tm.that(tm.ok(detector.run(["--no-fail", "--dry-run"])), eq=0)
+        u.Tests.Matchers.that(tm.ok(detector.run(["--no-fail", "--dry-run"])), eq=0)
 
     def test_run_with_json_stdout_flag(
         self,
@@ -112,4 +112,6 @@ class TestDetectorReportFlags:
         tmp_path: Path,
     ) -> None:
         detector = _setup(monkeypatch, tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
-        tm.that(tm.ok(detector.run(["--format", "json", "--no-pip-check"])), eq=0)
+        u.Tests.Matchers.that(
+            tm.ok(detector.run(["--format", "json", "--no-pip-check"])), eq=0
+        )

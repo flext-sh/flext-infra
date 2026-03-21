@@ -6,7 +6,7 @@ import argparse
 from collections.abc import Callable
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, t, u
 
 from flext_core import r, t
 from flext_infra import u
@@ -67,7 +67,7 @@ class TestRunBuild:
     ) -> None:
         report = _R(phase="test", scope="test", result="OK")
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_ok([report]))
-        tm.that(_run_build(_build_args()), eq=0)
+        u.Tests.Matchers.that(_run_build(_build_args()), eq=0)
 
     def test_run_build_success_with_failures(
         self,
@@ -75,18 +75,18 @@ class TestRunBuild:
     ) -> None:
         report = _R(phase="test", scope="test", result="FAIL")
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_ok([report]))
-        tm.that(_run_build(_build_args()), eq=1)
+        u.Tests.Matchers.that(_run_build(_build_args()), eq=1)
 
     def test_run_build_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_fail("build error"))
         monkeypatch.setattr(docs_main, "output", _SILENT_OUTPUT)
-        tm.that(_run_build(_build_args()), eq=1)
+        u.Tests.Matchers.that(_run_build(_build_args()), eq=1)
 
 
 class TestRunGenerate:
     def test_run_generate_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocGenerator, "generate", _stub_ok([]))
-        tm.that(_run_generate(_gen_args()), eq=0)
+        u.Tests.Matchers.that(_run_generate(_gen_args()), eq=0)
 
     def test_run_generate_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -95,7 +95,7 @@ class TestRunGenerate:
             _stub_fail("generate error"),
         )
         monkeypatch.setattr(docs_main, "output", _SILENT_OUTPUT)
-        tm.that(_run_generate(_gen_args()), eq=1)
+        u.Tests.Matchers.that(_run_generate(_gen_args()), eq=1)
 
     def test_run_generate_with_apply_flag(
         self,
@@ -119,7 +119,7 @@ class TestRunValidate:
     ) -> None:
         report = _R(phase="test", scope="test", result="OK")
         monkeypatch.setattr(FlextInfraDocValidator, "validate", _stub_ok([report]))
-        tm.that(_run_validate(_val_args()), eq=0)
+        u.Tests.Matchers.that(_run_validate(_val_args()), eq=0)
 
     def test_run_validate_success_with_failures(
         self,
@@ -127,7 +127,7 @@ class TestRunValidate:
     ) -> None:
         report = _R(phase="test", scope="test", result="FAIL")
         monkeypatch.setattr(FlextInfraDocValidator, "validate", _stub_ok([report]))
-        tm.that(_run_validate(_val_args()), eq=1)
+        u.Tests.Matchers.that(_run_validate(_val_args()), eq=1)
 
     def test_run_validate_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -136,7 +136,7 @@ class TestRunValidate:
             _stub_fail("validate error"),
         )
         monkeypatch.setattr(docs_main, "output", _SILENT_OUTPUT)
-        tm.that(_run_validate(_val_args()), eq=1)
+        u.Tests.Matchers.that(_run_validate(_val_args()), eq=1)
 
     def test_run_validate_with_check_parameter(
         self,

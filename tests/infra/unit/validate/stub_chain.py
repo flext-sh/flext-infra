@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 
@@ -29,7 +29,7 @@ class TestStubChainCore:
         """Service initializes with runner attribute."""
         chain = FlextInfraStubSupplyChain()
         assert chain is not None
-        tm.that(hasattr(chain, "_runner"), eq=True)
+        u.Tests.Matchers.that(hasattr(chain, "_runner"), eq=True)
 
 
 class TestStubChainAnalyze:
@@ -42,7 +42,7 @@ class TestStubChainAnalyze:
         proj.mkdir()
         (proj / "pyproject.toml").write_text("[project]\nname = 'test'")
         result = chain.analyze(proj, tmp_path)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_analyze_returns_flextresult(self, tmp_path: Path) -> None:
         """Analyze returns r type."""
@@ -50,13 +50,13 @@ class TestStubChainAnalyze:
         proj = tmp_path / "project"
         proj.mkdir()
         result = chain.analyze(proj, tmp_path)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_analyze_nonexistent_project(self, tmp_path: Path) -> None:
         """Nonexistent project still returns success."""
         chain = FlextInfraStubSupplyChain()
         result = chain.analyze(tmp_path / "nonexistent", tmp_path)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
 
 class TestStubChainValidate:
@@ -66,13 +66,13 @@ class TestStubChainValidate:
         """Workspace validation returns r."""
         chain = FlextInfraStubSupplyChain()
         result = chain.validate(tmp_path)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_validate_nonexistent_workspace(self, tmp_path: Path) -> None:
         """Nonexistent workspace returns failure."""
         chain = FlextInfraStubSupplyChain()
         result = chain.validate(tmp_path / "nonexistent")
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
 
     def test_validate_with_project_dirs(self, tmp_path: Path) -> None:
         """Validate respects project_dirs filter."""
@@ -82,7 +82,7 @@ class TestStubChainValidate:
         (proj / "pyproject.toml").write_text("")
         (proj / "src").mkdir()
         result = chain.validate(tmp_path, project_dirs=[proj])
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
 
 class TestStubChainIsInternal:
@@ -92,21 +92,21 @@ class TestStubChainIsInternal:
 
     def test_flext_underscore_prefix(self) -> None:
         """flext_ prefix is internal."""
-        tm.that(self.is_internal("flext_core", "project"), eq=True)
-        tm.that(self.is_internal("flext_api", "project"), eq=True)
+        u.Tests.Matchers.that(self.is_internal("flext_core", "project"), eq=True)
+        u.Tests.Matchers.that(self.is_internal("flext_api", "project"), eq=True)
 
     def test_flext_dash_prefix(self) -> None:
         """flext- prefix is internal."""
-        tm.that(self.is_internal("flext-core", "project"), eq=True)
+        u.Tests.Matchers.that(self.is_internal("flext-core", "project"), eq=True)
 
     def test_project_name(self) -> None:
         """Project name is internal."""
-        tm.that(self.is_internal("my_project", "my_project"), eq=True)
-        tm.that(self.is_internal("my_project.sub", "my_project"), eq=True)
+        u.Tests.Matchers.that(self.is_internal("my_project", "my_project"), eq=True)
+        u.Tests.Matchers.that(self.is_internal("my_project.sub", "my_project"), eq=True)
 
     def test_external_module(self) -> None:
         """External module is not internal."""
-        tm.that(self.is_internal("requests", "my_project"), eq=False)
+        u.Tests.Matchers.that(self.is_internal("requests", "my_project"), eq=False)
 
 
 class TestStubChainStubExists:
@@ -119,25 +119,25 @@ class TestStubChainStubExists:
         typings = tmp_path / "typings"
         typings.mkdir()
         (typings / "requests.pyi").write_text("")
-        tm.that(self.stub_exists("requests", tmp_path), eq=True)
+        u.Tests.Matchers.that(self.stub_exists("requests", tmp_path), eq=True)
 
     def test_package_init(self, tmp_path: Path) -> None:
         """Finds package __init__.pyi."""
         pkg = tmp_path / "typings" / "requests"
         pkg.mkdir(parents=True)
         (pkg / "__init__.pyi").write_text("")
-        tm.that(self.stub_exists("requests", tmp_path), eq=True)
+        u.Tests.Matchers.that(self.stub_exists("requests", tmp_path), eq=True)
 
     def test_generated_stubs(self, tmp_path: Path) -> None:
         """Finds generated stubs."""
         gen = tmp_path / "typings" / "generated"
         gen.mkdir(parents=True)
         (gen / "requests.pyi").write_text("")
-        tm.that(self.stub_exists("requests", tmp_path), eq=True)
+        u.Tests.Matchers.that(self.stub_exists("requests", tmp_path), eq=True)
 
     def test_missing_returns_false(self, tmp_path: Path) -> None:
         """Missing stubs return False."""
-        tm.that(self.stub_exists("requests", tmp_path), eq=False)
+        u.Tests.Matchers.that(self.stub_exists("requests", tmp_path), eq=False)
 
 
 class TestStubChainDiscoverProjects:
@@ -153,7 +153,7 @@ class TestStubChainDiscoverProjects:
             (proj / "pyproject.toml").write_text("")
             (proj / "src").mkdir()
         projects = self.discover(tmp_path)
-        tm.that(len(projects), eq=2)
+        u.Tests.Matchers.that(len(projects), eq=2)
 
     def test_skips_hidden_dirs(self, tmp_path: Path) -> None:
         """Hidden directories are skipped."""
@@ -161,21 +161,21 @@ class TestStubChainDiscoverProjects:
         hidden.mkdir()
         (hidden / "pyproject.toml").write_text("")
         (hidden / "src").mkdir()
-        tm.that(len(self.discover(tmp_path)), eq=0)
+        u.Tests.Matchers.that(len(self.discover(tmp_path)), eq=0)
 
     def test_requires_src_dir(self, tmp_path: Path) -> None:
         """Projects without src/ are skipped."""
         proj = tmp_path / "project"
         proj.mkdir()
         (proj / "pyproject.toml").write_text("")
-        tm.that(len(self.discover(tmp_path)), eq=0)
+        u.Tests.Matchers.that(len(self.discover(tmp_path)), eq=0)
 
     def test_requires_pyproject(self, tmp_path: Path) -> None:
         """Projects without pyproject.toml are skipped."""
         proj = tmp_path / "project"
         proj.mkdir()
         (proj / "src").mkdir()
-        tm.that(len(self.discover(tmp_path)), eq=0)
+        u.Tests.Matchers.that(len(self.discover(tmp_path)), eq=0)
 
 
 __all__: list[str] = []

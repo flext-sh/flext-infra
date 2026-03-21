@@ -11,7 +11,12 @@ from collections import defaultdict
 from io import StringIO
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorDependencyAnalyzerFacade, c, m, u
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.refactor.dependency_analyzer import (
+    FlextInfraRefactorDependencyAnalyzerFacade,
+)
+from flext_infra.utilities import u
 
 load_python_module = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module
 

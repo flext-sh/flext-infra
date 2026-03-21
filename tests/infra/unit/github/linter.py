@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_core import r
 from flext_infra.github.linter import FlextInfraWorkflowLinter
@@ -52,9 +52,9 @@ class TestFlextInfraWorkflowLinter:
         json_io = StubJsonIo()
         linter = FlextInfraWorkflowLinter(runner=runner, json_io=json_io)
         result = linter.lint(tmp_path)
-        value = tm.ok(result)
-        tm.that(value.status, eq="ok")
-        tm.that(value.exit_code, eq=0)
+        value = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(value.status, eq="ok")
+        u.Tests.Matchers.that(value.exit_code, eq=0)
 
     def test_lint_skipped_when_actionlint_not_installed(
         self,
@@ -72,10 +72,10 @@ class TestFlextInfraWorkflowLinter:
         json_io = StubJsonIo()
         linter = FlextInfraWorkflowLinter(runner=runner, json_io=json_io)
         result = linter.lint(tmp_path)
-        value = tm.ok(result)
-        tm.that(value.status, eq="skipped")
-        tm.that(value.reason is not None, eq=True)
-        tm.that(value.reason, contains="actionlint not installed")
+        value = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(value.status, eq="skipped")
+        u.Tests.Matchers.that(value.reason is not None, eq=True)
+        u.Tests.Matchers.that(value.reason, contains="actionlint not installed")
 
     def test_lint_with_report_path(
         self,
@@ -94,8 +94,8 @@ class TestFlextInfraWorkflowLinter:
         report_path = tmp_path / "report.json"
         linter = FlextInfraWorkflowLinter(runner=runner, json_io=json_io)
         result = linter.lint(tmp_path, report_path=report_path)
-        tm.ok(result)
-        tm.that(len(json_io.write_json_calls), eq=1)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(len(json_io.write_json_calls), eq=1)
 
     def test_lint_strict_mode_fails_on_issues(
         self,
@@ -115,13 +115,13 @@ class TestFlextInfraWorkflowLinter:
         json_io = StubJsonIo()
         linter = FlextInfraWorkflowLinter(runner=runner, json_io=json_io)
         result = linter.lint(tmp_path, strict=True)
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
 
     def test_lint_default_runner_initialization(self) -> None:
         """Test linter initializes with default runner and json service."""
         linter = FlextInfraWorkflowLinter()
-        tm.that(getattr(linter, "_runner", None) is not None, eq=True)
-        tm.that(getattr(linter, "_json", None) is not None, eq=True)
+        u.Tests.Matchers.that(getattr(linter, "_runner", None) is not None, eq=True)
+        u.Tests.Matchers.that(getattr(linter, "_json", None) is not None, eq=True)
 
     def test_lint_skipped_with_report(
         self,
@@ -140,5 +140,5 @@ class TestFlextInfraWorkflowLinter:
         report_path = tmp_path / "report.json"
         linter = FlextInfraWorkflowLinter(runner=runner, json_io=json_io)
         result = linter.lint(tmp_path, report_path=report_path)
-        tm.ok(result)
-        tm.that(len(json_io.write_json_calls), eq=1)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(len(json_io.write_json_calls), eq=1)

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import u
 
 from flext_core import FlextService
 from flext_infra.codegen import FlextInfraCodegenLazyInit
@@ -20,38 +20,38 @@ class TestFlextInfraCodegenLazyInit:
     def test_init_accepts_workspace_root(self, tmp_path: Path) -> None:
         """Test generator initialization with workspace root."""
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        tm.that(generator, none=False)
+        u.Tests.Matchers.that(generator, none=False)
 
     def test_run_with_empty_workspace_returns_zero(self, tmp_path: Path) -> None:
         """Test run() on empty workspace returns 0 (no errors)."""
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         result = generator.run(check_only=False)
-        tm.that(result, eq=0)
+        u.Tests.Matchers.that(result, eq=0)
 
     def test_run_with_check_only_flag(self, tmp_path: Path) -> None:
         """Test run() respects check_only flag without modifying files."""
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         result = generator.run(check_only=True)
-        tm.that(result, eq=0)
+        u.Tests.Matchers.that(result, eq=0)
 
     def test_generator_is_flext_service(self, tmp_path: Path) -> None:
         """Test that FlextInfraCodegenLazyInit is a FlextService."""
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
-        tm.that(generator, is_=FlextService)
+        u.Tests.Matchers.that(generator, is_=FlextService)
 
     def test_run_returns_integer_exit_code(self, tmp_path: Path) -> None:
         """Test that run() returns an integer exit code."""
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         result = generator.run(check_only=False)
-        tm.that(result, is_=int)
-        tm.that(result, gte=0)
+        u.Tests.Matchers.that(result, is_=int)
+        u.Tests.Matchers.that(result, gte=0)
 
     def test_execute_method_returns_flext_result(self, tmp_path: Path) -> None:
         """Test execute() method returns r[int]."""
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         result = generator.execute()
-        tm.ok(result)
-        tm.that(result.value, is_=int)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(result.value, is_=int)
 
     def test_generate_from_sibling_files(self, tmp_path: Path) -> None:
         """Test that generator discovers exports from sibling .py files."""
@@ -63,12 +63,12 @@ class TestFlextInfraCodegenLazyInit:
         )
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         result = generator.run(check_only=False)
-        tm.that(result, eq=0)
+        u.Tests.Matchers.that(result, eq=0)
         init_file = src_dir / "__init__.py"
-        tm.that(init_file.exists(), eq=True)
+        u.Tests.Matchers.that(init_file.exists(), eq=True)
         content = init_file.read_text()
-        tm.that(content, contains="TestModel")
-        tm.that(content, contains="test_pkg.models")
+        u.Tests.Matchers.that(content, contains="TestModel")
+        u.Tests.Matchers.that(content, contains="test_pkg.models")
 
     def test_generate_bottom_up(self, tmp_path: Path) -> None:
         """Test that subdirectory exports bubble up to parent."""
@@ -85,17 +85,17 @@ class TestFlextInfraCodegenLazyInit:
         )
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         result = generator.run(check_only=False)
-        tm.that(result, eq=0)
+        u.Tests.Matchers.that(result, eq=0)
         # Child __init__.py should have SubService
         child_init = sub_dir / "__init__.py"
-        tm.that(child_init.exists(), eq=True)
-        tm.that(child_init.read_text(), contains="SubService")
+        u.Tests.Matchers.that(child_init.exists(), eq=True)
+        u.Tests.Matchers.that(child_init.read_text(), contains="SubService")
         # Parent __init__.py should have both
         parent_init = src_dir / "__init__.py"
-        tm.that(parent_init.exists(), eq=True)
+        u.Tests.Matchers.that(parent_init.exists(), eq=True)
         parent_content = parent_init.read_text()
-        tm.that(parent_content, contains="PkgModel")
-        tm.that(parent_content, contains="SubService")
+        u.Tests.Matchers.that(parent_content, contains="PkgModel")
+        u.Tests.Matchers.that(parent_content, contains="SubService")
 
     def test_generate_preserves_existing_docstring(self, tmp_path: Path) -> None:
         """Test that existing docstring is preserved in regenerated file."""
@@ -112,4 +112,4 @@ class TestFlextInfraCodegenLazyInit:
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
         generator.run(check_only=False)
         content = (src_dir / "__init__.py").read_text()
-        tm.that(content, contains="My custom package docstring")
+        u.Tests.Matchers.that(content, contains="My custom package docstring")

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, t, u
 
 from flext_core import r, t
 from flext_infra._utilities.cli import FlextInfraUtilitiesCli
@@ -51,7 +51,7 @@ class TestRunDetect:
             return result
 
         monkeypatch.setattr(FlextInfraWorkspaceDetector, "detect", _detect_stub)
-        tm.that(workspace_main._run_detect(_cli(tmp_path)), eq=expected)
+        u.Tests.Matchers.that(workspace_main._run_detect(_cli(tmp_path)), eq=expected)
 
 
 class TestRunSync:
@@ -91,7 +91,9 @@ class TestRunSync:
             return result
 
         monkeypatch.setattr(FlextInfraSyncService, "sync", _sync_stub)
-        tm.that(workspace_main._run_sync(_cli(tmp_path), None), eq=expected)
+        u.Tests.Matchers.that(
+            workspace_main._run_sync(_cli(tmp_path), None), eq=expected
+        )
 
 
 class TestRunOrchestrate:
@@ -111,7 +113,7 @@ class TestRunOrchestrate:
             "orchestrate",
             _orchestrate_success,
         )
-        tm.that(
+        u.Tests.Matchers.that(
             workspace_main._run_orchestrate(
                 ["p-a", "p-b"],
                 "check",
@@ -122,7 +124,7 @@ class TestRunOrchestrate:
         )
 
     def test_no_projects(self) -> None:
-        tm.that(
+        u.Tests.Matchers.that(
             workspace_main._run_orchestrate(
                 [],
                 "check",
@@ -148,7 +150,7 @@ class TestRunOrchestrate:
             "orchestrate",
             _orchestrate_partial,
         )
-        tm.that(
+        u.Tests.Matchers.that(
             workspace_main._run_orchestrate(
                 ["p-a", "p-b"],
                 "check",
@@ -174,7 +176,7 @@ class TestRunOrchestrate:
             "orchestrate",
             _orchestrate_failure,
         )
-        tm.that(
+        u.Tests.Matchers.that(
             workspace_main._run_orchestrate(
                 ["p-a"],
                 "check",
@@ -218,7 +220,7 @@ class TestRunMigrate:
             return result
 
         monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _migrate_stub)
-        tm.that(
+        u.Tests.Matchers.that(
             workspace_main._run_migrate(
                 FlextInfraUtilitiesCli.CliArgs(workspace=tmp_path, apply=True),
             ),
@@ -252,7 +254,7 @@ class TestRunMigrate:
             "migrate",
             _migrate_with_errors,
         )
-        tm.that(
+        u.Tests.Matchers.that(
             workspace_main._run_migrate(
                 FlextInfraUtilitiesCli.CliArgs(workspace=tmp_path, apply=True),
             ),
@@ -286,27 +288,35 @@ def _ok_main(*_args: t.Scalar, **_kwargs: t.Scalar) -> int:
 class TestMainCli:
     def test_detect(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(workspace_main, "_run_detect", _ok_main)
-        tm.that(workspace_main.main(["detect", "--workspace", str(tmp_path)]), eq=0)
+        u.Tests.Matchers.that(
+            workspace_main.main(["detect", "--workspace", str(tmp_path)]), eq=0
+        )
 
     def test_sync(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(workspace_main, "_run_sync", _ok_main)
-        tm.that(workspace_main.main(["sync", "--workspace", str(tmp_path)]), eq=0)
+        u.Tests.Matchers.that(
+            workspace_main.main(["sync", "--workspace", str(tmp_path)]), eq=0
+        )
 
     def test_orchestrate(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(workspace_main, "_run_orchestrate", _ok_main)
-        tm.that(workspace_main.main(["orchestrate", "--verb", "check", "p-a"]), eq=0)
+        u.Tests.Matchers.that(
+            workspace_main.main(["orchestrate", "--verb", "check", "p-a"]), eq=0
+        )
 
     def test_migrate(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(workspace_main, "_run_migrate", _ok_main)
-        tm.that(workspace_main.main(["migrate", "--workspace", str(tmp_path)]), eq=0)
+        u.Tests.Matchers.that(
+            workspace_main.main(["migrate", "--workspace", str(tmp_path)]), eq=0
+        )
 
     def test_no_command(self) -> None:
-        tm.that(workspace_main.main([]), eq=1)
+        u.Tests.Matchers.that(workspace_main.main([]), eq=1)
 
     def test_fail_fast(self, monkeypatch: pytest.MonkeyPatch) -> None:
         captured = _capture(monkeypatch)
         workspace_main.main(["orchestrate", "--verb", "check", "--fail-fast", "p-a"])
-        tm.that(captured[0][2], eq=True)
+        u.Tests.Matchers.that(captured[0][2], eq=True)
 
     def test_make_args(self, monkeypatch: pytest.MonkeyPatch) -> None:
         captured = _capture(monkeypatch)
@@ -320,4 +330,4 @@ class TestMainCli:
             "PARALLEL=4",
             "p-a",
         ])
-        tm.that(captured[0][3], has=["VERBOSE=1", "PARALLEL=4"])
+        u.Tests.Matchers.that(captured[0][3], has=["VERBOSE=1", "PARALLEL=4"])

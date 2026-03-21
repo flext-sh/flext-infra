@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra import FlextInfraUtilitiesSelection
 
@@ -43,9 +43,9 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolving all projects when names list is empty."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        projects = tm.ok(result)
-        tm.that(projects, length=3)
-        tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
+        projects = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(projects, length=3)
+        u.Tests.Matchers.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
     def test_resolve_projects_specific_names(
         self,
@@ -54,9 +54,9 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolving specific projects by name."""
         result = selector.resolve_projects(workspace_with_projects, ["beta", "alpha"])
-        projects = tm.ok(result)
-        tm.that(projects, length=2)
-        tm.that([p.name for p in projects], eq=["alpha", "beta"])
+        projects = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(projects, length=2)
+        u.Tests.Matchers.that([p.name for p in projects], eq=["alpha", "beta"])
 
     def test_resolve_projects_single_project(
         self,
@@ -65,9 +65,9 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolving a single project."""
         result = selector.resolve_projects(workspace_with_projects, ["gamma"])
-        projects = tm.ok(result)
-        tm.that(projects, length=1)
-        tm.that(projects[0].name, eq="gamma")
+        projects = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(projects, length=1)
+        u.Tests.Matchers.that(projects[0].name, eq="gamma")
 
     def test_resolve_projects_unknown_project(
         self,
@@ -76,7 +76,7 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolving with unknown project name."""
         result = selector.resolve_projects(workspace_with_projects, ["unknown"])
-        tm.fail(result, has="unknown projects")
+        u.Tests.Matchers.fail(result, has="unknown projects")
 
     def test_resolve_projects_mixed_known_unknown(
         self,
@@ -88,7 +88,7 @@ class TestFlextInfraUtilitiesSelection:
             workspace_with_projects,
             ["alpha", "unknown", "beta"],
         )
-        tm.fail(result, has="unknown projects")
+        u.Tests.Matchers.fail(result, has="unknown projects")
 
     def test_resolve_projects_discovery_failure(
         self,
@@ -96,7 +96,7 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test handling discovery failure with non-existent path."""
         result = selector.resolve_projects(Path("/nonexistent/path"), ["alpha"])
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
 
     def test_resolve_projects_sorted_output(
         self,
@@ -108,8 +108,8 @@ class TestFlextInfraUtilitiesSelection:
             workspace_with_projects,
             ["gamma", "alpha", "beta"],
         )
-        projects = tm.ok(result)
-        tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
+        projects = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
     def test_resolve_projects_result_type(
         self,
@@ -120,8 +120,8 @@ class TestFlextInfraUtilitiesSelection:
         result = selector.resolve_projects(workspace_with_projects, [])
         assert result.is_success
         projects = result.value
-        tm.that(len(projects), eq=3)
-        tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
+        u.Tests.Matchers.that(len(projects), eq=3)
+        u.Tests.Matchers.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
     def test_selector_with_default_discovery(
         self,
@@ -130,8 +130,8 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test selector uses default discovery service implicitly."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        projects = tm.ok(result)
-        tm.that(projects, length=3)
+        projects = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(projects, length=3)
 
     def test_selector_resolve_projects_empty_list(
         self,
@@ -140,5 +140,5 @@ class TestFlextInfraUtilitiesSelection:
     ) -> None:
         """Test resolve_projects returns empty list when no projects match."""
         result = selector.resolve_projects(tmp_path, [])
-        projects = tm.ok(result)
-        tm.that(projects, eq=[])
+        projects = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(projects, eq=[])

@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
@@ -38,13 +38,13 @@ class TestSync:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(service, [r[t.Infra.TomlConfig].ok({"tool": {}, "project": {}})])
         (tmp_path / "pyproject.toml").write_text("")
-        tm.ok(service.sync(tmp_path), eq=0)
+        u.Tests.Matchers.ok(service.sync(tmp_path), eq=0)
 
     def test_sync_collect_failure(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(service, [r[t.Infra.TomlConfig].fail("read error")])
         (tmp_path / "pyproject.toml").write_text("")
-        tm.fail(service.sync(tmp_path))
+        u.Tests.Matchers.fail(service.sync(tmp_path))
 
     def test_sync_workspace_mode_symlink(
         self,
@@ -88,7 +88,7 @@ class TestSync:
             "git_run",
             _git_run,
         )
-        tm.ok(service.sync(project))
+        u.Tests.Matchers.ok(service.sync(project))
 
     def test_sync_missing_repo_mapping(
         self,
@@ -128,5 +128,5 @@ class TestSync:
             "git_run",
             _git_run,
         )
-        error = tm.fail(service.sync(project))
-        tm.that(error, contains="missing repo mapping")
+        error = u.Tests.Matchers.fail(service.sync(project))
+        u.Tests.Matchers.that(error, contains="missing repo mapping")

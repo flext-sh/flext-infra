@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, t, u
 
 from flext_core import r, t
 from flext_infra.docs.generator import FlextInfraDocGenerator
@@ -32,7 +32,7 @@ class TestGeneratorCore:
     ) -> None:
         """Test that generate returns r."""
         result = gen.generate(tmp_path)
-        tm.that(result.is_success or result.is_failure, eq=True)
+        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_valid_scope_returns_success(
         self,
@@ -41,8 +41,8 @@ class TestGeneratorCore:
     ) -> None:
         """Test generate with valid scope returns success."""
         result = gen.generate(tmp_path)
-        tm.ok(result)
-        tm.that(len(result.value) >= 0, eq=True)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(len(result.value) >= 0, eq=True)
 
     def test_generate_report_structure(
         self,
@@ -53,25 +53,27 @@ class TestGeneratorCore:
         result = gen.generate(tmp_path)
         if result.is_success and result.value:
             report = result.value[0]
-            tm.that(hasattr(report, "scope"), eq=True)
-            tm.that(hasattr(report, "generated"), eq=True)
-            tm.that(hasattr(report, "applied"), eq=True)
-            tm.that(hasattr(report, "source"), eq=True)
-            tm.that(hasattr(report, "items"), eq=True)
+            u.Tests.Matchers.that(hasattr(report, "scope"), eq=True)
+            u.Tests.Matchers.that(hasattr(report, "generated"), eq=True)
+            u.Tests.Matchers.that(hasattr(report, "applied"), eq=True)
+            u.Tests.Matchers.that(hasattr(report, "source"), eq=True)
+            u.Tests.Matchers.that(hasattr(report, "items"), eq=True)
 
     def test_generated_file_structure(self) -> None:
         """Test GeneratedFile model structure."""
         file = m.Infra.GeneratedFile(path="README.md", written=True)
-        tm.that(file.path, eq="README.md")
-        tm.that(file.written, eq=True)
+        u.Tests.Matchers.that(file.path, eq="README.md")
+        u.Tests.Matchers.that(file.written, eq=True)
 
     def test_generate_report_frozen(self) -> None:
         """Test GenerateReport is frozen (immutable)."""
-        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        u.Tests.Matchers.that(
+            m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True
+        )
 
     def test_generated_file_frozen(self) -> None:
         """Test GeneratedFile is frozen (immutable)."""
-        tm.that(m.Infra.GeneratedFile.model_config.get("frozen"), eq=True)
+        u.Tests.Matchers.that(m.Infra.GeneratedFile.model_config.get("frozen"), eq=True)
 
     def test_generate_with_project_filter(
         self,
@@ -80,7 +82,7 @@ class TestGeneratorCore:
     ) -> None:
         """Test generate with single project filter."""
         result = gen.generate(tmp_path, project="test-project")
-        tm.that(result.is_success or result.is_failure, eq=True)
+        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_projects_filter(
         self,
@@ -89,7 +91,7 @@ class TestGeneratorCore:
     ) -> None:
         """Test generate with multiple projects filter."""
         result = gen.generate(tmp_path, projects="proj1,proj2")
-        tm.that(result.is_success or result.is_failure, eq=True)
+        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_apply_false_dry_run(
         self,
@@ -98,7 +100,7 @@ class TestGeneratorCore:
     ) -> None:
         """Test generate with apply=False (dry-run mode)."""
         result = gen.generate(tmp_path, apply=False)
-        tm.that(result.is_success or result.is_failure, eq=True)
+        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_apply_true_writes_files(
         self,
@@ -107,7 +109,7 @@ class TestGeneratorCore:
     ) -> None:
         """Test generate with apply=True writes files."""
         result = gen.generate(tmp_path, apply=True)
-        tm.that(result.is_success or result.is_failure, eq=True)
+        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_with_custom_output_dir(
         self,
@@ -116,7 +118,7 @@ class TestGeneratorCore:
     ) -> None:
         """Test generate with custom output directory."""
         result = gen.generate(tmp_path, output_dir=str(tmp_path / "custom_output"))
-        tm.that(result.is_success or result.is_failure, eq=True)
+        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
 
     def test_generate_report_generated_count(self) -> None:
         """Test GenerateReport generated field."""
@@ -127,7 +129,7 @@ class TestGeneratorCore:
             applied=True,
             source="test-source",
         )
-        tm.that(report.generated, eq=5)
+        u.Tests.Matchers.that(report.generated, eq=5)
 
     def test_generate_report_applied_field(self) -> None:
         """Test GenerateReport applied field."""
@@ -138,7 +140,7 @@ class TestGeneratorCore:
             applied=False,
             source="test-source",
         )
-        tm.that(report.applied, eq=False)
+        u.Tests.Matchers.that(report.applied, eq=False)
 
     def test_generate_report_source_field(self) -> None:
         """Test GenerateReport source field."""
@@ -149,7 +151,7 @@ class TestGeneratorCore:
             applied=False,
             source="workspace-ssot",
         )
-        tm.that(report.source, eq="workspace-ssot")
+        u.Tests.Matchers.that(report.source, eq="workspace-ssot")
 
     def test_generate_report_files_list(self) -> None:
         """Test GenerateReport files list."""
@@ -169,16 +171,16 @@ class TestGeneratorCore:
             source="test-source",
             items=items,
         )
-        tm.that(len(report.items), eq=2)
-        tm.that(report.items[0].model_dump().get("path"), eq="file1.md")
+        u.Tests.Matchers.that(len(report.items), eq=2)
+        u.Tests.Matchers.that(report.items[0].model_dump().get("path"), eq="file1.md")
 
     def test_generated_file_written_field(self) -> None:
         """Test GeneratedFile written field."""
-        tm.that(
+        u.Tests.Matchers.that(
             m.Infra.GeneratedFile(path="test.md", written=True).written,
             eq=True,
         )
-        tm.that(
+        u.Tests.Matchers.that(
             m.Infra.GeneratedFile(path="test2.md", written=False).written,
             eq=False,
         )
@@ -199,4 +201,4 @@ class TestGeneratorCore:
 
         monkeypatch.setattr(FlextInfraDocsShared, "build_scopes", mock_build_scopes)
         result = gen.generate(tmp_path)
-        tm.fail(result, has="Scope error")
+        u.Tests.Matchers.fail(result, has="Scope error")

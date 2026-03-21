@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync
@@ -34,7 +34,7 @@ class TestMain:
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--mode", "auto"])
-        tm.that(path_sync_module.main(), eq=0)
+        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
 
     def test_main_explicit_workspace_mode(
         self,
@@ -46,7 +46,7 @@ class TestMain:
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--mode", "workspace"])
-        tm.that(path_sync_module.main(), eq=0)
+        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
 
     def test_main_explicit_standalone_mode(
         self,
@@ -58,7 +58,7 @@ class TestMain:
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--mode", "standalone"])
-        tm.that(path_sync_module.main(), eq=0)
+        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
 
     def test_main_dry_run(
         self,
@@ -70,7 +70,7 @@ class TestMain:
         )
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--dry-run"])
-        tm.that(path_sync_module.main(), eq=0)
+        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
 
     def test_main_specific_projects(
         self,
@@ -85,7 +85,7 @@ class TestMain:
         (project_dir / "pyproject.toml").write_text('[project]\nname = "flext-core"\n')
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(sys, "argv", ["prog", "--project", "flext-core"])
-        tm.that(path_sync_module.main(), eq=0)
+        u.Tests.Matchers.that(path_sync_module.main(), eq=0)
 
     def test_main_discovery_failure(
         self,
@@ -107,7 +107,7 @@ class TestMain:
             _discover_fail,
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
-        tm.that(path_sync_module.main(), eq=1)
+        u.Tests.Matchers.that(path_sync_module.main(), eq=1)
 
     def test_main_root_rewrite_failure(
         self,
@@ -137,7 +137,7 @@ class TestMain:
             _rewrite_fail,
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
-        tm.that(path_sync_module.main(), eq=1)
+        u.Tests.Matchers.that(path_sync_module.main(), eq=1)
 
     def test_main_project_rewrite_failure(
         self,
@@ -184,4 +184,4 @@ class TestMain:
             rewrite_stub,
         )
         monkeypatch.setattr(sys, "argv", ["prog"])
-        tm.that(path_sync_module.main(), eq=1)
+        u.Tests.Matchers.that(path_sync_module.main(), eq=1)

@@ -6,13 +6,13 @@ import inspect
 import re
 from collections.abc import Mapping, Sequence
 
-from flext_infra import (
-    FlextInfraRefactorMROImportRewriter,
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
+from flext_infra.refactor.mro_migration_scanner import (
     FlextInfraRefactorMROMigrationScanner,
-    c,
-    m,
-    t,
 )
+from flext_infra.typings import t
 
 
 class FlextInfraRefactorMROResolver:

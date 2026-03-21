@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 from flext_core import r
 from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
@@ -36,7 +36,7 @@ extract_dep_name = FlextInfraDependencyPathSync.extract_dep_name
     ],
 )
 def test_extract_dep_name(source: str, expected: str) -> None:
-    tm.that(extract_dep_name(source), eq=expected)
+    u.Tests.Matchers.that(extract_dep_name(source), eq=expected)
 
 
 @pytest.mark.parametrize(
@@ -55,7 +55,9 @@ def test_extract_dep_name(source: str, expected: str) -> None:
     ],
 )
 def test_target_path(dep_name: str, is_root: bool, mode: str, expected: str) -> None:
-    tm.that(_target_path(dep_name, is_root=is_root, mode=mode), eq=expected)
+    u.Tests.Matchers.that(
+        _target_path(dep_name, is_root=is_root, mode=mode), eq=expected
+    )
 
 
 @pytest.mark.parametrize(
@@ -85,8 +87,8 @@ def test_target_path(dep_name: str, is_root: bool, mode: str, expected: str) -> 
     ],
 )
 def test_extract_requirement_name(requirement: str, expected: str | None) -> None:
-    tm.that(_extract_requirement_name(requirement), eq=expected)
+    u.Tests.Matchers.that(_extract_requirement_name(requirement), eq=expected)
 
 
 def test_helpers_alias_is_reachable_helpers() -> None:
-    tm.fail(r[bool].fail("x"), has="x")
+    u.Tests.Matchers.fail(r[bool].fail("x"), has="x")

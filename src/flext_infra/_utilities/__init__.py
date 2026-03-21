@@ -22,13 +22,10 @@ if TYPE_CHECKING:
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
+    from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.io import FlextInfraUtilitiesIo
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-    from flext_infra._utilities.output import (
-        FlextInfraUtilitiesOutput,
-        OutputBackend,
-        output,
-    )
+    from flext_infra._utilities.output import FlextInfraUtilitiesOutput, output
     from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
     from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
@@ -55,6 +52,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraUtilitiesFormatting",
     ),
     "FlextInfraUtilitiesGit": ("flext_infra._utilities.git", "FlextInfraUtilitiesGit"),
+    "FlextInfraUtilitiesGithub": (
+        "flext_infra._utilities.github",
+        "FlextInfraUtilitiesGithub",
+    ),
     "FlextInfraUtilitiesIo": ("flext_infra._utilities.io", "FlextInfraUtilitiesIo"),
     "FlextInfraUtilitiesIteration": (
         "flext_infra._utilities.iteration",
@@ -120,7 +121,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra._utilities.yaml",
         "FlextInfraUtilitiesYaml",
     ),
-    "OutputBackend": ("flext_infra._utilities.output", "OutputBackend"),
     "output": ("flext_infra._utilities.output", "output"),
 }
 
@@ -129,6 +129,7 @@ __all__ = [
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesFormatting",
     "FlextInfraUtilitiesGit",
+    "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesIo",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesOutput",
@@ -146,7 +147,6 @@ __all__ = [
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesYaml",
-    "OutputBackend",
     "output",
 ]
 

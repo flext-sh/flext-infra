@@ -11,16 +11,16 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from flext_infra import (
+from flext_core.result import r
+from flext_infra._utilities.output import output
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.refactor.output import FlextInfraRefactorOutputRenderer
+from flext_infra.transformers.census_visitors import (
     CensusImportDiscoveryVisitor,
     CensusUsageCollector,
-    FlextInfraRefactorOutputRenderer,
-    c,
-    m,
-    output,
-    r,
-    u,
 )
+from flext_infra.utilities import u
 
 type RCensusReport = r[m.Infra.UtilitiesCensusReport]
 

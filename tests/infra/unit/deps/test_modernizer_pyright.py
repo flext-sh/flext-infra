@@ -6,7 +6,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 import tomlkit
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_infra import m, u
 from flext_infra.deps._phases import EnsurePyrightConfigPhase
@@ -15,7 +15,7 @@ from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
     result = FlextInfraDependencyToolConfig.load_tool_config()
-    tm.that(result.is_failure, eq=False)
+    u.Tests.Matchers.that(result.is_failure, eq=False)
     if result.is_failure:
         msg = "failed to load tool config"
         raise ValueError(msg)
@@ -42,16 +42,16 @@ class TestEnsurePyrightConfigPhase:
             workspace_root=tmp_path,
         )
         tool = u.Infra.unwrap_item(doc["tool"])
-        tm.that(isinstance(tool, MutableMapping), eq=True)
+        u.Tests.Matchers.that(isinstance(tool, MutableMapping), eq=True)
         if not isinstance(tool, MutableMapping):
             return
         pyright = u.Infra.unwrap_item(tool["pyright"])
-        tm.that(isinstance(pyright, MutableMapping), eq=True)
+        u.Tests.Matchers.that(isinstance(pyright, MutableMapping), eq=True)
         if not isinstance(pyright, MutableMapping):
             return
         envs = u.Infra.unwrap_item(pyright["executionEnvironments"])
-        tm.that(isinstance(envs, list), eq=True)
-        tm.that(
+        u.Tests.Matchers.that(isinstance(envs, list), eq=True)
+        u.Tests.Matchers.that(
             envs,
             eq=[
                 {"root": "flext-api/src", "reportPrivateUsage": "error"},
@@ -59,7 +59,7 @@ class TestEnsurePyrightConfigPhase:
                 {"root": "flext-core/tests", "reportPrivateUsage": "none"},
             ],
         )
-        tm.that(
+        u.Tests.Matchers.that(
             "tool.pyright.executionEnvironments set with tests reportPrivateUsage=none"
             in changes,
             eq=True,
@@ -72,23 +72,23 @@ class TestEnsurePyrightConfigPhase:
             is_root=False,
         )
         tool = u.Infra.unwrap_item(doc["tool"])
-        tm.that(isinstance(tool, MutableMapping), eq=True)
+        u.Tests.Matchers.that(isinstance(tool, MutableMapping), eq=True)
         if not isinstance(tool, MutableMapping):
             return
         pyright = u.Infra.unwrap_item(tool["pyright"])
-        tm.that(isinstance(pyright, MutableMapping), eq=True)
+        u.Tests.Matchers.that(isinstance(pyright, MutableMapping), eq=True)
         if not isinstance(pyright, MutableMapping):
             return
         envs = u.Infra.unwrap_item(pyright["executionEnvironments"])
-        tm.that(isinstance(envs, list), eq=True)
-        tm.that(
+        u.Tests.Matchers.that(isinstance(envs, list), eq=True)
+        u.Tests.Matchers.that(
             envs,
             eq=[
                 {"root": "src", "reportPrivateUsage": "error"},
                 {"root": "tests", "reportPrivateUsage": "none"},
             ],
         )
-        tm.that(
+        u.Tests.Matchers.that(
             "tool.pyright.executionEnvironments set with tests reportPrivateUsage=none"
             in changes,
             eq=True,

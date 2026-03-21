@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorMROMigrationScanner
+from flext_infra.refactor.mro_migration_scanner import (
+    FlextInfraRefactorMROMigrationScanner,
+)
 
 
 class FlextInfraRefactorMROMigrationValidator:

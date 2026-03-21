@@ -13,7 +13,7 @@ import ast
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from tests.infra.unit.codegen._project_factory import (
@@ -40,7 +40,7 @@ def _validate_modules_parse(base_dir: Path, modules: Sequence[str]) -> None:
     for mod in modules:
         source = (base_dir / mod).read_text(encoding="utf-8")
         tree = ast.parse(source)
-        tm.that(type(tree).__name__, eq="Module")
+        u.Tests.Matchers.that(type(tree).__name__, eq="Module")
 
 
 def _validate_class_names(
@@ -53,7 +53,7 @@ def _validate_class_names(
     for filename, expected_class in filename_to_expected_class.items():
         source = (base_dir / filename).read_text(encoding="utf-8")
         class_names = _parse_class_names(source)
-        tm.that(
+        u.Tests.Matchers.that(
             expected_class in class_names,
             eq=True,
             msg=f"{filename} should contain {expected_class}",
@@ -134,6 +134,6 @@ class TestGeneratedClassNamingConvention:
         (project / "Makefile").touch()
         scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         result = scaffolder.scaffold_project(project)
-        tm.that(result.files_created, eq=[])
-        tm.that(result.files_skipped, eq=[])
-        tm.that(result.project, eq="empty-project")
+        u.Tests.Matchers.that(result.files_created, eq=[])
+        u.Tests.Matchers.that(result.files_skipped, eq=[])
+        u.Tests.Matchers.that(result.project, eq="empty-project")

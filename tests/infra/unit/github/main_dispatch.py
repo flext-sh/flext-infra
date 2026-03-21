@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_core import r
 from flext_infra.github import __main__ as github_main
@@ -144,6 +144,6 @@ class TestRunPrWorkspace:
         ]
         assert run_pr_workspace(argv) == 0
         pr_args = mgr.orchestrate_calls[0]["pr_args"]
-        tm.that("action" in str(pr_args), eq=True)
-        tm.that("base" in str(pr_args), eq=True)
-        tm.that("head" in str(pr_args), eq=True)
+        u.Tests.Matchers.that("action" in str(pr_args), eq=True)
+        u.Tests.Matchers.that("base" in str(pr_args), eq=True)
+        u.Tests.Matchers.that("head" in str(pr_args), eq=True)

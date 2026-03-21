@@ -12,8 +12,9 @@ from typing import Annotated, override
 import libcst as cst
 from pydantic import ConfigDict, Field
 
-from flext_infra import t, u
 from flext_infra.models import FlextModels
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 _UNKNOWN_TIER = 99
 

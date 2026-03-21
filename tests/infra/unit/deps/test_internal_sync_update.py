@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
@@ -15,15 +15,19 @@ class TestEnsureSymlink:
         source = tmp_path / "source"
         source.mkdir()
         target = tmp_path / "target"
-        tm.ok(FlextInfraInternalDependencySyncService.ensure_symlink(target, source))
-        tm.that(target.is_symlink(), eq=True)
+        u.Tests.Matchers.ok(
+            FlextInfraInternalDependencySyncService.ensure_symlink(target, source)
+        )
+        u.Tests.Matchers.that(target.is_symlink(), eq=True)
 
     def test_existing_correct_symlink(self, tmp_path: Path) -> None:
         source = tmp_path / "source"
         source.mkdir()
         target = tmp_path / "target"
         target.symlink_to(source.resolve(), target_is_directory=True)
-        tm.ok(FlextInfraInternalDependencySyncService.ensure_symlink(target, source))
+        u.Tests.Matchers.ok(
+            FlextInfraInternalDependencySyncService.ensure_symlink(target, source)
+        )
 
     def test_replace_existing_dir(self, tmp_path: Path) -> None:
         source = tmp_path / "source"
@@ -31,8 +35,10 @@ class TestEnsureSymlink:
         target = tmp_path / "target"
         target.mkdir()
         (target / "file.txt").write_text("old")
-        tm.ok(FlextInfraInternalDependencySyncService.ensure_symlink(target, source))
-        tm.that(target.is_symlink(), eq=True)
+        u.Tests.Matchers.ok(
+            FlextInfraInternalDependencySyncService.ensure_symlink(target, source)
+        )
+        u.Tests.Matchers.that(target.is_symlink(), eq=True)
 
     def test_replace_existing_wrong_symlink(self, tmp_path: Path) -> None:
         source = tmp_path / "source"
@@ -41,8 +47,10 @@ class TestEnsureSymlink:
         other.mkdir()
         target = tmp_path / "target"
         target.symlink_to(other.resolve(), target_is_directory=True)
-        tm.ok(FlextInfraInternalDependencySyncService.ensure_symlink(target, source))
-        tm.that(str(target.resolve()), eq=str(source.resolve()))
+        u.Tests.Matchers.ok(
+            FlextInfraInternalDependencySyncService.ensure_symlink(target, source)
+        )
+        u.Tests.Matchers.that(str(target.resolve()), eq=str(source.resolve()))
 
 
 class TestEnsureSymlinkEdgeCases:
@@ -51,8 +59,10 @@ class TestEnsureSymlinkEdgeCases:
         source.mkdir()
         target = tmp_path / "target"
         target.write_text("content")
-        tm.ok(FlextInfraInternalDependencySyncService.ensure_symlink(target, source))
-        tm.that(target.is_symlink(), eq=True)
+        u.Tests.Matchers.ok(
+            FlextInfraInternalDependencySyncService.ensure_symlink(target, source)
+        )
+        u.Tests.Matchers.that(target.is_symlink(), eq=True)
 
     def test_ensure_symlink_permission_error(
         self,
@@ -72,10 +82,10 @@ class TestEnsureSymlinkEdgeCases:
             raise OSError(msg)
 
         monkeypatch.setattr(Path, "symlink_to", _raise_symlink_to)
-        error = tm.fail(
+        error = u.Tests.Matchers.fail(
             FlextInfraInternalDependencySyncService.ensure_symlink(target, source),
         )
-        tm.that(error, contains="failed to ensure symlink")
+        u.Tests.Matchers.that(error, contains="failed to ensure symlink")
 
 
 class TestEnsureCheckout:
@@ -97,7 +107,7 @@ class TestEnsureCheckout:
             "https://github.com/flext-sh/flext.git",
             "main",
         )
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_clone_failure(
         self,
@@ -117,7 +127,7 @@ class TestEnsureCheckout:
             "https://github.com/flext-sh/flext.git",
             "main",
         )
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
 
     def test_fetch_and_checkout_existing(
         self,
@@ -154,7 +164,7 @@ class TestEnsureCheckout:
             "git_pull",
             _git_pull,
         )
-        tm.ok(
+        u.Tests.Matchers.ok(
             FlextInfraInternalDependencySyncService().ensure_checkout(
                 dep_path,
                 "https://github.com/flext-sh/flext.git",
@@ -164,8 +174,10 @@ class TestEnsureCheckout:
 
     def test_invalid_repo_and_ref(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
-        tm.fail(service.ensure_checkout(tmp_path / "dep-a", "not-a-url", "main"))
-        tm.fail(
+        u.Tests.Matchers.fail(
+            service.ensure_checkout(tmp_path / "dep-a", "not-a-url", "main")
+        )
+        u.Tests.Matchers.fail(
             service.ensure_checkout(
                 tmp_path / "dep-b",
                 "https://github.com/flext-sh/flext.git",
@@ -190,7 +202,7 @@ class TestEnsureCheckout:
             "git_fetch",
             _git_fetch,
         )
-        tm.fail(
+        u.Tests.Matchers.fail(
             FlextInfraInternalDependencySyncService().ensure_checkout(
                 dep_path,
                 "https://github.com/flext-sh/flext.git",
@@ -223,7 +235,7 @@ class TestEnsureCheckout:
             "git_checkout",
             _git_checkout,
         )
-        tm.fail(
+        u.Tests.Matchers.fail(
             FlextInfraInternalDependencySyncService().ensure_checkout(
                 dep_path,
                 "https://github.com/flext-sh/flext.git",
@@ -252,14 +264,14 @@ class TestEnsureCheckout:
         dep_dir.mkdir()
         (dep_dir / "somefile").write_text("old")
         service = FlextInfraInternalDependencySyncService()
-        tm.ok(
+        u.Tests.Matchers.ok(
             service.ensure_checkout(
                 dep_symlink,
                 "https://github.com/flext-sh/flext.git",
                 "main",
             ),
         )
-        tm.ok(
+        u.Tests.Matchers.ok(
             service.ensure_checkout(
                 dep_dir,
                 "https://github.com/flext-sh/flext.git",

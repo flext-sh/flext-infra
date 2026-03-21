@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import t
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
@@ -24,8 +24,8 @@ class TestMigratorInternalMakefile:
         proj = _project(tmp_path, "test-proj")
         migrator = _build_migrator(proj, "base")
         result = migrator._migrate_makefile(tmp_path, dry_run=True)
-        value = tm.ok(result)
-        tm.that(str(value).lower(), has="not found")
+        value = u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(str(value).lower(), has="not found")
 
     def test_read_error(
         self,
@@ -41,7 +41,9 @@ class TestMigratorInternalMakefile:
             raise OSError(msg)
 
         monkeypatch.setattr(Path, "read_text", _read_fail)
-        tm.fail(migrator._migrate_makefile(tmp_path, dry_run=False), has="read failed")
+        u.Tests.Matchers.fail(
+            migrator._migrate_makefile(tmp_path, dry_run=False), has="read failed"
+        )
 
     def test_not_found_non_dry_run(self, tmp_path: Path) -> None:
         root = tmp_path / "project-a"
@@ -50,7 +52,7 @@ class TestMigratorInternalMakefile:
         proj = _project(root)
         migrator = _build_migrator(proj, "base")
         result = migrator._migrate_makefile(root, dry_run=False)
-        tm.ok(result, eq="")
+        u.Tests.Matchers.ok(result, eq="")
 
 
 class TestMigratorInternalPyproject:
@@ -73,7 +75,7 @@ class TestMigratorInternalPyproject:
             project_name="test-proj",
             dry_run=False,
         )
-        tm.that(result.is_failure or result.is_success, eq=True)
+        u.Tests.Matchers.that(result.is_failure or result.is_success, eq=True)
 
     def test_flext_core_non_dry_run(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-core"
@@ -85,7 +87,7 @@ class TestMigratorInternalPyproject:
         )
         proj = _project(root, "flext-core")
         migrator = _build_migrator(proj, "base")
-        tm.ok(
+        u.Tests.Matchers.ok(
             migrator._migrate_pyproject(
                 root,
                 project_name="flext-core",
@@ -99,7 +101,7 @@ class TestMigratorEdgeCases:
     def test_invalid_workspace(self) -> None:
         migrator = FlextInfraProjectMigrator()
         result = migrator.migrate(workspace_root=Path("/nonexistent"))
-        tm.that(result.is_failure or result.is_success, eq=True)
+        u.Tests.Matchers.that(result.is_failure or result.is_success, eq=True)
 
 
 __all__: list[str] = []

@@ -7,7 +7,9 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraTransformerImportInsertion
+from flext_infra.transformers.import_insertion import (
+    FlextInfraTransformerImportInsertion,
+)
 
 
 class TypingAnnotationReplacer(cst.CSTTransformer):

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 import tomlkit
-from flext_tests import tm
+from flext_tests import m, t, u
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r, t
@@ -56,7 +56,7 @@ def test_main_project_obj_not_dict_first_loop(
         _read_document,
     )
     monkeypatch.setattr(path_sync_module, "output", _OutputNoop())
-    tm.that(path_sync_module.main(), eq=0)
+    u.Tests.Matchers.that(path_sync_module.main(), eq=0)
 
 
 def test_main_project_obj_not_dict_second_loop(
@@ -84,10 +84,10 @@ def test_main_project_obj_not_dict_second_loop(
         _read_document,
     )
     monkeypatch.setattr(path_sync_module, "output", _OutputNoop())
-    tm.that(path_sync_module.main(), eq=0)
+    u.Tests.Matchers.that(path_sync_module.main(), eq=0)
 
 
 def test_helpers_alias_is_reachable_project_obj() -> None:
     infra_helpers_module = importlib.import_module("tests.infra.helpers")
     helper_alias = getattr(infra_helpers_module, "h", None)
-    tm.that(hasattr(helper_alias, "assert_ok"), eq=True)
+    u.Tests.Matchers.that(hasattr(helper_alias, "assert_ok"), eq=True)

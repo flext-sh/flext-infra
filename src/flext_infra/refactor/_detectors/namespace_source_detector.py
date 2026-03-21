@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol, override, runtime_checkable
 
-from flext_infra import c, p
+from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )

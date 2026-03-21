@@ -15,7 +15,9 @@ from typing import ClassVar
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import c, m, r
+from flext_core.result import r
+from flext_infra.constants import c
+from flext_infra.models import m
 
 
 class _DiagResult:

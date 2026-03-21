@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.models import FlextInfraModels
@@ -73,16 +73,16 @@ class TestParseViolationValid:
         expected_msg: str,
     ) -> None:
         result = FlextInfraCodegenCensus._parse_violation(violation_str)
-        tm.that(result is not None, eq=True)
-        tm.that(
+        u.Tests.Matchers.that(result is not None, eq=True)
+        u.Tests.Matchers.that(
             isinstance(result, FlextInfraModels.Infra.CensusViolation),
             eq=True,
         )
         assert result is not None
-        tm.that(result.rule, eq=expected_rule)
-        tm.that(result.module, eq=expected_module)
-        tm.that(result.line, eq=expected_line)
-        tm.that(result.message, eq=expected_msg)
+        u.Tests.Matchers.that(result.rule, eq=expected_rule)
+        u.Tests.Matchers.that(result.module, eq=expected_module)
+        u.Tests.Matchers.that(result.line, eq=expected_line)
+        u.Tests.Matchers.that(result.message, eq=expected_msg)
 
 
 class TestParseViolationInvalid:
@@ -108,7 +108,7 @@ class TestParseViolationInvalid:
         ],
     )
     def test_returns_none(self, violation_str: str) -> None:
-        tm.that(
+        u.Tests.Matchers.that(
             FlextInfraCodegenCensus._parse_violation(violation_str) is None,
             eq=True,
         )
@@ -119,34 +119,34 @@ class TestFixabilityClassification:
         result = FlextInfraCodegenCensus._parse_violation(
             "[NS-000-001] src/file.py:1 — Structure violation",
         )
-        tm.that(result is not None, eq=True)
+        u.Tests.Matchers.that(result is not None, eq=True)
         assert result is not None
-        tm.that(result.fixable, eq=False)
+        u.Tests.Matchers.that(result.fixable, eq=False)
 
     def test_ns001_fixable(self) -> None:
         result = FlextInfraCodegenCensus._parse_violation(
             "[NS-001-001] src/file.py:1 — Constant violation",
         )
-        tm.that(result is not None, eq=True)
+        u.Tests.Matchers.that(result is not None, eq=True)
         assert result is not None
-        tm.that(result.fixable, eq=True)
+        u.Tests.Matchers.that(result.fixable, eq=True)
 
     def test_ns002_fixable(self) -> None:
         result = FlextInfraCodegenCensus._parse_violation(
             "[NS-002-001] src/file.py:1 — TypeVar violation",
         )
-        tm.that(result is not None, eq=True)
+        u.Tests.Matchers.that(result is not None, eq=True)
         assert result is not None
-        tm.that(result.fixable, eq=True)
+        u.Tests.Matchers.that(result.fixable, eq=True)
 
     def test_ns000_multiple_sub_rules_not_fixable(self) -> None:
         for sub in ("001", "002", "099"):
             result = FlextInfraCodegenCensus._parse_violation(
                 f"[NS-000-{sub}] src/x.py:1 — msg",
             )
-            tm.that(result is not None, eq=True)
+            u.Tests.Matchers.that(result is not None, eq=True)
             assert result is not None
-            tm.that(result.fixable, eq=False)
+            u.Tests.Matchers.that(result.fixable, eq=False)
 
 
 __all__: list[str] = []

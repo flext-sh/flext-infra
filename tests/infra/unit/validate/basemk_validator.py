@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from flext_tests import tf, tm
+from flext_tests import m, u
 
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from tests.infra.models import m
@@ -29,13 +29,13 @@ def _workspace(
 
     Uses tf.create_in() for all file I/O. Projects with None content skip base.mk.
     """
-    tf.create_in(root, "base.mk", base)
+    u.Tests.Files.create_in()
     for name, content in projects.items():
         proj = base / name
         proj.mkdir()
-        tf.create_in("", "pyproject.toml", proj)
+        u.Tests.Files.create_in(root, "base.mk", base)
         if content is not None:
-            tf.create_in(content, "base.mk", proj)
+            u.Tests.Files.create_in("", "pyproject.toml", proj)
     return base
 
 
@@ -53,9 +53,9 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        report = tm.ok(v.validate(tmp_path))
-        tm.that(report.passed, eq=False)
-        tm.that(report.summary, has="missing root base.mk")
+        report = u.Tests.Matchers.ok(v.validate(tmp_path))
+        u.Tests.Matchers.that(report.passed, eq=False)
+        u.Tests.Matchers.that(report.summary, has="missing root base.mk")
 
     def test_matching_basemk_returns_report_model(
         self,
@@ -63,7 +63,7 @@ class TestBaseMkValidatorCore:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         ws = _workspace(tmp_path, _ROOT, {"project1": _ROOT})
-        report = tm.ok(v.validate(ws))
+        report = u.Tests.Matchers.ok(v.validate(ws))
         assert isinstance(report, m.Infra.ValidationReport)
 
     @pytest.mark.parametrize(
@@ -84,10 +84,10 @@ class TestBaseMkValidatorCore:
         summary_has: str | None,
     ) -> None:
         ws = _workspace(tmp_path, _ROOT, projects)
-        report = tm.ok(v.validate(ws))
-        tm.that(report.passed, eq=expect_pass)
+        report = u.Tests.Matchers.ok(v.validate(ws))
+        u.Tests.Matchers.that(report.passed, eq=expect_pass)
         if summary_has:
-            tm.that(report.summary, has=summary_has)
+            u.Tests.Matchers.that(report.summary, has=summary_has)
 
     def test_projects_without_basemk_skipped(
         self,
@@ -95,8 +95,8 @@ class TestBaseMkValidatorCore:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         ws = _workspace(tmp_path, _ROOT, {"project1": None})
-        report = tm.ok(v.validate(ws))
-        tm.that(report.passed, eq=True)
+        report = u.Tests.Matchers.ok(v.validate(ws))
+        u.Tests.Matchers.that(report.passed, eq=True)
 
 
 class TestBaseMkValidatorEdgeCases:
@@ -107,12 +107,12 @@ class TestBaseMkValidatorEdgeCases:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        tf.create_in("# content", "base.mk", tmp_path)
+        u.Tests.Files.create_in(content, "base.mk", proj)
         proj = tmp_path / "project1"
         proj.mkdir()
-        tf.create_in("# different", "base.mk", proj)
-        report = tm.ok(v.validate(tmp_path))
-        tm.that(report.passed, eq=True)
+        u.Tests.Files.create_in("# content", "base.mk", tmp_path)
+        report = u.Tests.Matchers.ok(v.validate(tmp_path))
+        u.Tests.Matchers.that(report.passed, eq=True)
 
     def test_violations_include_relative_paths(
         self,
@@ -120,9 +120,9 @@ class TestBaseMkValidatorEdgeCases:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         ws = _workspace(tmp_path, "# root", {"project1": "# different"})
-        report = tm.ok(v.validate(ws))
-        tm.that(report.passed, eq=False)
-        tm.that(report.violations[0], has="project1/base.mk")
+        report = u.Tests.Matchers.ok(v.validate(ws))
+        u.Tests.Matchers.that(report.passed, eq=False)
+        u.Tests.Matchers.that(report.violations[0], has="project1/base.mk")
 
     def test_reports_all_mismatches(
         self,
@@ -131,9 +131,9 @@ class TestBaseMkValidatorEdgeCases:
     ) -> None:
         projects = {f"p{i}": f"# different {i}" for i in range(2)}
         ws = _workspace(tmp_path, _ROOT, projects)
-        report = tm.ok(v.validate(ws))
-        tm.that(report.passed, eq=False)
-        tm.that(report.violations, length=2)
+        report = u.Tests.Matchers.ok(v.validate(ws))
+        u.Tests.Matchers.that(report.passed, eq=False)
+        u.Tests.Matchers.that(report.violations, length=2)
 
     @pytest.mark.parametrize(
         ("match_content", "expect_pass", "summary_has"),
@@ -156,10 +156,10 @@ class TestBaseMkValidatorEdgeCases:
         for i in range(5 if match_content else 2):
             projects[f"p{i}"] = match_content or ("# root" if i == 0 else "# diff")
         ws = _workspace(tmp_path, root, projects)
-        report = tm.ok(v.validate(ws))
-        tm.that(report.passed, eq=expect_pass)
+        report = u.Tests.Matchers.ok(v.validate(ws))
+        u.Tests.Matchers.that(report.passed, eq=expect_pass)
         if summary_has:
-            tm.that(report.summary, has=summary_has)
+            u.Tests.Matchers.that(report.summary, has=summary_has)
 
     def test_oserror_returns_failure(
         self,
@@ -171,7 +171,7 @@ class TestBaseMkValidatorEdgeCases:
         basemk.chmod(0)
         try:
             result = v.validate(ws)
-            tm.that(result.is_failure, eq=True)
+            u.Tests.Matchers.that(result.is_failure, eq=True)
         finally:
             basemk.chmod(0o644)
 
@@ -184,20 +184,20 @@ class TestBaseMkValidatorSha256:
         return FlextInfraBaseMkValidator._sha256_file(path)
 
     def test_hash_is_64char_hex(self, tmp_path: Path) -> None:
-        f = tf.create_in("content", "test.txt", tmp_path)
+        f = u.Tests.Files.create_in("# different", "base.mk", proj)
         h = self._sha(f)
         assert isinstance(h, str)
-        tm.that(h, length=64)
+        u.Tests.Matchers.that(h, length=64)
 
     def test_same_content_same_hash(self, tmp_path: Path) -> None:
-        f1 = tf.create_in("same", "f1.txt", tmp_path)
-        f2 = tf.create_in("same", "f2.txt", tmp_path)
-        tm.that(self._sha(f1), eq=self._sha(f2))
+        f1 = u.Tests.Files.create_in("content", "test.txt", tmp_path)
+        f2 = u.Tests.Files.create_in("same", "f1.txt", tmp_path)
+        u.Tests.Matchers.that(self._sha(f1), eq=self._sha(f2))
 
     def test_different_content_different_hash(self, tmp_path: Path) -> None:
-        f1 = tf.create_in("content1", "f1.txt", tmp_path)
-        f2 = tf.create_in("content2", "f2.txt", tmp_path)
-        tm.that(self._sha(f1), ne=self._sha(f2))
+        f1 = u.Tests.Files.create_in("same", "f2.txt", tmp_path)
+        f2 = u.Tests.Files.create_in("content1", "f1.txt", tmp_path)
+        u.Tests.Matchers.that(self._sha(f1), ne=self._sha(f2))
 
 
 __all__: list[str] = []

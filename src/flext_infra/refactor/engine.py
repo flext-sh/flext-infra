@@ -8,31 +8,47 @@ from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter
 
-from flext_infra import (
-    ClassNestingRefactorRule,
-    FlextInfraRefactorClassReconstructorRule,
-    FlextInfraRefactorEnsureFutureAnnotationsRule,
-    FlextInfraRefactorImportModernizerRule,
-    FlextInfraRefactorLegacyRemovalRule,
-    FlextInfraRefactorMROClassMigrationRule,
-    FlextInfraRefactorMRORedundancyChecker,
-    FlextInfraRefactorPatternCorrectionsRule,
+from flext_core.result import r
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
+from flext_infra.refactor.rule import (
     FlextInfraRefactorRule,
-    FlextInfraRefactorRuleDefinitionValidator,
     FlextInfraRefactorRuleLoader,
-    FlextInfraRefactorSafetyManager,
+)
+from flext_infra.refactor.rule_definition_validator import (
+    FlextInfraRefactorRuleDefinitionValidator,
+)
+from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
+from flext_infra.rules.class_nesting import ClassNestingRefactorRule
+from flext_infra.rules.class_reconstructor import (
+    FlextInfraRefactorClassReconstructorRule,
+)
+from flext_infra.rules.ensure_future_annotations import (
+    FlextInfraRefactorEnsureFutureAnnotationsRule,
+)
+from flext_infra.rules.import_modernizer import FlextInfraRefactorImportModernizerRule
+from flext_infra.rules.legacy_removal import FlextInfraRefactorLegacyRemovalRule
+from flext_infra.rules.mro_class_migration import (
+    FlextInfraRefactorMROClassMigrationRule,
+)
+from flext_infra.rules.mro_redundancy_checker import (
+    FlextInfraRefactorMRORedundancyChecker,
+)
+from flext_infra.rules.pattern_corrections import (
+    FlextInfraRefactorPatternCorrectionsRule,
+)
+from flext_infra.rules.symbol_propagation import (
     FlextInfraRefactorSignaturePropagationRule,
     FlextInfraRefactorSymbolPropagationRule,
-    FlextInfraRefactorTier0ImportFixRule,
-    FlextInfraRefactorTypingAnnotationFixRule,
-    FlextInfraRefactorTypingUnificationRule,
-    c,
-    m,
-    r,
-    t,
-    u,
 )
-from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
+from flext_infra.rules.tier0_import_fix import FlextInfraRefactorTier0ImportFixRule
+from flext_infra.rules.type_alias_unification import (
+    FlextInfraRefactorTypingUnificationRule,
+)
+from flext_infra.rules.typing_census import FlextInfraRefactorTypingAnnotationFixRule
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorEngine:

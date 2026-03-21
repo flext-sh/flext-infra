@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorPydanticCentralizerAnalysis, m, u
+from flext_infra.models import m
+from flext_infra.refactor.pydantic_centralizer_analysis import (
+    FlextInfraRefactorPydanticCentralizerAnalysis,
+)
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorPydanticCentralizer:

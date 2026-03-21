@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import r
 from flext_infra.github import pr as pr_module
@@ -65,43 +65,43 @@ class TestMainFunction:
             status_returns=[r[dict[str, t.Scalar]].ok({"status": "open"})],
         )
         self._setup(monkeypatch, _args(action="status"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=0)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=0)
 
     def test_status_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(status_returns=[r[dict[str, t.Scalar]].fail("error")])
         self._setup(monkeypatch, _args(action="status"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=1)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=1)
 
     def test_create_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
             create_returns=[r[dict[str, t.Scalar]].ok({"status": "created"})],
         )
         self._setup(monkeypatch, _args(action="create"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=0)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=0)
 
     def test_create_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
             create_returns=[r[dict[str, t.Scalar]].fail("create failed")],
         )
         self._setup(monkeypatch, _args(action="create"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=1)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=1)
 
     def test_view_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(view_returns=[r[str].ok("PR view output")])
         self._setup(monkeypatch, _args(action="view", number="42"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=0)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=0)
 
     def test_view_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(view_returns=[r[str].fail("not found")])
         self._setup(monkeypatch, _args(action="view", number="42"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=1)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=1)
 
     def test_checks_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
             checks_returns=[r[dict[str, t.Scalar]].ok({"status": "checks-passed"})],
         )
         self._setup(monkeypatch, _args(action="checks", number="42"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=0)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=0)
 
     def test_checks_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(
@@ -112,27 +112,27 @@ class TestMainFunction:
             _args(action="checks", number="42", checks_strict=1),
             mgr,
         )
-        tm.that(FlextInfraPrManager.main(), eq=1)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=1)
 
     def test_merge_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(merge_returns=[r[t.Container].ok("merged")])
         self._setup(monkeypatch, _args(action="merge", number="42"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=0)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=0)
 
     def test_merge_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(merge_returns=[r[t.Container].fail("merge failed")])
         self._setup(monkeypatch, _args(action="merge", number="42"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=1)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=1)
 
     def test_close_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(close_returns=[r[bool].ok(True)])
         self._setup(monkeypatch, _args(action="close", number="42"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=0)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=0)
 
     def test_close_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mgr = StubPrManager(close_returns=[r[bool].fail("close failed")])
         self._setup(monkeypatch, _args(action="close", number="42"), mgr)
-        tm.that(FlextInfraPrManager.main(), eq=1)
+        u.Tests.Matchers.that(FlextInfraPrManager.main(), eq=1)
 
     def test_unknown_action(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._setup(monkeypatch, _args(action="invalid_action"), StubPrManager())
@@ -144,18 +144,18 @@ class TestParseArgs:
     def test_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("sys.argv", ["prog"])
         args = _parse_args()
-        tm.that(args.action, eq="status")
-        tm.that(args.base, eq="main")
-        tm.that(args.head, eq="")
-        tm.that(args.number, eq="")
-        tm.that(args.title, eq="")
-        tm.that(args.body, eq="")
-        tm.that(args.draft, eq=0)
-        tm.that(args.merge_method, eq="squash")
-        tm.that(args.auto, eq=0)
-        tm.that(args.delete_branch, eq=0)
-        tm.that(args.checks_strict, eq=0)
-        tm.that(args.release_on_merge, eq=1)
+        u.Tests.Matchers.that(args.action, eq="status")
+        u.Tests.Matchers.that(args.base, eq="main")
+        u.Tests.Matchers.that(args.head, eq="")
+        u.Tests.Matchers.that(args.number, eq="")
+        u.Tests.Matchers.that(args.title, eq="")
+        u.Tests.Matchers.that(args.body, eq="")
+        u.Tests.Matchers.that(args.draft, eq=0)
+        u.Tests.Matchers.that(args.merge_method, eq="squash")
+        u.Tests.Matchers.that(args.auto, eq=0)
+        u.Tests.Matchers.that(args.delete_branch, eq=0)
+        u.Tests.Matchers.that(args.checks_strict, eq=0)
+        u.Tests.Matchers.that(args.release_on_merge, eq=1)
 
     def test_custom_values(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -176,23 +176,23 @@ class TestParseArgs:
             ],
         )
         args = _parse_args()
-        tm.that(args.action, eq="create")
-        tm.that(args.base, eq="develop")
-        tm.that(args.head, eq="feature/test")
-        tm.that(args.number, eq="42")
-        tm.that(args.title, eq="Test PR")
-        tm.that(args.body, eq="Test body")
-        tm.that(args.draft, eq=1)
-        tm.that(args.merge_method, eq="rebase")
-        tm.that(args.auto, eq=1)
-        tm.that(args.delete_branch, eq=1)
-        tm.that(args.checks_strict, eq=1)
-        tm.that(args.release_on_merge, eq=0)
+        u.Tests.Matchers.that(args.action, eq="create")
+        u.Tests.Matchers.that(args.base, eq="develop")
+        u.Tests.Matchers.that(args.head, eq="feature/test")
+        u.Tests.Matchers.that(args.number, eq="42")
+        u.Tests.Matchers.that(args.title, eq="Test PR")
+        u.Tests.Matchers.that(args.body, eq="Test body")
+        u.Tests.Matchers.that(args.draft, eq=1)
+        u.Tests.Matchers.that(args.merge_method, eq="rebase")
+        u.Tests.Matchers.that(args.auto, eq=1)
+        u.Tests.Matchers.that(args.delete_branch, eq=1)
+        u.Tests.Matchers.that(args.checks_strict, eq=1)
+        u.Tests.Matchers.that(args.release_on_merge, eq=0)
 
 
 class TestSelectorFunction:
     def test_with_pr_number(self) -> None:
-        tm.that(_selector("42", "feature"), eq="42")
+        u.Tests.Matchers.that(_selector("42", "feature"), eq="42")
 
     def test_with_head_only(self) -> None:
-        tm.that(_selector("", "feature"), eq="feature")
+        u.Tests.Matchers.that(_selector("", "feature"), eq="feature")

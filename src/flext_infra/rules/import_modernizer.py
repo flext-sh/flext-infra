@@ -10,15 +10,15 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_infra import (
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.refactor.rule import FlextInfraRefactorRule
+from flext_infra.transformers.import_modernizer import (
     FlextInfraRefactorImportModernizer,
-    FlextInfraRefactorLazyImportFixer,
-    FlextInfraRefactorRule,
-    c,
-    m,
-    t,
-    u,
 )
+from flext_infra.transformers.lazy_import_fixer import FlextInfraRefactorLazyImportFixer
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):

@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests.infra import m
@@ -62,8 +62,8 @@ class TestRunGo:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         proj_dir = h.mk_project(tmp_path, "p1")
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(len(result.issues), eq=0)
 
     def test_run_go_with_vet_errors(
         self,
@@ -77,7 +77,7 @@ class TestRunGo:
         fmt = h.stub_run()
         monkeypatch.setattr(checker, "_run", _stub_run_seq([vet, fmt]))
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
 
     def test_run_go_with_format_errors(
         self,
@@ -92,8 +92,8 @@ class TestRunGo:
         fmt = h.stub_run(stdout="main.go", returncode=1)
         monkeypatch.setattr(checker, "_run", _stub_run_seq([vet, fmt]))
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
     def test_run_go_skips_empty_lines(
         self,
@@ -108,5 +108,5 @@ class TestRunGo:
         fmt = h.stub_run(stdout="src/file.go\n\nsrc/other.go\n", returncode=1)
         monkeypatch.setattr(checker, "_run", _stub_run_seq([vet, fmt]))
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=2)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=2)

@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.bandit import FlextInfraBanditGate
@@ -83,8 +83,8 @@ class TestRunPyright:
             has_python_dirs=False,
         )
         result = checker._run_pyright(proj_dir)
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(len(result.issues), eq=0)
 
     def test_run_pyright_with_json_output(
         self,
@@ -106,8 +106,8 @@ class TestRunPyright:
             has_python_dirs=True,
         )
         result = checker._run_pyright(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
     def test_run_pyright_with_invalid_json(
         self,
@@ -128,7 +128,7 @@ class TestRunPyright:
             has_python_dirs=True,
         )
         result = checker._run_pyright(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
 
 
 class TestRunBandit:
@@ -137,8 +137,8 @@ class TestRunBandit:
     def test_run_bandit_no_src_dir(self, tmp_path: Path) -> None:
         checker, proj_dir = _create_checker_project(tmp_path)
         result = checker._run_bandit(proj_dir)
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(len(result.issues), eq=0)
 
     def test_run_bandit_with_json_output(
         self,
@@ -154,8 +154,8 @@ class TestRunBandit:
             returncode=1,
         )
         result = checker._run_bandit(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
     def test_run_bandit_with_invalid_json(
         self,
@@ -170,7 +170,7 @@ class TestRunBandit:
             returncode=1,
         )
         result = checker._run_bandit(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
 
 
 class TestRunMarkdown:
@@ -179,8 +179,8 @@ class TestRunMarkdown:
     def test_run_markdown_no_files(self, tmp_path: Path) -> None:
         checker, proj_dir = _create_checker_project(tmp_path)
         result = checker._run_markdown(proj_dir)
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(len(result.issues), eq=0)
 
     def test_run_markdown_with_errors(
         self,
@@ -196,8 +196,8 @@ class TestRunMarkdown:
             returncode=1,
         )
         result = checker._run_markdown(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
     def test_run_markdown_fallback_error(
         self,
@@ -213,5 +213,5 @@ class TestRunMarkdown:
             returncode=1,
         )
         result = checker._run_markdown(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)

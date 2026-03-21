@@ -7,7 +7,9 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraRefactorRule, TypingAnnotationReplacer, c
+from flext_infra.constants import c
+from flext_infra.refactor.rule import FlextInfraRefactorRule
+from flext_infra.transformers.typing_annotation_replacer import TypingAnnotationReplacer
 
 
 class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):

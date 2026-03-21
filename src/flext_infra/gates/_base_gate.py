@@ -8,7 +8,8 @@ from typing import Annotated
 from pydantic import ConfigDict, Field, TypeAdapter, ValidationError
 
 from flext_core import FlextModels
-from flext_infra import c, t as t_infra
+from flext_infra import t as t_infra
+from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.utilities import u
 

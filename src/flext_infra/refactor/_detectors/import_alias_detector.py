@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Protocol, override, runtime_checkable
+from typing import ClassVar, Protocol, override, runtime_checkable
 
-from flext_infra import c, p
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor._detectors.module_loader import DetectorScanResultBuilder
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
 from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
-
-if TYPE_CHECKING:
-    from flext_infra import m
 
 
 @runtime_checkable

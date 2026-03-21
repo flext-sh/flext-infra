@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 import flext_infra.deps.internal_sync as _internal_sync_mod
 from flext_core import r
@@ -14,7 +14,7 @@ from tests.infra import t
 class TestWorkspaceRootFromEnv:
     def test_env_not_set(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("FLEXT_WORKSPACE_ROOT", raising=False)
-        tm.that(
+        u.Tests.Matchers.that(
             FlextInfraInternalDependencySyncService().workspace_root_from_env(tmp_path),
             eq=None,
         )
@@ -30,7 +30,7 @@ class TestWorkspaceRootFromEnv:
         result = FlextInfraInternalDependencySyncService().workspace_root_from_env(
             project,
         )
-        tm.that(str(result), eq=str(tmp_path))
+        u.Tests.Matchers.that(str(result), eq=str(tmp_path))
 
     def test_env_set_nonexistent(
         self,
@@ -38,7 +38,7 @@ class TestWorkspaceRootFromEnv:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "/nonexistent/path")
-        tm.that(
+        u.Tests.Matchers.that(
             FlextInfraInternalDependencySyncService().workspace_root_from_env(tmp_path),
             eq=None,
         )
@@ -53,7 +53,7 @@ class TestWorkspaceRootFromEnv:
         project = tmp_path / "other" / "project"
         project.mkdir(parents=True)
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", str(workspace))
-        tm.that(
+        u.Tests.Matchers.that(
             FlextInfraInternalDependencySyncService().workspace_root_from_env(project),
             eq=None,
         )
@@ -67,7 +67,7 @@ class TestWorkspaceRootFromParents:
         result = FlextInfraInternalDependencySyncService.workspace_root_from_parents(
             project,
         )
-        tm.that(str(result), eq=str(tmp_path))
+        u.Tests.Matchers.that(str(result), eq=str(tmp_path))
 
     def test_not_found(self, tmp_path: Path) -> None:
         project = tmp_path / "isolated"
@@ -75,14 +75,14 @@ class TestWorkspaceRootFromParents:
         result = FlextInfraInternalDependencySyncService.workspace_root_from_parents(
             project,
         )
-        tm.that(result, eq=None)
+        u.Tests.Matchers.that(result, eq=None)
 
     def test_found_in_self(self, tmp_path: Path) -> None:
         (tmp_path / ".gitmodules").touch()
         result = FlextInfraInternalDependencySyncService.workspace_root_from_parents(
             tmp_path,
         )
-        tm.that(str(result), eq=str(tmp_path))
+        u.Tests.Matchers.that(str(result), eq=str(tmp_path))
 
 
 class TestIsWorkspaceMode:
@@ -95,8 +95,8 @@ class TestIsWorkspaceMode:
         is_ws, root = FlextInfraInternalDependencySyncService().is_workspace_mode(
             tmp_path,
         )
-        tm.that(is_ws, eq=False)
-        tm.that(root, eq=None)
+        u.Tests.Matchers.that(is_ws, eq=False)
+        u.Tests.Matchers.that(root, eq=None)
 
     def test_env_workspace_root(
         self,
@@ -110,8 +110,8 @@ class TestIsWorkspaceMode:
         is_ws, root = FlextInfraInternalDependencySyncService().is_workspace_mode(
             project,
         )
-        tm.that(is_ws, eq=True)
-        tm.that(str(root), eq=str(tmp_path))
+        u.Tests.Matchers.that(is_ws, eq=True)
+        u.Tests.Matchers.that(str(root), eq=str(tmp_path))
 
     def test_git_superproject(
         self,
@@ -131,8 +131,8 @@ class TestIsWorkspaceMode:
         is_ws, root = FlextInfraInternalDependencySyncService().is_workspace_mode(
             tmp_path / "sub",
         )
-        tm.that(is_ws, eq=True)
-        tm.that(str(root), eq=str(tmp_path))
+        u.Tests.Matchers.that(is_ws, eq=True)
+        u.Tests.Matchers.that(str(root), eq=str(tmp_path))
 
     def test_heuristic_gitmodules(
         self,
@@ -155,8 +155,8 @@ class TestIsWorkspaceMode:
         is_ws, root = FlextInfraInternalDependencySyncService().is_workspace_mode(
             project,
         )
-        tm.that(is_ws, eq=True)
-        tm.that(str(root), eq=str(tmp_path))
+        u.Tests.Matchers.that(is_ws, eq=True)
+        u.Tests.Matchers.that(str(root), eq=str(tmp_path))
 
     def test_no_workspace(
         self,
@@ -178,5 +178,5 @@ class TestIsWorkspaceMode:
         is_ws, root = FlextInfraInternalDependencySyncService().is_workspace_mode(
             project,
         )
-        tm.that(is_ws, eq=False)
-        tm.that(root, eq=None)
+        u.Tests.Matchers.that(is_ws, eq=False)
+        u.Tests.Matchers.that(root, eq=None)

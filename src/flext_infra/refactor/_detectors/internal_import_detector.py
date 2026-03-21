@@ -6,8 +6,8 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import p
 from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -106,7 +106,7 @@ class InternalImportDetector(p.Infra.Scanner):
             violations.append(
                 nem.InternalImportViolation.create(
                     file=str(file_path),
-                    line=0,
+                    line=1,
                     current_import=current_import,
                     detail=detail,
                 ),

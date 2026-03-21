@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import tomlkit
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra import ConsolidateGroupsPhase
 
@@ -18,7 +18,7 @@ class TestConsolidateGroupsPhase:
         project["optional-dependencies"] = optional
         doc["project"] = project
         changes = ConsolidateGroupsPhase().apply(doc, [])
-        tm.that(len(changes) > 0, eq=True)
+        u.Tests.Matchers.that(len(changes) > 0, eq=True)
 
     def test_consolidate_groups_removes_old_groups(self) -> None:
         doc = tomlkit.parse(
@@ -28,7 +28,7 @@ class TestConsolidateGroupsPhase:
             'test = ["coverage"]\n',
         )
         changes = ConsolidateGroupsPhase().apply(doc, ["pytest"])
-        tm.that(any("removed" in change for change in changes), eq=True)
+        u.Tests.Matchers.that(any("removed" in change for change in changes), eq=True)
 
     def test_consolidate_groups_merges_poetry_groups(self) -> None:
         doc = tomlkit.document()
@@ -45,7 +45,7 @@ class TestConsolidateGroupsPhase:
         tool["poetry"] = poetry
         doc["tool"] = tool
         changes = ConsolidateGroupsPhase().apply(doc, [])
-        tm.that(len(changes) > 0, eq=True)
+        u.Tests.Matchers.that(len(changes) > 0, eq=True)
 
     def test_consolidate_groups_sets_deptry_config(self) -> None:
         doc = tomlkit.document()
@@ -54,11 +54,11 @@ class TestConsolidateGroupsPhase:
         doc["project"] = project
         doc["tool"] = tomlkit.table()
         changes = ConsolidateGroupsPhase().apply(doc, [])
-        tm.that(any("deptry" in change for change in changes), eq=True)
+        u.Tests.Matchers.that(any("deptry" in change for change in changes), eq=True)
 
     def test_consolidate_groups_handles_missing_tables(self) -> None:
         changes = ConsolidateGroupsPhase().apply(tomlkit.document(), [])
-        tm.that(len(changes) > 0, eq=True)
+        u.Tests.Matchers.that(len(changes) > 0, eq=True)
 
 
 def test_consolidate_groups_phase_apply_removes_old_groups() -> None:
@@ -71,8 +71,12 @@ def test_consolidate_groups_phase_apply_removes_old_groups() -> None:
     project["optional-dependencies"] = optional
     doc["project"] = project
     changes = ConsolidateGroupsPhase().apply(doc, [])
-    tm.that(any("optional-dependencies.docs removed" in c for c in changes), eq=True)
-    tm.that(any("optional-dependencies.test removed" in c for c in changes), eq=True)
+    u.Tests.Matchers.that(
+        any("optional-dependencies.docs removed" in c for c in changes), eq=True
+    )
+    u.Tests.Matchers.that(
+        any("optional-dependencies.test removed" in c for c in changes), eq=True
+    )
 
 
 def test_consolidate_groups_phase_apply_with_empty_poetry_group() -> None:
@@ -90,4 +94,4 @@ def test_consolidate_groups_phase_apply_with_empty_poetry_group() -> None:
     tool["poetry"] = poetry
     doc["tool"] = tool
     changes = ConsolidateGroupsPhase().apply(doc, [])
-    tm.that(len(changes) > 0, eq=True)
+    u.Tests.Matchers.that(len(changes) > 0, eq=True)

@@ -27,7 +27,6 @@ if TYPE_CHECKING:
         deps,
         docs,
         gates,
-        github,
         refactor,
         release,
         rules,
@@ -50,13 +49,10 @@ if TYPE_CHECKING:
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
+    from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.io import FlextInfraUtilitiesIo
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-    from flext_infra._utilities.output import (
-        FlextInfraUtilitiesOutput,
-        OutputBackend,
-        output,
-    )
+    from flext_infra._utilities.output import FlextInfraUtilitiesOutput, output
     from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
     from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
@@ -290,10 +286,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.tier0_import_fixer import (
         FlextInfraTransformerTier0ImportFixer,
-        Tier0ImportAnalysis,
-        Tier0ImportAnalyzer,
-        Tier0ImportContextDiscovery,
-        Tier0ImportFixer,
     )
     from flext_infra.transformers.typing_annotation_replacer import (
         TypingAnnotationReplacer,
@@ -498,8 +490,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.workspace.orchestrator",
         "FlextInfraOrchestratorService",
     ),
-    "FlextInfraPrManager": ("flext_infra.github.pr", "FlextInfraPrManager"),
-    "FlextInfraPrWorkspaceManager": ("flext_infra.github.pr_workspace",),
     "FlextInfraProjectMigrator": (
         "flext_infra.workspace.migrator",
         "FlextInfraProjectMigrator",
@@ -766,6 +756,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraUtilitiesFormatting",
     ),
     "FlextInfraUtilitiesGit": ("flext_infra._utilities.git", "FlextInfraUtilitiesGit"),
+    "FlextInfraUtilitiesGithub": (
+        "flext_infra._utilities.github",
+        "FlextInfraUtilitiesGithub",
+    ),
     "FlextInfraUtilitiesIo": ("flext_infra._utilities.io", "FlextInfraUtilitiesIo"),
     "FlextInfraUtilitiesIteration": (
         "flext_infra._utilities.iteration",
@@ -831,7 +825,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra._utilities.yaml",
         "FlextInfraUtilitiesYaml",
     ),
-    "FlextInfraWorkflowSyncer": ("flext_infra.github.workflows",),
     "FlextInfraWorkspaceChecker": (
         "flext_infra.check.services",
         "FlextInfraWorkspaceChecker",
@@ -905,7 +898,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.nested_class_propagation",
         "NestedClassPropagationTransformer",
     ),
-    "OutputBackend": ("flext_infra._utilities.output", "OutputBackend"),
     "PostCheckGate": ("flext_infra.refactor.validation", "PostCheckGate"),
     "PreCheckGate": ("flext_infra.rules.class_reconstructor", "PreCheckGate"),
     "ProjectAliasDiscovery": (
@@ -920,22 +912,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "RuntimeAliasDetector": (
         "flext_infra.refactor.dependency_analyzer",
         "RuntimeAliasDetector",
-    ),
-    "Tier0ImportAnalysis": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportAnalysis",
-    ),
-    "Tier0ImportAnalyzer": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportAnalyzer",
-    ),
-    "Tier0ImportContextDiscovery": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportContextDiscovery",
-    ),
-    "Tier0ImportFixer": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportFixer",
     ),
     "TypingAnnotationCensusVisitor": (
         "flext_infra.transformers.typing_census_visitor",
@@ -975,7 +951,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "docs": ("flext_infra.docs", ""),
     "e": ("flext_core", "e"),
     "gates": ("flext_infra.gates", ""),
-    "github": ("flext_infra.github", ""),
     "h": ("flext_core", "h"),
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "m": ("flext_infra.models", "FlextInfraModels"),
@@ -1125,6 +1100,7 @@ __all__ = [
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesFormatting",
     "FlextInfraUtilitiesGit",
+    "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesIo",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesOutput",
@@ -1161,17 +1137,12 @@ __all__ = [
     "NamespaceFacadeScanner",
     "NamespaceSourceDetector",
     "NestedClassPropagationTransformer",
-    "OutputBackend",
     "PostCheckGate",
     "PreCheckGate",
     "ProjectAliasDiscovery",
     "ProjectClassifier",
     "ProjectResult",
     "RuntimeAliasDetector",
-    "Tier0ImportAnalysis",
-    "Tier0ImportAnalyzer",
-    "Tier0ImportContextDiscovery",
-    "Tier0ImportFixer",
     "TypingAnnotationCensusVisitor",
     "TypingAnnotationReplacer",
     "UnusedModelRemover",
@@ -1198,7 +1169,6 @@ __all__ = [
     "docs",
     "e",
     "gates",
-    "github",
     "h",
     "logger",
     "m",

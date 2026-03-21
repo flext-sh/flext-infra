@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import r, t
 from flext_infra.release import orchestrator as _orch_mod
@@ -70,7 +70,9 @@ class TestPhasePublish:
         monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_publish(monkeypatch, workspace_root)
-        tm.ok(_CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=True))
+        u.Tests.Matchers.ok(
+            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=True)
+        )
 
     def test_dry_run_skips_changelog(
         self,
@@ -86,8 +88,10 @@ class TestPhasePublish:
 
         _stub_publish(monkeypatch, workspace_root)
         monkeypatch.setattr(_CLS, "_update_changelog", fake_changelog)
-        tm.ok(_CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=True))
-        tm.that(changelog_called, eq=False)
+        u.Tests.Matchers.ok(
+            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=True)
+        )
+        u.Tests.Matchers.that(changelog_called, eq=False)
 
     def test_updates_changelog(
         self,
@@ -95,7 +99,7 @@ class TestPhasePublish:
         monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_full_publish(monkeypatch, workspace_root)
-        tm.ok(
+        u.Tests.Matchers.ok(
             _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
         )
 
@@ -109,7 +113,7 @@ class TestPhasePublish:
 
         _stub_full_publish(monkeypatch, workspace_root)
         monkeypatch.setattr(_CLS, "_push_release", fake_push)
-        tm.ok(
+        u.Tests.Matchers.ok(
             _CLS().phase_publish(
                 workspace_root,
                 "1.0.0",
@@ -119,7 +123,7 @@ class TestPhasePublish:
                 push=True,
             ),
         )
-        tm.that(push_called, eq=True)
+        u.Tests.Matchers.that(push_called, eq=True)
 
     def test_notes_generation_failure(
         self,
@@ -135,7 +139,7 @@ class TestPhasePublish:
             "_generate_notes",
             _generate_notes,
         )
-        tm.fail(
+        u.Tests.Matchers.fail(
             _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
         )
 
@@ -155,7 +159,7 @@ class TestPhasePublish:
             "_update_changelog",
             _update_changelog,
         )
-        tm.fail(
+        u.Tests.Matchers.fail(
             _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
         )
 
@@ -180,6 +184,6 @@ class TestPhasePublish:
             "_create_tag",
             _create_tag,
         )
-        tm.fail(
+        u.Tests.Matchers.fail(
             _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
         )

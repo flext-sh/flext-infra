@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 from flext_core import r
 from flext_infra.deps import internal_sync
@@ -31,7 +31,7 @@ class TestMain:
             "sync",
             lambda _self, _root: r[int].ok(0),
         )
-        tm.that(FlextInfraInternalDependencySyncService.main(), eq=0)
+        u.Tests.Matchers.that(FlextInfraInternalDependencySyncService.main(), eq=0)
 
     def test_main_failure(
         self,
@@ -51,4 +51,4 @@ class TestMain:
             "sync",
             lambda _self, _root: r[int].fail("sync failed"),
         )
-        tm.that(FlextInfraInternalDependencySyncService.main(), eq=1)
+        u.Tests.Matchers.that(FlextInfraInternalDependencySyncService.main(), eq=1)

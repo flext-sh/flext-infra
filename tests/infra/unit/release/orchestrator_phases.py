@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import r, t
 from flext_infra import FlextInfraModels
@@ -48,7 +48,7 @@ class TestPhaseValidate:
 
     def test_dry_run(self, workspace_root: Path) -> None:
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_validate(workspace_root, dry_run=True))
+        u.Tests.Matchers.ok(orchestrator.phase_validate(workspace_root, dry_run=True))
 
     def test_executes_make(
         self,
@@ -67,8 +67,8 @@ class TestPhaseValidate:
             _fake_subprocess_factory,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_validate(workspace_root, dry_run=False))
-        tm.that(fake_sp._run_checked_called, eq=True)
+        u.Tests.Matchers.ok(orchestrator.phase_validate(workspace_root, dry_run=False))
+        u.Tests.Matchers.that(fake_sp._run_checked_called, eq=True)
 
 
 class TestPhaseVersion:
@@ -89,7 +89,9 @@ class TestPhaseVersion:
             _fake_versioning_factory,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=False))
+        u.Tests.Matchers.ok(
+            orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=False)
+        )
 
     def test_invalid_semver(
         self,
@@ -109,7 +111,7 @@ class TestPhaseVersion:
             _fake_versioning_factory,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator.phase_version(workspace_root, "invalid", []))
+        u.Tests.Matchers.fail(orchestrator.phase_version(workspace_root, "invalid", []))
 
     def test_with_dev_suffix(
         self,
@@ -126,7 +128,9 @@ class TestPhaseVersion:
             _fake_versioning_factory,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dev_suffix=True))
+        u.Tests.Matchers.ok(
+            orchestrator.phase_version(workspace_root, "1.0.0", [], dev_suffix=True)
+        )
 
     def test_dry_run(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         def _fake_versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
@@ -139,7 +143,9 @@ class TestPhaseVersion:
             _fake_versioning_factory,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=True))
+        u.Tests.Matchers.ok(
+            orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=True)
+        )
 
     def test_skips_missing_files(
         self,
@@ -157,7 +163,7 @@ class TestPhaseVersion:
             "_version_files",
             _fake_version_files,
         )
-        tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", []))
+        u.Tests.Matchers.ok(orchestrator.phase_version(workspace_root, "1.0.0", []))
 
 
 class TestPhaseBuild:
@@ -190,7 +196,7 @@ class TestPhaseBuild:
             _fake_run_make,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_build(workspace_root, "1.0.0", []))
+        u.Tests.Matchers.ok(orchestrator.phase_build(workspace_root, "1.0.0", []))
 
     def test_report_dir_creation_fails(
         self,
@@ -216,7 +222,7 @@ class TestPhaseBuild:
         )
         monkeypatch.setattr("pathlib.Path.mkdir", _raise_mkdir)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator.phase_build(workspace_root, "1.0.0", []))
+        u.Tests.Matchers.fail(orchestrator.phase_build(workspace_root, "1.0.0", []))
 
     def test_with_make_failure(
         self,
@@ -242,4 +248,4 @@ class TestPhaseBuild:
             _fake_run_make_failure,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator.phase_build(workspace_root, "1.0.0", []))
+        u.Tests.Matchers.fail(orchestrator.phase_build(workspace_root, "1.0.0", []))

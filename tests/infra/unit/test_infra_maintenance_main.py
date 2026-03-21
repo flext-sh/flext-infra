@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import override
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra.workspace.maintenance.__main__ import main
 from flext_infra.workspace.maintenance.python_version import (
@@ -50,12 +50,12 @@ class TestMaintenanceMainSuccess:
     def test_main_with_help_flag(self) -> None:
         with pytest.raises(SystemExit) as exc_info:
             main(["--help"])
-        tm.that(exc_info.value.code, eq=0)
+        u.Tests.Matchers.that(exc_info.value.code, eq=0)
 
     def test_main_calls_sys_exit_on_help(self) -> None:
         with pytest.raises(SystemExit) as exc_info:
             main(["--help"])
-        tm.that(exc_info.value.code, eq=0)
+        u.Tests.Matchers.that(exc_info.value.code, eq=0)
 
 
 class TestMaintenanceMainEnforcer:
@@ -68,7 +68,7 @@ class TestMaintenanceMainEnforcer:
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=False)
-        tm.ok(result, eq=0)
+        u.Tests.Matchers.ok(result, eq=0)
 
     def test_enforcer_enforce_mode(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
@@ -77,7 +77,7 @@ class TestMaintenanceMainEnforcer:
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=False, verbose=False)
-        tm.ok(result, eq=0)
+        u.Tests.Matchers.ok(result, eq=0)
 
     def test_enforcer_verbose_mode(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
@@ -86,15 +86,15 @@ class TestMaintenanceMainEnforcer:
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=True)
-        tm.ok(result, eq=0)
-        tm.that(enforcer.verbose, eq=True)
+        u.Tests.Matchers.ok(result, eq=0)
+        u.Tests.Matchers.that(enforcer.verbose, eq=True)
 
     def test_enforcer_failure_on_version_mismatch(self, tmp_path: Path) -> None:
         mismatched_minor = sys.version_info.minor + 1
         workspace = _create_workspace(tmp_path / "ws", python_minor=mismatched_minor)
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=False)
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
 
     def test_enforcer_check_only_flag_stored(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
@@ -103,7 +103,7 @@ class TestMaintenanceMainEnforcer:
         )
         enforcer = _make_enforcer(workspace)
         enforcer.execute(check_only=True, verbose=False)
-        tm.that(enforcer.check_only, eq=True)
+        u.Tests.Matchers.that(enforcer.check_only, eq=True)
 
     def test_enforcer_verbose_flag_stored(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
@@ -112,7 +112,7 @@ class TestMaintenanceMainEnforcer:
         )
         enforcer = _make_enforcer(workspace)
         enforcer.execute(check_only=False, verbose=True)
-        tm.that(enforcer.verbose, eq=True)
+        u.Tests.Matchers.that(enforcer.verbose, eq=True)
 
     def test_enforcer_both_flags(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
@@ -121,9 +121,9 @@ class TestMaintenanceMainEnforcer:
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=True)
-        tm.ok(result, eq=0)
-        tm.that(enforcer.check_only, eq=True)
-        tm.that(enforcer.verbose, eq=True)
+        u.Tests.Matchers.ok(result, eq=0)
+        u.Tests.Matchers.that(enforcer.check_only, eq=True)
+        u.Tests.Matchers.that(enforcer.verbose, eq=True)
 
     def test_enforcer_empty_workspace(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
@@ -132,7 +132,7 @@ class TestMaintenanceMainEnforcer:
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True)
-        tm.ok(result, eq=0)
+        u.Tests.Matchers.ok(result, eq=0)
 
     def test_enforcer_project_mismatch(self, tmp_path: Path) -> None:
         workspace = _create_workspace(
@@ -151,8 +151,10 @@ class TestMaintenanceMainEnforcer:
         )
         enforcer = _make_enforcer(workspace)
         result = enforcer.execute(check_only=True, verbose=False)
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
 
     def test_enforcer_creates_instance(self) -> None:
         enforcer = FlextInfraPythonVersionEnforcer()
-        tm.that(type(enforcer).__name__, eq="FlextInfraPythonVersionEnforcer")
+        u.Tests.Matchers.that(
+            type(enforcer).__name__, eq="FlextInfraPythonVersionEnforcer"
+        )

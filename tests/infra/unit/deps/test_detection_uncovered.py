@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, t, u
 
 from flext_core import r
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
@@ -45,10 +45,10 @@ class TestDetectionUncoveredLines:
             "runner",
             _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
-        issues, _ = tm.ok(
+        issues, _ = u.Tests.Matchers.ok(
             service.run_deptry(project, venv_bin, json_output_path=out_file),
         )
-        tm.that(len(issues), eq=1)
+        u.Tests.Matchers.that(len(issues), eq=1)
 
     def test_run_pip_check_with_empty_output(
         self,
@@ -65,9 +65,11 @@ class TestDetectionUncoveredLines:
             "runner",
             _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
-        lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
-        tm.that(lines, eq=[])
-        tm.that(exit_code, eq=0)
+        lines, exit_code = u.Tests.Matchers.ok(
+            service.run_pip_check(tmp_path, venv_bin)
+        )
+        u.Tests.Matchers.that(lines, eq=[])
+        u.Tests.Matchers.that(exit_code, eq=0)
 
     def test_get_required_typings_with_limits_applied(
         self,
@@ -97,5 +99,5 @@ class TestDetectionUncoveredLines:
                 return r[t.Infra.TomlConfig].ok({})
 
         monkeypatch.setattr(service, "toml", _Toml())
-        report = tm.ok(service.get_required_typings(tmp_path, venv_bin))
-        tm.that(report.limits_applied, eq=True)
+        report = u.Tests.Matchers.ok(service.get_required_typings(tmp_path, venv_bin))
+        u.Tests.Matchers.that(report.limits_applied, eq=True)

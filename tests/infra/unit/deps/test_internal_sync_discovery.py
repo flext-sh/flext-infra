@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import r
 from flext_infra import FlextInfraInternalDependencySyncService
@@ -55,28 +55,36 @@ class TestParseGitmodules:
             '[submodule "flext-core"]\n\tpath = flext-core\n\turl = git@github.com:flext-sh/flext-core.git\n[submodule "flext-api"]\n\tpath = flext-api\n\turl = git@github.com:flext-sh/flext-api.git\n',
         )
         result = FlextInfraInternalDependencySyncService().parse_gitmodules(gitmodules)
-        tm.that("flext-core" in result, eq=True)
-        tm.that("flext-api" in result, eq=True)
-        tm.that(
+        u.Tests.Matchers.that("flext-core" in result, eq=True)
+        u.Tests.Matchers.that("flext-api" in result, eq=True)
+        u.Tests.Matchers.that(
             result["flext-core"].ssh_url,
             eq="git@github.com:flext-sh/flext-core.git",
         )
-        tm.that(result["flext-core"].https_url.startswith("https://"), eq=True)
+        u.Tests.Matchers.that(
+            result["flext-core"].https_url.startswith("https://"), eq=True
+        )
 
     def test_parse_gitmodules_empty(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text("")
-        tm.that(FlextInfraInternalDependencySyncService().parse_gitmodules(path), eq={})
+        u.Tests.Matchers.that(
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path), eq={}
+        )
 
     def test_parse_gitmodules_no_url(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text('[submodule "test"]\n\tpath = test\n')
-        tm.that(FlextInfraInternalDependencySyncService().parse_gitmodules(path), eq={})
+        u.Tests.Matchers.that(
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path), eq={}
+        )
 
     def test_parse_gitmodules_non_submodule_section(self, tmp_path: Path) -> None:
         path = tmp_path / ".gitmodules"
         path.write_text("[other]\nfoo = bar\n")
-        tm.that(FlextInfraInternalDependencySyncService().parse_gitmodules(path), eq={})
+        u.Tests.Matchers.that(
+            FlextInfraInternalDependencySyncService().parse_gitmodules(path), eq={}
+        )
 
 
 class TestParseRepoMap:
@@ -94,23 +102,23 @@ class TestParseRepoMap:
             }),
         )
         result = service.parse_repo_map(Path("/fake/map.toml"))
-        tm.ok(result)
-        tm.that("flext-core" in result.value, eq=True)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that("flext-core" in result.value, eq=True)
 
     def test_parse_repo_map_read_failure(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(service, r[t.Infra.TomlConfig].fail("file not found"))
-        tm.fail(service.parse_repo_map(Path("/fake/map.toml")))
+        u.Tests.Matchers.fail(service.parse_repo_map(Path("/fake/map.toml")))
 
     def test_parse_repo_map_no_repo_section(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(service, r[t.Infra.TomlConfig].ok({"other": "data"}))
-        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
+        u.Tests.Matchers.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
 
     def test_parse_repo_map_non_dict_repo(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(service, r[t.Infra.TomlConfig].ok({"repo": "not-a-dict"}))
-        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
+        u.Tests.Matchers.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
 
     def test_parse_repo_map_non_dict_values(self) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -118,7 +126,7 @@ class TestParseRepoMap:
             service,
             r[t.Infra.TomlConfig].ok({"repo": {"flext-core": "string-value"}}),
         )
-        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
+        u.Tests.Matchers.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
 
     def test_parse_repo_map_no_ssh_url(self) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -126,7 +134,7 @@ class TestParseRepoMap:
             service,
             r[t.Infra.TomlConfig].ok({"repo": {"flext-core": {"other": "val"}}}),
         )
-        tm.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
+        u.Tests.Matchers.ok(service.parse_repo_map(Path("/fake/map.toml")), eq={})
 
     def test_parse_repo_map_auto_https(self) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -139,13 +147,15 @@ class TestParseRepoMap:
             }),
         )
         result = service.parse_repo_map(Path("/fake/map.toml"))
-        tm.ok(result)
-        tm.that(result.value["flext-core"].https_url.startswith("https://"), eq=True)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that(
+            result.value["flext-core"].https_url.startswith("https://"), eq=True
+        )
 
 
 class TestCollectInternalDeps:
     def test_no_pyproject(self, tmp_path: Path) -> None:
-        tm.ok(
+        u.Tests.Matchers.ok(
             FlextInfraInternalDependencySyncService().collect_internal_deps(tmp_path),
             eq={},
         )
@@ -168,8 +178,8 @@ class TestCollectInternalDeps:
         )
         (tmp_path / "pyproject.toml").write_text("")
         result = service.collect_internal_deps(tmp_path)
-        tm.ok(result)
-        tm.that("flext-core" in result.value, eq=True)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that("flext-core" in result.value, eq=True)
 
     def test_pep621_path_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -187,14 +197,14 @@ class TestCollectInternalDeps:
         )
         (tmp_path / "pyproject.toml").write_text("")
         result = service.collect_internal_deps(tmp_path)
-        tm.ok(result)
-        tm.that("flext-core" in result.value, eq=True)
+        u.Tests.Matchers.ok(result)
+        u.Tests.Matchers.that("flext-core" in result.value, eq=True)
 
     def test_read_failure(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(service, r[t.Infra.TomlConfig].fail("parse error"))
         (tmp_path / "pyproject.toml").write_text("")
-        tm.fail(service.collect_internal_deps(tmp_path))
+        u.Tests.Matchers.fail(service.collect_internal_deps(tmp_path))
 
     def test_no_tool_and_non_dict_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -209,5 +219,5 @@ class TestCollectInternalDeps:
             ],
         )
         (tmp_path / "pyproject.toml").write_text("")
-        tm.ok(service.collect_internal_deps(tmp_path), eq={})
-        tm.ok(service.collect_internal_deps(tmp_path), eq={})
+        u.Tests.Matchers.ok(service.collect_internal_deps(tmp_path), eq={})
+        u.Tests.Matchers.ok(service.collect_internal_deps(tmp_path), eq={})

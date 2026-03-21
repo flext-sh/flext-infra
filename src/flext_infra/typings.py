@@ -19,7 +19,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from flext_core import FlextTypes
-from flext_infra import c
+from flext_infra.constants import c
 
 
 class FlextInfraTypes(FlextTypes):

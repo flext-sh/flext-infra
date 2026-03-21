@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from tests.infra.unit.codegen._project_factory import (
@@ -42,8 +42,8 @@ def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
     fixer = FlextInfraCodegenFixer(tmp_path)
     results = fixer.run()
     project_names = [res.project for res in results]
-    tm.that("flexcore" not in project_names, eq=True)
-    tm.that("test-proj" in project_names, eq=True)
+    u.Tests.Matchers.that("flexcore" not in project_names, eq=True)
+    u.Tests.Matchers.that("test-proj" in project_names, eq=True)
 
 
 def test_project_without_src_returns_empty(tmp_path: Path) -> None:
@@ -54,10 +54,10 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
     (project / ".git").mkdir()
     fixer = FlextInfraCodegenFixer(tmp_path)
     result = fixer.fix_project(project)
-    tm.that(result.project, eq="no-src-proj")
-    tm.that(result.violations_fixed, eq=[])
-    tm.that(result.violations_skipped, eq=[])
-    tm.that(result.files_modified, eq=[])
+    u.Tests.Matchers.that(result.project, eq="no-src-proj")
+    u.Tests.Matchers.that(result.violations_fixed, eq=[])
+    u.Tests.Matchers.that(result.violations_skipped, eq=[])
+    u.Tests.Matchers.that(result.files_modified, eq=[])
 
 
 def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
@@ -72,12 +72,12 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
     )
     fixer = FlextInfraCodegenFixer(tmp_path)
     result = fixer.fix_project(project)
-    tm.that(len(result.files_modified), eq=4)
+    u.Tests.Matchers.that(len(result.files_modified), eq=4)
     modified_str = " ".join(result.files_modified)
-    tm.that(modified_str, contains="__init__.py")
-    tm.that(modified_str, contains="base.py")
-    tm.that(modified_str, contains="constants.py")
-    tm.that(modified_str, contains="typings.py")
+    u.Tests.Matchers.that(modified_str, contains="__init__.py")
+    u.Tests.Matchers.that(modified_str, contains="base.py")
+    u.Tests.Matchers.that(modified_str, contains="constants.py")
+    u.Tests.Matchers.that(modified_str, contains="typings.py")
 
 
 __all__: list[str] = []

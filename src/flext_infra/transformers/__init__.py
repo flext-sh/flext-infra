@@ -63,10 +63,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.tier0_import_fixer import (
         FlextInfraTransformerTier0ImportFixer,
-        Tier0ImportAnalysis,
-        Tier0ImportAnalyzer,
-        Tier0ImportContextDiscovery,
-        Tier0ImportFixer,
     )
     from flext_infra.transformers.typing_annotation_replacer import (
         TypingAnnotationReplacer,
@@ -179,22 +175,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.project_discovery",
         "ProjectAliasDiscovery",
     ),
-    "Tier0ImportAnalysis": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportAnalysis",
-    ),
-    "Tier0ImportAnalyzer": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportAnalyzer",
-    ),
-    "Tier0ImportContextDiscovery": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportContextDiscovery",
-    ),
-    "Tier0ImportFixer": (
-        "flext_infra.transformers.tier0_import_fixer",
-        "Tier0ImportFixer",
-    ),
     "TypingAnnotationCensusVisitor": (
         "flext_infra.transformers.typing_census_visitor",
         "TypingAnnotationCensusVisitor",
@@ -238,10 +218,6 @@ __all__ = [
     "ModelReferenceCollector",
     "NestedClassPropagationTransformer",
     "ProjectAliasDiscovery",
-    "Tier0ImportAnalysis",
-    "Tier0ImportAnalyzer",
-    "Tier0ImportContextDiscovery",
-    "Tier0ImportFixer",
     "TypingAnnotationCensusVisitor",
     "TypingAnnotationReplacer",
     "UnusedModelRemover",

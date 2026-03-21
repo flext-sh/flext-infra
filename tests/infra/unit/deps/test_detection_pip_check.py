@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_core import r
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
@@ -29,7 +29,9 @@ class TestRunPipCheck:
         service = FlextInfraDependencyDetectionService()
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
-        tm.that(tm.ok(service.run_pip_check(tmp_path, venv_bin)), eq=([], 0))
+        u.Tests.Matchers.that(
+            tm.ok(service.run_pip_check(tmp_path, venv_bin)), eq=([], 0)
+        )
 
     def test_success_with_output(
         self,
@@ -50,9 +52,11 @@ class TestRunPipCheck:
             "runner",
             _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
-        lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
-        tm.that(len(lines), eq=2)
-        tm.that(exit_code, eq=1)
+        lines, exit_code = u.Tests.Matchers.ok(
+            service.run_pip_check(tmp_path, venv_bin)
+        )
+        u.Tests.Matchers.that(len(lines), eq=2)
+        u.Tests.Matchers.that(exit_code, eq=1)
 
     def test_runner_failure(
         self,
@@ -68,7 +72,7 @@ class TestRunPipCheck:
             "runner",
             _StubRunner(r[m.Infra.CommandOutput].fail("pip failed")),
         )
-        tm.fail(service.run_pip_check(tmp_path, venv_bin))
+        u.Tests.Matchers.fail(service.run_pip_check(tmp_path, venv_bin))
 
     def test_success_no_issues(
         self,
@@ -85,6 +89,8 @@ class TestRunPipCheck:
             "runner",
             _StubRunner(r[m.Infra.CommandOutput].ok(out)),
         )
-        lines, exit_code = tm.ok(service.run_pip_check(tmp_path, venv_bin))
-        tm.that(lines, eq=[])
-        tm.that(exit_code, eq=0)
+        lines, exit_code = u.Tests.Matchers.ok(
+            service.run_pip_check(tmp_path, venv_bin)
+        )
+        u.Tests.Matchers.that(lines, eq=[])
+        u.Tests.Matchers.that(exit_code, eq=0)

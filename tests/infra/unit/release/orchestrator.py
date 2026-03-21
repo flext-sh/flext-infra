@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import r, t
 from flext_infra import m as infra_models
@@ -86,12 +86,12 @@ class TestReleaseOrchestratorExecute:
     """Tests for execute() and run_release() top-level."""
 
     def test_execute_returns_ok(self) -> None:
-        tm.ok(_CLS().execute(), eq=True)
+        u.Tests.Matchers.ok(_CLS().execute(), eq=True)
 
     def test_run_release_invalid_phase(self, workspace_root: Path) -> None:
         config = _make_config(workspace_root, phases=["invalid_phase"])
         result = _CLS().run_release(config)
-        tm.fail(result)
+        u.Tests.Matchers.fail(result)
 
     def test_run_release_empty_phases(
         self,
@@ -101,7 +101,7 @@ class TestReleaseOrchestratorExecute:
         _stub_branches(monkeypatch)
         config = _make_config(workspace_root, phases=[])
         result = _CLS().run_release(config)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_run_release_with_project_filter(
         self,
@@ -116,7 +116,7 @@ class TestReleaseOrchestratorExecute:
             project_names=["flext-core", "flext-api"],
         )
         result = _CLS().run_release(config)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_run_release_dry_run(
         self,
@@ -126,7 +126,7 @@ class TestReleaseOrchestratorExecute:
         _stub_dispatch(monkeypatch)
         config = _make_config(workspace_root, phases=["validate"], dry_run=True)
         result = _CLS().run_release(config)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_run_release_with_push(
         self,
@@ -137,7 +137,7 @@ class TestReleaseOrchestratorExecute:
         _stub_dispatch(monkeypatch)
         config = _make_config(workspace_root, phases=["validate"], push=True)
         result = _CLS().run_release(config)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_run_release_with_dev_suffix(
         self,
@@ -154,7 +154,7 @@ class TestReleaseOrchestratorExecute:
             dev_suffix=True,
         )
         result = _CLS().run_release(config)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_run_release_next_dev(
         self,
@@ -171,7 +171,7 @@ class TestReleaseOrchestratorExecute:
             next_bump="minor",
         )
         result = _CLS().run_release(config)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_run_release_phase_failure_stops(
         self,
@@ -199,8 +199,8 @@ class TestReleaseOrchestratorExecute:
             phases=["validate", "version"],
         )
         result = _CLS().run_release(config)
-        tm.fail(result)
-        tm.that(call_count, eq=1)
+        u.Tests.Matchers.fail(result)
+        u.Tests.Matchers.that(call_count, eq=1)
 
     def test_run_release_create_branches_disabled(
         self,
@@ -214,4 +214,4 @@ class TestReleaseOrchestratorExecute:
             create_branches=False,
         )
         result = _CLS().run_release(config)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)

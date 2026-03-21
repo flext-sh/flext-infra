@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraRefactorDependencyAnalyzerFacade,
-    FlextInfraRefactorOutputRenderer,
-    NamespaceEnforcementRewriter,
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.refactor._detectors.namespace_source_detector import (
     NamespaceSourceDetector,
-    c,
-    m,
-    u,
 )
+from flext_infra.refactor.dependency_analyzer import (
+    FlextInfraRefactorDependencyAnalyzerFacade,
+)
+from flext_infra.refactor.namespace_rewriter import NamespaceEnforcementRewriter
+from flext_infra.refactor.output import FlextInfraRefactorOutputRenderer
+from flext_infra.utilities import u
 
 
 class FlextInfraNamespaceEnforcer:

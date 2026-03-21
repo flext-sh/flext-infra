@@ -7,7 +7,10 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraRefactorRule, Tier0ImportAnalyzer, Tier0ImportFixer, c
+from flext_infra import FlextInfraTransformerTier0ImportFixer as T0
+from flext_infra.constants import c
+from flext_infra.refactor.rule import FlextInfraRefactorRule
+from flext_infra.utilities import u
 
 
 class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
@@ -19,7 +22,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
     ) -> tuple[cst.Module, list[str]]:
         if file_path is None:
             return (tree, [])
-        analyzer = Tier0ImportAnalyzer(
+        analyzer = T0.Analyzer(
             file_path=file_path,
             tier0_modules=self._tier0_modules(),
             core_aliases=self._core_aliases(),
@@ -36,7 +39,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
             else self._core_package()
         )
 
-        fixer = Tier0ImportFixer(
+        fixer = T0.Transformer(
             analysis=analysis,
             alias_to_submodule=self._alias_to_submodule(),
             core_package=core_package,

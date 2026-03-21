@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_infra import (
     FlextInfraDependencyDetectionService,
@@ -30,11 +30,11 @@ class TestFlextInfraDependencyDetectionModels:
             dev_in_runtime=[],
             raw_count=0,
         )
-        tm.that(report.missing, eq=[])
-        tm.that(report.unused, eq=[])
-        tm.that(report.transitive, eq=[])
-        tm.that(report.dev_in_runtime, eq=[])
-        tm.that(report.raw_count, eq=0)
+        u.Tests.Matchers.that(report.missing, eq=[])
+        u.Tests.Matchers.that(report.unused, eq=[])
+        u.Tests.Matchers.that(report.transitive, eq=[])
+        u.Tests.Matchers.that(report.dev_in_runtime, eq=[])
+        u.Tests.Matchers.that(report.raw_count, eq=0)
 
     def test_project_dependency_report_creation(self) -> None:
         deptry = dm.DeptryReport(
@@ -45,8 +45,8 @@ class TestFlextInfraDependencyDetectionModels:
             raw_count=0,
         )
         report = dm.ProjectDependencyReport(project="test-project", deptry=deptry)
-        tm.that(report.project, eq="test-project")
-        tm.that(report.deptry, eq=deptry)
+        u.Tests.Matchers.that(report.project, eq="test-project")
+        u.Tests.Matchers.that(report.deptry, eq=deptry)
 
     def test_typings_report_creation(self) -> None:
         report = dm.TypingsReport(
@@ -57,25 +57,29 @@ class TestFlextInfraDependencyDetectionModels:
             to_add=[],
             to_remove=[],
         )
-        tm.that(report.required_packages, eq=[])
-        tm.that(report.hinted, eq=[])
-        tm.that(report.missing_modules, eq=[])
-        tm.that(report.current, eq=[])
-        tm.that(report.to_add, eq=[])
-        tm.that(report.to_remove, eq=[])
-        tm.that(report.limits_applied, eq=False)
-        tm.that(report.python_version, eq=None)
+        u.Tests.Matchers.that(report.required_packages, eq=[])
+        u.Tests.Matchers.that(report.hinted, eq=[])
+        u.Tests.Matchers.that(report.missing_modules, eq=[])
+        u.Tests.Matchers.that(report.current, eq=[])
+        u.Tests.Matchers.that(report.to_add, eq=[])
+        u.Tests.Matchers.that(report.to_remove, eq=[])
+        u.Tests.Matchers.that(report.limits_applied, eq=False)
+        u.Tests.Matchers.that(report.python_version, eq=None)
 
 
 class TestFlextInfraDependencyDetectionService:
     def test_service_initialization(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        tm.that(hasattr(service, "runner"), eq=True)
+        u.Tests.Matchers.that(hasattr(service, "runner"), eq=True)
 
     def test_default_module_to_types_package_mapping(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        tm.that("yaml" in service.DEFAULT_MODULE_TO_TYPES_PACKAGE, eq=True)
-        tm.that(service.DEFAULT_MODULE_TO_TYPES_PACKAGE["yaml"], eq="types-pyyaml")
+        u.Tests.Matchers.that(
+            "yaml" in service.DEFAULT_MODULE_TO_TYPES_PACKAGE, eq=True
+        )
+        u.Tests.Matchers.that(
+            service.DEFAULT_MODULE_TO_TYPES_PACKAGE["yaml"], eq="types-pyyaml"
+        )
 
 
 class TestToInfraValue:

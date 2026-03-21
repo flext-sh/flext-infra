@@ -15,7 +15,7 @@ try:
     )
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 
@@ -113,7 +113,7 @@ def test_refactor_project_integrates_safety_manager(tmp_path: Path) -> None:
     stub = EngineSafetyStub()
     engine.safety_manager = stub
     loaded = engine.load_rules()
-    tm.ok(loaded)
+    u.Tests.Matchers.ok(loaded)
     results = engine.refactor_project(tmp_path, dry_run=False, apply_safety=True)
     assert results
     assert all(item.success for item in results)

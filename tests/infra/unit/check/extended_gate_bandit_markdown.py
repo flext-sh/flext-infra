@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.bandit import FlextInfraBanditGate
@@ -63,16 +63,16 @@ def _run_failed_gate_check(
 
 
 def _assert_failed_single_issue(result: _m.Infra.GateExecution) -> None:
-    tm.that(result.result.passed, eq=False)
-    tm.that(len(result.issues), eq=1)
+    u.Tests.Matchers.that(result.result.passed, eq=False)
+    u.Tests.Matchers.that(len(result.issues), eq=1)
 
 
 class TestWorkspaceCheckerRunBandit:
     def test_run_bandit_no_src_dir(self, tmp_path: Path) -> None:
         checker, proj_dir = _create_checker_project(tmp_path)
         result = checker._run_bandit(proj_dir)
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(len(result.issues), eq=0)
 
     def test_run_bandit_with_json_output(
         self,
@@ -92,8 +92,8 @@ class TestWorkspaceCheckerRunBandit:
             returncode=1,
         )
         result = checker._run_bandit(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
     def test_run_bandit_with_invalid_json(
         self,
@@ -109,15 +109,15 @@ class TestWorkspaceCheckerRunBandit:
             gate_runner=FlextInfraWorkspaceChecker._run_bandit,
             stdout="invalid json",
         )
-        tm.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
 
 
 class TestWorkspaceCheckerRunMarkdown:
     def test_run_markdown_no_files(self, tmp_path: Path) -> None:
         checker, proj_dir = _create_checker_project(tmp_path)
         result = checker._run_markdown(proj_dir)
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(len(result.issues), eq=0)
 
     def test_run_markdown_with_errors(
         self,
@@ -159,7 +159,7 @@ class TestWorkspaceCheckerRunMarkdown:
 
         monkeypatch.setattr(FlextInfraMarkdownGate, "_run", _fake_run)
         checker._run_markdown(proj_dir)
-        tm.that("--config" in captured_args[0], eq=True)
+        u.Tests.Matchers.that("--config" in captured_args[0], eq=True)
 
     def test_run_markdown_fallback_error_message(
         self,

@@ -13,7 +13,7 @@ import io
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import t
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -36,7 +36,7 @@ def test_generator_write_handles_file_permission_error(tmp_path: Path) -> None:
 def test_generator_normalize_config_with_none() -> None:
     gen = FlextInfraBaseMkGenerator()
     result = gen._normalize_config(None)
-    tm.ok(result)
+    u.Tests.Matchers.ok(result)
     assert isinstance(result.value, im.Infra.BaseMkConfig)
 
 
@@ -53,7 +53,7 @@ def test_generator_normalize_config_with_basemk_config() -> None:
     )
     gen = FlextInfraBaseMkGenerator()
     result = gen._normalize_config(config)
-    tm.ok(result)
+    u.Tests.Matchers.ok(result)
     assert result.value == config
 
 
@@ -70,7 +70,7 @@ def test_generator_normalize_config_with_dict() -> None:
     )
     gen = FlextInfraBaseMkGenerator()
     result = gen._normalize_config(config)
-    tm.ok(result)
+    u.Tests.Matchers.ok(result)
     assert isinstance(result.value, im.Infra.BaseMkConfig)
 
 
@@ -78,7 +78,7 @@ def test_generator_normalize_config_with_invalid_dict() -> None:
     invalid_dict = {"bad_key": "value"}
     gen = FlextInfraBaseMkGenerator()
     result = gen._normalize_config(invalid_dict)
-    tm.fail(result)
+    u.Tests.Matchers.fail(result)
     assert isinstance(result.error, str)
     assert "validation failed" in result.error
 
@@ -97,7 +97,7 @@ def test_generator_write_to_stream_handles_oserror(
 
     monkeypatch.setattr(stream, "write", mock_write)
     result = gen.write(content, stream=stream)
-    tm.fail(result)
+    u.Tests.Matchers.fail(result)
     assert isinstance(result.error, str)
     assert "stdout write failed" in result.error
 
@@ -114,6 +114,6 @@ def test_generator_validate_generated_output_handles_oserror(
 
     monkeypatch.setattr("tempfile.TemporaryDirectory", mock_tempdir)
     result = gen._validate_generated_output(content)
-    tm.fail(result)
+    u.Tests.Matchers.fail(result)
     assert isinstance(result.error, str)
     assert "validation failed" in result.error

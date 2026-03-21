@@ -11,7 +11,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 import flext_infra.codegen as mod
 from flext_infra import u
@@ -40,8 +40,8 @@ class TestResolveAliases:
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
         _resolve_aliases(lazy_map)
-        tm.that(lazy_map, contains="c")
-        tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
+        u.Tests.Matchers.that(lazy_map, contains="c")
+        u.Tests.Matchers.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
 
     def test_does_not_overwrite_existing(self) -> None:
         """Test that existing alias is not overwritten."""
@@ -51,7 +51,7 @@ class TestResolveAliases:
         }
         _resolve_aliases(lazy_map)
         # Should keep existing mapping
-        tm.that(lazy_map["c"], eq=("pkg.custom", "CustomConst"))
+        u.Tests.Matchers.that(lazy_map["c"], eq=("pkg.custom", "CustomConst"))
 
     def test_resolves_multiple_aliases(self) -> None:
         """Test resolving multiple aliases at once."""
@@ -61,9 +61,9 @@ class TestResolveAliases:
             "FlextTypes": ("pkg.typings", "FlextTypes"),
         }
         _resolve_aliases(lazy_map)
-        tm.that(lazy_map, contains="c")
-        tm.that(lazy_map, contains="m")
-        tm.that(lazy_map, contains="t")
+        u.Tests.Matchers.that(lazy_map, contains="c")
+        u.Tests.Matchers.that(lazy_map, contains="m")
+        u.Tests.Matchers.that(lazy_map, contains="t")
 
 
 class TestGenerateTypeChecking:
@@ -73,8 +73,8 @@ class TestGenerateTypeChecking:
         """Test with no imports returns header + FlextTypes only."""
         groups: dict[str, list[tuple[str, str]]] = {}
         lines = u.Infra.generate_type_checking(groups)
-        tm.that(lines, contains="if TYPE_CHECKING:")
-        tm.that(any("FlextTypes" in line for line in lines), eq=True)
+        u.Tests.Matchers.that(lines, contains="if TYPE_CHECKING:")
+        u.Tests.Matchers.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
         """Test with no imports and no FlextTypes returns empty list."""
@@ -83,20 +83,20 @@ class TestGenerateTypeChecking:
             groups,
             include_flext_types=False,
         )
-        tm.that(lines, eq=[])
+        u.Tests.Matchers.that(lines, eq=[])
 
     def test_with_single_module(self) -> None:
         """Test with single module."""
         groups = {"module": [("Test", "Test")]}
         lines = u.Infra.generate_type_checking(groups)
-        tm.that(" ".join(lines), contains="from module import")
+        u.Tests.Matchers.that(" ".join(lines), contains="from module import")
 
     def test_with_aliased_imports(self) -> None:
         """Test with aliased imports."""
         groups = {"module": [("c", "FlextConstants"), ("m", "FlextModels")]}
         lines = u.Infra.generate_type_checking(groups)
         joined = " ".join(lines)
-        tm.that(joined, contains="as")
+        u.Tests.Matchers.that(joined, contains="as")
 
     def test_with_long_import_line(self) -> None:
         """Test wraps long import lines."""
@@ -107,7 +107,7 @@ class TestGenerateTypeChecking:
             ("VeryLongClassName3", "VeryLongClassName3"),
         ]
         lines = u.Infra.generate_type_checking(groups)
-        tm.that(any("module" in line for line in lines), eq=True)
+        u.Tests.Matchers.that(any("module" in line for line in lines), eq=True)
 
     def test_with_multiple_modules_spacing(self) -> None:
         """Test blank lines between different top-level package groups."""
@@ -115,7 +115,7 @@ class TestGenerateTypeChecking:
         groups["alpha_pkg.module"] = [("Test1", "Test1")]
         groups["beta_pkg.module"] = [("Test2", "Test2")]
         lines = u.Infra.generate_type_checking(groups)
-        tm.that(lines, contains="")
+        u.Tests.Matchers.that(lines, contains="")
 
 
 class TestGenerateFile:
@@ -127,7 +127,7 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: dict[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "flext_core")
-        tm.that(content, contains="flext_core._utilities.lazy")
+        u.Tests.Matchers.that(content, contains="flext_core._utilities.lazy")
 
     def test_with_other_package(self) -> None:
         """Test uses correct lazy import for non-core packages."""
@@ -135,7 +135,7 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: dict[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "other_pkg")
-        tm.that(content, contains="from flext_core.lazy import")
+        u.Tests.Matchers.that(content, contains="from flext_core.lazy import")
 
     def test_with_inline_constants(self) -> None:
         """Test includes inline constants."""
@@ -143,7 +143,7 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants = {"__version__": "1.0.0"}
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
-        tm.that(content, contains='__version__ = "1.0.0"')
+        u.Tests.Matchers.that(content, contains='__version__ = "1.0.0"')
 
     def test_with_docstring(self) -> None:
         """Test preserves docstring."""
@@ -158,7 +158,7 @@ class TestGenerateFile:
             inline_constants,
             "test_pkg",
         )
-        tm.that(content, contains=docstring)
+        u.Tests.Matchers.that(content, contains=docstring)
 
     def test_has_autogen_header(self) -> None:
         """Test generated file starts with autogen header."""
@@ -166,7 +166,7 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: dict[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
-        tm.that(content, contains="AUTO-GENERATED")
+        u.Tests.Matchers.that(content, contains="AUTO-GENERATED")
 
     def test_has_all_list(self) -> None:
         """Test generated file has __all__ list."""
@@ -174,9 +174,9 @@ class TestGenerateFile:
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: dict[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
-        tm.that(content, contains="__all__")
-        tm.that(content, contains='"Alpha"')
-        tm.that(content, contains='"Beta"')
+        u.Tests.Matchers.that(content, contains="__all__")
+        u.Tests.Matchers.that(content, contains='"Alpha"')
+        u.Tests.Matchers.that(content, contains='"Beta"')
 
 
 class TestRunRuffFix:

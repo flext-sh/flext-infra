@@ -2,18 +2,16 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 import libcst as cst
 
-from flext_infra import p
+from flext_infra.models import m
+from flext_infra.protocols import p
 from flext_infra.refactor._detectors.module_loader import DetectorScanResultBuilder
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import m
 
 
 class CompatibilityAliasDetector(p.Infra.Scanner):
@@ -98,7 +96,7 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
                 violations.append(
                     nem.CompatibilityAliasViolation.create(
                         file=str(file_path),
-                        line=0,
+                        line=1,
                         alias_name=alias_name,
                         target_name=target_name,
                     ),

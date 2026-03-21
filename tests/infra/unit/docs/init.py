@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 import flext_infra.docs as docs_module
 from flext_infra.docs import (
@@ -31,29 +31,39 @@ class TestFlextInfraDocs:
 
     def test_lazy_import_builder(self) -> None:
         """Test lazy import of FlextInfraDocBuilder."""
-        tm.that(docs_module.FlextInfraDocBuilder is FlextInfraDocBuilder, eq=True)
+        u.Tests.Matchers.that(
+            docs_module.FlextInfraDocBuilder is FlextInfraDocBuilder, eq=True
+        )
 
     def test_lazy_import_fixer(self) -> None:
         """Test lazy import of FlextInfraDocFixer."""
-        tm.that(docs_module.FlextInfraDocFixer is FlextInfraDocFixer, eq=True)
+        u.Tests.Matchers.that(
+            docs_module.FlextInfraDocFixer is FlextInfraDocFixer, eq=True
+        )
 
     def test_lazy_import_generator(self) -> None:
         """Test lazy import of FlextInfraDocGenerator."""
-        tm.that(docs_module.FlextInfraDocGenerator is FlextInfraDocGenerator, eq=True)
+        u.Tests.Matchers.that(
+            docs_module.FlextInfraDocGenerator is FlextInfraDocGenerator, eq=True
+        )
 
     def test_lazy_import_validator(self) -> None:
         """Test lazy import of FlextInfraDocValidator."""
-        tm.that(docs_module.FlextInfraDocValidator is FlextInfraDocValidator, eq=True)
+        u.Tests.Matchers.that(
+            docs_module.FlextInfraDocValidator is FlextInfraDocValidator, eq=True
+        )
 
     def test_lazy_import_auditor(self) -> None:
         """Test lazy import of FlextInfraDocAuditor."""
-        tm.that(docs_module.FlextInfraDocAuditor is FlextInfraDocAuditor, eq=True)
+        u.Tests.Matchers.that(
+            docs_module.FlextInfraDocAuditor is FlextInfraDocAuditor, eq=True
+        )
 
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""
         exports = dir(docs_module)
-        tm.that("FlextInfraDocBuilder" in exports, eq=True)
-        tm.that("FlextInfraDocFixer" in exports, eq=True)
-        tm.that("FlextInfraDocGenerator" in exports, eq=True)
-        tm.that("FlextInfraDocValidator" in exports, eq=True)
-        tm.that("FlextInfraDocAuditor" in exports, eq=True)
+        u.Tests.Matchers.that("FlextInfraDocBuilder" in exports, eq=True)
+        u.Tests.Matchers.that("FlextInfraDocFixer" in exports, eq=True)
+        u.Tests.Matchers.that("FlextInfraDocGenerator" in exports, eq=True)
+        u.Tests.Matchers.that("FlextInfraDocValidator" in exports, eq=True)
+        u.Tests.Matchers.that("FlextInfraDocAuditor" in exports, eq=True)

@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_tests import tm
+from flext_tests import t, u
 
 from flext_core import r, t
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
@@ -99,8 +99,8 @@ class TestWorkspaceCheckerRunGo:
     def test_run_go_no_go_mod(self, tmp_path: Path) -> None:
         checker, proj_dir = _create_checker_project(tmp_path)
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=0)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(len(result.issues), eq=0)
 
     def test_run_go_with_vet_errors(
         self,
@@ -120,7 +120,7 @@ class TestWorkspaceCheckerRunGo:
             ],
         )
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
 
     def test_run_go_with_format_errors(
         self,
@@ -140,8 +140,8 @@ class TestWorkspaceCheckerRunGo:
             ],
         )
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
     def test_run_go_fallback_error_message(
         self,
@@ -161,8 +161,8 @@ class TestWorkspaceCheckerRunGo:
             ],
         )
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.issues), eq=1)
+        u.Tests.Matchers.that(result.result.passed, eq=False)
+        u.Tests.Matchers.that(len(result.issues), eq=1)
 
 
 class TestWorkspaceCheckerRunCommand:
@@ -189,7 +189,7 @@ class TestWorkspaceCheckerRunCommand:
             tmp_path,
             FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
         )
-        tm.that(result.result.passed, eq=True)
+        u.Tests.Matchers.that(result.result.passed, eq=True)
 
     def test_run_command_failure(
         self,
@@ -203,8 +203,8 @@ class TestWorkspaceCheckerRunCommand:
             tmp_path,
             FlextInfraGoGate,
         )
-        tm.that(passed, eq=False)
-        tm.that(raw_output, contains="execution failed")
+        u.Tests.Matchers.that(passed, eq=False)
+        u.Tests.Matchers.that(raw_output, contains="execution failed")
 
 
 class TestWorkspaceCheckerCollectMarkdownFiles:
@@ -216,11 +216,11 @@ class TestWorkspaceCheckerCollectMarkdownFiles:
         (proj_dir / "docs").mkdir()
         (proj_dir / "docs" / "guide.md").write_text("# Guide")
         files = FlextInfraMarkdownGate(tmp_path)._collect_markdown_files(proj_dir)
-        tm.that(len(files), eq=2)
+        u.Tests.Matchers.that(len(files), eq=2)
 
     def test_collect_markdown_files_excludes_dirs(self, tmp_path: Path) -> None:
         proj_dir = h.mk_project(tmp_path, "p1", with_git=True)
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / ".git" / "README.md").write_text("# Git")
         files = FlextInfraMarkdownGate(tmp_path)._collect_markdown_files(proj_dir)
-        tm.that(len(files), eq=1)
+        u.Tests.Matchers.that(len(files), eq=1)

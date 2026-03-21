@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_core import r
 from flext_infra import m
@@ -56,7 +56,7 @@ class TestSyncWorkspace:
             ]),
         )
         json_io = StubJsonIo()
-        tm.ok(
+        u.Tests.Matchers.ok(
             _syncer(selector=selector, json_io=json_io).sync_workspace(
                 tmp_path,
                 apply=True,
@@ -65,7 +65,7 @@ class TestSyncWorkspace:
 
     def test_source_resolution_failure(self, tmp_path: Path) -> None:
         """Test workspace sync with source resolution failure."""
-        tm.fail(_syncer().sync_workspace(tmp_path))
+        u.Tests.Matchers.fail(_syncer().sync_workspace(tmp_path))
 
     def test_project_discovery_failure(self, tmp_path: Path) -> None:
         """Test workspace sync with project discovery failure."""
@@ -75,7 +75,7 @@ class TestSyncWorkspace:
         selector = StubSelector(
             resolve_returns=r[list[m.Infra.ProjectInfo]].fail("no projects"),
         )
-        tm.fail(_syncer(selector=selector).sync_workspace(tmp_path))
+        u.Tests.Matchers.fail(_syncer(selector=selector).sync_workspace(tmp_path))
 
     def test_with_report_path(self, tmp_path: Path) -> None:
         """Test workspace sync writes report."""
@@ -87,13 +87,13 @@ class TestSyncWorkspace:
         )
         json_io = StubJsonIo()
         report = tmp_path / "report.json"
-        tm.ok(
+        u.Tests.Matchers.ok(
             _syncer(selector=selector, json_io=json_io).sync_workspace(
                 tmp_path,
                 report_path=report,
             ),
         )
-        tm.that(len(json_io.write_json_calls), eq=1)
+        u.Tests.Matchers.that(len(json_io.write_json_calls), eq=1)
 
     def test_template_render_failure(self, tmp_path: Path) -> None:
         """Test workspace sync with template render failure."""
@@ -124,7 +124,7 @@ class TestSyncWorkspace:
             "resolve_source_workflow",
             _resolve_source_workflow,
         )
-        tm.fail(syncer.sync_workspace(tmp_path))
+        u.Tests.Matchers.fail(syncer.sync_workspace(tmp_path))
 
 
 class TestWriteReport:
@@ -140,10 +140,10 @@ class TestWriteReport:
         ]
         report_path = tmp_path / "report.json"
         syncer._write_report(report_path, apply=True, operations=ops)
-        tm.that(len(json_io.write_json_calls), eq=1)
+        u.Tests.Matchers.that(len(json_io.write_json_calls), eq=1)
         payload = json_io.write_json_calls[0][1]
-        tm.that("mode" in str(payload), eq=True)
-        tm.that("summary" in str(payload), eq=True)
+        u.Tests.Matchers.that("mode" in str(payload), eq=True)
+        u.Tests.Matchers.that("summary" in str(payload), eq=True)
 
     def test_write_report_dry_run(self, tmp_path: Path) -> None:
         """Test report writing in dry-run mode."""
@@ -152,4 +152,4 @@ class TestWriteReport:
         report_path = tmp_path / "report.json"
         syncer._write_report(report_path, apply=False, operations=[])
         payload = json_io.write_json_calls[0][1]
-        tm.that("mode" in str(payload), eq=True)
+        u.Tests.Matchers.that("mode" in str(payload), eq=True)

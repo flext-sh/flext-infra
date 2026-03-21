@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from tests.infra.unit.codegen._project_factory import (
@@ -39,11 +39,11 @@ def test_standalone_typevar_detected_as_fixable(tmp_path: Path) -> None:
     )
     fixer = FlextInfraCodegenFixer(tmp_path)
     result = fixer.fix_project(project)
-    tm.that(len(result.violations_fixed), gte=1)
+    u.Tests.Matchers.that(len(result.violations_fixed), gte=1)
     typevar_violations = [v for v in result.violations_fixed if "TypeVar" in v.message]
-    tm.that(len(typevar_violations), eq=1)
-    tm.that(typevar_violations[0].fixable, eq=True)
-    tm.that(typevar_violations[0].rule, eq="NS-002")
+    u.Tests.Matchers.that(len(typevar_violations), eq=1)
+    u.Tests.Matchers.that(typevar_violations[0].fixable, eq=True)
+    u.Tests.Matchers.that(typevar_violations[0].rule, eq="NS-002")
 
 
 def test_in_context_typevar_not_flagged(tmp_path: Path) -> None:
@@ -59,8 +59,8 @@ def test_in_context_typevar_not_flagged(tmp_path: Path) -> None:
     fixer = FlextInfraCodegenFixer(tmp_path)
     result = fixer.fix_project(project)
     typevar_fixed = [v for v in result.violations_fixed if "TypeVar" in v.message]
-    tm.that(len(typevar_fixed), eq=1)
-    tm.that(typevar_fixed[0].rule, eq="NS-002")
+    u.Tests.Matchers.that(len(typevar_fixed), eq=1)
+    u.Tests.Matchers.that(typevar_fixed[0].rule, eq="NS-002")
 
 
 def test_standalone_final_detected_as_fixable(tmp_path: Path) -> None:
@@ -76,10 +76,10 @@ def test_standalone_final_detected_as_fixable(tmp_path: Path) -> None:
     fixer = FlextInfraCodegenFixer(tmp_path)
     result = fixer.fix_project(project)
     final_violations = [v for v in result.violations_fixed if "Final" in v.message]
-    tm.that(len(final_violations), eq=1)
-    tm.that(final_violations[0].fixable, eq=True)
-    tm.that(final_violations[0].rule, eq="NS-001")
-    tm.that(final_violations[0].message, contains="constants.py")
+    u.Tests.Matchers.that(len(final_violations), eq=1)
+    u.Tests.Matchers.that(final_violations[0].fixable, eq=True)
+    u.Tests.Matchers.that(final_violations[0].rule, eq="NS-001")
+    u.Tests.Matchers.that(final_violations[0].message, contains="constants.py")
 
 
 def test_standalone_typealias_detected_as_fixable(tmp_path: Path) -> None:
@@ -94,10 +94,10 @@ def test_standalone_typealias_detected_as_fixable(tmp_path: Path) -> None:
     fixer = FlextInfraCodegenFixer(tmp_path)
     result = fixer.fix_project(project)
     alias_violations = [v for v in result.violations_fixed if "TypeAlias" in v.message]
-    tm.that(len(alias_violations), eq=1)
-    tm.that(alias_violations[0].fixable, eq=True)
-    tm.that(alias_violations[0].rule, eq="NS-002")
-    tm.that(alias_violations[0].message, contains="typings.py")
+    u.Tests.Matchers.that(len(alias_violations), eq=1)
+    u.Tests.Matchers.that(alias_violations[0].fixable, eq=True)
+    u.Tests.Matchers.that(alias_violations[0].rule, eq="NS-002")
+    u.Tests.Matchers.that(alias_violations[0].message, contains="typings.py")
 
 
 def test_syntax_error_files_skipped(tmp_path: Path) -> None:
@@ -113,9 +113,9 @@ def test_syntax_error_files_skipped(tmp_path: Path) -> None:
     )
     fixer = FlextInfraCodegenFixer(tmp_path)
     result = fixer.fix_project(project)
-    tm.that(result.project, eq="test-proj")
+    u.Tests.Matchers.that(result.project, eq="test-proj")
     typevar_violations = [v for v in result.violations_fixed if "TypeVar" in v.message]
-    tm.that(len(typevar_violations), eq=1)
+    u.Tests.Matchers.that(len(typevar_violations), eq=1)
 
 
 __all__: list[str] = []

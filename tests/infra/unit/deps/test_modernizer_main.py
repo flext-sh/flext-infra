@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 import tomlkit
-from flext_tests import tm
+from flext_tests import u
 
 from flext_infra import FlextInfraPyprojectModernizer, u
 
@@ -19,11 +19,11 @@ class TestFlextInfraPyprojectModernizer:
 
     def test_modernizer_initialization(self) -> None:
         modernizer = FlextInfraPyprojectModernizer()
-        tm.that(str(modernizer.root) != "", eq=True)
+        u.Tests.Matchers.that(str(modernizer.root) != "", eq=True)
 
     def test_modernizer_with_custom_root(self, tmp_path: Path) -> None:
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
-        tm.that(str(modernizer.root), eq=str(tmp_path))
+        u.Tests.Matchers.that(str(modernizer.root), eq=str(tmp_path))
 
     def test_find_pyproject_files(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").touch()
@@ -32,7 +32,7 @@ class TestFlextInfraPyprojectModernizer:
         files = FlextInfraPyprojectModernizer(
             workspace_root=tmp_path,
         ).find_pyproject_files()
-        tm.that(len(files) >= 2, eq=True)
+        u.Tests.Matchers.that(len(files) >= 2, eq=True)
 
     def test_find_pyproject_files_skips_directories(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").touch()
@@ -41,7 +41,7 @@ class TestFlextInfraPyprojectModernizer:
         files = FlextInfraPyprojectModernizer(
             workspace_root=tmp_path,
         ).find_pyproject_files()
-        tm.that(all(".venv" not in str(path) for path in files), eq=True)
+        u.Tests.Matchers.that(all(".venv" not in str(path) for path in files), eq=True)
 
     def test_process_file_paths(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -53,7 +53,7 @@ class TestFlextInfraPyprojectModernizer:
             dry_run=True,
             skip_comments=False,
         )
-        tm.that(len(changes) >= 0, eq=True)
+        u.Tests.Matchers.that(len(changes) >= 0, eq=True)
         pyproject.write_text("invalid [[[")
         invalid = modernizer.process_file(
             pyproject,
@@ -61,7 +61,7 @@ class TestFlextInfraPyprojectModernizer:
             dry_run=True,
             skip_comments=False,
         )
-        tm.that("invalid TOML" in invalid, eq=True)
+        u.Tests.Matchers.that("invalid TOML" in invalid, eq=True)
 
     def test_process_file_dry_run_and_skip_comments(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -74,14 +74,14 @@ class TestFlextInfraPyprojectModernizer:
             dry_run=True,
             skip_comments=False,
         )
-        tm.that(pyproject.read_text(), eq=original)
+        u.Tests.Matchers.that(pyproject.read_text(), eq=original)
         changes = modernizer.process_file(
             pyproject,
             canonical_dev=[],
             dry_run=True,
             skip_comments=True,
         )
-        tm.that(any("banner" in item for item in changes), eq=False)
+        u.Tests.Matchers.that(any("banner" in item for item in changes), eq=False)
 
     def test_process_file_removes_empty_poetry_groups(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -95,7 +95,7 @@ class TestFlextInfraPyprojectModernizer:
             dry_run=True,
             skip_comments=False,
         )
-        tm.that(any("empty" in item for item in changes), eq=True)
+        u.Tests.Matchers.that(any("empty" in item for item in changes), eq=True)
 
 
 class TestModernizerRunAndMain:
@@ -126,7 +126,7 @@ class TestModernizerRunAndMain:
 
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
         monkeypatch.setattr(u.Infra, "read", _read_doc)
-        tm.that(
+        u.Tests.Matchers.that(
             modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)) in {0, 1},
             eq=True,
         )
@@ -160,7 +160,7 @@ class TestModernizerRunAndMain:
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
         monkeypatch.setattr(u.Infra, "read", _read_doc)
         monkeypatch.setattr(modernizer, "_run_poetry_check", _check)
-        tm.that(
+        u.Tests.Matchers.that(
             modernizer.run(
                 args,
                 u.Infra.CliArgs(workspace=tmp_path, apply=True),
@@ -205,11 +205,11 @@ class TestModernizerRunAndMain:
             return SimpleNamespace(is_failure=False, value=SimpleNamespace(exit_code=1))
 
         monkeypatch.setattr(u.Infra, "run_raw", _run_ok)
-        tm.that(modernizer._run_poetry_check([pyproject]), eq=0)
+        u.Tests.Matchers.that(modernizer._run_poetry_check([pyproject]), eq=0)
         monkeypatch.setattr(u.Infra, "run_raw", _run_fail)
-        tm.that(modernizer._run_poetry_check([pyproject]), eq=1)
+        u.Tests.Matchers.that(modernizer._run_poetry_check([pyproject]), eq=1)
         monkeypatch.setattr(u.Infra, "run_raw", _run_non_zero)
-        tm.that(modernizer._run_poetry_check([pyproject]), eq=1)
+        u.Tests.Matchers.that(modernizer._run_poetry_check([pyproject]), eq=1)
 
     def test_main_cli_paths(self, monkeypatch: pytest.MonkeyPatch) -> None:
         class _ModernizerAdapter(FlextInfraPyprojectModernizer):
@@ -240,9 +240,9 @@ class TestModernizerRunAndMain:
         )
         monkeypatch.setattr("sys.argv", ["modernizer", "--dry-run"])
         monkeypatch.setattr(_ModernizerAdapter, "run", _run_zero)
-        tm.that(FlextInfraPyprojectModernizer.main(), eq=0)
+        u.Tests.Matchers.that(FlextInfraPyprojectModernizer.main(), eq=0)
         monkeypatch.setattr("sys.argv", ["modernizer", "--audit"])
-        tm.that(FlextInfraPyprojectModernizer.main(), eq=0)
+        u.Tests.Matchers.that(FlextInfraPyprojectModernizer.main(), eq=0)
         monkeypatch.setattr("sys.argv", ["modernizer"])
         monkeypatch.setattr(_ModernizerAdapter, "run", _run_forty_two)
-        tm.that(FlextInfraPyprojectModernizer.main(), eq=42)
+        u.Tests.Matchers.that(FlextInfraPyprojectModernizer.main(), eq=42)

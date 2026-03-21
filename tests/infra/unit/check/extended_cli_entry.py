@@ -13,7 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, t, u
 
 import flext_infra.check.__main__ as check_main_mod
 import flext_infra.check.workspace_check as ws_mod
@@ -72,7 +72,7 @@ def _fake_fixer_cls(
 
 class TestWorkspaceCheckCLI:
     def test_no_projects_error(self) -> None:
-        tm.that(ws_mod.main([]), eq=1)
+        u.Tests.Matchers.that(ws_mod.main([]), eq=1)
 
     def test_with_projects_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ok_result = r[list[SimpleNamespace]].ok([SimpleNamespace(passed=True)])
@@ -81,7 +81,7 @@ class TestWorkspaceCheckCLI:
             "FlextInfraWorkspaceChecker",
             _fake_checker_cls(["lint"], ok_result),
         )
-        tm.that(ws_mod.main(["p1", "--gates", "lint"]), eq=0)
+        u.Tests.Matchers.that(ws_mod.main(["p1", "--gates", "lint"]), eq=0)
 
     def test_with_projects_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ok_result = r[list[SimpleNamespace]].ok([SimpleNamespace(passed=False)])
@@ -90,7 +90,7 @@ class TestWorkspaceCheckCLI:
             "FlextInfraWorkspaceChecker",
             _fake_checker_cls(["lint"], ok_result),
         )
-        tm.that(ws_mod.main(["p1", "--gates", "lint"]), eq=1)
+        u.Tests.Matchers.that(ws_mod.main(["p1", "--gates", "lint"]), eq=1)
 
     def test_run_projects_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fail_result = r[list[SimpleNamespace]].fail("error")
@@ -99,7 +99,7 @@ class TestWorkspaceCheckCLI:
             "FlextInfraWorkspaceChecker",
             _fake_checker_cls(["lint"], fail_result),
         )
-        tm.that(ws_mod.main(["p1", "--gates", "lint"]), eq=2)
+        u.Tests.Matchers.that(ws_mod.main(["p1", "--gates", "lint"]), eq=2)
 
 
 class TestFixPyrelfyCLI:
@@ -109,7 +109,7 @@ class TestFixPyrelfyCLI:
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[list[str]].ok([])),
         )
-        tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=0)
+        u.Tests.Matchers.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=0)
 
     def test_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -117,7 +117,7 @@ class TestFixPyrelfyCLI:
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[list[str]].fail("error")),
         )
-        tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=1)
+        u.Tests.Matchers.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=1)
 
 
 def _const_cli_result(code: int) -> Callable[[list[str] | None], int]:
@@ -142,12 +142,12 @@ class TestCheckMainEntryPoint:
     def test_calls_run_cli(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(check_main_mod, "FlextRuntime", _FakeRuntime)
         monkeypatch.setattr(check_main_mod, "run_cli", _fake_run_cli_zero)
-        tm.that(check_main_mod.main(), eq=0)
+        u.Tests.Matchers.that(check_main_mod.main(), eq=0)
 
     def test_returns_exit_code(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(check_main_mod, "FlextRuntime", _FakeRuntime)
         monkeypatch.setattr(check_main_mod, "run_cli", _fake_run_cli_42)
-        tm.that(check_main_mod.main(), eq=42)
+        u.Tests.Matchers.that(check_main_mod.main(), eq=42)
 
 
 class TestRunCLIExtended:
@@ -157,7 +157,9 @@ class TestRunCLIExtended:
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[list[str]].ok([])),
         )
-        tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=0)
+        u.Tests.Matchers.that(
+            FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=0
+        )
 
     def test_fix_pyrefly_config_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -165,10 +167,12 @@ class TestRunCLIExtended:
             "FlextInfraConfigFixer",
             _fake_fixer_cls(r[list[str]].fail("error")),
         )
-        tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=1)
+        u.Tests.Matchers.that(
+            FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=1
+        )
 
     def test_no_command_prints_help(self) -> None:
-        tm.that(FlextInfraWorkspaceChecker.run_cli([]), eq=1)
+        u.Tests.Matchers.that(FlextInfraWorkspaceChecker.run_cli([]), eq=1)
 
     def test_with_relative_reports_dir(
         self,
@@ -200,4 +204,4 @@ class TestRunCLIExtended:
             "--reports-dir",
             "reports/check",
         ])
-        tm.that(exit_code, eq=0)
+        u.Tests.Matchers.that(exit_code, eq=0)

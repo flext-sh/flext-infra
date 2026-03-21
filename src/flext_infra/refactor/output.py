@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from operator import itemgetter
 
-from flext_infra import c, m
+from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )

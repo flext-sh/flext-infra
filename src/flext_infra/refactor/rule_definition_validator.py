@@ -6,7 +6,7 @@ from collections.abc import Mapping
 
 from pydantic import JsonValue
 
-from flext_infra import c
+from flext_infra.constants import c
 
 
 class FlextInfraRefactorRuleDefinitionValidator:

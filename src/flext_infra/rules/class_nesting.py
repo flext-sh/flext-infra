@@ -7,17 +7,19 @@ from pathlib import Path
 import libcst as cst
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import (
-    FlextInfraRefactorClassNestingReconstructor,
-    FlextInfraRefactorClassNestingTransformer,
-    HelperConsolidationTransformer,
-    PreCheckGate,
-    c,
-    m,
-    t,
-    u,
-)
+from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.refactor._post_check_gate import PostCheckGate
+from flext_infra.rules.class_reconstructor import (
+    FlextInfraRefactorClassNestingReconstructor,
+    PreCheckGate,
+)
+from flext_infra.transformers.class_nesting import (
+    FlextInfraRefactorClassNestingTransformer,
+)
+from flext_infra.transformers.helper_consolidation import HelperConsolidationTransformer
+from flext_infra.typings import t
+from flext_infra.utilities import u
 
 
 class ClassNestingRefactorRule:

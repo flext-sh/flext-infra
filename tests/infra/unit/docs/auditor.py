@@ -10,7 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
+from flext_tests import m, u
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests.infra.models import m
@@ -43,7 +43,7 @@ class TestAuditorCore:
         tmp_path: Path,
     ) -> None:
         result = auditor.audit(tmp_path)
-        tm.that(result.is_success or result.is_failure, eq=True)
+        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
 
     def test_valid_scope_returns_success(
         self,
@@ -51,7 +51,7 @@ class TestAuditorCore:
         tmp_path: Path,
     ) -> None:
         result = auditor.audit(tmp_path)
-        tm.ok(result)
+        u.Tests.Matchers.ok(result)
 
     def test_report_structure(
         self,
@@ -61,8 +61,8 @@ class TestAuditorCore:
         result = auditor.audit(tmp_path)
         if result.is_success and result.value:
             report = result.value[0]
-            tm.that(hasattr(report, "scope"), eq=True)
-            tm.that(hasattr(report, "items"), eq=True)
+            u.Tests.Matchers.that(hasattr(report, "scope"), eq=True)
+            u.Tests.Matchers.that(hasattr(report, "items"), eq=True)
 
     def test_issue_structure(self) -> None:
         issue = m.Infra.AuditIssue(
@@ -71,9 +71,9 @@ class TestAuditorCore:
             severity="high",
             message="Link to missing file",
         )
-        tm.that(issue.file, eq="README.md")
-        tm.that(issue.issue_type, eq="broken_link")
-        tm.that(issue.severity, eq="high")
+        u.Tests.Matchers.that(issue.file, eq="README.md")
+        u.Tests.Matchers.that(issue.issue_type, eq="broken_link")
+        u.Tests.Matchers.that(issue.severity, eq="high")
 
     @pytest.mark.parametrize(
         ("project", "projects", "check", "strict", "output_dir"),
@@ -107,13 +107,15 @@ class TestAuditorCore:
             check=check,
             strict=strict,
         )
-        tm.that(result.is_success or result.is_failure, eq=True)
+        u.Tests.Matchers.that(result.is_success or result.is_failure, eq=True)
 
     def test_report_frozen(self) -> None:
-        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        u.Tests.Matchers.that(
+            m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True
+        )
 
     def test_issue_frozen(self) -> None:
-        tm.that(m.Infra.AuditIssue.model_config.get("frozen"), eq=True)
+        u.Tests.Matchers.that(m.Infra.AuditIssue.model_config.get("frozen"), eq=True)
 
 
 class TestAuditorNormalize:
@@ -133,7 +135,7 @@ class TestAuditorNormalize:
         raw: str,
         expected: str,
     ) -> None:
-        tm.that(normalize_link(raw), eq=expected)
+        u.Tests.Matchers.that(normalize_link(raw), eq=expected)
 
     @pytest.mark.parametrize(
         ("text", "target", "expected"),
@@ -153,7 +155,7 @@ class TestAuditorNormalize:
         target: str,
         expected: bool,
     ) -> None:
-        tm.that(should_skip_target(text, target), eq=expected)
+        u.Tests.Matchers.that(should_skip_target(text, target), eq=expected)
 
     @pytest.mark.parametrize(
         ("value", "expected"),
@@ -174,4 +176,4 @@ class TestAuditorNormalize:
         value: str,
         expected: bool,
     ) -> None:
-        tm.that(is_external(value), eq=expected)
+        u.Tests.Matchers.that(is_external(value), eq=expected)
