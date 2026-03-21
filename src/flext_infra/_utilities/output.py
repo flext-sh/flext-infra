@@ -125,7 +125,35 @@ class FlextInfraUtilitiesOutput:
 
 
 class OutputBackend:
+    """Instance-based terminal output formatter with stateful configuration.
+
+    Similar to FlextInfraUtilitiesOutput but uses instance state rather than class state.
+    Allows multiple independent OutputBackend instances with different color/unicode
+    settings and output streams, useful for tests or multi-threaded contexts.
+
+    Instance state:
+        _use_color: Whether to emit ANSI color codes.
+        _use_unicode: Whether to use unicode symbols (✓/✗ vs [OK]/[FAIL]).
+        _stream: TextIO stream for output (typically stderr).
+
+    Comparison:
+        FlextInfraUtilitiesOutput: Global singleton-like state via class methods.
+        OutputBackend: Per-instance configurable state via instance methods.
+
+    Attributes:
+        None (all state is private: _use_color, _use_unicode, _stream).
+
+    """
+
     def __init__(self, *, use_color: bool, use_unicode: bool, stream: TextIO) -> None:
+        """Initialize output backend with terminal capabilities and stream.
+
+        Args:
+            use_color: Emit ANSI color codes (e.g., for terminal with color support).
+            use_unicode: Use unicode box-drawing and status symbols vs ASCII fallbacks.
+            stream: TextIO stream for output (typically sys.stderr or sys.stdout).
+
+        """
         self._use_color = use_color
         self._use_unicode = use_unicode
         self._stream = stream
