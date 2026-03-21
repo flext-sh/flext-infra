@@ -589,5 +589,96 @@ class FlextInfraCodegenConstantDetection:
                         return mod
         return "flext_core"
 
+    @staticmethod
+    def extract_class_attributes_with_mro(
+        class_path: str,
+    ) -> dict[str, m.Infra.ConstantDefinition]:
+        """Extract all attributes from a class including MRO inheritance.
+
+        Args:
+            class_path: Full class path like 'flext_core.FlextConstants'
+
+        Returns:
+            Dict mapping attribute name to ConstantDefinition
+
+        """
+        module_part_count = 2
+        try:
+            parts = class_path.rsplit(".", 1)
+            if len(parts) != module_part_count:
+                return {}
+            module_name, class_name = parts
+            module = __import__(module_name, fromlist=[class_name])
+            cls = getattr(module, class_name)
+        except (ImportError, AttributeError, ValueError):
+            return {}
+
+        result: dict[str, m.Infra.ConstantDefinition] = {}
+        # Walk MRO to get all attributes
+        seen_names: set[str] = set()
+        for base_cls in cls.__mro__[:-1]:  # Exclude object
+            for attr_name in dir(base_cls):
+                if attr_name.startswith("_") or attr_name in seen_names:
+                    continue
+                try:
+                    attr_value = getattr(cls, attr_name)
+                    # Skip dunder methods, but include classes, enums, and constants
+                    if callable(attr_value) and not isinstance(attr_value, type):
+                        # Skip regular methods, but keep type definitions
+                        continue
+                    result[attr_name] = m.Infra.ConstantDefinition(
+                        name=attr_name,
+                        value_repr=repr(attr_value)[:100],  # Limit repr length
+                        type_annotation=type(attr_value).__name__,
+                        file_path="<dynamic>",
+                        class_path=class_name,
+                        project="flext-core",
+                        line=1,
+                    )
+                    seen_names.add(attr_name)
+                except (AttributeError, ValueError, TypeError, RecursionError):
+                    continue
+        return result
+
+    @staticmethod
+    def scan_class_attribute_usages(
+        root_path: Path,
+        class_name: str,
+        exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
+    ) -> tuple[set[str], dict[str, list[tuple[str, int]]]]:
+        """Scan workspace for usages of a specific class's attributes.
+
+        Args:
+            root_path: Root directory to scan
+            class_name: Class name to search for (e.g., 'FlextConstants')
+            exclude_patterns: Directory patterns to exclude
+
+        Returns:
+            Tuple of (used_attribute_names, usage_map with file+line)
+
+        """
+        used_names: set[str] = set()
+        usage_map: dict[str, list[tuple[str, int]]] = {}
+
+        pattern = re.compile(rf"{re.escape(class_name)}\.(\w+)")
+
+        for py_file in root_path.rglob("*.py"):
+            if any(excl in py_file.parts for excl in exclude_patterns):
+                continue
+            try:
+                source = py_file.read_text("utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+
+            for line_num, line in enumerate(source.split("\n"), 1):
+                for match in pattern.finditer(line):
+                    attr_name = match.group(1)
+                    used_names.add(attr_name)
+                    if attr_name not in usage_map:
+                        usage_map[attr_name] = []
+                    usage_map[attr_name].append((str(py_file), line_num))
+
+        return used_names, usage_map
+
 
 __all__ = ["FlextInfraCodegenConstantDetection"]

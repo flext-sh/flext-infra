@@ -66,6 +66,12 @@ class FlextInfraCodegenCommand:
             default=None,
             help="Path to baseline JSON payload for comparison",
         )
+        _ = subs["census"].add_argument(
+            "--class-to-analyze",
+            type=str,
+            default=None,
+            help="Full class path to analyze attributes (e.g., flext_core.FlextConstants)",
+        )
 
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
@@ -109,7 +115,11 @@ class FlextInfraCodegenCommand:
     @staticmethod
     def handle_census(cli: u.Infra.CliArgs) -> int:
         """Handle namespace violation census."""
-        census = FlextInfraCodegenCensus(workspace_root=cli.workspace)
+        class_to_analyze = getattr(cli, "class_to_analyze", None)
+        census = FlextInfraCodegenCensus(
+            workspace_root=cli.workspace,
+            class_to_analyze=class_to_analyze,
+        )
         reports = census.run()
         if cli.output_format == "json":
             output.info(

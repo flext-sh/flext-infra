@@ -30,8 +30,16 @@ from flext_infra.codegen._codegen_governance import FlextInfraCodegenGovernance
 class FlextInfraCodegenCensus(s[bool]):
     """Read-only census service for namespace violation counting."""
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Initialize census service with workspace root."""
+    def __init__(
+        self, workspace_root: Path, class_to_analyze: str | None = None
+    ) -> None:
+        """Initialize census service with workspace root.
+
+        Args:
+            workspace_root: Root directory of workspace
+            class_to_analyze: Optional class path to analyze (e.g., 'flext_core.FlextConstants')
+
+        """
         super().__init__(
             config_type=None,
             config_overrides=None,
@@ -46,6 +54,7 @@ class FlextInfraCodegenCensus(s[bool]):
             wire_classes=None,
         )
         self._workspace_root: Path = workspace_root
+        self._class_to_analyze: str | None = class_to_analyze
 
     @staticmethod
     def _is_fixable(*, rule: str, module: str, message: str) -> bool:
@@ -119,157 +128,93 @@ class FlextInfraCodegenCensus(s[bool]):
                 violation = self._parse_violation(violation_str)
                 if violation is not None:
                     violations.append(violation)
-        self._census_constants_governance(project=project, violations=violations)
+
+        # Census constants and objects
+        src_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
+        if src_dir.is_dir():
+            # Extract all constant definitions (any class with Final)
+            all_defs = (
+                FlextInfraCodegenConstantDetection.extract_all_constant_definitions(
+                    src_dir.parent,
+                    frozenset({".mypy_cache", "__pycache__"}),
+                )
+            )
+
+            # Detect duplicates
+            flat_defs: list[m.Infra.ConstantDefinition] = []
+            for defs in all_defs.values():
+                flat_defs.extend(defs)
+
+            duplicates = FlextInfraCodegenConstantDetection.detect_duplicate_constants(
+                flat_defs,
+            )
+
+            # Count usage
+            all_usage_map = FlextInfraCodegenConstantDetection.scan_all_constant_usages(
+                src_dir.parent,
+                frozenset({".mypy_cache", "__pycache__"}),
+            )
+
+            # Add census info to violations as info (not violations, just counts)
+            unused = FlextInfraCodegenConstantDetection.detect_unused_constants(
+                flat_defs,
+                set(all_usage_map.keys()),
+            )
+
+            violations.append(
+                m.Infra.CensusViolation(
+                    module="census:constants",
+                    rule="CENSUS",
+                    line=0,
+                    message=(
+                        f"Constants: {len(flat_defs)} defined, "
+                        f"{len(flat_defs) - len(unused)} used, "
+                        f"{len(duplicates)} duplicate groups"
+                    ),
+                    fixable=False,
+                )
+            )
+
+        # Census class attributes with MRO (if class_to_analyze provided or default)
+        class_to_analyze = self._class_to_analyze or (
+            "flext_core.FlextConstants" if project.name == "flext-core" else None
+        )
+        if class_to_analyze:
+            class_attrs = (
+                FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
+                    class_to_analyze,
+                )
+            )
+            if class_attrs:
+                # Extract simple class name from full path
+                simple_class_name = class_to_analyze.rsplit(".", 1)[-1]
+                used_attrs, _ = (
+                    FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
+                        self._workspace_root,
+                        simple_class_name,
+                        frozenset({".mypy_cache", "__pycache__"}),
+                    )
+                )
+                unused_attrs = len(class_attrs) - len(used_attrs)
+                violations.append(
+                    m.Infra.CensusViolation(
+                        module=f"census:{simple_class_name}",
+                        rule="CENSUS",
+                        line=0,
+                        message=(
+                            f"{simple_class_name}: {len(class_attrs)} attributes (with MRO), "
+                            f"{len(used_attrs)} used, {unused_attrs} unused"
+                        ),
+                        fixable=False,
+                    )
+                )
+
         return m.Infra.CensusReport(
             project=project.name,
             violations=violations,
             total=len(violations),
             fixable=sum(1 for v in violations if v.fixable),
         )
-
-    def _census_constants_governance(
-        self,
-        *,
-        project: p.Infra.ProjectInfo,
-        violations: list[m.Infra.CensusViolation],
-    ) -> None:
-        src_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return
-        package_dir: Path | None = None
-        for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
-                package_dir = child
-                break
-        if package_dir is None:
-            return
-        constants_file = package_dir / "constants.py"
-        if not constants_file.exists():
-            return
-
-        definitions = FlextInfraCodegenConstantDetection.extract_constant_definitions(
-            file_path=constants_file,
-            project=project.name,
-        )
-
-        hardcoded = FlextInfraCodegenConstantDetection.detect_hardcoded_canonicals(
-            definitions,
-        )
-        violations.extend(
-            m.Infra.CensusViolation(
-                module=definition.file_path,
-                rule="NS-003",
-                line=definition.line,
-                message=(
-                    f"Hardcoded canonical value in '{definition.name}' should use parent MRO reference"
-                ),
-                fixable=True,
-            )
-            for definition in hardcoded
-        )
-
-        # Detect duplicate constants (same name or value across projects)
-        all_definitions: list[m.Infra.ConstantDefinition] = []
-        discovery = FlextInfraUtilitiesDiscovery()
-        projects_result = discovery.discover_projects(self._workspace_root)
-        if projects_result.is_success:
-            discovered_projects: Sequence[p.Infra.ProjectInfo] = (
-                projects_result.unwrap()
-            )
-            for discovered_project in discovered_projects:
-                discovered_pkg: Path | None = None
-                discovered_src = discovered_project.path / c.Infra.Paths.DEFAULT_SRC_DIR
-                if not discovered_src.is_dir():
-                    continue
-                for child in sorted(discovered_src.iterdir()):
-                    if child.is_dir() and (child / c.Infra.Files.INIT_PY).exists():
-                        discovered_pkg = child
-                        break
-                if discovered_pkg is None:
-                    continue
-                discovered_constants = discovered_pkg / "constants.py"
-                if not discovered_constants.exists():
-                    continue
-                defs = FlextInfraCodegenConstantDetection.extract_constant_definitions(
-                    discovered_constants,
-                    discovered_project.name,
-                )
-                all_definitions.extend(defs)
-
-        duplicates = FlextInfraCodegenConstantDetection.detect_duplicate_constants(
-            all_definitions,
-        )
-        violations.extend(
-            m.Infra.CensusViolation(
-                module=dup.definitions[0].file_path,
-                rule="NS-006",
-                line=dup.definitions[0].line,
-                message=(
-                    f"Duplicate constant '{dup.constant_name}' found in {len(dup.definitions)} locations. "
-                    f"Value match: {dup.is_value_identical}"
-                ),
-                fixable=False,
-            )
-            for dup in duplicates
-            if len(dup.definitions) > 1
-        )
-
-        # Scan all usages across workspace
-        all_used_names: set[str] = set()
-        all_usage_map: dict[str, list[tuple[str, int]]] = {}
-
-        if projects_result.is_success:
-            discovered_projects = projects_result.unwrap()
-            for discovered_project in discovered_projects:
-                discovered_src = discovered_project.path / c.Infra.Paths.DEFAULT_SRC_DIR
-                if not discovered_src.is_dir():
-                    continue
-                for py_file in sorted(discovered_src.rglob("*.py")):
-                    used_names, _, all_refs = (
-                        FlextInfraCodegenConstantDetection.scan_constant_usages(
-                            file_path=py_file,
-                            project=discovered_project.name,
-                            collect_all_refs=True,
-                        )
-                    )
-                    all_used_names.update(used_names)
-                    for const_name, line_num in all_refs:
-                        if const_name not in all_usage_map:
-                            all_usage_map[const_name] = []
-                        all_usage_map[const_name].append((str(py_file), line_num))
-
-        unused_constants = FlextInfraCodegenConstantDetection.detect_unused_constants(
-            definitions=definitions,
-            all_used_names=all_used_names,
-        )
-        violations.extend(
-            m.Infra.CensusViolation(
-                module=unused.file_path,
-                rule="NS-004",
-                line=unused.line,
-                message=f"Unused constant '{unused.name}' can be removed",
-                fixable=True,
-            )
-            for unused in unused_constants
-        )
-
-        for py_file in sorted(src_dir.rglob("*.py")):
-            if py_file.name == "constants.py":
-                continue
-            _, direct_refs, _ = FlextInfraCodegenConstantDetection.scan_constant_usages(
-                file_path=py_file,
-                project=project.name,
-            )
-            violations.extend(
-                m.Infra.CensusViolation(
-                    module=ref.file_path,
-                    rule="NS-005",
-                    line=ref.line,
-                    message=(f"Direct ref {ref.full_ref} should use {ref.alias_ref}"),
-                    fixable=True,
-                )
-                for ref in direct_refs
-            )
 
 
 __all__ = ["FlextInfraCodegenCensus"]

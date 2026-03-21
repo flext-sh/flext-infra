@@ -5,9 +5,10 @@ from __future__ import annotations
 import ast
 import re
 import tomllib
+from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class ProjectClassifier:
@@ -40,27 +41,133 @@ class ProjectClassifier:
             family_chains=family_chains,
         )
 
+    def expected_dependency_bases_by_family(self) -> dict[str, list[str]]:
+        project_name, dependencies = self._read_project_metadata()
+        internal_dependencies = self._internal_dependencies(
+            dependencies=dependencies,
+            project_name=project_name,
+        )
+        expected_by_family: dict[str, list[str]] = {}
+        for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
+            expected_by_family[family] = self._expected_parents_for_family(
+                family_suffix=suffix,
+                internal_dependencies=internal_dependencies,
+            )
+        return expected_by_family
+
     def _read_project_metadata(self) -> tuple[str, list[str]]:
         if not self._pyproject_path.is_file():
             return ("", [])
-        parsed: dict[str, str | list[str] | dict[str, str | list[str]]] = tomllib.loads(
+        parsed: t.Infra.TomlConfig = tomllib.loads(
             self._pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT),
         )
-        raw_project = parsed.get(c.Infra.Toml.PROJECT)
-        if not isinstance(raw_project, dict):
-            return ("", [])
-        project_name = ""
-        raw_name = raw_project.get(c.Infra.Toml.NAME, "")
-        if isinstance(raw_name, str):
-            project_name = self._normalize_dependency_name(raw_name)
+        raw_project = self._as_mapping(parsed.get(c.Infra.Toml.PROJECT))
+        project_name = self._normalized_name_from_mapping(raw_project)
         dependencies: list[str] = []
-        raw_dependencies = raw_project.get(c.Infra.Toml.DEPENDENCIES, [])
-        if isinstance(raw_dependencies, list):
-            for raw_dependency in raw_dependencies:
-                dependency_name = self._extract_dependency_name(raw_dependency)
-                if dependency_name:
-                    dependencies.append(dependency_name)
+        self._append_project_dependencies(
+            raw_project=raw_project, dependencies=dependencies
+        )
+        raw_tool = self._as_mapping(parsed.get(c.Infra.Toml.TOOL))
+        raw_poetry = self._as_mapping(raw_tool.get(c.Infra.Toml.POETRY))
+        if not project_name:
+            project_name = self._normalized_name_from_mapping(raw_poetry)
+        self._append_poetry_dependencies(
+            raw_poetry=raw_poetry, dependencies=dependencies
+        )
         return (project_name, dependencies)
+
+    def _as_mapping(
+        self,
+        raw_value: t.Infra.InfraValue,
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        if isinstance(raw_value, dict):
+            return raw_value
+        return {}
+
+    def _normalized_name_from_mapping(
+        self,
+        raw_mapping: Mapping[str, t.Infra.InfraValue],
+    ) -> str:
+        raw_name = raw_mapping.get(c.Infra.Toml.NAME)
+        if isinstance(raw_name, str):
+            return self._normalize_dependency_name(raw_name)
+        return ""
+
+    def _append_project_dependencies(
+        self,
+        *,
+        raw_project: Mapping[str, t.Infra.InfraValue],
+        dependencies: list[str],
+    ) -> None:
+        raw_dependencies = raw_project.get(c.Infra.Toml.DEPENDENCIES)
+        if not isinstance(raw_dependencies, list):
+            return
+        for raw_dependency in raw_dependencies:
+            if not isinstance(raw_dependency, str):
+                continue
+            dependency_name = self._extract_dependency_name(raw_dependency)
+            self._append_unique_dependency(
+                dependency_name=dependency_name,
+                dependencies=dependencies,
+            )
+
+    def _append_poetry_dependencies(
+        self,
+        *,
+        raw_poetry: Mapping[str, t.Infra.InfraValue],
+        dependencies: list[str],
+    ) -> None:
+        self._append_poetry_dependency_mapping(
+            raw_mapping=self._as_mapping(raw_poetry.get(c.Infra.Toml.DEPENDENCIES)),
+            dependencies=dependencies,
+        )
+        raw_group = self._as_mapping(raw_poetry.get(c.Infra.Toml.GROUP))
+        raw_test_group = self._as_mapping(raw_group.get(c.Infra.Toml.TEST))
+        self._append_poetry_dependency_mapping(
+            raw_mapping=self._as_mapping(raw_test_group.get(c.Infra.Toml.DEPENDENCIES)),
+            dependencies=dependencies,
+        )
+
+    def _append_poetry_dependency_mapping(
+        self,
+        *,
+        raw_mapping: Mapping[str, t.Infra.InfraValue],
+        dependencies: list[str],
+    ) -> None:
+        dependency_keys = self._ordered_mapping_keys(raw_mapping)
+        for dependency_key in dependency_keys:
+            dependency_name = self._extract_dependency_name(dependency_key)
+            if dependency_name == "python":
+                continue
+            self._append_unique_dependency(
+                dependency_name=dependency_name,
+                dependencies=dependencies,
+            )
+
+    def _ordered_mapping_keys(
+        self,
+        raw_mapping: Mapping[str, t.Infra.InfraValue],
+    ) -> list[str]:
+        keys = list(raw_mapping.keys())
+        if self._mapping_order_is_trusted(raw_mapping):
+            return keys
+        return sorted(keys)
+
+    def _mapping_order_is_trusted(
+        self,
+        raw_mapping: Mapping[str, t.Infra.InfraValue],
+    ) -> bool:
+        return isinstance(raw_mapping, dict)
+
+    def _append_unique_dependency(
+        self,
+        *,
+        dependency_name: str,
+        dependencies: list[str],
+    ) -> None:
+        if (not dependency_name) or (dependency_name in dependencies):
+            return
+        dependencies.append(dependency_name)
 
     def _internal_dependencies(
         self,
