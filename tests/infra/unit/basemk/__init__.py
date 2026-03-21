@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from .test_engine import (
         test_basemk_cli_generate_to_file,
         test_basemk_cli_generate_to_stdout,

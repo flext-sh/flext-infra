@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from . import (
         _utilities as _utilities,
         basemk as basemk,
@@ -125,7 +123,6 @@ if TYPE_CHECKING:
         test_run_cli_with_multiple_projects,
     )
     from .check.extended_cli_entry_tests import (
-        ProjectResult,
         TestCheckMainEntryPoint,
         TestFixPyrelfyCLI,
         TestRunCLIExtended,
@@ -192,6 +189,7 @@ if TYPE_CHECKING:
     )
     from .check.extended_run_projects_tests import (
         CheckProjectStub,
+        ProjectResult,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
@@ -343,6 +341,7 @@ if TYPE_CHECKING:
     from .deps.test_detector_init import TestFlextInfraRuntimeDevDependencyDetectorInit
     from .deps.test_detector_main import (
         TestFlextInfraRuntimeDevDependencyDetectorRunTypings,
+        TestMainFunction,
     )
     from .deps.test_detector_models import TestFlextInfraDependencyDetectorModels
     from .deps.test_detector_report import (
@@ -585,7 +584,9 @@ if TYPE_CHECKING:
     from .github.main_dispatch_tests import TestRunPrWorkspace
     from .github.main_integration_tests import TestMain
     from .github.main_tests import (
+        SyncOperation,
         TestRunLint,
+        TestRunPr,
         TestRunWorkflows,
         main,
         run_lint,
@@ -593,36 +594,6 @@ if TYPE_CHECKING:
         run_pr_workspace,
         run_workflows,
     )
-    from .github.pr_cli_tests import (
-        TestMainFunction,
-        TestParseArgs,
-        TestSelectorFunction,
-    )
-    from .github.pr_init_tests import TestGithubInit
-    from .github.pr_operations_tests import (
-        TestChecks,
-        TestClose,
-        TestMerge,
-        TestTriggerRelease,
-        TestView,
-    )
-    from .github.pr_tests import TestCreate, TestFlextInfraPrManager, TestStatus
-    from .github.pr_workspace_orchestrate_tests import (
-        TestOrchestrate,
-        TestStaticMethods,
-    )
-    from .github.pr_workspace_tests import (
-        TestCheckpoint,
-        TestFlextInfraPrWorkspaceManager,
-        TestRunPr,
-    )
-    from .github.workflows_tests import (
-        TestFlextInfraWorkflowSyncer,
-        TestRenderTemplate,
-        TestSyncOperation,
-        TestSyncProject,
-    )
-    from .github.workflows_workspace_tests import TestSyncWorkspace, TestWriteReport
     from .io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
     from .io.test_infra_output_edge_cases import (
         TestInfraOutputEdgeCases,
@@ -1071,7 +1042,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "GateClass": ("tests.infra.unit.check.extended_runners_extra_tests", "GateClass"),
     "MockScanner": ("tests.infra.unit._utilities.test_scanning", "MockScanner"),
     "ProjectResult": (
-        "tests.infra.unit.check.extended_cli_entry_tests",
+        "tests.infra.unit.check.extended_run_projects_tests",
         "ProjectResult",
     ),
     "RunCallable": ("tests.infra.unit.check.extended_runners_go_tests", "RunCallable"),
@@ -1092,6 +1063,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "StubUtilities": ("tests.infra.unit.github._stubs", "StubUtilities"),
     "StubVersioning": ("tests.infra.unit.github._stubs", "StubVersioning"),
     "StubWorkspaceManager": ("tests.infra.unit.github._stubs", "StubWorkspaceManager"),
+    "SyncOperation": ("tests.infra.unit.github.main_tests", "SyncOperation"),
     "TestAdrHelpers": (
         "tests.infra.unit.docs.validator_internals_tests",
         "TestAdrHelpers",
@@ -1187,13 +1159,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.check.extended_projects_tests",
         "TestCheckProjectRunners",
     ),
-    "TestCheckpoint": ("tests.infra.unit.github.pr_workspace_tests", "TestCheckpoint"),
-    "TestChecks": ("tests.infra.unit.github.pr_operations_tests", "TestChecks"),
     "TestClassifyIssues": (
         "tests.infra.unit.deps.test_detection_classify",
         "TestClassifyIssues",
     ),
-    "TestClose": ("tests.infra.unit.github.pr_operations_tests", "TestClose"),
     "TestCollectChanges": (
         "tests.infra.unit.release.orchestrator_git_tests",
         "TestCollectChanges",
@@ -1274,7 +1243,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.validate.init_tests",
         "TestCoreModuleInit",
     ),
-    "TestCreate": ("tests.infra.unit.github.pr_tests", "TestCreate"),
     "TestCreateBranches": (
         "tests.infra.unit.release.orchestrator_git_tests",
         "TestCreateBranches",
@@ -1547,14 +1515,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.test_infra_patterns_core",
         "TestFlextInfraPatternsTooling",
     ),
-    "TestFlextInfraPrManager": (
-        "tests.infra.unit.github.pr_tests",
-        "TestFlextInfraPrManager",
-    ),
-    "TestFlextInfraPrWorkspaceManager": (
-        "tests.infra.unit.github.pr_workspace_tests",
-        "TestFlextInfraPrWorkspaceManager",
-    ),
     "TestFlextInfraProtocolsImport": (
         "tests.infra.unit.test_infra_protocols",
         "TestFlextInfraProtocolsImport",
@@ -1627,10 +1587,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.test_infra_version_extra",
         "TestFlextInfraVersionPackageInfo",
     ),
-    "TestFlextInfraWorkflowSyncer": (
-        "tests.infra.unit.github.workflows_tests",
-        "TestFlextInfraWorkflowSyncer",
-    ),
     "TestFlextInfraWorkspace": (
         "tests.infra.unit.test_infra_workspace_init",
         "TestFlextInfraWorkspace",
@@ -1678,7 +1634,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "TestGitPush": ("tests.infra.unit.test_infra_git", "TestGitPush"),
     "TestGitTagOperations": ("tests.infra.unit.test_infra_git", "TestGitTagOperations"),
-    "TestGithubInit": ("tests.infra.unit.github.pr_init_tests", "TestGithubInit"),
     "TestGoFmtEmptyLinesInOutput": (
         "tests.infra.unit.check.extended_error_reporting_tests",
         "TestGoFmtEmptyLinesInOutput",
@@ -1811,7 +1766,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_main_dispatch",
         "TestMainExceptionHandling",
     ),
-    "TestMainFunction": ("tests.infra.unit.github.pr_cli_tests", "TestMainFunction"),
+    "TestMainFunction": (
+        "tests.infra.unit.deps.test_detector_main",
+        "TestMainFunction",
+    ),
     "TestMainHelpAndErrors": (
         "tests.infra.unit.deps.test_main",
         "TestMainHelpAndErrors",
@@ -1860,7 +1818,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.docs.validator_internals_tests",
         "TestMaybeWriteTodo",
     ),
-    "TestMerge": ("tests.infra.unit.github.pr_operations_tests", "TestMerge"),
     "TestMergeChildExports": (
         "tests.infra.unit.codegen.lazy_init_transforms_tests",
         "TestMergeChildExports",
@@ -1929,10 +1886,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.validate.skill_validator_tests",
         "TestNormalizeStringList",
     ),
-    "TestOrchestrate": (
-        "tests.infra.unit.github.pr_workspace_orchestrate_tests",
-        "TestOrchestrate",
-    ),
     "TestOrchestratorBasic": (
         "tests.infra.unit.test_infra_workspace_orchestrator",
         "TestOrchestratorBasic",
@@ -1949,7 +1902,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_internal_sync_validation",
         "TestOwnerFromRemoteUrl",
     ),
-    "TestParseArgs": ("tests.infra.unit.github.pr_cli_tests", "TestParseArgs"),
     "TestParseGitmodules": (
         "tests.infra.unit.deps.test_internal_sync_discovery",
         "TestParseGitmodules",
@@ -2072,10 +2024,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.test_infra_git",
         "TestRemovedCompatibilityMethods",
     ),
-    "TestRenderTemplate": (
-        "tests.infra.unit.github.workflows_tests",
-        "TestRenderTemplate",
-    ),
     "TestResolveAliases": (
         "tests.infra.unit.codegen.lazy_init_generation_tests",
         "TestResolveAliases",
@@ -2146,7 +2094,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_detection_pip_check",
         "TestRunPipCheck",
     ),
-    "TestRunPr": ("tests.infra.unit.github.pr_workspace_tests", "TestRunPr"),
+    "TestRunPr": ("tests.infra.unit.github.main_tests", "TestRunPr"),
     "TestRunPrWorkspace": (
         "tests.infra.unit.github.main_dispatch_tests",
         "TestRunPrWorkspace",
@@ -2244,10 +2192,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.docs.shared_iter_tests",
         "TestSelectedProjectNames",
     ),
-    "TestSelectorFunction": (
-        "tests.infra.unit.github.pr_cli_tests",
-        "TestSelectorFunction",
-    ),
     "TestShouldBubbleUp": (
         "tests.infra.unit.codegen.lazy_init_transforms_tests",
         "TestShouldBubbleUp",
@@ -2272,11 +2216,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.validate.skill_validator_tests",
         "TestSkillValidatorRenderTemplate",
     ),
-    "TestStaticMethods": (
-        "tests.infra.unit.github.pr_workspace_orchestrate_tests",
-        "TestStaticMethods",
-    ),
-    "TestStatus": ("tests.infra.unit.github.pr_tests", "TestStatus"),
     "TestStubChainAnalyze": (
         "tests.infra.unit.validate.stub_chain_tests",
         "TestStubChainAnalyze",
@@ -2315,15 +2254,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "TestSyncMethodEdgeCasesMore",
     ),
     "TestSyncOne": ("tests.infra.unit.deps.test_extra_paths_manager", "TestSyncOne"),
-    "TestSyncOperation": (
-        "tests.infra.unit.github.workflows_tests",
-        "TestSyncOperation",
-    ),
-    "TestSyncProject": ("tests.infra.unit.github.workflows_tests", "TestSyncProject"),
-    "TestSyncWorkspace": (
-        "tests.infra.unit.github.workflows_workspace_tests",
-        "TestSyncWorkspace",
-    ),
     "TestSynthesizedRepoMap": (
         "tests.infra.unit.deps.test_internal_sync_resolve",
         "TestSynthesizedRepoMap",
@@ -2331,10 +2261,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestToInfraValue": (
         "tests.infra.unit.deps.test_detection_models",
         "TestToInfraValue",
-    ),
-    "TestTriggerRelease": (
-        "tests.infra.unit.github.pr_operations_tests",
-        "TestTriggerRelease",
     ),
     "TestUpdateChangelog": (
         "tests.infra.unit.release.orchestrator_helpers_tests",
@@ -2357,7 +2283,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.release.orchestrator_helpers_tests",
         "TestVersionFiles",
     ),
-    "TestView": ("tests.infra.unit.github.pr_operations_tests", "TestView"),
     "TestViolationPattern": (
         "tests.infra.unit.codegen.census_models_tests",
         "TestViolationPattern",
@@ -2466,10 +2391,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestWriteMarkdown": (
         "tests.infra.unit.docs.shared_write_tests",
         "TestWriteMarkdown",
-    ),
-    "TestWriteReport": (
-        "tests.infra.unit.github.workflows_workspace_tests",
-        "TestWriteReport",
     ),
     "_utilities": ("tests.infra.unit._utilities", ""),
     "auditor": ("tests.infra.unit.docs.auditor_tests", "auditor"),
@@ -3793,6 +3714,7 @@ __all__ = [
     "StubUtilities",
     "StubVersioning",
     "StubWorkspaceManager",
+    "SyncOperation",
     "TestAdrHelpers",
     "TestAllDirectoriesScanned",
     "TestAuditorBrokenLinks",
@@ -3819,10 +3741,7 @@ __all__ = [
     "TestCheckMainEntryPoint",
     "TestCheckOnlyMode",
     "TestCheckProjectRunners",
-    "TestCheckpoint",
-    "TestChecks",
     "TestClassifyIssues",
-    "TestClose",
     "TestCollectChanges",
     "TestCollectInternalDeps",
     "TestCollectInternalDepsEdgeCases",
@@ -3843,7 +3762,6 @@ __all__ = [
     "TestConstantsQualityGateCLIDispatch",
     "TestConstantsQualityGateVerdict",
     "TestCoreModuleInit",
-    "TestCreate",
     "TestCreateBranches",
     "TestCreateTag",
     "TestDetectMode",
@@ -3918,8 +3836,6 @@ __all__ = [
     "TestFlextInfraPatternsMarkdown",
     "TestFlextInfraPatternsPatternTypes",
     "TestFlextInfraPatternsTooling",
-    "TestFlextInfraPrManager",
-    "TestFlextInfraPrWorkspaceManager",
     "TestFlextInfraProtocolsImport",
     "TestFlextInfraPyprojectModernizer",
     "TestFlextInfraReportingServiceCore",
@@ -3938,7 +3854,6 @@ __all__ = [
     "TestFlextInfraVersionClass",
     "TestFlextInfraVersionModuleLevel",
     "TestFlextInfraVersionPackageInfo",
-    "TestFlextInfraWorkflowSyncer",
     "TestFlextInfraWorkspace",
     "TestFlextInfraWorkspaceChecker",
     "TestFormattingRunRuffFix",
@@ -3953,7 +3868,6 @@ __all__ = [
     "TestGetDepPaths",
     "TestGitPush",
     "TestGitTagOperations",
-    "TestGithubInit",
     "TestGoFmtEmptyLinesInOutput",
     "TestHandleLazyInit",
     "TestInferOwnerFromOrigin",
@@ -4006,7 +3920,6 @@ __all__ = [
     "TestMarkdownReportSkipsEmptyGates",
     "TestMarkdownReportWithErrors",
     "TestMaybeWriteTodo",
-    "TestMerge",
     "TestMergeChildExports",
     "TestMigratorDryRun",
     "TestMigratorEdgeCases",
@@ -4024,12 +3937,10 @@ __all__ = [
     "TestMroFacadeMethods",
     "TestMypyEmptyLinesInOutput",
     "TestNormalizeStringList",
-    "TestOrchestrate",
     "TestOrchestratorBasic",
     "TestOrchestratorFailures",
     "TestOrchestratorGateNormalization",
     "TestOwnerFromRemoteUrl",
-    "TestParseArgs",
     "TestParseGitmodules",
     "TestParseRepoMap",
     "TestParseViolationInvalid",
@@ -4062,7 +3973,6 @@ __all__ = [
     "TestReleaseMainVersionResolution",
     "TestReleaseOrchestratorExecute",
     "TestRemovedCompatibilityMethods",
-    "TestRenderTemplate",
     "TestResolveAliases",
     "TestResolveRef",
     "TestResolveVersionInteractive",
@@ -4117,15 +4027,12 @@ __all__ = [
     "TestScannerHelpers",
     "TestScannerMultiFile",
     "TestSelectedProjectNames",
-    "TestSelectorFunction",
     "TestShouldBubbleUp",
     "TestShouldUseColor",
     "TestShouldUseUnicode",
     "TestSkillValidatorAstGrepCount",
     "TestSkillValidatorCore",
     "TestSkillValidatorRenderTemplate",
-    "TestStaticMethods",
-    "TestStatus",
     "TestStubChainAnalyze",
     "TestStubChainCore",
     "TestStubChainDiscoverProjects",
@@ -4137,19 +4044,14 @@ __all__ = [
     "TestSyncMethodEdgeCases",
     "TestSyncMethodEdgeCasesMore",
     "TestSyncOne",
-    "TestSyncOperation",
-    "TestSyncProject",
-    "TestSyncWorkspace",
     "TestSynthesizedRepoMap",
     "TestToInfraValue",
-    "TestTriggerRelease",
     "TestUpdateChangelog",
     "TestValidateCore",
     "TestValidateGitRefEdgeCases",
     "TestValidateReport",
     "TestValidateScope",
     "TestVersionFiles",
-    "TestView",
     "TestViolationPattern",
     "TestWorkspaceCheckCLI",
     "TestWorkspaceCheckerBuildGateResult",
@@ -4178,7 +4080,6 @@ __all__ = [
     "TestWorkspaceRootFromParents",
     "TestWriteJson",
     "TestWriteMarkdown",
-    "TestWriteReport",
     "_utilities",
     "auditor",
     "basemk",

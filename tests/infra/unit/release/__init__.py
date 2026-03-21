@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from .flow_tests import TestReleaseMainFlow
     from .main_tests import TestReleaseMainParsing
     from .orchestrator_git_tests import (

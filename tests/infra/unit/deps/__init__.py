@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from .test_detection_classify import TestBuildProjectReport, TestClassifyIssues
     from .test_detection_deptry import TestRunDeptry
     from .test_detection_discover import TestDiscoverProjects

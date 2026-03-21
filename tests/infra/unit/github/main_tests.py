@@ -9,17 +9,19 @@ import pytest
 
 from flext_core import r
 from flext_infra.github import __main__ as github_main
-from flext_infra.github.workflows import SyncOperation
+from flext_infra.github._models import FlextInfraGithubModels as github_m
 from tests.infra.models import m
+
+SyncOperation = github_m.SyncOperation
 from tests.infra.unit.github._stubs import (
     StubLinter,
     StubSyncer,
 )
 
-run_lint = getattr(github_main, "_run_lint")
-run_pr = getattr(github_main, "_run_pr")
-run_pr_workspace = getattr(github_main, "_run_pr_workspace")
-run_workflows = getattr(github_main, "_run_workflows")
+run_lint = getattr(github_main, "run_lint")
+run_pr = getattr(github_main, "run_pr")
+run_pr_workspace = getattr(github_main, "run_pr_workspace")
+run_workflows = getattr(github_main, "run_workflows")
 main = github_main.main
 
 

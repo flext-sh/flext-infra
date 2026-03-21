@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from .cli_tests import (
         test_resolve_gates_maps_type_alias,
         test_run_cli_run_returns_one_for_fail,
@@ -25,7 +23,6 @@ if TYPE_CHECKING:
         test_run_cli_with_multiple_projects,
     )
     from .extended_cli_entry_tests import (
-        ProjectResult,
         TestCheckMainEntryPoint,
         TestFixPyrelfyCLI,
         TestRunCLIExtended,
@@ -92,6 +89,7 @@ if TYPE_CHECKING:
     )
     from .extended_run_projects_tests import (
         CheckProjectStub,
+        ProjectResult,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
@@ -138,7 +136,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "GateClass": ("tests.infra.unit.check.extended_runners_extra_tests", "GateClass"),
     "ProjectResult": (
-        "tests.infra.unit.check.extended_cli_entry_tests",
+        "tests.infra.unit.check.extended_run_projects_tests",
         "ProjectResult",
     ),
     "RunCallable": ("tests.infra.unit.check.extended_runners_go_tests", "RunCallable"),

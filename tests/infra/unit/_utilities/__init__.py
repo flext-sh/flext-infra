@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from .test_discovery_consolidated import (
         TestDiscoveryDiscoverProjects,
         TestDiscoveryFindAllPyprojectFiles,

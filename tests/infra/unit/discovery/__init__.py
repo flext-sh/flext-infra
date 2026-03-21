@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from .test_infra_discovery import TestFlextInfraDiscoveryService
     from .test_infra_discovery_edge_cases import (
         TestFlextInfraDiscoveryServiceUncoveredLines,

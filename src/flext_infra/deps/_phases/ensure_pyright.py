@@ -37,6 +37,8 @@ class EnsurePyrightConfigPhase:
         expected_envs: list[dict[str, str]] = []
         root_src = workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR
         root_tests = workspace_root / c.Infra.Directories.TESTS
+        root_examples = workspace_root / c.Infra.Directories.EXAMPLES
+        root_scripts = workspace_root / c.Infra.Directories.SCRIPTS
         if root_src.exists():
             expected_envs.append({
                 "root": c.Infra.Paths.DEFAULT_SRC_DIR,
@@ -45,6 +47,16 @@ class EnsurePyrightConfigPhase:
         if root_tests.exists():
             expected_envs.append({
                 "root": c.Infra.Directories.TESTS,
+                "reportPrivateUsage": "none",
+            })
+        if root_examples.exists():
+            expected_envs.append({
+                "root": c.Infra.Directories.EXAMPLES,
+                "reportPrivateUsage": "none",
+            })
+        if root_scripts.exists():
+            expected_envs.append({
+                "root": c.Infra.Directories.SCRIPTS,
                 "reportPrivateUsage": "none",
             })
 
@@ -57,6 +69,8 @@ class EnsurePyrightConfigPhase:
             relative_root = child_project.relative_to(workspace_root)
             child_src = child_project / c.Infra.Paths.DEFAULT_SRC_DIR
             child_tests = child_project / c.Infra.Directories.TESTS
+            child_examples = child_project / c.Infra.Directories.EXAMPLES
+            child_scripts = child_project / c.Infra.Directories.SCRIPTS
             if child_src.exists():
                 expected_envs.append({
                     "root": (relative_root / c.Infra.Paths.DEFAULT_SRC_DIR).as_posix(),
@@ -65,6 +79,16 @@ class EnsurePyrightConfigPhase:
             if child_tests.exists():
                 expected_envs.append({
                     "root": (relative_root / c.Infra.Directories.TESTS).as_posix(),
+                    "reportPrivateUsage": "none",
+                })
+            if child_examples.exists():
+                expected_envs.append({
+                    "root": (relative_root / c.Infra.Directories.EXAMPLES).as_posix(),
+                    "reportPrivateUsage": "none",
+                })
+            if child_scripts.exists():
+                expected_envs.append({
+                    "root": (relative_root / c.Infra.Directories.SCRIPTS).as_posix(),
                     "reportPrivateUsage": "none",
                 })
         return expected_envs or default_envs

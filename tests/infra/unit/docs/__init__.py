@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from .auditor_budgets_tests import TestLoadAuditBudgets
     from .auditor_cli_tests import TestAuditorMainCli, TestAuditorScopeFailure
     from .auditor_links_tests import TestAuditorBrokenLinks, TestAuditorToMarkdown

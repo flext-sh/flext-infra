@@ -259,7 +259,7 @@ class FlextInfraCodegenGeneration:
 
         type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
             groups,
-            include_flext_types=not is_l0_typings,
+            include_flext_types=False,
             current_pkg=current_pkg,
         )
 

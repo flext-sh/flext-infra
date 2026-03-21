@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
     from flext_infra.rules.class_nesting import ClassNestingRefactorRule
     from flext_infra.rules.class_reconstructor import (
         FlextInfraRefactorClassNestingReconstructor,

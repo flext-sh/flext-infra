@@ -22,13 +22,13 @@ from flext_infra.gates._base_gate import FlextInfraGateContext
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+from tests.infra.unit.check.extended_gate_go_cmd_tests import run_command_failure_check
 
 from ...helpers import h
 from ._shared_fixtures import (
     create_checker_project,
     patch_gate_run,
 )
-from .test_extended_gate_go_cmd import run_command_failure_check
 
 
 def _create_run_raw_result(

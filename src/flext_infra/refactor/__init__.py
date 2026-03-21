@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
     from flext_infra.refactor import _detectors
     from flext_infra.refactor._detectors.class_placement_detector import (
         ClassPlacementDetector,

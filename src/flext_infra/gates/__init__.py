@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.go import FlextInfraGoGate
     from flext_infra.gates.markdown import FlextInfraMarkdownGate

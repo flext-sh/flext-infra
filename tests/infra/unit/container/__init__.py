@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from .test_infra_container import (
         TestInfraContainerFunctions,
         TestInfraMroPattern,

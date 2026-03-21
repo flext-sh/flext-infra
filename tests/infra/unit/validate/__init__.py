@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
-
     from .basemk_validator_tests import (
         TestBaseMkValidatorCore,
         TestBaseMkValidatorEdgeCases,

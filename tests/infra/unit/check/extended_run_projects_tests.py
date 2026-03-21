@@ -12,10 +12,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.check.workspace_check import (
-    FlextInfraWorkspaceChecker,
-    ProjectResult,
-)
+from flext_infra.check._models import FlextInfraCheckModels as check_m
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+
+ProjectResult = check_m.ProjectResult
 from tests.infra import m
 
 CheckProjectStub = Callable[[Path, list[str], Path], ProjectResult]

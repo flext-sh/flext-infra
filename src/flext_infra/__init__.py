@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 
 if TYPE_CHECKING:
     from flext_core import d, e, h, r, s, x
-    from flext_core.typings import FlextTypes
     from flext_infra import (
         _utilities,
         basemk,
