@@ -16,8 +16,6 @@ from typing import override
 from flext_core import r, s
 from flext_infra import (
     FlextInfraNamespaceValidator,
-    FlextInfraUtilitiesCodegenConstantDetection,
-    FlextInfraUtilitiesCodegenGovernance,
     c,
     m,
     p,
@@ -57,7 +55,7 @@ class FlextInfraCodegenCensus(s[bool]):
     @staticmethod
     def _is_fixable(*, rule: str, module: str, message: str) -> bool:
         _ = message
-        return FlextInfraUtilitiesCodegenGovernance.is_rule_fixable(rule, module)
+        return u.Infra.is_rule_fixable(rule, module)
 
     @staticmethod
     def _parse_violation(violation_str: str) -> m.Infra.CensusViolation | None:
@@ -103,13 +101,11 @@ class FlextInfraCodegenCensus(s[bool]):
         # If analyzing a specific class, do ONLY that (fast path)
         if self._class_to_analyze:
             simple_class_name = self._class_to_analyze.rsplit(".", 1)[-1]
-            census_data = (
-                FlextInfraUtilitiesCodegenConstantDetection.analyze_class_object_census(
-                    self._class_to_analyze,
-                    workspace,
-                    frozenset({".mypy_cache", "__pycache__", ".git", ".reports"}),
-                    max_files=1000,  # Limited for speed
-                )
+            census_data = u.Infra.analyze_class_object_census(
+                self._class_to_analyze,
+                workspace,
+                frozenset({".mypy_cache", "__pycache__", ".git", ".reports"}),
+                max_files=1000,  # Limited for speed
             )
             if census_data:
                 # Create a pseudo-project report for the analyzed class
@@ -180,7 +176,7 @@ class FlextInfraCodegenCensus(s[bool]):
         src_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
         if src_dir.is_dir() and not self._class_to_analyze:
             # Extract all constant definitions (any class with Final)
-            all_defs = FlextInfraUtilitiesCodegenConstantDetection.extract_all_constant_definitions(
+            all_defs = u.Infra.extract_all_constant_definitions(
                 src_dir.parent,
                 frozenset({".mypy_cache", "__pycache__"}),
             )
@@ -190,26 +186,20 @@ class FlextInfraCodegenCensus(s[bool]):
             for defs in all_defs.values():
                 flat_defs.extend(defs)
 
-            duplicates = (
-                FlextInfraUtilitiesCodegenConstantDetection.detect_duplicate_constants(
-                    flat_defs,
-                )
+            duplicates = u.Infra.detect_duplicate_constants(
+                flat_defs,
             )
 
             # Count usage
-            all_usage_map = (
-                FlextInfraUtilitiesCodegenConstantDetection.scan_all_constant_usages(
-                    src_dir.parent,
-                    frozenset({".mypy_cache", "__pycache__"}),
-                )
+            all_usage_map = u.Infra.scan_all_constant_usages(
+                src_dir.parent,
+                frozenset({".mypy_cache", "__pycache__"}),
             )
 
             # Add census info to violations as info (not violations, just counts)
-            unused = (
-                FlextInfraUtilitiesCodegenConstantDetection.detect_unused_constants(
-                    flat_defs,
-                    set(all_usage_map.keys()),
-                )
+            unused = u.Infra.detect_unused_constants(
+                flat_defs,
+                set(all_usage_map.keys()),
             )
 
             violations.append(

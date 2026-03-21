@@ -17,8 +17,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from flext_core import FlextRuntime, r, t
-from flext_infra import FlextInfraUtilitiesDiscovery, m, output
+from flext_core import FlextRuntime, r
+from flext_infra import FlextInfraUtilitiesDiscovery, m, output, t
 
 
 class FlextInfraUtilitiesCli:

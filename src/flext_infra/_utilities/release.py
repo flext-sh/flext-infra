@@ -5,9 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flext_core import FlextLogger, FlextUtilities, r
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.models import FlextInfraModels as m
+from flext_core import FlextLogger, r, u
+from flext_infra import c, m
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -56,7 +55,7 @@ class FlextInfraUtilitiesRelease:
         ])
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            FlextUtilities.write_file(
+            u.write_file(
                 output_path,
                 "\n".join(lines).rstrip() + "\n",
                 encoding=c.Infra.Encoding.DEFAULT,
@@ -96,18 +95,18 @@ class FlextInfraUtilitiesRelease:
             else:
                 updated = existing
             changelog_path.parent.mkdir(parents=True, exist_ok=True)
-            FlextUtilities.write_file(
+            u.write_file(
                 changelog_path,
                 updated,
                 encoding=c.Infra.Encoding.DEFAULT,
             )
             latest_path.parent.mkdir(parents=True, exist_ok=True)
-            FlextUtilities.write_file(
+            u.write_file(
                 latest_path,
                 notes_text,
                 encoding=c.Infra.Encoding.DEFAULT,
             )
-            FlextUtilities.write_file(
+            u.write_file(
                 tagged_path,
                 notes_text,
                 encoding=c.Infra.Encoding.DEFAULT,

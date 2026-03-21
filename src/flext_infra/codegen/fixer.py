@@ -24,7 +24,6 @@ from flext_infra import (
     FlextInfraNamespaceValidator,
     FlextInfraRefactorEngine,
     FlextInfraRefactorMigrateToClassMRO,
-    FlextInfraUtilitiesCodegenTransforms,
     NamespaceEnforcementRewriter,
     NamespaceSourceDetector,
     c,
@@ -419,9 +418,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 continue
             if path.name == c.Infra.Files.INIT_PY:
                 continue
-            if FlextInfraUtilitiesCodegenTransforms.prune_stale_all_assignment(
-                path=path
-            ):
+            if u.Infra.prune_stale_all_assignment(path=path):
                 files_modified.add(str(path))
 
     def _normalize_rewritten_python_files(self, *, files_modified: set[str]) -> None:
@@ -488,7 +485,7 @@ class FlextInfraCodegenFixer(s[bool]):
         tree = u.Infra.parse_module_ast(source_file)
         if tree is None:
             return
-        finals = FlextInfraUtilitiesCodegenTransforms.find_standalone_finals(tree)
+        finals = u.Infra.find_standalone_finals(tree)
         if not finals:
             return
         target_path = pkg_dir / "constants.py"
@@ -523,7 +520,7 @@ class FlextInfraCodegenFixer(s[bool]):
             target_name = ""
             if isinstance(node.target, ast.Name):
                 target_name = node.target.id
-            if FlextInfraUtilitiesCodegenTransforms.name_exists_in_module(
+            if u.Infra.name_exists_in_module(
                 target_name,
                 target_tree,
             ):
@@ -537,12 +534,8 @@ class FlextInfraCodegenFixer(s[bool]):
                     ),
                 )
                 continue
-            FlextInfraUtilitiesCodegenTransforms.copy_required_imports(
-                node, tree, target_tree
-            )
-            if not FlextInfraUtilitiesCodegenTransforms.all_deps_resolvable(
-                node, target_tree
-            ):
+            u.Infra.copy_required_imports(node, tree, target_tree)
+            if not u.Infra.all_deps_resolvable(node, target_tree):
                 violations_skipped.append(
                     m.Infra.CensusViolation(
                         module=str(source_file),
@@ -554,9 +547,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 )
                 continue
             # Insert into target_tree for analysis accumulation
-            insert_idx = FlextInfraUtilitiesCodegenTransforms.find_insert_position(
-                target_tree
-            )
+            insert_idx = u.Infra.find_insert_position(target_tree)
             target_tree.body.insert(insert_idx, node)
             violations_fixed.append(
                 m.Infra.CensusViolation(
@@ -596,10 +587,8 @@ class FlextInfraCodegenFixer(s[bool]):
         tree = u.Infra.parse_module_ast(source_file)
         if tree is None:
             return
-        typevars = FlextInfraUtilitiesCodegenTransforms.find_standalone_typevars(tree)
-        typealiases = FlextInfraUtilitiesCodegenTransforms.find_standalone_typealiases(
-            tree
-        )
+        typevars = u.Infra.find_standalone_typevars(tree)
+        typealiases = u.Infra.find_standalone_typealiases(tree)
         if not typevars and not typealiases:
             return
         target_path = pkg_dir / "typings.py"
@@ -628,7 +617,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 continue
             nodes_to_move.append(tv_node)
         for alias_node in typealiases:
-            target_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(alias_node)
+            target_name = u.Infra.get_node_name(alias_node)
             if target_name.startswith("_"):
                 violations_skipped.append(
                     m.Infra.CensusViolation(
@@ -647,10 +636,10 @@ class FlextInfraCodegenFixer(s[bool]):
         actually_moved: list[ast.stmt] = []
         moved_names: list[str] = []
         for move_node in nodes_to_move:
-            target_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(move_node)
+            target_name = u.Infra.get_node_name(move_node)
             if not target_name:
                 continue
-            if FlextInfraUtilitiesCodegenTransforms.name_exists_in_module(
+            if u.Infra.name_exists_in_module(
                 target_name,
                 target_tree,
             ):
@@ -664,7 +653,7 @@ class FlextInfraCodegenFixer(s[bool]):
                     ),
                 )
                 continue
-            if FlextInfraUtilitiesCodegenTransforms.needs_first_party_import(
+            if u.Infra.needs_first_party_import(
                 move_node,
                 tree,
                 target_tree,
@@ -679,12 +668,12 @@ class FlextInfraCodegenFixer(s[bool]):
                     ),
                 )
                 continue
-            FlextInfraUtilitiesCodegenTransforms.copy_required_imports(
+            u.Infra.copy_required_imports(
                 move_node,
                 tree,
                 target_tree,
             )
-            if not FlextInfraUtilitiesCodegenTransforms.all_deps_resolvable(
+            if not u.Infra.all_deps_resolvable(
                 move_node,
                 target_tree,
             ):
@@ -699,9 +688,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 )
                 continue
             # Insert into target_tree for analysis accumulation
-            insert_idx = FlextInfraUtilitiesCodegenTransforms.find_insert_position(
-                target_tree
-            )
+            insert_idx = u.Infra.find_insert_position(target_tree)
             target_tree.body.insert(insert_idx, move_node)
             kind = "TypeVar" if isinstance(move_node, ast.Assign) else "TypeAlias"
             violations_fixed.append(
