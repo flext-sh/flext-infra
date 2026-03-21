@@ -12,13 +12,15 @@ from typing import override
 from pydantic import JsonValue
 
 from flext_core import r, s
-from flext_infra._utilities.output import output
-from flext_infra.constants import c
-from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from flext_infra.gates._base_gate import FlextInfraGateContext
-from flext_infra.gates._gate_registry import FlextInfraGateRegistry
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import (
+    FlextInfraConfigFixer,
+    FlextInfraGateContext,
+    FlextInfraGateRegistry,
+    c,
+    m,
+    output,
+    u,
+)
 
 
 class FlextInfraWorkspaceChecker(s[bool]):

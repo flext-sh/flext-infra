@@ -19,7 +19,10 @@ from typing import override
 
 from flext_core import r, s
 from flext_infra import (
+    FlextInfraCodegenConstantDetection,
+    FlextInfraCodegenConstantTransformation,
     FlextInfraCodegenLazyInit,
+    FlextInfraCodegenSnapshot,
     FlextInfraCodegenTransforms,
     FlextInfraNamespaceValidator,
     FlextInfraRefactorEngine,
@@ -30,13 +33,6 @@ from flext_infra import (
     m,
     u,
 )
-from flext_infra.codegen._codegen_constant_transformer import (
-    FlextInfraCodegenConstantTransformation,
-)
-from flext_infra.codegen._codegen_constant_visitor import (
-    FlextInfraCodegenConstantDetection,
-)
-from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
 
 
 class FlextInfraCodegenFixer(s[bool]):

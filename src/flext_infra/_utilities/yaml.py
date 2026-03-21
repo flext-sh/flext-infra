@@ -15,8 +15,7 @@ from pathlib import Path
 from pydantic import JsonValue, TypeAdapter, ValidationError
 from yaml import safe_load
 
-from flext_infra import t
-from flext_infra.constants import FlextInfraConstants as c
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesYaml:

@@ -4,12 +4,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import c, t
-from flext_infra.codegen._codegen_constant_visitor import (
+from flext_infra import (
     FlextInfraCodegenConstantDetection,
+    FlextInfraCodegenMetrics,
+    c,
+    m,
+    t,
 )
-from flext_infra.codegen._codegen_metrics import FlextInfraCodegenMetrics
-from flext_infra.models import m
 
 
 class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):

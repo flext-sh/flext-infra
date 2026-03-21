@@ -18,20 +18,18 @@ import json
 import sys
 from pathlib import Path
 
-from flext_infra import c
-from flext_infra._utilities.output import output
-from flext_infra.codegen._codegen_constant_visitor import (
+from flext_infra import (
+    FlextInfraCodegenCensus,
     FlextInfraCodegenConstantDetection,
-)
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.constants_quality_gate import (
     FlextInfraCodegenConstantsQualityGate,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPyTyped,
+    FlextInfraCodegenScaffolder,
+    c,
+    output,
+    u,
 )
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from flext_infra.utilities import u
 
 
 class FlextInfraCodegenCommand:

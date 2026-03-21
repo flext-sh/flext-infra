@@ -7,8 +7,7 @@ from typing import Final, override
 
 import libcst as cst
 
-from flext_infra.codegen._codegen_governance import FlextInfraCodegenGovernance
-from flext_infra.models import m
+from flext_infra import FlextInfraCodegenGovernance, m
 
 
 class FlextInfraCodegenConstantDetection:

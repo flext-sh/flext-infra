@@ -7,9 +7,8 @@ import sys
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-import flext_infra as infra
 from flext_core import FlextLogger
-from flext_infra import m, p, r, u
+from flext_infra import FlextInfraDependencyDetectionService, m, p, r, u
 from flext_infra.deps._detector_runtime import (
     DepsService,
     FlextInfraDependencyDetectorRuntime,
@@ -18,12 +17,6 @@ from flext_infra.deps._detector_runtime import (
     ReportingService,
     RunnerService,
 )
-
-FlextInfraUtilitiesIo = infra.FlextInfraUtilitiesIo
-FlextInfraUtilitiesPaths = infra.FlextInfraUtilitiesPaths
-FlextInfraUtilitiesReporting = infra.FlextInfraUtilitiesReporting
-FlextInfraUtilitiesSubprocess = infra.FlextInfraUtilitiesSubprocess
-FlextInfraDependencyDetectionService = infra.FlextInfraDependencyDetectionService
 
 
 class FlextInfraRuntimeDevDependencyDetector:
@@ -39,65 +32,13 @@ class FlextInfraRuntimeDevDependencyDetector:
     def __init__(self) -> None:
         """Initialize detector runtime services."""
         super().__init__()
-        paths_factory = self._resolve_factory(
-            "FlextInfraUtilitiesPaths",
-            FlextInfraUtilitiesPaths,
-        )
-        reporting_factory = self._resolve_factory(
-            "FlextInfraUtilitiesReporting",
-            FlextInfraUtilitiesReporting,
-        )
-        json_factory = self._resolve_factory(
-            "FlextInfraUtilitiesIo",
-            FlextInfraUtilitiesIo,
-        )
-        deps_factory = self._resolve_factory(
-            "FlextInfraDependencyDetectionService",
-            FlextInfraDependencyDetectionService,
-        )
-        runner_factory = self._resolve_factory(
-            "FlextInfraUtilitiesSubprocess",
-            FlextInfraUtilitiesSubprocess,
-        )
-        paths_obj = paths_factory()
-        reporting_obj = reporting_factory()
-        json_obj = json_factory()
-        deps_obj = deps_factory()
-        runner_obj = runner_factory()
-        if isinstance(paths_obj, PathsService):
-            self.paths = paths_obj
-        else:
-            self.paths = FlextInfraUtilitiesPaths()
-        if isinstance(reporting_obj, ReportingService):
-            self.reporting = reporting_obj
-        else:
-            self.reporting = FlextInfraUtilitiesReporting()
-        if isinstance(json_obj, JsonService):
-            self.json = json_obj
-        else:
-            self.json = FlextInfraUtilitiesIo()
-        if isinstance(deps_obj, DepsService):
-            self.deps = deps_obj
-        else:
-            self.deps = FlextInfraDependencyDetectionService()
-        if isinstance(runner_obj, RunnerService):
-            self.runner = runner_obj
-        else:
-            self.runner = FlextInfraUtilitiesSubprocess()
+        infra_instance = u.Infra()
+        self.paths = infra_instance
+        self.reporting = infra_instance
+        self.json = infra_instance
+        self.deps = FlextInfraDependencyDetectionService()
+        self.runner = infra_instance
         self.log = self.log
-
-    @staticmethod
-    def _resolve_factory(name: str, default: type[object]) -> type[object]:
-        deps_module = sys.modules.get("flext_infra.deps")
-        root_module = sys.modules.get("flext_infra")
-        candidate = (
-            getattr(deps_module, name, default) if deps_module is not None else default
-        )
-        if candidate is default and root_module is not None:
-            root_candidate = getattr(root_module, name, default)
-            if root_candidate is not default:
-                return root_candidate
-        return candidate
 
     @staticmethod
     def parser(default_limits_path: Path) -> argparse.ArgumentParser:
@@ -225,9 +166,5 @@ main = FlextInfraRuntimeDevDependencyDetector.main
 
 __all__ = [
     "FlextInfraRuntimeDevDependencyDetector",
-    "FlextInfraUtilitiesIo",
-    "FlextInfraUtilitiesPaths",
-    "FlextInfraUtilitiesReporting",
-    "FlextInfraUtilitiesSubprocess",
     "main",
 ]

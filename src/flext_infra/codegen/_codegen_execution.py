@@ -11,17 +11,15 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, t
-from flext_infra.codegen._codegen_execution_tools import (
+from flext_infra import (
     FlextInfraCodegenExecutionTools,
+    c,
+    m,
+    t,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import m
 
 
 class FlextInfraCodegenExecution(FlextInfraCodegenExecutionTools):

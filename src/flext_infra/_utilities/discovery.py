@@ -8,7 +8,7 @@ from pathlib import Path
 import libcst as cst
 
 from flext_core import r
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing as p
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.models import FlextInfraModels as m
 
@@ -193,7 +193,7 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def extract_declared_alias_from_facade(file_path: Path) -> str:
         """Extract the single-char alias defined in a facade file."""
-        module = p.parse_module_cst(file_path)
+        module = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if module is None:
             return ""
         for stmt_line in module.body:
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesDiscovery:
         """Extract PEP 562 lazy import map from an __init__.py file."""
         if not init_path.is_file():
             return {}
-        module = p.parse_module_cst(init_path)
+        module = FlextInfraUtilitiesParsing.parse_module_cst(init_path)
         if module is None:
             return {}
         for stmt_line in module.body:
@@ -243,7 +243,7 @@ class FlextInfraUtilitiesDiscovery:
         for element in value.elements:
             if not isinstance(element, cst.DictElement):
                 continue
-            key = p.extract_string_literal(element.key)
+            key = FlextInfraUtilitiesParsing.extract_string_literal(element.key)
             if len(key) != 1 or not key.islower():
                 continue
             if (
@@ -251,7 +251,9 @@ class FlextInfraUtilitiesDiscovery:
                 or not element.value.elements
             ):
                 continue
-            module_name = p.extract_string_literal(element.value.elements[0].value)
+            module_name = FlextInfraUtilitiesParsing.extract_string_literal(
+                element.value.elements[0].value
+            )
             if module_name:
                 result[key] = module_name.split(".")[-1]
         return result

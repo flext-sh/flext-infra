@@ -15,13 +15,16 @@ from pathlib import Path
 from pydantic import JsonValue
 
 from flext_core import r
-from flext_infra import c, m
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.io import FlextInfraUtilitiesIo
-from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
-from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
+from flext_infra import (
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesIo,
+    FlextInfraUtilitiesReporting,
+    FlextInfraUtilitiesSelection,
+    FlextInfraUtilitiesSubprocess,
+    FlextInfraUtilitiesTemplates,
+    c,
+    m,
+)
 
 
 class FlextInfraUtilitiesGithub(

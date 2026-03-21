@@ -18,10 +18,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from flext_core import FlextRuntime, r, t
-from flext_core.models import FlextModels
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.output import output
-from flext_infra.models import FlextInfraModels as m
+from flext_infra import FlextInfraUtilitiesDiscovery, m, output
 
 
 class FlextInfraUtilitiesCli:
@@ -32,7 +29,7 @@ class FlextInfraUtilitiesCli:
     output format, check mode, and project selection.
     """
 
-    class CliArgs(FlextModels.FrozenStrictModel):
+    class CliArgs(m.FrozenStrictModel):
         """Parsed CLI arguments with strict validation.
 
         Immutable model representing resolved command-line arguments,

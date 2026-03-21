@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from flext_infra.check.workspace_check import run_cli
-from flext_infra.utilities import u
+from flext_infra import run_cli, u
 
 
 class FlextInfraCheckCommand:

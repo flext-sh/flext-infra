@@ -38,14 +38,7 @@ if TYPE_CHECKING:
         FlextInfraDependencyDetectionService,
         dm,
     )
-    from flext_infra.deps.detector import (
-        FlextInfraRuntimeDevDependencyDetector,
-        FlextInfraUtilitiesIo,
-        FlextInfraUtilitiesPaths,
-        FlextInfraUtilitiesReporting,
-        FlextInfraUtilitiesSubprocess,
-        main,
-    )
+    from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector, main
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.internal_sync import (
@@ -137,19 +130,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.deps.detector",
         "FlextInfraRuntimeDevDependencyDetector",
     ),
-    "FlextInfraUtilitiesIo": ("flext_infra.deps.detector", "FlextInfraUtilitiesIo"),
-    "FlextInfraUtilitiesPaths": (
-        "flext_infra.deps.detector",
-        "FlextInfraUtilitiesPaths",
-    ),
-    "FlextInfraUtilitiesReporting": (
-        "flext_infra.deps.detector",
-        "FlextInfraUtilitiesReporting",
-    ),
-    "FlextInfraUtilitiesSubprocess": (
-        "flext_infra.deps.detector",
-        "FlextInfraUtilitiesSubprocess",
-    ),
     "InjectCommentsPhase": (
         "flext_infra.deps._phases.inject_comments",
         "InjectCommentsPhase",
@@ -182,10 +162,6 @@ __all__ = [
     "FlextInfraInternalDependencySyncService",
     "FlextInfraPyprojectModernizer",
     "FlextInfraRuntimeDevDependencyDetector",
-    "FlextInfraUtilitiesIo",
-    "FlextInfraUtilitiesPaths",
-    "FlextInfraUtilitiesReporting",
-    "FlextInfraUtilitiesSubprocess",
     "InjectCommentsPhase",
     "_phases",
     "dm",

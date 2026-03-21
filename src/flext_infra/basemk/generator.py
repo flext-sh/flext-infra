@@ -9,13 +9,13 @@ from typing import Protocol, TextIO, override
 
 from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
-    FlextInfraUtilitiesSubprocess,
     c,
     m,
     p,
     r,
     s,
     t,
+    u,
 )
 
 _TEMPLATES_DIR: Path = Path(__file__).resolve().parent.parent / "templates"
@@ -53,7 +53,7 @@ class FlextInfraBaseMkGenerator(s[str]):
     def _get_runner(self) -> p.Infra.CommandRunner:
         """Lazily initialize the command runner."""
         if self._runner is None:
-            self._runner = FlextInfraUtilitiesSubprocess()
+            self._runner = u.Infra()
         return self._runner
 
     @override

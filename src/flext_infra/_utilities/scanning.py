@@ -11,8 +11,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra.models import FlextInfraModels as m
-from flext_infra.protocols import FlextInfraProtocols as p
+from flext_infra import m, p
 
 
 class FlextInfraUtilitiesScanning:

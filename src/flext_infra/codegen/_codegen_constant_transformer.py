@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Final, override
 
 import libcst as cst
 
-from flext_infra.codegen._codegen_constant_visitor import (
+from flext_infra import (
     FlextInfraCodegenConstantDetection,
 )
 

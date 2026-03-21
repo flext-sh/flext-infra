@@ -11,8 +11,7 @@ from __future__ import annotations
 import contextlib
 from pathlib import Path
 
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-from flext_infra.constants import FlextInfraConstants as c
+from flext_infra import FlextInfraUtilitiesSubprocess, c
 
 
 class FlextInfraUtilitiesFormatting:

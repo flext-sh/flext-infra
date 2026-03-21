@@ -7,8 +7,7 @@ from typing import Annotated
 from pydantic import ConfigDict, Field, computed_field, model_serializer
 
 from flext_core import FlextModels
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.typings import FlextInfraTypes as t
+from flext_infra import c, t
 
 
 class FlextInfraCheckModels:

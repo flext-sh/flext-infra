@@ -6,10 +6,7 @@ import shutil
 from pathlib import Path
 
 from flext_core import r
-from flext_infra._utilities.io import FlextInfraUtilitiesIo
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess as S
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.models import FlextInfraModels as m
+from flext_infra import FlextInfraUtilitiesIo, FlextInfraUtilitiesSubprocess, c, m
 
 
 class FlextInfraUtilitiesGit:
@@ -17,36 +14,38 @@ class FlextInfraUtilitiesGit:
 
     @staticmethod
     def git_run(cmd: list[str], cwd: Path | None = None) -> r[str]:
-        return S.capture([c.Infra.Cli.GIT, *cmd], cwd=cwd)
+        return FlextInfraUtilitiesSubprocess.capture([c.Infra.Cli.GIT, *cmd], cwd=cwd)
 
     @staticmethod
     def git_run_checked(cmd: list[str], cwd: Path | None = None) -> r[bool]:
-        return S.run_checked([c.Infra.Cli.GIT, *cmd], cwd=cwd)
+        return FlextInfraUtilitiesSubprocess.run_checked(
+            [c.Infra.Cli.GIT, *cmd], cwd=cwd
+        )
 
     @staticmethod
     def git_is_repo(path: Path) -> bool:
-        return S.run_checked(
+        return FlextInfraUtilitiesSubprocess.run_checked(
             [c.Infra.Cli.GIT, "rev-parse", "--is-inside-work-tree"], cwd=path
         ).is_success
 
     @staticmethod
     def git_current_branch(root: Path) -> r[str]:
-        return S.capture(
+        return FlextInfraUtilitiesSubprocess.capture(
             [c.Infra.Cli.GIT, "rev-parse", "--abbrev-ref", "HEAD"], cwd=root
         )
 
     @staticmethod
     def git_has_changes(root: Path) -> r[bool]:
-        return S.capture([c.Infra.Cli.GIT, "status", "--porcelain"], cwd=root).map(
-            lambda v: bool(v.strip())
-        )
+        return FlextInfraUtilitiesSubprocess.capture(
+            [c.Infra.Cli.GIT, "status", "--porcelain"], cwd=root
+        ).map(lambda v: bool(v.strip()))
 
     @staticmethod
     def git_diff_names(root: Path, *, cached: bool = False) -> r[str]:
         cmd = [c.Infra.Cli.GIT, "diff", "--name-only"]
         if cached:
             cmd.insert(2, "--cached")
-        return S.capture(cmd, cwd=root)
+        return FlextInfraUtilitiesSubprocess.capture(cmd, cwd=root)
 
     @staticmethod
     def git_checkout(
@@ -58,7 +57,7 @@ class FlextInfraUtilitiesGit:
         cmd.append(branch)
         if track:
             cmd.append(track)
-        return S.run_checked(cmd, cwd=root)
+        return FlextInfraUtilitiesSubprocess.run_checked(cmd, cwd=root)
 
     @staticmethod
     def git_fetch(root: Path, remote: str = "", branch: str = "") -> r[bool]:
@@ -67,15 +66,19 @@ class FlextInfraUtilitiesGit:
             cmd.append(remote)
         if branch:
             cmd.append(branch)
-        return S.run_checked(cmd, cwd=root)
+        return FlextInfraUtilitiesSubprocess.run_checked(cmd, cwd=root)
 
     @staticmethod
     def git_add(root: Path, *paths: str) -> r[bool]:
-        return S.run_checked([c.Infra.Cli.GIT, "add", *(paths or ["-A"])], cwd=root)
+        return FlextInfraUtilitiesSubprocess.run_checked(
+            [c.Infra.Cli.GIT, "add", *(paths or ["-A"])], cwd=root
+        )
 
     @staticmethod
     def git_commit(root: Path, msg: str) -> r[bool]:
-        return S.run_checked([c.Infra.Cli.GIT, "commit", "-m", msg], cwd=root)
+        return FlextInfraUtilitiesSubprocess.run_checked(
+            [c.Infra.Cli.GIT, "commit", "-m", msg], cwd=root
+        )
 
     @staticmethod
     def git_push(
@@ -88,7 +91,7 @@ class FlextInfraUtilitiesGit:
             cmd.append(remote)
         if branch:
             cmd.append(branch)
-        return S.run_checked(cmd, cwd=root)
+        return FlextInfraUtilitiesSubprocess.run_checked(cmd, cwd=root)
 
     @staticmethod
     def git_pull(
@@ -101,24 +104,26 @@ class FlextInfraUtilitiesGit:
             cmd.append(remote)
         if branch:
             cmd.append(branch)
-        return S.run_checked(cmd, cwd=root)
+        return FlextInfraUtilitiesSubprocess.run_checked(cmd, cwd=root)
 
     @staticmethod
     def git_tag_exists(root: Path, tag: str) -> r[bool]:
-        return S.capture([c.Infra.Cli.GIT, "tag", "-l", tag], cwd=root).map(
-            lambda v: v.strip() == tag
-        )
+        return FlextInfraUtilitiesSubprocess.capture(
+            [c.Infra.Cli.GIT, "tag", "-l", tag], cwd=root
+        ).map(lambda v: v.strip() == tag)
 
     @staticmethod
     def git_create_tag(root: Path, tag: str, msg: str = "") -> r[bool]:
-        return S.run_checked(
+        return FlextInfraUtilitiesSubprocess.run_checked(
             [c.Infra.Cli.GIT, "tag", "-a", tag, "-m", msg or f"release: {tag}"],
             cwd=root,
         )
 
     @staticmethod
     def git_list_tags(root: Path, *, sort: str = "-v:refname") -> r[str]:
-        return S.capture([c.Infra.Cli.GIT, "tag", f"--sort={sort}"], cwd=root)
+        return FlextInfraUtilitiesSubprocess.capture(
+            [c.Infra.Cli.GIT, "tag", f"--sort={sort}"], cwd=root
+        )
 
     @staticmethod
     def lint_workflows(
@@ -132,7 +137,7 @@ class FlextInfraUtilitiesGit:
                 FlextInfraUtilitiesIo.write_json(report_path, res, sort_keys=True)
             return r[m.Infra.WorkflowLintResult].ok(res)
 
-        out_res = S.run_raw([exe], cwd=root)
+        out_res = FlextInfraUtilitiesSubprocess.run_raw([exe], cwd=root)
         if out_res.is_success:
             p = m.Infra.WorkflowLintResult(
                 status="ok",
