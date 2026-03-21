@@ -12,11 +12,13 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
     from flext_infra.refactor import _detectors
-    from flext_infra.refactor._detectors import (
+    from flext_infra.refactor._detectors.import_collector import ImportCollector
+    from flext_infra.refactor._detectors.module_loader import (
         DetectorScanResultBuilder,
         FlextInfraRefactorDetectorModuleLoader,
+    )
+    from flext_infra.refactor._detectors.python_module_loader_mixin import (
         FlextInfraRefactorDetectorPythonModuleLoaderMixin,
-        ImportCollector,
     )
     from flext_infra.refactor.analysis import (
         FlextInfraRefactorClassNestingAnalyzer,
@@ -97,7 +99,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "DependencyAnalyzer",
     ),
     "DetectorScanResultBuilder": (
-        "flext_infra.refactor._detectors",
+        "flext_infra.refactor._detectors.module_loader",
         "DetectorScanResultBuilder",
     ),
     "FlextInfraNamespaceEnforcer": (
@@ -121,11 +123,11 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraRefactorDependencyAnalyzerFacade",
     ),
     "FlextInfraRefactorDetectorModuleLoader": (
-        "flext_infra.refactor._detectors",
+        "flext_infra.refactor._detectors.module_loader",
         "FlextInfraRefactorDetectorModuleLoader",
     ),
     "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
-        "flext_infra.refactor._detectors",
+        "flext_infra.refactor._detectors.python_module_loader_mixin",
         "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     ),
     "FlextInfraRefactorEngine": (
@@ -197,7 +199,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor.dependency_analyzer",
         "ImportAliasDetector",
     ),
-    "ImportCollector": ("flext_infra.refactor._detectors", "ImportCollector"),
+    "ImportCollector": (
+        "flext_infra.refactor._detectors.import_collector",
+        "ImportCollector",
+    ),
     "InternalImportDetector": (
         "flext_infra.refactor.dependency_analyzer",
         "InternalImportDetector",

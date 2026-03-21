@@ -23,7 +23,7 @@ if TYPE_CHECKING:
         FlextInfraWorkspaceDetector,
         WorkspaceMode,
     )
-    from flext_infra.workspace.maintenance import (
+    from flext_infra.workspace.maintenance.python_version import (
         FlextInfraPythonVersionEnforcer,
         logger,
     )
@@ -41,7 +41,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraProjectMigrator",
     ),
     "FlextInfraPythonVersionEnforcer": (
-        "flext_infra.workspace.maintenance",
+        "flext_infra.workspace.maintenance.python_version",
         "FlextInfraPythonVersionEnforcer",
     ),
     "FlextInfraSyncService": ("flext_infra.workspace.sync", "FlextInfraSyncService"),
@@ -50,7 +50,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraWorkspaceDetector",
     ),
     "WorkspaceMode": ("flext_infra.workspace.detector", "WorkspaceMode"),
-    "logger": ("flext_infra.workspace.maintenance", "logger"),
+    "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "main": ("flext_infra.workspace.sync", "main"),
     "maintenance": ("flext_infra.workspace.maintenance", ""),
 }

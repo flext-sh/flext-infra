@@ -465,27 +465,6 @@ class FlextInfraCodegenLazyInit(s[int]):
                 )
                 lazy_map[subdir.name] = (submodule, "")
             sub_exports = dir_exports[subdir_key]
-
-            # Also extract re-exports from child's __init__.py
-            # (e.g., _context/__init__.py re-exports FlextModelsContextData)
-            child_init = subdir / "__init__.py"
-            if child_init.exists():
-                child_init_tree = u.Infra.parse_module_ast(child_init)
-                if child_init_tree is not None:
-                    _, init_exports = FlextInfraCodegenAstParsing.extract_exports(
-                        child_init_tree
-                    )
-                    if init_exports:
-                        submodule = (
-                            f"{current_pkg}.{subdir.name}"
-                            if current_pkg
-                            else subdir.name
-                        )
-                        for name in init_exports:
-                            if FlextInfraCodegenLazyInit._should_bubble_up(name):
-                                if name not in lazy_map:
-                                    lazy_map[name] = (submodule, name)
-
             # Merge module-level exports from sibling .py files
             for name, (mod, attr) in sub_exports.items():
                 if not FlextInfraCodegenLazyInit._should_bubble_up(name):
