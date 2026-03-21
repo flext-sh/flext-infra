@@ -6,16 +6,12 @@ import argparse
 import os
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from pydantic import TypeAdapter, ValidationError
 
 from flext_core import r
-from flext_infra import c, p, t
-from flext_infra.utilities import u
-
-if TYPE_CHECKING:
-    from flext_infra import m
+from flext_infra import c, m, p, t, u
 
 
 class _WorkspaceReport(Protocol):

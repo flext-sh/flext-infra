@@ -6,9 +6,7 @@ import tomlkit
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
-from flext_infra import c
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import c, m, u
 
 
 class EnsurePytestConfigPhase:

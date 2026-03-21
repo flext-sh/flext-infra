@@ -213,8 +213,9 @@ class FlextInfraExtraPathsManager:
                 tool_table[c.Infra.Toml.MYPY] = mypy_table
                 changed = True
         # NOTE: pyrefly search-path is handled by EnsurePyreflyConfigPhase (SSOT).
-        tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
-        doc[c.Infra.Toml.TOOL] = tool_table
+        if changed:
+            tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
+            doc[c.Infra.Toml.TOOL] = tool_table
         if changed and (not dry_run):
             write_result = u.Infra.write_document(pyproject_path, doc)
             if write_result.is_failure:
@@ -285,8 +286,9 @@ class FlextInfraExtraPathsManager:
                 tool_table[c.Infra.Toml.MYPY] = mypy_table
                 changes.append("synchronized mypy mypy_path")
         # NOTE: pyrefly search-path is handled by EnsurePyreflyConfigPhase (SSOT).
-        tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
-        doc[c.Infra.Toml.TOOL] = tool_table
+        if changes:
+            tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
+            doc[c.Infra.Toml.TOOL] = tool_table
         return changes
 
     @staticmethod

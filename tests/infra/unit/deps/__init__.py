@@ -24,15 +24,6 @@ if TYPE_CHECKING:
     from .test_detection_typings import TestLoadDependencyLimits, TestRunMypyStubHints
     from .test_detection_typings_flow import TestModuleAndTypingsFlow
     from .test_detection_uncovered import TestDetectionUncoveredLines
-    from .test_detection_wrappers import (
-        TestModuleLevelWrappers,
-        test_discover_projects_wrapper,
-        test_get_current_typings_from_pyproject_wrapper,
-        test_get_required_typings_wrapper,
-        test_run_deptry_wrapper,
-        test_run_mypy_stub_hints_wrapper,
-        test_run_pip_check_wrapper,
-    )
     from .test_detector_detect import (
         TestFlextInfraRuntimeDevDependencyDetectorRunDetect,
     )
@@ -410,10 +401,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_detection_typings_flow",
         "TestModuleAndTypingsFlow",
     ),
-    "TestModuleLevelWrappers": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "TestModuleLevelWrappers",
-    ),
     "TestOwnerFromRemoteUrl": (
         "tests.infra.unit.deps.test_internal_sync_validation",
         "TestOwnerFromRemoteUrl",
@@ -550,10 +537,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_path_sync_init",
         "test_detect_mode_with_path_object",
     ),
-    "test_discover_projects_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_discover_projects_wrapper",
-    ),
     "test_ensure_pyrefly_config_phase_apply_errors": (
         "tests.infra.unit.deps.test_modernizer_pyrefly",
         "test_ensure_pyrefly_config_phase_apply_errors",
@@ -601,14 +584,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_flext_infra_pyproject_modernizer_process_file_invalid_toml": (
         "tests.infra.unit.deps.test_modernizer_main_extra",
         "test_flext_infra_pyproject_modernizer_process_file_invalid_toml",
-    ),
-    "test_get_current_typings_from_pyproject_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_get_current_typings_from_pyproject_wrapper",
-    ),
-    "test_get_required_typings_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_get_required_typings_wrapper",
     ),
     "test_helpers_alias_is_reachable_helpers": (
         "tests.infra.unit.deps.test_path_sync_helpers",
@@ -726,18 +701,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_path_sync_rewrite_poetry",
         "test_rewrite_poetry_with_non_dict_value",
     ),
-    "test_run_deptry_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_run_deptry_wrapper",
-    ),
-    "test_run_mypy_stub_hints_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_run_mypy_stub_hints_wrapper",
-    ),
-    "test_run_pip_check_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_run_pip_check_wrapper",
-    ),
     "test_string_zero_return_value": (
         "tests.infra.unit.deps.test_main_dispatch",
         "test_string_zero_return_value",
@@ -832,7 +795,6 @@ __all__ = [
     "TestModernizerRunAndMain",
     "TestModernizerUncoveredLines",
     "TestModuleAndTypingsFlow",
-    "TestModuleLevelWrappers",
     "TestOwnerFromRemoteUrl",
     "TestParseGitmodules",
     "TestParseRepoMap",
@@ -873,7 +835,6 @@ __all__ = [
     "test_dep_name",
     "test_detect_mode_with_nonexistent_path",
     "test_detect_mode_with_path_object",
-    "test_discover_projects_wrapper",
     "test_ensure_pyrefly_config_phase_apply_errors",
     "test_ensure_pyrefly_config_phase_apply_ignore_errors",
     "test_ensure_pyrefly_config_phase_apply_python_version",
@@ -886,8 +847,6 @@ __all__ = [
     "test_extract_requirement_name",
     "test_flext_infra_pyproject_modernizer_find_pyproject_files",
     "test_flext_infra_pyproject_modernizer_process_file_invalid_toml",
-    "test_get_current_typings_from_pyproject_wrapper",
-    "test_get_required_typings_wrapper",
     "test_helpers_alias_is_reachable_helpers",
     "test_helpers_alias_is_reachable_project_obj",
     "test_inject_comments_phase_apply_banner",
@@ -917,9 +876,6 @@ __all__ = [
     "test_rewrite_poetry_no_poetry_table",
     "test_rewrite_poetry_no_tool_table",
     "test_rewrite_poetry_with_non_dict_value",
-    "test_run_deptry_wrapper",
-    "test_run_mypy_stub_hints_wrapper",
-    "test_run_pip_check_wrapper",
     "test_string_zero_return_value",
     "test_sync_extra_paths_missing_root_pyproject",
     "test_sync_extra_paths_success_modes",

@@ -8,14 +8,18 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from flext_core import FlextLogger
-from flext_infra import FlextInfraDependencyDetectionService, m, p, r, u
-from flext_infra.deps._detector_runtime import (
+from flext_infra import (
     DepsService,
+    FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
     JsonService,
     PathsService,
     ReportingService,
     RunnerService,
+    m,
+    p,
+    r,
+    u,
 )
 
 

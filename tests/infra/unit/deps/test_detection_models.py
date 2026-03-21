@@ -9,21 +9,21 @@ from flext_tests import tm
 
 from flext_infra import (
     FlextInfraDependencyDetectionService,
-    dm,
+    m,
     t,
 )
 
 
 class TestFlextInfraDependencyDetectionModels:
     def test_deptry_issue_groups_creation(self) -> None:
-        groups = dm.DeptryIssueGroups()
+        groups = m.Infra.DeptryIssueGroups()
         assert groups.dep001 == []
         assert groups.dep002 == []
         assert groups.dep003 == []
         assert groups.dep004 == []
 
     def test_deptry_report_creation(self) -> None:
-        report = dm.DeptryReport(
+        report = m.Infra.DeptryReport(
             missing=[],
             unused=[],
             transitive=[],
@@ -37,19 +37,19 @@ class TestFlextInfraDependencyDetectionModels:
         tm.that(report.raw_count, eq=0)
 
     def test_project_dependency_report_creation(self) -> None:
-        deptry = dm.DeptryReport(
+        deptry = m.Infra.DeptryReport(
             missing=[],
             unused=[],
             transitive=[],
             dev_in_runtime=[],
             raw_count=0,
         )
-        report = dm.ProjectDependencyReport(project="test-project", deptry=deptry)
+        report = m.Infra.ProjectDependencyReport(project="test-project", deptry=deptry)
         tm.that(report.project, eq="test-project")
         tm.that(report.deptry, eq=deptry)
 
     def test_typings_report_creation(self) -> None:
-        report = dm.TypingsReport(
+        report = m.Infra.TypingsReport(
             required_packages=[],
             hinted=[],
             missing_modules=[],

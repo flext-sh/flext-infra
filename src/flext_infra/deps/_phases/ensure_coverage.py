@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import tomlkit
 from tomlkit.items import Item, Table
 
-from flext_infra import c
-from flext_infra.utilities import u
-
-if TYPE_CHECKING:
-    from flext_infra import m
+from flext_infra import c, m, u
 
 
 class EnsureCoverageConfigPhase:

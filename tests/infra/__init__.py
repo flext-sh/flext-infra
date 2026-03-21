@@ -356,15 +356,6 @@ if TYPE_CHECKING:
     )
     from .unit.deps.test_detection_typings_flow import TestModuleAndTypingsFlow
     from .unit.deps.test_detection_uncovered import TestDetectionUncoveredLines
-    from .unit.deps.test_detection_wrappers import (
-        TestModuleLevelWrappers,
-        test_discover_projects_wrapper,
-        test_get_current_typings_from_pyproject_wrapper,
-        test_get_required_typings_wrapper,
-        test_run_deptry_wrapper,
-        test_run_mypy_stub_hints_wrapper,
-        test_run_pip_check_wrapper,
-    )
     from .unit.deps.test_detector_detect import (
         TestFlextInfraRuntimeDevDependencyDetectorRunDetect,
     )
@@ -1946,10 +1937,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.deps.test_detection_typings_flow",
         "TestModuleAndTypingsFlow",
     ),
-    "TestModuleLevelWrappers": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "TestModuleLevelWrappers",
-    ),
     "TestMroFacadeMethods": (
         "tests.infra.unit.io.test_infra_output_edge_cases",
         "TestMroFacadeMethods",
@@ -2799,10 +2786,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.refactor.test_infra_refactor_namespace_source",
         "test_detects_wrong_source_u_import",
     ),
-    "test_discover_projects_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_discover_projects_wrapper",
-    ),
     "test_engine_always_enables_class_nesting_file_rule": (
         "tests.infra.unit.refactor.test_infra_refactor_engine",
         "test_engine_always_enables_class_nesting_file_rule",
@@ -2966,14 +2949,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_generator_write_to_stream_handles_oserror": (
         "tests.infra.unit.basemk.test_generator_edge_cases",
         "test_generator_write_to_stream_handles_oserror",
-    ),
-    "test_get_current_typings_from_pyproject_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_get_current_typings_from_pyproject_wrapper",
-    ),
-    "test_get_required_typings_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_get_required_typings_wrapper",
     ),
     "test_gitignore_entry_scenarios": (
         "tests.infra.unit.test_infra_workspace_sync",
@@ -3552,18 +3527,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.infra.unit.check.cli_tests",
         "test_run_cli_with_multiple_projects",
     ),
-    "test_run_deptry_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_run_deptry_wrapper",
-    ),
-    "test_run_mypy_stub_hints_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_run_mypy_stub_hints_wrapper",
-    ),
-    "test_run_pip_check_wrapper": (
-        "tests.infra.unit.deps.test_detection_wrappers",
-        "test_run_pip_check_wrapper",
-    ),
     "test_run_raw_cases": (
         "tests.infra.unit.test_infra_subprocess_core",
         "test_run_raw_cases",
@@ -4047,7 +4010,6 @@ __all__ = [
     "TestModernizerRunAndMain",
     "TestModernizerUncoveredLines",
     "TestModuleAndTypingsFlow",
-    "TestModuleLevelWrappers",
     "TestMroFacadeMethods",
     "TestMypyEmptyLinesInOutput",
     "TestOrchestratorBasic",
@@ -4318,7 +4280,6 @@ __all__ = [
     "test_detects_same_project_submodule_alias_import",
     "test_detects_wrong_source_m_import",
     "test_detects_wrong_source_u_import",
-    "test_discover_projects_wrapper",
     "test_engine_always_enables_class_nesting_file_rule",
     "test_ensure_future_annotations_after_docstring",
     "test_ensure_future_annotations_moves_existing_import_to_top",
@@ -4360,8 +4321,6 @@ __all__ = [
     "test_generator_write_to_file",
     "test_generator_write_to_stream",
     "test_generator_write_to_stream_handles_oserror",
-    "test_get_current_typings_from_pyproject_wrapper",
-    "test_get_required_typings_wrapper",
     "test_gitignore_entry_scenarios",
     "test_gitignore_sync_failure",
     "test_gitignore_write_failure",
@@ -4507,9 +4466,6 @@ __all__ = [
     "test_run_cli_run_returns_zero_for_pass",
     "test_run_cli_with_fail_fast_flag",
     "test_run_cli_with_multiple_projects",
-    "test_run_deptry_wrapper",
-    "test_run_mypy_stub_hints_wrapper",
-    "test_run_pip_check_wrapper",
     "test_run_raw_cases",
     "test_signature_propagation_removes_and_adds_keywords",
     "test_signature_propagation_renames_call_keyword",

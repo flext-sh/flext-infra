@@ -16,13 +16,15 @@ from __future__ import annotations
 import sys
 from argparse import ArgumentParser
 
-from flext_infra import c
-from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.docs.builder import FlextInfraDocBuilder
-from flext_infra.docs.fixer import FlextInfraDocFixer
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.utilities import u
+from flext_infra import (
+    FlextInfraDocAuditor,
+    FlextInfraDocBuilder,
+    FlextInfraDocFixer,
+    FlextInfraDocGenerator,
+    FlextInfraDocValidator,
+    c,
+    u,
+)
 
 
 class FlextInfraDocsCommand:

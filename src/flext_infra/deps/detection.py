@@ -6,15 +6,11 @@ import contextlib
 import os
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_core import FlextLogger, r
 from flext_infra import c, m, p, t, u
-
-if TYPE_CHECKING:
-    from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
 
 
 class FlextInfraDependencyDetectionService:
@@ -28,7 +24,7 @@ class FlextInfraDependencyDetectionService:
 
     def __init__(self) -> None:
         """Initialize the dependency detection service with selector, toml, and runner."""
-        self.selector: FlextInfraUtilitiesSelection | None = None
+        self.selector: u.Infra | None = None
         self.toml: p.Infra.TomlReader | None = None
         self.runner: p.Infra.CommandRunner | None = None
 
