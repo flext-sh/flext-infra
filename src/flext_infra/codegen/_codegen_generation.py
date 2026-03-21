@@ -136,6 +136,7 @@ class FlextInfraCodegenGeneration:
         lines: list[str] = ["if TYPE_CHECKING:"]
         if include_flext_types:
             lines.append("    from flext_core.typings import FlextTypes")
+
         if not groups:
             return lines if len(lines) > 1 else []
 

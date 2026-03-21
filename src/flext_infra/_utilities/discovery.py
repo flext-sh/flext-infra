@@ -9,6 +9,7 @@ import libcst as cst
 
 from flext_core import r
 from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing as p
+from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.models import FlextInfraModels as m
 
 
@@ -56,7 +57,10 @@ class FlextInfraUtilitiesDiscovery:
         gitmodules = workspace_root / ".gitmodules"
         if not gitmodules.exists():
             return set()
-        content = gitmodules.read_text(encoding="utf-8")
+        try:
+            content = gitmodules.read_text(encoding="utf-8")
+        except OSError:
+            return set()
         return set(re.findall(r"^\s*path\s*=\s*(.+?)\s*$", content, re.MULTILINE))
 
     @staticmethod
@@ -262,6 +266,46 @@ class FlextInfraUtilitiesDiscovery:
             if child.is_dir() and (child / "__init__.py").is_file():
                 return child.name, child
         return None
+
+    @staticmethod
+    def find_all_pyproject_files(
+        workspace_root: Path,
+        *,
+        skip_dirs: frozenset[str] | None = None,
+        project_paths: list[Path] | None = None,
+    ) -> r[list[Path]]:
+        """Find all pyproject.toml files in the workspace, respecting skip_dirs and project_paths.
+
+        Args:
+            workspace_root: Root directory to search
+            skip_dirs: Directory names to skip during traversal (defaults to c.Infra.SKIP_DIRS)
+            project_paths: If provided, only include files within these paths
+
+        Returns:
+            r[list[Path]]: Result with list of pyproject.toml paths, or failure if OSError occurs
+
+        """
+        if not workspace_root.exists():
+            return r[list[Path]].ok([])
+        effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
+        try:
+            all_files = [
+                p
+                for p in workspace_root.rglob("pyproject.toml")
+                if not any(
+                    part in effective_skip
+                    for part in p.relative_to(workspace_root).parts[:-1]
+                )
+            ]
+        except OSError as exc:
+            return r[list[Path]].fail(f"pyproject file scan failed: {exc}")
+        if project_paths is not None:
+            all_files = [
+                f
+                for f in all_files
+                if any(f.is_relative_to(pp) for pp in project_paths)
+            ]
+        return r[list[Path]].ok(all_files)
 
 
 __all__ = ["FlextInfraUtilitiesDiscovery"]
