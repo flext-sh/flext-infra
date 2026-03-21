@@ -55,6 +55,15 @@ class FlextInfraUtilitiesCli:
             return "apply" if self.apply else "dry-run"
 
         def project_names(self) -> list[str] | None:
+            """Extract project names from single or comma-separated project string.
+
+            Combines --project (single) and --projects (comma-separated) arguments.
+            Strips whitespace and ignores empty entries.
+
+            Returns:
+                List of project names if any specified, None if both arguments empty.
+
+            """
             names: list[str] = []
             if self.project:
                 names.append(self.project)
@@ -63,6 +72,16 @@ class FlextInfraUtilitiesCli:
             return names or None
 
         def project_dirs(self) -> list[Path] | None:
+            """Convert project names to absolute directory paths under workspace.
+
+            Uses project_names() to resolve projects, then prepends workspace root
+            to each name to create full paths.
+
+            Returns:
+                List of Path objects (workspace / project_name) if projects specified.
+                None if no projects were specified via --project or --projects.
+
+            """
             names = self.project_names()
             if names is None:
                 return None
@@ -76,6 +95,25 @@ class FlextInfraUtilitiesCli:
         include_check: bool = False,
         include_project: bool = False,
     ) -> ArgumentParser:
+        """Create base argument parser with optional standard flags.
+
+        Builds a reusable ArgumentParser with common CLI flags that can be
+        selectively enabled via booleans. Always includes --workspace flag.
+
+        This is used as parent parser for primary commands and subcommands,
+        allowing consistent flag handling across all flext_infra CLI tools.
+
+        Args:
+            include_apply: Add --dry-run/--apply mutually exclusive group (default True).
+            include_format: Add --format choice (json|text) (default False).
+            include_check: Add --check boolean flag (default False).
+            include_project: Add --project and --projects string arguments (default False).
+
+        Returns:
+            ArgumentParser configured with selected flags, add_help=False so parent
+            parser can build top-level help without duplication.
+
+        """
         base = ArgumentParser(add_help=False)
         _ = base.add_argument(
             "--workspace",
@@ -131,6 +169,34 @@ class FlextInfraUtilitiesCli:
         include_check: bool = False,
         include_project: bool = False,
     ) -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
+        """Create main parser with subcommands and shared flags.
+
+        Builds an ArgumentParser supporting multiple subcommands (e.g., "check",
+        "fix", "report"). Each subcommand inherits shared flags from parent.
+
+        Structure:
+            flext-cmd [shared-flags] subcommand [subcommand-flags]
+
+        Example:
+            flext-infra --workspace /path check --dry-run
+
+        Args:
+            prog: Program name for parser (e.g., "flext-infra").
+            description: Help text for main parser.
+            subcommands: Dict mapping subcommand names to help strings.
+                Used to build subparsers dynamically.
+            include_apply: Pass to shared flags (add --dry-run/--apply group).
+            include_format: Pass to shared flags (add --format choice).
+            include_check: Pass to shared flags (add --check boolean).
+            include_project: Pass to shared flags (add --project/--projects).
+
+        Returns:
+            Tuple of (main_parser, subcommand_parsers_dict) where:
+            - main_parser: Top-level ArgumentParser accepting shared flags + subcommand
+            - subcommand_parsers_dict: Dict[command_name, ArgumentParser] for each subcommand
+              Each subcommand parser inherits shared flags from parent via MRO.
+
+        """
         shared = FlextInfraUtilitiesCli._shared_flags_parser(
             include_apply=include_apply,
             include_format=include_format,
