@@ -15,7 +15,22 @@ if TYPE_CHECKING:
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
-    from . import _utilities as _utilities
+
+    from . import (
+        _utilities as _utilities,
+        basemk as basemk,
+        check as check,
+        codegen as codegen,
+        container as container,
+        deps as deps,
+        discovery as discovery,
+        docs as docs,
+        github as github,
+        io as io,
+        refactor as refactor,
+        release as release,
+        validate as validate,
+    )
     from ._utilities.test_discovery_consolidated import (
         TestDiscoveryDiscoverProjects,
         TestDiscoveryFindAllPyprojectFiles,
@@ -31,7 +46,6 @@ if TYPE_CHECKING:
         TestSafetyWorkspaceValidation,
     )
     from ._utilities.test_scanning import MockScanner, TestScanFileBatch, TestScanModels
-    from . import basemk as basemk
     from .basemk.test_engine import (
         test_basemk_cli_generate_to_file,
         test_basemk_cli_generate_to_stdout,
@@ -84,7 +98,6 @@ if TYPE_CHECKING:
         test_basemk_main_with_project_name,
         test_basemk_main_with_write_failure,
     )
-    from . import check as check
     from .check._shared_fixtures import (
         RunProjectsMock,
         create_check_project_iter_stub,
@@ -202,8 +215,8 @@ if TYPE_CHECKING:
         TestWorkspaceCheckerDirsWithPy,
         TestWorkspaceCheckerExecute,
         TestWorkspaceCheckerExistingCheckDirs,
-        TestWorkspaceCheckerInitOSError,
         TestWorkspaceCheckerInitialization,
+        TestWorkspaceCheckerInitOSError,
         TestWorkspaceCheckerResolveWorkspaceRootFallback,
     )
     from .check.fix_pyrefly_config_tests import (
@@ -216,7 +229,6 @@ if TYPE_CHECKING:
         test_workspace_check_main_returns_error_without_projects,
     )
     from .check.workspace_tests import TestFlextInfraWorkspaceChecker
-    from . import codegen as codegen
     from .codegen._project_factory import FlextInfraCodegenTestProjectFactory
     from .codegen.autofix_tests import (
         test_in_context_typevar_not_flagged,
@@ -295,13 +307,11 @@ if TYPE_CHECKING:
         TestScaffoldProjectIdempotency,
         TestScaffoldProjectNoop,
     )
-    from . import container as container
     from .container.test_infra_container import (
         TestInfraContainerFunctions,
         TestInfraMroPattern,
         TestInfraServiceRetrieval,
     )
-    from . import deps as deps
     from .deps.test_detection_classify import TestBuildProjectReport, TestClassifyIssues
     from .deps.test_detection_deptry import TestRunDeptry
     from .deps.test_detection_models import (
@@ -510,12 +520,10 @@ if TYPE_CHECKING:
         test_rewrite_poetry_no_tool_table,
         test_rewrite_poetry_with_non_dict_value,
     )
-    from . import discovery as discovery
     from .discovery.test_infra_discovery import TestFlextInfraDiscoveryService
     from .discovery.test_infra_discovery_edge_cases import (
         TestFlextInfraDiscoveryServiceUncoveredLines,
     )
-    from . import docs as docs
     from .docs.auditor_budgets_tests import TestLoadAuditBudgets
     from .docs.auditor_cli_tests import TestAuditorMainCli, TestAuditorScopeFailure
     from .docs.auditor_links_tests import TestAuditorBrokenLinks, TestAuditorToMarkdown
@@ -558,7 +566,6 @@ if TYPE_CHECKING:
         validator,
     )
     from .docs.validator_tests import TestValidateCore, TestValidateReport
-    from . import github as github
     from .github._stubs import (
         StubCommandOutput,
         StubJsonIo,
@@ -574,7 +581,6 @@ if TYPE_CHECKING:
         StubVersioning,
         StubWorkspaceManager,
     )
-    from .github.linter_tests import TestFlextInfraWorkflowLinter
     from .github.main_dispatch_tests import TestRunPrWorkspace
     from .github.main_integration_tests import TestMain
     from .github.main_tests import (
@@ -616,7 +622,6 @@ if TYPE_CHECKING:
         TestSyncProject,
     )
     from .github.workflows_workspace_tests import TestSyncWorkspace, TestWriteReport
-    from . import io as io
     from .io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
     from .io.test_infra_output_edge_cases import (
         TestInfraOutputEdgeCases,
@@ -635,7 +640,6 @@ if TYPE_CHECKING:
         TestShouldUseColor,
         TestShouldUseUnicode,
     )
-    from . import refactor as refactor
     from .refactor.test_infra_refactor_analysis import (
         test_build_impact_map_extracts_rename_entries,
         test_build_impact_map_extracts_signature_entries,
@@ -780,7 +784,6 @@ if TYPE_CHECKING:
         test_skips_union_with_none,
         test_typealias_conversion_preserves_used_typing_siblings,
     )
-    from . import release as release
     from .release._stubs import (
         FakeReporting,
         FakeSelection,
@@ -993,7 +996,6 @@ if TYPE_CHECKING:
         test_sync_root_validation,
         test_sync_success_scenarios,
     )
-    from . import validate as validate
     from .validate.basemk_validator_tests import (
         TestBaseMkValidatorCore,
         TestBaseMkValidatorEdgeCases,
@@ -1215,7 +1217,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestFlextInfraVersionClass": ("tests.infra.unit.test_infra_version_core", "TestFlextInfraVersionClass"),
     "TestFlextInfraVersionModuleLevel": ("tests.infra.unit.test_infra_version_extra", "TestFlextInfraVersionModuleLevel"),
     "TestFlextInfraVersionPackageInfo": ("tests.infra.unit.test_infra_version_extra", "TestFlextInfraVersionPackageInfo"),
-    "TestFlextInfraWorkflowLinter": ("tests.infra.unit.github.linter_tests", "TestFlextInfraWorkflowLinter"),
     "TestFlextInfraWorkflowSyncer": ("tests.infra.unit.github.workflows_tests", "TestFlextInfraWorkflowSyncer"),
     "TestFlextInfraWorkspace": ("tests.infra.unit.test_infra_workspace_init", "TestFlextInfraWorkspace"),
     "TestFlextInfraWorkspaceChecker": ("tests.infra.unit.check.workspace_tests", "TestFlextInfraWorkspaceChecker"),
@@ -1815,10 +1816,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 
 __all__ = [
     "ANSI_RE",
-    "CheckProjectStub",
-    "EngineSafetyStub",
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
+    "CheckProjectStub",
+    "EngineSafetyStub",
     "FakeReporting",
     "FakeSelection",
     "FakeSubprocess",
@@ -1990,7 +1991,6 @@ __all__ = [
     "TestFlextInfraVersionClass",
     "TestFlextInfraVersionModuleLevel",
     "TestFlextInfraVersionPackageInfo",
-    "TestFlextInfraWorkflowLinter",
     "TestFlextInfraWorkflowSyncer",
     "TestFlextInfraWorkspace",
     "TestFlextInfraWorkspaceChecker",
@@ -2589,10 +2589,10 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: dict[str, "FlextTypes.ModuleExport"] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
-def __getattr__(name: str) -> "FlextTypes.ModuleExport":
+def __getattr__(name: str) -> FlextTypes.ModuleExport:
     """Lazy-load module attributes on first access (PEP 562).
 
     A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
@@ -2606,6 +2606,7 @@ def __getattr__(name: str) -> "FlextTypes.ModuleExport":
 
     Raises:
         AttributeError: If attribute not registered.
+
     """
     if name in _LAZY_CACHE:
         return _LAZY_CACHE[name]
@@ -2620,6 +2621,7 @@ def __dir__() -> list[str]:
 
     Returns:
         List of public names from module exports.
+
     """
     return sorted(__all__)
 

@@ -12,7 +12,7 @@ from flext_infra.github import __main__ as github_main
 from tests.infra.models import m
 from tests.infra.unit.github._stubs import StubWorkspaceManager
 
-run_pr_workspace = getattr(github_main, "_run_pr_workspace")
+run_pr_workspace = getattr(github_main, "run_pr_workspace")
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:

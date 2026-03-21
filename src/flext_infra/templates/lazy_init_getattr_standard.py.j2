@@ -1,7 +1,7 @@
-_LAZY_CACHE: dict[str, "FlextTypes.ModuleExport"] = {}
+_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
 
 
-def __getattr__(name: str) -> "FlextTypes.ModuleExport":
+def __getattr__(name: str) -> FlextTypes.ModuleExport:
     """Lazy-load module attributes on first access (PEP 562).
 
     A local cache ``_LAZY_CACHE`` persists resolved objects across repeated

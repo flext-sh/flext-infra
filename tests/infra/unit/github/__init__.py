@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
-    from .linter_tests import TestFlextInfraWorkflowLinter
     from .main_dispatch_tests import TestRunPrWorkspace
     from .main_integration_tests import TestMain
     from .main_tests import (
@@ -59,7 +58,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestCreate": ("tests.infra.unit.github.pr_tests", "TestCreate"),
     "TestFlextInfraPrManager": ("tests.infra.unit.github.pr_tests", "TestFlextInfraPrManager"),
     "TestFlextInfraPrWorkspaceManager": ("tests.infra.unit.github.pr_workspace_tests", "TestFlextInfraPrWorkspaceManager"),
-    "TestFlextInfraWorkflowLinter": ("tests.infra.unit.github.linter_tests", "TestFlextInfraWorkflowLinter"),
     "TestFlextInfraWorkflowSyncer": ("tests.infra.unit.github.workflows_tests", "TestFlextInfraWorkflowSyncer"),
     "TestGithubInit": ("tests.infra.unit.github.pr_init_tests", "TestGithubInit"),
     "TestMain": ("tests.infra.unit.github.main_integration_tests", "TestMain"),
@@ -95,7 +93,6 @@ __all__ = [
     "TestCreate",
     "TestFlextInfraPrManager",
     "TestFlextInfraPrWorkspaceManager",
-    "TestFlextInfraWorkflowLinter",
     "TestFlextInfraWorkflowSyncer",
     "TestGithubInit",
     "TestMain",
