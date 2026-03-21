@@ -61,31 +61,103 @@ if TYPE_CHECKING:
     from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "ConsolidateGroupsPhase": ("flext_infra.deps._phases.consolidate_groups", "ConsolidateGroupsPhase"),
-    "EnsureCoverageConfigPhase": ("flext_infra.deps._phases.ensure_coverage", "EnsureCoverageConfigPhase"),
-    "EnsureExtraPathsPhase": ("flext_infra.deps._phases.ensure_extra_paths", "EnsureExtraPathsPhase"),
-    "EnsureFormattingToolingPhase": ("flext_infra.deps._phases.ensure_formatting", "EnsureFormattingToolingPhase"),
-    "EnsureMypyConfigPhase": ("flext_infra.deps._phases.ensure_mypy", "EnsureMypyConfigPhase"),
-    "EnsureNamespaceToolingPhase": ("flext_infra.deps._phases.ensure_namespace", "EnsureNamespaceToolingPhase"),
-    "EnsurePydanticMypyConfigPhase": ("flext_infra.deps._phases.ensure_pydantic_mypy", "EnsurePydanticMypyConfigPhase"),
-    "EnsurePyreflyConfigPhase": ("flext_infra.deps._phases.ensure_pyrefly", "EnsurePyreflyConfigPhase"),
-    "EnsurePyrightConfigPhase": ("flext_infra.deps._phases.ensure_pyright", "EnsurePyrightConfigPhase"),
-    "EnsurePytestConfigPhase": ("flext_infra.deps._phases.ensure_pytest", "EnsurePytestConfigPhase"),
-    "EnsureRuffConfigPhase": ("flext_infra.deps._phases.ensure_ruff", "EnsureRuffConfigPhase"),
-    "FlextInfraConfigFixer": ("flext_infra.deps.fix_pyrefly_config", "FlextInfraConfigFixer"),
-    "FlextInfraDependencyDetectionHelpers": ("flext_infra.deps.detection", "FlextInfraDependencyDetectionHelpers"),
-    "FlextInfraDependencyDetectionService": ("flext_infra.deps.detection", "FlextInfraDependencyDetectionService"),
-    "FlextInfraDependencyPathSync": ("flext_infra.deps.path_sync", "FlextInfraDependencyPathSync"),
-    "FlextInfraDependencyToolConfig": ("flext_infra.deps.tool_config", "FlextInfraDependencyToolConfig"),
-    "FlextInfraExtraPathsManager": ("flext_infra.deps.extra_paths", "FlextInfraExtraPathsManager"),
-    "FlextInfraInternalDependencySyncService": ("flext_infra.deps.internal_sync", "FlextInfraInternalDependencySyncService"),
-    "FlextInfraPyprojectModernizer": ("flext_infra.deps.modernizer", "FlextInfraPyprojectModernizer"),
-    "FlextInfraRuntimeDevDependencyDetector": ("flext_infra.deps.detector", "FlextInfraRuntimeDevDependencyDetector"),
+    "ConsolidateGroupsPhase": (
+        "flext_infra.deps._phases.consolidate_groups",
+        "ConsolidateGroupsPhase",
+    ),
+    "EnsureCoverageConfigPhase": (
+        "flext_infra.deps._phases.ensure_coverage",
+        "EnsureCoverageConfigPhase",
+    ),
+    "EnsureExtraPathsPhase": (
+        "flext_infra.deps._phases.ensure_extra_paths",
+        "EnsureExtraPathsPhase",
+    ),
+    "EnsureFormattingToolingPhase": (
+        "flext_infra.deps._phases.ensure_formatting",
+        "EnsureFormattingToolingPhase",
+    ),
+    "EnsureMypyConfigPhase": (
+        "flext_infra.deps._phases.ensure_mypy",
+        "EnsureMypyConfigPhase",
+    ),
+    "EnsureNamespaceToolingPhase": (
+        "flext_infra.deps._phases.ensure_namespace",
+        "EnsureNamespaceToolingPhase",
+    ),
+    "EnsurePydanticMypyConfigPhase": (
+        "flext_infra.deps._phases.ensure_pydantic_mypy",
+        "EnsurePydanticMypyConfigPhase",
+    ),
+    "EnsurePyreflyConfigPhase": (
+        "flext_infra.deps._phases.ensure_pyrefly",
+        "EnsurePyreflyConfigPhase",
+    ),
+    "EnsurePyrightConfigPhase": (
+        "flext_infra.deps._phases.ensure_pyright",
+        "EnsurePyrightConfigPhase",
+    ),
+    "EnsurePytestConfigPhase": (
+        "flext_infra.deps._phases.ensure_pytest",
+        "EnsurePytestConfigPhase",
+    ),
+    "EnsureRuffConfigPhase": (
+        "flext_infra.deps._phases.ensure_ruff",
+        "EnsureRuffConfigPhase",
+    ),
+    "FlextInfraConfigFixer": (
+        "flext_infra.deps.fix_pyrefly_config",
+        "FlextInfraConfigFixer",
+    ),
+    "FlextInfraDependencyDetectionHelpers": (
+        "flext_infra.deps.detection",
+        "FlextInfraDependencyDetectionHelpers",
+    ),
+    "FlextInfraDependencyDetectionService": (
+        "flext_infra.deps.detection",
+        "FlextInfraDependencyDetectionService",
+    ),
+    "FlextInfraDependencyPathSync": (
+        "flext_infra.deps.path_sync",
+        "FlextInfraDependencyPathSync",
+    ),
+    "FlextInfraDependencyToolConfig": (
+        "flext_infra.deps.tool_config",
+        "FlextInfraDependencyToolConfig",
+    ),
+    "FlextInfraExtraPathsManager": (
+        "flext_infra.deps.extra_paths",
+        "FlextInfraExtraPathsManager",
+    ),
+    "FlextInfraInternalDependencySyncService": (
+        "flext_infra.deps.internal_sync",
+        "FlextInfraInternalDependencySyncService",
+    ),
+    "FlextInfraPyprojectModernizer": (
+        "flext_infra.deps.modernizer",
+        "FlextInfraPyprojectModernizer",
+    ),
+    "FlextInfraRuntimeDevDependencyDetector": (
+        "flext_infra.deps.detector",
+        "FlextInfraRuntimeDevDependencyDetector",
+    ),
     "FlextInfraUtilitiesIo": ("flext_infra.deps.detector", "FlextInfraUtilitiesIo"),
-    "FlextInfraUtilitiesPaths": ("flext_infra.deps.detector", "FlextInfraUtilitiesPaths"),
-    "FlextInfraUtilitiesReporting": ("flext_infra.deps.detector", "FlextInfraUtilitiesReporting"),
-    "FlextInfraUtilitiesSubprocess": ("flext_infra.deps.detector", "FlextInfraUtilitiesSubprocess"),
-    "InjectCommentsPhase": ("flext_infra.deps._phases.inject_comments", "InjectCommentsPhase"),
+    "FlextInfraUtilitiesPaths": (
+        "flext_infra.deps.detector",
+        "FlextInfraUtilitiesPaths",
+    ),
+    "FlextInfraUtilitiesReporting": (
+        "flext_infra.deps.detector",
+        "FlextInfraUtilitiesReporting",
+    ),
+    "FlextInfraUtilitiesSubprocess": (
+        "flext_infra.deps.detector",
+        "FlextInfraUtilitiesSubprocess",
+    ),
+    "InjectCommentsPhase": (
+        "flext_infra.deps._phases.inject_comments",
+        "InjectCommentsPhase",
+    ),
     "_phases": ("flext_infra.deps._phases", ""),
     "dm": ("flext_infra.deps.detection", "dm"),
     "main": ("flext_infra.deps.detector", "main"),

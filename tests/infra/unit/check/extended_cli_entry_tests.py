@@ -19,10 +19,10 @@ import flext_infra.check.__main__ as check_main_mod
 import flext_infra.check.workspace_check as ws_mod
 import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
 from flext_core import r, t
-from flext_infra.check.workspace_check import (
-    FlextInfraWorkspaceChecker,
-    ProjectResult,
-)
+from flext_infra.check._models import FlextInfraCheckModels as check_m
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+
+ProjectResult = check_m.ProjectResult
 
 from ...models import m
 

@@ -49,29 +49,98 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "TestBuildTargets": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestBuildTargets"),
-    "TestBumpNextDev": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestBumpNextDev"),
-    "TestCollectChanges": ("tests.infra.unit.release.orchestrator_git_tests", "TestCollectChanges"),
-    "TestCreateBranches": ("tests.infra.unit.release.orchestrator_git_tests", "TestCreateBranches"),
-    "TestCreateTag": ("tests.infra.unit.release.orchestrator_git_tests", "TestCreateTag"),
-    "TestDispatchPhase": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestDispatchPhase"),
-    "TestGenerateNotes": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestGenerateNotes"),
-    "TestPhaseBuild": ("tests.infra.unit.release.orchestrator_phases_tests", "TestPhaseBuild"),
-    "TestPhasePublish": ("tests.infra.unit.release.orchestrator_publish_tests", "TestPhasePublish"),
-    "TestPhaseValidate": ("tests.infra.unit.release.orchestrator_phases_tests", "TestPhaseValidate"),
-    "TestPhaseVersion": ("tests.infra.unit.release.orchestrator_phases_tests", "TestPhaseVersion"),
-    "TestPreviousTag": ("tests.infra.unit.release.orchestrator_git_tests", "TestPreviousTag"),
-    "TestPushRelease": ("tests.infra.unit.release.orchestrator_git_tests", "TestPushRelease"),
-    "TestReleaseInit": ("tests.infra.unit.release.release_init_tests", "TestReleaseInit"),
-    "TestReleaseMainFlow": ("tests.infra.unit.release.flow_tests", "TestReleaseMainFlow"),
-    "TestReleaseMainParsing": ("tests.infra.unit.release.main_tests", "TestReleaseMainParsing"),
-    "TestReleaseMainTagResolution": ("tests.infra.unit.release.version_resolution_tests", "TestReleaseMainTagResolution"),
-    "TestReleaseMainVersionResolution": ("tests.infra.unit.release.version_resolution_tests", "TestReleaseMainVersionResolution"),
-    "TestReleaseOrchestratorExecute": ("tests.infra.unit.release.orchestrator_tests", "TestReleaseOrchestratorExecute"),
-    "TestResolveVersionInteractive": ("tests.infra.unit.release.version_resolution_tests", "TestResolveVersionInteractive"),
-    "TestRunMake": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestRunMake"),
-    "TestUpdateChangelog": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestUpdateChangelog"),
-    "TestVersionFiles": ("tests.infra.unit.release.orchestrator_helpers_tests", "TestVersionFiles"),
+    "TestBuildTargets": (
+        "tests.infra.unit.release.orchestrator_helpers_tests",
+        "TestBuildTargets",
+    ),
+    "TestBumpNextDev": (
+        "tests.infra.unit.release.orchestrator_helpers_tests",
+        "TestBumpNextDev",
+    ),
+    "TestCollectChanges": (
+        "tests.infra.unit.release.orchestrator_git_tests",
+        "TestCollectChanges",
+    ),
+    "TestCreateBranches": (
+        "tests.infra.unit.release.orchestrator_git_tests",
+        "TestCreateBranches",
+    ),
+    "TestCreateTag": (
+        "tests.infra.unit.release.orchestrator_git_tests",
+        "TestCreateTag",
+    ),
+    "TestDispatchPhase": (
+        "tests.infra.unit.release.orchestrator_helpers_tests",
+        "TestDispatchPhase",
+    ),
+    "TestGenerateNotes": (
+        "tests.infra.unit.release.orchestrator_helpers_tests",
+        "TestGenerateNotes",
+    ),
+    "TestPhaseBuild": (
+        "tests.infra.unit.release.orchestrator_phases_tests",
+        "TestPhaseBuild",
+    ),
+    "TestPhasePublish": (
+        "tests.infra.unit.release.orchestrator_publish_tests",
+        "TestPhasePublish",
+    ),
+    "TestPhaseValidate": (
+        "tests.infra.unit.release.orchestrator_phases_tests",
+        "TestPhaseValidate",
+    ),
+    "TestPhaseVersion": (
+        "tests.infra.unit.release.orchestrator_phases_tests",
+        "TestPhaseVersion",
+    ),
+    "TestPreviousTag": (
+        "tests.infra.unit.release.orchestrator_git_tests",
+        "TestPreviousTag",
+    ),
+    "TestPushRelease": (
+        "tests.infra.unit.release.orchestrator_git_tests",
+        "TestPushRelease",
+    ),
+    "TestReleaseInit": (
+        "tests.infra.unit.release.release_init_tests",
+        "TestReleaseInit",
+    ),
+    "TestReleaseMainFlow": (
+        "tests.infra.unit.release.flow_tests",
+        "TestReleaseMainFlow",
+    ),
+    "TestReleaseMainParsing": (
+        "tests.infra.unit.release.main_tests",
+        "TestReleaseMainParsing",
+    ),
+    "TestReleaseMainTagResolution": (
+        "tests.infra.unit.release.version_resolution_tests",
+        "TestReleaseMainTagResolution",
+    ),
+    "TestReleaseMainVersionResolution": (
+        "tests.infra.unit.release.version_resolution_tests",
+        "TestReleaseMainVersionResolution",
+    ),
+    "TestReleaseOrchestratorExecute": (
+        "tests.infra.unit.release.orchestrator_tests",
+        "TestReleaseOrchestratorExecute",
+    ),
+    "TestResolveVersionInteractive": (
+        "tests.infra.unit.release.version_resolution_tests",
+        "TestResolveVersionInteractive",
+    ),
+    "TestRunMake": (
+        "tests.infra.unit.release.orchestrator_helpers_tests",
+        "TestRunMake",
+    ),
+    "TestUpdateChangelog": (
+        "tests.infra.unit.release.orchestrator_helpers_tests",
+        "TestUpdateChangelog",
+    ),
+    "TestVersionFiles": (
+        "tests.infra.unit.release.orchestrator_helpers_tests",
+        "TestVersionFiles",
+    ),
     "workspace_root": ("tests.infra.unit.release.orchestrator_tests", "workspace_root"),
 }
 

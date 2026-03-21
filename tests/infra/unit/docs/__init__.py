@@ -56,44 +56,110 @@ if TYPE_CHECKING:
     from .validator_tests import TestValidateCore, TestValidateReport
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "TestAdrHelpers": ("tests.infra.unit.docs.validator_internals_tests", "TestAdrHelpers"),
-    "TestAuditorBrokenLinks": ("tests.infra.unit.docs.auditor_links_tests", "TestAuditorBrokenLinks"),
+    "TestAdrHelpers": (
+        "tests.infra.unit.docs.validator_internals_tests",
+        "TestAdrHelpers",
+    ),
+    "TestAuditorBrokenLinks": (
+        "tests.infra.unit.docs.auditor_links_tests",
+        "TestAuditorBrokenLinks",
+    ),
     "TestAuditorCore": ("tests.infra.unit.docs.auditor_tests", "TestAuditorCore"),
-    "TestAuditorForbiddenTerms": ("tests.infra.unit.docs.auditor_scope_tests", "TestAuditorForbiddenTerms"),
-    "TestAuditorMainCli": ("tests.infra.unit.docs.auditor_cli_tests", "TestAuditorMainCli"),
-    "TestAuditorNormalize": ("tests.infra.unit.docs.auditor_tests", "TestAuditorNormalize"),
-    "TestAuditorScope": ("tests.infra.unit.docs.auditor_scope_tests", "TestAuditorScope"),
-    "TestAuditorScopeFailure": ("tests.infra.unit.docs.auditor_cli_tests", "TestAuditorScopeFailure"),
-    "TestAuditorToMarkdown": ("tests.infra.unit.docs.auditor_links_tests", "TestAuditorToMarkdown"),
+    "TestAuditorForbiddenTerms": (
+        "tests.infra.unit.docs.auditor_scope_tests",
+        "TestAuditorForbiddenTerms",
+    ),
+    "TestAuditorMainCli": (
+        "tests.infra.unit.docs.auditor_cli_tests",
+        "TestAuditorMainCli",
+    ),
+    "TestAuditorNormalize": (
+        "tests.infra.unit.docs.auditor_tests",
+        "TestAuditorNormalize",
+    ),
+    "TestAuditorScope": (
+        "tests.infra.unit.docs.auditor_scope_tests",
+        "TestAuditorScope",
+    ),
+    "TestAuditorScopeFailure": (
+        "tests.infra.unit.docs.auditor_cli_tests",
+        "TestAuditorScopeFailure",
+    ),
+    "TestAuditorToMarkdown": (
+        "tests.infra.unit.docs.auditor_links_tests",
+        "TestAuditorToMarkdown",
+    ),
     "TestBuildScopes": ("tests.infra.unit.docs.shared_tests", "TestBuildScopes"),
     "TestBuilderCore": ("tests.infra.unit.docs.builder_tests", "TestBuilderCore"),
-    "TestBuilderScope": ("tests.infra.unit.docs.builder_scope_tests", "TestBuilderScope"),
+    "TestBuilderScope": (
+        "tests.infra.unit.docs.builder_scope_tests",
+        "TestBuilderScope",
+    ),
     "TestFixerCore": ("tests.infra.unit.docs.fixer_tests", "TestFixerCore"),
-    "TestFixerMaybeFixLink": ("tests.infra.unit.docs.fixer_internals_tests", "TestFixerMaybeFixLink"),
-    "TestFixerProcessFile": ("tests.infra.unit.docs.fixer_internals_tests", "TestFixerProcessFile"),
+    "TestFixerMaybeFixLink": (
+        "tests.infra.unit.docs.fixer_internals_tests",
+        "TestFixerMaybeFixLink",
+    ),
+    "TestFixerProcessFile": (
+        "tests.infra.unit.docs.fixer_internals_tests",
+        "TestFixerProcessFile",
+    ),
     "TestFixerScope": ("tests.infra.unit.docs.fixer_internals_tests", "TestFixerScope"),
     "TestFixerToc": ("tests.infra.unit.docs.fixer_internals_tests", "TestFixerToc"),
-    "TestFlextInfraDocScope": ("tests.infra.unit.docs.shared_tests", "TestFlextInfraDocScope"),
+    "TestFlextInfraDocScope": (
+        "tests.infra.unit.docs.shared_tests",
+        "TestFlextInfraDocScope",
+    ),
     "TestFlextInfraDocs": ("tests.infra.unit.docs.init_tests", "TestFlextInfraDocs"),
     "TestGeneratorCore": ("tests.infra.unit.docs.generator_tests", "TestGeneratorCore"),
-    "TestGeneratorHelpers": ("tests.infra.unit.docs.generator_internals_tests", "TestGeneratorHelpers"),
-    "TestGeneratorScope": ("tests.infra.unit.docs.generator_internals_tests", "TestGeneratorScope"),
-    "TestIterMarkdownFiles": ("tests.infra.unit.docs.shared_iter_tests", "TestIterMarkdownFiles"),
-    "TestLoadAuditBudgets": ("tests.infra.unit.docs.auditor_budgets_tests", "TestLoadAuditBudgets"),
+    "TestGeneratorHelpers": (
+        "tests.infra.unit.docs.generator_internals_tests",
+        "TestGeneratorHelpers",
+    ),
+    "TestGeneratorScope": (
+        "tests.infra.unit.docs.generator_internals_tests",
+        "TestGeneratorScope",
+    ),
+    "TestIterMarkdownFiles": (
+        "tests.infra.unit.docs.shared_iter_tests",
+        "TestIterMarkdownFiles",
+    ),
+    "TestLoadAuditBudgets": (
+        "tests.infra.unit.docs.auditor_budgets_tests",
+        "TestLoadAuditBudgets",
+    ),
     "TestMainRouting": ("tests.infra.unit.docs.main_entry_tests", "TestMainRouting"),
-    "TestMainWithFlags": ("tests.infra.unit.docs.main_entry_tests", "TestMainWithFlags"),
-    "TestMaybeWriteTodo": ("tests.infra.unit.docs.validator_internals_tests", "TestMaybeWriteTodo"),
+    "TestMainWithFlags": (
+        "tests.infra.unit.docs.main_entry_tests",
+        "TestMainWithFlags",
+    ),
+    "TestMaybeWriteTodo": (
+        "tests.infra.unit.docs.validator_internals_tests",
+        "TestMaybeWriteTodo",
+    ),
     "TestRunAudit": ("tests.infra.unit.docs.main_tests", "TestRunAudit"),
     "TestRunBuild": ("tests.infra.unit.docs.main_commands_tests", "TestRunBuild"),
     "TestRunFix": ("tests.infra.unit.docs.main_tests", "TestRunFix"),
     "TestRunGenerate": ("tests.infra.unit.docs.main_commands_tests", "TestRunGenerate"),
     "TestRunValidate": ("tests.infra.unit.docs.main_commands_tests", "TestRunValidate"),
-    "TestSelectedProjectNames": ("tests.infra.unit.docs.shared_iter_tests", "TestSelectedProjectNames"),
+    "TestSelectedProjectNames": (
+        "tests.infra.unit.docs.shared_iter_tests",
+        "TestSelectedProjectNames",
+    ),
     "TestValidateCore": ("tests.infra.unit.docs.validator_tests", "TestValidateCore"),
-    "TestValidateReport": ("tests.infra.unit.docs.validator_tests", "TestValidateReport"),
-    "TestValidateScope": ("tests.infra.unit.docs.validator_internals_tests", "TestValidateScope"),
+    "TestValidateReport": (
+        "tests.infra.unit.docs.validator_tests",
+        "TestValidateReport",
+    ),
+    "TestValidateScope": (
+        "tests.infra.unit.docs.validator_internals_tests",
+        "TestValidateScope",
+    ),
     "TestWriteJson": ("tests.infra.unit.docs.shared_write_tests", "TestWriteJson"),
-    "TestWriteMarkdown": ("tests.infra.unit.docs.shared_write_tests", "TestWriteMarkdown"),
+    "TestWriteMarkdown": (
+        "tests.infra.unit.docs.shared_write_tests",
+        "TestWriteMarkdown",
+    ),
     "auditor": ("tests.infra.unit.docs.auditor_tests", "auditor"),
     "builder": ("tests.infra.unit.docs.builder_tests", "builder"),
     "fixer": ("tests.infra.unit.docs.fixer_internals_tests", "fixer"),
