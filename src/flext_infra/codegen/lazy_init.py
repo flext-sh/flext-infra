@@ -337,20 +337,22 @@ class FlextInfraCodegenLazyInit(s[int]):
         1. If it has ``__all__`` → use those names.
         2. If no ``__all__`` → scan AST for public classes/functions/assignments.
 
-        Recursively discovers exports at unlimited hierarchy depth.
+        Recursively discovers exports at unlimited hierarchy depth, including
+        files in nested submodules (e.g., ``_context/_data.py``).
         Returns ``{export_name: (module_path, attr_name)}``.
         """
         index: dict[str, tuple[str, str]] = {}
         for py_file in sorted(pkg_dir.rglob("*.py")):
             if py_file.name in {"__init__.py", "__main__.py", "__version__.py"}:
                 continue
-            if py_file.name.startswith("_"):
+            # Only filter underscore files in root dir, not in nested submodules
+            rel_path = py_file.relative_to(pkg_dir)
+            if len(rel_path.parts) == 1 and py_file.name.startswith("_"):
                 continue
             if py_file.stem[0:1].isdigit():
                 continue
 
             # Build full module path from relative path
-            rel_path = py_file.relative_to(pkg_dir)
             mod_parts = rel_path.with_suffix("").parts
             mod_stem = ".".join(mod_parts)
             mod_path = f"{current_pkg}.{mod_stem}" if current_pkg else mod_stem
