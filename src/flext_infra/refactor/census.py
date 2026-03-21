@@ -14,7 +14,6 @@ from pathlib import Path
 from flext_infra import (
     CensusImportDiscoveryVisitor,
     CensusUsageCollector,
-    FlextInfraRefactorOutputRenderer,
     c,
     m,
     output,
@@ -31,7 +30,7 @@ class FlextInfraRefactorCensus:
     @staticmethod
     def render_text(report: m.Infra.UtilitiesCensusReport) -> str:
         """Render the census report cleanly."""
-        return FlextInfraRefactorOutputRenderer.render_census_report(report)
+        return u.Infra.render_census_report(report)
 
     def run(
         self,

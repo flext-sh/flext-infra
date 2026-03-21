@@ -1,4 +1,11 @@
-"""CLI support routines for refactor execution and reporting."""
+"""CLI support utilities for refactor execution and reporting.
+
+Centralizes CLI output, diff printing, rule table formatting, and
+impact-map generation previously in ``FlextInfraRefactorCliSupport``.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -13,30 +20,43 @@ from typing import TYPE_CHECKING
 
 import orjson
 
-from flext_infra import FlextInfraRefactorViolationAnalyzer, c, m, u
+from flext_infra import FlextInfraUtilitiesIo, FlextInfraUtilitiesIteration, c, m
 
 if TYPE_CHECKING:
-    from flext_infra import FlextInfraRefactorEngine
+    from flext_infra import (
+        FlextInfraRefactorEngine,
+        FlextInfraRefactorViolationAnalyzer,
+    )
 
 
-class FlextInfraRefactorCliSupport:
+class FlextInfraUtilitiesRefactorCli:
+    """CLI output, diff, rule-table, and impact-map helpers.
+
+    Usage via namespace::
+
+        from flext_infra import u
+
+        u.Infra.refactor_info("message")
+        u.Infra.print_summary(results, dry_run=False)
+    """
+
     @staticmethod
-    def info(message: str) -> None:
+    def refactor_info(message: str) -> None:
         """Write informational output to stdout."""
         _ = sys.stdout.write(f"{message}\n")
 
     @staticmethod
-    def error(message: str) -> None:
+    def refactor_error(message: str) -> None:
         """Write error output to stderr."""
         _ = sys.stderr.write(f"ERROR: {message}\n")
 
     @staticmethod
-    def header(message: str) -> None:
+    def refactor_header(message: str) -> None:
         """Write a section header to stdout."""
         _ = sys.stdout.write(f"\n{message}\n")
 
     @staticmethod
-    def debug(message: str) -> None:
+    def refactor_debug(message: str) -> None:
         """Write debug output to stdout."""
         _ = sys.stdout.write(f"DEBUG: {message}\n")
 
@@ -62,7 +82,7 @@ class FlextInfraRefactorCliSupport:
         for result in results:
             if not result.success:
                 impact_map.append({
-                    c.Infra.Toml.PROJECT: FlextInfraRefactorCliSupport.project_name_from_path(
+                    c.Infra.Toml.PROJECT: FlextInfraUtilitiesRefactorCli.project_name_from_path(
                         result.file_path,
                     ),
                     c.Infra.ReportKeys.FILE: str(result.file_path),
@@ -74,7 +94,7 @@ class FlextInfraRefactorCliSupport:
                 continue
             if not result.changes:
                 continue
-            project_name = FlextInfraRefactorCliSupport.project_name_from_path(
+            project_name = FlextInfraUtilitiesRefactorCli.project_name_from_path(
                 result.file_path,
             )
             for change in result.changes:
@@ -121,18 +141,22 @@ class FlextInfraRefactorCliSupport:
         output_path: Path,
     ) -> bool:
         """Persist impact-map JSON report to disk."""
-        impact_map = FlextInfraRefactorCliSupport.build_impact_map(results)
+        impact_map = FlextInfraUtilitiesRefactorCli.build_impact_map(results)
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             payload = (
                 orjson.dumps(impact_map, option=orjson.OPT_INDENT_2).decode() + "\n"
             )
             _ = output_path.write_text(payload, encoding=c.Infra.Encoding.DEFAULT)
-            FlextInfraRefactorCliSupport.info(f"Impact map written: {output_path}")
-            FlextInfraRefactorCliSupport.info(f"Impact map entries: {len(impact_map)}")
+            FlextInfraUtilitiesRefactorCli.refactor_info(
+                f"Impact map written: {output_path}",
+            )
+            FlextInfraUtilitiesRefactorCli.refactor_info(
+                f"Impact map entries: {len(impact_map)}",
+            )
             return True
         except OSError:
-            FlextInfraRefactorCliSupport.error(
+            FlextInfraUtilitiesRefactorCli.refactor_error(
                 f"Failed to write impact map {output_path}",
             )
             return False
@@ -140,7 +164,7 @@ class FlextInfraRefactorCliSupport:
     @staticmethod
     def print_diff(original: str, refactored: str, file_path: Path) -> None:
         """Print unified diff for one file."""
-        FlextInfraRefactorCliSupport.header(f"Diff for {file_path.name}")
+        FlextInfraUtilitiesRefactorCli.refactor_header(f"Diff for {file_path.name}")
         diff = difflib.unified_diff(
             original.splitlines(keepends=True),
             refactored.splitlines(keepends=True),
@@ -150,16 +174,16 @@ class FlextInfraRefactorCliSupport:
         )
         diff_text = "".join(diff)
         if diff_text:
-            FlextInfraRefactorCliSupport.info(diff_text)
+            FlextInfraUtilitiesRefactorCli.refactor_info(diff_text)
             return
-        FlextInfraRefactorCliSupport.info("No changes")
+        FlextInfraUtilitiesRefactorCli.refactor_info("No changes")
 
     @staticmethod
     def print_rules_table(rules: list[dict[str, str | bool]]) -> None:
         """Print configured rule table for interactive CLI output."""
-        FlextInfraRefactorCliSupport.header("Available Rules")
+        FlextInfraUtilitiesRefactorCli.refactor_header("Available Rules")
         if not rules:
-            FlextInfraRefactorCliSupport.info("No rules loaded.")
+            FlextInfraUtilitiesRefactorCli.refactor_info("No rules loaded.")
             return
         id_width = (
             max(
@@ -178,16 +202,20 @@ class FlextInfraRefactorCliSupport:
         header = (
             f"{'ID':<{id_width}} {'Name':<{name_width}} {'Severity':<10} {'Status'}"
         )
-        FlextInfraRefactorCliSupport.info(header)
-        FlextInfraRefactorCliSupport.info("-" * len(header))
+        FlextInfraUtilitiesRefactorCli.refactor_info(header)
+        FlextInfraUtilitiesRefactorCli.refactor_info("-" * len(header))
         for rule in rules:
-            status = "✓" if rule[c.Infra.ReportKeys.ENABLED] else "✗"
+            status = "\u2713" if rule[c.Infra.ReportKeys.ENABLED] else "\u2717"
             rid = f"{rule['id']:<{id_width}}"
             rname = f"{rule['name']:<{name_width}}"
             rsev = f"{rule['severity']:<10}"
-            FlextInfraRefactorCliSupport.info(f"{rid} {rname} {rsev} {status}")
+            FlextInfraUtilitiesRefactorCli.refactor_info(
+                f"{rid} {rname} {rsev} {status}",
+            )
             if rule["description"]:
-                FlextInfraRefactorCliSupport.info(f"  - {rule['description']}")
+                FlextInfraUtilitiesRefactorCli.refactor_info(
+                    f"  - {rule['description']}",
+                )
 
     @staticmethod
     def print_summary(results: list[m.Infra.Result], *, dry_run: bool) -> None:
@@ -195,40 +223,57 @@ class FlextInfraRefactorCliSupport:
         modified = sum(1 for item in results if item.modified)
         failed = sum(1 for item in results if not item.success)
         unchanged = sum(1 for item in results if item.success and (not item.modified))
-        FlextInfraRefactorCliSupport.header("Summary")
-        FlextInfraRefactorCliSupport.info(f"Total files: {len(results)}")
-        FlextInfraRefactorCliSupport.info(f"Modified: {modified}")
-        FlextInfraRefactorCliSupport.debug(f"Unchanged: {unchanged}")
-        FlextInfraRefactorCliSupport.info(f"Failed: {failed}")
+        FlextInfraUtilitiesRefactorCli.refactor_header("Summary")
+        FlextInfraUtilitiesRefactorCli.refactor_info(f"Total files: {len(results)}")
+        FlextInfraUtilitiesRefactorCli.refactor_info(f"Modified: {modified}")
+        FlextInfraUtilitiesRefactorCli.refactor_debug(f"Unchanged: {unchanged}")
+        FlextInfraUtilitiesRefactorCli.refactor_info(f"Failed: {failed}")
         if dry_run:
-            FlextInfraRefactorCliSupport.info("[DRY-RUN] No changes applied")
+            FlextInfraUtilitiesRefactorCli.refactor_info(
+                "[DRY-RUN] No changes applied",
+            )
         elif failed == 0:
-            FlextInfraRefactorCliSupport.info("All changes applied successfully")
+            FlextInfraUtilitiesRefactorCli.refactor_info(
+                "All changes applied successfully",
+            )
         else:
-            FlextInfraRefactorCliSupport.info(f"{failed} files failed")
+            FlextInfraUtilitiesRefactorCli.refactor_info(f"{failed} files failed")
 
     @staticmethod
     def print_violation_summary(
         analysis: m.Infra.ViolationAnalysisReport,
     ) -> None:
         """Print violation aggregate totals and hotspot files."""
-        FlextInfraRefactorCliSupport.header("Violation Analysis")
-        FlextInfraRefactorCliSupport.info(f"Files scanned: {analysis.files_scanned}")
+        FlextInfraUtilitiesRefactorCli.refactor_header("Violation Analysis")
+        FlextInfraUtilitiesRefactorCli.refactor_info(
+            f"Files scanned: {analysis.files_scanned}",
+        )
         if not analysis.totals:
-            FlextInfraRefactorCliSupport.info("No tracked violations found.")
+            FlextInfraUtilitiesRefactorCli.refactor_info(
+                "No tracked violations found.",
+            )
             return
-        totals_ranked = sorted(analysis.totals.items(), key=itemgetter(1), reverse=True)
-        FlextInfraRefactorCliSupport.info("Top pattern counts:")
+        totals_ranked = sorted(
+            analysis.totals.items(),
+            key=itemgetter(1),
+            reverse=True,
+        )
+        FlextInfraUtilitiesRefactorCli.refactor_info("Top pattern counts:")
         for name, count in totals_ranked:
-            FlextInfraRefactorCliSupport.info(f"  - {name}: {count}")
+            FlextInfraUtilitiesRefactorCli.refactor_info(f"  - {name}: {count}")
         if not analysis.top_files:
             return
-        FlextInfraRefactorCliSupport.info("Hottest files:")
+        FlextInfraUtilitiesRefactorCli.refactor_info("Hottest files:")
         for entry in analysis.top_files[:10]:
-            FlextInfraRefactorCliSupport.info(f"  - {entry.file}: {entry.total}")
+            FlextInfraUtilitiesRefactorCli.refactor_info(
+                f"  - {entry.file}: {entry.total}",
+            )
 
     @staticmethod
-    def run_cli(engine_cls: type[FlextInfraRefactorEngine]) -> int:
+    def run_cli(
+        engine_cls: type[FlextInfraRefactorEngine],
+        violation_analyzer: type[FlextInfraRefactorViolationAnalyzer],
+    ) -> int:
         """Execute refactor CLI entry flow and return process exit code."""
         parser = argparse.ArgumentParser(
             description="Flext Refactor Engine - Declarative code transformation",
@@ -252,7 +297,9 @@ class FlextInfraRefactorCliSupport:
         engine = engine_cls(config_path=args.config)
         config_result = engine.load_config()
         if not config_result.is_success:
-            FlextInfraRefactorCliSupport.error(f"Config error: {config_result.error}")
+            FlextInfraUtilitiesRefactorCli.refactor_error(
+                f"Config error: {config_result.error}",
+            )
             return 1
         if args.rules:
             rule_filters = [
@@ -261,10 +308,12 @@ class FlextInfraRefactorCliSupport:
             engine.set_rule_filters(rule_filters)
         rules_result = engine.load_rules()
         if not rules_result.is_success:
-            FlextInfraRefactorCliSupport.error(f"Rules error: {rules_result.error}")
+            FlextInfraUtilitiesRefactorCli.refactor_error(
+                f"Rules error: {rules_result.error}",
+            )
             return 1
         if args.list_rules:
-            FlextInfraRefactorCliSupport.print_rules_table(engine.list_rules())
+            FlextInfraUtilitiesRefactorCli.print_rules_table(engine.list_rules())
             return 0
         if args.analyze_violations:
             files_to_analyze: list[Path] = []
@@ -272,7 +321,7 @@ class FlextInfraRefactorCliSupport:
                 scan_dirs = frozenset(
                     engine.rule_loader.extract_project_scan_dirs(engine.config),
                 )
-                iter_result = u.Infra.iter_python_files(
+                iter_result = FlextInfraUtilitiesIteration.iter_python_files(
                     workspace_root=args.project,
                     project_roots=[args.project],
                     include_tests=c.Infra.Directories.TESTS in scan_dirs,
@@ -281,7 +330,7 @@ class FlextInfraRefactorCliSupport:
                     src_dirs=scan_dirs or None,
                 )
                 if iter_result.is_failure:
-                    FlextInfraRefactorCliSupport.error(
+                    FlextInfraUtilitiesRefactorCli.refactor_error(
                         iter_result.error
                         or f"File iteration failed for project: {args.project}",
                     )
@@ -326,22 +375,22 @@ class FlextInfraRefactorCliSupport:
                 )
             elif args.file:
                 if not args.file.exists():
-                    FlextInfraRefactorCliSupport.error(f"File not found: {args.file}")
+                    FlextInfraUtilitiesRefactorCli.refactor_error(
+                        f"File not found: {args.file}",
+                    )
                     return 1
                 files_to_analyze = [args.file]
             elif args.files:
                 files_to_analyze = [item for item in args.files if item.exists()]
-            analysis = FlextInfraRefactorViolationAnalyzer.analyze_files(
-                files_to_analyze,
-            )
-            FlextInfraRefactorCliSupport.print_violation_summary(analysis)
+            analysis = violation_analyzer.analyze_files(files_to_analyze)
+            FlextInfraUtilitiesRefactorCli.print_violation_summary(analysis)
             if args.analysis_output is not None:
-                _ = u.Infra.write_json(
+                _ = FlextInfraUtilitiesIo.write_json(
                     args.analysis_output,
                     analysis.model_dump(mode="json"),
                     ensure_ascii=True,
                 )
-                FlextInfraRefactorCliSupport.info(
+                FlextInfraUtilitiesRefactorCli.refactor_info(
                     f"Analysis report written: {args.analysis_output}",
                 )
             return 0
@@ -360,14 +409,16 @@ class FlextInfraRefactorCliSupport:
             )
         elif args.file:
             if not args.file.exists():
-                FlextInfraRefactorCliSupport.error(f"File not found: {args.file}")
+                FlextInfraUtilitiesRefactorCli.refactor_error(
+                    f"File not found: {args.file}",
+                )
                 return 1
             original_code = args.file.read_text(encoding=c.Infra.Encoding.DEFAULT)
             result_single = engine.refactor_file(args.file, dry_run=args.dry_run)
             results = [result_single]
             if args.show_diff and result_single.modified:
                 refactored_code = result_single.refactored_code or original_code
-                FlextInfraRefactorCliSupport.print_diff(
+                FlextInfraUtilitiesRefactorCli.print_diff(
                     original_code,
                     refactored_code,
                     args.file,
@@ -376,11 +427,13 @@ class FlextInfraRefactorCliSupport:
             existing_files = [item for item in args.files if item.exists()]
             missing_files = [item for item in args.files if not item.exists()]
             for file_path in missing_files:
-                FlextInfraRefactorCliSupport.error(f"File not found: {file_path}")
+                FlextInfraUtilitiesRefactorCli.refactor_error(
+                    f"File not found: {file_path}",
+                )
             results = engine.refactor_files(existing_files, dry_run=args.dry_run)
-        FlextInfraRefactorCliSupport.print_summary(results, dry_run=args.dry_run)
+        FlextInfraUtilitiesRefactorCli.print_summary(results, dry_run=args.dry_run)
         if args.impact_map_output is not None:
-            _ = FlextInfraRefactorCliSupport.write_impact_map(
+            _ = FlextInfraUtilitiesRefactorCli.write_impact_map(
                 results,
                 args.impact_map_output,
             )
@@ -388,4 +441,4 @@ class FlextInfraRefactorCliSupport:
         return 0 if failed == 0 else 1
 
 
-__all__ = ["FlextInfraRefactorCliSupport"]
+__all__ = ["FlextInfraUtilitiesRefactorCli"]

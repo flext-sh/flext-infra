@@ -12,12 +12,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Protocol, override, runtime_checkable
 
-from flext_infra import c, p
-from flext_infra.refactor._detectors.module_loader import DetectorScanResultBuilder
+from flext_infra import c, p, u
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
-from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
 
 if TYPE_CHECKING:
     from flext_infra import m
@@ -73,7 +72,7 @@ class ImportAliasDetector(p.Infra.Scanner):
         if cls._alias_cache is not None:
             return cls._alias_cache
         root = workspace_root if workspace_root is not None else Path.cwd()
-        cls._alias_cache = ProjectAliasDiscovery.discover_workspace_aliases(root)
+        cls._alias_cache = FlextInfraUtilitiesDiscovery.discover_workspace_aliases(root)
         return cls._alias_cache
 
     @classmethod
@@ -169,7 +168,7 @@ class ImportAliasDetector(p.Infra.Scanner):
             file_path=file_path,
             _parse_failures=self._parse_failures,
         )
-        return DetectorScanResultBuilder.build(
+        return u.Infra.build_scan_result(
             file_path=file_path,
             detector_name=self.__class__.__name__,
             rule_id="namespace.import_alias",

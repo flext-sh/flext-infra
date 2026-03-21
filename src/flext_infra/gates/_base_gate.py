@@ -3,24 +3,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated
 
-from pydantic import ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 
-from flext_core import FlextModels
 from flext_infra import c, t as t_infra
+from flext_infra.gates._models import FlextInfraGateContext
 from flext_infra.models import m
 from flext_infra.utilities import u
-
-
-class FlextInfraGateContext(FlextModels.FrozenStrictModel):
-    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
-    workspace_root: Annotated[Path, Field(description="Workspace root directory")]
-    reports_dir: Annotated[Path, Field(description="Reports output directory")]
-    fail_fast: Annotated[
-        bool,
-        Field(default=False, description="Stop on first gate failure"),
-    ] = False
 
 
 class FlextInfraGate(ABC):

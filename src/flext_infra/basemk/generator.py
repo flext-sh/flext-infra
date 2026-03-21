@@ -5,7 +5,7 @@ from __future__ import annotations
 import tempfile
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Protocol, TextIO, override
+from typing import TextIO, override
 
 from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
@@ -21,17 +21,10 @@ from flext_infra import (
 _TEMPLATES_DIR: Path = Path(__file__).resolve().parent.parent / "templates"
 
 
-class TemplateRenderer(Protocol):
-    def render_all(
-        self,
-        config: m.Infra.BaseMkConfig | None = None,
-    ) -> r[str]: ...
-
-
 class FlextInfraBaseMkGenerator(s[str]):
     """Generate base.mk content and write to file or stream."""
 
-    def __init__(self, template_engine: TemplateRenderer | None = None) -> None:
+    def __init__(self, template_engine: p.Infra.TemplateRenderer | None = None) -> None:
         """Initialize the base.mk generator."""
         super().__init__(
             config_type=None,

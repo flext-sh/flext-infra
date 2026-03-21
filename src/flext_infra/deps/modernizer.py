@@ -20,7 +20,6 @@ from flext_infra import (
     EnsurePyrightConfigPhase,
     EnsurePytestConfigPhase,
     EnsureRuffConfigPhase,
-    FlextInfraDependencyToolConfig,
     InjectCommentsPhase,
     ProjectClassifier,
     c,
@@ -37,7 +36,7 @@ class FlextInfraPyprojectModernizer:
     def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize pyproject modernizer."""
         self.root = workspace_root or self.ROOT
-        tool_config_result = FlextInfraDependencyToolConfig.load_tool_config()
+        tool_config_result = u.Infra.load_tool_config()
         if tool_config_result.is_failure:
             msg = tool_config_result.error or "failed to load deps tool config"
             raise ValueError(msg)

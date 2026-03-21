@@ -7,14 +7,14 @@ from typing import Annotated
 from pydantic import ConfigDict, Field
 
 from flext_core import FlextModels
-from flext_infra.typings import FlextInfraTypes as t
+from flext_infra import t
 
 
 class FlextInfraGithubModels:
     """Models for GitHub PR orchestration and repository management."""
 
-    class _PrExecutionResultModel(FlextModels.ArbitraryTypesModel):
-        """Base model for PR execution result typing."""
+    class PrExecutionResultModel(FlextModels.ArbitraryTypesModel):
+        """Result of a single PR operation on a repository."""
 
         display: Annotated[
             t.NonEmptyStr,
@@ -29,9 +29,6 @@ class FlextInfraGithubModels:
             str | None,
             Field(default=None, description="Log file path"),
         ] = None
-
-    class PrExecutionResult(_PrExecutionResultModel):
-        """Result of a single PR operation on a repository."""
 
     class PrOrchestrationResult(FlextModels.ArbitraryTypesModel):
         """Aggregated result of workspace-wide PR orchestration."""

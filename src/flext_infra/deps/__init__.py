@@ -43,7 +43,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer, u
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
-    from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ConsolidateGroupsPhase": (
@@ -102,10 +101,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.deps.path_sync",
         "FlextInfraDependencyPathSync",
     ),
-    "FlextInfraDependencyToolConfig": (
-        "flext_infra.deps.tool_config",
-        "FlextInfraDependencyToolConfig",
-    ),
     "FlextInfraExtraPathsManager": (
         "flext_infra.deps.extra_paths",
         "FlextInfraExtraPathsManager",
@@ -147,7 +142,6 @@ __all__ = [
     "FlextInfraConfigFixer",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyPathSync",
-    "FlextInfraDependencyToolConfig",
     "FlextInfraExtraPathsManager",
     "FlextInfraInternalDependencySyncService",
     "FlextInfraPyprojectModernizer",

@@ -11,9 +11,7 @@ from collections import defaultdict
 from io import StringIO
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorDependencyAnalyzerFacade, c, m, u
-
-load_python_module = FlextInfraRefactorDependencyAnalyzerFacade.load_python_module
+from flext_infra import NamespaceFacadeScanner, c, m, u
 
 
 class NamespaceEnforcementRewriter:
@@ -79,7 +77,7 @@ class NamespaceEnforcementRewriter:
         if len(package_dirs) == 0:
             return
         primary_package = package_dirs[0]
-        stem = FlextInfraRefactorDependencyAnalyzerFacade.NamespaceFacadeScanner.project_class_stem(
+        stem = NamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )
         for status in facade_statuses:
@@ -165,7 +163,7 @@ class NamespaceEnforcementRewriter:
         for violation in violations:
             violations_by_file[Path(violation.file)].append(violation)
         for file_path, file_violations in violations_by_file.items():
-            parsed = load_python_module(
+            parsed = u.Infra.load_python_module(
                 file_path,
                 stage="mro-completeness-rewrite",
                 parse_failures=parse_failures,
@@ -245,7 +243,7 @@ class NamespaceEnforcementRewriter:
             if expected is None:
                 continue
             alias_name, expected_suffix = expected
-            parsed = load_python_module(file_path)
+            parsed = u.Infra.load_python_module(file_path)
             if parsed is None:
                 continue
             source, tree = parsed.source, parsed.tree
@@ -352,7 +350,7 @@ class NamespaceEnforcementRewriter:
         source_file: Path,
         protocol_names: set[str],
     ) -> tuple[Path, Path, tuple[str, ...]] | None:
-        parsed = load_python_module(source_file)
+        parsed = u.Infra.load_python_module(source_file)
         if parsed is None:
             return None
         source, tree = parsed.source, parsed.tree
@@ -430,7 +428,7 @@ class NamespaceEnforcementRewriter:
         alias_names: set[str],
         parse_failures: list[m.Infra.ParseFailureViolation],
     ) -> None:
-        parsed = load_python_module(
+        parsed = u.Infra.load_python_module(
             source_file,
             stage="manual-typing-rewrite",
             parse_failures=parse_failures,
@@ -530,7 +528,7 @@ class NamespaceEnforcementRewriter:
         for violation in violations:
             grouped[Path(violation.file)][violation.alias_name] = violation.target_name
         for file_path, alias_map in grouped.items():
-            parsed = load_python_module(
+            parsed = u.Infra.load_python_module(
                 file_path,
                 stage="compatibility-alias-rewrite",
                 parse_failures=parse_failures,
@@ -622,7 +620,7 @@ class NamespaceEnforcementRewriter:
         if len(blocks) == 0:
             return
         project_name = project_root.name
-        class_stem = FlextInfraRefactorDependencyAnalyzerFacade.NamespaceFacadeScanner.project_class_stem(
+        class_stem = NamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )
         protocols_class = f"{class_stem}Protocols"
@@ -701,7 +699,7 @@ class NamespaceEnforcementRewriter:
         if len(source_target_names) == 0:
             return
         for py_file in py_files:
-            parsed = load_python_module(py_file)
+            parsed = u.Infra.load_python_module(py_file)
             if parsed is None:
                 continue
             source = parsed.source

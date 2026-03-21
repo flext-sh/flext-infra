@@ -16,8 +16,7 @@ from typing import TYPE_CHECKING, override
 
 import libcst as cst
 
-from flext_infra import p
-from flext_infra.refactor._detectors.module_loader import DetectorScanResultBuilder
+from flext_infra import p, u
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -62,7 +61,7 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
             file_path=file_path,
             _parse_failures=self._parse_failures,
         )
-        return DetectorScanResultBuilder.build(
+        return u.Infra.build_scan_result(
             file_path=file_path,
             detector_name=self.__class__.__name__,
             rule_id="namespace.compatibility_alias",

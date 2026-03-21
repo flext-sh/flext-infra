@@ -9,8 +9,7 @@ from typing import override
 
 from pydantic import ValidationError
 
-from flext_infra import c, m, u
-from flext_infra.gates._base_gate import FlextInfraGate, FlextInfraGateContext
+from flext_infra import FlextInfraGate, FlextInfraGateContext, c, m, u
 
 
 class FlextInfraBanditGate(FlextInfraGate):

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import fnmatch
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter
@@ -26,13 +26,13 @@ from flext_infra import (
     FlextInfraRefactorTier0ImportFixRule,
     FlextInfraRefactorTypingAnnotationFixRule,
     FlextInfraRefactorTypingUnificationRule,
+    FlextInfraRefactorViolationAnalyzer,
     c,
     m,
     r,
     t,
     u,
 )
-from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
 
 
 class FlextInfraRefactorEngine:
@@ -59,7 +59,7 @@ class FlextInfraRefactorEngine:
         results: list[m.Infra.Result],
     ) -> list[dict[str, str]]:
         """Build a normalized impact-map payload from refactor results."""
-        return FlextInfraRefactorCliSupport.build_impact_map(results)
+        return u.Infra.build_impact_map(results)
 
     @staticmethod
     def write_impact_map(
@@ -67,13 +67,14 @@ class FlextInfraRefactorEngine:
         output_path: Path,
     ) -> bool:
         """Write the impact-map payload to the target output path."""
-        return FlextInfraRefactorCliSupport.write_impact_map(results, output_path)
+        return u.Infra.write_impact_map(results, output_path)
 
     @classmethod
     def main(cls) -> int:
         """Run the refactor CLI entrypoint and exit with the status code."""
-        runner: Callable[[type], int] = FlextInfraRefactorCliSupport.run_cli
-        raise SystemExit(runner(cls))
+        raise SystemExit(
+            u.Infra.run_cli(cls, FlextInfraRefactorViolationAnalyzer),
+        )
 
     def collect_workspace_files(
         self,
@@ -104,7 +105,7 @@ class FlextInfraRefactorEngine:
                 src_dirs=scan_dirs or None,
             )
             if iter_result.is_failure:
-                FlextInfraRefactorCliSupport.error(
+                u.Infra.refactor_error(
                     iter_result.error or f"File iteration failed for {project}",
                 )
                 continue
@@ -151,7 +152,7 @@ class FlextInfraRefactorEngine:
                 dict[str, t.Infra.InfraValue],
             ).validate_python(dict(result.value.items()))
             self.config = config_dict
-            FlextInfraRefactorCliSupport.info(f"Loaded config from {self.config_path}")
+            u.Infra.refactor_info(f"Loaded config from {self.config_path}")
         return result
 
     def load_rules(self) -> r[list[FlextInfraRefactorRule]]:
@@ -167,13 +168,13 @@ class FlextInfraRefactorEngine:
         loaded_rules, loaded_file_rules = rules_result.value
         self.rules = loaded_rules
         self.file_rules = loaded_file_rules
-        FlextInfraRefactorCliSupport.info(f"Loaded {len(self.rules)} rules")
+        u.Infra.refactor_info(f"Loaded {len(self.rules)} rules")
         if self.file_rules:
-            FlextInfraRefactorCliSupport.info(
+            u.Infra.refactor_info(
                 f"Loaded {len(self.file_rules)} file rules",
             )
         if self.rule_filters:
-            FlextInfraRefactorCliSupport.info(
+            u.Infra.refactor_info(
                 f"Active filters: {', '.join(self.rule_filters)}",
             )
         return r[list[FlextInfraRefactorRule]].ok(loaded_rules)
@@ -258,7 +259,7 @@ class FlextInfraRefactorEngine:
         results: list[m.Infra.Result] = []
         for file_path in file_paths:
             if file_path.suffix != c.Infra.Extensions.PYTHON:
-                FlextInfraRefactorCliSupport.info(
+                u.Infra.refactor_info(
                     f"Skipped non-Python file: {file_path.name}",
                 )
                 results.append(
@@ -275,15 +276,15 @@ class FlextInfraRefactorEngine:
             results.append(result)
             if result.success:
                 if result.modified:
-                    FlextInfraRefactorCliSupport.info(
+                    u.Infra.refactor_info(
                         f"{('[DRY-RUN] ' if dry_run else '')}Modified: {file_path.name}",
                     )
                     for change in result.changes:
-                        FlextInfraRefactorCliSupport.info(f"  - {change}")
+                        u.Infra.refactor_info(f"  - {change}")
                 else:
-                    FlextInfraRefactorCliSupport.debug(f"Unchanged: {file_path.name}")
+                    u.Infra.refactor_debug(f"Unchanged: {file_path.name}")
             else:
-                FlextInfraRefactorCliSupport.error(
+                u.Infra.refactor_error(
                     f"Failed: {file_path.name} - {result.error}",
                 )
         return results
@@ -324,7 +325,7 @@ class FlextInfraRefactorEngine:
         )
         if iter_result.is_failure:
             error_msg = iter_result.error or f"File iteration failed for {project_path}"
-            FlextInfraRefactorCliSupport.error(error_msg)
+            u.Infra.refactor_error(error_msg)
             return [
                 m.Infra.Result(
                     file_path=project_path,
@@ -361,7 +362,7 @@ class FlextInfraRefactorEngine:
                 for ignore_pattern in ignore_patterns
             )
         ]
-        FlextInfraRefactorCliSupport.info(f"Found {len(files)} files to process")
+        u.Infra.refactor_info(f"Found {len(files)} files to process")
         results = self.refactor_files(files, dry_run=dry_run)
         if apply_safety and (not dry_run):
             checkpoint_result = self.safety_manager.save_checkpoint_state(
@@ -371,7 +372,7 @@ class FlextInfraRefactorEngine:
                 processed_targets=[str(file_path) for file_path in files],
             )
             if checkpoint_result.is_failure:
-                FlextInfraRefactorCliSupport.error(
+                u.Infra.refactor_error(
                     checkpoint_result.error or "checkpoint save failed",
                 )
             self._run_safety_validation_and_finalize(
@@ -392,7 +393,7 @@ class FlextInfraRefactorEngine:
         """Refactor all discoverable workspace projects with one command."""
         root = workspace_root.resolve()
         if not root.exists() or not root.is_dir():
-            FlextInfraRefactorCliSupport.error(
+            u.Infra.refactor_error(
                 f"Invalid workspace root: {workspace_root}",
             )
             return []
@@ -402,11 +403,11 @@ class FlextInfraRefactorEngine:
             scan_dirs=scan_dirs or None,
         )
         if not project_paths:
-            FlextInfraRefactorCliSupport.error(
+            u.Infra.refactor_error(
                 f"No projects discovered under workspace root: {workspace_root}",
             )
             return []
-        FlextInfraRefactorCliSupport.info(
+        u.Infra.refactor_info(
             f"Discovered {len(project_paths)} projects in workspace",
         )
         results: list[m.Infra.Result] = []
@@ -430,7 +431,7 @@ class FlextInfraRefactorEngine:
         for project in project_paths:
             if apply_safety and self.safety_manager.is_emergency_stop_requested():
                 break
-            FlextInfraRefactorCliSupport.header(f"Project: {project}")
+            u.Infra.refactor_header(f"Project: {project}")
             project_results = self.refactor_project(
                 project,
                 dry_run=dry_run,
@@ -447,7 +448,7 @@ class FlextInfraRefactorEngine:
                     processed_targets=list(processed_targets),
                 )
                 if checkpoint_result.is_failure:
-                    FlextInfraRefactorCliSupport.error(
+                    u.Infra.refactor_error(
                         checkpoint_result.error or "checkpoint save failed",
                     )
         if apply_safety and (not dry_run):
@@ -469,10 +470,10 @@ class FlextInfraRefactorEngine:
         if validation_result.is_failure:
             error_msg = validation_result.error or "semantic validation failed"
             self.safety_manager.request_emergency_stop(error_msg)
-            FlextInfraRefactorCliSupport.error(error_msg)
+            u.Infra.refactor_error(error_msg)
             rollback_result = self.safety_manager.rollback(target_path, stash_ref)
             if rollback_result.is_failure:
-                FlextInfraRefactorCliSupport.error(
+                u.Infra.refactor_error(
                     rollback_result.error or "rollback failed",
                 )
             results.append(
@@ -489,7 +490,7 @@ class FlextInfraRefactorEngine:
 
         clear_result = self.safety_manager.clear_checkpoint()
         if clear_result.is_failure:
-            FlextInfraRefactorCliSupport.error(
+            u.Infra.refactor_error(
                 clear_result.error or "checkpoint clear failed",
             )
 
@@ -497,7 +498,7 @@ class FlextInfraRefactorEngine:
         stash_result = self.safety_manager.create_pre_transformation_stash(target_path)
         if stash_result.is_failure:
             error_msg = stash_result.error or "pre-transformation stash failed"
-            FlextInfraRefactorCliSupport.error(error_msg)
+            u.Infra.refactor_error(error_msg)
             return r[str].fail(error_msg)
         return r[str].ok(stash_result.value)
 

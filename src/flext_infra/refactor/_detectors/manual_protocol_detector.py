@@ -16,8 +16,7 @@ from typing import TYPE_CHECKING, override
 import libcst as cst
 from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
-from flext_infra import c, p
-from flext_infra.refactor._detectors.module_loader import DetectorScanResultBuilder
+from flext_infra import c, p, u
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -65,7 +64,7 @@ class ManualProtocolDetector(p.Infra.Scanner):
             file_path=file_path,
             _parse_failures=self._parse_failures,
         )
-        return DetectorScanResultBuilder.build(
+        return u.Infra.build_scan_result(
             file_path=file_path,
             detector_name=self.__class__.__name__,
             rule_id="namespace.manual_protocol",

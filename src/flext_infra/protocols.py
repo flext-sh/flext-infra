@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import argparse
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
@@ -231,6 +232,160 @@ class FlextInfraProtocols(FlextProtocols):
 
             def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
                 """Scan a single file and return scan result."""
+                ...
+
+        class WorkspaceReport(Protocol):
+            """Protocol for workspace dependency report model contract."""
+
+            pip_check: m.Infra.PipCheckReport | None
+            dependency_limits: m.Infra.DependencyLimitsInfo | None
+
+            def model_dump(self) -> dict[str, t.Infra.InfraValue]:
+                """Serialize report model payload."""
+                ...
+
+        @runtime_checkable
+        class PathsService(Protocol):
+            """Service for resolving workspace root from file paths."""
+
+            def workspace_root_from_file(self, file: str | Path) -> r[Path]:
+                """Resolve workspace root from a given file."""
+                ...
+
+        @runtime_checkable
+        class ReportingService(Protocol):
+            """Service for reporting directory resolution."""
+
+            def get_report_dir(
+                self, workspace_root: Path, scope: str, verb: str
+            ) -> Path:
+                """Resolve report output directory for given scope and verb."""
+                ...
+
+        @runtime_checkable
+        class JsonService(Protocol):
+            """Service for JSON serialization and persistence."""
+
+            def write_json(
+                self,
+                path: Path,
+                payload: dict[str, t.Infra.InfraValue],
+            ) -> r[bool]:
+                """Write payload to JSON file."""
+                ...
+
+        class ProjectReportLike(Protocol):
+            """Protocol for project-level dependency report contracts."""
+
+            def model_dump(self) -> dict[str, t.Infra.InfraValue]:
+                """Serialize project report payload."""
+                ...
+
+        @runtime_checkable
+        class DepsService(Protocol):
+            """Service for dependency detection across projects."""
+
+            def discover_project_paths(
+                self,
+                workspace_root: Path,
+                *,
+                projects_filter: list[str] | None = None,
+            ) -> r[list[Path]]:
+                """Discover project paths in workspace root."""
+                ...
+
+            def run_deptry(
+                self,
+                project_path: Path,
+                venv_bin: Path,
+            ) -> r[tuple[list[t.Infra.IssueMap], int]]:
+                """Run deptry on a project and return issues."""
+                ...
+
+            def build_project_report(
+                self,
+                project_name: str,
+                deptry_issues: list[t.Infra.IssueMap],
+            ) -> p.Infra.ProjectReportLike:
+                """Build project report from deptry issues."""
+                ...
+
+        @runtime_checkable
+        class TypingsDepsService(Protocol):
+            """Service for typing-related dependency detection."""
+
+            def load_dependency_limits(
+                self,
+                limits_path: Path | None = None,
+            ) -> Mapping[str, t.Infra.TomlValue]:
+                """Load dependency limits from TOML file."""
+                ...
+
+            def get_required_typings(
+                self,
+                project_path: Path,
+                venv_bin: Path,
+                limits_path: Path | None = None,
+                *,
+                include_mypy: bool = True,
+            ) -> r[m.Infra.TypingsReport]:
+                """Get required typing libraries for a project."""
+                ...
+
+        @runtime_checkable
+        class PipCheckDepsService(Protocol):
+            """Service for pip-based dependency checking."""
+
+            def run_pip_check(
+                self,
+                workspace_root: Path,
+                venv_bin: Path,
+            ) -> r[tuple[list[str], int]]:
+                """Run pip check on workspace and return results."""
+                ...
+
+        @runtime_checkable
+        class RunnerService(Protocol):
+            """Service for running arbitrary commands."""
+
+            def run_raw(
+                self,
+                cmd: list[str],
+                cwd: Path | None = None,
+                timeout: int | None = None,
+                env: dict[str, str] | None = None,
+            ) -> r[m.Infra.CommandOutput]:
+                """Run command and return raw output."""
+                ...
+
+        class DetectorRuntime(Protocol):
+            """Protocol for detector runtime service dependencies."""
+
+            paths: p.Infra.PathsService
+            reporting: p.Infra.ReportingService
+            json: p.Infra.JsonService
+            deps: p.Infra.DepsService
+            runner: p.Infra.RunnerService
+            log: p.Logger
+
+            @staticmethod
+            def parser(default_limits_path: Path) -> argparse.ArgumentParser:
+                """Create argument parser for detector CLI."""
+                ...
+
+            @staticmethod
+            def project_filter(cli: argparse.Namespace) -> list[str] | None:
+                """Resolve project filter list from parsed args."""
+                ...
+
+        class TemplateRenderer(Protocol):
+            """Protocol for template rendering engines."""
+
+            def render_all(
+                self,
+                config: m.Infra.BaseMkConfig | None = None,
+            ) -> r[str]:
+                """Render all templates with given configuration."""
                 ...
 
 

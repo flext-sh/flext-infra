@@ -17,14 +17,22 @@ from pathlib import Path
 import libcst as cst
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
-from flext_infra import c, t
-from flext_infra._utilities.io import FlextInfraUtilitiesIo
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
-from flext_infra.models import m
+from flext_infra import (
+    FlextInfraUtilitiesIo,
+    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesYaml,
+    c,
+    m,
+    t,
+)
+from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
+from flext_infra.refactor._utilities_loader import FlextInfraUtilitiesRefactorLoader
 
 
-class FlextInfraUtilitiesRefactor:
+class FlextInfraUtilitiesRefactor(
+    FlextInfraUtilitiesRefactorLoader,
+    FlextInfraUtilitiesRefactorCli,
+):
     """CST/refactor helpers for code analysis.
 
     Usage via namespace::
@@ -653,6 +661,52 @@ class FlextInfraUtilitiesRefactor:
         for visitor in visitors:
             tree.visit(visitor)
         return tree
+
+    @staticmethod
+    def load_python_module(
+        file_path: Path,
+        *,
+        stage: str = "scan",
+        parse_failures: list[m.Infra.ParseFailureViolation] | None = None,
+    ) -> m.Infra.ParsedPythonModule | None:
+        """Load and parse a Python module while recording parse failures."""
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except UnicodeDecodeError as exc:
+            if parse_failures is not None:
+                parse_failures.append(
+                    m.Infra.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type=type(exc).__name__,
+                        detail=str(exc),
+                    ),
+                )
+            return None
+        except OSError as exc:
+            if parse_failures is not None:
+                parse_failures.append(
+                    m.Infra.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type=type(exc).__name__,
+                        detail=str(exc),
+                    ),
+                )
+            return None
+        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
+        if tree is None:
+            if parse_failures is not None:
+                parse_failures.append(
+                    m.Infra.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type="SyntaxError",
+                        detail="invalid python source",
+                    ),
+                )
+            return None
+        return m.Infra.ParsedPythonModule(source=source, tree=tree)
 
     @staticmethod
     def is_final_annotation(*, annotation: ast.expr) -> bool:

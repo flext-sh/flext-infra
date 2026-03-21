@@ -43,10 +43,6 @@ if TYPE_CHECKING:
     from flext_infra.refactor._detectors.manual_typing_alias_detector import (
         ManualTypingAliasDetector,
     )
-    from flext_infra.refactor._detectors.module_loader import (
-        DetectorScanResultBuilder,
-        FlextInfraRefactorDetectorModuleLoader,
-    )
     from flext_infra.refactor._detectors.mro_completeness_detector import (
         MROCompletenessDetector,
     )
@@ -65,10 +61,6 @@ if TYPE_CHECKING:
     from flext_infra.refactor.census import FlextInfraRefactorCensus
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer,
-    )
-    from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
-    from flext_infra.refactor.dependency_analyzer import (
-        FlextInfraRefactorDependencyAnalyzerFacade,
     )
     from flext_infra.refactor.engine import FlextInfraRefactorEngine
     from flext_infra.refactor.migrate_to_class_mro import (
@@ -89,7 +81,6 @@ if TYPE_CHECKING:
     from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
     from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
     from flext_infra.refactor.namespace_rewriter import NamespaceEnforcementRewriter
-    from flext_infra.refactor.output import FlextInfraRefactorOutputRenderer
     from flext_infra.refactor.project_classifier import ProjectClassifier
     from flext_infra.refactor.pydantic_centralizer import (
         FlextInfraRefactorPydanticCentralizer,
@@ -128,10 +119,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.refactor._detectors.dependency_analyzer_base",
         "DependencyAnalyzer",
     ),
-    "DetectorScanResultBuilder": (
-        "flext_infra.refactor._detectors.module_loader",
-        "DetectorScanResultBuilder",
-    ),
     "FlextInfraNamespaceEnforcer": (
         "flext_infra.refactor.namespace_enforcer",
         "FlextInfraNamespaceEnforcer",
@@ -143,18 +130,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraRefactorClassNestingAnalyzer": (
         "flext_infra.refactor.class_nesting_analyzer",
         "FlextInfraRefactorClassNestingAnalyzer",
-    ),
-    "FlextInfraRefactorCliSupport": (
-        "flext_infra.refactor.cli_support",
-        "FlextInfraRefactorCliSupport",
-    ),
-    "FlextInfraRefactorDependencyAnalyzerFacade": (
-        "flext_infra.refactor.dependency_analyzer",
-        "FlextInfraRefactorDependencyAnalyzerFacade",
-    ),
-    "FlextInfraRefactorDetectorModuleLoader": (
-        "flext_infra.refactor._detectors.module_loader",
-        "FlextInfraRefactorDetectorModuleLoader",
     ),
     "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
         "flext_infra.refactor._detectors.python_module_loader_mixin",
@@ -191,10 +166,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraRefactorMigrateToClassMRO": (
         "flext_infra.refactor.migrate_to_class_mro",
         "FlextInfraRefactorMigrateToClassMRO",
-    ),
-    "FlextInfraRefactorOutputRenderer": (
-        "flext_infra.refactor.output",
-        "FlextInfraRefactorOutputRenderer",
     ),
     "FlextInfraRefactorPydanticCentralizer": (
         "flext_infra.refactor.pydantic_centralizer",
@@ -282,13 +253,9 @@ __all__ = [
     "CompatibilityAliasDetector",
     "CyclicImportDetector",
     "DependencyAnalyzer",
-    "DetectorScanResultBuilder",
     "FlextInfraNamespaceEnforcer",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
-    "FlextInfraRefactorCliSupport",
-    "FlextInfraRefactorDependencyAnalyzerFacade",
-    "FlextInfraRefactorDetectorModuleLoader",
     "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     "FlextInfraRefactorEngine",
     "FlextInfraRefactorLooseClassScanner",
@@ -298,7 +265,6 @@ __all__ = [
     "FlextInfraRefactorMROMigrationValidator",
     "FlextInfraRefactorMROResolver",
     "FlextInfraRefactorMigrateToClassMRO",
-    "FlextInfraRefactorOutputRenderer",
     "FlextInfraRefactorPydanticCentralizer",
     "FlextInfraRefactorPydanticCentralizerAnalysis",
     "FlextInfraRefactorRule",

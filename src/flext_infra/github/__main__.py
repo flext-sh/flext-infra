@@ -7,9 +7,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, output
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import c, m, output, u
 
 
 def configure_workflows_parser(parser: ArgumentParser) -> None:

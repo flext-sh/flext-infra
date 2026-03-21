@@ -12,9 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.refactor._detectors.module_loader import (
-    FlextInfraRefactorDetectorModuleLoader,
-)
+from flext_infra import u
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -44,7 +42,7 @@ class FlextInfraRefactorDetectorPythonModuleLoaderMixin:
             ParsedPythonModule with source and AST, or None if parsing failed.
 
         """
-        return FlextInfraRefactorDetectorModuleLoader.load_python_module(
+        return u.Infra.load_python_module(
             file_path,
             stage=stage,
             parse_failures=parse_failures,

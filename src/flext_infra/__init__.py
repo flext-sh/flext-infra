@@ -153,7 +153,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
-    from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
     from flext_infra.docs._constants import FlextInfraDocsConstants
     from flext_infra.docs._models import FlextInfraDocsModels
     from flext_infra.docs.auditor import FlextInfraDocAuditor
@@ -163,6 +162,7 @@ if TYPE_CHECKING:
     from flext_infra.docs.validator import FlextInfraDocValidator
     from flext_infra.gates._base_gate import FlextInfraGate, FlextInfraGateContext
     from flext_infra.gates._gate_registry import FlextInfraGateRegistry
+    from flext_infra.gates._models import FlextInfraGatesModels
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.go import FlextInfraGoGate
     from flext_infra.gates.markdown import FlextInfraMarkdownGate
@@ -208,10 +208,6 @@ if TYPE_CHECKING:
     from flext_infra.refactor._detectors.manual_typing_alias_detector import (
         ManualTypingAliasDetector,
     )
-    from flext_infra.refactor._detectors.module_loader import (
-        DetectorScanResultBuilder,
-        FlextInfraRefactorDetectorModuleLoader,
-    )
     from flext_infra.refactor._detectors.mro_completeness_detector import (
         MROCompletenessDetector,
     )
@@ -241,15 +237,11 @@ if TYPE_CHECKING:
     from flext_infra.refactor._models_typing_census import FlextInfraTypingCensusModels
     from flext_infra.refactor._post_check_gate import PostCheckGate
     from flext_infra.refactor._top_level_class_collector import TopLevelClassCollector
-    from flext_infra.refactor._typings import FlextInfraRectorTypes
     from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
+    from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
     from flext_infra.refactor.census import FlextInfraRefactorCensus
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer,
-    )
-    from flext_infra.refactor.cli_support import FlextInfraRefactorCliSupport
-    from flext_infra.refactor.dependency_analyzer import (
-        FlextInfraRefactorDependencyAnalyzerFacade,
     )
     from flext_infra.refactor.engine import FlextInfraRefactorEngine
     from flext_infra.refactor.migrate_to_class_mro import (
@@ -270,7 +262,6 @@ if TYPE_CHECKING:
     from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
     from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
     from flext_infra.refactor.namespace_rewriter import NamespaceEnforcementRewriter
-    from flext_infra.refactor.output import FlextInfraRefactorOutputRenderer
     from flext_infra.refactor.project_classifier import ProjectClassifier
     from flext_infra.refactor.pydantic_centralizer import (
         FlextInfraRefactorPydanticCentralizer,
@@ -324,6 +315,9 @@ if TYPE_CHECKING:
     from flext_infra.rules.typing_census import (
         FlextInfraRefactorTypingAnnotationFixRule,
     )
+    from flext_infra.transformers._utilities_normalizer import (
+        FlextInfraUtilitiesImportNormalizer,
+    )
     from flext_infra.transformers.alias_remover import FlextInfraRefactorAliasRemover
     from flext_infra.transformers.census_visitors import (
         CensusImportDiscoveryVisitor,
@@ -367,7 +361,6 @@ if TYPE_CHECKING:
     from flext_infra.transformers.policy import (
         FlextInfraRefactorTransformerPolicyUtilities,
     )
-    from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
     )
@@ -452,10 +445,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "DependencyAnalyzer": (
         "flext_infra.refactor._detectors.dependency_analyzer_base",
         "DependencyAnalyzer",
-    ),
-    "DetectorScanResultBuilder": (
-        "flext_infra.refactor._detectors.module_loader",
-        "DetectorScanResultBuilder",
     ),
     "EnsureCoverageConfigPhase": (
         "flext_infra.deps._phases.ensure_coverage",
@@ -595,10 +584,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.deps.path_sync",
         "FlextInfraDependencyPathSync",
     ),
-    "FlextInfraDependencyToolConfig": (
-        "flext_infra.deps.tool_config",
-        "FlextInfraDependencyToolConfig",
-    ),
     "FlextInfraDepsConstants": (
         "flext_infra.deps._constants",
         "FlextInfraDepsConstants",
@@ -624,6 +609,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.gates._gate_registry",
         "FlextInfraGateRegistry",
     ),
+    "FlextInfraGatesModels": ("flext_infra.gates._models", "FlextInfraGatesModels"),
     "FlextInfraGithubConstants": (
         "flext_infra.github._constants",
         "FlextInfraGithubConstants",
@@ -676,7 +662,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.workspace.maintenance.python_version",
         "FlextInfraPythonVersionEnforcer",
     ),
-    "FlextInfraRectorTypes": ("flext_infra.refactor._typings", "FlextInfraRectorTypes"),
     "FlextInfraRefactorAliasRemover": (
         "flext_infra.transformers.alias_remover",
         "FlextInfraRefactorAliasRemover",
@@ -709,25 +694,13 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.rules.class_reconstructor",
         "FlextInfraRefactorClassReconstructorRule",
     ),
-    "FlextInfraRefactorCliSupport": (
-        "flext_infra.refactor.cli_support",
-        "FlextInfraRefactorCliSupport",
-    ),
     "FlextInfraRefactorConstants": (
         "flext_infra.refactor._constants",
         "FlextInfraRefactorConstants",
     ),
-    "FlextInfraRefactorDependencyAnalyzerFacade": (
-        "flext_infra.refactor.dependency_analyzer",
-        "FlextInfraRefactorDependencyAnalyzerFacade",
-    ),
     "FlextInfraRefactorDeprecatedRemover": (
         "flext_infra.transformers.deprecated_remover",
         "FlextInfraRefactorDeprecatedRemover",
-    ),
-    "FlextInfraRefactorDetectorModuleLoader": (
-        "flext_infra.refactor._detectors.module_loader",
-        "FlextInfraRefactorDetectorModuleLoader",
     ),
     "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
         "flext_infra.refactor._detectors.python_module_loader_mixin",
@@ -816,10 +789,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraRefactorModels": (
         "flext_infra.refactor._models",
         "FlextInfraRefactorModels",
-    ),
-    "FlextInfraRefactorOutputRenderer": (
-        "flext_infra.refactor.output",
-        "FlextInfraRefactorOutputRenderer",
     ),
     "FlextInfraRefactorPatternCorrectionsRule": (
         "flext_infra.rules.pattern_corrections",
@@ -987,6 +956,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra._utilities.github",
         "FlextInfraUtilitiesGithub",
     ),
+    "FlextInfraUtilitiesImportNormalizer": (
+        "flext_infra.transformers._utilities_normalizer",
+        "FlextInfraUtilitiesImportNormalizer",
+    ),
     "FlextInfraUtilitiesIo": ("flext_infra._utilities.io", "FlextInfraUtilitiesIo"),
     "FlextInfraUtilitiesIteration": (
         "flext_infra._utilities.iteration",
@@ -1015,6 +988,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraUtilitiesRefactor": (
         "flext_infra.refactor._utilities",
         "FlextInfraUtilitiesRefactor",
+    ),
+    "FlextInfraUtilitiesRefactorCli": (
+        "flext_infra.refactor._utilities_cli",
+        "FlextInfraUtilitiesRefactorCli",
     ),
     "FlextInfraUtilitiesRelease": (
         "flext_infra._utilities.release",
@@ -1155,10 +1132,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "OutputBackend": ("flext_infra._utilities.output", "OutputBackend"),
     "PostCheckGate": ("flext_infra.refactor._post_check_gate", "PostCheckGate"),
     "PreCheckGate": ("flext_infra.rules.class_reconstructor", "PreCheckGate"),
-    "ProjectAliasDiscovery": (
-        "flext_infra.transformers.project_discovery",
-        "ProjectAliasDiscovery",
-    ),
     "ProjectClassifier": (
         "flext_infra.refactor.project_classifier",
         "ProjectClassifier",
@@ -1255,7 +1228,6 @@ __all__ = [
     "ConsolidateGroupsPhase",
     "CyclicImportDetector",
     "DependencyAnalyzer",
-    "DetectorScanResultBuilder",
     "EnsureCoverageConfigPhase",
     "EnsureExtraPathsPhase",
     "EnsureFormattingToolingPhase",
@@ -1295,7 +1267,6 @@ __all__ = [
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDependencyPathSync",
-    "FlextInfraDependencyToolConfig",
     "FlextInfraDepsConstants",
     "FlextInfraDepsModels",
     "FlextInfraDocAuditor",
@@ -1309,6 +1280,7 @@ __all__ = [
     "FlextInfraGate",
     "FlextInfraGateContext",
     "FlextInfraGateRegistry",
+    "FlextInfraGatesModels",
     "FlextInfraGithubConstants",
     "FlextInfraGithubModels",
     "FlextInfraGoGate",
@@ -1328,7 +1300,6 @@ __all__ = [
     "FlextInfraPyrightGate",
     "FlextInfraPytestDiagExtractor",
     "FlextInfraPythonVersionEnforcer",
-    "FlextInfraRectorTypes",
     "FlextInfraRefactorAliasRemover",
     "FlextInfraRefactorAstGrepModels",
     "FlextInfraRefactorCensus",
@@ -1337,11 +1308,8 @@ __all__ = [
     "FlextInfraRefactorClassNestingTransformer",
     "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorClassReconstructorRule",
-    "FlextInfraRefactorCliSupport",
     "FlextInfraRefactorConstants",
-    "FlextInfraRefactorDependencyAnalyzerFacade",
     "FlextInfraRefactorDeprecatedRemover",
-    "FlextInfraRefactorDetectorModuleLoader",
     "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     "FlextInfraRefactorEngine",
     "FlextInfraRefactorEnsureFutureAnnotationsRule",
@@ -1364,7 +1332,6 @@ __all__ = [
     "FlextInfraRefactorMROResolver",
     "FlextInfraRefactorMigrateToClassMRO",
     "FlextInfraRefactorModels",
-    "FlextInfraRefactorOutputRenderer",
     "FlextInfraRefactorPatternCorrectionsRule",
     "FlextInfraRefactorPydanticCentralizer",
     "FlextInfraRefactorPydanticCentralizerAnalysis",
@@ -1411,6 +1378,7 @@ __all__ = [
     "FlextInfraUtilitiesFormatting",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGithub",
+    "FlextInfraUtilitiesImportNormalizer",
     "FlextInfraUtilitiesIo",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesModels",
@@ -1419,6 +1387,7 @@ __all__ = [
     "FlextInfraUtilitiesPaths",
     "FlextInfraUtilitiesPatterns",
     "FlextInfraUtilitiesRefactor",
+    "FlextInfraUtilitiesRefactorCli",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesSafety",
@@ -1456,7 +1425,6 @@ __all__ = [
     "OutputBackend",
     "PostCheckGate",
     "PreCheckGate",
-    "ProjectAliasDiscovery",
     "ProjectClassifier",
     "RuntimeAliasDetector",
     "Tier0ImportAnalysis",

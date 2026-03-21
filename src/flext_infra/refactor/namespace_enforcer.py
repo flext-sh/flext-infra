@@ -5,10 +5,20 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraRefactorDependencyAnalyzerFacade,
-    FlextInfraRefactorOutputRenderer,
+    ClassPlacementDetector,
+    CompatibilityAliasDetector,
+    CyclicImportDetector,
+    FutureAnnotationsDetector,
+    ImportAliasDetector,
+    InternalImportDetector,
+    LooseObjectDetector,
+    ManualProtocolDetector,
+    ManualTypingAliasDetector,
+    MROCompletenessDetector,
     NamespaceEnforcementRewriter,
+    NamespaceFacadeScanner,
     NamespaceSourceDetector,
+    RuntimeAliasDetector,
     c,
     m,
     u,
@@ -99,7 +109,7 @@ class FlextInfraNamespaceEnforcer:
         apply: bool,
     ) -> m.Infra.ProjectEnforcementReport:
         parse_failures: list[m.Infra.ParseFailureViolation] = []
-        facade_statuses = FlextInfraRefactorDependencyAnalyzerFacade.NamespaceFacadeScanner.scan_project(
+        facade_statuses = NamespaceFacadeScanner.scan_project(
             project_root=project_root,
             project_name=project_name,
             parse_failures=parse_failures,
@@ -110,7 +120,7 @@ class FlextInfraNamespaceEnforcer:
                 project_name=project_name,
                 facade_statuses=facade_statuses,
             )
-            facade_statuses = FlextInfraRefactorDependencyAnalyzerFacade.NamespaceFacadeScanner.scan_project(
+            facade_statuses = NamespaceFacadeScanner.scan_project(
                 project_root=project_root,
                 project_name=project_name,
                 parse_failures=parse_failures,
@@ -124,7 +134,7 @@ class FlextInfraNamespaceEnforcer:
         loose_objects: list[m.Infra.LooseObjectViolation] = []
         for py_file in py_files:
             loose_objects.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.LooseObjectDetector.detect_file(
+                LooseObjectDetector.detect_file(
                     file_path=py_file,
                     project_name=project_name,
                     parse_failures=parse_failures,
@@ -133,7 +143,7 @@ class FlextInfraNamespaceEnforcer:
         import_violations: list[m.Infra.ImportAliasViolation] = []
         for py_file in py_files:
             import_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.ImportAliasDetector.detect_file(
+                ImportAliasDetector.detect_file(
                     file_path=py_file,
                     parse_failures=parse_failures,
                 ),
@@ -149,7 +159,7 @@ class FlextInfraNamespaceEnforcer:
             import_violations = []
             for py_file in py_files:
                 import_violations.extend(
-                    FlextInfraRefactorDependencyAnalyzerFacade.ImportAliasDetector.detect_file(
+                    ImportAliasDetector.detect_file(
                         file_path=py_file,
                         parse_failures=parse_failures,
                     ),
@@ -157,7 +167,7 @@ class FlextInfraNamespaceEnforcer:
         namespace_source_violations: list[m.Infra.NamespaceSourceViolation] = []
         for py_file in py_files:
             namespace_source_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.NamespaceSourceDetector.detect_file(
+                NamespaceSourceDetector.detect_file(
                     file_path=py_file,
                     project_name=project_name,
                     project_root=project_root,
@@ -168,21 +178,21 @@ class FlextInfraNamespaceEnforcer:
             namespace_source_violations = []
             for py_file in py_files:
                 namespace_source_violations.extend(
-                    FlextInfraRefactorDependencyAnalyzerFacade.NamespaceSourceDetector.detect_file(
+                    NamespaceSourceDetector.detect_file(
                         file_path=py_file,
                         project_name=project_name,
                         project_root=project_root,
                         parse_failures=parse_failures,
                     ),
                 )
-        cyclic_imports = FlextInfraRefactorDependencyAnalyzerFacade.CyclicImportDetector.scan_project(
+        cyclic_imports = CyclicImportDetector.scan_project(
             project_root=project_root,
             _parse_failures=parse_failures,
         )
         internal_import_violations: list[m.Infra.InternalImportViolation] = []
         for py_file in py_files:
             internal_import_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.InternalImportDetector.detect_file(
+                InternalImportDetector.detect_file(
                     file_path=py_file,
                     parse_failures=parse_failures,
                 ),
@@ -190,7 +200,7 @@ class FlextInfraNamespaceEnforcer:
         runtime_alias_violations: list[m.Infra.RuntimeAliasViolation] = []
         for py_file in py_files:
             runtime_alias_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.RuntimeAliasDetector.detect_file(
+                RuntimeAliasDetector.detect_file(
                     file_path=py_file,
                     project_name=project_name,
                     parse_failures=parse_failures,
@@ -203,7 +213,7 @@ class FlextInfraNamespaceEnforcer:
             runtime_alias_violations = []
             for py_file in py_files:
                 runtime_alias_violations.extend(
-                    FlextInfraRefactorDependencyAnalyzerFacade.RuntimeAliasDetector.detect_file(
+                    RuntimeAliasDetector.detect_file(
                         file_path=py_file,
                         project_name=project_name,
                         parse_failures=parse_failures,
@@ -212,7 +222,7 @@ class FlextInfraNamespaceEnforcer:
         future_violations: list[m.Infra.FutureAnnotationsViolation] = []
         for py_file in py_files:
             future_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.FutureAnnotationsDetector.detect_file(
+                FutureAnnotationsDetector.detect_file(
                     file_path=py_file,
                     parse_failures=parse_failures,
                 ),
@@ -224,7 +234,7 @@ class FlextInfraNamespaceEnforcer:
             future_violations = []
             for py_file in py_files:
                 future_violations.extend(
-                    FlextInfraRefactorDependencyAnalyzerFacade.FutureAnnotationsDetector.detect_file(
+                    FutureAnnotationsDetector.detect_file(
                         file_path=py_file,
                         parse_failures=parse_failures,
                     ),
@@ -232,7 +242,7 @@ class FlextInfraNamespaceEnforcer:
         manual_protocol_violations: list[m.Infra.ManualProtocolViolation] = []
         for py_file in py_files:
             manual_protocol_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.ManualProtocolDetector.detect_file(
+                ManualProtocolDetector.detect_file(
                     file_path=py_file,
                     parse_failures=parse_failures,
                 ),
@@ -246,7 +256,7 @@ class FlextInfraNamespaceEnforcer:
             manual_protocol_violations = []
             for py_file in py_files:
                 manual_protocol_violations.extend(
-                    FlextInfraRefactorDependencyAnalyzerFacade.ManualProtocolDetector.detect_file(
+                    ManualProtocolDetector.detect_file(
                         file_path=py_file,
                         parse_failures=parse_failures,
                     ),
@@ -254,7 +264,7 @@ class FlextInfraNamespaceEnforcer:
         manual_typing_violations: list[m.Infra.ManualTypingAliasViolation] = []
         for py_file in py_files:
             manual_typing_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.ManualTypingAliasDetector.detect_file(
+                ManualTypingAliasDetector.detect_file(
                     file_path=py_file,
                     parse_failures=parse_failures,
                 ),
@@ -268,7 +278,7 @@ class FlextInfraNamespaceEnforcer:
             manual_typing_violations = []
             for py_file in py_files:
                 manual_typing_violations.extend(
-                    FlextInfraRefactorDependencyAnalyzerFacade.ManualTypingAliasDetector.detect_file(
+                    ManualTypingAliasDetector.detect_file(
                         file_path=py_file,
                         parse_failures=parse_failures,
                     ),
@@ -276,7 +286,7 @@ class FlextInfraNamespaceEnforcer:
         compatibility_alias_violations: list[m.Infra.CompatibilityAliasViolation] = []
         for py_file in py_files:
             compatibility_alias_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.CompatibilityAliasDetector.detect_file(
+                CompatibilityAliasDetector.detect_file(
                     file_path=py_file,
                     parse_failures=parse_failures,
                 ),
@@ -289,7 +299,7 @@ class FlextInfraNamespaceEnforcer:
             compatibility_alias_violations = []
             for py_file in py_files:
                 compatibility_alias_violations.extend(
-                    FlextInfraRefactorDependencyAnalyzerFacade.CompatibilityAliasDetector.detect_file(
+                    CompatibilityAliasDetector.detect_file(
                         file_path=py_file,
                         parse_failures=parse_failures,
                     ),
@@ -297,7 +307,7 @@ class FlextInfraNamespaceEnforcer:
         class_placement_violations: list[m.Infra.ClassPlacementViolation] = []
         for py_file in py_files:
             class_placement_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.ClassPlacementDetector.detect_file(
+                ClassPlacementDetector.detect_file(
                     file_path=py_file,
                     parse_failures=parse_failures,
                 ),
@@ -305,7 +315,7 @@ class FlextInfraNamespaceEnforcer:
         mro_completeness_violations: list[m.Infra.MROCompletenessViolation] = []
         for py_file in py_files:
             mro_completeness_violations.extend(
-                FlextInfraRefactorDependencyAnalyzerFacade.MROCompletenessDetector.detect_file(
+                MROCompletenessDetector.detect_file(
                     file_path=py_file,
                     parse_failures=parse_failures,
                 ),
@@ -318,7 +328,7 @@ class FlextInfraNamespaceEnforcer:
             mro_completeness_violations = []
             for py_file in py_files:
                 mro_completeness_violations.extend(
-                    FlextInfraRefactorDependencyAnalyzerFacade.MROCompletenessDetector.detect_file(
+                    MROCompletenessDetector.detect_file(
                         file_path=py_file,
                         parse_failures=parse_failures,
                     ),
@@ -348,7 +358,7 @@ class FlextInfraNamespaceEnforcer:
         report: m.Infra.WorkspaceEnforcementReport,
     ) -> str:
         """Render a workspace enforcement report as plain text."""
-        return FlextInfraRefactorOutputRenderer.render_namespace_enforcement_report(
+        return u.Infra.render_namespace_enforcement_report(
             report,
         )
 

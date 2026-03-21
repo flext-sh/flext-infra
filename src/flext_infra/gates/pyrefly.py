@@ -11,8 +11,7 @@ from typing import override
 
 from pydantic import ValidationError
 
-from flext_infra import c, m, t as t_infra, u
-from flext_infra.gates._base_gate import FlextInfraGate, FlextInfraGateContext
+from flext_infra import FlextInfraGate, FlextInfraGateContext, c, m, t, u
 
 
 class FlextInfraPyreflyGate(FlextInfraGate):
@@ -58,7 +57,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 parsed = u.Infra.parse(raw_text)
                 if parsed.is_success and isinstance(parsed.value, Mapping):
                     parsed_map = self._to_mapping(parsed.value)
-                    error_items: list[dict[str, t_infra.Infra.InfraValue]] = (
+                    error_items: list[dict[str, t.Infra.InfraValue]] = (
                         self._to_mapping_list(parsed_map.get("errors", []))
                     )
                 elif parsed.is_success and isinstance(parsed.value, list):

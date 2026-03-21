@@ -54,7 +54,6 @@ if TYPE_CHECKING:
     from flext_infra.transformers.policy import (
         FlextInfraRefactorTransformerPolicyUtilities,
     )
-    from flext_infra.transformers.project_discovery import ProjectAliasDiscovery
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
     )
@@ -168,10 +167,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.nested_class_propagation",
         "NestedClassPropagationTransformer",
     ),
-    "ProjectAliasDiscovery": (
-        "flext_infra.transformers.project_discovery",
-        "ProjectAliasDiscovery",
-    ),
     "Tier0ImportAnalysis": (
         "flext_infra.transformers.tier0_import_fixer",
         "Tier0ImportAnalysis",
@@ -229,7 +224,6 @@ __all__ = [
     "ModelDefinitionCollector",
     "ModelReferenceCollector",
     "NestedClassPropagationTransformer",
-    "ProjectAliasDiscovery",
     "Tier0ImportAnalysis",
     "Tier0ImportAnalyzer",
     "Tier0ImportContextDiscovery",
