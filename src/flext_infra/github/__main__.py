@@ -181,7 +181,7 @@ def run_pr(argv: list[str]) -> int:
         "release_on_merge": str(args.release_on_merge),
     }
 
-    result = u.Infra._github_pr_run_single(
+    result = u.Infra.github_pr_run_single(
         repo_root=args.repo_root,
         workspace_root=args.repo_root,
         pr_args=pr_args,

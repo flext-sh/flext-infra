@@ -20,6 +20,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
     """Render base.mk templates with configuration context."""
 
     def __init__(self) -> None:
+        """Initialize template environment for base.mk rendering."""
         super().__init__(
             config_type=None,
             config_overrides=None,
@@ -45,6 +46,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
 
     @staticmethod
     def default_config() -> m.Infra.BaseMkConfig:
+        """Return default base.mk generation configuration."""
         return m.Infra.BaseMkConfig(
             project_name=c.Infra.Defaults.UNNAMED,
             python_version="3.13",
@@ -67,6 +69,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         return self.render_all()
 
     def render_all(self, config: m.Infra.BaseMkConfig | None = None) -> r[str]:
+        """Render all base.mk templates into a single output string."""
         active_config = config or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
         sections: list[str] = []

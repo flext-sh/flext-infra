@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 from flext_core import r
+from flext_infra._utilities.io import FlextInfraUtilitiesIo
 from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess as S
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.models import FlextInfraModels as m
@@ -128,9 +129,8 @@ class FlextInfraUtilitiesGit:
         if not exe:
             res = m.Infra.WorkflowLintResult(status="skipped", reason="not installed")
             if report_path:
-                u.Infra.write_json(report_path, res, sort_keys=True)
+                FlextInfraUtilitiesIo.write_json(report_path, res, sort_keys=True)
             return r[m.Infra.WorkflowLintResult].ok(res)
-        from flext_infra.utilities import u
 
         out_res = S.run_raw([exe], cwd=root)
         if out_res.is_success:
@@ -145,7 +145,7 @@ class FlextInfraUtilitiesGit:
                 status="fail", exit_code=1, detail=out_res.error or ""
             )
         if report_path:
-            u.Infra.write_json(report_path, p, sort_keys=True)
+            FlextInfraUtilitiesIo.write_json(report_path, p, sort_keys=True)
         return (
             r[m.Infra.WorkflowLintResult].fail(out_res.error or "lint failed")
             if p.status == "fail" and strict

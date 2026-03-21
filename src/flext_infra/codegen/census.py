@@ -102,30 +102,54 @@ class FlextInfraCodegenCensus(s[bool]):
             workspace_root if workspace_root is not None else self._workspace_root
         )
 
-        # Pre-scan class attributes once (if analyzing a class)
-        class_analysis: dict[str, set] | None = None
+        # If analyzing a specific class, do ONLY that (fast path)
         if self._class_to_analyze:
             simple_class_name = self._class_to_analyze.rsplit(".", 1)[-1]
-            class_attrs = (
-                FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
+            census_data = (
+                FlextInfraCodegenConstantDetection.analyze_class_object_census(
                     self._class_to_analyze,
+                    workspace,
+                    frozenset({".mypy_cache", "__pycache__", ".git", ".reports"}),
+                    max_files=1000,  # Limited for speed
                 )
             )
-            if class_attrs:
-                used_attrs, _ = (
-                    FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
-                        workspace,
-                        simple_class_name,
-                        frozenset({".mypy_cache", "__pycache__", ".git", ".reports"}),
-                        max_files=5000,
-                    )
-                )
-                class_analysis = {
-                    "class_name": simple_class_name,
-                    "total_attrs": len(class_attrs),
-                    "used_attrs": used_attrs,
-                }
+            if census_data:
+                # Create a pseudo-project report for the analyzed class
+                total_objs = census_data.get("total_objects", 0)
+                total_used = census_data.get("total_used", 0)
+                total_unused = total_objs - total_used
+                by_type = census_data.get("by_type", {})
+                type_stats = []
+                if isinstance(by_type, dict):
+                    for t in sorted(by_type.keys())[:3]:
+                        if isinstance(by_type[t], dict):
+                            cnt = by_type[t].get("total", 0)
+                            type_stats.append(f"{t}:{cnt}")
+                type_detail = f" [{', '.join(type_stats)}]" if type_stats else ""
 
+                return [
+                    m.Infra.CensusReport(
+                        project=f"class-analysis:{simple_class_name}",
+                        violations=[
+                            m.Infra.CensusViolation(
+                                module=f"census:{simple_class_name}",
+                                rule="CENSUS",
+                                line=0,
+                                message=(
+                                    f"{simple_class_name}: {total_objs} objects "
+                                    f"(w/ MRO), {total_used} used, "
+                                    f"{total_unused} unused{type_detail}"
+                                ),
+                                fixable=False,
+                            )
+                        ],
+                        total=1,
+                        fixable=0,
+                    )
+                ]
+            return []
+
+        # Standard path: analyze all projects
         discovery = FlextInfraUtilitiesDiscovery()
         projects_result = discovery.discover_projects(workspace)
         if not projects_result.is_success:
@@ -135,14 +159,14 @@ class FlextInfraCodegenCensus(s[bool]):
         for project in discovered:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue
-            report = self._census_project(project, class_analysis)
+            report = self._census_project(project, None)
             reports.append(report)
         return reports
 
     def _census_project(
         self,
         project: p.Infra.ProjectInfo,
-        class_analysis: dict[str, set] | None = None,
+        class_analysis: dict | None = None,  # type: ignore
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
         validator = FlextInfraNamespaceValidator()
@@ -155,9 +179,9 @@ class FlextInfraCodegenCensus(s[bool]):
                 if violation is not None:
                     violations.append(violation)
 
-        # Census constants and objects
+        # Census constants and objects (skip if class_to_analyze is set to speed up)
         src_dir = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
-        if src_dir.is_dir():
+        if src_dir.is_dir() and not self._class_to_analyze:
             # Extract all constant definitions (any class with Final)
             all_defs = (
                 FlextInfraCodegenConstantDetection.extract_all_constant_definitions(
@@ -201,24 +225,43 @@ class FlextInfraCodegenCensus(s[bool]):
                 )
             )
 
-        # Census class attributes (use pre-computed analysis)
-        if class_analysis and project.name == "flext-core":
-            class_name = class_analysis["class_name"]
-            total_attrs = class_analysis["total_attrs"]
-            used_attrs_count = len(class_analysis["used_attrs"])
-            unused_attrs = total_attrs - used_attrs_count
-            violations.append(
-                m.Infra.CensusViolation(
-                    module=f"census:{class_name}",
-                    rule="CENSUS",
-                    line=0,
-                    message=(
-                        f"{class_name}: {total_attrs} attributes (with MRO), "
-                        f"{used_attrs_count} used, {unused_attrs} unused"
-                    ),
-                    fixable=False,
+        # Census class objects (generic - works for any class)
+        if class_analysis and project.name == "flexcore":
+            try:
+                class_name_str = str(class_analysis.get("class_name", "Unknown"))  # type: ignore
+                census_data_obj = class_analysis.get("census_data")  # type: ignore
+                if not isinstance(census_data_obj, dict):
+                    census_data_obj = {}
+
+                total_objs = int(census_data_obj.get("total_objects", 0))  # type: ignore
+                total_used = int(census_data_obj.get("total_used", 0))  # type: ignore
+                total_unused = int(census_data_obj.get("total_unused", 0))  # type: ignore
+
+                # Build type breakdown
+                type_breakdown = census_data_obj.get("by_type", {})  # type: ignore
+                type_stats = []
+                if isinstance(type_breakdown, dict):
+                    for type_name in sorted(type_breakdown.keys())[:3]:  # type: ignore
+                        type_info = type_breakdown[type_name]  # type: ignore
+                        if isinstance(type_info, dict):
+                            cnt = type_info.get("total", 0)  # type: ignore
+                            type_stats.append(f"{type_name}:{cnt}")
+                type_detail = f" [{', '.join(type_stats)}]" if type_stats else ""
+
+                violations.append(
+                    m.Infra.CensusViolation(
+                        module=f"census:{class_name_str}",
+                        rule="CENSUS",
+                        line=0,
+                        message=(
+                            f"{class_name_str}: {total_objs} objects (w/ MRO), "
+                            f"{total_used} used, {total_unused} unused{type_detail}"
+                        ),
+                        fixable=False,
+                    )
                 )
-            )
+            except (ValueError, TypeError, AttributeError):
+                pass
 
         return m.Infra.CensusReport(
             project=project.name,

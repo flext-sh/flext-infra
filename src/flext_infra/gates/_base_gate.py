@@ -194,4 +194,4 @@ class FlextInfraGate(ABC):
         return cls._as_int(raw, default)
 
 
-__all__ = ["FlextInfraGate", "FlextInfraGateContext", "FlextInfraGateProtocol"]
+__all__ = ["FlextInfraGate", "FlextInfraGateContext"]

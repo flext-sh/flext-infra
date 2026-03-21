@@ -8,6 +8,7 @@ from pathlib import Path
 import libcst as cst
 
 from flext_core import r
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing as p
 from flext_infra.models import FlextInfraModels as m
 
 
@@ -188,8 +189,6 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def extract_declared_alias_from_facade(file_path: Path) -> str:
         """Extract the single-char alias defined in a facade file."""
-        from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing as p
-
         module = p.parse_module_cst(file_path)
         if module is None:
             return ""
@@ -210,8 +209,6 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def extract_lazy_import_map(init_path: Path) -> dict[str, str]:
         """Extract PEP 562 lazy import map from an __init__.py file."""
-        from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing as p
-
         if not init_path.is_file():
             return {}
         module = p.parse_module_cst(init_path)
@@ -238,8 +235,6 @@ class FlextInfraUtilitiesDiscovery:
 
     @staticmethod
     def _extract_lazy_aliases(value: cst.Dict) -> dict[str, str]:
-        from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing as p
-
         result: dict[str, str] = {}
         for element in value.elements:
             if not isinstance(element, cst.DictElement):

@@ -595,11 +595,13 @@ class FlextInfraCodegenConstantDetection:
     ) -> dict[str, m.Infra.ConstantDefinition]:
         """Extract all attributes from a class including MRO inheritance.
 
+        Includes: constants, enums, classes, types, and other public attributes.
+
         Args:
             class_path: Full class path like 'flext_core.FlextConstants'
 
         Returns:
-            Dict mapping attribute name to ConstantDefinition
+            Dict mapping attribute name to ConstantDefinition (with type info)
 
         """
         module_part_count = 2
@@ -614,22 +616,26 @@ class FlextInfraCodegenConstantDetection:
             return {}
 
         result: dict[str, m.Infra.ConstantDefinition] = {}
-        # Walk MRO to get all attributes
         seen_names: set[str] = set()
+
+        # Walk MRO to get all attributes (constants, enums, classes, types)
         for base_cls in cls.__mro__[:-1]:  # Exclude object
             for attr_name in dir(base_cls):
                 if attr_name.startswith("_") or attr_name in seen_names:
                     continue
                 try:
                     attr_value = getattr(cls, attr_name)
-                    # Skip dunder methods, but include classes, enums, and constants
+                    # Skip only instance methods, not type definitions or constants
                     if callable(attr_value) and not isinstance(attr_value, type):
-                        # Skip regular methods, but keep type definitions
-                        continue
+                        # Check if it's a bound method (skip those)
+                        if hasattr(attr_value, "__self__"):
+                            continue
+                    # Include: constants (str, int, bool), enums, classes, types
+                    attr_type = type(attr_value).__name__
                     result[attr_name] = m.Infra.ConstantDefinition(
                         name=attr_name,
-                        value_repr=repr(attr_value)[:100],  # Limit repr length
-                        type_annotation=type(attr_value).__name__,
+                        value_repr=repr(attr_value)[:100],
+                        type_annotation=attr_type,
                         file_path="<dynamic>",
                         class_path=class_name,
                         project="flext-core",
@@ -662,7 +668,8 @@ class FlextInfraCodegenConstantDetection:
         used_names: set[str] = set()
         usage_map: dict[str, list[tuple[str, int]]] = {}
 
-        pattern = re.compile(rf"{re.escape(class_name)}\.(\w+)")
+        # Fast lookup for class usages
+        search_prefix = f"{class_name}."
         files_scanned = 0
 
         for py_file in root_path.rglob("*.py"):
@@ -675,16 +682,94 @@ class FlextInfraCodegenConstantDetection:
             except (UnicodeDecodeError, OSError):
                 continue
 
+            # Quick check: does file contain the class name at all?
+            if search_prefix not in source:
+                continue
+
             files_scanned += 1
-            for line_num, line in enumerate(source.split("\n"), 1):
-                for match in pattern.finditer(line):
-                    attr_name = match.group(1)
-                    used_names.add(attr_name)
-                    if attr_name not in usage_map:
-                        usage_map[attr_name] = []
-                    usage_map[attr_name].append((str(py_file), line_num))
+            lines = source.split("\n")
+            for line_num, line in enumerate(lines, 1):
+                # Find all occurrences of CLASS_NAME.ATTR
+                idx = 0
+                while True:
+                    pos = line.find(search_prefix, idx)
+                    if pos == -1:
+                        break
+                    # Extract attribute name (word characters after the dot)
+                    after_dot = pos + len(search_prefix)
+                    end_pos = after_dot
+                    while end_pos < len(line) and (
+                        line[end_pos].isalnum() or line[end_pos] == "_"
+                    ):
+                        end_pos += 1
+                    if end_pos > after_dot:
+                        attr_name = line[after_dot:end_pos]
+                        used_names.add(attr_name)
+                        if attr_name not in usage_map:
+                            usage_map[attr_name] = []
+                        usage_map[attr_name].append((str(py_file), line_num))
+                    idx = pos + 1
 
         return used_names, usage_map
+
+    @staticmethod
+    def analyze_class_object_census(
+        class_path: str,
+        root_path: Path,
+        exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
+        max_files: int = 5000,
+    ) -> dict:  # type: ignore
+        """Comprehensive census of all objects in a class (constants, enums, types, etc).
+
+        Analyzes ANY Python class for: constants, enums, types, classes, and their usages.
+
+        Args:
+            class_path: Full class path (e.g., 'flext_core.FlextConstants')
+            root_path: Root directory to scan for usages
+            exclude_patterns: Directory patterns to exclude
+            max_files: Maximum files to scan
+
+        Returns:
+            Dict with statistics: total_objects, by_type, used, unused, usage_details
+
+        """
+        # Extract all attributes
+        attrs = FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
+            class_path,
+        )
+        if not attrs:
+            return {}
+
+        # Get usages
+        simple_class_name = class_path.rsplit(".", 1)[-1]
+        used_attrs, usage_map = (
+            FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
+                root_path,
+                simple_class_name,
+                exclude_patterns,
+                max_files,
+            )
+        )
+
+        # Categorize by type
+        by_type: dict = {}  # type: ignore
+        for attr_name, attr_def in attrs.items():
+            attr_type = attr_def.type_annotation
+            if attr_type not in by_type:
+                by_type[attr_type] = {"total": 0, "used": 0, "unused": 0}
+            by_type[attr_type]["total"] += 1
+            if attr_name in used_attrs:
+                by_type[attr_type]["used"] += 1
+            else:
+                by_type[attr_type]["unused"] += 1
+
+        return {
+            "total_objects": len(attrs),
+            "total_used": len(used_attrs),
+            "total_unused": len(attrs) - len(used_attrs),
+            "by_type": by_type,
+            "usage_map": usage_map,
+        }
 
 
 __all__ = ["FlextInfraCodegenConstantDetection"]
