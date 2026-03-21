@@ -1,4 +1,5 @@
 """Copyright (c) 2025 FLEXT Team. All rights reserved.
+
 SPDX-License-Identifier: MIT.
 """
 
@@ -293,21 +294,47 @@ class FlextInfraCodegenGeneration:
     def _getattr_block_standard() -> list[str]:
         """Generate standard __getattr__ and __dir__ implementation block.
 
-        Creates PEP 562 module-level __getattr__ for lazy loading and __dir__
-        for attribute discovery, using the lazy_getattr utility.
+        Creates PEP 562 module-level __getattr__ for lazy loading with a
+        persistent ``_LAZY_CACHE`` for performance, and __dir__ for attribute
+        discovery, using the lazy_getattr utility.
 
         Returns:
-            List of code lines implementing lazy attribute access.
+            List of code lines implementing lazy attribute access with caching.
 
         """
         return [
+            "_LAZY_CACHE: dict[str, object] = {}",
+            "",
+            "",
             "def __getattr__(name: str) -> FlextTypes.ModuleExport:",
-            '    """Lazy-load module attributes on first access (PEP 562)."""',
-            "    return lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)",
+            '    """Lazy-load module attributes on first access (PEP 562).',
+            "",
+            "    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated",
+            "    accesses during process lifetime.",
+            "",
+            "    Args:",
+            "        name: Attribute name requested by dir()/import.",
+            "",
+            "    Returns:",
+            "        Lazy-loaded module export type.",
+            "",
+            "    Raises:",
+            "        AttributeError: If attribute not registered.",
+            '    """',
+            "    if name in _LAZY_CACHE:",
+            "        return _LAZY_CACHE[name]",
+            "",
+            "    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)",
+            "    _LAZY_CACHE[name] = value",
+            "    return value",
             "",
             "",
             "def __dir__() -> list[str]:",
-            '    """Return list of available attributes for dir() and autocomplete."""',
+            '    """Return list of available attributes for dir() and autocomplete.',
+            "",
+            "    Returns:",
+            "        List of public names from module exports.",
+            '    """',
             "    return sorted(__all__)",
             "",
             "",
