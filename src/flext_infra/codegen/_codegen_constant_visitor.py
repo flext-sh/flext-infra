@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 import re
 from pathlib import Path
 from typing import Final, override
@@ -626,10 +627,12 @@ class FlextInfraCodegenConstantDetection:
                 try:
                     attr_value = getattr(cls, attr_name)
                     # Skip only instance methods, not type definitions or constants
-                    if callable(attr_value) and not isinstance(attr_value, type):
-                        # Check if it's a bound method (skip those)
-                        if hasattr(attr_value, "__self__"):
-                            continue
+                    if (
+                        callable(attr_value)
+                        and not isinstance(attr_value, type)
+                        and hasattr(attr_value, "__self__")
+                    ):
+                        continue
                     # Include: constants (str, int, bool), enums, classes, types
                     attr_type = type(attr_value).__name__
                     result[attr_name] = m.Infra.ConstantDefinition(
@@ -718,7 +721,7 @@ class FlextInfraCodegenConstantDetection:
         root_path: Path,
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
         max_files: int = 5000,
-    ) -> dict:  # type: ignore
+    ) -> dict:
         """Comprehensive census of all objects in a class (constants, enums, types, etc).
 
         Analyzes ANY Python class for: constants, enums, types, classes, and their usages.
@@ -752,7 +755,7 @@ class FlextInfraCodegenConstantDetection:
         )
 
         # Categorize by type
-        by_type: dict = {}  # type: ignore
+        by_type: dict = {}
         for attr_name, attr_def in attrs.items():
             attr_type = attr_def.type_annotation
             if attr_type not in by_type:
@@ -769,6 +772,137 @@ class FlextInfraCodegenConstantDetection:
             "total_unused": len(attrs) - len(used_attrs),
             "by_type": by_type,
             "usage_map": usage_map,
+        }
+
+    @staticmethod
+    def propose_deduplication_fixes(
+        class_path: str,
+        root_path: Path,
+        exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
+        max_files: int = 2000,
+    ) -> list[dict]:
+        """Propose fixes to deduplicate constant values across a class.
+
+        Returns list of fix proposals. Each fix shows:
+        - value: the duplicated value
+        - canonical: the most-used constant name
+        - duplicates: list of other names to be replaced
+        """
+        # Extract attributes
+        attrs = FlextInfraCodegenConstantDetection.extract_class_attributes_with_mro(
+            class_path,
+        )
+        if not attrs:
+            return []
+
+        simple_class_name = class_path.rsplit(".", 1)[-1]
+        _, usage_map = FlextInfraCodegenConstantDetection.scan_class_attribute_usages(
+            root_path,
+            simple_class_name,
+            exclude_patterns,
+            max_files,
+        )
+
+        # Group by value
+        by_value: dict = {}
+        for name, defn in attrs.items():
+            value_key = defn.value_repr[:100]
+            if value_key not in by_value:
+                by_value[value_key] = []
+            by_value[value_key].append({
+                "name": name,
+                "type": defn.type_annotation,
+                "usages": len(usage_map.get(name, [])),
+            })
+
+        # Create fix proposals for duplicates
+        fixes: list = []
+        for value, names_list in by_value.items():
+            if len(names_list) <= 1:
+                continue  # Not a duplicate
+
+            # Find most-used
+            canonical = max(names_list, key=operator.itemgetter("usages"))
+            duplicates = [n for n in names_list if n["name"] != canonical["name"]]
+
+            fixes.append({
+                "value": value,
+                "canonical_name": canonical["name"],
+                "canonical_usages": canonical["usages"],
+                "duplicates": duplicates,
+                "total_occurrences": len(names_list),
+            })
+
+        # Sort by impact (total usages × duplicates)
+        fixes.sort(
+            key=lambda x: x["canonical_usages"] * len(x["duplicates"]),
+            reverse=True,
+        )
+        return fixes
+
+    @staticmethod
+    def apply_deduplication_fix(
+        fix_proposal: dict,
+        root_path: Path,
+        class_path: str,
+        dry_run: bool = True,
+    ) -> dict:
+        """Apply a single deduplication fix.
+
+        Returns dict with: status, canonical, replaced, files_modified
+        """
+        canonical_name = str(fix_proposal.get("canonical_name", ""))
+        simple_class_name = class_path.rsplit(".", 1)[-1]
+
+        # Determine access pattern
+        access_pattern = (
+            f"c.Infra.{canonical_name}"
+            if "Infra" in simple_class_name
+            else f"c.{canonical_name}"
+        )
+
+        files_modified = 0
+        replaced_names: list = []
+
+        # Replace each duplicate
+        duplicates = fix_proposal.get("duplicates", [])
+        for dup in duplicates:
+            dup_name = str(dup.get("name", ""))
+            replaced_names.append(dup_name)
+
+            # Patterns to find and replace
+            patterns = [
+                (f"{simple_class_name}.{dup_name}", access_pattern),
+                (f"c.{dup_name}", access_pattern),
+            ]
+
+            # Scan and replace files
+            for py_file in root_path.rglob("*.py"):
+                if any(
+                    excl in py_file.parts for excl in (".mypy_cache", "__pycache__")
+                ):
+                    continue
+                try:
+                    content = py_file.read_text("utf-8")
+                except (UnicodeDecodeError, OSError):
+                    continue
+
+                modified = False
+                new_content = content
+                for old_pattern, new_pattern in patterns:
+                    if old_pattern in new_content:
+                        new_content = new_content.replace(old_pattern, new_pattern)
+                        modified = True
+
+                if modified and not dry_run:
+                    py_file.write_text(new_content, encoding="utf-8")
+                    files_modified += 1
+
+        return {
+            "status": "success",
+            "canonical": canonical_name,
+            "replaced": replaced_names,
+            "files_modified": files_modified,
         }
 
 

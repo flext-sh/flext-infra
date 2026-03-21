@@ -486,7 +486,7 @@ class FlextInfraNamespaceEnforcerModels:
         projects: Annotated[
             list[FlextInfraNamespaceEnforcerModels.ProjectEnforcementReport],
             Field(description="Project enforcement reports"),
-        ] = []  # noqa: RUF012
+        ] = []
         total_facades_missing: Annotated[int, Field(default=0, ge=0)]
         total_loose_objects: Annotated[int, Field(default=0, ge=0)]
         total_import_violations: Annotated[int, Field(default=0, ge=0)]

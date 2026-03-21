@@ -342,6 +342,20 @@ class FlextInfraUtilitiesGithub(
         )
 
     @classmethod
+    def github_pr_run_single(
+        cls,
+        repo_root: Path,
+        workspace_root: Path,
+        pr_args: Mapping[str, str],
+    ) -> r[m.Infra.PrExecutionResult]:
+        """Execute one PR command for a single repository."""
+        return cls._github_pr_run_single(
+            repo_root=repo_root,
+            workspace_root=workspace_root,
+            pr_args=pr_args,
+        )
+
+    @classmethod
     def _github_pr_run_single(
         cls,
         repo_root: Path,

@@ -7,7 +7,13 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraRefactorRule, Tier0ImportAnalyzer, Tier0ImportFixer, c
+from flext_infra import (
+    FlextInfraRefactorRule,
+    Tier0ImportAnalyzer,
+    Tier0ImportFixer,
+    c,
+    u,
+)
 
 
 class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):

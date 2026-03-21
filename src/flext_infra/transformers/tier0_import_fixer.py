@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import libcst as cst
 
@@ -52,6 +52,7 @@ class FlextInfraTransformerTier0ImportFixer:
             tier0_modules: tuple[str, ...],
             core_aliases: tuple[str, ...],
         ) -> None:
+            """Initialize analyzer state for Tier 0 import scanning."""
             self._file_path = file_path
             self._tier0_modules = {n.removesuffix(".py") for n in tier0_modules}
             self._core_aliases = set(core_aliases)
@@ -156,7 +157,7 @@ class FlextInfraTransformerTier0ImportFixer:
     class Transformer(cst.CSTTransformer):
         """Rewrite Tier 0 imports to remove circularity and enforce order."""
 
-        _CLASS_IMPORTS_MAP = {
+        _CLASS_IMPORTS_MAP: ClassVar[dict[str, str]] = {
             "FlextRuntime": "flext_core.runtime",
             "FlextUtilitiesGuardsTypeCore": "flext_core._utilities.guards_type_core",
             "FlextUtilitiesGuards": "flext_core._utilities.guards",
@@ -177,6 +178,7 @@ class FlextInfraTransformerTier0ImportFixer:
             alias_to_submodule: dict[str, str],
             core_package: str,
         ) -> None:
+            """Initialize transformer with analysis and insertion configuration."""
             self.analysis = analysis
             self._package_name = analysis.package_name
             self._core_package = core_package
@@ -198,6 +200,7 @@ class FlextInfraTransformerTier0ImportFixer:
 
         @property
         def changes(self) -> list[str]:
+            """Return recorded transformation changes."""
             return self._changes
 
         @override

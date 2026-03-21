@@ -65,6 +65,7 @@ def _resolve_tag(tag_arg: str, version: str) -> str:
 
 
 def run(argv: list[str] | None = None) -> int:
+    """Run release orchestration CLI flow."""
     parser = u.Infra.create_parser(
         prog="release",
         description="Release orchestration",
@@ -134,6 +135,7 @@ def run(argv: list[str] | None = None) -> int:
 
 
 def main() -> int:
+    """Run the release module entrypoint."""
     return u.Infra.run_cli(run)
 
 

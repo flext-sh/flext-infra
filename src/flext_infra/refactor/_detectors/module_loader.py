@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TypeVar
 
 from pydantic import JsonValue
 
@@ -70,8 +70,11 @@ class FlextInfraRefactorDetectorModuleLoader:
         )
 
 
-class _ViolationWithLine(Protocol):
+class ViolationWithLine(Protocol):
     def model_dump(self) -> dict[str, JsonValue]: ...
+
+
+_V = TypeVar("_V", bound=ViolationWithLine)
 
 
 class DetectorScanResultBuilder:

@@ -42,6 +42,7 @@ class ProjectClassifier:
         )
 
     def expected_dependency_bases_by_family(self) -> dict[str, list[str]]:
+        """Return expected parent facade class names grouped by family."""
         project_name, dependencies = self._read_project_metadata()
         internal_dependencies = self._internal_dependencies(
             dependencies=dependencies,

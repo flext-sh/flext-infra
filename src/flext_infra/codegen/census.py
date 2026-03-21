@@ -166,7 +166,7 @@ class FlextInfraCodegenCensus(s[bool]):
     def _census_project(
         self,
         project: p.Infra.ProjectInfo,
-        class_analysis: dict | None = None,  # type: ignore
+        class_analysis: dict | None = None,
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
         validator = FlextInfraNamespaceValidator()
@@ -228,23 +228,23 @@ class FlextInfraCodegenCensus(s[bool]):
         # Census class objects (generic - works for any class)
         if class_analysis and project.name == "flexcore":
             try:
-                class_name_str = str(class_analysis.get("class_name", "Unknown"))  # type: ignore
-                census_data_obj = class_analysis.get("census_data")  # type: ignore
+                class_name_str = str(class_analysis.get("class_name", "Unknown"))
+                census_data_obj = class_analysis.get("census_data")
                 if not isinstance(census_data_obj, dict):
                     census_data_obj = {}
 
-                total_objs = int(census_data_obj.get("total_objects", 0))  # type: ignore
-                total_used = int(census_data_obj.get("total_used", 0))  # type: ignore
-                total_unused = int(census_data_obj.get("total_unused", 0))  # type: ignore
+                total_objs = int(census_data_obj.get("total_objects", 0))
+                total_used = int(census_data_obj.get("total_used", 0))
+                total_unused = int(census_data_obj.get("total_unused", 0))
 
                 # Build type breakdown
-                type_breakdown = census_data_obj.get("by_type", {})  # type: ignore
+                type_breakdown = census_data_obj.get("by_type", {})
                 type_stats = []
                 if isinstance(type_breakdown, dict):
-                    for type_name in sorted(type_breakdown.keys())[:3]:  # type: ignore
-                        type_info = type_breakdown[type_name]  # type: ignore
+                    for type_name in sorted(type_breakdown.keys())[:3]:
+                        type_info = type_breakdown[type_name]
                         if isinstance(type_info, dict):
-                            cnt = type_info.get("total", 0)  # type: ignore
+                            cnt = type_info.get("total", 0)
                             type_stats.append(f"{type_name}:{cnt}")
                 type_detail = f" [{', '.join(type_stats)}]" if type_stats else ""
 

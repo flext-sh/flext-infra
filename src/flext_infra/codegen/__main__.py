@@ -20,6 +20,9 @@ from pathlib import Path
 
 from flext_infra import c
 from flext_infra._utilities.output import output
+from flext_infra.codegen._codegen_constant_visitor import (
+    FlextInfraCodegenConstantDetection,
+)
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.constants_quality_gate import (
     FlextInfraCodegenConstantsQualityGate,
@@ -41,6 +44,7 @@ class FlextInfraCodegenCommand:
             subcommands={
                 "lazy-init": "Generate/refresh PEP 562 lazy-import __init__.py files",
                 "census": "Count namespace violations across workspace projects",
+                "deduplicate": "Auto-fix duplicated constants (keep most-used)",
                 "scaffold": "Generate missing base modules in src/ and tests/",
                 "auto-fix": "Auto-fix namespace violations (move Finals/TypeVars)",
                 "py-typed": "Create/remove PEP 561 py.typed markers",
@@ -72,6 +76,12 @@ class FlextInfraCodegenCommand:
             default=None,
             help="Full class path to analyze attributes (e.g., flext_core.FlextConstants)",
         )
+        _ = subs["deduplicate"].add_argument(
+            "--class-to-analyze",
+            type=str,
+            required=True,
+            help="Full class path to deduplicate (e.g., flext_core.FlextConstants)",
+        )
 
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
@@ -81,6 +91,8 @@ class FlextInfraCodegenCommand:
             return FlextInfraCodegenCommand.handle_py_typed(cli)
         if args.command == "census":
             return FlextInfraCodegenCommand.handle_census(cli)
+        if args.command == "deduplicate":
+            return FlextInfraCodegenCommand.handle_deduplicate(cli)
         if args.command == "scaffold":
             return FlextInfraCodegenCommand.handle_scaffold(cli)
         if args.command == "auto-fix":
@@ -110,6 +122,68 @@ class FlextInfraCodegenCommand:
         """Handle py.typed marker generation."""
         service = FlextInfraCodegenPyTyped(workspace_root=cli.workspace)
         service.run(check_only=cli.check)
+        return 0
+
+    @staticmethod
+    def handle_deduplicate(cli: u.Infra.CliArgs) -> int:
+        """Handle constant deduplication with user selection."""
+        class_to_analyze = getattr(cli, "class_to_analyze", None)
+        if not class_to_analyze:
+            output.error("--class-to-analyze is required")
+            return 1
+
+        # Get deduplicate proposals
+        fixes = FlextInfraCodegenConstantDetection.propose_deduplication_fixes(
+            class_to_analyze,
+            cli.workspace,
+        )
+
+        if not fixes:
+            output.info("No duplicates found")
+            return 0
+
+        output.info(f"Found {len(fixes)} groups of duplicate constants\n")
+
+        # Display fixes
+        for i, fix in enumerate(fixes, 1):
+            value_str = str(fix.get("value", ""))[:50]
+            canonical = str(fix.get("canonical_name", ""))
+            usages = int(fix.get("canonical_usages", 0))
+            duplicates = fix.get("duplicates", [])
+            output.info(
+                f"{i}. Value: {value_str}"
+                f" | Keep: {canonical} ({usages} uses)"
+                f" | Replace {len(duplicates)} others"
+            )
+            for dup in duplicates:
+                dup_name = str(dup.get("name", ""))
+                dup_usages = int(dup.get("usages", 0))
+                output.info(f"   - {dup_name} ({dup_usages} uses)")
+
+        # Apply fixes
+        output.info(f"\nApplying {len(fixes)} deduplication fixes...")
+        total_files_modified = 0
+        for fix in fixes:
+            result = FlextInfraCodegenConstantDetection.apply_deduplication_fix(
+                fix,
+                cli.workspace,
+                class_to_analyze,
+                dry_run=cli.dry_run,
+            )
+            if result.get("status") == "success":
+                files_mod = int(result.get("files_modified", 0))
+                total_files_modified += files_mod
+                canonical = str(result.get("canonical", ""))
+                replaced = result.get("replaced", [])
+                output.info(
+                    f"✓ {canonical}: replaced {len(replaced)} in {files_mod} files"
+                )
+
+        if not cli.dry_run:
+            output.info(f"\n✓ Modified {total_files_modified} files")
+        else:
+            output.info(f"\n[DRY-RUN] Would modify {total_files_modified} files")
+
         return 0
 
     @staticmethod

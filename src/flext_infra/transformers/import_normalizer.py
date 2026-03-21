@@ -50,6 +50,7 @@ class FlextInfraTransformerImportNormalizer:
         @staticmethod
         @lru_cache(maxsize=1)
         def load_config() -> Mapping[str, t.Infra.InfraValue]:
+            """Load import normalization configuration from YAML."""
             rules_path = (
                 Path(__file__).resolve().parent.parent
                 / "rules"
@@ -65,6 +66,7 @@ class FlextInfraTransformerImportNormalizer:
         @staticmethod
         @lru_cache(maxsize=1)
         def alias_tiers() -> Mapping[str, int]:
+            """Return configured alias-to-tier mapping."""
             config = FlextInfraTransformerImportNormalizer.Helper.load_config().get(
                 "alias_tiers",
             )
@@ -81,6 +83,7 @@ class FlextInfraTransformerImportNormalizer:
         @staticmethod
         @lru_cache(maxsize=1)
         def facade_filenames() -> tuple[str, ...]:
+            """Return facade file names configured for normalization."""
             config = FlextInfraTransformerImportNormalizer.Helper.load_config().get(
                 "facade_filenames",
             )
@@ -96,6 +99,7 @@ class FlextInfraTransformerImportNormalizer:
         @staticmethod
         @lru_cache(maxsize=1)
         def wrong_source_config() -> tuple[bool, frozenset[str]]:
+            """Return wrong-source detection flag and universal aliases."""
             config = FlextInfraTransformerImportNormalizer.Helper.load_config().get(
                 "wrong_source",
             )
@@ -118,6 +122,7 @@ class FlextInfraTransformerImportNormalizer:
             project_package: str,
             alias_map: dict[str, tuple[str, ...]] | None,
         ) -> FlextInfraTransformerImportNormalizer.Context:
+            """Build normalized analysis context for a target file."""
             package_name = (
                 project_package
                 if len(project_package) > 0
@@ -139,7 +144,7 @@ class FlextInfraTransformerImportNormalizer:
                             package_dir = cand
 
             alias_to_module = (
-                FlextInfraTransformerImportNormalizer.Helper._build_alias_to_defining_module(
+                FlextInfraTransformerImportNormalizer.Helper.build_alias_to_defining_module(
                     package_name=package_name,
                     package_dir=package_dir,
                     project_root=project_root,
@@ -164,14 +169,14 @@ class FlextInfraTransformerImportNormalizer:
             facade_to_alias = {v: k for k, v in alias_to_facade.items()}
             declared_alias = facade_to_alias.get(file_path.name, "")
             alias_tiers = FlextInfraTransformerImportNormalizer.Helper.alias_tiers()
-            file_tier = FlextInfraTransformerImportNormalizer.Helper._file_tier(
+            file_tier = FlextInfraTransformerImportNormalizer.Helper.file_tier(
                 file_path=file_path,
                 project_package=package_name,
                 facade_to_alias=facade_to_alias,
                 alias_tiers=alias_tiers,
             )
             reachability = (
-                FlextInfraTransformerImportNormalizer.Helper._build_reachability(
+                FlextInfraTransformerImportNormalizer.Helper.build_reachability(
                     package_dir,
                     package_name,
                 )
@@ -202,7 +207,7 @@ class FlextInfraTransformerImportNormalizer:
             )
 
         @staticmethod
-        def _build_alias_to_defining_module(
+        def build_alias_to_defining_module(
             *,
             package_name: str,
             package_dir: Path,
@@ -229,7 +234,7 @@ class FlextInfraTransformerImportNormalizer:
 
         @staticmethod
         @lru_cache(maxsize=128)
-        def _build_reachability(
+        def build_reachability(
             package_dir: Path,
             package_name: str,
         ) -> dict[str, frozenset[str]]:
@@ -248,7 +253,7 @@ class FlextInfraTransformerImportNormalizer:
             return reachability
 
         @staticmethod
-        def _file_tier(
+        def file_tier(
             *,
             file_path: Path,
             project_package: str,
@@ -289,6 +294,7 @@ class FlextInfraTransformerImportNormalizer:
             project_package: str = "",
             alias_map: dict[str, tuple[str, ...]] | None = None,
         ) -> None:
+            """Initialize visitor with file and package normalization context."""
             self._context = FlextInfraTransformerImportNormalizer.Helper.build_context(
                 file_path=file_path,
                 project_package=project_package,
@@ -362,6 +368,7 @@ class FlextInfraTransformerImportNormalizer:
             alias_map: dict[str, tuple[str, ...]] | None = None,
             on_change: Callable[[str], None] | None = None,
         ) -> None:
+            """Initialize transformer with file context and change callback."""
             self._context = FlextInfraTransformerImportNormalizer.Helper.build_context(
                 file_path=file_path,
                 project_package=project_package,
@@ -393,9 +400,12 @@ class FlextInfraTransformerImportNormalizer:
         def _track_present_aliases(self, aliases: Sequence[cst.ImportAlias]) -> None:
             for imported_alias in aliases:
                 imported_name = u.Infra.cst_imported_name(imported_alias)
-                if imported_name and imported_name != self._context.declared_alias:
-                    if imported_name in self._context.project_aliases:
-                        self.aliases_present.add(imported_name)
+                if (
+                    imported_name
+                    and imported_name != self._context.declared_alias
+                    and imported_name in self._context.project_aliases
+                ):
+                    self.aliases_present.add(imported_name)
 
         def _record_change(self, message: str) -> None:
             self.changes.append(message)
