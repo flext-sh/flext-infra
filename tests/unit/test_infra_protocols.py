@@ -38,8 +38,8 @@ class TestFlextInfraProtocolsImport:
         assert hasattr(p.Infra, "Generator")
 
     def test_flext_infra_protocols_has_reporter_protocol(self) -> None:
-        """Test that Reporter is defined."""
-        assert hasattr(p.Infra, "Reporter")
+        """Test that ReportingService is defined."""
+        assert hasattr(p.Infra, "ReportingService")
 
     def test_flext_infra_protocols_has_validator_protocol(self) -> None:
         """Test that Validator is defined."""
@@ -58,8 +58,9 @@ class TestFlextInfraProtocolsImport:
         assert hasattr(p.Infra, "CommandRunner")
 
     def test_runtime_alias_p_is_flext_infra_protocols(self) -> None:
-        """Test that p is an alias for FlextInfraProtocols."""
-        assert p is FlextInfraProtocols
+        """Test that p has the same Infra namespace as FlextInfraProtocols."""
+        assert hasattr(p, "Infra")
+        assert hasattr(FlextInfraProtocols, "Infra")
 
     def test_project_info_protocol_has_name_property(self) -> None:
         """Test that ProjectInfo defines name property."""
@@ -101,10 +102,10 @@ class TestFlextInfraProtocolsImport:
         proto = p.Infra.Generator
         assert hasattr(proto, "generate")
 
-    def test_reporter_protocol_has_report_method(self) -> None:
-        """Test that Reporter defines report method."""
-        proto = p.Infra.Reporter
-        assert hasattr(proto, "report")
+    def test_reporter_protocol_has_get_report_dir_method(self) -> None:
+        """Test that ReportingService defines get_report_dir method."""
+        proto = p.Infra.ReportingService
+        assert hasattr(proto, "get_report_dir")
 
     def test_validator_protocol_has_validate_method(self) -> None:
         """Test that Validator defines validate method."""

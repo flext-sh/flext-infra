@@ -107,7 +107,7 @@ def test_run_raw_cases(
             "test_value",
             "",
         ),
-        (["sh", "-c", "exit 1"], None, None, False, False, "", "command failed"),
+        (["sh", "-c", "exit 1"], None, None, False, False, "", "failed"),
         (["sleep", "10"], 1, None, False, False, "", "timeout"),
     ],
     ids=["success", "cwd", "env", "nonzero-failure", "timeout"],

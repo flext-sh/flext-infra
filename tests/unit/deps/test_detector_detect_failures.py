@@ -23,8 +23,9 @@ class TestDetectorRunFailures:
         paths = types.SimpleNamespace(
             workspace_root_from_file=_workspace_root_from_file,
         )
-        monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", lambda: paths)
-        result = detector_module.FlextInfraRuntimeDevDependencyDetector().run([])
+        detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
+        monkeypatch.setattr(detector, "paths", paths)
+        result = detector.run([])
         tm.that(tm.ok(result), eq=2)
 
     def test_run_with_project_discovery_failure(

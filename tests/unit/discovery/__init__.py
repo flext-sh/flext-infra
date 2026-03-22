@@ -18,8 +18,14 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "TestFlextInfraDiscoveryService": ("tests.unit.discovery.test_infra_discovery", "TestFlextInfraDiscoveryService"),
-    "TestFlextInfraDiscoveryServiceUncoveredLines": ("tests.unit.discovery.test_infra_discovery_edge_cases", "TestFlextInfraDiscoveryServiceUncoveredLines"),
+    "TestFlextInfraDiscoveryService": (
+        "tests.unit.discovery.test_infra_discovery",
+        "TestFlextInfraDiscoveryService",
+    ),
+    "TestFlextInfraDiscoveryServiceUncoveredLines": (
+        "tests.unit.discovery.test_infra_discovery_edge_cases",
+        "TestFlextInfraDiscoveryServiceUncoveredLines",
+    ),
 }
 
 __all__ = [

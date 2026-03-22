@@ -116,19 +116,13 @@ def _setup_typings_detector(
     paths = types.SimpleNamespace(workspace_root_from_file=_workspace_root_from_file)
     deps = _DepsStub(project_path, to_add)
     runner = types.SimpleNamespace(run_raw=_run_raw)
-    monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", lambda: paths)
-    monkeypatch.setattr(
-        detector_module,
-        "FlextInfraDependencyDetectionService",
-        lambda: deps,
-    )
-    monkeypatch.setattr(
-        detector_module,
-        "FlextInfraUtilitiesSubprocess",
-        lambda: runner,
-    )
+
+    detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
+    monkeypatch.setattr(detector, "paths", paths)
+    monkeypatch.setattr(detector, "deps", deps)
+    monkeypatch.setattr(detector, "runner", runner)
     monkeypatch.setattr(Path, "exists", _exists)
-    return detector_module.FlextInfraRuntimeDevDependencyDetector(), captured_commands
+    return detector, captured_commands
 
 
 class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:

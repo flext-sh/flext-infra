@@ -9,9 +9,9 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 
+import pytest
 from flext_tests import tm
 
-import pytest
 from flext_core import r
 from flext_infra.docs.__main__ import main
 from flext_infra.docs.auditor import FlextInfraDocAuditor
@@ -121,9 +121,7 @@ class TestMainWithFlags:
 
     def test_audit_project_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
         kw: dict[str, t.Scalar] = {}
-        monkeypatch.setattr(
-            sys, "argv", ["prog", "audit", "--project", "test-proj"]
-        )
+        monkeypatch.setattr(sys, "argv", ["prog", "audit", "--project", "test-proj"])
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
         main()
         tm.that(kw.get("project"), eq="test-proj")

@@ -88,6 +88,8 @@ class TestProcessFileReadError:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text("[tool]\n")
 
         def _raise(_self: Path, encoding: str = "utf-8") -> str:
             del encoding
@@ -95,7 +97,7 @@ class TestProcessFileReadError:
             raise OSError(msg)
 
         monkeypatch.setattr(Path, "read_text", _raise)
-        tm.fail(fixer.process_file(tmp_path / "pyproject.toml"), has="read error")
+        tm.fail(fixer.process_file(pyproject), has="TOML parse failed")
 
     def test_parse_error(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)

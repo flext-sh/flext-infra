@@ -17,7 +17,7 @@ from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates._base_gate import FlextInfraGate
 from tests.models import m
 
-from ... import h
+from ...helpers import h
 
 RunCallable = Callable[
     [list[str], Path, int, dict[str, str] | None],

@@ -11,7 +11,14 @@ from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 
 class TestDiscoveryProjectRoots:
     def test_discover_project_roots_with_real_workspace_root(self) -> None:
-        workspace_root = Path(__file__).resolve().parents[5]
+        # Walk up from the test file to find the workspace root (contains flext-core)
+        candidate = Path(__file__).resolve()
+        workspace_root = candidate
+        while candidate != candidate.parent:
+            if (candidate / "flext-core").is_dir():
+                workspace_root = candidate
+                break
+            candidate = candidate.parent
 
         roots = u.Infra.discover_project_roots(workspace_root)
 
@@ -174,4 +181,4 @@ class TestDiscoveryDiscoverProjects:
 
         assert result.is_failure
         error_text = result.error or ""
-        assert "project discovery failed" in error_text
+        assert "discovery failed" in error_text

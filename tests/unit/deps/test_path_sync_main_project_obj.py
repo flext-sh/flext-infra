@@ -9,7 +9,7 @@ import tomlkit
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_core import r, t
+from flext_core import r
 from flext_infra import m
 from flext_infra.deps import path_sync as path_sync_module
 
@@ -38,12 +38,11 @@ def test_main_project_obj_not_dict_first_loop(
     (project_dir / "pyproject.toml").touch()
 
     def _discover_projects(
-        _self: t.Scalar,
         _root: Path,
     ) -> r[list[m.Infra.ProjectInfo]]:
         return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
-    def _read_document(_self: t.Scalar, _path: Path) -> r[TOMLDocument]:
+    def _read_document(_path: Path) -> r[TOMLDocument]:
         return r[TOMLDocument].ok(tomlkit.parse('[project]\nvalue = "not-a-dict"\n'))
 
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
@@ -64,14 +63,13 @@ def test_main_project_obj_not_dict_second_loop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _discover_projects(
-        _self: t.Scalar,
         _root: Path,
     ) -> r[list[m.Infra.ProjectInfo]]:
         return r[list[m.Infra.ProjectInfo]].ok([
             _project(tmp_path / "test-project"),
         ])
 
-    def _read_document(_self: t.Scalar, _path: Path) -> r[TOMLDocument]:
+    def _read_document(_path: Path) -> r[TOMLDocument]:
         return r[TOMLDocument].ok(tomlkit.parse('[project]\nvalue = "not-a-dict"\n'))
 
     monkeypatch.setattr(sys, "argv", ["sync-paths"])

@@ -13,8 +13,9 @@ from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates._base_gate import FlextInfraGate
+from flext_infra.gates.mypy import FlextInfraMypyGate
 
-from ... import h
+from ...helpers import h
 from ...models import m
 from ._shared_fixtures import (
     create_check_project_iter_stub,
@@ -134,8 +135,11 @@ class TestMypyEmptyLinesInOutput:
                 exit_code=1,
             )
 
-        def _fake_existing_dirs(_project_dir: Path) -> list[str]:
-            del _project_dir
+        def _fake_existing_dirs(
+            _self: FlextInfraGate,
+            _project_dir: Path,
+        ) -> list[str]:
+            del _self, _project_dir
             return ["src"]
 
         def _fake_dirs_with_py(_project_dir: Path, _dirs: list[str]) -> list[str]:
@@ -143,8 +147,12 @@ class TestMypyEmptyLinesInOutput:
             return ["src"]
 
         monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
-        monkeypatch.setattr(checker, "_existing_check_dirs", _fake_existing_dirs)
-        monkeypatch.setattr(checker, "_dirs_with_py", staticmethod(_fake_dirs_with_py))
+        monkeypatch.setattr(
+            FlextInfraMypyGate, "_existing_check_dirs", _fake_existing_dirs
+        )
+        monkeypatch.setattr(
+            FlextInfraMypyGate, "_dirs_with_py", staticmethod(_fake_dirs_with_py)
+        )
         result = checker._run_mypy(proj_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=2)

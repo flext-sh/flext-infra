@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sys
-import types
 from pathlib import Path
 
 import pytest
@@ -10,7 +9,7 @@ from flext_tests import tf, tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r
-from flext_infra import FlextInfraExtraPathsManager
+from flext_infra import FlextInfraExtraPathsManager, FlextInfraUtilitiesToml
 from flext_infra.deps import extra_paths
 
 
@@ -226,9 +225,14 @@ def test_sync_one_edge_cases(
     def _write_document(_path: Path, _doc: TOMLDocument) -> r[bool]:
         return r[bool].ok(True)
 
-    stub = types.SimpleNamespace(
-        read_document=_read_document,
-        write_document=_write_document,
+    monkeypatch.setattr(
+        FlextInfraUtilitiesToml,
+        "read_document",
+        staticmethod(_read_document),
     )
-    monkeypatch.setattr(extra_paths, "FlextInfraUtilitiesToml", lambda: stub)
+    monkeypatch.setattr(
+        FlextInfraUtilitiesToml,
+        "write_document",
+        staticmethod(_write_document),
+    )
     tm.ok(_manager().sync_one(pyproject, is_root=True, dry_run=dry_run))

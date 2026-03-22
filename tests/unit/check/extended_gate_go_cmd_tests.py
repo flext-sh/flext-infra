@@ -23,7 +23,9 @@ from flext_infra import (
     FlextInfraWorkspaceChecker,
 )
 from flext_infra.gates._base_gate import FlextInfraGate
-from tests import h, t
+from tests import t
+
+from ...helpers import h
 
 GateClass = type[FlextInfraGoGate] | type[FlextInfraRuffLintGate]
 

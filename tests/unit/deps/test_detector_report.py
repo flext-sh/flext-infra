@@ -74,35 +74,17 @@ def _setup(
         del path
         return True
 
-    def _paths_factory() -> types.SimpleNamespace:
-        return paths
-
-    def _deps_factory() -> _DepsStub:
-        return deps
-
-    def _json_factory() -> types.SimpleNamespace | None:
-        return json_service
-
-    def _reporting_factory() -> types.SimpleNamespace | None:
-        return reporting_service
-
     paths = types.SimpleNamespace(workspace_root_from_file=_workspace_root_from_file)
-    monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", _paths_factory)
-    monkeypatch.setattr(
-        detector_module,
-        "FlextInfraDependencyDetectionService",
-        _deps_factory,
-    )
     monkeypatch.setattr(Path, "exists", _exists)
+
+    detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
+    monkeypatch.setattr(detector, "paths", paths)
+    monkeypatch.setattr(detector, "deps", deps)
     if json_service is not None:
-        monkeypatch.setattr(detector_module, "FlextInfraUtilitiesIo", _json_factory)
+        monkeypatch.setattr(detector, "json", json_service)
     if reporting_service is not None:
-        monkeypatch.setattr(
-            detector_module,
-            "FlextInfraUtilitiesReporting",
-            _reporting_factory,
-        )
-    return detector_module.FlextInfraRuntimeDevDependencyDetector()
+        monkeypatch.setattr(detector, "reporting", reporting_service)
+    return detector
 
 
 class TestFlextInfraRuntimeDevDependencyDetectorRunReport:

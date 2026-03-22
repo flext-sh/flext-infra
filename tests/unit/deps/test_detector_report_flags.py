@@ -72,21 +72,12 @@ def _setup(
         return True
 
     paths = types.SimpleNamespace(workspace_root_from_file=_workspace_root_from_file)
-
-    def _paths_factory() -> types.SimpleNamespace:
-        return paths
-
-    def _deps_factory() -> _DepsStub:
-        return deps
-
-    monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", _paths_factory)
-    monkeypatch.setattr(
-        detector_module,
-        "FlextInfraDependencyDetectionService",
-        _deps_factory,
-    )
     monkeypatch.setattr(Path, "exists", _exists)
-    return detector_module.FlextInfraRuntimeDevDependencyDetector()
+
+    detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
+    monkeypatch.setattr(detector, "paths", paths)
+    monkeypatch.setattr(detector, "deps", deps)
+    return detector
 
 
 class TestDetectorReportFlags:

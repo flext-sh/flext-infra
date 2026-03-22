@@ -112,6 +112,6 @@ class TestGitPush:
             git_repo,
             remote="origin",
             branch="main",
-            set_upstream=True,
+            upstream=True,
         )
         tm.fail(result)

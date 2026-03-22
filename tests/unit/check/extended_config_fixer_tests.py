@@ -25,7 +25,7 @@ class TestConfigFixerProcessFile:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("invalid [[[")
-        tm.fail(fixer.process_file(pyproject), has="failed to parse")
+        tm.fail(fixer.process_file(pyproject), has="TOML parse failed")
 
     def test_process_file_no_pyrefly_section(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)

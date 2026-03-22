@@ -8,6 +8,7 @@ from flext_tests import tm
 
 import flext_infra.deps as detector_module
 from flext_core import r
+from flext_infra.deps import detector as _det_mod
 
 
 class _ReportStub:
@@ -96,8 +97,6 @@ def _setup_detector(
     *,
     deptry_exists: bool = True,
 ) -> detector_module.FlextInfraRuntimeDevDependencyDetector:
-    from flext_infra.deps import detector as _det_mod
-
     monkeypatch.setattr(
         _det_mod,
         "FlextInfraDependencyDetectionService",

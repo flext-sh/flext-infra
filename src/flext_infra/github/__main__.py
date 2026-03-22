@@ -263,7 +263,7 @@ def run(argv: list[str] | None = None) -> int:
             pr_action=args.pr_action,
             pr_base=args.pr_base,
             pr_head=args.pr_head,
-            pr_number=args.pr_number,
+            pr_number=str(args.pr_number) if args.pr_number else "",
             pr_title=args.pr_title,
             pr_body=args.pr_body,
             pr_draft=args.pr_draft == 1,

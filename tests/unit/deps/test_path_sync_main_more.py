@@ -7,7 +7,7 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r
-from flext_infra import FlextInfraDependencyPathSync, FlextInfraUtilitiesDiscovery, m
+from flext_infra import FlextInfraDependencyPathSync, m
 from flext_infra.deps import path_sync as path_sync_module
 
 
@@ -43,7 +43,6 @@ def test_main_project_invalid_toml(
     (project_dir / "pyproject.toml").write_text("invalid toml [[[")
 
     def _discover_project(
-        _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
     ) -> r[list[m.Infra.ProjectInfo]]:
         return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
@@ -64,7 +63,6 @@ def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     (project_dir / "pyproject.toml").write_text("[project]\n")
 
     def _discover_project(
-        _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
     ) -> r[list[m.Infra.ProjectInfo]]:
         return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
@@ -88,7 +86,6 @@ def test_main_project_non_string_name(
     (project_dir / "pyproject.toml").write_text("[project]\nname = 123\n")
 
     def _discover_project(
-        _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
     ) -> r[list[m.Infra.ProjectInfo]]:
         return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
@@ -104,7 +101,6 @@ def test_main_project_non_string_name(
 
 def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def _discover_fail(
-        _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
     ) -> r[list[m.Infra.ProjectInfo]]:
         return r[list[m.Infra.ProjectInfo]].fail("discovery failed")
@@ -119,7 +115,6 @@ def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
     def _discover_none(
-        _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
     ) -> r[list[m.Infra.ProjectInfo]]:
         return r[list[m.Infra.ProjectInfo]].ok([])
@@ -163,7 +158,6 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     recorder = _OutputRecorder()
 
     def _discover_none(
-        _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
     ) -> r[list[m.Infra.ProjectInfo]]:
         return r[list[m.Infra.ProjectInfo]].ok([])
@@ -199,7 +193,6 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     recorder = _OutputRecorder()
 
     def _discover_none(
-        _self: FlextInfraUtilitiesDiscovery,
         _root: Path,
     ) -> r[list[m.Infra.ProjectInfo]]:
         return r[list[m.Infra.ProjectInfo]].ok([])

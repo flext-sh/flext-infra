@@ -99,23 +99,15 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
-            u.Infra,
-            "github_pr_run_single",
-            staticmethod(
-                lambda **kw: r[m.Infra.PrResult].ok(
-                    m.Infra.PrResult(exit_code=0, output="ok"),
-                ),
-            ),
+            github_main,
+            "run_pr",
+            lambda argv: 0,
         )
         original = sys.argv.copy()
         try:
             sys.argv = [
                 "flext-infra",
                 "pr",
-                "--repo-root",
-                str(tmp_path),
-                "--action",
-                "status",
             ]
             assert main() == 0
         finally:
@@ -151,7 +143,7 @@ class TestMain:
         original = sys.argv.copy()
         try:
             sys.argv = ["flext-infra", "unknown"]
-            assert main() == 1
+            assert main() == 2
         finally:
             sys.argv = original
 
@@ -190,9 +182,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         ops = [
-            SyncOperation(
-                project="p1", path="ci.yml", action="create", reason="new"
-            ),
+            SyncOperation(project="p1", path="ci.yml", action="create", reason="new"),
             SyncOperation(
                 project="p2",
                 path="ci.yml",

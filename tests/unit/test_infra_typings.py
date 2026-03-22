@@ -100,9 +100,9 @@ class TestFlextInfraTypesImport:
             "ResourceCallable",
         )
 
-    def test_flext_infra_types_has_validation_namespace(self) -> None:
-        """Test that FlextInfraTypes has Validation namespace."""
-        assert hasattr(FlextTypes, "Validation") or hasattr(
+    def test_flext_infra_types_has_validation_types(self) -> None:
+        """Test that FlextInfraTypes has validation types."""
+        assert hasattr(FlextTypes, "PositiveInt") or hasattr(
             FlextInfraTypes,
-            "Validation",
+            "PositiveInt",
         )

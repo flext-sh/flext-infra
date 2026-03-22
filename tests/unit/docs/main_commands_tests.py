@@ -10,7 +10,6 @@ from flext_tests import tm
 
 from flext_core import r, t
 from flext_infra import u
-from flext_infra.docs import __main__ as docs_main
 from flext_infra.docs.__main__ import _run_build, _run_generate, _run_validate
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.generator import FlextInfraDocGenerator
@@ -57,9 +56,6 @@ def _stub_fail(err: str) -> Callable[..., r[list[_R]]]:
     return lambda *_a, **_kw: r[list[_R]].fail(err)
 
 
-_SILENT_OUTPUT = type("O", (), {"error": staticmethod(lambda *a: None)})()
-
-
 class TestRunBuild:
     def test_run_build_success_no_failures(
         self,
@@ -79,7 +75,6 @@ class TestRunBuild:
 
     def test_run_build_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_fail("build error"))
-        monkeypatch.setattr(docs_main, "output", _SILENT_OUTPUT)
         tm.that(_run_build(_build_args()), eq=1)
 
 
@@ -94,7 +89,6 @@ class TestRunGenerate:
             "generate",
             _stub_fail("generate error"),
         )
-        monkeypatch.setattr(docs_main, "output", _SILENT_OUTPUT)
         tm.that(_run_generate(_gen_args()), eq=1)
 
     def test_run_generate_with_apply_flag(
@@ -135,7 +129,6 @@ class TestRunValidate:
             "validate",
             _stub_fail("validate error"),
         )
-        monkeypatch.setattr(docs_main, "output", _SILENT_OUTPUT)
         tm.that(_run_validate(_val_args()), eq=1)
 
     def test_run_validate_with_check_parameter(

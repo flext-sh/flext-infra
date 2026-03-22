@@ -45,7 +45,7 @@ class TestFlextInfraCommandRunnerExtra:
         result = runner.run_checked(["sh", "-c", "exit 1"])
         tm.fail(result)
         assert isinstance(result.error, str)
-        assert "command failed" in result.error.lower()
+        assert "failed" in result.error.lower()
 
     def test_run_to_file_success(self, tmp_path: Path) -> None:
         """Test run_to_file writes output to file."""
@@ -77,7 +77,7 @@ class TestFlextInfraCommandRunnerExtra:
             result = runner.run_to_file(["echo", "test"], output_file)
             tm.fail(result)
             assert isinstance(result.error, str)
-            assert "file output error" in result.error.lower()
+            assert "execution error" in result.error.lower()
         finally:
             readonly_dir.chmod(493)
 

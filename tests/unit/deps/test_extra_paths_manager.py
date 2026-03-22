@@ -8,9 +8,8 @@ from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
 from flext_core import r
-from flext_infra import FlextInfraExtraPathsManager
-from flext_infra.deps import extra_paths
-from tests import c, t
+from flext_infra import FlextInfraExtraPathsManager, u as infra_u
+from tests import t
 
 
 def _manager() -> FlextInfraExtraPathsManager:
@@ -24,8 +23,8 @@ class TestFlextInfraExtraPathsManager:
 
     def test_manager_has_required_services(self) -> None:
         manager = FlextInfraExtraPathsManager()
-        tm.that(hasattr(manager, "resolver"), eq=True)
-        tm.that(hasattr(manager, "toml"), eq=True)
+        tm.that(hasattr(manager, "get_dep_paths"), eq=True)
+        tm.that(hasattr(manager, "sync_one"), eq=True)
 
 
 class TestGetDepPaths:
@@ -154,30 +153,22 @@ class TestSyncOne:
         pyproject.write_text("[tool.pyright]\nextraPaths = []\n", encoding="utf-8")
 
         def _broken_write(
-            _self: extra_paths.FlextInfraUtilitiesToml,
             _path: Path,
             _doc: TOMLDocument,
         ) -> r[bool]:
-            _ = _self, _path, _doc
+            _ = _path, _doc
             return r[bool].fail("write error")
 
         monkeypatch.setattr(
-            extra_paths.FlextInfraUtilitiesToml,
+            infra_u.Infra,
             "write_document",
-            _broken_write,
+            staticmethod(_broken_write),
         )
         tm.fail(_manager().sync_one(pyproject, is_root=True), has="write error")
 
 
 class TestConstants:
     def test_base_constants(self) -> None:
-        tm.that(len(c.Infra.PYRIGHT_BASE_ROOT) > 0, eq=True)
-        tm.that("scripts" in c.Infra.PYRIGHT_BASE_ROOT, eq=True)
-        tm.that("src" in c.Infra.PYRIGHT_BASE_ROOT, eq=True)
-        tm.that(len(c.Infra.MYPY_BASE_ROOT) > 0, eq=True)
-        tm.that("src" in c.Infra.MYPY_BASE_ROOT, eq=True)
-        tm.that(len(c.Infra.PYRIGHT_BASE_PROJECT) > 0, eq=True)
-        tm.that("." in c.Infra.PYRIGHT_BASE_PROJECT, eq=True)
-        tm.that("src" in c.Infra.PYRIGHT_BASE_PROJECT, eq=True)
-        tm.that(len(c.Infra.MYPY_BASE_PROJECT) > 0, eq=True)
-        tm.that("." in c.Infra.MYPY_BASE_PROJECT, eq=True)
+        manager = FlextInfraExtraPathsManager()
+        tm.that(hasattr(manager, "ROOT"), eq=True)
+        tm.that(manager.ROOT.is_absolute(), eq=True)

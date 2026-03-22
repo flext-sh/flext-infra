@@ -100,7 +100,7 @@ class TestFlextInfraConfigFixer:
         result = fixer.process_file(pyproject)
         tm.fail(result)
         assert isinstance(result.error, str)
-        assert "failed to parse" in result.error
+        assert "TOML parse failed" in result.error
 
     def test_process_file_with_dry_run(self, tmp_path: Path) -> None:
         """Test that process_file with dry_run doesn't modify file."""

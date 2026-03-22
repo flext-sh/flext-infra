@@ -19,7 +19,10 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "FlextInfraWorkspaceChecker": ("flext_infra.check.workspace_check", "FlextInfraWorkspaceChecker"),
+    "FlextInfraWorkspaceChecker": (
+        "flext_infra.check.workspace_check",
+        "FlextInfraWorkspaceChecker",
+    ),
     "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
     "main": ("flext_infra.check.workspace_check", "main"),
     "run_cli": ("flext_infra.check.workspace_check", "run_cli"),

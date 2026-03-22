@@ -201,10 +201,25 @@ class TestRunCLIExtended:
         gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
         project = ProjectResult(project="p", gates={"lint": gate_exec})
         ok_result = r[list[ProjectResult]].ok([project])
+
+        def _fake_init(
+            _self: FlextInfraWorkspaceChecker,
+            **_kw: t.Scalar,
+        ) -> None:
+            pass
+
+        def _fake_run_projects(
+            _self: FlextInfraWorkspaceChecker,
+            projects: list[str] | None = None,
+            gates: list[str] | None = None,
+            **kw: t.Scalar,
+        ) -> r[list[ProjectResult]]:
+            _ = projects, gates, kw
+            return ok_result
+
+        monkeypatch.setattr(FlextInfraWorkspaceChecker, "__init__", _fake_init)
         monkeypatch.setattr(
-            ws_mod,
-            "FlextInfraWorkspaceChecker",
-            _fake_checker_cls(["lint"], ok_result),
+            FlextInfraWorkspaceChecker, "run_projects", _fake_run_projects
         )
         monkeypatch.setattr("pathlib.Path.cwd", lambda: tmp_path)
         exit_code = FlextInfraWorkspaceChecker.run_cli([
