@@ -144,6 +144,7 @@ if TYPE_CHECKING:
         test_run_cli_with_multiple_projects,
     )
     from .unit.check.extended_cli_entry_tests import (
+        ProjectResult,
         TestCheckMainEntryPoint,
         TestFixPyrelfyCLI,
         TestRunCLIExtended,
@@ -210,7 +211,6 @@ if TYPE_CHECKING:
     )
     from .unit.check.extended_run_projects_tests import (
         CheckProjectStub,
-        ProjectResult,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
@@ -1082,7 +1082,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "GitScenario": ("tests.scenarios", "GitScenario"),
     "GitScenarios": ("tests.scenarios", "GitScenarios"),
     "MinimalScenario": ("tests.workspace_scenarios", "MinimalScenario"),
-    "ProjectResult": ("tests.unit.check.extended_run_projects_tests", "ProjectResult"),
+    "ProjectResult": ("tests.unit.check.extended_cli_entry_tests", "ProjectResult"),
     "RealGitService": ("tests.git_service", "RealGitService"),
     "RealSubprocessRunner": ("tests.runner_service", "RealSubprocessRunner"),
     "RunCallable": ("tests.unit.check.extended_runners_go_tests", "RunCallable"),

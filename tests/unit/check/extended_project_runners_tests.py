@@ -12,8 +12,8 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r
-from flext_infra import FlextInfraWorkspaceChecker
-from tests import m, t, u
+from flext_infra import FlextInfraUtilities, FlextInfraWorkspaceChecker
+from tests import m, t
 
 from ._shared_fixtures import create_gate_execution
 
@@ -72,7 +72,7 @@ class TestJsonWriteFailure:
             del _a, _kw
             return r[bool].fail("write error")
 
-        monkeypatch.setattr(u.Infra, "write_json", _fake_write_json)
+        monkeypatch.setattr(FlextInfraUtilities.Infra, "write_json", _fake_write_json)
 
         def _fake_lint(_project_dir: Path) -> m.Infra.GateExecution:
             del _project_dir
