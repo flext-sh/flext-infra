@@ -27,6 +27,7 @@ from flext_infra import (
 from flext_infra.refactor._detectors.namespace_facade_scanner import (
     NamespaceFacadeScanner,
 )
+from flext_infra.refactor._utilities_loader import FlextInfraUtilitiesRefactorLoader
 
 
 class FlextInfraUtilitiesRefactorNamespace:
@@ -80,22 +81,16 @@ class FlextInfraUtilitiesRefactorNamespace:
 
     @staticmethod
     def _namespace_extract_base_name(base_expr: ast.expr) -> str:
-        if isinstance(base_expr, ast.Name):
-            return base_expr.id
-        if isinstance(base_expr, ast.Attribute):
-            return base_expr.attr
-        if isinstance(base_expr, ast.Subscript):
-            return FlextInfraUtilitiesRefactorNamespace._namespace_extract_base_name(
-                base_expr.value,
-            )
-        return ""
+        return FlextInfraUtilitiesParsing.ast_extract_base_name(base_expr)
 
     @staticmethod
-    def _namespace_manual_typings_target_file(
+    def _namespace_canonical_target_file(
         *,
         project_root: Path,
         source_file: Path,
+        filename: str,
     ) -> Path:
+        """Resolve the canonical target file for a given filename in a project."""
         parts = source_file.parts
         if "src" in parts:
             src_index = parts.index("src")
@@ -105,9 +100,21 @@ class FlextInfraUtilitiesRefactorNamespace:
                     project_root
                     / c.Infra.Paths.DEFAULT_SRC_DIR
                     / package_name
-                    / "typings.py"
+                    / filename
                 )
-        return source_file.parent / "typings.py"
+        return source_file.parent / filename
+
+    @staticmethod
+    def _namespace_manual_typings_target_file(
+        *,
+        project_root: Path,
+        source_file: Path,
+    ) -> Path:
+        return FlextInfraUtilitiesRefactorNamespace._namespace_canonical_target_file(
+            project_root=project_root,
+            source_file=source_file,
+            filename="typings.py",
+        )
 
     @staticmethod
     def _namespace_append_typing_alias_blocks(
@@ -136,18 +143,11 @@ class FlextInfraUtilitiesRefactorNamespace:
         project_root: Path,
         source_file: Path,
     ) -> Path:
-        parts = source_file.parts
-        if "src" in parts:
-            src_index = parts.index("src")
-            if src_index + 1 < len(parts):
-                package_name = parts[src_index + 1]
-                return (
-                    project_root
-                    / c.Infra.Paths.DEFAULT_SRC_DIR
-                    / package_name
-                    / "protocols.py"
-                )
-        return source_file.parent / "protocols.py"
+        return FlextInfraUtilitiesRefactorNamespace._namespace_canonical_target_file(
+            project_root=project_root,
+            source_file=source_file,
+            filename="protocols.py",
+        )
 
     @staticmethod
     def _namespace_is_ast_protocol_class(node: ast.ClassDef) -> bool:
@@ -835,43 +835,11 @@ class FlextInfraUtilitiesRefactorNamespace:
         parse_failures: list[m.Infra.ParseFailureViolation] | None = None,
     ) -> m.Infra.ParsedPythonModule | None:
         """Load and parse a Python module while recording parse failures."""
-        try:
-            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except UnicodeDecodeError as exc:
-            if parse_failures is not None:
-                parse_failures.append(
-                    m.Infra.ParseFailureViolation.create(
-                        file=str(file_path),
-                        stage=stage,
-                        error_type=type(exc).__name__,
-                        detail=str(exc),
-                    ),
-                )
-            return None
-        except OSError as exc:
-            if parse_failures is not None:
-                parse_failures.append(
-                    m.Infra.ParseFailureViolation.create(
-                        file=str(file_path),
-                        stage=stage,
-                        error_type=type(exc).__name__,
-                        detail=str(exc),
-                    ),
-                )
-            return None
-        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
-        if tree is None:
-            if parse_failures is not None:
-                parse_failures.append(
-                    m.Infra.ParseFailureViolation.create(
-                        file=str(file_path),
-                        stage=stage,
-                        error_type="SyntaxError",
-                        detail="invalid python source",
-                    ),
-                )
-            return None
-        return m.Infra.ParsedPythonModule(source=source, tree=tree)
+        return FlextInfraUtilitiesRefactorLoader.load_python_module(
+            file_path,
+            stage=stage,
+            parse_failures=parse_failures,
+        )
 
 
 _MAX_ALIAS_NAME_LEN: int = 2

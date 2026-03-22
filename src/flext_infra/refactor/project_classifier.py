@@ -225,13 +225,7 @@ class ProjectClassifier:
         return (base_names, class_names)
 
     def _extract_base_name(self, base: ast.expr) -> str:
-        if isinstance(base, ast.Name):
-            return base.id
-        if isinstance(base, ast.Attribute):
-            return base.attr
-        if isinstance(base, ast.Subscript):
-            return self._extract_base_name(base.value)
-        return ""
+        return u.Infra.ast_extract_base_name(base)
 
     def _build_confirmed_family_chains(
         self,

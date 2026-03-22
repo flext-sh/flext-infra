@@ -10,14 +10,33 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import importlib.util
 from collections import deque
 from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
 
+from flext_core import FlextModels
 from flext_infra import FlextInfraUtilitiesDiscovery, FlextInfraUtilitiesYaml, t
 
 _UNKNOWN_TIER = 99
+
+
+class NormalizerContext(FlextModels.ArbitraryTypesModel):
+    """Analysis context for import normalization."""
+
+    file_path: Path
+    file_module: str
+    project_package: str
+    project_aliases: frozenset[str]
+    declared_alias: str
+    alias_to_defining_module: dict[str, str]
+    alias_tiers: dict[str, int]
+    file_tier: int
+    package_reachability: dict[str, frozenset[str]]
+    wrong_source_enabled: bool
+    universal_aliases: frozenset[str]
+    workspace_packages: frozenset[str]
 
 
 class FlextInfraUtilitiesImportNormalizer:
@@ -227,5 +246,106 @@ class FlextInfraUtilitiesImportNormalizer:
             return 4
         return 4
 
+    @staticmethod
+    def normalizer_build_context(
+        *,
+        file_path: Path,
+        project_package: str,
+        alias_map: dict[str, tuple[str, ...]] | None,
+    ) -> NormalizerContext:
+        """Build normalized analysis context for a target file."""
+        package_name = (
+            project_package
+            if len(project_package) > 0
+            else FlextInfraUtilitiesDiscovery.discover_package_from_file(file_path)
+        )
+        project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
+            file_path,
+        )
+        package_dir: Path | None = None
+        if project_root is not None:
+            candidate = project_root / "src" / package_name
+            if candidate.is_dir() and (candidate / "__init__.py").is_file():
+                package_dir = candidate
+        if package_dir is None and len(package_name) > 0:
+            spec = importlib.util.find_spec(package_name)
+            if spec and spec.submodule_search_locations:
+                locs = list(spec.submodule_search_locations)
+                if locs:
+                    cand = Path(locs[0])
+                    if cand.is_dir() and (cand / "__init__.py").is_file():
+                        package_dir = cand
 
-__all__ = ["FlextInfraUtilitiesImportNormalizer"]
+        alias_to_module: dict[str, str] = (
+            FlextInfraUtilitiesImportNormalizer.normalizer_build_alias_to_defining_module(
+                package_name=package_name,
+                package_dir=package_dir,
+                project_root=project_root,
+                alias_map=alias_map,
+            )
+            if package_dir is not None and len(package_name) > 0
+            else {}
+        )
+        file_module = ""
+        if package_dir is not None and len(package_name) > 0:
+            try:
+                file_module = (
+                    FlextInfraUtilitiesImportNormalizer.normalizer_file_to_module(
+                        file_path=file_path,
+                        package_dir=package_dir,
+                        package_name=package_name,
+                    )
+                )
+            except ValueError:
+                file_module = ""
+        alias_to_facade: dict[str, str] = (
+            FlextInfraUtilitiesDiscovery.discover_project_aliases(project_root)
+            if project_root is not None
+            else {}
+        )
+        facade_to_alias = {v: k for k, v in alias_to_facade.items()}
+        declared_alias = facade_to_alias.get(file_path.name, "")
+        alias_tiers = FlextInfraUtilitiesImportNormalizer.normalizer_alias_tiers()
+        file_tier = FlextInfraUtilitiesImportNormalizer.normalizer_file_tier(
+            file_path=file_path,
+            project_package=package_name,
+            facade_to_alias=facade_to_alias,
+            alias_tiers=alias_tiers,
+        )
+        reachability = (
+            FlextInfraUtilitiesImportNormalizer.normalizer_build_reachability(
+                package_dir,
+                package_name,
+            )
+            if package_dir is not None and len(package_name) > 0
+            else {}
+        )
+        workspace_root = FlextInfraUtilitiesDiscovery.discover_workspace_root_from_file(
+            file_path,
+        )
+        workspace_packages = FlextInfraUtilitiesDiscovery.discover_workspace_packages(
+            workspace_root,
+        )
+        wrong_source_enabled, universal_aliases = (
+            FlextInfraUtilitiesImportNormalizer.normalizer_wrong_source_config()
+        )
+        project_aliases = set(alias_to_module)
+        if alias_map is not None and len(package_name) > 0:
+            project_aliases.update(alias_map.get(package_name, ()))
+        return NormalizerContext(
+            file_path=file_path,
+            file_module=file_module,
+            project_package=package_name,
+            project_aliases=frozenset(project_aliases),
+            declared_alias=declared_alias,
+            alias_to_defining_module=alias_to_module,
+            alias_tiers=dict(alias_tiers),
+            file_tier=file_tier,
+            package_reachability=reachability,
+            wrong_source_enabled=wrong_source_enabled,
+            universal_aliases=universal_aliases,
+            workspace_packages=workspace_packages,
+        )
+
+
+__all__ = ["FlextInfraUtilitiesImportNormalizer", "NormalizerContext"]

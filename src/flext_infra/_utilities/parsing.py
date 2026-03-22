@@ -259,5 +259,38 @@ class FlextInfraUtilitiesParsing:
                 file_path.parent.parent / "__init__.py"
             ).is_file()
 
+    @staticmethod
+    def cst_extract_base_name(base_expr: cst.BaseExpression) -> str:
+        """Extract the base class name from a CST base expression.
+
+        Recursively unwraps ``Subscript`` (e.g. ``Generic[T]``), handles
+        ``Name`` and ``Attribute`` nodes.
+        """
+        if isinstance(base_expr, cst.Subscript):
+            return FlextInfraUtilitiesParsing.cst_extract_base_name(base_expr.value)
+        if isinstance(base_expr, cst.Name):
+            return base_expr.value
+        if isinstance(base_expr, cst.Attribute):
+            dotted_name = FlextInfraUtilitiesParsing.cst_module_to_str(base_expr)
+            if "." in dotted_name:
+                return dotted_name.rsplit(".", maxsplit=1)[1]
+            return dotted_name
+        return ""
+
+    @staticmethod
+    def ast_extract_base_name(base_expr: ast.expr) -> str:
+        """Extract the base class name from an AST base expression.
+
+        Recursively unwraps ``Subscript`` (e.g. ``Generic[T]``), handles
+        ``Name`` and ``Attribute`` nodes.
+        """
+        if isinstance(base_expr, ast.Name):
+            return base_expr.id
+        if isinstance(base_expr, ast.Attribute):
+            return base_expr.attr
+        if isinstance(base_expr, ast.Subscript):
+            return FlextInfraUtilitiesParsing.ast_extract_base_name(base_expr.value)
+        return ""
+
 
 __all__ = ["FlextInfraUtilitiesParsing"]

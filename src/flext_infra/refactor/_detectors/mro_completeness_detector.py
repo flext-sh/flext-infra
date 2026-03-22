@@ -69,21 +69,15 @@ class MROCompletenessDetector(
             file_path=file_path,
             _parse_failures=self._parse_failures,
         )
-        return m.Infra.ScanResult(
+        return u.Infra.build_scan_result(
             file_path=file_path,
-            violations=[
-                m.Infra.ScanViolation(
-                    line=violation.line,
-                    message=(
-                        f"Facade '{violation.facade_class}' missing base "
-                        f"'{violation.missing_base}' for family '{violation.family}'"
-                    ),
-                    severity="error",
-                    rule_id="namespace.mro_completeness",
-                )
-                for violation in violations
-            ],
             detector_name=self.__class__.__name__,
+            rule_id="namespace.mro_completeness",
+            violations=violations,
+            message_builder=lambda violation: (
+                f"Facade '{violation.facade_class}' missing base "
+                f"'{violation.missing_base}' for family '{violation.family}'"
+            ),
         )
 
     @classmethod

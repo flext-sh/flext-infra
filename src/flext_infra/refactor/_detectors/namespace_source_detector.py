@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, p
+from flext_infra import c, p, u
 from flext_infra.models import m
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
@@ -60,21 +60,15 @@ class NamespaceSourceDetector(p.Infra.Scanner):
             project_root=self._project_root,
             _parse_failures=self._parse_failures,
         )
-        return m.Infra.ScanResult(
+        return u.Infra.build_scan_result(
             file_path=file_path,
-            violations=[
-                m.Infra.ScanViolation(
-                    line=violation.line,
-                    message=(
-                        f"Wrong source for alias '{violation.alias}': "
-                        f"'{violation.current_source}' -> '{violation.correct_source}'"
-                    ),
-                    severity="error",
-                    rule_id="namespace.source_alias",
-                )
-                for violation in violations
-            ],
             detector_name=self.__class__.__name__,
+            rule_id="namespace.source_alias",
+            violations=violations,
+            message_builder=lambda violation: (
+                f"Wrong source for alias '{violation.alias}': "
+                f"'{violation.current_source}' -> '{violation.correct_source}'"
+            ),
         )
 
     @classmethod

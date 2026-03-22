@@ -54,6 +54,34 @@ class FlextInfraRefactorEngine:
     def _build_safety_manager() -> FlextInfraRefactorSafetyManager:
         return FlextInfraRefactorSafetyManager()
 
+    def _try_safety_stash(
+        self,
+        target_path: Path,
+        *,
+        apply_safety: bool,
+        dry_run: bool,
+    ) -> tuple[str, list[m.Infra.Result] | None]:
+        """Attempt to create a safety stash before transformations.
+
+        Returns (stash_ref, None) on success or ("", error_results) on failure.
+        """
+        if not apply_safety or dry_run:
+            return "", None
+        stash_ref_result = self._prepare_safety_stash(target_path)
+        if stash_ref_result.is_failure:
+            error_msg = stash_ref_result.error or "pre-transformation stash failed"
+            return "", [
+                m.Infra.Result(
+                    file_path=target_path,
+                    success=False,
+                    modified=False,
+                    error=error_msg,
+                    changes=[],
+                    refactored_code=None,
+                ),
+            ]
+        return stash_ref_result.value, None
+
     @staticmethod
     def build_impact_map(
         results: list[m.Infra.Result],
@@ -298,22 +326,13 @@ class FlextInfraRefactorEngine:
         apply_safety: bool = True,
     ) -> list[m.Infra.Result]:
         """Refactor files under configured project directories matching the pattern."""
-        stash_ref = ""
-        if apply_safety and (not dry_run):
-            stash_ref_result = self._prepare_safety_stash(project_path)
-            if stash_ref_result.is_failure:
-                error_msg = stash_ref_result.error or "pre-transformation stash failed"
-                return [
-                    m.Infra.Result(
-                        file_path=project_path,
-                        success=False,
-                        modified=False,
-                        error=error_msg,
-                        changes=[],
-                        refactored_code=None,
-                    ),
-                ]
-            stash_ref = stash_ref_result.value
+        stash_ref, stash_error = self._try_safety_stash(
+            project_path,
+            apply_safety=apply_safety,
+            dry_run=dry_run,
+        )
+        if stash_error is not None:
+            return stash_error
         scan_dirs = frozenset(self.rule_loader.extract_project_scan_dirs(self.config))
         iter_result = u.Infra.iter_python_files(
             workspace_root=project_path,
@@ -412,22 +431,13 @@ class FlextInfraRefactorEngine:
         )
         results: list[m.Infra.Result] = []
         processed_targets: list[str] = []
-        stash_ref = ""
-        if apply_safety and (not dry_run):
-            stash_ref_result = self._prepare_safety_stash(root)
-            if stash_ref_result.is_failure:
-                error_msg = stash_ref_result.error or "pre-transformation stash failed"
-                return [
-                    m.Infra.Result(
-                        file_path=root,
-                        success=False,
-                        modified=False,
-                        error=error_msg,
-                        changes=[],
-                        refactored_code=None,
-                    ),
-                ]
-            stash_ref = stash_ref_result.value
+        stash_ref, stash_error = self._try_safety_stash(
+            root,
+            apply_safety=apply_safety,
+            dry_run=dry_run,
+        )
+        if stash_error is not None:
+            return stash_error
         for project in project_paths:
             if apply_safety and self.safety_manager.is_emergency_stop_requested():
                 break

@@ -320,6 +320,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers._utilities_normalizer import (
         FlextInfraUtilitiesImportNormalizer,
+        NormalizerContext,
     )
     from flext_infra.transformers.alias_remover import FlextInfraRefactorAliasRemover
     from flext_infra.transformers.census_visitors import (
@@ -1136,6 +1137,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.transformers.nested_class_propagation",
         "NestedClassPropagationTransformer",
     ),
+    "NormalizerContext": (
+        "flext_infra.transformers._utilities_normalizer",
+        "NormalizerContext",
+    ),
     "OutputBackend": ("flext_infra._utilities.output", "OutputBackend"),
     "PostCheckGate": ("flext_infra.refactor._post_check_gate", "PostCheckGate"),
     "PreCheckGate": ("flext_infra.rules.class_reconstructor", "PreCheckGate"),
@@ -1430,6 +1435,7 @@ __all__ = [
     "NamespaceFacadeScanner",
     "NamespaceSourceDetector",
     "NestedClassPropagationTransformer",
+    "NormalizerContext",
     "OutputBackend",
     "PostCheckGate",
     "PreCheckGate",

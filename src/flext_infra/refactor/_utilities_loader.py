@@ -15,7 +15,7 @@ from typing import TypeVar
 
 from pydantic import JsonValue
 
-from flext_infra import m, p
+from flext_infra import FlextInfraUtilitiesParsing, c, m, p
 
 _V = TypeVar("_V", bound=p.Infra.ViolationWithLine)
 
@@ -97,6 +97,52 @@ class FlextInfraUtilitiesRefactorLoader:
             ],
             detector_name=detector_name,
         )
+
+    @staticmethod
+    def load_python_module(
+        file_path: Path,
+        *,
+        stage: str = "scan",
+        parse_failures: list[m.Infra.ParseFailureViolation] | None = None,
+    ) -> m.Infra.ParsedPythonModule | None:
+        """Load and parse a Python module while recording parse failures."""
+        try:
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except UnicodeDecodeError as exc:
+            if parse_failures is not None:
+                parse_failures.append(
+                    m.Infra.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type=type(exc).__name__,
+                        detail=str(exc),
+                    ),
+                )
+            return None
+        except OSError as exc:
+            if parse_failures is not None:
+                parse_failures.append(
+                    m.Infra.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type=type(exc).__name__,
+                        detail=str(exc),
+                    ),
+                )
+            return None
+        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
+        if tree is None:
+            if parse_failures is not None:
+                parse_failures.append(
+                    m.Infra.ParseFailureViolation.create(
+                        file=str(file_path),
+                        stage=stage,
+                        error_type="SyntaxError",
+                        detail="invalid python source",
+                    ),
+                )
+            return None
+        return m.Infra.ParsedPythonModule(source=source, tree=tree)
 
 
 __all__ = ["FlextInfraUtilitiesRefactorLoader"]

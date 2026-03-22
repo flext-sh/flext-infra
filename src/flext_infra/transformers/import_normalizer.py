@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.util
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Annotated, override
@@ -11,6 +10,7 @@ import libcst as cst
 from pydantic import ConfigDict, Field
 
 from flext_infra import m, t, u
+from flext_infra.transformers._utilities_normalizer import NormalizerContext
 
 
 class FlextInfraTransformerImportNormalizer:
@@ -25,115 +25,7 @@ class FlextInfraTransformerImportNormalizer:
         suggested_import: Annotated[t.NonEmptyStr, Field()]
         violation_type: Annotated[str, Field(pattern="^(deep|wrong_source)$")]
 
-    class Context(m.ArbitraryTypesModel):
-        file_path: Path
-        file_module: str
-        project_package: str
-        project_aliases: frozenset[str]
-        declared_alias: str
-        alias_to_defining_module: dict[str, str]
-        alias_tiers: dict[str, int]
-        file_tier: int
-        package_reachability: dict[str, frozenset[str]]
-        wrong_source_enabled: bool
-        universal_aliases: frozenset[str]
-        workspace_packages: frozenset[str]
-
-    class Helper:
-        """Helper logic for import normalization — delegates to u.Infra.*."""
-
-        @staticmethod
-        def build_context(
-            *,
-            file_path: Path,
-            project_package: str,
-            alias_map: dict[str, tuple[str, ...]] | None,
-        ) -> FlextInfraTransformerImportNormalizer.Context:
-            """Build normalized analysis context for a target file."""
-            package_name = (
-                project_package
-                if len(project_package) > 0
-                else u.Infra.discover_package_from_file(file_path)
-            )
-            project_root = u.Infra.discover_project_root_from_file(file_path)
-            package_dir: Path | None = None
-            if project_root is not None:
-                candidate = project_root / "src" / package_name
-                if candidate.is_dir() and (candidate / "__init__.py").is_file():
-                    package_dir = candidate
-            if package_dir is None and len(package_name) > 0:
-                spec = importlib.util.find_spec(package_name)
-                if spec and spec.submodule_search_locations:
-                    locs = list(spec.submodule_search_locations)
-                    if locs:
-                        cand = Path(locs[0])
-                        if cand.is_dir() and (cand / "__init__.py").is_file():
-                            package_dir = cand
-
-            alias_to_module: dict[str, str] = (
-                u.Infra.normalizer_build_alias_to_defining_module(
-                    package_name=package_name,
-                    package_dir=package_dir,
-                    project_root=project_root,
-                    alias_map=alias_map,
-                )
-                if package_dir is not None and len(package_name) > 0
-                else {}
-            )
-            file_module = ""
-            if package_dir is not None and len(package_name) > 0:
-                try:
-                    file_module = u.Infra.normalizer_file_to_module(
-                        file_path=file_path,
-                        package_dir=package_dir,
-                        package_name=package_name,
-                    )
-                except ValueError:
-                    file_module = ""
-            alias_to_facade: dict[str, str] = (
-                u.Infra.discover_project_aliases(project_root)
-                if project_root is not None
-                else {}
-            )
-            facade_to_alias = {v: k for k, v in alias_to_facade.items()}
-            declared_alias = facade_to_alias.get(file_path.name, "")
-            alias_tiers = u.Infra.normalizer_alias_tiers()
-            file_tier = u.Infra.normalizer_file_tier(
-                file_path=file_path,
-                project_package=package_name,
-                facade_to_alias=facade_to_alias,
-                alias_tiers=alias_tiers,
-            )
-            reachability = (
-                u.Infra.normalizer_build_reachability(
-                    package_dir,
-                    package_name,
-                )
-                if package_dir is not None and len(package_name) > 0
-                else {}
-            )
-            workspace_root = u.Infra.discover_workspace_root_from_file(file_path)
-            workspace_packages = u.Infra.discover_workspace_packages(workspace_root)
-            wrong_source_enabled, universal_aliases = (
-                u.Infra.normalizer_wrong_source_config()
-            )
-            project_aliases = set(alias_to_module)
-            if alias_map is not None and len(package_name) > 0:
-                project_aliases.update(alias_map.get(package_name, ()))
-            return FlextInfraTransformerImportNormalizer.Context(
-                file_path=file_path,
-                file_module=file_module,
-                project_package=package_name,
-                project_aliases=frozenset(project_aliases),
-                declared_alias=declared_alias,
-                alias_to_defining_module=alias_to_module,
-                alias_tiers=alias_tiers,
-                file_tier=file_tier,
-                package_reachability=reachability,
-                wrong_source_enabled=wrong_source_enabled,
-                universal_aliases=universal_aliases,
-                workspace_packages=workspace_packages,
-            )
+    Context = NormalizerContext
 
     class Visitor(cst.CSTVisitor):
         def __init__(
@@ -144,7 +36,7 @@ class FlextInfraTransformerImportNormalizer:
             alias_map: dict[str, tuple[str, ...]] | None = None,
         ) -> None:
             """Initialize visitor with file and package normalization context."""
-            self._context = FlextInfraTransformerImportNormalizer.Helper.build_context(
+            self._context = u.Infra.normalizer_build_context(
                 file_path=file_path,
                 project_package=project_package,
                 alias_map=alias_map,
@@ -218,7 +110,7 @@ class FlextInfraTransformerImportNormalizer:
             on_change: Callable[[str], None] | None = None,
         ) -> None:
             """Initialize transformer with file context and change callback."""
-            self._context = FlextInfraTransformerImportNormalizer.Helper.build_context(
+            self._context = u.Infra.normalizer_build_context(
                 file_path=file_path,
                 project_package=project_package,
                 alias_map=alias_map,

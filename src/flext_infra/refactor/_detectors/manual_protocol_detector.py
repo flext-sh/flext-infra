@@ -159,22 +159,5 @@ class ManualProtocolDetector(p.Infra.Scanner):
 
     @staticmethod
     def _base_expr_name(base_expr: cst.BaseExpression) -> str:
-        """Extract the base class name from a class base expression.
-
-        Args:
-            base_expr: A libcst expression representing a base class.
-
-        Returns:
-            The name of the base class, or empty string if unable to extract.
-
-        """
-        if isinstance(base_expr, cst.Subscript):
-            return ManualProtocolDetector._base_expr_name(base_expr.value)
-        if isinstance(base_expr, cst.Name):
-            return base_expr.value
-        if isinstance(base_expr, cst.Attribute):
-            dotted_name = u.Infra.cst_module_to_str(base_expr)
-            if "." in dotted_name:
-                return dotted_name.rsplit(".", maxsplit=1)[1]
-            return dotted_name
-        return ""
+        """Extract the base class name from a class base expression."""
+        return u.Infra.cst_extract_base_name(base_expr)
