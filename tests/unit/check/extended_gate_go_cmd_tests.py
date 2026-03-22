@@ -15,12 +15,12 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraGateContext,
     FlextInfraGoGate,
     FlextInfraMarkdownGate,
     FlextInfraRuffLintGate,
     FlextInfraUtilitiesSubprocess,
     FlextInfraWorkspaceChecker,
+    m,
 )
 from flext_infra.gates._base_gate import FlextInfraGate
 from tests import t
@@ -93,7 +93,7 @@ def run_command_failure_check(
     gate = gate_class(tmp_path)
     result = gate.check(
         tmp_path,
-        FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+        m.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),
     )
     return bool(result.result.passed), str(result.raw_output)
 
@@ -192,7 +192,7 @@ class TestWorkspaceCheckerRunCommand:
         gate = FlextInfraGoGate(tmp_path)
         result = gate.check(
             tmp_path,
-            FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+            m.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),
         )
         tm.that(result.result.passed, eq=True)
 

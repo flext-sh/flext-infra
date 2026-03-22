@@ -13,7 +13,6 @@ from pydantic import JsonValue
 
 from flext_core import r, s
 from flext_infra import (
-    FlextInfraGateContext,
     FlextInfraGateRegistry,
     c,
     m,
@@ -314,8 +313,8 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 )
         return r[list[m.Infra.ProjectResult]].ok(results)
 
-    def _gate_ctx(self, reports_dir: Path | None = None) -> FlextInfraGateContext:
-        return FlextInfraGateContext(
+    def _gate_ctx(self, reports_dir: Path | None = None) -> m.Infra.GateContext:
+        return m.Infra.GateContext(
             workspace_root=self._workspace_root,
             reports_dir=reports_dir or self._default_reports_dir,
         )

@@ -7,7 +7,6 @@ from pathlib import Path
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, t as t_infra
-from flext_infra.gates._models import FlextInfraGateContext
 from flext_infra.models import m
 from flext_infra.utilities import u
 
@@ -26,13 +25,13 @@ class FlextInfraGate(ABC):
     def check(
         self,
         project_dir: Path,
-        ctx: FlextInfraGateContext,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution: ...
 
     def fix(
         self,
         project_dir: Path,
-        ctx: FlextInfraGateContext,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         _ = ctx
         return self._build_gate_result(
@@ -188,4 +187,4 @@ class FlextInfraGate(ABC):
         return cls._as_int(raw, default)
 
 
-__all__ = ["FlextInfraGate", "FlextInfraGateContext"]
+__all__ = ["FlextInfraGate"]

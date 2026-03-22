@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 import libcst as cst
 from pydantic import ConfigDict, Field

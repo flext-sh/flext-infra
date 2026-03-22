@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -18,7 +18,9 @@ class FlextInfraDocsModels:
     class DocsPhaseItemModel(BaseModel):
         """Unified item payload for docs phase reports."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True, strict=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(
+            extra="forbid", frozen=True, strict=True
+        )
 
         phase: Annotated[
             str,

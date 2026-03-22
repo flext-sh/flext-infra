@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
@@ -29,9 +29,6 @@ class FlextInfraGithubModels:
             str | None,
             Field(default=None, description="Log file path"),
         ] = None
-
-    # Alias for backward compatibility
-    PrExecutionResult = PrExecutionResultModel
 
     class PrOrchestrationResult(FlextModels.ArbitraryTypesModel):
         """Aggregated result of workspace-wide PR orchestration."""

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
@@ -16,7 +16,9 @@ class FlextInfraGatesModels:
     class GateContext(FlextModels.FrozenStrictModel):
         """Quality gate execution context and configuration."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(
+            extra="forbid", arbitrary_types_allowed=True
+        )
         workspace_root: Annotated[Path, Field(description="Workspace root directory")]
         reports_dir: Annotated[Path, Field(description="Reports output directory")]
         fail_fast: Annotated[
@@ -25,7 +27,4 @@ class FlextInfraGatesModels:
         ] = False
 
 
-# Backward compatibility alias
-FlextInfraGateContext = FlextInfraGatesModels.GateContext
-
-__all__ = ["FlextInfraGateContext", "FlextInfraGatesModels"]
+__all__ = ["FlextInfraGatesModels"]

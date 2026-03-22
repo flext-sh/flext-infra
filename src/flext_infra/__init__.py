@@ -17,8 +17,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
-    from flext_core import d, e, h, r, s, x
-    from flext_core.typings import FlextTypes
+    from flext_core import FlextTypes, d, e, h, r, s, x
     from flext_infra import (
         _utilities,
         basemk,
@@ -158,7 +157,7 @@ if TYPE_CHECKING:
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.shared import FlextInfraDocsShared
     from flext_infra.docs.validator import FlextInfraDocValidator
-    from flext_infra.gates._base_gate import FlextInfraGate, FlextInfraGateContext
+    from flext_infra.gates._base_gate import FlextInfraGate
     from flext_infra.gates._gate_registry import FlextInfraGateRegistry
     from flext_infra.gates._models import FlextInfraGatesModels
     from flext_infra.gates.bandit import FlextInfraBanditGate
@@ -602,7 +601,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraExtraPathsManager",
     ),
     "FlextInfraGate": ("flext_infra.gates._base_gate", "FlextInfraGate"),
-    "FlextInfraGateContext": ("flext_infra.gates._base_gate", "FlextInfraGateContext"),
     "FlextInfraGateRegistry": (
         "flext_infra.gates._gate_registry",
         "FlextInfraGateRegistry",
@@ -1278,7 +1276,6 @@ __all__ = [
     "FlextInfraDocsShared",
     "FlextInfraExtraPathsManager",
     "FlextInfraGate",
-    "FlextInfraGateContext",
     "FlextInfraGateRegistry",
     "FlextInfraGatesModels",
     "FlextInfraGithubConstants",

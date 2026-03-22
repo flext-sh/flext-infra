@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
+    from flext_core import FlextTypes
 
     from . import (
         _utilities as _utilities,
@@ -196,12 +196,6 @@ if TYPE_CHECKING:
         TestRunPyright,
     )
     from .check.extended_runners_go_tests import RunCallable, TestRunGo
-    from .check.extended_runners_ruff_tests import (
-        TestCollectMarkdownFiles,
-        TestRunCommand,
-        TestRunRuffFormat,
-        TestRunRuffLint,
-    )
     from .check.extended_runners_tests import TestRunMypy, TestRunPyrefly
     from .check.extended_workspace_init_tests import (
         TestWorkspaceCheckerBuildGateResult,
@@ -1124,10 +1118,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.unit.deps.test_internal_sync_discovery_edge",
         "TestCollectInternalDepsEdgeCases",
     ),
-    "TestCollectMarkdownFiles": (
-        "tests.unit.check.extended_runners_ruff_tests",
-        "TestCollectMarkdownFiles",
-    ),
     "TestConfigFixerEnsureProjectExcludes": (
         "tests.unit.check.extended_config_fixer_tests",
         "TestConfigFixerEnsureProjectExcludes",
@@ -1955,10 +1945,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.unit.check.extended_cli_entry_tests",
         "TestRunCLIExtended",
     ),
-    "TestRunCommand": (
-        "tests.unit.check.extended_runners_ruff_tests",
-        "TestRunCommand",
-    ),
     "TestRunDeptry": ("tests.unit.deps.test_detection_deptry", "TestRunDeptry"),
     "TestRunDetect": ("tests.unit.test_infra_workspace_main", "TestRunDetect"),
     "TestRunFix": ("tests.unit.docs.main_tests", "TestRunFix"),
@@ -2006,14 +1992,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestRunRuffFix": (
         "tests.unit.codegen.lazy_init_generation_tests",
         "TestRunRuffFix",
-    ),
-    "TestRunRuffFormat": (
-        "tests.unit.check.extended_runners_ruff_tests",
-        "TestRunRuffFormat",
-    ),
-    "TestRunRuffLint": (
-        "tests.unit.check.extended_runners_ruff_tests",
-        "TestRunRuffLint",
     ),
     "TestRunSingleProject": (
         "tests.unit.check.extended_run_projects_tests",
@@ -3538,7 +3516,6 @@ __all__ = [
     "TestCollectChanges",
     "TestCollectInternalDeps",
     "TestCollectInternalDepsEdgeCases",
-    "TestCollectMarkdownFiles",
     "TestConfigFixerEnsureProjectExcludes",
     "TestConfigFixerExecute",
     "TestConfigFixerFindPyprojectFiles",
@@ -3775,7 +3752,6 @@ __all__ = [
     "TestRunBandit",
     "TestRunBuild",
     "TestRunCLIExtended",
-    "TestRunCommand",
     "TestRunDeptry",
     "TestRunDetect",
     "TestRunFix",
@@ -3797,8 +3773,6 @@ __all__ = [
     "TestRunPyrefly",
     "TestRunPyright",
     "TestRunRuffFix",
-    "TestRunRuffFormat",
-    "TestRunRuffLint",
     "TestRunSingleProject",
     "TestRunSync",
     "TestRunValidate",

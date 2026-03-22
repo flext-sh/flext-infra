@@ -107,7 +107,9 @@ class FlextInfraRuntimeDevDependencyDetector:
     @staticmethod
     def main() -> int:
         """Entry point for dependency detector CLI."""
-        detector_type: type[FlextInfraRuntimeDevDependencyDetector] = FlextInfraRuntimeDevDependencyDetector
+        detector_type: type[FlextInfraRuntimeDevDependencyDetector] = (
+            FlextInfraRuntimeDevDependencyDetector
+        )
         deps_module = sys.modules.get("flext_infra.deps")
         if deps_module is not None:
             deps_type = getattr(

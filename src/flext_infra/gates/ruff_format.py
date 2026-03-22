@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraGate, FlextInfraGateContext, c, m
+from flext_infra import FlextInfraGate, c, m
 
 
 class FlextInfraRuffFormatGate(FlextInfraGate):
@@ -23,7 +23,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: FlextInfraGateContext,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         _ = ctx
         started = time.monotonic()
@@ -90,7 +90,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     def fix(
         self,
         project_dir: Path,
-        ctx: FlextInfraGateContext,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         _ = ctx
         started = time.monotonic()

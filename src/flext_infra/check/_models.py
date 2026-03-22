@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, computed_field, model_serializer
 
@@ -222,7 +222,7 @@ class FlextInfraCheckModels:
     class SarifReport(FlextModels.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", populate_by_name=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)
 
         schema_uri: Annotated[
             str,

@@ -89,8 +89,16 @@ class FlextInfraCodegenGeneration:
 
         """
         lines: list[str] = ["if TYPE_CHECKING:"]
-        if include_flext_types:
-            lines.append("    from flext_core.typings import FlextTypes")
+        # Only emit the standalone FlextTypes import when it does NOT already
+        # appear in the groups (avoids F811 redefinition in flext_core's own
+        # __init__.py where FlextTypes is re-exported from flext_core.typings).
+        flext_types_in_groups = any(
+            export_name == "FlextTypes"
+            for items in groups.values()
+            for export_name, _ in items
+        )
+        if include_flext_types and not flext_types_in_groups:
+            lines.append("    from flext_core import FlextTypes")
 
         if not groups:
             return lines if len(lines) > 1 else []

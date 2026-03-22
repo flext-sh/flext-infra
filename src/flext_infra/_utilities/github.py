@@ -285,13 +285,13 @@ class FlextInfraUtilitiesGithub(
             "base": c.Infra.Git.MAIN,
         }
         failures = 0
-        results: list[m.Infra.PrExecutionResult] = []
+        results: list[m.Infra.PrExecutionResultModel] = []
         for repo_root in repos:
             if branch:
                 cls.git_checkout(repo_root, branch)
             if checkpoint:
                 cls._github_pr_checkpoint(repo_root, branch)
-            run_result: r[m.Infra.PrExecutionResult] = cls._github_pr_run_single(
+            run_result: r[m.Infra.PrExecutionResultModel] = cls._github_pr_run_single(
                 repo_root,
                 workspace_root,
                 effective_args,
@@ -308,7 +308,9 @@ class FlextInfraUtilitiesGithub(
                 if fail_fast:
                     break
         total = len(repos)
-        orchestration_results: tuple[m.Infra.PrExecutionResult, ...] = tuple(results)
+        orchestration_results: tuple[m.Infra.PrExecutionResultModel, ...] = tuple(
+            results
+        )
         return r[m.Infra.PrOrchestrationResult].ok(
             m.Infra.PrOrchestrationResult(
                 total=total,
@@ -350,7 +352,7 @@ class FlextInfraUtilitiesGithub(
         repo_root: Path,
         workspace_root: Path,
         pr_args: Mapping[str, str],
-    ) -> r[m.Infra.PrExecutionResult]:
+    ) -> r[m.Infra.PrExecutionResultModel]:
         """Execute one PR command for a single repository."""
         return cls._github_pr_run_single(
             repo_root=repo_root,
@@ -364,7 +366,7 @@ class FlextInfraUtilitiesGithub(
         repo_root: Path,
         workspace_root: Path,
         pr_args: Mapping[str, str],
-    ) -> r[m.Infra.PrExecutionResult]:
+    ) -> r[m.Infra.PrExecutionResultModel]:
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
         report_dir = cls.get_report_dir(
             workspace_root,
@@ -428,14 +430,14 @@ class FlextInfraUtilitiesGithub(
         started = time.monotonic()
         to_file_result: r[int] = cls.run_to_file(command, log_path)
         if to_file_result.is_failure:
-            return r[m.Infra.PrExecutionResult].fail(
+            return r[m.Infra.PrExecutionResultModel].fail(
                 to_file_result.error or "command execution error",
             )
         exit_code = to_file_result.value
         elapsed = int(time.monotonic() - started)
         status = c.Infra.Status.OK if exit_code == 0 else c.Infra.Status.FAIL
-        return r[m.Infra.PrExecutionResult].ok(
-            m.Infra.PrExecutionResult(
+        return r[m.Infra.PrExecutionResultModel].ok(
+            m.Infra.PrExecutionResultModel(
                 display=display,
                 status=status,
                 elapsed=elapsed,

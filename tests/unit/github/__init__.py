@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
-    from flext_core.typings import FlextTypes
+    from flext_core import FlextTypes
 
     from .main_dispatch_tests import TestRunPrWorkspace
     from .main_integration_tests import SyncOperation, TestMain, main

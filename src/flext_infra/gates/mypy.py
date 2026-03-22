@@ -10,7 +10,7 @@ from typing import override
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraGate, FlextInfraGateContext, c, m, t as t_infra, u
+from flext_infra import FlextInfraGate, c, m, t as t_infra, u
 
 
 class FlextInfraMypyGate(FlextInfraGate):
@@ -26,7 +26,7 @@ class FlextInfraMypyGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: FlextInfraGateContext,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         _ = u
         started = time.monotonic()

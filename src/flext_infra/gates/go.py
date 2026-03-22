@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraGate, FlextInfraGateContext, c, m
+from flext_infra import FlextInfraGate, c, m
 
 
 class FlextInfraGoGate(FlextInfraGate):
@@ -24,7 +24,7 @@ class FlextInfraGoGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: FlextInfraGateContext,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         _ = ctx
         started = time.monotonic()

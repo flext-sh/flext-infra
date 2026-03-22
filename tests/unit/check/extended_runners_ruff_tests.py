@@ -17,7 +17,6 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra import (
-    FlextInfraGateContext,
     FlextInfraMarkdownGate,
     FlextInfraRuffFormatGate,
     FlextInfraRuffLintGate,
@@ -26,10 +25,11 @@ from flext_infra import (
 )
 from tests import (
     create_checker_project,
+    h,
+    m,
     patch_gate_run,
     run_command_failure_check,
 )
-from tests.helpers import h
 
 
 def _create_run_raw_result(
@@ -168,7 +168,7 @@ class TestRunCommand:
         gate = FlextInfraRuffLintGate(tmp_path)
         result = gate.check(
             tmp_path,
-            FlextInfraGateContext(workspace_root=tmp_path, reports_dir=tmp_path),
+            m.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),
         )
         tm.that(result.result.passed, eq=True)
         tm.that(result.raw_output, eq="")

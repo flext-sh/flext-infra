@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraGate, FlextInfraGateContext, c, m
+from flext_infra import FlextInfraGate, c, m
 
 
 class FlextInfraMarkdownGate(FlextInfraGate):
@@ -99,7 +99,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: FlextInfraGateContext,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         _ = ctx
         return self._run_markdown(project_dir, fix=False)
@@ -108,7 +108,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     def fix(
         self,
         project_dir: Path,
-        ctx: FlextInfraGateContext,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         _ = ctx
         return self._run_markdown(project_dir, fix=True)

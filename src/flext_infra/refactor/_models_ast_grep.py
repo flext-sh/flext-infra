@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import AliasPath, ConfigDict, Field
 
@@ -16,7 +16,9 @@ class FlextInfraRefactorAstGrepModels:
     class AstGrepMatchEnvelope(FlextModels.ArbitraryTypesModel):
         """Compact ast-grep envelope carrying file, symbol and location."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", populate_by_name=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(
+            extra="ignore", populate_by_name=True
+        )
 
         file: Annotated[t.NonEmptyStr, Field(description="Matched file path")]
         symbol_name: Annotated[

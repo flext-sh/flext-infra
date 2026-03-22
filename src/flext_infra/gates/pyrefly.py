@@ -11,7 +11,7 @@ from typing import override
 
 from pydantic import ValidationError
 
-from flext_infra import FlextInfraGate, FlextInfraGateContext, c, m, t, u
+from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraPyreflyGate(FlextInfraGate):
@@ -29,7 +29,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: FlextInfraGateContext,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         started = time.monotonic()
         check_dirs = self._existing_check_dirs(project_dir)

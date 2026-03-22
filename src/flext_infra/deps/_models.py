@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Annotated
 
-from pydantic import ConfigDict, Field
+from pydantic import Field
 
 from flext_core import m, t
 
@@ -16,7 +16,6 @@ class FlextInfraDepsModels:
     class RuffFormatConfig(m.ArbitraryTypesModel):
         """Ruff format settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         docstring_code_format: Annotated[
             bool,
             Field(
@@ -49,7 +48,6 @@ class FlextInfraDepsModels:
     class RuffIsortConfig(m.ArbitraryTypesModel):
         """Ruff isort settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         combine_as_imports: Annotated[
             bool,
             Field(
@@ -75,7 +73,6 @@ class FlextInfraDepsModels:
     class RuffLintConfig(m.ArbitraryTypesModel):
         """Ruff lint settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         select: Annotated[
             list[str],
             Field(
@@ -102,7 +99,6 @@ class FlextInfraDepsModels:
     class RuffConfig(m.ArbitraryTypesModel):
         """Ruff top-level settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         exclude: Annotated[
             list[str],
             Field(
@@ -150,7 +146,6 @@ class FlextInfraDepsModels:
     class MypyConfig(m.ArbitraryTypesModel):
         """Mypy baseline settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         plugins: Annotated[
             list[str],
             Field(
@@ -176,7 +171,6 @@ class FlextInfraDepsModels:
     class PydanticMypyConfig(m.ArbitraryTypesModel):
         """Pydantic mypy plugin settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         init_forbid_extra: Annotated[
             bool,
             Field(
@@ -199,7 +193,6 @@ class FlextInfraDepsModels:
     class PyrightConfig(m.ArbitraryTypesModel):
         """Pyright strict settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         strict_settings: Annotated[
             dict[str, str],
             Field(
@@ -219,7 +212,6 @@ class FlextInfraDepsModels:
     class PyreflyConfig(m.ArbitraryTypesModel):
         """Pyrefly strict settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         strict_errors: Annotated[
             list[str],
             Field(
@@ -238,7 +230,6 @@ class FlextInfraDepsModels:
     class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         standard_markers: Annotated[
             list[str],
             Field(
@@ -257,7 +248,6 @@ class FlextInfraDepsModels:
     class TomlsortConfig(m.ArbitraryTypesModel):
         """tomlsort baseline settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         all: Annotated[bool, Field(description="Sort all TOML tables and entries.")]
         in_place: Annotated[bool, Field(description="Apply TOML sorting in place.")]
         sort_first: Annotated[
@@ -270,7 +260,6 @@ class FlextInfraDepsModels:
     class YamlfixConfig(m.ArbitraryTypesModel):
         """yamlfix baseline settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         line_length: Annotated[int, Field(description="Maximum YAML line length.")]
         preserve_quotes: Annotated[
             bool,
@@ -294,7 +283,6 @@ class FlextInfraDepsModels:
     class CoverageFailUnderConfig(m.ArbitraryTypesModel):
         """Coverage fail-under thresholds by layer."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         core: Annotated[
             int,
             Field(description="Minimum coverage percentage required for core layer."),
@@ -323,7 +311,6 @@ class FlextInfraDepsModels:
     class CoverageConfig(m.ArbitraryTypesModel):
         """Coverage baseline settings loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         fail_under: Annotated[
             FlextInfraDepsModels.CoverageFailUnderConfig,
             Field(
@@ -358,7 +345,6 @@ class FlextInfraDepsModels:
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         ruff: FlextInfraDepsModels.RuffConfig
         mypy: FlextInfraDepsModels.MypyConfig
         pydantic_mypy: Annotated[
@@ -383,7 +369,6 @@ class FlextInfraDepsModels:
     class ProjectTypeOverrideConfig(m.ArbitraryTypesModel):
         """Per-project-type override settings."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         pyright: dict[str, str] = Field(
             default_factory=dict,
             description="Pyright override settings for this project type.",
@@ -392,7 +377,6 @@ class FlextInfraDepsModels:
     class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
         """Project-type-specific override matrix from tool_config.yml."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         core: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
@@ -439,7 +423,6 @@ class FlextInfraDepsModels:
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for tool_config.yml."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
         tools: FlextInfraDepsModels.ToolConfigTools
         project_type_overrides: Annotated[
             FlextInfraDepsModels.ProjectTypeOverridesConfig,
