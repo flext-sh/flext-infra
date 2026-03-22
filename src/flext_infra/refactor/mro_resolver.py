@@ -80,27 +80,6 @@ class FlextInfraRefactorMROResolver:
         )
 
     @classmethod
-    def _normalize_classifier_chains(
-        cls,
-        *,
-        family_chains: Mapping[str, Sequence[str]],
-    ) -> dict[t.Infra.FacadeFamily, tuple[str, ...]]:
-        normalized: dict[t.Infra.FacadeFamily, tuple[str, ...]] = {}
-        for family in (
-            c.FacadeFamily.C,
-            c.FacadeFamily.T,
-            c.FacadeFamily.P,
-            c.FacadeFamily.M,
-            c.FacadeFamily.U,
-        ):
-            raw_chain = family_chains.get(family)
-            if raw_chain is None:
-                msg = f"Missing expected family chain for {family!r}."
-                raise ValueError(msg)
-            normalized[family] = tuple(raw_chain)
-        return normalized
-
-    @classmethod
     def _normalize_expected_chain(
         cls,
         *,

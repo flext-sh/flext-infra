@@ -37,7 +37,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-    from flext_infra._utilities.scanning import FlextInfraUtilitiesScanning
     from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
     from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
     from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
@@ -99,10 +98,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra._utilities.safety",
         "FlextInfraUtilitiesSafety",
     ),
-    "FlextInfraUtilitiesScanning": (
-        "flext_infra._utilities.scanning",
-        "FlextInfraUtilitiesScanning",
-    ),
     "FlextInfraUtilitiesSelection": (
         "flext_infra._utilities.selection",
         "FlextInfraUtilitiesSelection",
@@ -155,7 +150,6 @@ __all__ = [
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesSafety",
-    "FlextInfraUtilitiesScanning",
     "FlextInfraUtilitiesSelection",
     "FlextInfraUtilitiesSubprocess",
     "FlextInfraUtilitiesTemplates",

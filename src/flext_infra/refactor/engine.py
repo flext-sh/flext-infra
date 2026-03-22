@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import fnmatch
 from collections.abc import Mapping
 from pathlib import Path
@@ -97,12 +98,154 @@ class FlextInfraRefactorEngine:
         """Write the impact-map payload to the target output path."""
         return u.Infra.write_impact_map(results, output_path)
 
-    @classmethod
-    def main(cls) -> int:
+    @staticmethod
+    def main() -> int:
         """Run the refactor CLI entrypoint and exit with the status code."""
-        raise SystemExit(
-            u.Infra.refactor_run_cli(cls, FlextInfraRefactorViolationAnalyzer),
+        parser = argparse.ArgumentParser(
+            description="Flext Refactor Engine - Declarative code transformation",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
         )
+        mode_group = parser.add_mutually_exclusive_group(required=True)
+        _ = mode_group.add_argument("--project", "-p", type=Path)
+        _ = mode_group.add_argument("--workspace", "-w", type=Path)
+        _ = mode_group.add_argument("--file", "-f", type=Path)
+        _ = mode_group.add_argument("--files", nargs="+", type=Path)
+        _ = mode_group.add_argument("--list-rules", "-l", action="store_true")
+        _ = parser.add_argument("--rules", "-r", type=str)
+        _ = parser.add_argument("--pattern", default=c.Infra.Extensions.PYTHON_GLOB)
+        _ = parser.add_argument("--dry-run", "-n", action="store_true")
+        _ = parser.add_argument("--show-diff", "-d", action="store_true")
+        _ = parser.add_argument("--impact-map-output", type=Path)
+        _ = parser.add_argument("--analyze-violations", action="store_true")
+        _ = parser.add_argument("--analysis-output", type=Path)
+        _ = parser.add_argument("--config", "-c", type=Path)
+        args = parser.parse_args()
+        engine = FlextInfraRefactorEngine(config_path=args.config)
+        config_result = engine.load_config()
+        if not config_result.is_success:
+            u.Infra.refactor_error(f"Config error: {config_result.error}")
+            return 1
+        if args.rules:
+            rule_filters = [
+                item.strip() for item in args.rules.split(",") if item.strip()
+            ]
+            engine.set_rule_filters(rule_filters)
+        rules_result = engine.load_rules()
+        if not rules_result.is_success:
+            u.Infra.refactor_error(f"Rules error: {rules_result.error}")
+            return 1
+        if args.list_rules:
+            u.Infra.print_rules_table(engine.list_rules())
+            return 0
+        if args.analyze_violations:
+            files_to_analyze: list[Path] = []
+            if args.project:
+                scan_dirs = frozenset(
+                    engine.rule_loader.extract_project_scan_dirs(engine.config),
+                )
+                iter_result = u.Infra.iter_python_files(
+                    workspace_root=args.project,
+                    project_roots=[args.project],
+                    include_tests=c.Infra.Directories.TESTS in scan_dirs,
+                    include_examples=c.Infra.Directories.EXAMPLES in scan_dirs,
+                    include_scripts=c.Infra.Directories.SCRIPTS in scan_dirs,
+                    src_dirs=scan_dirs or None,
+                )
+                if iter_result.is_failure:
+                    u.Infra.refactor_error(
+                        iter_result.error
+                        or f"File iteration failed for project: {args.project}",
+                    )
+                    return 1
+                ignore_items, extension_items = (
+                    engine.rule_loader.extract_engine_file_filters(engine.config)
+                )
+                ignore_patterns = {str(item) for item in ignore_items}
+                allowed_extensions = {str(item) for item in extension_items}
+                files_to_analyze = [
+                    file_path
+                    for file_path in iter_result.value
+                    if (
+                        fnmatch.fnmatch(
+                            str(file_path.relative_to(args.project)),
+                            args.pattern,
+                        )
+                        or fnmatch.fnmatch(file_path.name, args.pattern)
+                    )
+                    and (
+                        not allowed_extensions or file_path.suffix in allowed_extensions
+                    )
+                    and file_path.name not in ignore_patterns
+                    and not any(
+                        part in ignore_patterns
+                        for part in file_path.relative_to(args.project).parts
+                    )
+                    and not any(
+                        fnmatch.fnmatch(
+                            str(file_path.relative_to(args.project)),
+                            ignore_pattern,
+                        )
+                        for ignore_pattern in ignore_patterns
+                    )
+                ]
+            elif args.workspace:
+                files_to_analyze = engine.collect_workspace_files(
+                    args.workspace,
+                    pattern=args.pattern,
+                )
+            elif args.file:
+                if not args.file.exists():
+                    u.Infra.refactor_error(f"File not found: {args.file}")
+                    return 1
+                files_to_analyze = [args.file]
+            elif args.files:
+                files_to_analyze = [item for item in args.files if item.exists()]
+            analysis = FlextInfraRefactorViolationAnalyzer.analyze_files(
+                files_to_analyze
+            )
+            u.Infra.print_violation_summary(analysis)
+            if args.analysis_output is not None:
+                _ = u.Infra.write_json(
+                    args.analysis_output,
+                    analysis.model_dump(mode="json"),
+                    ensure_ascii=True,
+                )
+                u.Infra.refactor_info(f"Analysis report written: {args.analysis_output}")
+            return 0
+        results: list[m.Infra.Result] = []
+        if args.project:
+            results = engine.refactor_project(
+                args.project,
+                dry_run=args.dry_run,
+                pattern=args.pattern,
+            )
+        elif args.workspace:
+            results = engine.refactor_workspace(
+                args.workspace,
+                dry_run=args.dry_run,
+                pattern=args.pattern,
+            )
+        elif args.file:
+            if not args.file.exists():
+                u.Infra.refactor_error(f"File not found: {args.file}")
+                return 1
+            original_code = args.file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            result_single = engine.refactor_file(args.file, dry_run=args.dry_run)
+            results = [result_single]
+            if args.show_diff and result_single.modified:
+                refactored_code = result_single.refactored_code or original_code
+                u.Infra.print_diff(original_code, refactored_code, args.file)
+        elif args.files:
+            existing_files = [item for item in args.files if item.exists()]
+            missing_files = [item for item in args.files if not item.exists()]
+            for file_path in missing_files:
+                u.Infra.refactor_error(f"File not found: {file_path}")
+            results = engine.refactor_files(existing_files, dry_run=args.dry_run)
+        u.Infra.print_summary(results, dry_run=args.dry_run)
+        if args.impact_map_output is not None:
+            _ = u.Infra.write_impact_map(results, args.impact_map_output)
+        failed = sum(1 for item in results if not item.success)
+        raise SystemExit(0 if failed == 0 else 1)
 
     def collect_workspace_files(
         self,

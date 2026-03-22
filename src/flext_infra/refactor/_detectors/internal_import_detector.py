@@ -14,10 +14,11 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import p, u
-from flext_infra.models import m
-from flext_infra.refactor._models_namespace_enforcer import (
+from flext_infra import (
     FlextInfraNamespaceEnforcerModels as nem,
+    m,
+    p,
+    u,
 )
 
 
@@ -116,8 +117,9 @@ class InternalImportDetector(p.Infra.Scanner):
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             return []
+        module, positions = u.Infra.cst_resolve_positions(tree)
         violations: list[nem.InternalImportViolation] = []
-        for stmt in u.Infra.cst_iter_simple_statements(tree.body):
+        for stmt in u.Infra.cst_iter_simple_statements(module.body):
             if not isinstance(stmt, cst.ImportFrom):
                 continue
             module_name = u.Infra.cst_module_to_str(stmt.module)
@@ -148,7 +150,7 @@ class InternalImportDetector(p.Infra.Scanner):
             violations.append(
                 nem.InternalImportViolation.create(
                     file=str(file_path),
-                    line=0,
+                    line=u.Infra.cst_line_for(node=stmt, positions=positions),
                     current_import=current_import,
                     detail=detail,
                 ),

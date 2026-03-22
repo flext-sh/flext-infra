@@ -15,9 +15,10 @@ from typing import TYPE_CHECKING, override
 
 import libcst as cst
 
-from flext_infra import p, u
-from flext_infra.refactor._models_namespace_enforcer import (
+from flext_infra import (
     FlextInfraNamespaceEnforcerModels as nem,
+    p,
+    u,
 )
 
 if TYPE_CHECKING:
@@ -115,8 +116,9 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             return []
+        module, positions = u.Infra.cst_resolve_positions(tree)
         violations: list[nem.CompatibilityAliasViolation] = []
-        for stmt in u.Infra.cst_iter_simple_statements(tree.body):
+        for stmt in u.Infra.cst_iter_simple_statements(module.body):
             if not isinstance(stmt, cst.Assign):
                 continue
             if len(stmt.targets) != 1:
@@ -140,7 +142,7 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
                 violations.append(
                     nem.CompatibilityAliasViolation.create(
                         file=str(file_path),
-                        line=0,
+                        line=u.Infra.cst_line_for(node=stmt, positions=positions),
                         alias_name=alias_name,
                         target_name=target_name,
                     ),

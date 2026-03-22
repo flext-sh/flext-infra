@@ -65,7 +65,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-    from flext_infra._utilities.scanning import FlextInfraUtilitiesScanning
     from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
     from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
     from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
@@ -80,12 +79,11 @@ if TYPE_CHECKING:
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
     from flext_infra.check._constants import FlextInfraCheckConstants
     from flext_infra.check._models import FlextInfraCheckModels
-    from flext_infra.check.workspace_check import (
+    from flext_infra.check.services import (
+        FlextInfraConfigFixer,
         FlextInfraWorkspaceChecker,
-        build_parser,
-        main,
-        run_cli,
     )
+    from flext_infra.check.workspace_check import build_parser, main, run_cli
     from flext_infra.codegen._codegen_coercion import FlextInfraCodegenCoercion
     from flext_infra.codegen._codegen_execution_tools import (
         FlextInfraCodegenExecutionTools,
@@ -146,7 +144,6 @@ if TYPE_CHECKING:
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.internal_sync import (
         FlextInfraInternalDependencySyncService,
         shutil,
@@ -159,6 +156,7 @@ if TYPE_CHECKING:
     from flext_infra.docs.builder import FlextInfraDocBuilder
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
+    from flext_infra.docs.shared import FlextInfraDocsShared
     from flext_infra.docs.validator import FlextInfraDocValidator
     from flext_infra.gates._base_gate import FlextInfraGate, FlextInfraGateContext
     from flext_infra.gates._gate_registry import FlextInfraGateRegistry
@@ -217,9 +215,6 @@ if TYPE_CHECKING:
     from flext_infra.refactor._detectors.namespace_source_detector import (
         NamespaceSourceDetector,
     )
-    from flext_infra.refactor._detectors.python_module_loader_mixin import (
-        FlextInfraRefactorDetectorPythonModuleLoaderMixin,
-    )
     from flext_infra.refactor._detectors.runtime_alias_detector import (
         RuntimeAliasDetector,
     )
@@ -234,9 +229,9 @@ if TYPE_CHECKING:
     from flext_infra.refactor._models_namespace_enforcer import (
         FlextInfraNamespaceEnforcerModels,
     )
-    from flext_infra.refactor._models_typing_census import FlextInfraTypingCensusModels
     from flext_infra.refactor._post_check_gate import PostCheckGate
     from flext_infra.refactor._top_level_class_collector import TopLevelClassCollector
+    from flext_infra.refactor._typings import FlextInfraRectorTypes
     from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
     from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
     from flext_infra.refactor._utilities_loader import FlextInfraUtilitiesRefactorLoader
@@ -283,6 +278,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.release._constants import FlextInfraReleaseConstants
     from flext_infra.release._models import FlextInfraReleaseModels
+    from flext_infra.release._reporting import FlextInfraReleaseReporting
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
     from flext_infra.rules.class_nesting import ClassNestingRefactorRule
     from flext_infra.rules.class_reconstructor import (
@@ -566,10 +562,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.codegen._codegen_snapshot",
         "FlextInfraCodegenSnapshot",
     ),
-    "FlextInfraConfigFixer": (
-        "flext_infra.deps.fix_pyrefly_config",
-        "FlextInfraConfigFixer",
-    ),
+    "FlextInfraConfigFixer": ("flext_infra.check.services", "FlextInfraConfigFixer"),
     "FlextInfraConstants": ("flext_infra.constants", "FlextInfraConstants"),
     "FlextInfraCoreConstants": (
         "flext_infra.validate._constants",
@@ -603,6 +596,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraDocsConstants",
     ),
     "FlextInfraDocsModels": ("flext_infra.docs._models", "FlextInfraDocsModels"),
+    "FlextInfraDocsShared": ("flext_infra.docs.shared", "FlextInfraDocsShared"),
     "FlextInfraExtraPathsManager": (
         "flext_infra.deps.extra_paths",
         "FlextInfraExtraPathsManager",
@@ -666,6 +660,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.workspace.maintenance.python_version",
         "FlextInfraPythonVersionEnforcer",
     ),
+    "FlextInfraRectorTypes": ("flext_infra.refactor._typings", "FlextInfraRectorTypes"),
     "FlextInfraRefactorAliasRemover": (
         "flext_infra.transformers.alias_remover",
         "FlextInfraRefactorAliasRemover",
@@ -705,10 +700,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraRefactorDeprecatedRemover": (
         "flext_infra.transformers.deprecated_remover",
         "FlextInfraRefactorDeprecatedRemover",
-    ),
-    "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
-        "flext_infra.refactor._detectors.python_module_loader_mixin",
-        "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     ),
     "FlextInfraRefactorEngine": (
         "flext_infra.refactor.engine",
@@ -858,6 +849,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra.release.orchestrator",
         "FlextInfraReleaseOrchestrator",
     ),
+    "FlextInfraReleaseReporting": (
+        "flext_infra.release._reporting",
+        "FlextInfraReleaseReporting",
+    ),
     "FlextInfraRuffFormatGate": (
         "flext_infra.gates.ruff_format",
         "FlextInfraRuffFormatGate",
@@ -893,10 +888,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraTransformerTier0ImportFixer",
     ),
     "FlextInfraTypes": ("flext_infra.typings", "FlextInfraTypes"),
-    "FlextInfraTypingCensusModels": (
-        "flext_infra.refactor._models_typing_census",
-        "FlextInfraTypingCensusModels",
-    ),
     "FlextInfraUtilities": ("flext_infra.utilities", "FlextInfraUtilities"),
     "FlextInfraUtilitiesCli": ("flext_infra._utilities.cli", "FlextInfraUtilitiesCli"),
     "FlextInfraUtilitiesCodegen": (
@@ -1017,10 +1008,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "flext_infra._utilities.safety",
         "FlextInfraUtilitiesSafety",
     ),
-    "FlextInfraUtilitiesScanning": (
-        "flext_infra._utilities.scanning",
-        "FlextInfraUtilitiesScanning",
-    ),
     "FlextInfraUtilitiesSelection": (
         "flext_infra._utilities.selection",
         "FlextInfraUtilitiesSelection",
@@ -1054,7 +1041,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraUtilitiesYaml",
     ),
     "FlextInfraWorkspaceChecker": (
-        "flext_infra.check.workspace_check",
+        "flext_infra.check.services",
         "FlextInfraWorkspaceChecker",
     ),
     "FlextInfraWorkspaceConstants": (
@@ -1288,6 +1275,7 @@ __all__ = [
     "FlextInfraDocValidator",
     "FlextInfraDocsConstants",
     "FlextInfraDocsModels",
+    "FlextInfraDocsShared",
     "FlextInfraExtraPathsManager",
     "FlextInfraGate",
     "FlextInfraGateContext",
@@ -1312,6 +1300,7 @@ __all__ = [
     "FlextInfraPyrightGate",
     "FlextInfraPytestDiagExtractor",
     "FlextInfraPythonVersionEnforcer",
+    "FlextInfraRectorTypes",
     "FlextInfraRefactorAliasRemover",
     "FlextInfraRefactorAstGrepModels",
     "FlextInfraRefactorCensus",
@@ -1322,7 +1311,6 @@ __all__ = [
     "FlextInfraRefactorClassReconstructorRule",
     "FlextInfraRefactorConstants",
     "FlextInfraRefactorDeprecatedRemover",
-    "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     "FlextInfraRefactorEngine",
     "FlextInfraRefactorEnsureFutureAnnotationsRule",
     "FlextInfraRefactorImportBypassRemover",
@@ -1360,6 +1348,7 @@ __all__ = [
     "FlextInfraReleaseConstants",
     "FlextInfraReleaseModels",
     "FlextInfraReleaseOrchestrator",
+    "FlextInfraReleaseReporting",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
     "FlextInfraRuntimeDevDependencyDetector",
@@ -1371,7 +1360,6 @@ __all__ = [
     "FlextInfraTransformerImportNormalizer",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
-    "FlextInfraTypingCensusModels",
     "FlextInfraUtilities",
     "FlextInfraUtilitiesCli",
     "FlextInfraUtilitiesCodegen",
@@ -1405,7 +1393,6 @@ __all__ = [
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",
     "FlextInfraUtilitiesSafety",
-    "FlextInfraUtilitiesScanning",
     "FlextInfraUtilitiesSelection",
     "FlextInfraUtilitiesSubprocess",
     "FlextInfraUtilitiesTemplates",

@@ -88,6 +88,7 @@ project-excludes = [
 ]
 python-version = "3.13"
 search-path = [
+  ".",
   "src",
 ]
 

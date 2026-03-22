@@ -10,12 +10,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import TYPE_CHECKING, override
 
-from flext_infra import c, p, u
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra.refactor._models_namespace_enforcer import (
+from flext_infra import (
     FlextInfraNamespaceEnforcerModels as nem,
+    c,
+    p,
+    u,
 )
 
 if TYPE_CHECKING:
@@ -28,27 +29,6 @@ class ImportAliasDetector(p.Infra.Scanner):
     Identifies deep imports (e.g., `from package.submodule.impl import Class`)
     that could be simplified using top-level aliases (e.g., `from package import Class`).
     """
-
-    _alias_cache: ClassVar[dict[str, tuple[str, ...]] | None] = None
-
-    @classmethod
-    def _get_alias_map(
-        cls, workspace_root: Path | None = None
-    ) -> dict[str, tuple[str, ...]]:
-        """Get the cached mapping of packages to their public aliases.
-
-        Args:
-            workspace_root: Optional workspace root to discover aliases from.
-
-        Returns:
-            Dict mapping package names to tuples of public alias names.
-
-        """
-        if cls._alias_cache is not None:
-            return cls._alias_cache
-        root = workspace_root if workspace_root is not None else Path.cwd()
-        cls._alias_cache = FlextInfraUtilitiesDiscovery.discover_workspace_aliases(root)
-        return cls._alias_cache
 
     @classmethod
     def _discover_package(cls, file_path: Path) -> str:

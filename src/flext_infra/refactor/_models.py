@@ -10,19 +10,15 @@ from typing import Annotated
 import libcst as cst
 from pydantic import ConfigDict, Field
 
-from flext_core import FlextModels
-from flext_infra.refactor._models_ast_grep import FlextInfraRefactorAstGrepModels
-from flext_infra.refactor._models_namespace_enforcer import (
+from flext_core import m
+from flext_infra import (
     FlextInfraNamespaceEnforcerModels,
+    FlextInfraRefactorAstGrepModels,
+    t,
 )
-from flext_infra.refactor._models_typing_census import (
-    FlextInfraTypingCensusModels,
-)
-from flext_infra.typings import FlextInfraTypes as t
 
 
 class FlextInfraRefactorModels(
-    FlextInfraTypingCensusModels,
     FlextInfraRefactorAstGrepModels,
     FlextInfraNamespaceEnforcerModels,
 ):
@@ -33,7 +29,7 @@ class FlextInfraRefactorModels(
     - ``ArbitraryTypesModel`` for mutable engine/report/result payloads.
     """
 
-    class Result(FlextModels.ArbitraryTypesModel):
+    class Result(m.ArbitraryTypesModel):
         """Result of applying refactor rules to a single file."""
 
         file_path: Annotated[Path, Field(description="Target file path")]
@@ -61,7 +57,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class RefactorProjectInfo(FlextModels.ArbitraryTypesModel):
+    class RefactorProjectInfo(m.ArbitraryTypesModel):
         name: Annotated[t.NonEmptyStr, Field(description="Project directory name")]
         path: Annotated[Path, Field(description="Absolute project path")]
         src_path: Annotated[Path, Field(description="Absolute src/ path")]
@@ -73,7 +69,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class FileImportData(FlextModels.ArbitraryTypesModel):
+    class FileImportData(m.ArbitraryTypesModel):
         imported_modules: Annotated[
             set[str],
             Field(
@@ -89,7 +85,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class MethodInfo(FlextModels.ArbitraryTypesModel):
+    class MethodInfo(m.ArbitraryTypesModel):
         """Metadata about a method used for ordering inside classes."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Method name")]
@@ -109,7 +105,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class Checkpoint(FlextModels.ArbitraryTypesModel):
+    class Checkpoint(m.ArbitraryTypesModel):
         """Serialisable checkpoint state for refactor safety recovery."""
 
         workspace_root: Annotated[
@@ -139,7 +135,7 @@ class FlextInfraRefactorModels(
             ),
         ] = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
-    class ClassOccurrence(FlextModels.ArbitraryTypesModel):
+    class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""
 
         model_config = ConfigDict(frozen=True)
@@ -153,7 +149,7 @@ class FlextInfraRefactorModels(
             Field(description="Whether class is at module top level"),
         ]
 
-    class LooseClassViolation(FlextModels.ArbitraryTypesModel):
+    class LooseClassViolation(m.ArbitraryTypesModel):
         """A detected loose-class naming violation with confidence."""
 
         model_config = ConfigDict(frozen=True)
@@ -170,7 +166,7 @@ class FlextInfraRefactorModels(
         confidence: Annotated[str, Field(description="Confidence level")]
         score: Annotated[t.DecimalFraction, Field(description="Confidence score")]
 
-    class FamilyMROResolution(FlextModels.ArbitraryTypesModel):
+    class FamilyMROResolution(m.ArbitraryTypesModel):
         """Resolution payload for one facade family MRO."""
 
         model_config = ConfigDict(frozen=True)
@@ -193,7 +189,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class ProjectClassification(FlextModels.ArbitraryTypesModel):
+    class ProjectClassification(m.ArbitraryTypesModel):
         """Result of classifying a project by kind and family chains."""
 
         model_config = ConfigDict(frozen=True)
@@ -211,7 +207,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class ClassNestingMapping(FlextModels.ArbitraryTypesModel):
+    class ClassNestingMapping(m.ArbitraryTypesModel):
         """Unified mapping contract for class-nesting rewrite planning."""
 
         model_config = ConfigDict(extra="ignore", frozen=True)
@@ -245,7 +241,7 @@ class FlextInfraRefactorModels(
             ),
         ] = None
 
-    class ClassNestingViolation(FlextModels.ArbitraryTypesModel):
+    class ClassNestingViolation(m.ArbitraryTypesModel):
         """Normalized class-nesting violation with rewrite metadata."""
 
         model_config = ConfigDict(frozen=True)
@@ -272,7 +268,7 @@ class FlextInfraRefactorModels(
             ),
         ] = "file"
 
-    class ClassNestingPolicy(FlextModels.FrozenStrictModel):
+    class ClassNestingPolicy(m.FrozenStrictModel):
         """Validated policy contract used by class-nesting transformers."""
 
         model_config = ConfigDict(extra="ignore", frozen=True)
@@ -422,7 +418,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class ClassNestingReport(FlextModels.ArbitraryTypesModel):
+    class ClassNestingReport(m.ArbitraryTypesModel):
         """Aggregated class-nesting analysis report."""
 
         violations_count: Annotated[
@@ -452,7 +448,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class HelperClassification(FlextModels.ArbitraryTypesModel):
+    class HelperClassification(m.ArbitraryTypesModel):
         """Classification result for a helper function."""
 
         file: Annotated[t.NonEmptyStr, Field(description="Source file")]
@@ -484,7 +480,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class HelperClassificationReport(FlextModels.ArbitraryTypesModel):
+    class HelperClassificationReport(m.ArbitraryTypesModel):
         """Aggregated helper-function classification payload."""
 
         totals: Annotated[
@@ -513,7 +509,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class HelperFileAnalysis(FlextModels.ArbitraryTypesModel):
+    class HelperFileAnalysis(m.ArbitraryTypesModel):
         suggestions: Annotated[
             list[FlextInfraRefactorModels.HelperClassification],
             Field(
@@ -540,7 +536,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class ViolationTopFileSection(FlextModels.ArbitraryTypesModel):
+    class ViolationTopFileSection(m.ArbitraryTypesModel):
         """One ranked hotspot entry in violation analysis output."""
 
         file: Annotated[t.NonEmptyStr, Field(description="File path")]
@@ -555,7 +551,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class ViolationAnalysisReport(FlextModels.ArbitraryTypesModel):
+    class ViolationAnalysisReport(m.ArbitraryTypesModel):
         """Full violation analysis report for refactor diagnostics."""
 
         totals: Annotated[
@@ -592,7 +588,7 @@ class FlextInfraRefactorModels(
 
     # -- MRO Target Specification -----------------------------------------------
 
-    class MROTargetSpec(FlextModels.FrozenStrictModel):
+    class MROTargetSpec(m.FrozenStrictModel):
         """Specification for an MRO target family."""
 
         family_alias: Annotated[
@@ -608,7 +604,7 @@ class FlextInfraRefactorModels(
 
     # -- Pydantic Centralizer Models -------------------------------------------
 
-    class ClassMove(FlextModels.FrozenStrictModel):
+    class ClassMove(m.FrozenStrictModel):
         """Tracks a class definition being moved during centralization."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Class name")]
@@ -620,7 +616,7 @@ class FlextInfraRefactorModels(
             Field(description="Model kind classification"),
         ]
 
-    class AliasMove(FlextModels.FrozenStrictModel):
+    class AliasMove(m.FrozenStrictModel):
         """Tracks a type alias being moved during centralization."""
 
         name: Annotated[t.NonEmptyStr, Field(description="Alias name")]
@@ -628,7 +624,7 @@ class FlextInfraRefactorModels(
         end: Annotated[t.NonNegativeInt, Field(description="End line number")]
         alias_expr: Annotated[str, Field(description="Alias expression text")]
 
-    class CentralizerFailureStats(FlextModels.ArbitraryTypesModel):
+    class CentralizerFailureStats(m.ArbitraryTypesModel):
         """Mutable statistics for centralizer parse failures."""
 
         parse_syntax_errors: Annotated[
@@ -646,7 +642,7 @@ class FlextInfraRefactorModels(
 
     # -- Namespace Enforcer Models ---------------------------------------------
 
-    class ParsedPythonModule(FlextModels.ArbitraryTypesModel):
+    class ParsedPythonModule(m.ArbitraryTypesModel):
         """Result of parsing a Python source file into AST."""
 
         model_config = ConfigDict(frozen=True)
@@ -656,7 +652,7 @@ class FlextInfraRefactorModels(
 
     # -- MRO Generic Models ----------------------------------------------------
 
-    class MROFamilyTarget(FlextModels.ArbitraryTypesModel):
+    class MROFamilyTarget(m.ArbitraryTypesModel):
         """Parametrized target for an MRO family scan or operations.
 
         Defines which MRO family to scan (e.g. utilities, constants, models).
@@ -701,7 +697,7 @@ class FlextInfraRefactorModels(
 
     # -- Census Models ---------------------------------------------------------
 
-    class CensusMethodInfo(FlextModels.ArbitraryTypesModel):
+    class CensusMethodInfo(m.ArbitraryTypesModel):
         """A public method extracted from a _utilities class."""
 
         model_config = ConfigDict(frozen=True)
@@ -713,7 +709,7 @@ class FlextInfraRefactorModels(
         ]
         source_file: Annotated[str, Field(description="Source filename")]
 
-    class CensusUsageRecord(FlextModels.ArbitraryTypesModel):
+    class CensusUsageRecord(m.ArbitraryTypesModel):
         """A single method usage found via CST analysis."""
 
         model_config = ConfigDict(frozen=True)
@@ -730,7 +726,7 @@ class FlextInfraRefactorModels(
         file_path: Annotated[str, Field(description="Source file path")]
         project: Annotated[str, Field(description="Project name")]
 
-    class CensusMethodSummary(FlextModels.ArbitraryTypesModel):
+    class CensusMethodSummary(m.ArbitraryTypesModel):
         """Aggregated usage counts for a single method."""
 
         model_config = ConfigDict(frozen=True)
@@ -747,7 +743,7 @@ class FlextInfraRefactorModels(
         ]
         total: Annotated[t.NonNegativeInt, Field(description="Total usages")]
 
-    class CensusClassSummary(FlextModels.ArbitraryTypesModel):
+    class CensusClassSummary(m.ArbitraryTypesModel):
         """Aggregated census for one _utilities class."""
 
         model_config = ConfigDict(frozen=True)
@@ -767,7 +763,7 @@ class FlextInfraRefactorModels(
             ),
         ]
 
-    class CensusProjectMethodUsage(FlextModels.ArbitraryTypesModel):
+    class CensusProjectMethodUsage(m.ArbitraryTypesModel):
         """Usage of a method within a specific project."""
 
         model_config = ConfigDict(frozen=True)
@@ -780,7 +776,7 @@ class FlextInfraRefactorModels(
         access_mode: Annotated[str, Field(description="Access mode")]
         count: Annotated[t.NonNegativeInt, Field(description="Usage count")]
 
-    class CensusProjectSummary(FlextModels.ArbitraryTypesModel):
+    class CensusProjectSummary(m.ArbitraryTypesModel):
         """Usage breakdown for one project."""
 
         model_config = ConfigDict(frozen=True)
@@ -800,7 +796,7 @@ class FlextInfraRefactorModels(
         ]
         total: Annotated[t.NonNegativeInt, Field(description="Total usages in project")]
 
-    class UtilitiesCensusReport(FlextModels.ArbitraryTypesModel):
+    class UtilitiesCensusReport(m.ArbitraryTypesModel):
         """Full census report for _utilities method usage."""
 
         classes: Annotated[

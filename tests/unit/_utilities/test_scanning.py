@@ -2,55 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, u
-
-
-class MockScanner:
-    def __init__(self, *, detector_name: str) -> None:
-        self.detector_name = detector_name
-        self.scanned: list[Path] = []
-
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        self.scanned.append(file_path)
-        return m.Infra.ScanResult(
-            file_path=file_path,
-            detector_name=self.detector_name,
-            violations=[
-                m.Infra.ScanViolation(
-                    line=1,
-                    message=f"checked {file_path.name}",
-                    severity="low",
-                    rule_id="demo-rule",
-                ),
-            ],
-        )
-
-
-class TestScanFileBatch:
-    def test_scan_files_batch_runs_scanner_for_all_files(self, tmp_path: Path) -> None:
-        scanner = MockScanner(detector_name="mock-scanner")
-        assert isinstance(scanner, p.Infra.Scanner)
-
-        file_one = tmp_path / "a.py"
-        file_two = tmp_path / "b.py"
-        file_one.write_text("print('a')\n", encoding="utf-8")
-        file_two.write_text("print('b')\n", encoding="utf-8")
-
-        results = u.Infra.scan_files_batch(scanner=scanner, files=[file_one, file_two])
-
-        assert scanner.scanned == [file_one, file_two]
-        assert len(results) == 2
-        assert results[0].file_path == file_one
-        assert results[1].file_path == file_two
-        assert results[0].detector_name == "mock-scanner"
-
-    def test_scan_files_batch_returns_empty_list_for_empty_input(self) -> None:
-        scanner = MockScanner(detector_name="mock-scanner")
-
-        results = u.Infra.scan_files_batch(scanner=scanner, files=[])
-
-        assert results == []
-        assert scanner.scanned == []
+from flext_infra import c, m
 
 
 class TestScanModels:

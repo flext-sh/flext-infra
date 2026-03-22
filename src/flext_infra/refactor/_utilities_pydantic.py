@@ -11,9 +11,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesIteration, m
-from flext_infra.refactor._utilities_pydantic_analysis import (
+from flext_infra import (
+    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorPydanticAnalysis,
+    m,
 )
 
 
@@ -104,15 +105,6 @@ class FlextInfraUtilitiesRefactorPydantic:
             "p = FlextAutoProtocols\n"
             "u = FlextAutoUtilities\n"
             "m = FlextAutoModels\n\n"
-        )
-
-    @staticmethod
-    def _pydantic_ensure_typings_header(dest_path: Path) -> str:
-        if dest_path.exists():
-            return dest_path.read_text(encoding="utf-8")
-        return (
-            '"""Auto-generated centralized typings."""\n\n'
-            "from __future__ import annotations\n\n"
         )
 
     @staticmethod

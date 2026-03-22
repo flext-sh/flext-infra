@@ -64,11 +64,7 @@ if TYPE_CHECKING:
     from .unit._utilities.test_iteration import TestIterWorkspacePythonModules
     from .unit._utilities.test_parsing import TestParsingModuleAst, TestParsingModuleCst
     from .unit._utilities.test_safety import TestSafetyCheckpoint, TestSafetyRollback
-    from .unit._utilities.test_scanning import (
-        MockScanner,
-        TestScanFileBatch,
-        TestScanModels,
-    )
+    from .unit._utilities.test_scanning import TestScanModels
     from .unit.basemk.test_engine import (
         test_basemk_cli_generate_to_file,
         test_basemk_cli_generate_to_stdout,
@@ -1086,7 +1082,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "GitScenario": ("tests.scenarios", "GitScenario"),
     "GitScenarios": ("tests.scenarios", "GitScenarios"),
     "MinimalScenario": ("tests.workspace_scenarios", "MinimalScenario"),
-    "MockScanner": ("tests.unit._utilities.test_scanning", "MockScanner"),
     "ProjectResult": ("tests.unit.check.extended_run_projects_tests", "ProjectResult"),
     "RealGitService": ("tests.git_service", "RealGitService"),
     "RealSubprocessRunner": ("tests.runner_service", "RealSubprocessRunner"),
@@ -2131,7 +2126,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.unit.codegen.lazy_init_transforms_tests",
         "TestScanAstPublicDefs",
     ),
-    "TestScanFileBatch": ("tests.unit._utilities.test_scanning", "TestScanFileBatch"),
     "TestScanModels": ("tests.unit._utilities.test_scanning", "TestScanModels"),
     "TestScannerCore": ("tests.unit.validate.scanner_tests", "TestScannerCore"),
     "TestScannerHelpers": ("tests.unit.validate.scanner_tests", "TestScannerHelpers"),
@@ -3603,7 +3597,6 @@ __all__ = [
     "GitScenario",
     "GitScenarios",
     "MinimalScenario",
-    "MockScanner",
     "ProjectResult",
     "RealGitService",
     "RealSubprocessRunner",
@@ -3931,7 +3924,6 @@ __all__ = [
     "TestScaffoldProjectIdempotency",
     "TestScaffoldProjectNoop",
     "TestScanAstPublicDefs",
-    "TestScanFileBatch",
     "TestScanModels",
     "TestScannerCore",
     "TestScannerHelpers",

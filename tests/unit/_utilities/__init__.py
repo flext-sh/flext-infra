@@ -22,10 +22,9 @@ if TYPE_CHECKING:
     from .test_iteration import TestIterWorkspacePythonModules
     from .test_parsing import TestParsingModuleAst, TestParsingModuleCst
     from .test_safety import TestSafetyCheckpoint, TestSafetyRollback
-    from .test_scanning import MockScanner, TestScanFileBatch, TestScanModels
+    from .test_scanning import TestScanModels
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "MockScanner": ("tests.unit._utilities.test_scanning", "MockScanner"),
     "TestDiscoveryDiscoverProjects": (
         "tests.unit._utilities.test_discovery_consolidated",
         "TestDiscoveryDiscoverProjects",
@@ -63,12 +62,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "TestSafetyCheckpoint",
     ),
     "TestSafetyRollback": ("tests.unit._utilities.test_safety", "TestSafetyRollback"),
-    "TestScanFileBatch": ("tests.unit._utilities.test_scanning", "TestScanFileBatch"),
     "TestScanModels": ("tests.unit._utilities.test_scanning", "TestScanModels"),
 }
 
 __all__ = [
-    "MockScanner",
     "TestDiscoveryDiscoverProjects",
     "TestDiscoveryFindAllPyprojectFiles",
     "TestDiscoveryIterPythonFiles",
@@ -79,7 +76,6 @@ __all__ = [
     "TestParsingModuleCst",
     "TestSafetyCheckpoint",
     "TestSafetyRollback",
-    "TestScanFileBatch",
     "TestScanModels",
 ]
 

@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from ._utilities.test_iteration import TestIterWorkspacePythonModules
     from ._utilities.test_parsing import TestParsingModuleAst, TestParsingModuleCst
     from ._utilities.test_safety import TestSafetyCheckpoint, TestSafetyRollback
-    from ._utilities.test_scanning import MockScanner, TestScanFileBatch, TestScanModels
+    from ._utilities.test_scanning import TestScanModels
     from .basemk.test_engine import (
         test_basemk_cli_generate_to_file,
         test_basemk_cli_generate_to_stdout,
@@ -1011,7 +1011,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraCodegenTestProjectFactory",
     ),
     "GateClass": ("tests.unit.check.extended_runners_extra_tests", "GateClass"),
-    "MockScanner": ("tests.unit._utilities.test_scanning", "MockScanner"),
     "ProjectResult": ("tests.unit.check.extended_run_projects_tests", "ProjectResult"),
     "RunCallable": ("tests.unit.check.extended_runners_go_tests", "RunCallable"),
     "RunProjectsMock": ("tests.unit.check._shared_fixtures", "RunProjectsMock"),
@@ -2052,7 +2051,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.unit.codegen.lazy_init_transforms_tests",
         "TestScanAstPublicDefs",
     ),
-    "TestScanFileBatch": ("tests.unit._utilities.test_scanning", "TestScanFileBatch"),
     "TestScanModels": ("tests.unit._utilities.test_scanning", "TestScanModels"),
     "TestScannerCore": ("tests.unit.validate.scanner_tests", "TestScannerCore"),
     "TestScannerHelpers": ("tests.unit.validate.scanner_tests", "TestScannerHelpers"),
@@ -3490,7 +3488,6 @@ __all__ = [
     "FakeVersioning",
     "FlextInfraCodegenTestProjectFactory",
     "GateClass",
-    "MockScanner",
     "ProjectResult",
     "RunCallable",
     "RunProjectsMock",
@@ -3814,7 +3811,6 @@ __all__ = [
     "TestScaffoldProjectIdempotency",
     "TestScaffoldProjectNoop",
     "TestScanAstPublicDefs",
-    "TestScanFileBatch",
     "TestScanModels",
     "TestScannerCore",
     "TestScannerHelpers",

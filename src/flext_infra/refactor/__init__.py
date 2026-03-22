@@ -52,9 +52,6 @@ if TYPE_CHECKING:
     from flext_infra.refactor._detectors.namespace_source_detector import (
         NamespaceSourceDetector,
     )
-    from flext_infra.refactor._detectors.python_module_loader_mixin import (
-        FlextInfraRefactorDetectorPythonModuleLoaderMixin,
-    )
     from flext_infra.refactor._detectors.runtime_alias_detector import (
         RuntimeAliasDetector,
     )
@@ -117,10 +114,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraRefactorClassNestingAnalyzer": (
         "flext_infra.refactor.class_nesting_analyzer",
         "FlextInfraRefactorClassNestingAnalyzer",
-    ),
-    "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
-        "flext_infra.refactor._detectors.python_module_loader_mixin",
-        "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     ),
     "FlextInfraRefactorEngine": (
         "flext_infra.refactor.engine",
@@ -223,7 +216,6 @@ __all__ = [
     "FlextInfraNamespaceEnforcer",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
-    "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     "FlextInfraRefactorEngine",
     "FlextInfraRefactorLooseClassScanner",
     "FlextInfraRefactorMROImportRewriter",

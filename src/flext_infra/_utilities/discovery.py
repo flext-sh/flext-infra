@@ -416,44 +416,5 @@ class FlextInfraUtilitiesDiscovery:
                 result[pkg_name] = aliases
         return result
 
-    @staticmethod
-    def discover_facade_alias_map(package_dir: Path) -> dict[str, str]:
-        """Map alias names to facade module filenames in a package directory."""
-        facade_map: dict[str, str] = {}
-        facade_files = [
-            "constants.py",
-            "typings.py",
-            "models.py",
-            "protocols.py",
-            "utilities.py",
-            "exceptions.py",
-            "decorators.py",
-            "handlers.py",
-            "service.py",
-            "services.py",
-            "mixins.py",
-            "result.py",
-        ]
-        for filename in facade_files:
-            filepath = package_dir / filename
-            if not filepath.exists():
-                continue
-            tree = FlextInfraUtilitiesParsing.parse_module_cst(filepath)
-            if tree is None:
-                continue
-            for item in tree.body:
-                if not isinstance(item, cst.SimpleStatementLine):
-                    continue
-                for stmt in item.body:
-                    if not isinstance(stmt, cst.Assign):
-                        continue
-                    for target in stmt.targets:
-                        if not isinstance(target.target, cst.Name):
-                            continue
-                        name = target.target.value
-                        if len(name) == 1 and name.isalpha() and name.islower():
-                            facade_map[name] = filename
-        return facade_map
-
 
 __all__ = ["FlextInfraUtilitiesDiscovery"]

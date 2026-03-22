@@ -51,9 +51,6 @@ if TYPE_CHECKING:
     from flext_infra.refactor._detectors.namespace_source_detector import (
         NamespaceSourceDetector,
     )
-    from flext_infra.refactor._detectors.python_module_loader_mixin import (
-        FlextInfraRefactorDetectorPythonModuleLoaderMixin,
-    )
     from flext_infra.refactor._detectors.runtime_alias_detector import (
         RuntimeAliasDetector,
     )
@@ -74,10 +71,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "DependencyAnalyzer": (
         "flext_infra.refactor._detectors.dependency_analyzer_base",
         "DependencyAnalyzer",
-    ),
-    "FlextInfraRefactorDetectorPythonModuleLoaderMixin": (
-        "flext_infra.refactor._detectors.python_module_loader_mixin",
-        "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     ),
     "FutureAnnotationsDetector": (
         "flext_infra.refactor._detectors.future_annotations_detector",
@@ -130,7 +123,6 @@ __all__ = [
     "CompatibilityAliasDetector",
     "CyclicImportDetector",
     "DependencyAnalyzer",
-    "FlextInfraRefactorDetectorPythonModuleLoaderMixin",
     "FutureAnnotationsDetector",
     "ImportAliasDetector",
     "ImportCollector",

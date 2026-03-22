@@ -9,8 +9,7 @@ from typing import Annotated, override
 import libcst as cst
 from pydantic import ConfigDict, Field
 
-from flext_infra import m, t, u
-from flext_infra.transformers._utilities_normalizer import NormalizerContext
+from flext_infra import NormalizerContext, m, t, u
 
 
 class FlextInfraTransformerImportNormalizer:
@@ -26,79 +25,6 @@ class FlextInfraTransformerImportNormalizer:
         violation_type: Annotated[str, Field(pattern="^(deep|wrong_source)$")]
 
     Context = NormalizerContext
-
-    class Visitor(cst.CSTVisitor):
-        def __init__(
-            self,
-            *,
-            file_path: Path,
-            project_package: str = "",
-            alias_map: dict[str, tuple[str, ...]] | None = None,
-        ) -> None:
-            """Initialize visitor with file and package normalization context."""
-            self._context = u.Infra.normalizer_build_context(
-                file_path=file_path,
-                project_package=project_package,
-                alias_map=alias_map,
-            )
-            self.violations: list[FlextInfraTransformerImportNormalizer.Violation] = []
-
-        @override
-        def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
-            module_name = u.Infra.cst_module_name(node)
-            if not module_name:
-                return
-            if isinstance(node.names, cst.ImportStar):
-                return
-            for imported_alias in node.names:
-                imported_name = u.Infra.cst_imported_name(imported_alias)
-                if not imported_name or imported_name == self._context.declared_alias:
-                    continue
-                violation_type = self._violation_type(module_name, imported_name)
-                if violation_type is None:
-                    continue
-                self.violations.append(
-                    FlextInfraTransformerImportNormalizer.Violation(
-                        file=str(self._context.file_path),
-                        line=1,
-                        current_import=f"from {module_name} import {imported_name}",
-                        suggested_import=f"from {self._context.project_package} import {imported_name}",
-                        violation_type=violation_type,
-                    ),
-                )
-
-        def _violation_type(self, module_name: str, imported_name: str) -> str | None:
-            if imported_name not in self._context.project_aliases:
-                return None
-            # Deep violation check
-            if (
-                module_name.startswith(f"{self._context.project_package}.")
-                and "._" in module_name
-            ):
-                if not self._is_safe_to_normalize(imported_name):
-                    return None
-                return "deep"
-            # Wrong source check
-            if (
-                self._context.wrong_source_enabled
-                and "." not in module_name
-                and imported_name not in self._context.universal_aliases
-                and module_name in self._context.workspace_packages
-            ):
-                if not self._is_safe_to_normalize(imported_name):
-                    return None
-                return "wrong_source"
-            return None
-
-        def _is_safe_to_normalize(self, alias: str) -> bool:
-            defining_module = self._context.alias_to_defining_module.get(alias, "")
-            if defining_module and self._context.file_module:
-                if defining_module == self._context.file_module:
-                    return False
-                reachable = self._context.package_reachability.get(defining_module)
-                if reachable is not None:
-                    return self._context.file_module not in reachable
-            return True
 
     class Transformer(cst.CSTTransformer):
         def __init__(

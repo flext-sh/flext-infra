@@ -16,13 +16,18 @@ from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
 
-from flext_core import FlextModels
-from flext_infra import FlextInfraUtilitiesDiscovery, FlextInfraUtilitiesYaml, t
+from flext_core import m
+from flext_infra import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesYaml,
+    t,
+)
 
 _UNKNOWN_TIER = 99
 
 
-class NormalizerContext(FlextModels.ArbitraryTypesModel):
+class NormalizerContext(m.ArbitraryTypesModel):
     """Analysis context for import normalization."""
 
     file_path: Path
@@ -180,10 +185,8 @@ class FlextInfraUtilitiesImportNormalizer:
         """Build direct intra-package import graph from source files."""
         graph: dict[str, set[str]] = {}
         for py_file in package_dir.rglob("*.py"):
-            try:
-                source = py_file.read_text(encoding="utf-8")
-                tree = ast.parse(source)
-            except (OSError, SyntaxError, UnicodeDecodeError):
+            tree = FlextInfraUtilitiesParsing.parse_module_ast(py_file)
+            if tree is None:
                 continue
             try:
                 module_name = (
