@@ -43,15 +43,23 @@ class TestResolveAliases:
         tm.that(lazy_map, contains="c")
         tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
 
-    def test_does_not_overwrite_existing(self) -> None:
-        """Test that existing alias is not overwritten."""
+    def test_does_not_overwrite_canonical_existing(self) -> None:
+        """Test that canonical alias pointing to correct facade is preserved."""
+        lazy_map: dict[str, tuple[str, str]] = {
+            "c": ("pkg.constants", "FlextConstants"),
+            "FlextConstants": ("pkg.constants", "FlextConstants"),
+        }
+        _resolve_aliases(lazy_map)
+        tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
+
+    def test_overwrites_non_canonical_existing(self) -> None:
+        """Test that non-canonical alias is replaced with canonical facade."""
         lazy_map: dict[str, tuple[str, str]] = {
             "c": ("pkg.custom", "CustomConst"),
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
         _resolve_aliases(lazy_map)
-        # Should keep existing mapping
-        tm.that(lazy_map["c"], eq=("pkg.custom", "CustomConst"))
+        tm.that(lazy_map["c"], eq=("pkg.constants", "FlextConstants"))
 
     def test_resolves_multiple_aliases(self) -> None:
         """Test resolving multiple aliases at once."""

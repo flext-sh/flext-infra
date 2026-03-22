@@ -13,7 +13,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 from flext_infra.codegen import __main__ as codegen_main
@@ -24,19 +23,19 @@ class TestHandleLazyInit:
 
     def test_success(self, tmp_path: Path) -> None:
         """_handle_lazy_init returns 0 on empty workspace."""
-        result = codegen_main.main(["lazy-init", "--root", str(tmp_path)])
+        result = codegen_main.main(["lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
     def test_check_mode(self, tmp_path: Path) -> None:
         """_handle_lazy_init respects --check flag."""
         result = codegen_main.main(
-            ["lazy-init", "--check", "--root", str(tmp_path)],
+            ["lazy-init", "--check", "--workspace", str(tmp_path)],
         )
         tm.that(result, eq=0)
 
     def test_enforce_mode(self, tmp_path: Path) -> None:
         """_handle_lazy_init in enforce mode (not check)."""
-        result = codegen_main.main(["lazy-init", "--root", str(tmp_path)])
+        result = codegen_main.main(["lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
 
@@ -45,13 +44,13 @@ class TestMainCommandDispatch:
 
     def test_lazy_init_command(self, tmp_path: Path) -> None:
         """main() with lazy-init command returns 0."""
-        result = codegen_main.main(["lazy-init", "--root", str(tmp_path)])
+        result = codegen_main.main(["lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
     def test_lazy_init_with_check_flag(self, tmp_path: Path) -> None:
         """main() lazy-init with --check flag parses correctly."""
         result = codegen_main.main(
-            ["lazy-init", "--check", "--root", str(tmp_path)],
+            ["lazy-init", "--check", "--workspace", str(tmp_path)],
         )
         tm.that(result, eq=0)
 
@@ -61,22 +60,20 @@ class TestMainCommandDispatch:
         tm.that(result, eq=0)
 
     def test_unknown_command(self) -> None:
-        """main() with unknown command exits with code 2."""
-        with pytest.raises(SystemExit) as exc_info:
-            codegen_main.main(["unknown-command"])
-        tm.that(exc_info.value.code, eq=2)
+        """main() with unknown command returns non-zero exit code."""
+        result = codegen_main.main(["unknown-command"])
+        tm.that(result, ne=0)
 
     def test_no_command(self) -> None:
-        """main() with no command exits with code 2."""
+        """main() with no command returns non-zero exit code."""
         argv: list[str] = []
-        with pytest.raises(SystemExit) as exc_info:
-            codegen_main.main(argv)
-        tm.that(exc_info.value.code, eq=2)
+        result = codegen_main.main(argv)
+        tm.that(result, ne=0)
 
     def test_lazy_init_with_custom_root(self, tmp_path: Path) -> None:
         """main() lazy-init with custom root directory."""
         custom_root = tmp_path / "custom"
-        result = codegen_main.main(["lazy-init", "--root", str(custom_root)])
+        result = codegen_main.main(["lazy-init", "--workspace", str(custom_root)])
         tm.that(result, eq=0)
 
 

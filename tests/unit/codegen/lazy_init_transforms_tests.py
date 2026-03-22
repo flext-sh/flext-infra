@@ -23,7 +23,7 @@ _should_bubble_up: Callable[[str], bool] = getattr(
     "_should_bubble_up",
 )
 _merge_child_exports: Callable[
-    [Path, dict[str, tuple[str, str]], Mapping[str, dict[str, tuple[str, str]]]],
+    [Path, str, dict[str, tuple[str, str]], Mapping[str, dict[str, tuple[str, str]]]],
     None,
 ] = getattr(FlextInfraCodegenLazyInit, "_merge_child_exports")
 _extract_version_exports: Callable[
@@ -127,7 +127,7 @@ class TestMergeChildExports:
                 "SubService": ("pkg.sub.service", "SubService"),
             },
         }
-        _merge_child_exports(tmp_path, lazy_map, dir_exports)
+        _merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
         tm.that(lazy_map, contains="SubService")
         tm.that(lazy_map["SubService"], eq=("pkg.sub.service", "SubService"))
 
@@ -143,7 +143,7 @@ class TestMergeChildExports:
                 "Model": ("pkg.sub.models", "Model"),
             },
         }
-        _merge_child_exports(tmp_path, lazy_map, dir_exports)
+        _merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
         # Sibling wins
         tm.that(lazy_map["Model"], eq=("pkg.models", "Model"))
 
@@ -158,7 +158,7 @@ class TestMergeChildExports:
                 "Service": ("pkg.sub.service", "Service"),
             },
         }
-        _merge_child_exports(tmp_path, lazy_map, dir_exports)
+        _merge_child_exports(tmp_path, "pkg", lazy_map, dir_exports)
         tm.that(lazy_map, excludes="BLUE")
         tm.that(lazy_map, contains="Service")
 
