@@ -210,7 +210,9 @@ class FlextInfraRefactorEngine:
                     analysis.model_dump(mode="json"),
                     ensure_ascii=True,
                 )
-                u.Infra.refactor_info(f"Analysis report written: {args.analysis_output}")
+                u.Infra.refactor_info(
+                    f"Analysis report written: {args.analysis_output}"
+                )
             return 0
         results: list[m.Infra.Result] = []
         if args.project:

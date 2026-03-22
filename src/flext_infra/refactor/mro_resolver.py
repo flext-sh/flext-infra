@@ -16,7 +16,6 @@ from flext_infra import (
 
 class FlextInfraRefactorMROResolver:
     CONSTANT_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
-    TYPE_CANDIDATE_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Za-z][A-Za-z0-9_]*$")
 
     @classmethod
     def resolve(

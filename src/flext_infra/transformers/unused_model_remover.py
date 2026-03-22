@@ -20,7 +20,6 @@ class UnusedModelRemover(cst.CSTTransformer):
         self._on_change = on_change
         self.modified: bool = False
         self.changes: list[str] = []
-        self._removed_count: int = 0
 
     @override
     def leave_ClassDef(
@@ -29,7 +28,6 @@ class UnusedModelRemover(cst.CSTTransformer):
         updated_node: cst.ClassDef,
     ) -> cst.ClassDef | cst.RemovalSentinel:
         if original_node.name.value in self._unused_classes:
-            self._removed_count += 1
             self.modified = True
             self._record_change(
                 f"Removed unused model class: {original_node.name.value}",

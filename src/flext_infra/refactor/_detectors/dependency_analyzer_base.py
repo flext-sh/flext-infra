@@ -43,34 +43,6 @@ class DependencyAnalyzer:
         self._stdlib_roots = set(sys.stdlib_module_names)
         self._projects = self._discover_projects()
         self._pkg_index = self._build_package_index(self._projects)
-        self._graph_cache: dict[str, list[str]] | None = None
-
-    def build_import_graph(self) -> r[dict[str, list[str]]]:
-        """Build and cache the inter-project import dependency graph.
-
-        Returns:
-            Result containing a dict mapping project names to their dependencies.
-
-        """
-        if self._graph_cache is not None:
-            return r[dict[str, list[str]]].ok(self._graph_cache)
-        graph: dict[str, set[str]] = {p.name: set() for p in self._projects}
-        for project in self._projects:
-            files = self._find_import_candidate_files(project)
-            for fp in files:
-                parsed = self._parse_imports(fp)
-                if parsed.is_failure:
-                    continue
-                file_data: m.Infra.FileImportData = parsed.value
-                for mod_root in file_data.imported_modules:
-                    if mod_root in self._stdlib_roots:
-                        continue
-                    dep = self._pkg_index.get(mod_root)
-                    if dep and dep != project.name:
-                        graph[project.name].add(dep)
-        ordered = {k: sorted(v) for k, v in sorted(graph.items())}
-        self._graph_cache = ordered
-        return r[dict[str, list[str]]].ok(ordered)
 
     def _discover_projects(self) -> list[m.Infra.RefactorProjectInfo]:
         """Discover all projects in the workspace.

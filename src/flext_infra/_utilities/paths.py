@@ -68,25 +68,5 @@ class FlextInfraUtilitiesPaths:
                 return candidate
         return here.parents[4]
 
-    @staticmethod
-    def workspace_root_from_file(file: str | Path) -> r[Path]:
-        """Resolve workspace root from a given file path.
-
-        Walks up from the file location to find the workspace root
-        containing ``.gitmodules``.
-
-        Args:
-            file: Path to a file within the workspace.
-
-        Returns:
-            r[Path] with the resolved workspace root.
-
-        """
-        here = Path(file).resolve()
-        for candidate in here.parents:
-            if (candidate / c.Infra.Files.GITMODULES).exists():
-                return r[Path].ok(candidate)
-        return r[Path].fail(f"workspace root not found from: {file}")
-
 
 __all__ = ["FlextInfraUtilitiesPaths"]

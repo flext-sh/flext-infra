@@ -4,27 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Annotated, override
+from typing import override
 
 import libcst as cst
-from pydantic import ConfigDict, Field
 
-from flext_infra import NormalizerContext, m, t, u
+from flext_infra import u
 
 
 class FlextInfraTransformerImportNormalizer:
     """Namespace for import normalization logic and classes."""
-
-    class Violation(m.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
-
-        file: Annotated[t.NonEmptyStr, Field()]
-        line: Annotated[t.PositiveInt, Field()]
-        current_import: Annotated[t.NonEmptyStr, Field()]
-        suggested_import: Annotated[t.NonEmptyStr, Field()]
-        violation_type: Annotated[str, Field(pattern="^(deep|wrong_source)$")]
-
-    Context = NormalizerContext
 
     class Transformer(cst.CSTTransformer):
         def __init__(
@@ -43,7 +31,6 @@ class FlextInfraTransformerImportNormalizer:
             )
             self._on_change = on_change
             self.modified_imports = False
-            self.aliases_to_inject: set[str] = set()
             self.aliases_present: set[str] = set()
             self.changes: list[str] = []
 

@@ -44,52 +44,6 @@ class FlextInfraVersion:
     __license__ = _metadata.get("License", "")
     __url__ = _metadata.get("Home-Page", "")
 
-    @classmethod
-    def get_version_string(cls) -> str:
-        """Return the package version as a string."""
-        return cls.__version__
-
-    @classmethod
-    def get_version_info(cls) -> tuple[int | str, ...]:
-        """Return the package version as a tuple of ints and strings."""
-        return cls.__version_info__
-
-    @classmethod
-    def get_package_info(cls) -> dict[str, str]:
-        """Return package metadata as a dictionary."""
-        return {
-            "name": str(cls.__title__),
-            "version": str(cls.__version__),
-            "description": str(cls.__description__),
-            "author": str(cls.__author__),
-            "author_email": str(cls.__author_email__),
-            "license": str(cls.__license__),
-            "url": str(cls.__url__),
-        }
-
-    @classmethod
-    def is_version_at_least(
-        cls,
-        major: int,
-        minor: int = 0,
-        patch: int = 0,
-    ) -> bool:
-        """Check whether the current version is at least (major, minor, patch)."""
-        info = cls.__version_info__
-        idx_major = 0
-        idx_minor = 1
-        idx_patch = 2
-        current_major = info[idx_major] if len(info) > idx_major else 0
-        current_minor = info[idx_minor] if len(info) > idx_minor else 0
-        current_patch = info[idx_patch] if len(info) > idx_patch else 0
-        if not isinstance(current_major, int):
-            return False
-        if not isinstance(current_minor, int):
-            current_minor = 0
-        if not isinstance(current_patch, int):
-            current_patch = 0
-        return (current_major, current_minor, current_patch) >= (major, minor, patch)
-
 
 __version__ = FlextInfraVersion.__version__
 __version_info__ = FlextInfraVersion.__version_info__

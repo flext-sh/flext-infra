@@ -14,9 +14,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
+
+from pydantic import TypeAdapter
 
 from flext_infra import (
     FlextInfraCodegenCensus,
@@ -27,7 +28,12 @@ from flext_infra import (
     FlextInfraCodegenScaffolder,
     c,
     output,
+    t,
     u,
+)
+
+_JSON_OUTPUT_ADAPTER: TypeAdapter[dict[str, t.NormalizedValue]] = TypeAdapter(
+    dict[str, t.NormalizedValue],
 )
 
 
@@ -208,11 +214,11 @@ class FlextInfraCodegenCommand:
         reports = census.run()
         if cli.output_format == "json":
             output.info(
-                json.dumps({
+                _JSON_OUTPUT_ADAPTER.dump_json({
                     c.Infra.ReportKeys.PROJECTS: [rpt.model_dump() for rpt in reports],
                     "total_violations": sum(rpt.total for rpt in reports),
                     "total_fixable": sum(rpt.fixable for rpt in reports),
-                }),
+                }).decode(),
             )
         else:
             total_v = sum(rpt.total for rpt in reports)
@@ -285,7 +291,7 @@ class FlextInfraCodegenCommand:
         reports_after = census.run()
         if cli.output_format == "json":
             output.info(
-                json.dumps({
+                _JSON_OUTPUT_ADAPTER.dump_json({
                     "census_before": {
                         "total_violations": sum(r.total for r in reports_before),
                         "total_fixable": sum(r.fixable for r in reports_before),
@@ -310,7 +316,7 @@ class FlextInfraCodegenCommand:
                         "total_violations": sum(r.total for r in reports_after),
                         "total_fixable": sum(r.fixable for r in reports_after),
                     },
-                }),
+                }).decode(),
             )
         else:
             before_v = sum(r.total for r in reports_before)

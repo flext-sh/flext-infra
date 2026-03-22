@@ -21,14 +21,6 @@ from flext_infra import (
     u,
 )
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from flext_infra.gates.bandit import FlextInfraBanditGate
-from flext_infra.gates.go import FlextInfraGoGate
-from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from flext_infra.gates.mypy import FlextInfraMypyGate
-from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
 
 class FlextInfraWorkspaceChecker(s[bool]):
@@ -321,50 +313,6 @@ class FlextInfraWorkspaceChecker(s[bool]):
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",
                 )
         return r[list[m.Infra.ProjectResult]].ok(results)
-
-    def _run_pyrefly(
-        self,
-        project_dir: Path,
-        reports_dir: Path | None = None,
-    ) -> m.Infra.GateExecution:
-        """Run pyrefly checks for one project."""
-        gate = FlextInfraPyreflyGate(self._workspace_root)
-        return gate.check(project_dir, self._gate_ctx(reports_dir))
-
-    def _run_mypy(self, project_dir: Path) -> m.Infra.GateExecution:
-        """Run mypy checks for one project."""
-        gate = FlextInfraMypyGate(self._workspace_root)
-        return gate.check(project_dir, self._gate_ctx())
-
-    def _run_pyright(self, project_dir: Path) -> m.Infra.GateExecution:
-        """Run pyright checks for one project."""
-        gate = FlextInfraPyrightGate(self._workspace_root)
-        return gate.check(project_dir, self._gate_ctx())
-
-    def _run_bandit(self, project_dir: Path) -> m.Infra.GateExecution:
-        """Run bandit security checks for one project."""
-        gate = FlextInfraBanditGate(self._workspace_root)
-        return gate.check(project_dir, self._gate_ctx())
-
-    def _run_go(self, project_dir: Path) -> m.Infra.GateExecution:
-        """Run go checks for one project."""
-        gate = FlextInfraGoGate(self._workspace_root)
-        return gate.check(project_dir, self._gate_ctx())
-
-    def _run_ruff_format(self, project_dir: Path) -> m.Infra.GateExecution:
-        """Run ruff format checks for one project."""
-        gate = FlextInfraRuffFormatGate(self._workspace_root)
-        return gate.check(project_dir, self._gate_ctx())
-
-    def _run_ruff_lint(self, project_dir: Path) -> m.Infra.GateExecution:
-        """Run ruff lint checks for one project."""
-        gate = FlextInfraRuffLintGate(self._workspace_root)
-        return gate.check(project_dir, self._gate_ctx())
-
-    def _run_markdown(self, project_dir: Path) -> m.Infra.GateExecution:
-        """Run markdown lint checks for one project."""
-        gate = FlextInfraMarkdownGate(self._workspace_root)
-        return gate.check(project_dir, self._gate_ctx())
 
     def _gate_ctx(self, reports_dir: Path | None = None) -> FlextInfraGateContext:
         return FlextInfraGateContext(

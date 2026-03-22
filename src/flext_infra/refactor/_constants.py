@@ -26,22 +26,6 @@ class FlextInfraRefactorConstants:
     })
     NAMESPACE_SOURCE_UNIVERSAL_ALIASES: ClassVar[frozenset[str]] = frozenset({"r"})
 
-    FACADE_FILE_DECLARES_ALIAS: ClassVar[dict[str, str]] = {
-        "constants.py": "c",
-        "typings.py": "t",
-        "models.py": "m",
-        "protocols.py": "p",
-        "utilities.py": "u",
-        "exceptions.py": "e",
-        "decorators.py": "d",
-        "handlers.py": "h",
-        "service.py": "s",
-        "services.py": "s",
-        "mixins.py": "x",
-        "result.py": "r",
-    }
-    "Facade file → single-letter alias it declares (self-import is circular)."
-
     LEGACY_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "remove",
         "inline_and_remove",
@@ -75,23 +59,6 @@ class FlextInfraRefactorConstants:
     TIER0_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({"fix_tier0_imports"})
     "Fix actions for Tier 0 import analyzer/fixer rules."
     "Fix actions for typing census auto-fix rules."
-    TYPING_VIOLATION_KINDS: ClassVar[frozenset[str]] = frozenset({
-        "bare_object",
-        "container_object",
-        "mapping_object",
-        "list_object",
-        "sequence_object",
-        "typeadapter_object",
-    })
-    "Violation kind identifiers for typing annotation census."
-    TYPING_ANNOTATION_CONTEXTS: ClassVar[frozenset[str]] = frozenset({
-        "param",
-        "return",
-        "field",
-        "variable",
-        "typeadapter",
-    })
-    "Annotation context identifiers for typing census records."
     DUNDER_OBJECT_ALLOWLIST: ClassVar[frozenset[str]] = frozenset({
         "__eq__",
         "__ne__",
@@ -102,17 +69,6 @@ class FlextInfraRefactorConstants:
         "__ge__",
     })
     "Dunder methods where `object` parameter type is canonical Python."
-    TYPING_REPLACEMENT_MAP: ClassVar[Mapping[str, str]] = {
-        "object": "t.ContainerValue",
-        "dict[str, object]": "dict[str, t.ContainerValue]",
-        "Mapping[str, object]": "Mapping[str, t.ContainerValue]",
-        "list[object]": "list[t.ContainerValue]",
-        "Sequence[object]": "Sequence[t.ContainerValue]",
-        "TypeAdapter[object]": "TypeAdapter[t.ContainerValue]",
-        "TypeAdapter[dict[str, object]]": "TypeAdapter[dict[str, t.ContainerValue]]",
-        "TypeAdapter[list[object]]": "TypeAdapter[list[t.ContainerValue]]",
-    }
-    "Canonical replacement map from object-based annotations to t.ContainerValue."
     FUTURE_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "ensure_future_annotations",
     })
@@ -181,12 +137,8 @@ class FlextInfraRefactorConstants:
     MRO_UTILITIES_DIRECTORY: ClassVar[str] = "utilities"
     "Canonical utilities package directory name."
 
-    CONSTANTS_DIRECTORY = "constants"
-    TYPINGS_DIRECTORY = "typings"
     DEFAULT_CONSTANTS_CLASS: ClassVar[str] = "FlextConstants"
     "Fallback constants class name when none exists in module."
-    DEFAULT_TYPES_CLASS: ClassVar[str] = "FlextTypes"
-    "Fallback types class name when none exists in module."
     CONSTANTS_FILE_GLOB: ClassVar[str] = "constants.py"
     "Constants module glob scanned by the migration scanner."
     CONSTANTS_CLASS_SUFFIX: ClassVar[str] = "Constants"
@@ -199,8 +151,6 @@ class FlextInfraRefactorConstants:
     "Compiled naming pattern for module-level constant candidates."
     DEFAULT_FACADE_ALIAS: ClassVar[str] = "c"
     "Default facade alias inserted during import rewrite."
-    MRO_CLASS_TEMPLATE: ClassVar[str] = "class {class_name}:\n    pass\n"
-    "Template used to create a new constants facade class."
     FAMILY_SUFFIXES: ClassVar[Mapping[str, str]] = {
         "c": "Constants",
         "t": "Types",
@@ -313,9 +263,6 @@ class FlextInfraRefactorConstants:
     "Expected number of arguments for typing.cast calls."
     MIN_PATH_DEPTH: int = 2
     "Minimum relative path depth for module prefix detection."
-    TYPED_DICT_MIN_ARGS: int = 2
-    "Minimum positional args expected in TypedDict(name, fields, ...)."
-
     NAMESPACE_CONSTANT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r"^_?[A-Z][A-Z0-9_]+$",
     )
@@ -369,21 +316,8 @@ class FlextInfraRefactorConstants:
         "Usage via FlextUtilitiesXxx.method_name (direct)."
         CORE_PROJECT: ClassVar[str] = "flext-core"
         "Core project directory name."
-        UTILITIES_PACKAGE: ClassVar[str] = "flext_core/_utilities"
-        "Relative package path for _utilities."
-        FACADE_MODULE: ClassVar[str] = "flext_core/utilities.py"
-        "Relative path to the FlextUtilities facade."
         DEFAULT_FAMILY: ClassVar[str] = "u"
         "Default census family."
-
-    PROJECT_KIND_VALUES: ClassVar[frozenset[str]] = frozenset({
-        "core",
-        "domain",
-        "platform",
-        "integration",
-        "app",
-    })
-    type ProjectKind = str
 
 
 __all__ = ["FlextInfraRefactorConstants"]

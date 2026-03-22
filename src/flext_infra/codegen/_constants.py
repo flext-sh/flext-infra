@@ -58,21 +58,6 @@ class FlextInfraCodegenConstants:
         "x": "Mixins",
     }
     "Single-letter alias → class suffix mapping for lazy-init generation."
-    SKIP_MODULES: Final[frozenset[str]] = frozenset({
-        "__future__",
-        "typing",
-        "collections.abc",
-        "abc",
-    })
-    "Modules to skip when deriving lazy import mappings."
-    SKIP_STDLIB: Final[frozenset[str]] = frozenset({
-        "sys",
-        "importlib",
-        "typing",
-        "collections",
-        "abc",
-    })
-    "Stdlib modules to skip in lazy-init import derivation."
     MAX_LINE_LENGTH: Final[int] = 88
     "Maximum line length for generated import lines."
     AUTOGEN_HEADER: Final[str] = (

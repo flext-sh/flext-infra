@@ -21,7 +21,6 @@ class FlextInfraRuntimeDevDependencyDetector:
     """CLI tool for detecting runtime vs dev dependencies across workspace."""
 
     log: p.Logger = FlextLogger.create_module_logger(__name__)
-    paths: p.Infra.PathsService
     reporting: p.Infra.ReportingService
     json: p.Infra.JsonService
     deps: p.Infra.DepsService
@@ -31,7 +30,6 @@ class FlextInfraRuntimeDevDependencyDetector:
         """Initialize detector runtime services."""
         super().__init__()
         infra_instance = u.Infra()
-        self.paths = infra_instance
         self.reporting = infra_instance
         self.json = infra_instance
         self.deps = FlextInfraDependencyDetectionService()

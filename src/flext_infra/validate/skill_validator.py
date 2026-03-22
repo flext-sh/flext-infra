@@ -27,7 +27,6 @@ class FlextInfraSkillValidator:
 
     def __init__(self) -> None:
         """Initialize the skill validator."""
-        self._git_cache: MutableMapping[str, tuple[float, list[str]]] = {}
 
     @staticmethod
     def _render_template(workspace_root: Path, template: str, skill: str) -> Path:

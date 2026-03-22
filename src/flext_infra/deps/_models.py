@@ -452,32 +452,6 @@ class FlextInfraDepsModels:
             alias="project-type-overrides",
         )
 
-    class DependencyReport(m.ArbitraryTypesModel):
-        """Report of dependency detection for a single project."""
-
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
-        missing: Annotated[
-            list[str],
-            Field(
-                default_factory=list,
-                description="Missing dependencies",
-            ),
-        ]
-        unused: Annotated[
-            list[str],
-            Field(
-                default_factory=list,
-                description="Unused dependencies",
-            ),
-        ]
-        outdated: Annotated[
-            list[str],
-            Field(
-                default_factory=list,
-                description="Outdated dependencies",
-            ),
-        ]
-
     class DeptryIssueGroups(m.ArbitraryTypesModel):
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 

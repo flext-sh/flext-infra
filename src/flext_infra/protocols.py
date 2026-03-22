@@ -68,63 +68,6 @@ class FlextInfraProtocols(FlextProtocols):
                 ...
 
         @runtime_checkable
-        class Checker(Protocol):
-            """Contract for project quality gate runners."""
-
-            def run(
-                self,
-                project: str,
-                gates: Sequence[str],
-            ) -> r[list[m.Infra.ProjectResult]]:
-                """Execute quality gates for a project."""
-                ...
-
-        @runtime_checkable
-        class Syncer(Protocol):
-            """Contract for workspace synchronization services."""
-
-            def sync(
-                self,
-                workspace_root: Path,
-                *,
-                config: m.Infra.BaseMkConfig | None = None,
-                canonical_root: Path | None = None,
-            ) -> r[m.Infra.SyncResult]:
-                """Synchronize source and target paths."""
-                ...
-
-        @runtime_checkable
-        class Generator(Protocol):
-            """Contract for text/artifact generators."""
-
-            def generate(
-                self,
-                config: m.Infra.BaseMkConfig | t.ContainerValue | None = None,
-            ) -> r[str]:
-                """Generate text or artifacts from configuration."""
-                ...
-
-        @runtime_checkable
-        class Validator(Protocol):
-            """Contract for validation services."""
-
-            def validate(self, target: Path) -> r[bool]:
-                """Validate a target path."""
-                ...
-
-        @runtime_checkable
-        class Orchestrator(Protocol):
-            """Contract for project orchestration services."""
-
-            def orchestrate(
-                self,
-                projects: Sequence[str],
-                verb: str,
-            ) -> r[list[m.Infra.CommandOutput]]:
-                """Orchestrate operations across multiple projects."""
-                ...
-
-        @runtime_checkable
         class Discovery(Protocol):
             """Contract for project discovery services."""
 
@@ -239,14 +182,6 @@ class FlextInfraProtocols(FlextProtocols):
                 ...
 
         @runtime_checkable
-        class PathsService(Protocol):
-            """Service for resolving workspace root from file paths."""
-
-            def workspace_root_from_file(self, file: str | Path) -> r[Path]:
-                """Resolve workspace root from a given file."""
-                ...
-
-        @runtime_checkable
         class ReportingService(Protocol):
             """Service for reporting directory resolution."""
 
@@ -355,7 +290,6 @@ class FlextInfraProtocols(FlextProtocols):
         class DetectorRuntime(Protocol):
             """Protocol for detector runtime service dependencies."""
 
-            paths: p.Infra.PathsService
             reporting: p.Infra.ReportingService
             json: p.Infra.JsonService
             deps: p.Infra.DepsService

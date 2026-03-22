@@ -48,20 +48,11 @@ class FlextInfraUtilitiesPatterns:
     )
     """Match markdown links capturing only the URL (group 1)."""
 
-    HEADING_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^#{1,6}\s+(.+?)\s*$",
-        re.MULTILINE,
-    )
-    """Match any markdown heading (h1-h6), capturing the text."""
-
     HEADING_H2_H3_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^(##|###)\s+(.+?)\s*$",
         re.MULTILINE,
     )
     """Match h2/h3 headings, capturing level (group 1) and text (group 2)."""
-
-    ANCHOR_LINK_RE: ClassVar[re.Pattern[str]] = re.compile(r"\[([^\]]+)\]\(#([^)]+)\)")
-    """Match internal anchor links, capturing text and anchor."""
 
     INLINE_CODE_RE: ClassVar[re.Pattern[str]] = re.compile(r"`[^`]*`")
     """Match inline code spans for stripping before analysis."""

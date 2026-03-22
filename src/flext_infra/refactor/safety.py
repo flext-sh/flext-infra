@@ -46,10 +46,6 @@ class FlextInfraRefactorSafetyManager:
         self._last_workspace_root = project_root
         return u.Infra.create_checkpoint(project_root, label=label)
 
-    def emergency_stop(self, reason: str) -> None:
-        """Trigger an emergency stop with the given reason."""
-        self.request_emergency_stop(reason)
-
     def request_emergency_stop(self, reason: str) -> None:
         """Record an emergency stop reason for later inspection."""
         self._emergency_stop_reason = reason.strip() or "unspecified"

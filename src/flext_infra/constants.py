@@ -72,24 +72,14 @@ class FlextInfraConstants(FlextConstants):
 
             TOOL: Final[str] = "tool"
             "Top-level [tool] section key."
-            COVERAGE: Final[str] = "coverage"
-            "Coverage tool section key."
             POETRY: Final[str] = "poetry"
             "Poetry tool subsection key."
             PROJECT: Final[str] = "project"
             "Top-level [project] section key."
             DEPENDENCIES: Final[str] = "dependencies"
             "Dependencies key within project or poetry sections."
-            DEV_DEPENDENCIES: Final[str] = "dev-dependencies"
-            "Poetry dev-dependencies key."
-            DEPENDENCY_GROUPS: Final[str] = "dependency-groups"
-            "PEP 735 dependency-groups section key."
-            BUILD_SYSTEM: Final[str] = "build-system"
-            "Build system section key."
             OPTIONAL_DEPENDENCIES: Final[str] = "optional-dependencies"
             "Optional dependencies key within [project]."
-            EXTRAS: Final[str] = "extras"
-            "Poetry extras key."
             GROUP: Final[str] = "group"
             "Poetry group key for dependency groups."
             NAME: Final[str] = "name"
@@ -189,8 +179,6 @@ class FlextInfraConstants(FlextConstants):
             FAIL: Final[str] = "✗"
             WARN: Final[str] = "⚠"
             SKIP: Final[str] = "–"
-            ARROW: Final[str] = "→"
-            BULLET: Final[str] = "•"
 
         class Cli:
             """CLI tool binary names used in subprocess calls."""
@@ -223,8 +211,6 @@ class FlextInfraConstants(FlextConstants):
             "Go vet binary (invoked as 'go vet')."
             MAKE: Final[str] = "make"
             "Make build tool binary."
-            GH: Final[str] = "gh"
-            "GitHub CLI binary."
 
             class RuffCmd:
                 """Ruff subcommand constants."""
@@ -236,9 +222,7 @@ class FlextInfraConstants(FlextConstants):
                 """Poetry subcommand constants."""
 
                 RUN: Final[str] = "run"
-                ADD: Final[str] = "add"
                 CHECK: Final[str] = "check"
-                SHOW: Final[str] = "show"
 
             class SgCmd:
                 """ast-grep subcommand constants."""
@@ -249,16 +233,7 @@ class FlextInfraConstants(FlextConstants):
                 """GitHub CLI subcommand constants."""
 
                 PR: Final[str] = "pr"
-                VIEW: Final[str] = "view"
-                CREATE: Final[str] = "create"
-                MERGE: Final[str] = "merge"
                 SQUASH: Final[str] = "squash"
-                LIST: Final[str] = "list"
-                CHECKS: Final[str] = "checks"
-                CLOSE: Final[str] = "close"
-                UPDATE_BRANCH: Final[str] = "update-branch"
-                RELEASE: Final[str] = "release"
-                WORKFLOW: Final[str] = "workflow"
 
         class Gates:
             """Quality gate identifiers."""
@@ -320,7 +295,6 @@ class FlextInfraConstants(FlextConstants):
 
             ERROR: Final[str] = "error"
             WARNING: Final[str] = "warning"
-            NOTE: Final[str] = "note"
             LOW: Final[str] = "low"
             SKIP: Final[str] = "skip"
 
@@ -329,22 +303,15 @@ class FlextInfraConstants(FlextConstants):
 
             STATUS: Final[str] = "status"
             FILE: Final[str] = "file"
-            LINE: Final[str] = "line"
             MESSAGE: Final[str] = "message"
-            NAME: Final[str] = "name"
-            VERSION: Final[str] = "version"
             SUMMARY: Final[str] = "summary"
-            TOTALS: Final[str] = "totals"
             TOTAL: Final[str] = "total"
             RULES: Final[str] = "rules"
-            CONFIG: Final[str] = "config"
             RELEASE: Final[str] = "release"
             ACTION: Final[str] = "action"
-            PATH: Final[str] = "path"
             SCOPE: Final[str] = "scope"
             VIOLATIONS: Final[str] = "violations"
             VIOLATIONS_COUNT: Final[str] = "violations_count"
-            EXIT_CODE: Final[str] = "exit_code"
             RULE_ID: Final[str] = "rule_id"
             OK: Final[str] = "ok"
             ENABLED: Final[str] = "enabled"
@@ -352,41 +319,27 @@ class FlextInfraConstants(FlextConstants):
             WORKSPACE: Final[str] = "workspace"
             ROOT: Final[str] = "root"
             ID: Final[str] = "id"
-            GENERATED_AT: Final[str] = "generated_at"
-            TAG: Final[str] = "tag"
             URL: Final[str] = "url"
-            STRATEGY: Final[str] = "strategy"
             CLASS_NESTING: Final[str] = "class_nesting"
             TARGET_NAMESPACE: Final[str] = "target_namespace"
             SOURCE_SYMBOL: Final[str] = "source_symbol"
             LOOSE_NAME: Final[str] = "loose_name"
             REWRITE_SCOPE: Final[str] = "rewrite_scope"
             CONFIDENCE: Final[str] = "confidence"
-            MANUAL_REVIEW: Final[str] = "manual_review"
             FIX_ACTION: Final[str] = "fix_action"
             CURRENT_FILE: Final[str] = "current_file"
             VIOLATION_TYPE: Final[str] = "violation_type"
             SUGGESTED_FIX: Final[str] = "suggested_fix"
             HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
-            FORBIDDEN_TARGETS: Final[str] = "forbidden_targets"
-            PER_FILE_COUNTS: Final[str] = "per_file_counts"
             POST_CHECKS: Final[str] = "post_checks"
-            SUGGESTIONS: Final[str] = "suggestions"
 
         class Verbs:
             """CLI subcommand / action verb constants."""
 
             CHECK: Final[str] = "check"
             VALIDATE: Final[str] = "validate"
-            RELEASE: Final[str] = "release"
-            WORKSPACE: Final[str] = "workspace"
             RUN: Final[str] = "run"
-            STATUS: Final[str] = "status"
-            CLOSE: Final[str] = "close"
-            OPEN: Final[str] = "open"
             CHECKS: Final[str] = "checks"
-            REBASE: Final[str] = "rebase"
-            BUILD: Final[str] = "build"
 
         class Excluded:
             """Directory exclusion sets for analysis."""
@@ -439,9 +392,6 @@ class FlextInfraConstants(FlextConstants):
         GITHUB_REPO_NAME: Final[str] = "flext-sh/flext"
         "GitHub repository name in owner/repo format."
 
-        Check = FlextInfraCheckConstants
-        Github = FlextInfraGithubConstants
-
         class Versioning:
             """Semantic versioning constants for version management."""
 
@@ -451,10 +401,6 @@ class FlextInfraConstants(FlextConstants):
                 r"^(\d+)\.(\d+)\.(\d+)(?:-dev)?$",
             )
             "Regex pattern for parsing semantic version strings."
-            DEV_BRANCH_RE: Final[re.Pattern[str]] = re.compile(
-                r"^(\d+\.\d+\.\d+)-dev$",
-            )
-            "Regex pattern for matching development branch names."
             VALID_BUMP_TYPES: Final[frozenset[str]] = frozenset({
                 "major",
                 "minor",

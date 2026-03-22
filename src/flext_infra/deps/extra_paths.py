@@ -291,17 +291,6 @@ class FlextInfraExtraPathsManager:
             doc[c.Infra.Toml.TOOL] = tool_table
         return changes
 
-    @staticmethod
-    def sync_one_path(
-        pyproject_path: Path,
-        *,
-        dry_run: bool = False,
-        is_root: bool = False,
-    ) -> r[bool]:
-        """Synchronize a single pyproject.toml path without instance wiring."""
-        manager = FlextInfraExtraPathsManager()
-        return manager.sync_one(pyproject_path, dry_run=dry_run, is_root=is_root)
-
     def sync_extra_paths(
         self,
         *,

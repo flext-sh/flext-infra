@@ -32,8 +32,8 @@ class TestFlextInfraTomlRead:
         section_obj = doc["section"]
         assert isinstance(section_obj, Table)
         section = section_obj
-        tm.that(cast(str, section["key"]), eq="value")
-        tm.that(cast(int, section["number"]), eq=42)
+        tm.that(cast("str", section["key"]), eq="value")
+        tm.that(cast("int", section["number"]), eq=42)
 
     def test_read_nonexistent_file(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "missing.toml"
@@ -63,7 +63,7 @@ class TestFlextInfraTomlDocument:
         section_obj = doc["section"]
         assert isinstance(section_obj, Table)
         section = section_obj
-        tm.that(cast(str, section["key"]), eq="value")
+        tm.that(cast("str", section["key"]), eq="value")
 
     def test_read_document_nonexistent_file(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "missing.toml"
@@ -139,7 +139,7 @@ class TestFlextInfraTomlDocument:
         assert isinstance(verify_section_obj, Table)
         verify_section = verify_section_obj
         tm.that(
-            cast(str, verify_section["key"]),
+            cast("str", verify_section["key"]),
             eq="new",
         )
 
@@ -160,7 +160,7 @@ class TestFlextInfraTomlHelpers:
         existing["key"] = "value"
         parent["section"] = existing
         table = FlextInfraUtilitiesToml.ensure_table(parent, "section")
-        tm.that(cast(str, table["key"]), eq="value")
+        tm.that(cast("str", table["key"]), eq="value")
 
     def test_as_toml_mapping_and_get_helpers(self) -> None:
         mapping: dict[str, FlextInfraTypes.Infra.InfraValue] = {"key": "value"}
