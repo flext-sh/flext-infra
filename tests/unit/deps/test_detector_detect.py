@@ -96,19 +96,17 @@ def _setup_detector(
     *,
     deptry_exists: bool = True,
 ) -> detector_module.FlextInfraRuntimeDevDependencyDetector:
-    def _workspace_root_from_file(path: str) -> r[Path]:
-        _ = path
-        return r[Path].ok(tmp_path)
+    from flext_infra.deps import detector as _det_mod
 
-    paths = types.SimpleNamespace(workspace_root_from_file=_workspace_root_from_file)
-    monkeypatch.setattr(detector_module, "FlextInfraUtilitiesPaths", lambda: paths)
     monkeypatch.setattr(
-        detector_module,
+        _det_mod,
         "FlextInfraDependencyDetectionService",
         lambda: deps,
     )
     _patch_deptry_exists(monkeypatch, deptry_exists)
-    return detector_module.FlextInfraRuntimeDevDependencyDetector()
+    det = detector_module.FlextInfraRuntimeDevDependencyDetector()
+    det.deps = deps
+    return det
 
 
 class TestFlextInfraRuntimeDevDependencyDetectorRunDetect:

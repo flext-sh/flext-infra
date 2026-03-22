@@ -9,11 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests import m, u
+from tests import m
 
 from ._shared_fixtures import patch_python_dir_detection
 
@@ -75,8 +76,8 @@ class TestWorkspaceCheckerRunMypy:
             has_python_dirs=False,
         )
         result = checker._run_mypy(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=True)
-        u.Tests.Matchers.that(len(result.issues), eq=0)
+        tm.that(result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=0)
 
     def test_run_mypy_with_json_output(
         self,
@@ -100,8 +101,8 @@ class TestWorkspaceCheckerRunMypy:
             returncode=1,
         )
         result = checker._run_mypy(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
-        u.Tests.Matchers.that(len(result.issues), eq=1)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=1)
 
 
 class TestWorkspaceCheckerRunPyright:
@@ -119,8 +120,8 @@ class TestWorkspaceCheckerRunPyright:
             has_python_dirs=False,
         )
         result = checker._run_pyright(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=True)
-        u.Tests.Matchers.that(len(result.issues), eq=0)
+        tm.that(result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=0)
 
     def test_run_pyright_with_json_output(
         self,
@@ -145,8 +146,8 @@ class TestWorkspaceCheckerRunPyright:
             returncode=1,
         )
         result = checker._run_pyright(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
-        u.Tests.Matchers.that(len(result.issues), eq=1)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=1)
 
     def test_run_pyright_with_invalid_json(
         self,
@@ -166,4 +167,4 @@ class TestWorkspaceCheckerRunPyright:
             returncode=1,
         )
         result = checker._run_pyright(proj_dir)
-        u.Tests.Matchers.that(result.result.passed, eq=False)
+        tm.that(result.result.passed, eq=False)

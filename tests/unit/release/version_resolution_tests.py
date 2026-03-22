@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
+from flext_tests import tm
 
 import flext_infra.release.__main__ as _main_mod
 from flext_core import r
 from flext_infra.release.__main__ import _resolve_tag, _resolve_version
-from tests import u
 
 
 def _args(
@@ -79,7 +79,7 @@ class TestReleaseMainVersionResolution:
             _stub_vs(parse=r[str].ok("1.0.0")),
         )
         args = _args(version="1.0.0", bump="", interactive=1)
-        u.Tests.Matchers.that(
+        tm.that(
             _resolve_version(
                 version_arg=args.version or "",
                 bump_arg=args.bump or "",
@@ -119,7 +119,7 @@ class TestReleaseMainVersionResolution:
             _stub_vs(current=r[str].ok("0.9.0")),
         )
         args = _args(version="", bump="", interactive=0)
-        u.Tests.Matchers.that(
+        tm.that(
             _resolve_version(
                 version_arg=args.version or "",
                 bump_arg=args.bump or "",
@@ -159,7 +159,7 @@ class TestReleaseMainVersionResolution:
             _stub_vs(current=r[str].ok("1.0.0"), bump=r[str].ok("1.1.0")),
         )
         args = _args(version="", bump="minor", interactive=1)
-        u.Tests.Matchers.that(
+        tm.that(
             _resolve_version(
                 version_arg=args.version or "",
                 bump_arg=args.bump or "",
@@ -200,7 +200,7 @@ class TestReleaseMainVersionResolution:
         )
         monkeypatch.setattr("builtins.input", _input_minor)
         args = _args(version="", bump="", interactive=1)
-        u.Tests.Matchers.that(
+        tm.that(
             _resolve_version(
                 version_arg=args.version or "",
                 bump_arg=args.bump or "",
@@ -241,7 +241,7 @@ class TestReleaseMainVersionResolution:
             _stub_vs(current=r[str].ok("1.0.0")),
         )
         args = _args(version="", bump="", interactive=0)
-        u.Tests.Matchers.that(
+        tm.that(
             _resolve_version(
                 version_arg=args.version or "",
                 bump_arg=args.bump or "",
@@ -300,7 +300,7 @@ class TestReleaseMainTagResolution:
     """Test tag resolution logic."""
 
     def test_resolve_tag_explicit(self) -> None:
-        u.Tests.Matchers.that(
+        tm.that(
             _resolve_tag("v1.0.0", "1.0.0"),
             eq="v1.0.0",
         )
@@ -310,7 +310,7 @@ class TestReleaseMainTagResolution:
             _resolve_tag("1.0.0", "1.0.0")
 
     def test_resolve_tag_auto_generated(self) -> None:
-        u.Tests.Matchers.that(
+        tm.that(
             _resolve_tag("", "1.0.0"),
             eq="v1.0.0",
         )

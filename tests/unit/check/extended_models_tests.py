@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from tests import m, u
+from flext_tests import tm
+
+from tests import m
 
 
 class TestCheckIssueFormatted:
@@ -21,8 +23,8 @@ class TestCheckIssueFormatted:
             message="Error",
             severity="error",
         )
-        u.Tests.Matchers.that(issue.formatted, contains="[E001]")
-        u.Tests.Matchers.that(issue.formatted, contains="test.py:10:5")
+        tm.that(issue.formatted, contains="[E001]")
+        tm.that(issue.formatted, contains="test.py:10:5")
 
     def test_formatted_without_code(self) -> None:
         issue = m.Infra.Issue(
@@ -33,7 +35,7 @@ class TestCheckIssueFormatted:
             message="Error",
             severity="error",
         )
-        u.Tests.Matchers.that(issue.formatted, contains="test.py:10:5")
+        tm.that(issue.formatted, contains="test.py:10:5")
 
 
 class TestProjectResultProperties:
@@ -85,7 +87,7 @@ class TestProjectResultProperties:
         project = m.Infra.ProjectResult(
             project="p", gates={"lint": exec1, "format": exec2}
         )
-        u.Tests.Matchers.that(project.total_errors, eq=3)
+        tm.that(project.total_errors, eq=3)
 
     def test_passed_all_gates_pass(self) -> None:
         gate1 = m.Infra.GateResult(
@@ -107,7 +109,7 @@ class TestProjectResultProperties:
         project = m.Infra.ProjectResult(
             project="p", gates={"lint": exec1, "format": exec2}
         )
-        u.Tests.Matchers.that(project.passed, eq=True)
+        tm.that(project.passed, eq=True)
 
     def test_passed_one_gate_fails(self) -> None:
         gate1 = m.Infra.GateResult(
@@ -129,7 +131,7 @@ class TestProjectResultProperties:
         project = m.Infra.ProjectResult(
             project="p", gates={"lint": exec1, "format": exec2}
         )
-        u.Tests.Matchers.that(project.passed, eq=False)
+        tm.that(project.passed, eq=False)
 
 
 class TestWorkspaceCheckerErrorSummary:
@@ -180,5 +182,5 @@ class TestWorkspaceCheckerErrorSummary:
         exec2 = m.Infra.GateExecution(result=gate2, issues=[issue3], raw_output="")
         proj1 = m.Infra.ProjectResult(project="proj1", gates={"lint": exec1})
         proj2 = m.Infra.ProjectResult(project="proj2", gates={"format": exec2})
-        u.Tests.Matchers.that(proj1.total_errors, eq=2)
-        u.Tests.Matchers.that(proj2.total_errors, eq=1)
+        tm.that(proj1.total_errors, eq=2)
+        tm.that(proj2.total_errors, eq=1)

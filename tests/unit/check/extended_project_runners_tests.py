@@ -9,11 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra import u as infra_u
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import m, t, u
+from tests import m, t
 
 from ._shared_fixtures import create_gate_execution
 
@@ -49,12 +50,12 @@ class TestCheckProjectRunners:
         result = checker._check_project(
             tmp_path, ["lint", "format", "pyrefly"], tmp_path
         )
-        u.Tests.Matchers.that(called["lint"], eq=True)
-        u.Tests.Matchers.that(called["format"], eq=True)
-        u.Tests.Matchers.that(called["pyrefly"], eq=True)
-        u.Tests.Matchers.that("lint" in result.gates, eq=True)
-        u.Tests.Matchers.that("format" in result.gates, eq=True)
-        u.Tests.Matchers.that("pyrefly" in result.gates, eq=True)
+        tm.that(called["lint"], eq=True)
+        tm.that(called["format"], eq=True)
+        tm.that(called["pyrefly"], eq=True)
+        tm.that("lint" in result.gates, eq=True)
+        tm.that("format" in result.gates, eq=True)
+        tm.that("pyrefly" in result.gates, eq=True)
 
 
 class TestJsonWriteFailure:
@@ -80,7 +81,7 @@ class TestJsonWriteFailure:
 
         monkeypatch.setattr(checker, "_run_ruff_lint", _fake_lint)
         result = checker.run_projects(["test-project"], ["lint"])
-        u.Tests.Matchers.fail(result, has="write error")
+        tm.fail(result, has="write error")
 
 
 class TestLintAndFormatPublicMethods:
@@ -101,8 +102,8 @@ class TestLintAndFormatPublicMethods:
         monkeypatch.setattr(checker, "_run_gate", _fake_run_gate)
         run_public = checker.lint if gate_name == "lint" else checker.format
         result = run_public(target_dir)
-        u.Tests.Matchers.ok(result)
-        u.Tests.Matchers.that(result.value.gate, eq=gate_name)
+        tm.ok(result)
+        tm.that(result.value.gate, eq=gate_name)
 
     def test_lint_public_method(
         self,
