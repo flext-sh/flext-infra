@@ -18,7 +18,6 @@ from ._stubs import (
     FakeSelection,
     FakeSubprocess,
     FakeUtilsNamespace,
-    FakeVersioning,
 )
 
 if TYPE_CHECKING:
@@ -40,19 +39,19 @@ def workspace_root(tmp_path: Path) -> Path:
 
 
 def _patch_sel(mp: MonkeyPatch, sel: FakeSelection) -> None:
-    def _factory(*a: t.Scalar, **kw: t.Scalar) -> FakeSelection:
-        del a, kw
-        return sel
-
-    mp.setattr(_orch_mod, "FlextInfraUtilitiesSelection", _factory)
+    mp.setattr(
+        u.Infra,
+        "resolve_projects",
+        staticmethod(lambda ws, names: sel.resolve_projects(ws, names)),
+    )
 
 
 def _patch_sp(mp: MonkeyPatch, sp: FakeSubprocess) -> None:
-    def _factory(*a: t.Scalar, **kw: t.Scalar) -> FakeSubprocess:
-        del a, kw
-        return sp
-
-    mp.setattr(_orch_mod, "FlextInfraUtilitiesSubprocess", _factory)
+    mp.setattr(
+        u.Infra,
+        "run_raw",
+        staticmethod(lambda cmd, **kw: sp.run_raw(cmd, **kw)),
+    )
 
 
 class TestVersionFiles:
@@ -104,19 +103,28 @@ class TestRunMake:
     """Tests for _run_make."""
 
     def test_success(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        fake_sp = FakeSubprocess()
         output = _m.Infra.CommandOutput(exit_code=0, stdout="ok", stderr="")
-        fake_sp._run_raw_result = r[_m.Infra.CommandOutput].ok(output)
-        _patch_sp(monkeypatch, fake_sp)
+
+        def _fake_run_raw(
+            cmd: list[str],
+            **kw: t.Scalar,
+        ) -> r[_m.Infra.CommandOutput]:
+            return r[_m.Infra.CommandOutput].ok(output)
+
+        monkeypatch.setattr(u.Infra, "run_raw", staticmethod(_fake_run_raw))
         result = _CLS._run_make(workspace_root, "build")
         tm.ok(result)
         code, _out = result.value
         tm.that(code, eq=0)
 
     def test_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        fake_sp = FakeSubprocess()
-        fake_sp._run_raw_result = r[_m.Infra.CommandOutput].fail("failed")
-        _patch_sp(monkeypatch, fake_sp)
+        def _fake_run_raw(
+            cmd: list[str],
+            **kw: t.Scalar,
+        ) -> r[_m.Infra.CommandOutput]:
+            return r[_m.Infra.CommandOutput].fail("failed")
+
+        monkeypatch.setattr(u.Infra, "run_raw", staticmethod(_fake_run_raw))
         tm.fail(_CLS._run_make(workspace_root, "build"))
 
 
@@ -137,7 +145,6 @@ class TestGenerateNotes:
 
         monkeypatch.setattr(_CLS, "_previous_tag", _previous_tag)
         monkeypatch.setattr(_CLS, "_collect_changes", _collect_changes)
-        _patch_sel(monkeypatch, FakeSelection())
         notes_path = workspace_root / "notes.md"
         result = _CLS()._generate_notes(
             workspace_root,
@@ -190,34 +197,24 @@ class TestBumpNextDev:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        def _versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
-            del a, kw
-            return FakeVersioning()
+        monkeypatch.setattr(
+            u.Infra,
+            "bump_version",
+            staticmethod(lambda cur, kind: r[str].ok("1.1.0")),
+        )
 
         def _phase_version(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
             del a, kw
             return r[bool].ok(True)
 
-        monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesVersioning",
-            _versioning_factory,
-        )
         monkeypatch.setattr(_CLS, "phase_version", _phase_version)
         tm.ok(_CLS()._bump_next_dev(workspace_root, "1.0.0", [], "minor"))
 
     def test_bump_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        fake_vs = FakeVersioning()
-        fake_vs._bump_result = r[str].fail("invalid bump")
-
-        def _versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
-            del a, kw
-            return fake_vs
-
         monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesVersioning",
-            _versioning_factory,
+            u.Infra,
+            "bump_version",
+            staticmethod(lambda cur, kind: r[str].fail("invalid bump")),
         )
         tm.fail(_CLS()._bump_next_dev(workspace_root, "1.0.0", [], "invalid"))
 

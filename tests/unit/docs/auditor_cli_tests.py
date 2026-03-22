@@ -57,7 +57,7 @@ class TestAuditorMainCli:
             return r[list[m.Infra.DocsPhaseReport]].fail("audit error")
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
-        monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
+        monkeypatch.setattr(sys, "argv", ["auditor", "--workspace", str(tmp_path)])
         result = FlextInfraDocAuditor.main()
         tm.that(result, eq=1)
 
@@ -83,7 +83,7 @@ class TestAuditorMainCli:
             return r[list[m.Infra.DocsPhaseReport]].ok([failed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
-        monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
+        monkeypatch.setattr(sys, "argv", ["auditor", "--workspace", str(tmp_path)])
         result = FlextInfraDocAuditor.main()
         tm.that(result, eq=1)
 
@@ -109,7 +109,7 @@ class TestAuditorMainCli:
             return r[list[m.Infra.DocsPhaseReport]].ok([passed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
-        monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
+        monkeypatch.setattr(sys, "argv", ["auditor", "--workspace", str(tmp_path)])
         result = FlextInfraDocAuditor.main()
         tm.that(result, eq=0)
 
@@ -140,16 +140,14 @@ class TestAuditorMainCli:
             "argv",
             [
                 "auditor",
-                "--root",
+                "--workspace",
                 str(tmp_path),
                 "--project",
                 "test-proj",
                 "--output-dir",
                 str(tmp_path / "output"),
                 "--check",
-                "links",
                 "--strict",
-                "0",
             ],
         )
         result = FlextInfraDocAuditor.main()
@@ -177,6 +175,6 @@ class TestAuditorMainCli:
             return r[list[m.Infra.DocsPhaseReport]].ok([passed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
-        monkeypatch.setattr(sys, "argv", ["auditor", "--root", str(tmp_path)])
+        monkeypatch.setattr(sys, "argv", ["auditor", "--workspace", str(tmp_path)])
         result = FlextInfraDocAuditor.main()
         tm.that(result, eq=0)

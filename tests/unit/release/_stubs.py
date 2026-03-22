@@ -9,16 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_core import r
 from flext_infra import FlextInfraModels
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 _m = FlextInfraModels
 
@@ -71,6 +68,27 @@ class FakeUtilsNamespace:
         @classmethod
         def git_create_tag(cls, *args: str, **kwargs: str) -> r[bool]:
             return cls._git_create_tag_result
+
+        @classmethod
+        def resolve_projects(
+            cls,
+            workspace_root: Path,
+            names: list[str],
+        ) -> r[list[SimpleNamespace]]:
+            return r[list[SimpleNamespace]].ok([])
+
+        @classmethod
+        def generate_notes(
+            cls,
+            version: str,
+            tag: str,
+            projects: list[SimpleNamespace],
+            changes: str,
+            output_path: Path,
+        ) -> r[bool]:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(f"# Release {tag}\n{changes}\n", encoding="utf-8")
+            return r[bool].ok(True)
 
         @classmethod
         def reset(cls) -> None:

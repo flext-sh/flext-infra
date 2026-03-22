@@ -32,7 +32,7 @@ class TestFlextInfraDiscoveryService:
         proj2.mkdir()
         (proj2 / ".git").mkdir()
         (proj2 / "Makefile").touch()
-        (proj2 / "go.mod").touch()
+        (proj2 / "pyproject.toml").touch()
         invalid = tmp_path / "invalid"
         invalid.mkdir()
         (invalid / ".git").mkdir()
@@ -57,6 +57,7 @@ class TestFlextInfraDiscoveryService:
         assert projects[0].has_tests is True
         assert projects[0].has_src is True
         assert projects[1].has_src is False
+        assert projects[1].has_tests is False
 
     def test_discover_projects_empty_workspace(
         self,

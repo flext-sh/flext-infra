@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -14,6 +14,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.gates._base_gate import FlextInfraGate
 from tests.models import m
 
 from ... import h
@@ -38,16 +39,17 @@ def _as_command_output(
 
 def _stub_run_seq(
     results: list[m.Infra.CommandOutput | SimpleNamespace],
-) -> RunCallable:
+) -> Callable[..., m.Infra.CommandOutput]:
     idx = [0]
 
     def _run(
+        _self: FlextInfraGate,
         _cmd: list[str],
         _cwd: Path,
-        _timeout: int = 120,
-        _env: dict[str, str] | None = None,
+        timeout: int = 120,
+        env: Mapping[str, str] | None = None,
     ) -> m.Infra.CommandOutput:
-        del _cmd, _cwd, _timeout, _env
+        del _self, _cmd, _cwd, timeout, env
         i = idx[0]
         idx[0] += 1
         result = results[i] if i < len(results) else results[-1]
@@ -74,7 +76,7 @@ class TestRunGo:
         (proj_dir / "go.mod").write_text("module test")
         vet = h.stub_run(stdout="main.go:10:5: error message", returncode=1)
         fmt = h.stub_run()
-        monkeypatch.setattr(checker, "_run", _stub_run_seq([vet, fmt]))
+        monkeypatch.setattr(FlextInfraGate, "_run", _stub_run_seq([vet, fmt]))
         result = checker._run_go(proj_dir)
         tm.that(result.result.passed, eq=False)
 
@@ -89,7 +91,7 @@ class TestRunGo:
         (proj_dir / "main.go").write_text("package main")
         vet = h.stub_run()
         fmt = h.stub_run(stdout="main.go", returncode=1)
-        monkeypatch.setattr(checker, "_run", _stub_run_seq([vet, fmt]))
+        monkeypatch.setattr(FlextInfraGate, "_run", _stub_run_seq([vet, fmt]))
         result = checker._run_go(proj_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=1)
@@ -105,7 +107,7 @@ class TestRunGo:
         (proj_dir / "main.go").write_text("package main\n")
         vet = h.stub_run()
         fmt = h.stub_run(stdout="src/file.go\n\nsrc/other.go\n", returncode=1)
-        monkeypatch.setattr(checker, "_run", _stub_run_seq([vet, fmt]))
+        monkeypatch.setattr(FlextInfraGate, "_run", _stub_run_seq([vet, fmt]))
         result = checker._run_go(proj_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=2)

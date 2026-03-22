@@ -119,7 +119,9 @@ class FlextInfraCodegenCensus(s[bool]):
                 )
                 total_unused = total_objs - total_used
                 by_type_val = census_data.get("by_type", {})
-                by_type = by_type_val if isinstance(by_type_val, dict) else {}
+                by_type: dict[str, t.Infra.InfraValue] = (
+                    by_type_val if isinstance(by_type_val, dict) else {}
+                )
                 type_stats: list[str] = []
                 if isinstance(by_type, dict):
                     for t in sorted(by_type.keys())[:3]:

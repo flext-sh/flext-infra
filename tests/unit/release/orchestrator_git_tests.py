@@ -15,10 +15,10 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_core import r, t
+from flext_core import r
 from flext_infra.release import orchestrator as _orch_mod
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.unit.release._stubs import FakeSelection, FakeUtilsNamespace
+from tests.unit.release._stubs import FakeUtilsNamespace
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -47,6 +47,11 @@ class TestCreateBranches:
     ) -> None:
         FakeUtilsNamespace.Infra.reset()
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
+        monkeypatch.setattr(
+            FakeUtilsNamespace.Infra,
+            "resolve_projects",
+            classmethod(lambda cls, ws, names: r[list[SimpleNamespace]].ok([])),
+        )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator._create_branches(workspace_root, "1.0.0", []))
 
@@ -68,18 +73,13 @@ class TestCreateBranches:
             r[bool].fail("project branch failed"),
         ]
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
-        fake_sel = FakeSelection()
         mock_project = SimpleNamespace(name="proj1", path=workspace_root / "proj1")
-        fake_sel._resolve_result = r[list[SimpleNamespace]].ok([mock_project])
-
-        def _selection_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeSelection:
-            del a, kw
-            return fake_sel
-
         monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesSelection",
-            _selection_factory,
+            FakeUtilsNamespace.Infra,
+            "resolve_projects",
+            classmethod(
+                lambda cls, ws, names: r[list[SimpleNamespace]].ok([mock_project]),
+            ),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.fail(orchestrator._create_branches(workspace_root, "1.0.0", ["proj1"]))

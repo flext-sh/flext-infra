@@ -234,9 +234,7 @@ class FlextInfraTransformerTier0ImportFixer:
         def leave_Module(
             self, original_node: cst.Module, updated_node: cst.Module
         ) -> cst.Module:
-            stmts: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = list(
-                updated_node.body
-            )
+            stmts: list[cst.BaseStatement] = list(updated_node.body)
             if not self._type_checking_import_present and self._type_checking_pending:
                 stmts.insert(
                     self._idx(stmts),

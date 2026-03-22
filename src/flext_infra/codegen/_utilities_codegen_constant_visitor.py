@@ -646,7 +646,11 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
         max_files: int = 5000,
     ) -> dict[
-        str, int | dict[str, int | dict[str, int]] | dict[str, list[tuple[str, int]]]
+        str,
+        int
+        | dict[str, int | dict[str, int]]
+        | dict[str, dict[str, int]]
+        | dict[str, list[tuple[str, int]]],
     ]:
         """Comprehensive census of all objects in a class."""
         attrs, used_attrs, usage_map = (

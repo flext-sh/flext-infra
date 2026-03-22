@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -14,15 +14,16 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r
-from flext_infra import FlextInfraUtilitiesSubprocess
-from flext_infra import FlextInfraWorkspaceChecker
-from flext_infra import FlextInfraGateContext
-from flext_infra import FlextInfraGoGate
-from flext_infra import FlextInfraMarkdownGate
-from flext_infra import FlextInfraRuffLintGate
-from tests import t
-
-from tests import h
+from flext_infra import (
+    FlextInfraGateContext,
+    FlextInfraGoGate,
+    FlextInfraMarkdownGate,
+    FlextInfraRuffLintGate,
+    FlextInfraUtilitiesSubprocess,
+    FlextInfraWorkspaceChecker,
+)
+from flext_infra.gates._base_gate import FlextInfraGate
+from tests import h, t
 
 GateClass = type[FlextInfraGoGate] | type[FlextInfraRuffLintGate]
 
@@ -61,18 +62,20 @@ def _patch_go_gate_run_sequence(
     index = {"value": 0}
 
     def _fake_run(
-        _self: FlextInfraGoGate,
-        *_a: t.Scalar,
-        **_kw: t.Scalar,
+        _self: FlextInfraGate,
+        _cmd: list[str],
+        _cwd: Path,
+        timeout: int = 120,
+        env: Mapping[str, str] | None = None,
     ) -> SimpleNamespace:
-        del _self, _a, _kw
+        del _self, _cmd, _cwd, timeout, env
         current = index["value"]
         index["value"] = current + 1
         if current < len(outputs):
             return outputs[current]
         return outputs[-1]
 
-    monkeypatch.setattr(FlextInfraGoGate, "_run", _fake_run)
+    monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
 
 
 def run_command_failure_check(

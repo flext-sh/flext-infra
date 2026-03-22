@@ -80,6 +80,7 @@ exclude = "tests/*,examples/*"
 mi_min = "B"
 
 [tool.pyrefly]
+disable-search-path-heuristics = true
 ignore-errors-in-generated-code = true
 project-excludes = [
   "**/*_pb2*.py",
@@ -87,7 +88,7 @@ project-excludes = [
 ]
 python-version = "3.13"
 search-path = [
-  ".",
+  "src",
 ]
 
 [tool.pyrefly.errors]

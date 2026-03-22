@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_core import r, t
 from flext_infra import u
-from flext_infra.docs import __main__ as docs_main
 from flext_infra.docs.__main__ import _run_audit, _run_fix
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.fixer import FlextInfraDocFixer
@@ -24,7 +24,7 @@ from ...models import m
 
 def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
     defaults: dict[str, t.Scalar | None] = {
-        "workspace": ".",
+        "workspace": Path(),
         "project": None,
         "projects": None,
         "apply": False,
@@ -36,7 +36,7 @@ def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
 
 def _fix_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
     defaults: dict[str, t.Scalar | None] = {
-        "workspace": ".",
+        "workspace": Path(),
         "project": None,
         "projects": None,
         "apply": False,
@@ -98,9 +98,6 @@ def _fail_list(err: str) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
     return _fn
 
 
-_SILENT = type("O", (), {"error": staticmethod(lambda *a: None)})()
-
-
 def _capturing(
     captured: dict[str, t.Scalar],
 ) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
@@ -140,7 +137,6 @@ class TestRunAudit:
 
     def test_run_audit_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _fail_report("audit error"))
-        monkeypatch.setattr(docs_main, "output", _SILENT)
         tm.that(_run_audit(_audit_args(), check=True, strict=True), eq=1)
 
     @pytest.mark.parametrize(
@@ -176,7 +172,6 @@ class TestRunFix:
 
     def test_run_fix_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocFixer, "fix", _fail_list("fix error"))
-        monkeypatch.setattr(docs_main, "output", _SILENT)
         tm.that(_run_fix(_fix_args()), eq=1)
 
     @pytest.mark.parametrize(("apply", "expected"), [(True, True), (False, False)])

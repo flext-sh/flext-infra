@@ -15,14 +15,8 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r, t
-from flext_infra import FlextInfraModels
-from flext_infra.release import orchestrator as _orch_mod
+from flext_infra import FlextInfraModels, u
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.unit.release._stubs import (
-    FakeReporting,
-    FakeSubprocess,
-    FakeVersioning,
-)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,20 +49,20 @@ class TestPhaseValidate:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        fake_sp = FakeSubprocess()
+        called = False
 
-        def _fake_subprocess_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeSubprocess:
-            del a, kw
-            return fake_sp
+        def _fake_run_checked(
+            cmd: list[str],
+            **kw: t.Scalar,
+        ) -> r[bool]:
+            nonlocal called
+            called = True
+            return r[bool].ok(True)
 
-        monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesSubprocess",
-            _fake_subprocess_factory,
-        )
+        monkeypatch.setattr(u.Infra, "run_checked", staticmethod(_fake_run_checked))
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_validate(workspace_root, dry_run=False))
-        tm.that(fake_sp._run_checked_called, eq=True)
+        tm.that(called, eq=True)
 
 
 class TestPhaseVersion:
@@ -79,14 +73,15 @@ class TestPhaseVersion:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        def _fake_versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
-            del a, kw
-            return FakeVersioning()
-
         monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesVersioning",
-            _fake_versioning_factory,
+            u.Infra,
+            "parse_semver",
+            staticmethod(lambda version: r[str].ok(version)),
+        )
+        monkeypatch.setattr(
+            u.Infra,
+            "replace_project_version",
+            staticmethod(lambda path, version: None),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=False))
@@ -96,17 +91,10 @@ class TestPhaseVersion:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        fake_vs = FakeVersioning()
-        fake_vs._parse_result = r[str].fail("invalid version")
-
-        def _fake_versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
-            del a, kw
-            return fake_vs
-
         monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesVersioning",
-            _fake_versioning_factory,
+            u.Infra,
+            "parse_semver",
+            staticmethod(lambda version: r[str].fail("invalid version")),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.fail(orchestrator.phase_version(workspace_root, "invalid", []))
@@ -116,27 +104,24 @@ class TestPhaseVersion:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        def _fake_versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
-            del a, kw
-            return FakeVersioning()
-
         monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesVersioning",
-            _fake_versioning_factory,
+            u.Infra,
+            "parse_semver",
+            staticmethod(lambda version: r[str].ok(version)),
+        )
+        monkeypatch.setattr(
+            u.Infra,
+            "replace_project_version",
+            staticmethod(lambda path, version: None),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dev_suffix=True))
 
     def test_dry_run(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        def _fake_versioning_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeVersioning:
-            del a, kw
-            return FakeVersioning()
-
         monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesVersioning",
-            _fake_versioning_factory,
+            u.Infra,
+            "parse_semver",
+            staticmethod(lambda version: r[str].ok(version)),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=True))
@@ -157,6 +142,11 @@ class TestPhaseVersion:
             "_version_files",
             _fake_version_files,
         )
+        monkeypatch.setattr(
+            u.Infra,
+            "parse_semver",
+            staticmethod(lambda version: r[str].ok(version)),
+        )
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", []))
 
 
@@ -168,22 +158,16 @@ class TestPhaseBuild:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        fake_rep = FakeReporting()
-        fake_rep._report_dir = workspace_root / "reports"
-
-        def _fake_reporting_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeReporting:
-            del a, kw
-            return fake_rep
+        monkeypatch.setattr(
+            u.Infra,
+            "get_report_dir",
+            staticmethod(lambda ws, scope, verb: workspace_root / "reports"),
+        )
 
         def _fake_run_make(*a: t.Scalar, **kw: t.Scalar) -> r[tuple[int, str]]:
             del a, kw
             return r[tuple[int, str]].ok((0, "ok"))
 
-        monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesReporting",
-            _fake_reporting_factory,
-        )
         monkeypatch.setattr(
             FlextInfraReleaseOrchestrator,
             "_run_make",
@@ -197,23 +181,17 @@ class TestPhaseBuild:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        fake_rep = FakeReporting()
-        fake_rep._report_dir = workspace_root / "reports"
-
-        def _fake_reporting_factory(*a: t.Scalar, **kw: t.Scalar) -> FakeReporting:
-            del a, kw
-            return fake_rep
+        monkeypatch.setattr(
+            u.Infra,
+            "get_report_dir",
+            staticmethod(lambda ws, scope, verb: workspace_root / "reports"),
+        )
 
         def _raise_mkdir(*a: t.Scalar, **kw: t.Scalar) -> None:
             del a, kw
             msg = "permission denied"
             raise OSError(msg)
 
-        monkeypatch.setattr(
-            _orch_mod,
-            "FlextInfraUtilitiesReporting",
-            _fake_reporting_factory,
-        )
         monkeypatch.setattr("pathlib.Path.mkdir", _raise_mkdir)
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.fail(orchestrator.phase_build(workspace_root, "1.0.0", []))

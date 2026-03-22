@@ -23,8 +23,8 @@ import orjson
 from flext_infra import FlextInfraUtilitiesIo, FlextInfraUtilitiesIteration, c, m
 
 if TYPE_CHECKING:
-    from flext_infra import (
-        FlextInfraRefactorEngine,
+    from flext_infra.refactor.engine import FlextInfraRefactorEngine
+    from flext_infra.refactor.violation_analyzer import (
         FlextInfraRefactorViolationAnalyzer,
     )
 

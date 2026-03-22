@@ -267,8 +267,9 @@ class FlextInfraUtilitiesIteration:
                 )
                 if files_result.is_failure:
                     continue
-                for file_path in files_result.value:
-                    result.append((project_root, file_path))
+                result.extend(
+                    (project_root, file_path) for file_path in files_result.value
+                )
             return r[list[tuple[Path, Path]]].ok(result)
         except OSError as exc:
             return r[list[tuple[Path, Path]]].fail(

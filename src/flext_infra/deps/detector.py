@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Protocol, runtime_checkable
 
 from flext_core import FlextLogger
 from flext_infra import (
@@ -133,7 +132,7 @@ class FlextInfraRuntimeDevDependencyDetector:
             if isinstance(root_type, type):
                 detector_type = root_type
         detector_obj = detector_type()
-        if not isinstance(detector_obj, RunnableDetector):
+        if not isinstance(detector_obj, p.Infra.RunnableDetector):
             return 1
         detector = detector_obj
         result = detector.run()
@@ -148,19 +147,11 @@ class FlextInfraRuntimeDevDependencyDetector:
         return result.value
 
 
-@runtime_checkable
-class RunnableDetector(Protocol):
-    def run(self, argv: list[str] | None = None) -> r[int]: ...
-
-
 main = FlextInfraRuntimeDevDependencyDetector.main
 
 
 if __name__ == "__main__":
     raise SystemExit(FlextInfraRuntimeDevDependencyDetector.main())
-
-
-main = FlextInfraRuntimeDevDependencyDetector.main
 
 
 __all__ = [

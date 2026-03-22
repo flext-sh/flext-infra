@@ -13,34 +13,17 @@ if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
 
     from .main_dispatch_tests import TestRunPrWorkspace
-    from .main_integration_tests import TestMain
-    from .main_tests import (
-        SyncOperation,
-        TestRunLint,
-        TestRunPr,
-        TestRunWorkflows,
-        main,
-        run_lint,
-        run_pr,
-        run_pr_workspace,
-        run_workflows,
-    )
+    from .main_integration_tests import SyncOperation, TestMain, main
+    from .main_tests import TestRunLint, TestRunPr, TestRunWorkflows
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "SyncOperation": ("tests.unit.github.main_tests", "SyncOperation"),
+    "SyncOperation": ("tests.unit.github.main_integration_tests", "SyncOperation"),
     "TestMain": ("tests.unit.github.main_integration_tests", "TestMain"),
     "TestRunLint": ("tests.unit.github.main_tests", "TestRunLint"),
     "TestRunPr": ("tests.unit.github.main_tests", "TestRunPr"),
-    "TestRunPrWorkspace": (
-        "tests.unit.github.main_dispatch_tests",
-        "TestRunPrWorkspace",
-    ),
+    "TestRunPrWorkspace": ("tests.unit.github.main_dispatch_tests", "TestRunPrWorkspace"),
     "TestRunWorkflows": ("tests.unit.github.main_tests", "TestRunWorkflows"),
-    "main": ("tests.unit.github.main_tests", "main"),
-    "run_lint": ("tests.unit.github.main_tests", "run_lint"),
-    "run_pr": ("tests.unit.github.main_tests", "run_pr"),
-    "run_pr_workspace": ("tests.unit.github.main_tests", "run_pr_workspace"),
-    "run_workflows": ("tests.unit.github.main_tests", "run_workflows"),
+    "main": ("tests.unit.github.main_integration_tests", "main"),
 }
 
 __all__ = [
@@ -51,10 +34,6 @@ __all__ = [
     "TestRunPrWorkspace",
     "TestRunWorkflows",
     "main",
-    "run_lint",
-    "run_pr",
-    "run_pr_workspace",
-    "run_workflows",
 ]
 
 

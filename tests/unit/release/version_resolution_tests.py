@@ -13,8 +13,8 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
-import flext_infra.release.__main__ as _main_mod
 from flext_core import r
+from flext_infra import u
 from flext_infra.release.__main__ import _resolve_tag, _resolve_version
 
 
@@ -42,27 +42,32 @@ def _input_major(_prompt: str) -> str:
     return "major"
 
 
-def _stub_vs(
+def _apply_vs(
+    monkeypatch: MonkeyPatch,
     *,
     parse: r[str] | None = None,
     current: r[str] | None = None,
     bump: r[str] | None = None,
-) -> type:
-    """Build a fake FlextInfraUtilitiesVersioning with configurable returns."""
-
-    class _F:
-        def parse_semver(self, version: str) -> r[str]:
-            return parse if parse is not None else r[str].ok(version)
-
-        def current_workspace_version(self, root: Path) -> r[str]:
-            del root
-            return current if current is not None else r[str].ok("1.0.0")
-
-        def bump_version(self, cur: str, kind: str) -> r[str]:
-            del cur, kind
-            return bump if bump is not None else r[str].ok("1.1.0")
-
-    return _F
+) -> None:
+    """Apply version service stubs to u.Infra static methods."""
+    if parse is not None:
+        monkeypatch.setattr(
+            u.Infra,
+            "parse_semver",
+            staticmethod(lambda version: parse),
+        )
+    if current is not None:
+        monkeypatch.setattr(
+            u.Infra,
+            "current_workspace_version",
+            staticmethod(lambda root: current),
+        )
+    if bump is not None:
+        monkeypatch.setattr(
+            u.Infra,
+            "bump_version",
+            staticmethod(lambda cur, kind: bump),
+        )
 
 
 class TestReleaseMainVersionResolution:
@@ -73,10 +78,9 @@ class TestReleaseMainVersionResolution:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(parse=r[str].ok("1.0.0")),
+        _apply_vs(
+            monkeypatch,
+            parse=r[str].ok("1.0.0"),
         )
         args = _args(version="1.0.0", bump="", interactive=1)
         tm.that(
@@ -94,10 +98,9 @@ class TestReleaseMainVersionResolution:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(parse=r[str].fail("invalid")),
+        _apply_vs(
+            monkeypatch,
+            parse=r[str].fail("invalid"),
         )
         args = _args(version="invalid", bump="", interactive=1)
         with pytest.raises(RuntimeError):
@@ -113,10 +116,9 @@ class TestReleaseMainVersionResolution:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(current=r[str].ok("0.9.0")),
+        _apply_vs(
+            monkeypatch,
+            current=r[str].ok("0.9.0"),
         )
         args = _args(version="", bump="", interactive=0)
         tm.that(
@@ -134,10 +136,9 @@ class TestReleaseMainVersionResolution:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(current=r[str].fail("read error")),
+        _apply_vs(
+            monkeypatch,
+            current=r[str].fail("read error"),
         )
         args = _args(version="", bump="", interactive=1)
         with pytest.raises(RuntimeError):
@@ -153,10 +154,10 @@ class TestReleaseMainVersionResolution:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(current=r[str].ok("1.0.0"), bump=r[str].ok("1.1.0")),
+        _apply_vs(
+            monkeypatch,
+            current=r[str].ok("1.0.0"),
+            bump=r[str].ok("1.1.0"),
         )
         args = _args(version="", bump="minor", interactive=1)
         tm.that(
@@ -174,10 +175,10 @@ class TestReleaseMainVersionResolution:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(current=r[str].ok("1.0.0"), bump=r[str].fail("invalid bump")),
+        _apply_vs(
+            monkeypatch,
+            current=r[str].ok("1.0.0"),
+            bump=r[str].fail("invalid bump"),
         )
         args = _args(version="", bump="invalid", interactive=1)
         with pytest.raises(RuntimeError):
@@ -193,10 +194,10 @@ class TestReleaseMainVersionResolution:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(current=r[str].ok("1.0.0"), bump=r[str].ok("1.1.0")),
+        _apply_vs(
+            monkeypatch,
+            current=r[str].ok("1.0.0"),
+            bump=r[str].ok("1.1.0"),
         )
         monkeypatch.setattr("builtins.input", _input_minor)
         args = _args(version="", bump="", interactive=1)
@@ -215,10 +216,9 @@ class TestReleaseMainVersionResolution:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(current=r[str].ok("1.0.0")),
+        _apply_vs(
+            monkeypatch,
+            current=r[str].ok("1.0.0"),
         )
         monkeypatch.setattr("builtins.input", _input_invalid)
         args = _args(version="", bump="", interactive=1)
@@ -235,10 +235,9 @@ class TestReleaseMainVersionResolution:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(current=r[str].ok("1.0.0")),
+        _apply_vs(
+            monkeypatch,
+            current=r[str].ok("1.0.0"),
         )
         args = _args(version="", bump="", interactive=0)
         tm.that(
@@ -260,10 +259,9 @@ class TestResolveVersionInteractive:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(current=r[str].ok("1.0.0")),
+        _apply_vs(
+            monkeypatch,
+            current=r[str].ok("1.0.0"),
         )
         monkeypatch.setattr("builtins.input", _input_invalid)
         args = _args(version=None, bump=None, interactive=1)
@@ -280,10 +278,10 @@ class TestResolveVersionInteractive:
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            _main_mod,
-            "FlextInfraUtilitiesVersioning",
-            _stub_vs(current=r[str].ok("1.0.0"), bump=r[str].fail("bump failed")),
+        _apply_vs(
+            monkeypatch,
+            current=r[str].ok("1.0.0"),
+            bump=r[str].fail("bump failed"),
         )
         monkeypatch.setattr("builtins.input", _input_major)
         args = _args(version=None, bump=None, interactive=1)

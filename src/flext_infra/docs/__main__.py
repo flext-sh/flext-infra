@@ -23,6 +23,7 @@ from flext_infra import (
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
     c,
+    output,
     u,
 )
 

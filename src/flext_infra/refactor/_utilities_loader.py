@@ -11,22 +11,13 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Protocol, TypeVar
+from typing import TypeVar
 
 from pydantic import JsonValue
 
-from flext_infra import m
+from flext_infra import m, p
 
-
-class _ViolationWithLine(Protocol):
-    """Protocol for violations that have a line number."""
-
-    def model_dump(self) -> dict[str, JsonValue]:
-        """Dump violation data to a dictionary."""
-        ...
-
-
-_V = TypeVar("_V", bound=_ViolationWithLine)
+_V = TypeVar("_V", bound=p.Infra.ViolationWithLine)
 
 
 class FlextInfraUtilitiesRefactorLoader:

@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Protocol, override, runtime_checkable
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, p, u
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
@@ -20,31 +20,6 @@ from flext_infra.refactor._models_namespace_enforcer import (
 
 if TYPE_CHECKING:
     from flext_infra import m
-
-
-@runtime_checkable
-class _ImportNormalizerTransformerLike(Protocol):
-    """Protocol for import normalizer transformer compatibility checking."""
-
-    @staticmethod
-    def detect_file(
-        *,
-        file_path: Path,
-        project_package: str,
-        alias_map: dict[str, tuple[str, ...]] | None = None,
-    ) -> list[object]:
-        """Detect import violations in a file.
-
-        Args:
-            file_path: Path to the Python file to analyze.
-            project_package: The project package name.
-            alias_map: Optional mapping of packages to their public aliases.
-
-        Returns:
-            List of violation objects found.
-
-        """
-        ...
 
 
 class ImportAliasDetector(p.Infra.Scanner):
@@ -186,7 +161,7 @@ class ImportAliasDetector(p.Infra.Scanner):
             "ImportNormalizerTransformer",
             None,
         )
-        if not isinstance(transformer_obj, _ImportNormalizerTransformerLike):
+        if not isinstance(transformer_obj, p.Infra.ImportNormalizerTransformerLike):
             return []
         violations_raw = transformer_obj.detect_file(
             file_path=file_path,

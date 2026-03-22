@@ -76,12 +76,12 @@ class FlextInfraVersion:
     ) -> bool:
         """Check whether the current version is at least (major, minor, patch)."""
         info = cls.__version_info__
-        _idx_major = 0
-        _idx_minor = 1
-        _idx_patch = 2
-        current_major = info[_idx_major] if len(info) > _idx_major else 0
-        current_minor = info[_idx_minor] if len(info) > _idx_minor else 0
-        current_patch = info[_idx_patch] if len(info) > _idx_patch else 0
+        idx_major = 0
+        idx_minor = 1
+        idx_patch = 2
+        current_major = info[idx_major] if len(info) > idx_major else 0
+        current_minor = info[idx_minor] if len(info) > idx_minor else 0
+        current_patch = info[idx_patch] if len(info) > idx_patch else 0
         if not isinstance(current_major, int):
             return False
         if not isinstance(current_minor, int):

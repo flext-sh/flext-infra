@@ -26,42 +26,15 @@ if TYPE_CHECKING:
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "MockScanner": ("tests.unit._utilities.test_scanning", "MockScanner"),
-    "TestDiscoveryDiscoverProjects": (
-        "tests.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryDiscoverProjects",
-    ),
-    "TestDiscoveryFindAllPyprojectFiles": (
-        "tests.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryFindAllPyprojectFiles",
-    ),
-    "TestDiscoveryIterPythonFiles": (
-        "tests.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryIterPythonFiles",
-    ),
-    "TestDiscoveryProjectRoots": (
-        "tests.unit._utilities.test_discovery_consolidated",
-        "TestDiscoveryProjectRoots",
-    ),
-    "TestFormattingRunRuffFix": (
-        "tests.unit._utilities.test_formatting",
-        "TestFormattingRunRuffFix",
-    ),
-    "TestIterWorkspacePythonModules": (
-        "tests.unit._utilities.test_iteration",
-        "TestIterWorkspacePythonModules",
-    ),
-    "TestParsingModuleAst": (
-        "tests.unit._utilities.test_parsing",
-        "TestParsingModuleAst",
-    ),
-    "TestParsingModuleCst": (
-        "tests.unit._utilities.test_parsing",
-        "TestParsingModuleCst",
-    ),
-    "TestSafetyCheckpoint": (
-        "tests.unit._utilities.test_safety",
-        "TestSafetyCheckpoint",
-    ),
+    "TestDiscoveryDiscoverProjects": ("tests.unit._utilities.test_discovery_consolidated", "TestDiscoveryDiscoverProjects"),
+    "TestDiscoveryFindAllPyprojectFiles": ("tests.unit._utilities.test_discovery_consolidated", "TestDiscoveryFindAllPyprojectFiles"),
+    "TestDiscoveryIterPythonFiles": ("tests.unit._utilities.test_discovery_consolidated", "TestDiscoveryIterPythonFiles"),
+    "TestDiscoveryProjectRoots": ("tests.unit._utilities.test_discovery_consolidated", "TestDiscoveryProjectRoots"),
+    "TestFormattingRunRuffFix": ("tests.unit._utilities.test_formatting", "TestFormattingRunRuffFix"),
+    "TestIterWorkspacePythonModules": ("tests.unit._utilities.test_iteration", "TestIterWorkspacePythonModules"),
+    "TestParsingModuleAst": ("tests.unit._utilities.test_parsing", "TestParsingModuleAst"),
+    "TestParsingModuleCst": ("tests.unit._utilities.test_parsing", "TestParsingModuleCst"),
+    "TestSafetyCheckpoint": ("tests.unit._utilities.test_safety", "TestSafetyCheckpoint"),
     "TestSafetyRollback": ("tests.unit._utilities.test_safety", "TestSafetyRollback"),
     "TestScanFileBatch": ("tests.unit._utilities.test_scanning", "TestScanFileBatch"),
     "TestScanModels": ("tests.unit._utilities.test_scanning", "TestScanModels"),

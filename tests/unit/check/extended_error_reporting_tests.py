@@ -12,6 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.gates._base_gate import FlextInfraGate
 
 from ... import h
 from ...models import m
@@ -120,12 +121,13 @@ class TestMypyEmptyLinesInOutput:
         line2 = '{"file": "b.py", "line": 2, "column": 0, "code": "E002", "message": "Error", "severity": "error"}'
 
         def _fake_run(
+            _self: FlextInfraGate,
             _cmd: list[str],
             _cwd: Path,
             timeout: int = 120,
             env: dict[str, str] | None = None,
         ) -> m.Infra.CommandOutput:
-            del _cmd, _cwd, timeout, env
+            del _self, _cmd, _cwd, timeout, env
             return m.Infra.CommandOutput(
                 stdout=f"{line1}\n\n{line2}\n",
                 stderr="",
@@ -140,7 +142,7 @@ class TestMypyEmptyLinesInOutput:
             del _project_dir, _dirs
             return ["src"]
 
-        monkeypatch.setattr(FlextInfraWorkspaceChecker, "_run", _fake_run)
+        monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
         monkeypatch.setattr(checker, "_existing_check_dirs", _fake_existing_dirs)
         monkeypatch.setattr(checker, "_dirs_with_py", staticmethod(_fake_dirs_with_py))
         result = checker._run_mypy(proj_dir)
@@ -171,17 +173,18 @@ class TestGoFmtEmptyLinesInOutput:
         ]
 
         def _fake_run(
+            _self: FlextInfraGate,
             _cmd: list[str],
             _cwd: Path,
             timeout: int = 120,
             env: dict[str, str] | None = None,
         ) -> m.Infra.CommandOutput:
-            del _cmd, _cwd, timeout, env
+            del _self, _cmd, _cwd, timeout, env
             index = min(call_idx[0], len(results) - 1)
             call_idx[0] += 1
             return results[index]
 
-        monkeypatch.setattr(FlextInfraWorkspaceChecker, "_run", _fake_run)
+        monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
         result = checker._run_go(proj_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=2)
@@ -201,19 +204,20 @@ class TestRuffFormatDuplicateFiles:
         (proj_dir / "src" / "main.py").write_text("# code")
 
         def _fake_run(
+            _self: FlextInfraGate,
             _cmd: list[str],
             _cwd: Path,
             timeout: int = 120,
             env: dict[str, str] | None = None,
         ) -> m.Infra.CommandOutput:
-            del _cmd, _cwd, timeout, env
+            del _self, _cmd, _cwd, timeout, env
             return m.Infra.CommandOutput(
                 stdout="--> src/file.py:1:1\n--> src/file.py:1:1\n--> src/other.py:1:1\n",
                 stderr="",
                 exit_code=1,
             )
 
-        monkeypatch.setattr(FlextInfraWorkspaceChecker, "_run", _fake_run)
+        monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
         result = checker._run_ruff_format(proj_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=2)

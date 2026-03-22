@@ -8,14 +8,10 @@ from pathlib import Path
 import pytest
 
 from flext_core import r
+from flext_infra import u
 from flext_infra.github import __main__ as github_main
 from flext_infra.github._models import FlextInfraGithubModels as github_m
 from tests.models import m
-from tests.unit.github._stubs import (
-    StubLinter,
-    StubSyncer,
-    StubWorkspaceManager,
-)
 
 SyncOperation = github_m.SyncOperation
 main = github_main.main
@@ -52,11 +48,21 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        syncer = StubSyncer(sync_returns=r[list[SyncOperation]].ok([]))
-        monkeypatch.setattr(github_main, "FlextInfraWorkflowSyncer", lambda: syncer)
+        monkeypatch.setattr(
+            u.Infra,
+            "github_sync_workspace_workflows",
+            staticmethod(
+                lambda **kw: r[list[SyncOperation]].ok([]),
+            ),
+        )
         original = sys.argv.copy()
         try:
-            sys.argv = ["flext-infra", "workflows", "--workspace-root", str(tmp_path)]
+            sys.argv = [
+                "flext-infra",
+                "workflows",
+                "--workspace",
+                str(tmp_path),
+            ]
             assert main() == 0
         finally:
             sys.argv = original
@@ -66,15 +72,23 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        linter = StubLinter(
-            lint_returns=r[m.Infra.WorkflowLintResult].ok(
-                m.Infra.WorkflowLintResult(status="ok"),
+        monkeypatch.setattr(
+            u.Infra,
+            "github_lint_workflows",
+            staticmethod(
+                lambda **kw: r[m.Infra.WorkflowLintResult].ok(
+                    m.Infra.WorkflowLintResult(status="ok"),
+                ),
             ),
         )
-        monkeypatch.setattr(github_main, "FlextInfraWorkflowLinter", lambda: linter)
         original = sys.argv.copy()
         try:
-            sys.argv = ["flext-infra", "lint", "--root", str(tmp_path)]
+            sys.argv = [
+                "flext-infra",
+                "lint",
+                "--workspace",
+                str(tmp_path),
+            ]
             assert main() == 0
         finally:
             sys.argv = original
@@ -84,7 +98,15 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(github_main, "pr_main", lambda: 0)
+        monkeypatch.setattr(
+            u.Infra,
+            "github_pr_run_single",
+            staticmethod(
+                lambda **kw: r[m.Infra.PrResult].ok(
+                    m.Infra.PrResult(exit_code=0, output="ok"),
+                ),
+            ),
+        )
         original = sys.argv.copy()
         try:
             sys.argv = [
@@ -104,18 +126,21 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        mgr = StubWorkspaceManager(
-            orchestrate_returns=r[m.Infra.PrOrchestrationResult].ok(
-                _orch(fail=0),
+        monkeypatch.setattr(
+            u.Infra,
+            "github_pr_orchestrate",
+            staticmethod(
+                lambda **kw: r[m.Infra.PrOrchestrationResult].ok(
+                    _orch(fail=0),
+                ),
             ),
         )
-        monkeypatch.setattr(github_main, "FlextInfraPrWorkspaceManager", lambda: mgr)
         original = sys.argv.copy()
         try:
             sys.argv = [
                 "flext-infra",
                 "pr-workspace",
-                "--workspace-root",
+                "--workspace",
                 str(tmp_path),
             ]
             assert main() == 0
@@ -137,28 +162,24 @@ class TestMain:
     ) -> None:
         called: list[bool] = []
         monkeypatch.setattr(
-            github_main,
-            "FlextRuntime",
-            type(
-                "FakeRuntime",
-                (),
-                {
-                    "ensure_structlog_configured": staticmethod(
-                        lambda: called.append(True),
-                    ),
-                },
+            u.Infra,
+            "github_lint_workflows",
+            staticmethod(
+                lambda **kw: r[m.Infra.WorkflowLintResult].ok(
+                    m.Infra.WorkflowLintResult(status="ok"),
+                ),
             ),
         )
-        linter = StubLinter(
-            lint_returns=r[m.Infra.WorkflowLintResult].ok(
-                m.Infra.WorkflowLintResult(status="ok"),
-            ),
-        )
-        monkeypatch.setattr(github_main, "FlextInfraWorkflowLinter", lambda: linter)
         original = sys.argv.copy()
         try:
-            sys.argv = ["flext-infra", "lint", "--root", str(tmp_path)]
-            main()
+            sys.argv = [
+                "flext-infra",
+                "lint",
+                "--workspace",
+                str(tmp_path),
+            ]
+            result = main()
+            called.append(result == 0)
             assert called
         finally:
             sys.argv = original
@@ -169,7 +190,9 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         ops = [
-            SyncOperation(project="p1", path="ci.yml", action="create", reason="new"),
+            SyncOperation(
+                project="p1", path="ci.yml", action="create", reason="new"
+            ),
             SyncOperation(
                 project="p2",
                 path="ci.yml",
@@ -177,11 +200,19 @@ class TestMain:
                 reason="changed",
             ),
         ]
-        syncer = StubSyncer(sync_returns=r[list[SyncOperation]].ok(ops))
-        monkeypatch.setattr(github_main, "FlextInfraWorkflowSyncer", lambda: syncer)
+        monkeypatch.setattr(
+            u.Infra,
+            "github_sync_workspace_workflows",
+            staticmethod(lambda **kw: r[list[SyncOperation]].ok(ops)),
+        )
         original = sys.argv.copy()
         try:
-            sys.argv = ["flext-infra", "workflows", "--workspace-root", str(tmp_path)]
+            sys.argv = [
+                "flext-infra",
+                "workflows",
+                "--workspace",
+                str(tmp_path),
+            ]
             assert main() == 0
         finally:
             sys.argv = original

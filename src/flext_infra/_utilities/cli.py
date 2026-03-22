@@ -319,7 +319,12 @@ class FlextInfraUtilitiesCli:
         projects = raw_projects if isinstance(raw_projects, str) else None
 
         # Resolve workspace path
-        workspace_path: Path = args.workspace.resolve()
+        raw_workspace = getattr(args, "workspace", Path.cwd())
+        workspace_path: Path = (
+            raw_workspace.resolve()
+            if isinstance(raw_workspace, Path)
+            else Path(raw_workspace).resolve()
+        )
 
         return FlextInfraUtilitiesCli.CliArgs(
             workspace=workspace_path,

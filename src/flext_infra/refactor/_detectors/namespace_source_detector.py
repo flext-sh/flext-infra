@@ -7,38 +7,13 @@ packages instead of the correct canonical source.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol, override, runtime_checkable
+from typing import override
 
 from flext_infra import c, p
 from flext_infra.models import m
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
-
-
-@runtime_checkable
-class _ImportNormalizerTransformerLike(Protocol):
-    """Protocol for import normalizer transformer compatibility checking."""
-
-    @staticmethod
-    def detect_file(
-        *,
-        file_path: Path,
-        project_package: str,
-        alias_map: dict[str, tuple[str, ...]] | None = None,
-    ) -> list[object]:
-        """Detect import violations in a file.
-
-        Args:
-            file_path: Path to the Python file to analyze.
-            project_package: The project package name.
-            alias_map: Optional mapping of packages to their public aliases.
-
-        Returns:
-            List of violation objects found.
-
-        """
-        ...
 
 
 class NamespaceSourceDetector(p.Infra.Scanner):
@@ -154,7 +129,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
             "ImportNormalizerTransformer",
             None,
         )
-        if not isinstance(transformer_obj, _ImportNormalizerTransformerLike):
+        if not isinstance(transformer_obj, p.Infra.ImportNormalizerTransformerLike):
             return []
         violations_cst = transformer_obj.detect_file(
             file_path=file_path,

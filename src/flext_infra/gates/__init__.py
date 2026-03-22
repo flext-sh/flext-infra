@@ -27,10 +27,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraMypyGate": ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
     "FlextInfraPyreflyGate": ("flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"),
     "FlextInfraPyrightGate": ("flext_infra.gates.pyright", "FlextInfraPyrightGate"),
-    "FlextInfraRuffFormatGate": (
-        "flext_infra.gates.ruff_format",
-        "FlextInfraRuffFormatGate",
-    ),
+    "FlextInfraRuffFormatGate": ("flext_infra.gates.ruff_format", "FlextInfraRuffFormatGate"),
     "FlextInfraRuffLintGate": ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
 }
 

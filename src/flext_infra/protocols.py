@@ -15,10 +15,12 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from pydantic import JsonValue
+
 from flext_core import FlextProtocols, r
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import m, t, u
 
 
 class FlextInfraProtocols(FlextProtocols):
@@ -366,7 +368,7 @@ class FlextInfraProtocols(FlextProtocols):
                 ...
 
             @staticmethod
-            def project_filter(cli: argparse.Namespace) -> list[str] | None:
+            def project_filter(cli: u.Infra.CliArgs) -> list[str] | None:
                 """Resolve project filter list from parsed args."""
                 ...
 
@@ -378,6 +380,45 @@ class FlextInfraProtocols(FlextProtocols):
                 config: m.Infra.BaseMkConfig | None = None,
             ) -> r[str]:
                 """Render all templates with given configuration."""
+                ...
+
+        @runtime_checkable
+        class RunnableDetector(Protocol):
+            """Contract for detectors that can be invoked via CLI."""
+
+            def run(self, argv: list[str] | None = None) -> r[int]:
+                """Execute the detector and return an exit code."""
+                ...
+
+        @runtime_checkable
+        class ImportNormalizerTransformerLike(Protocol):
+            """Protocol for import normalizer transformer compatibility checking."""
+
+            @staticmethod
+            def detect_file(
+                *,
+                file_path: Path,
+                project_package: str,
+                alias_map: dict[str, tuple[str, ...]] | None = None,
+            ) -> list[object]:
+                """Detect import violations in a file.
+
+                Args:
+                    file_path: Path to the Python file to analyze.
+                    project_package: The project package name.
+                    alias_map: Optional mapping of packages to their public aliases.
+
+                Returns:
+                    List of violation objects found.
+
+                """
+                ...
+
+        class ViolationWithLine(Protocol):
+            """Protocol for violations that have a line number."""
+
+            def model_dump(self) -> dict[str, JsonValue]:
+                """Dump violation data to a dictionary."""
                 ...
 
 

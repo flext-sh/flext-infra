@@ -15,8 +15,6 @@ from flext_core import r, t
 from flext_infra import m as infra_models
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 
-from ... import h
-
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -77,7 +75,10 @@ def _stub_dispatch(mp: MonkeyPatch) -> None:
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
     """Create workspace root with pyproject.toml."""
-    root = h.workspace(tmp_path / "workspace")
+    root = tmp_path / "workspace"
+    root.mkdir()
+    (root / ".git").mkdir()
+    (root / "Makefile").touch()
     (root / "pyproject.toml").write_text('version = "0.1.0"\n', encoding="utf-8")
     return root
 
@@ -182,13 +183,11 @@ class TestReleaseOrchestratorExecute:
 
         def fake_dispatch(
             _self: FlextInfraReleaseOrchestrator,
-            phase: str,
-            *args: t.Scalar,
-            **kwargs: t.Scalar,
+            dispatch_config: infra_models.Infra.ReleasePhaseDispatchConfig,
         ) -> r[bool]:
             nonlocal call_count
             call_count += 1
-            if phase == "validate":
+            if dispatch_config.phase == "validate":
                 return r[bool].fail("validation failed")
             return r[bool].ok(True)
 

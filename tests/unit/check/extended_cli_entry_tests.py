@@ -66,6 +66,13 @@ def _fake_fixer_cls(
             _ = _projects, kw
             return run_result
 
+        @staticmethod
+        def main(argv: list[str] | None = None) -> int:
+            _ = argv
+            instance = _Fake()
+            result = instance.run()
+            return 0 if result.is_success else 1
+
     return _Fake
 
 
@@ -103,18 +110,20 @@ class TestWorkspaceCheckCLI:
 
 class TestFixPyrelfyCLI:
     def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fake = _fake_fixer_cls(r[list[str]].ok([]))
         monkeypatch.setattr(
             fix_pyrefly_mod,
             "FlextInfraConfigFixer",
-            _fake_fixer_cls(r[list[str]].ok([])),
+            fake,
         )
         tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=0)
 
     def test_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fake = _fake_fixer_cls(r[list[str]].fail("error"))
         monkeypatch.setattr(
             fix_pyrefly_mod,
             "FlextInfraConfigFixer",
-            _fake_fixer_cls(r[list[str]].fail("error")),
+            fake,
         )
         tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=1)
 
@@ -131,21 +140,29 @@ _fake_run_cli_zero = _const_cli_result(0)
 _fake_run_cli_42 = _const_cli_result(42)
 
 
-class _FakeRuntime:
-    @staticmethod
-    def ensure_structlog_configured() -> None:
-        pass
-
-
 class TestCheckMainEntryPoint:
     def test_calls_run_cli(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(check_main_mod, "FlextRuntime", _FakeRuntime)
-        monkeypatch.setattr(check_main_mod, "run_cli", _fake_run_cli_zero)
+        monkeypatch.setattr(
+            check_main_mod,
+            "FlextInfraCheckCommand",
+            type(
+                "FakeCmd",
+                (),
+                {"run": staticmethod(_fake_run_cli_zero)},
+            ),
+        )
         tm.that(check_main_mod.main(), eq=0)
 
     def test_returns_exit_code(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(check_main_mod, "FlextRuntime", _FakeRuntime)
-        monkeypatch.setattr(check_main_mod, "run_cli", _fake_run_cli_42)
+        monkeypatch.setattr(
+            check_main_mod,
+            "FlextInfraCheckCommand",
+            type(
+                "FakeCmd",
+                (),
+                {"run": staticmethod(_fake_run_cli_42)},
+            ),
+        )
         tm.that(check_main_mod.main(), eq=42)
 
 

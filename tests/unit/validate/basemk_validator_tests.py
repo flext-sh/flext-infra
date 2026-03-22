@@ -8,45 +8,33 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
-from tests.models import m
+from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator
+from tests import m
 
 _ROOT = "# root content"
 
 
-def _workspace(
-    base: Path,
-    root: str,
-    projects: Mapping[str, str | None],
-) -> Path:
-    """Build workspace: root base.mk + project dirs with optional vendored copy.
-
-    Uses tf.create_in() for all file I/O. Projects with None content skip base.mk.
-    """
-    tf.create_in(root, "base.mk", base)
-    for name, content in projects.items():
-        proj = base / name
-        proj.mkdir()
-        tf.create_in("", "pyproject.toml", proj)
-        if content is not None:
-            tf.create_in(content, "base.mk", proj)
-    return base
+def _generated_content() -> str:
+    """Get the canonical generated base.mk content for hash-matching tests."""
+    gen = FlextInfraBaseMkGenerator()
+    result = gen.generate()
+    assert result.is_success
+    return result.value
 
 
 @pytest.fixture
 def v() -> FlextInfraBaseMkValidator:
-    """Shared validator instance — eliminates 15× construction."""
+    """Shared validator instance -- eliminates repeated construction."""
     return FlextInfraBaseMkValidator()
 
 
 class TestBaseMkValidatorCore:
-    """Core validation: pass/fail scenarios via parametrize."""
+    """Core validation: pass/fail scenarios."""
 
     def test_missing_root_basemk_fails(
         self,
@@ -62,115 +50,78 @@ class TestBaseMkValidatorCore:
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        ws = _workspace(tmp_path, _ROOT, {"project1": _ROOT})
-        report = tm.ok(v.validate(ws))
+        (tmp_path / "base.mk").write_text(
+            _generated_content(),
+            encoding="utf-8",
+        )
+        report = tm.ok(v.validate(tmp_path))
         assert isinstance(report, m.Infra.ValidationReport)
-
-    @pytest.mark.parametrize(
-        ("projects", "expect_pass", "summary_has"),
-        [
-            ({"p1": _ROOT, "p2": _ROOT, "p3": _ROOT}, True, "3 checked"),
-            ({"p1": "# different"}, False, None),
-            ({}, True, None),
-        ],
-        ids=["all-match-3", "one-mismatch", "empty-workspace"],
-    )
-    def test_validate_projects(
-        self,
-        tmp_path: Path,
-        v: FlextInfraBaseMkValidator,
-        projects: dict[str, str | None],
-        expect_pass: bool,
-        summary_has: str | None,
-    ) -> None:
-        ws = _workspace(tmp_path, _ROOT, projects)
-        report = tm.ok(v.validate(ws))
-        tm.that(report.passed, eq=expect_pass)
-        if summary_has:
-            tm.that(report.summary, has=summary_has)
-
-    def test_projects_without_basemk_skipped(
-        self,
-        tmp_path: Path,
-        v: FlextInfraBaseMkValidator,
-    ) -> None:
-        ws = _workspace(tmp_path, _ROOT, {"project1": None})
-        report = tm.ok(v.validate(ws))
         tm.that(report.passed, eq=True)
+
+    def test_stale_basemk_fails(
+        self,
+        tmp_path: Path,
+        v: FlextInfraBaseMkValidator,
+    ) -> None:
+        tf.create_in("# stale content", "base.mk", tmp_path)
+        report = tm.ok(v.validate(tmp_path))
+        tm.that(report.passed, eq=False)
+        tm.that(report.summary, has="out of sync")
+
+    def test_matching_basemk_passes(
+        self,
+        tmp_path: Path,
+        v: FlextInfraBaseMkValidator,
+    ) -> None:
+        (tmp_path / "base.mk").write_text(
+            _generated_content(),
+            encoding="utf-8",
+        )
+        report = tm.ok(v.validate(tmp_path))
+        tm.that(report.passed, eq=True)
+        tm.that(report.summary, has="matches generated template")
+
+    def test_empty_workspace_missing_basemk(
+        self,
+        tmp_path: Path,
+        v: FlextInfraBaseMkValidator,
+    ) -> None:
+        report = tm.ok(v.validate(tmp_path))
+        tm.that(report.passed, eq=False)
 
 
 class TestBaseMkValidatorEdgeCases:
-    """Edge cases: skip rules, violation reporting, OS errors."""
+    """Edge cases: violation reporting, OS errors."""
 
-    def test_skips_projects_without_pyproject(
+    def test_violations_include_stale_message(
         self,
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        tf.create_in("# content", "base.mk", tmp_path)
-        proj = tmp_path / "project1"
-        proj.mkdir()
-        tf.create_in("# different", "base.mk", proj)
+        tf.create_in("# different", "base.mk", tmp_path)
         report = tm.ok(v.validate(tmp_path))
-        tm.that(report.passed, eq=True)
-
-    def test_violations_include_relative_paths(
-        self,
-        tmp_path: Path,
-        v: FlextInfraBaseMkValidator,
-    ) -> None:
-        ws = _workspace(tmp_path, "# root", {"project1": "# different"})
-        report = tm.ok(v.validate(ws))
         tm.that(report.passed, eq=False)
-        tm.that(report.violations[0], has="project1/base.mk")
+        tm.that(report.violations[0], has="stale")
 
-    def test_reports_all_mismatches(
+    def test_stale_report_has_violations(
         self,
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        projects = {f"p{i}": f"# different {i}" for i in range(2)}
-        ws = _workspace(tmp_path, _ROOT, projects)
-        report = tm.ok(v.validate(ws))
+        tf.create_in("# mismatch", "base.mk", tmp_path)
+        report = tm.ok(v.validate(tmp_path))
         tm.that(report.passed, eq=False)
-        tm.that(report.violations, length=2)
-
-    @pytest.mark.parametrize(
-        ("match_content", "expect_pass", "summary_has"),
-        [
-            ("# shared", True, "all vendored base.mk copies in sync"),
-            (None, False, None),
-        ],
-        ids=["all-5-match", "one-mismatch-among-many"],
-    )
-    def test_multi_project_scenarios(
-        self,
-        tmp_path: Path,
-        v: FlextInfraBaseMkValidator,
-        match_content: str | None,
-        expect_pass: bool,
-        summary_has: str | None,
-    ) -> None:
-        root = match_content or "# root"
-        projects: dict[str, str | None] = {}
-        for i in range(5 if match_content else 2):
-            projects[f"p{i}"] = match_content or ("# root" if i == 0 else "# diff")
-        ws = _workspace(tmp_path, root, projects)
-        report = tm.ok(v.validate(ws))
-        tm.that(report.passed, eq=expect_pass)
-        if summary_has:
-            tm.that(report.summary, has=summary_has)
+        tm.that(report.violations, length=1)
 
     def test_oserror_returns_failure(
         self,
         tmp_path: Path,
         v: FlextInfraBaseMkValidator,
     ) -> None:
-        ws = _workspace(tmp_path, "# content", {"project1": "# content"})
-        basemk = ws / "project1" / "base.mk"
+        basemk = tf.create_in("# content", "base.mk", tmp_path)
         basemk.chmod(0)
         try:
-            result = v.validate(ws)
+            result = v.validate(tmp_path)
             tm.that(result.is_failure, eq=True)
         finally:
             basemk.chmod(0o644)
