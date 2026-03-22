@@ -13,7 +13,6 @@ from pydantic import JsonValue
 
 from flext_core import r, s
 from flext_infra import (
-    FlextInfraConfigFixer,
     FlextInfraGateContext,
     FlextInfraGateRegistry,
     c,
@@ -21,6 +20,7 @@ from flext_infra import (
     output,
     u,
 )
+from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.go import FlextInfraGoGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate

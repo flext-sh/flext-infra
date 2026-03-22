@@ -12,6 +12,8 @@ from flext_core.lazy import lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
+    from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+    from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraWorkspaceChecker": (
