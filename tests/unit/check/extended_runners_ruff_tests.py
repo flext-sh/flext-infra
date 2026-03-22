@@ -16,18 +16,19 @@ import pytest
 from flext_tests import tm
 
 from flext_core import r
-from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates._base_gate import FlextInfraGateContext
-from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from tests.unit.check.extended_gate_go_cmd_tests import run_command_failure_check
-
-from ...helpers import h
-from ._shared_fixtures import (
+from flext_infra import (
+    FlextInfraGateContext,
+    FlextInfraMarkdownGate,
+    FlextInfraRuffFormatGate,
+    FlextInfraRuffLintGate,
+    FlextInfraUtilitiesSubprocess,
+    FlextInfraWorkspaceChecker,
+)
+from tests import (
     create_checker_project,
+    h,
     patch_gate_run,
+    run_command_failure_check,
 )
 
 

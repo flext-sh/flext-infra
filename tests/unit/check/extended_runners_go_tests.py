@@ -13,11 +13,8 @@ from types import SimpleNamespace
 import pytest
 from flext_tests import tm
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates._base_gate import FlextInfraGate
-from tests.models import m
-
-from ...helpers import h
+from flext_infra import FlextInfraGate, FlextInfraWorkspaceChecker
+from tests import h, m
 
 RunCallable = Callable[
     [list[str], Path, int, dict[str, str] | None],

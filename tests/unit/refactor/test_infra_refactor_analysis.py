@@ -128,9 +128,8 @@ def test_main_analyze_violations_is_read_only(
             str(config_path),
         ],
     )
-    with pytest.raises(SystemExit) as exc_info:
-        FlextInfraRefactorEngine.main()
-    assert exc_info.value.code == 0
+    result = FlextInfraRefactorEngine.main()
+    assert result == 0
     assert target_file.read_text(encoding="utf-8") == original
 
 
@@ -169,9 +168,8 @@ def test_main_analyze_violations_writes_json_report(
             str(config_path),
         ],
     )
-    with pytest.raises(SystemExit) as exc_info:
-        FlextInfraRefactorEngine.main()
-    assert exc_info.value.code == 0
+    result = FlextInfraRefactorEngine.main()
+    assert result == 0
     payload = json.loads(report_path.read_text(encoding="utf-8"))
     assert payload["files_scanned"] == 1
     assert payload["totals"] == {}

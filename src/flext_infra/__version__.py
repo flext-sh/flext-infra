@@ -44,6 +44,38 @@ class FlextInfraVersion:
     __license__ = _metadata.get("License", "")
     __url__ = _metadata.get("Home-Page", "")
 
+    @classmethod
+    def get_version_string(cls) -> str:
+        """Return the version as a string."""
+        return cls.__version__
+
+    @classmethod
+    def get_version_info(cls) -> tuple[int | str, ...]:
+        """Return the version as a tuple of integers and strings."""
+        return cls.__version_info__
+
+    @classmethod
+    def is_version_at_least(cls, major: int, minor: int = 0, patch: int = 0) -> bool:
+        """Return True if the package version is at least major.minor.patch."""
+        info = cls.__version_info__
+        cur_major = info[0] if info and isinstance(info[0], int) else 0
+        cur_minor = info[1] if len(info) > 1 and isinstance(info[1], int) else 0
+        cur_patch = info[2] if len(info) > 2 and isinstance(info[2], int) else 0
+        return (cur_major, cur_minor, cur_patch) >= (major, minor, patch)
+
+    @classmethod
+    def get_package_info(cls) -> dict[str, str]:
+        """Return package metadata as a string-keyed dict of strings."""
+        return {
+            "name": cls.__title__,
+            "version": cls.__version__,
+            "description": cls.__description__,
+            "author": cls.__author__,
+            "author_email": cls.__author_email__,
+            "license": cls.__license__,
+            "url": cls.__url__,
+        }
+
 
 __version__ = FlextInfraVersion.__version__
 __version_info__ = FlextInfraVersion.__version_info__

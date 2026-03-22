@@ -320,6 +320,62 @@ class FlextInfraWorkspaceChecker(s[bool]):
             reports_dir=reports_dir or self._default_reports_dir,
         )
 
+    def _run_pyrefly(
+        self,
+        project_dir: Path,
+        reports_dir: Path | None = None,
+    ) -> m.Infra.GateExecution:
+        return self._run_gate(c.Infra.Gates.PYREFLY, project_dir, reports_dir)
+
+    def _run_mypy(
+        self,
+        project_dir: Path,
+        reports_dir: Path | None = None,
+    ) -> m.Infra.GateExecution:
+        return self._run_gate(c.Infra.Gates.MYPY, project_dir, reports_dir)
+
+    def _run_pyright(
+        self,
+        project_dir: Path,
+        reports_dir: Path | None = None,
+    ) -> m.Infra.GateExecution:
+        return self._run_gate(c.Infra.Gates.PYRIGHT, project_dir, reports_dir)
+
+    def _run_bandit(
+        self,
+        project_dir: Path,
+        reports_dir: Path | None = None,
+    ) -> m.Infra.GateExecution:
+        return self._run_gate(c.Infra.Gates.SECURITY, project_dir, reports_dir)
+
+    def _run_markdown(
+        self,
+        project_dir: Path,
+        reports_dir: Path | None = None,
+    ) -> m.Infra.GateExecution:
+        return self._run_gate(c.Infra.Gates.MARKDOWN, project_dir, reports_dir)
+
+    def _run_go(
+        self,
+        project_dir: Path,
+        reports_dir: Path | None = None,
+    ) -> m.Infra.GateExecution:
+        return self._run_gate(c.Infra.Gates.GO, project_dir, reports_dir)
+
+    def _run_ruff_format(
+        self,
+        project_dir: Path,
+        reports_dir: Path | None = None,
+    ) -> m.Infra.GateExecution:
+        return self._run_gate(c.Infra.Gates.FORMAT, project_dir, reports_dir)
+
+    def _run_ruff_lint(
+        self,
+        project_dir: Path,
+        reports_dir: Path | None = None,
+    ) -> m.Infra.GateExecution:
+        return self._run_gate(c.Infra.Gates.LINT, project_dir, reports_dir)
+
     def _run_gate(
         self,
         gate_id: str,

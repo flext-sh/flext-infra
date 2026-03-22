@@ -247,7 +247,7 @@ class FlextInfraRefactorEngine:
         if args.impact_map_output is not None:
             _ = u.Infra.write_impact_map(results, args.impact_map_output)
         failed = sum(1 for item in results if not item.success)
-        raise SystemExit(0 if failed == 0 else 1)
+        return 0 if failed == 0 else 1
 
     def collect_workspace_files(
         self,

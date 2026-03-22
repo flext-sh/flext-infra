@@ -13,13 +13,13 @@ from types import SimpleNamespace
 import pytest
 from flext_tests import tm
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.mypy import FlextInfraMypyGate
-from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-
-from ...helpers import h
-from ._shared_fixtures import patch_python_dir_detection
+from flext_infra import (
+    FlextInfraMypyGate,
+    FlextInfraPyreflyGate,
+    FlextInfraPyrightGate,
+    FlextInfraWorkspaceChecker,
+)
+from tests import h, patch_python_dir_detection
 
 # Local alias for backward compatibility
 _patch_python_dir_detection = patch_python_dir_detection

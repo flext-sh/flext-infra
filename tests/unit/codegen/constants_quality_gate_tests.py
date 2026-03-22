@@ -13,10 +13,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.codegen import __main__ as codegen_main
-from flext_infra.codegen.constants_quality_gate import (
-    FlextInfraCodegenConstantsQualityGate,
-)
+from flext_infra import FlextInfraCodegenConstantsQualityGate, __main__ as codegen_main
 
 
 class TestConstantsQualityGateCLIDispatch:

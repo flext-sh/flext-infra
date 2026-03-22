@@ -105,20 +105,14 @@ def _setup_typings_detector(
         captured_commands.append(cmd)
         return run_raw_result
 
-    def _workspace_root_from_file(path: str) -> r[Path]:
-        _ = path
-        return r[Path].ok(tmp_path)
-
     def _exists(path: Path) -> bool:
         _ = path
         return True
 
-    paths = types.SimpleNamespace(workspace_root_from_file=_workspace_root_from_file)
     deps = _DepsStub(project_path, to_add)
     runner = types.SimpleNamespace(run_raw=_run_raw)
 
     detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
-    monkeypatch.setattr(detector, "paths", paths)
     monkeypatch.setattr(detector, "deps", deps)
     monkeypatch.setattr(detector, "runner", runner)
     monkeypatch.setattr(Path, "exists", _exists)
@@ -186,7 +180,15 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             ["types-requests"],
             run_result,
         )
-        tm.ok(detector.run(["--typings", "--apply-typings", "--no-pip-check"]))
+        tm.ok(
+            detector.run([
+                "--typings",
+                "--apply-typings",
+                "--no-pip-check",
+                "--workspace",
+                str(tmp_path),
+            ])
+        )
 
     def test_run_with_apply_typings_poetry_add_failure_result(
         self,
@@ -199,7 +201,15 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
             ["types-requests"],
             r[types.SimpleNamespace].fail("poetry add failed"),
         )
-        tm.ok(detector.run(["--typings", "--apply-typings", "--no-pip-check"]))
+        tm.ok(
+            detector.run([
+                "--typings",
+                "--apply-typings",
+                "--no-pip-check",
+                "--workspace",
+                str(tmp_path),
+            ])
+        )
 
 
 class TestMainFunction:

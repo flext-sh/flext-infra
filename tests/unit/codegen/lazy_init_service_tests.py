@@ -11,7 +11,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_core import FlextService
-from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra import FlextInfraCodegenLazyInit
 
 
 class TestFlextInfraCodegenLazyInit:

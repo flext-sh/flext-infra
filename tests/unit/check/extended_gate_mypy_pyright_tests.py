@@ -11,12 +11,12 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.mypy import FlextInfraMypyGate
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests import m
-
-from ._shared_fixtures import patch_python_dir_detection
+from flext_infra import (
+    FlextInfraMypyGate,
+    FlextInfraPyrightGate,
+    FlextInfraWorkspaceChecker,
+)
+from tests import m, patch_python_dir_detection
 
 type GateClass = type[FlextInfraMypyGate | FlextInfraPyrightGate]
 

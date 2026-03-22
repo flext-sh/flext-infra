@@ -55,6 +55,10 @@ class FlextInfraConstants(FlextConstants):
         FlextInfraReleaseConstants,
         FlextInfraWorkspaceConstants,
     ):
+        Check = FlextInfraCheckConstants
+        "Sub-namespace alias for check-domain constants."
+        Github = FlextInfraGithubConstants
+        "Sub-namespace alias for github-domain constants."
         KNOWN_VERBS: Final[frozenset[str]] = frozenset({
             "build",
             "check",

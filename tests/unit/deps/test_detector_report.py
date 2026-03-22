@@ -66,19 +66,13 @@ def _setup(
     json_service: types.SimpleNamespace | None = None,
     reporting_service: types.SimpleNamespace | None = None,
 ) -> detector_module.FlextInfraRuntimeDevDependencyDetector:
-    def _workspace_root_from_file(path: str) -> r[Path]:
-        del path
-        return r[Path].ok(tmp_path)
-
     def _exists(path: Path) -> bool:
         del path
         return True
 
-    paths = types.SimpleNamespace(workspace_root_from_file=_workspace_root_from_file)
     monkeypatch.setattr(Path, "exists", _exists)
 
     detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
-    monkeypatch.setattr(detector, "paths", paths)
     monkeypatch.setattr(detector, "deps", deps)
     if json_service is not None:
         monkeypatch.setattr(detector, "json", json_service)
@@ -116,6 +110,8 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
                 str(custom_output),
                 "--no-pip-check",
                 "--apply",
+                "--workspace",
+                str(tmp_path),
             ]),
         )
         tm.that(len(call_paths), eq=1)
@@ -155,7 +151,14 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
         )
         tm.that(
             "failed to create report directory"
-            in tm.fail(detector.run(["--no-pip-check", "--apply"])),
+            in tm.fail(
+                detector.run([
+                    "--no-pip-check",
+                    "--apply",
+                    "--workspace",
+                    str(tmp_path),
+                ])
+            ),
             eq=True,
         )
 
@@ -198,5 +201,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
             json_service=json_service,
             reporting_service=reporting,
         )
-        error = tm.fail(detector.run(["--no-pip-check", "--apply"]))
+        error = tm.fail(
+            detector.run(["--no-pip-check", "--apply", "--workspace", str(tmp_path)])
+        )
         tm.that("write failed" in error or "failed to write report" in error, eq=True)

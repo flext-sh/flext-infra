@@ -12,13 +12,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.check._models import FlextInfraCheckModels as check_m
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraWorkspaceChecker
 from tests import m
 
-ProjectResult = check_m.ProjectResult
-
-CheckProjectStub = Callable[[Path, list[str], Path], ProjectResult]
+CheckProjectStub = Callable[[Path, list[str], Path], m.Infra.ProjectResult]
 
 
 def _make_gate_exec(
@@ -50,25 +47,25 @@ def _setup_project(tmp_path: Path, name: str) -> Path:
     return proj_dir
 
 
-def _check_project_stub(project: ProjectResult) -> CheckProjectStub:
+def _check_project_stub(project: m.Infra.ProjectResult) -> CheckProjectStub:
     def _fake_check(
         _project_dir: Path,
         _gates: list[str],
         _reports_dir: Path,
-    ) -> ProjectResult:
+    ) -> m.Infra.ProjectResult:
         return project
 
     return _fake_check
 
 
-def _iter_check_project_stub(projects: list[ProjectResult]) -> CheckProjectStub:
+def _iter_check_project_stub(projects: list[m.Infra.ProjectResult]) -> CheckProjectStub:
     project_iter = iter(projects)
 
     def _fake_check(
         _project_dir: Path,
         _gates: list[str],
         _reports_dir: Path,
-    ) -> ProjectResult:
+    ) -> m.Infra.ProjectResult:
         return next(project_iter)
 
     return _fake_check
@@ -107,7 +104,7 @@ class TestRunProjectsReports:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         reports_dir = tmp_path / "reports"
-        project = ProjectResult(
+        project = m.Infra.ProjectResult(
             project="p1",
             gates={"lint": _make_gate_exec(passed=False)},
         )
@@ -124,7 +121,7 @@ class TestRunProjectsReports:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         reports_dir = tmp_path / "reports"
-        project = ProjectResult(
+        project = m.Infra.ProjectResult(
             project="p1",
             gates={"lint": _make_gate_exec(passed=True)},
         )
@@ -150,10 +147,10 @@ class TestRunProjectsBehavior:
             _project_dir: Path,
             _gates: list[str],
             _reports_dir: Path,
-        ) -> ProjectResult:
+        ) -> m.Infra.ProjectResult:
             del _project_dir, _gates, _reports_dir
             call_count[0] += 1
-            return ProjectResult(
+            return m.Infra.ProjectResult(
                 project="p",
                 gates={"lint": _make_gate_exec(passed=False)},
             )
@@ -185,7 +182,7 @@ class TestRunProjectsBehavior:
             severity="error",
         )
         gate_exec = _make_gate_exec(passed=True, issues=[issue])
-        project = ProjectResult(project="p1", gates={"lint": gate_exec})
+        project = m.Infra.ProjectResult(project="p1", gates={"lint": gate_exec})
         monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
         _setup_project(tmp_path, "p1")
         result = checker.run_projects(
@@ -213,8 +210,8 @@ class TestRunProjectsBehavior:
         )
         exec_with = _make_gate_exec(passed=True, issues=[issue])
         exec_without = _make_gate_exec(passed=True)
-        project1 = ProjectResult(project="p1", gates={"lint": exec_with})
-        project2 = ProjectResult(project="p2", gates={"lint": exec_without})
+        project1 = m.Infra.ProjectResult(project="p1", gates={"lint": exec_with})
+        project2 = m.Infra.ProjectResult(project="p2", gates={"lint": exec_without})
         monkeypatch.setattr(
             checker,
             "_check_project",
@@ -243,7 +240,7 @@ class TestRunSingleProject:
     ) -> None:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         _setup_project(tmp_path, "p1")
-        project = ProjectResult(
+        project = m.Infra.ProjectResult(
             project="p1",
             gates={"lint": _make_gate_exec(passed=True)},
         )

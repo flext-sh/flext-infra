@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import types
 from pathlib import Path
 
 import pytest
@@ -63,19 +62,13 @@ def _setup(
     tmp_path: Path,
     deps: _DepsStub,
 ) -> detector_module.FlextInfraRuntimeDevDependencyDetector:
-    def _workspace_root_from_file(path: str) -> r[Path]:
-        del path
-        return r[Path].ok(tmp_path)
-
     def _exists(path: Path) -> bool:
         del path
         return True
 
-    paths = types.SimpleNamespace(workspace_root_from_file=_workspace_root_from_file)
     monkeypatch.setattr(Path, "exists", _exists)
 
     detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
-    monkeypatch.setattr(detector, "paths", paths)
     monkeypatch.setattr(detector, "deps", deps)
     return detector
 
@@ -87,7 +80,7 @@ class TestDetectorReportFlags:
         tmp_path: Path,
     ) -> None:
         detector = _setup(monkeypatch, tmp_path, _DepsStub(tmp_path / "proj-a", 5, 1))
-        tm.that(tm.ok(detector.run(["--dry-run"])), eq=1)
+        tm.that(tm.ok(detector.run(["--dry-run", "--workspace", str(tmp_path)])), eq=1)
 
     def test_run_with_no_fail_flag_with_issues(
         self,
@@ -95,7 +88,12 @@ class TestDetectorReportFlags:
         tmp_path: Path,
     ) -> None:
         detector = _setup(monkeypatch, tmp_path, _DepsStub(tmp_path / "proj-a", 5, 1))
-        tm.that(tm.ok(detector.run(["--no-fail", "--dry-run"])), eq=0)
+        tm.that(
+            tm.ok(
+                detector.run(["--no-fail", "--dry-run", "--workspace", str(tmp_path)])
+            ),
+            eq=0,
+        )
 
     def test_run_with_json_stdout_flag(
         self,
@@ -103,4 +101,15 @@ class TestDetectorReportFlags:
         tmp_path: Path,
     ) -> None:
         detector = _setup(monkeypatch, tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
-        tm.that(tm.ok(detector.run(["--format", "json", "--no-pip-check"])), eq=0)
+        tm.that(
+            tm.ok(
+                detector.run([
+                    "--format",
+                    "json",
+                    "--no-pip-check",
+                    "--workspace",
+                    str(tmp_path),
+                ])
+            ),
+            eq=0,
+        )

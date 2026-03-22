@@ -5,7 +5,7 @@ Tests the real entry-point behavior.
 
 from __future__ import annotations
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraWorkspaceChecker
 
 
 def test_workspace_check_main_returns_error_without_projects() -> None:

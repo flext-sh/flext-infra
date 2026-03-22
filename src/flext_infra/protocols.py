@@ -68,6 +68,46 @@ class FlextInfraProtocols(FlextProtocols):
                 ...
 
         @runtime_checkable
+        class Checker(Protocol):
+            """Contract for infrastructure checker services."""
+
+            def run(self, argv: list[str] | None = None) -> r[int]:
+                """Execute check and return result."""
+                ...
+
+        @runtime_checkable
+        class Syncer(Protocol):
+            """Contract for synchronization services."""
+
+            def sync(self, argv: list[str] | None = None) -> r[int]:
+                """Execute sync and return result."""
+                ...
+
+        @runtime_checkable
+        class Generator(Protocol):
+            """Contract for code generation services."""
+
+            def generate(self, argv: list[str] | None = None) -> r[int]:
+                """Execute generation and return result."""
+                ...
+
+        @runtime_checkable
+        class Validator(Protocol):
+            """Contract for validation services."""
+
+            def validate(self, argv: list[str] | None = None) -> r[int]:
+                """Execute validation and return result."""
+                ...
+
+        @runtime_checkable
+        class Orchestrator(Protocol):
+            """Contract for orchestration services."""
+
+            def orchestrate(self, argv: list[str] | None = None) -> r[int]:
+                """Execute orchestration and return result."""
+                ...
+
+        @runtime_checkable
         class Discovery(Protocol):
             """Contract for project discovery services."""
 
@@ -334,7 +374,7 @@ class FlextInfraProtocols(FlextProtocols):
                 file_path: Path,
                 project_package: str,
                 alias_map: dict[str, tuple[str, ...]] | None = None,
-            ) -> list[object]:
+            ) -> list[p.Infra.ViolationWithLine]:
                 """Detect import violations in a file.
 
                 Args:

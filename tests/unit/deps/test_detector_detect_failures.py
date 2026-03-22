@@ -1,31 +1,21 @@
 from __future__ import annotations
 
-import types
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-import flext_infra.deps as detector_module
-from flext_core import r
 from tests.unit.deps.test_detector_detect import _DepsStub, _setup_detector
 
 
 class TestDetectorRunFailures:
-    def test_run_without_workspace_root_resolution_path(
+    def test_run_with_no_projects_found(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ) -> None:
-        def _workspace_root_from_file(path: str) -> r[Path]:
-            _ = path
-            return r[Path].fail("root not found")
-
-        paths = types.SimpleNamespace(
-            workspace_root_from_file=_workspace_root_from_file,
-        )
-        detector = detector_module.FlextInfraRuntimeDevDependencyDetector()
-        monkeypatch.setattr(detector, "paths", paths)
-        result = detector.run([])
+        deps = _DepsStub([])
+        result = _setup_detector(monkeypatch, tmp_path, deps).run([])
         tm.that(tm.ok(result), eq=2)
 
     def test_run_with_project_discovery_failure(

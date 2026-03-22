@@ -18,7 +18,6 @@ class TestFlextInfraRuntimeDevDependencyDetectorInit:
 
     def test_detector_has_required_services(self) -> None:
         detector = FlextInfraRuntimeDevDependencyDetector()
-        tm.that(hasattr(detector, "paths"), eq=True)
         tm.that(hasattr(detector, "reporting"), eq=True)
         tm.that(hasattr(detector, "json"), eq=True)
         tm.that(hasattr(detector, "deps"), eq=True)

@@ -14,8 +14,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.models import FlextInfraModels
+from flext_infra import FlextInfraCodegenCensus, FlextInfraModels
 
 
 @pytest.fixture

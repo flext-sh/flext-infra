@@ -11,13 +11,11 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_core import t
-from flext_infra import c
-from flext_infra.check.workspace_check import (
+from flext_infra import (
+    FlextInfraRuffLintGate,
     FlextInfraWorkspaceChecker,
 )
-from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from tests import m
+from tests import c, m, t
 
 
 class TestWorkspaceCheckerInitialization:
