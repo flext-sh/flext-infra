@@ -370,34 +370,6 @@ class FlextInfraWorkspaceChecker(s[bool]):
         result = u.Infra.workspace_root()
         return result.value if result.is_success else Path.cwd().resolve()
 
-    def _run_bandit(self, project_dir: Path) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.SECURITY, project_dir)
-
-    def _run_go(self, project_dir: Path) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.GO, project_dir)
-
-    def _run_markdown(self, project_dir: Path) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.MARKDOWN, project_dir)
-
-    def _run_mypy(self, project_dir: Path) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.MYPY, project_dir)
-
-    def _run_pyrefly(
-        self,
-        project_dir: Path,
-        reports_dir: Path,
-    ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.PYREFLY, project_dir, reports_dir)
-
-    def _run_pyright(self, project_dir: Path) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.PYRIGHT, project_dir)
-
-    def _run_ruff_format(self, project_dir: Path) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.FORMAT, project_dir)
-
-    def _run_ruff_lint(self, project_dir: Path) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.LINT, project_dir)
-
 
 build_parser = FlextInfraWorkspaceChecker.build_parser
 run_cli = FlextInfraWorkspaceChecker.run_cli

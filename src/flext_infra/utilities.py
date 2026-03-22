@@ -39,6 +39,7 @@ from flext_infra import (
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
 )
+from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 
 
 class FlextInfraUtilities(FlextUtilities):
@@ -59,6 +60,7 @@ class FlextInfraUtilities(FlextUtilities):
         FlextInfraUtilitiesCli,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesDiscovery,
+        FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesImportNormalizer,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesFormatting,

@@ -120,7 +120,6 @@ if TYPE_CHECKING:
         test_pattern_rule_skips_overload_signatures,
     )
     from .test_infra_refactor_project_classifier import (
-        test_expected_dependency_bases_by_family_preserves_internal_dependency_order,
         test_read_project_metadata_preserves_pep621_dependency_order,
         test_read_project_metadata_preserves_poetry_dependency_order,
     )
@@ -245,10 +244,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_ensure_future_annotations_moves_existing_import_to_top": (
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_ensure_future_annotations_moves_existing_import_to_top",
-    ),
-    "test_expected_dependency_bases_by_family_preserves_internal_dependency_order": (
-        "tests.unit.refactor.test_infra_refactor_project_classifier",
-        "test_expected_dependency_bases_by_family_preserves_internal_dependency_order",
     ),
     "test_import_alias_detector_skips_facade_and_subclass_files": (
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
@@ -655,7 +650,6 @@ __all__ = [
     "test_engine_always_enables_class_nesting_file_rule",
     "test_ensure_future_annotations_after_docstring",
     "test_ensure_future_annotations_moves_existing_import_to_top",
-    "test_expected_dependency_bases_by_family_preserves_internal_dependency_order",
     "test_import_alias_detector_skips_facade_and_subclass_files",
     "test_import_alias_detector_skips_nested_private_and_as_renames",
     "test_import_alias_detector_skips_private_and_class_imports",

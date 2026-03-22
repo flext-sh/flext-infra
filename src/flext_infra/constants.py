@@ -226,28 +226,6 @@ class FlextInfraConstants(FlextConstants):
             GH: Final[str] = "gh"
             "GitHub CLI binary."
 
-            class GitCmd:
-                """Git subcommand constants."""
-
-                CHECKOUT: Final[str] = "checkout"
-                STATUS: Final[str] = "status"
-                PUSH: Final[str] = "push"
-                PULL: Final[str] = "pull"
-                FETCH: Final[str] = "fetch"
-                COMMIT: Final[str] = "commit"
-                DIFF: Final[str] = "diff"
-                ADD: Final[str] = "add"
-                STASH: Final[str] = "stash"
-                TAG: Final[str] = "tag"
-                LOG: Final[str] = "log"
-                REV_PARSE: Final[str] = "rev-parse"
-                CONFIG: Final[str] = "config"
-                BRANCH: Final[str] = "branch"
-                INIT: Final[str] = "init"
-                CLONE: Final[str] = "clone"
-                REMOTE: Final[str] = "remote"
-                VET: Final[str] = "vet"
-
             class RuffCmd:
                 """Ruff subcommand constants."""
 

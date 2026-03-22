@@ -32,40 +32,6 @@ class FlextInfraUtilitiesCodegenTransforms:
         return f"from flext_core import {base_class}"
 
     @staticmethod
-    def add_import_to_tree(
-        tree: ast.Module,
-        pkg_name: str,
-        module_name: str,
-        name: str,
-    ) -> None:
-        """Add a from-import to the tree when it is missing."""
-        full_module = f"{pkg_name}.{module_name}"
-        for stmt in tree.body:
-            if isinstance(stmt, ast.ImportFrom) and stmt.module == full_module:
-                for alias in stmt.names:
-                    if alias.name == name:
-                        return
-                stmt.names.append(ast.alias(name=name))
-                return
-        new_import = ast.ImportFrom(
-            module=full_module,
-            names=[ast.alias(name=name)],
-            level=0,
-        )
-        _ = ast.fix_missing_locations(new_import)
-        insert_idx = FlextInfraUtilitiesCodegenTransforms.find_insert_position(tree)
-        tree.body.insert(insert_idx, new_import)
-
-    @staticmethod
-    def extract_public_classes(tree: ast.Module, prefix: str) -> list[str]:
-        """Extract class names that match the provided public prefix."""
-        return [
-            stmt.name
-            for stmt in tree.body
-            if isinstance(stmt, ast.ClassDef) and stmt.name.startswith(prefix)
-        ]
-
-    @staticmethod
     def find_insert_position(tree: ast.Module) -> int:
         """Find insertion point after module docstring/imports."""
         last_import_idx = 0
@@ -223,12 +189,6 @@ class FlextInfraUtilitiesCodegenTransforms:
         return all(n in available for n in names_used)
 
     @staticmethod
-    def _all_deps_resolvable(node: ast.stmt, target_tree: ast.Module) -> bool:
-        return FlextInfraUtilitiesCodegenTransforms.all_deps_resolvable(
-            node, target_tree
-        )
-
-    @staticmethod
     def copy_required_imports(
         node: ast.stmt,
         source_tree: ast.Module,
@@ -297,18 +257,6 @@ class FlextInfraUtilitiesCodegenTransforms:
             target_tree.body.insert(last_import_idx + i, imp)
 
     @staticmethod
-    def _copy_required_imports(
-        node: ast.stmt,
-        source_tree: ast.Module,
-        target_tree: ast.Module,
-    ) -> None:
-        FlextInfraUtilitiesCodegenTransforms.copy_required_imports(
-            node,
-            source_tree,
-            target_tree,
-        )
-
-    @staticmethod
     def needs_first_party_import(
         node: ast.stmt,
         source_tree: ast.Module,
@@ -365,18 +313,6 @@ class FlextInfraUtilitiesCodegenTransforms:
         return False
 
     @staticmethod
-    def _needs_first_party_import(
-        node: ast.stmt,
-        source_tree: ast.Module,
-        target_tree: ast.Module,
-    ) -> bool:
-        return FlextInfraUtilitiesCodegenTransforms.needs_first_party_import(
-            node,
-            source_tree,
-            target_tree,
-        )
-
-    @staticmethod
     def collect_import_texts_for_nodes(
         nodes: Sequence[ast.stmt],
         source_lines: list[str],
@@ -426,20 +362,6 @@ class FlextInfraUtilitiesCodegenTransforms:
                 seen.add(text)
                 import_texts.append(text)
         return import_texts
-
-    @staticmethod
-    def _collect_import_texts_for_nodes(
-        nodes: Sequence[ast.stmt],
-        source_lines: list[str],
-        source_tree: ast.Module,
-        target_text: str,
-    ) -> list[str]:
-        return FlextInfraUtilitiesCodegenTransforms.collect_import_texts_for_nodes(
-            nodes,
-            source_lines,
-            source_tree,
-            target_text,
-        )
 
     @staticmethod
     def prune_stale_all_assignment(*, path: Path) -> bool:
@@ -526,41 +448,6 @@ class FlextInfraUtilitiesCodegenTransforms:
         return True
 
     @staticmethod
-    def _prune_stale_all_assignment(*, path: Path) -> bool:
-        return FlextInfraUtilitiesCodegenTransforms.prune_stale_all_assignment(
-            path=path
-        )
-
-    @staticmethod
-    def is_used_in_context(node: ast.stmt, tree: ast.Module) -> bool:
-        """Check if a definition's name is referenced elsewhere in the module.
-
-        Checks all statements (class headers, function signatures, annotations,
-        body code). Handles ast.Assign, ast.AnnAssign, and ast.TypeAlias
-        (PEP 695). A name that appears anywhere beyond its own definition is
-        considered "in context".
-        """
-        name: str | None = None
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    name = target.id
-                    break
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            name = node.target.id
-        elif isinstance(node, ast.TypeAlias):
-            name = node.name.id
-        if name is None:
-            return False
-        for stmt in tree.body:
-            if stmt is node:
-                continue
-            for child in ast.walk(stmt):
-                if isinstance(child, ast.Name) and child.id == name:
-                    return True
-        return False
-
-    @staticmethod
     def name_exists_in_module(name: str, tree: ast.Module) -> bool:
         """Check if a top-level name is already defined in a module.
 
@@ -581,9 +468,5 @@ class FlextInfraUtilitiesCodegenTransforms:
                 return True
         return False
 
-    @staticmethod
-    def unparse_and_format(tree: ast.Module, path: Path) -> str:
-        """Normalize locations and return unparsed source code."""
-        del path
-        fixed = ast.fix_missing_locations(tree)
-        return ast.unparse(fixed)
+
+__all__ = ["FlextInfraUtilitiesCodegenTransforms"]

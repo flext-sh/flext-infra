@@ -119,9 +119,7 @@ class FlextInfraCodegenCensus(s[bool]):
                 )
                 total_unused = total_objs - total_used
                 by_type_val = census_data.get("by_type", {})
-                by_type = (  # type: ignore[assignment]
-                    by_type_val if isinstance(by_type_val, dict) else {}
-                )
+                by_type = by_type_val if isinstance(by_type_val, dict) else {}
                 type_stats: list[str] = []
                 if isinstance(by_type, dict):
                     for t in sorted(by_type.keys())[:3]:
@@ -200,8 +198,10 @@ class FlextInfraCodegenCensus(s[bool]):
             for defs in all_defs.values():
                 flat_defs.extend(defs)
 
-            duplicates: list[str] = u.Infra.detect_duplicate_constants(
-                flat_defs,
+            duplicates: list[m.Infra.DuplicateConstantGroup] = (
+                u.Infra.detect_duplicate_constants(
+                    flat_defs,
+                )
             )
 
             # Count usage

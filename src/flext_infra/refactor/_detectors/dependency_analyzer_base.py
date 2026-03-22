@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -72,46 +71,6 @@ class DependencyAnalyzer:
         ordered = {k: sorted(v) for k, v in sorted(graph.items())}
         self._graph_cache = ordered
         return r[dict[str, list[str]]].ok(ordered)
-
-    def find_consumers(self, class_name: str) -> r[list[Path]]:
-        """Find all files that import the given class name.
-
-        Args:
-            class_name: The name of the class to find consumers for.
-
-        Returns:
-            Result containing a sorted list of file paths importing the class.
-
-        """
-        consumers: set[Path] = set()
-        for project in self._projects:
-            for fp in self._find_import_candidate_files(project):
-                parsed = self._parse_imports(fp)
-                if parsed.is_failure:
-                    continue
-                file_data = parsed.value
-                if class_name in file_data.imported_symbols:
-                    consumers.add(fp)
-        return r[list[Path]].ok(sorted(consumers))
-
-    def determine_transformation_order(self) -> r[list[str]]:
-        """Determine topologically sorted transformation order for projects.
-
-        Returns:
-            Result containing list of project names in dependency order.
-
-        """
-        graph_result = self.build_import_graph()
-        if graph_result.is_failure:
-            return r[list[str]].fail(graph_result.error or "graph build failed")
-        graph: dict[str, list[str]] = graph_result.value
-        if not graph:
-            return r[list[str]].ok([])
-        try:
-            sorter: TopologicalSorter[str] = TopologicalSorter(graph)
-            return r[list[str]].ok(list(sorter.static_order()))
-        except CycleError:
-            return r[list[str]].ok(sorted(graph))
 
     def _discover_projects(self) -> list[m.Infra.RefactorProjectInfo]:
         """Discover all projects in the workspace.

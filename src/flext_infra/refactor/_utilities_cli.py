@@ -270,7 +270,7 @@ class FlextInfraUtilitiesRefactorCli:
             )
 
     @staticmethod
-    def run_cli(
+    def refactor_run_cli(
         engine_cls: type[FlextInfraRefactorEngine],
         violation_analyzer: type[FlextInfraRefactorViolationAnalyzer],
     ) -> int:

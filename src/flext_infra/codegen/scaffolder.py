@@ -20,8 +20,6 @@ from flext_infra import (
     u,
 )
 
-__all__ = ["FlextInfraCodegenScaffolder"]
-
 
 class FlextInfraCodegenScaffolder(s[bool]):
     """Generates missing base modules in src/ and tests/ directories."""

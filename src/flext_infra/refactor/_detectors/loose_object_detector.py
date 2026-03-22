@@ -16,7 +16,7 @@ from typing import override
 import libcst as cst
 from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
-from flext_infra import c, p
+from flext_infra import c, p, u
 from flext_infra.models import m
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
@@ -204,7 +204,7 @@ class LooseObjectDetector(p.Infra.Scanner):
                 return None
             return nem.LooseObjectViolation.create(
                 file=str(file_path),
-                line=cls._line_for(node=stmt, positions=positions),
+                line=u.Infra.cst_line_for(node=stmt, positions=positions),
                 name=name,
                 kind="function",
                 suggestion=f"{class_stem}Utilities",
@@ -248,7 +248,7 @@ class LooseObjectDetector(p.Infra.Scanner):
             if c.Infra.NAMESPACE_CONSTANT_PATTERN.match(name):
                 return nem.LooseObjectViolation.create(
                     file=str(file_path),
-                    line=cls._line_for(node=stmt, positions=positions),
+                    line=u.Infra.cst_line_for(node=stmt, positions=positions),
                     name=name,
                     kind="constant",
                     suggestion=f"{class_stem}Constants",
@@ -268,7 +268,7 @@ class LooseObjectDetector(p.Infra.Scanner):
                 if c.Infra.NAMESPACE_CONSTANT_PATTERN.match(name):
                     return nem.LooseObjectViolation.create(
                         file=str(file_path),
-                        line=cls._line_for(node=stmt, positions=positions),
+                        line=u.Infra.cst_line_for(node=stmt, positions=positions),
                         name=name,
                         kind="constant",
                         suggestion=f"{class_stem}Constants",
@@ -277,7 +277,7 @@ class LooseObjectDetector(p.Infra.Scanner):
         if name and name not in cls.ALLOWED_TOP_LEVEL:
             return nem.LooseObjectViolation.create(
                 file=str(file_path),
-                line=cls._line_for(node=stmt, positions=positions),
+                line=u.Infra.cst_line_for(node=stmt, positions=positions),
                 name=name,
                 kind="typealias",
                 suggestion=f"{class_stem}Types",
@@ -300,8 +300,7 @@ class LooseObjectDetector(p.Infra.Scanner):
         if (
             isinstance(stmt, cst.AnnAssign)
             and isinstance(stmt.target, cst.Name)
-            and LooseObjectDetector._module_to_str(stmt.annotation.annotation)
-            == "TypeAlias"
+            and u.Infra.cst_module_to_str(stmt.annotation.annotation) == "TypeAlias"
         ):
             return stmt.target.value
         return ""
@@ -338,50 +337,3 @@ class LooseObjectDetector(p.Infra.Scanner):
                     break
         for child in node.children:
             LooseObjectDetector._collect_namespace_classes(node=child, classes=classes)
-
-    @staticmethod
-    def _module_to_str(module: cst.BaseExpression | None) -> str:
-        """Convert a module expression to its dotted string representation.
-
-        Args:
-            module: A libcst expression or None to convert to string.
-
-        Returns:
-            Dotted module name (e.g., 'a.b.c').
-
-        """
-        if module is None:
-            return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""
-
-    @staticmethod
-    def _line_for(
-        *,
-        node: cst.CSTNode,
-        positions: Mapping[cst.CSTNode, CodeRange],
-    ) -> int:
-        """Get the line number of a CST node.
-
-        Args:
-            node: A libcst node to locate.
-            positions: Mapping from CST nodes to their code ranges.
-
-        Returns:
-            The line number of the node, or 1 if not found in positions.
-
-        """
-        code_range = positions.get(node)
-        if code_range is None:
-            return 1
-        return code_range.start.line

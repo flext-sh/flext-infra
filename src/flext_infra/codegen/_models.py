@@ -93,34 +93,6 @@ class FlextInfraCodegenModels:
             ),
         ]
 
-    class CodegenPipelineResult(FlextModels.ArbitraryTypesModel):
-        """Full pipeline result combining census, scaffold, auto-fix phases."""
-
-        census_before: Annotated[
-            FlextInfraCodegenModels.CensusReport,
-            Field(
-                description="Census report before transformations",
-            ),
-        ]
-        scaffold: Annotated[
-            FlextInfraCodegenModels.ScaffoldResult,
-            Field(
-                description="Scaffold phase result",
-            ),
-        ]
-        auto_fix: Annotated[
-            FlextInfraCodegenModels.AutoFixResult,
-            Field(
-                description="Auto-fix phase result",
-            ),
-        ]
-        census_after: Annotated[
-            FlextInfraCodegenModels.CensusReport,
-            Field(
-                description="Census report after transformations",
-            ),
-        ]
-
     class QualityGateCheck(FlextModels.ArbitraryTypesModel):
         """A single quality gate check result entry."""
 

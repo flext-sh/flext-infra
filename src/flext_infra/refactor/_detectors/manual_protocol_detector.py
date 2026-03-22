@@ -9,12 +9,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
-from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
+from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, p, u
 from flext_infra.refactor._models_namespace_enforcer import (
@@ -136,7 +135,7 @@ class ManualProtocolDetector(p.Infra.Scanner):
                 violations.append(
                     nem.ManualProtocolViolation.create(
                         file=str(file_path),
-                        line=cls._line_for(node=stmt, positions=positions),
+                        line=u.Infra.cst_line_for(node=stmt, positions=positions),
                         name=stmt.name.value,
                     ),
                 )
@@ -174,55 +173,8 @@ class ManualProtocolDetector(p.Infra.Scanner):
         if isinstance(base_expr, cst.Name):
             return base_expr.value
         if isinstance(base_expr, cst.Attribute):
-            dotted_name = ManualProtocolDetector._module_to_str(base_expr)
+            dotted_name = u.Infra.cst_module_to_str(base_expr)
             if "." in dotted_name:
                 return dotted_name.rsplit(".", maxsplit=1)[1]
             return dotted_name
         return ""
-
-    @staticmethod
-    def _module_to_str(module: cst.BaseExpression | None) -> str:
-        """Convert a module expression to its dotted string representation.
-
-        Args:
-            module: A libcst expression or None to convert to string.
-
-        Returns:
-            Dotted string representation of the module (e.g., 'a.b.c').
-
-        """
-        if module is None:
-            return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""
-
-    @staticmethod
-    def _line_for(
-        *,
-        node: cst.CSTNode,
-        positions: Mapping[cst.CSTNode, CodeRange],
-    ) -> int:
-        """Get the line number of a CST node.
-
-        Args:
-            node: A libcst node to locate.
-            positions: Mapping from CST nodes to their code ranges.
-
-        Returns:
-            The line number of the node, or 1 if not found in positions.
-
-        """
-        code_range = positions.get(node)
-        if code_range is None:
-            return 1
-        return code_range.start.line

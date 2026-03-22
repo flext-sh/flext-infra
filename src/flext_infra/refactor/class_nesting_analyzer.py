@@ -4,16 +4,10 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
-from typing import cast
 
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, r, u
-
-type _ClassNestingMappingIndex = dict[
-    tuple[str, str],
-    m.Infra.ClassNestingMapping,
-]
 
 
 class FlextInfraRefactorClassNestingAnalyzer:
@@ -37,9 +31,8 @@ class FlextInfraRefactorClassNestingAnalyzer:
             )
         scanner = FlextInfraRefactorLooseClassScanner()
         mapping_result = cls._load_mapping_index()
-        mapping_index: _ClassNestingMappingIndex = cast(
-            "_ClassNestingMappingIndex",
-            mapping_result.value if mapping_result.is_success else {},
+        mapping_index: dict[tuple[str, str], m.Infra.ClassNestingMapping] = (
+            mapping_result.value if mapping_result.is_success else {}
         )
         confidence_counts: Counter[str] = Counter()
         per_file_counts: Counter[str] = Counter()
@@ -133,22 +126,24 @@ class FlextInfraRefactorClassNestingAnalyzer:
         return relative.as_posix()
 
     @classmethod
-    def _load_mapping_index(cls) -> r[_ClassNestingMappingIndex]:
+    def _load_mapping_index(
+        cls,
+    ) -> r[dict[tuple[str, str], m.Infra.ClassNestingMapping]]:
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
             typed_doc = u.Infra.safe_load_yaml(mapping_path)
         except (OSError, TypeError) as exc:
-            return r[_ClassNestingMappingIndex].fail(str(exc))
+            return r[dict[tuple[str, str], m.Infra.ClassNestingMapping]].fail(str(exc))
         raw_nesting = typed_doc.get(c.Infra.ReportKeys.CLASS_NESTING)
         if not isinstance(raw_nesting, list):
-            return r[_ClassNestingMappingIndex].ok({})
+            return r[dict[tuple[str, str], m.Infra.ClassNestingMapping]].ok({})
         try:
             entries = TypeAdapter(
                 list[m.Infra.ClassNestingMapping],
             ).validate_python(raw_nesting)
         except ValidationError as exc:
-            return r[_ClassNestingMappingIndex].fail(str(exc))
-        index: _ClassNestingMappingIndex = {}
+            return r[dict[tuple[str, str], m.Infra.ClassNestingMapping]].fail(str(exc))
+        index: dict[tuple[str, str], m.Infra.ClassNestingMapping] = {}
         for entry in entries:
             scope = cls._normalize_rewrite_scope(entry.rewrite_scope)
             norm = cls._normalize_module_path(entry.current_file)
@@ -161,7 +156,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 target_name=entry.target_name,
                 reason=entry.reason,
             )
-        return r[_ClassNestingMappingIndex].ok(index)
+        return r[dict[tuple[str, str], m.Infra.ClassNestingMapping]].ok(index)
 
     @classmethod
     def _normalize_module_path(cls, raw_path: str) -> str:

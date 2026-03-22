@@ -38,6 +38,7 @@ class FlextInfraCodegenConstantsQualityGate:
         ).run()
         duplicate_groups = u.Infra.quality_gate_detect_duplicate_constant_groups(
             self._workspace_root,
+            census_reports,
         )
         modified_files = u.Infra.quality_gate_modified_python_files(
             self._workspace_root,

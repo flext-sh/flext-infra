@@ -10,20 +10,15 @@ from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import TopLevelClassCollector, c, m, r, t, u
 
-type RConfigMapping = r[t.Infra.ContainerDict]
-type RListPath = r[list[Path]]
-type RPath = r[Path]
-type RListClassOccurrence = r[list[m.Infra.ClassOccurrence]]
-
 
 class FlextInfraRefactorLooseClassScanner:
     """Scan a project tree and report top-level classes lacking namespace prefixes."""
 
-    def scan(self, project_root: Path) -> RConfigMapping:
+    def scan(self, project_root: Path) -> r[t.Infra.ContainerDict]:
         """Scan *project_root*/src and return a violation report dict."""
         files_result = self._discover_python_files(project_root)
         if files_result.is_failure:
-            out: RConfigMapping = r[t.Infra.ContainerDict].fail(
+            out: r[t.Infra.ContainerDict] = r[t.Infra.ContainerDict].fail(
                 files_result.error or "discovery failed",
             )
             return out
@@ -67,7 +62,7 @@ class FlextInfraRefactorLooseClassScanner:
             "required_targets": required_targets_infra,
             c.Infra.ReportKeys.VIOLATIONS: violations_infra,
         }
-        out2: RConfigMapping = r[t.Infra.ContainerDict].ok(result_dict)
+        out2: r[t.Infra.ContainerDict] = r[t.Infra.ContainerDict].ok(result_dict)
         return out2
 
     def _build_violation(
@@ -106,17 +101,17 @@ class FlextInfraRefactorLooseClassScanner:
             return "high"
         return "medium" if parts else c.Infra.Severity.LOW
 
-    def _discover_python_files(self, project_root: Path) -> RListPath:
+    def _discover_python_files(self, project_root: Path) -> r[list[Path]]:
         src = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src.is_dir():
-            out: RListPath = r[list[Path]].fail(f"src not found: {src}")
+            out: r[list[Path]] = r[list[Path]].fail(f"src not found: {src}")
             return out
         file_list: list[Path] = [
             fp
             for fp in u.Infra.iter_directory_python_files(src)
             if not (fp.name.startswith("__") and fp.name != c.Infra.Files.INIT_PY)
         ]
-        out2: RListPath = r[list[Path]].ok(file_list)
+        out2: r[list[Path]] = r[list[Path]].ok(file_list)
         return out2
 
     def _expected_prefix_for_module(self, rel_path: Path) -> str:
@@ -135,29 +130,31 @@ class FlextInfraRefactorLooseClassScanner:
         norm = c.Infra.CLASS_PATTERN.sub(" ", value.replace("_", " "))
         return "".join(w.capitalize() for w in norm.split())
 
-    def _relative_module_path(self, project_root: Path, file_path: Path) -> RPath:
+    def _relative_module_path(self, project_root: Path, file_path: Path) -> r[Path]:
         src = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         try:
             rel: Path = file_path.relative_to(src)
-            out: RPath = r[Path].ok(rel)
+            out: r[Path] = r[Path].ok(rel)
             return out
         except ValueError as exc:
-            out2: RPath = r[Path].fail(str(exc))
+            out2: r[Path] = r[Path].fail(str(exc))
             return out2
 
     def _scan_file_with_libcst(
         self,
         file_path: Path,
-    ) -> RListClassOccurrence:
+    ) -> r[list[m.Infra.ClassOccurrence]]:
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
-            out: RListClassOccurrence = r[list[m.Infra.ClassOccurrence]].fail(
+            out: r[list[m.Infra.ClassOccurrence]] = r[
+                list[m.Infra.ClassOccurrence]
+            ].fail(
                 f"{file_path}: parse_failed",
             )
             return out
         col = TopLevelClassCollector()
         tree.visit(col)
-        out2: RListClassOccurrence = r[list[m.Infra.ClassOccurrence]].ok(
+        out2: r[list[m.Infra.ClassOccurrence]] = r[list[m.Infra.ClassOccurrence]].ok(
             col.classes,
         )
         return out2

@@ -34,51 +34,6 @@ class FlextInfraCodegenGeneration:
     """Generate Python module files with lazy import infrastructure."""
 
     @staticmethod
-    def resolve_unmapped(
-        exports_set: set[str],
-        filtered: dict[str, tuple[str, str]],
-        current_pkg: str,
-        pkg_dir: Path,
-    ) -> None:
-        """Resolve unmapped exports by matching them to known suffixes or version files.
-
-        Updates the filtered dictionary in-place by resolving unmapped aliases to their
-        actual module and attribute paths. Handles special cases like `__version__` and
-        `__version_info__`.
-
-        Args:
-            exports_set: Set of all exported names.
-            filtered: Dictionary mapping export names to (module_path, attr_name) tuples.
-            current_pkg: Current package name for resolving version files.
-            pkg_dir: Package directory path to check for `__version__.py`.
-
-        """
-        unmapped = exports_set - set(filtered)
-        if not unmapped:
-            return
-        for alias in sorted(unmapped):
-            if alias in c.Infra.ALIAS_TO_SUFFIX:
-                suffix = c.Infra.ALIAS_TO_SUFFIX[alias]
-                for name, (mod, _) in filtered.items():
-                    if name.endswith(suffix) and len(name) > 1:
-                        filtered[alias] = (mod, name)
-                        break
-            elif alias == "__version__" and current_pkg:
-                ver_file = pkg_dir / "__version__.py"
-                if ver_file.exists():
-                    filtered["__version__"] = (
-                        f"{current_pkg}.__version__",
-                        "__version__",
-                    )
-            elif alias == "__version_info__" and current_pkg:
-                ver_file = pkg_dir / "__version__.py"
-                if ver_file.exists():
-                    filtered["__version_info__"] = (
-                        f"{current_pkg}.__version__",
-                        "__version_info__",
-                    )
-
-    @staticmethod
     def _render_type_checking_module(mod: str, current_pkg: str) -> str:
         """Render module path for TYPE_CHECKING imports.
 

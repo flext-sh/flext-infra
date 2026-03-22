@@ -73,7 +73,7 @@ class FlextInfraRefactorEngine:
     def main(cls) -> int:
         """Run the refactor CLI entrypoint and exit with the status code."""
         raise SystemExit(
-            u.Infra.run_cli(cls, FlextInfraRefactorViolationAnalyzer),
+            u.Infra.refactor_run_cli(cls, FlextInfraRefactorViolationAnalyzer),
         )
 
     def collect_workspace_files(

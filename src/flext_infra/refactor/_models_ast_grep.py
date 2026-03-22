@@ -221,18 +221,6 @@ class FlextInfraRefactorAstGrepModels:
 
         model_config = ConfigDict(extra="ignore")
 
-        class PatternRule(FlextModels.FrozenStrictModel):
-            """Structured matcher entry for method pattern rules."""
-
-            regex: Annotated[str, Field(default="", description="Regex matcher")]
-            decorators: Annotated[
-                list[str],
-                Field(
-                    default_factory=list,
-                    description="Required decorators for this pattern",
-                ),
-            ]
-
         category: Annotated[
             str | None,
             Field(default=None, description="Method category"),

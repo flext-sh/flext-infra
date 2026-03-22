@@ -93,7 +93,7 @@ class CyclicImportDetector:
                                     imported = (
                                         alias.name.value
                                         if isinstance(alias.name, cst.Name)
-                                        else cls._module_to_str(alias.name)
+                                        else u.Infra.cst_module_to_str(alias.name)
                                     )
                                     root_pkg = imported.split(".")[0]
                                     if root_pkg in package_roots:
@@ -102,7 +102,7 @@ class CyclicImportDetector:
                                 isinstance(stmt, cst.ImportFrom)
                                 and stmt.module is not None
                             ):
-                                imported = cls._module_to_str(stmt.module)
+                                imported = u.Infra.cst_module_to_str(stmt.module)
                                 root_pkg = imported.split(".")[0]
                                 if root_pkg in package_roots:
                                     graph[module_name].add(imported)
@@ -197,29 +197,3 @@ class CyclicImportDetector:
         if parts and parts[-1] == "__init__":
             parts = parts[:-1]
         return ".".join(parts) if parts else ""
-
-    @staticmethod
-    def _module_to_str(module: cst.BaseExpression | None) -> str:
-        """Convert a module expression to its dotted string representation.
-
-        Args:
-            module: A libcst expression or None to convert to string.
-
-        Returns:
-            Dotted module name (e.g., 'package.submodule').
-
-        """
-        if module is None:
-            return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression | cst.Attribute = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""

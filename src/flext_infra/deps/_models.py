@@ -9,8 +9,6 @@ from pydantic import ConfigDict, Field
 
 from flext_core import m, t
 
-type _DeptryIssueMap = Mapping[str, t.Primitives | None]
-
 
 class FlextInfraDepsModels:
     """Models for dependency detection and modernization reporting."""
@@ -480,31 +478,22 @@ class FlextInfraDepsModels:
             ),
         ]
 
-    class ModernizerFileChanges(m.ArbitraryTypesModel):
-        """Modernizer changes for one pyproject file."""
-
-        file: Annotated[t.NonEmptyStr, Field(description="Relative pyproject path")]
-        changes: Annotated[
-            list[str],
-            Field(default_factory=list, description="Applied changes"),
-        ]
-
     class DeptryIssueGroups(m.ArbitraryTypesModel):
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 
-        dep001: list[_DeptryIssueMap] = Field(
+        dep001: list[Mapping[str, t.Primitives | None]] = Field(
             default_factory=list,
             description="DEP001 issues",
         )
-        dep002: list[_DeptryIssueMap] = Field(
+        dep002: list[Mapping[str, t.Primitives | None]] = Field(
             default_factory=list,
             description="DEP002 issues",
         )
-        dep003: list[_DeptryIssueMap] = Field(
+        dep003: list[Mapping[str, t.Primitives | None]] = Field(
             default_factory=list,
             description="DEP003 issues",
         )
-        dep004: list[_DeptryIssueMap] = Field(
+        dep004: list[Mapping[str, t.Primitives | None]] = Field(
             default_factory=list,
             description="DEP004 issues",
         )

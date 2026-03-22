@@ -9,13 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
 
-from flext_infra import p
+from flext_infra import p, u
 from flext_infra.models import m
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
@@ -119,10 +118,10 @@ class InternalImportDetector(p.Infra.Scanner):
         except cst.ParserSyntaxError:
             return []
         violations: list[nem.InternalImportViolation] = []
-        for stmt in cls._iter_simple_statements(tree.body):
+        for stmt in u.Infra.cst_iter_simple_statements(tree.body):
             if not isinstance(stmt, cst.ImportFrom):
                 continue
-            module_name = cls._module_to_str(stmt.module)
+            module_name = u.Infra.cst_module_to_str(stmt.module)
             if not module_name:
                 continue
             if file_path.name == "__init__.py":
@@ -134,7 +133,7 @@ class InternalImportDetector(p.Infra.Scanner):
                 imported_names = [
                     imported_name
                     for alias in stmt.names
-                    if (imported_name := cls._module_to_str(alias.name))
+                    if (imported_name := u.Infra.cst_module_to_str(alias.name))
                 ]
                 import_list = ", ".join(imported_names) if imported_names else "*"
             current_import = f"from {module_name} import {import_list}"
@@ -156,46 +155,3 @@ class InternalImportDetector(p.Infra.Scanner):
                 ),
             )
         return violations
-
-    @staticmethod
-    def _module_to_str(module: cst.BaseExpression | None) -> str:
-        """Convert a module expression to its dotted string representation.
-
-        Args:
-            module: A libcst expression or None to convert to string.
-
-        Returns:
-            Dotted module name (e.g., 'a.b.c').
-
-        """
-        if module is None:
-            return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""
-
-    @staticmethod
-    def _iter_simple_statements(
-        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
-    ) -> Iterator[cst.BaseSmallStatement]:
-        """Iterate over simple statements from a module or compound body.
-
-        Args:
-            body: Sequence of statement lines or compound statements.
-
-        Yields:
-            Individual small statements from simple statement lines.
-
-        """
-        for item in body:
-            if isinstance(item, cst.SimpleStatementLine):
-                yield from item.body

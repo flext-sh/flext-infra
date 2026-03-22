@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import FlextInfraCodegenSnapshot, c
+from flext_infra import FlextInfraCodegenSnapshot
 
 
 class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
@@ -32,18 +32,6 @@ class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
         if not base:
             return raw_module
         return ".".join(base) + ("." + raw_module if raw_module else "")
-
-    @staticmethod
-    def extract_docstring_source(tree: ast.Module, content: str) -> str:
-        if (
-            tree.body
-            and isinstance(tree.body[0], ast.Expr)
-            and isinstance(tree.body[0].value, ast.Constant)
-            and isinstance(tree.body[0].value.value, str)
-        ):
-            ds = tree.body[0]
-            return "\n".join(content.splitlines()[ds.lineno - 1 : ds.end_lineno])
-        return ""
 
     @staticmethod
     def extract_exports(tree: ast.Module) -> tuple[bool, list[str]]:
@@ -111,54 +99,6 @@ class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
             ):
                 _extract(node.value)
         return result
-
-    @staticmethod
-    def derive_lazy_map(
-        tree: ast.Module,
-        current_pkg: str,
-    ) -> dict[str, tuple[str, str]]:
-        lazy_map: dict[str, tuple[str, str]] = {}
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                raw_module = node.module or ""
-                if raw_module in c.Infra.SKIP_MODULES:
-                    continue
-                module_path = FlextInfraUtilitiesCodegenAstParsing.resolve_module(
-                    raw_module,
-                    node.level,
-                    current_pkg,
-                )
-                if module_path == current_pkg:
-                    continue
-                for alias in node.names:
-                    name = alias.name
-                    asname = alias.asname or name
-                    lazy_map[asname] = (module_path, name)
-            elif isinstance(node, ast.Import):
-                for alias in node.names:
-                    name = alias.name
-                    asname = alias.asname or name
-                    if name in c.Infra.SKIP_STDLIB:
-                        continue
-                    lazy_map[asname] = (name, "")
-        for node in tree.body:
-            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Name):
-                rhs = node.value.id
-                if rhs in lazy_map:
-                    mod, attr = lazy_map[rhs]
-                    for target in node.targets:
-                        if isinstance(target, ast.Name):
-                            lazy_map[target.id] = (mod, attr)
-        for a_name, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
-            if a_name not in lazy_map:
-                continue
-            alias_mod, alias_attr = lazy_map[a_name]
-            if alias_attr == a_name:
-                for name, (mod, _) in lazy_map.items():
-                    if mod == alias_mod and name.endswith(suffix) and (len(name) > 1):
-                        lazy_map[a_name] = (mod, name)
-                        break
-        return lazy_map
 
 
 __all__ = ["FlextInfraUtilitiesCodegenAstParsing"]

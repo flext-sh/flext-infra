@@ -21,8 +21,6 @@ from flext_infra import (
     u,
 )
 
-type RCensusReport = r[m.Infra.UtilitiesCensusReport]
-
 
 class FlextInfraRefactorCensus:
     """Census execution engine resolving family usage patterns."""
@@ -37,7 +35,7 @@ class FlextInfraRefactorCensus:
         root: Path,
         *,
         target: m.Infra.MROFamilyTarget | None = None,
-    ) -> RCensusReport:
+    ) -> r[m.Infra.UtilitiesCensusReport]:
         """Execute the workspace census."""
         target = target or u.Infra.build_mro_target(
             c.Infra.Census.DEFAULT_FAMILY,

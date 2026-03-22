@@ -41,21 +41,6 @@ class ProjectClassifier:
             family_chains=family_chains,
         )
 
-    def expected_dependency_bases_by_family(self) -> dict[str, list[str]]:
-        """Return expected parent facade class names grouped by family."""
-        project_name, dependencies = self._read_project_metadata()
-        internal_dependencies = self._internal_dependencies(
-            dependencies=dependencies,
-            project_name=project_name,
-        )
-        expected_by_family: dict[str, list[str]] = {}
-        for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
-            expected_by_family[family] = self._expected_parents_for_family(
-                family_suffix=suffix,
-                internal_dependencies=internal_dependencies,
-            )
-        return expected_by_family
-
     def _read_project_metadata(self) -> tuple[str, list[str]]:
         if not self._pyproject_path.is_file():
             return ("", [])

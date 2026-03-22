@@ -9,14 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
 import libcst as cst
-from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
+from libcst.metadata import MetadataWrapper, PositionProvider
 
-from flext_infra import c, p
+from flext_infra import c, p, u
 from flext_infra.models import m
 from flext_infra.refactor._detectors.python_module_loader_mixin import (
     FlextInfraRefactorDetectorPythonModuleLoaderMixin,
@@ -142,7 +141,9 @@ class ManualTypingAliasDetector(
                     violations.append(
                         nem.ManualTypingAliasViolation.create(
                             file=str(file_path),
-                            line=cls._line_for(node=small_stmt, positions=positions),
+                            line=u.Infra.cst_line_for(
+                                node=small_stmt, positions=positions
+                            ),
                             name=alias_name,
                             detail=(
                                 "PEP695 alias must be centralized under typings scope"
@@ -160,7 +161,9 @@ class ManualTypingAliasDetector(
                     violations.append(
                         nem.ManualTypingAliasViolation.create(
                             file=str(file_path),
-                            line=cls._line_for(node=small_stmt, positions=positions),
+                            line=u.Infra.cst_line_for(
+                                node=small_stmt, positions=positions
+                            ),
                             name=small_stmt.target.value,
                             detail=(
                                 "TypeAlias assignment must be centralized "
@@ -200,53 +203,4 @@ class ManualTypingAliasDetector(
             return ManualTypingAliasDetector._annotation_contains_type_alias(
                 annotation=annotation.value,
             )
-        return ManualTypingAliasDetector._module_to_str(annotation).endswith(
-            "TypeAlias"
-        )
-
-    @staticmethod
-    def _module_to_str(module: cst.BaseExpression | None) -> str:
-        """Convert a module expression to its dotted string representation.
-
-        Args:
-            module: A libcst expression or None to convert to string.
-
-        Returns:
-            Dotted module name (e.g., 'typing.TypeAlias').
-
-        """
-        if module is None:
-            return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""
-
-    @staticmethod
-    def _line_for(
-        *,
-        node: cst.CSTNode,
-        positions: Mapping[cst.CSTNode, CodeRange],
-    ) -> int:
-        """Get the line number of a CST node.
-
-        Args:
-            node: A libcst node to locate.
-            positions: Mapping from CST nodes to their code ranges.
-
-        Returns:
-            The line number of the node, or 1 if not found in positions.
-
-        """
-        code_range = positions.get(node)
-        if code_range is None:
-            return 1
-        return code_range.start.line
+        return u.Infra.cst_module_to_str(annotation).endswith("TypeAlias")

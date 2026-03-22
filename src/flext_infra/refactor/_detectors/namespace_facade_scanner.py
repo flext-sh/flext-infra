@@ -152,32 +152,6 @@ class NamespaceFacadeScanner:
                     yield from cls._walk_classes(item.body.body)
 
     @staticmethod
-    def _module_to_str(module: cst.BaseExpression | None) -> str:
-        """Convert a module expression to its dotted string representation.
-
-        Args:
-            module: A libcst expression or None to convert to string.
-
-        Returns:
-            Dotted module name (e.g., 'a.b.c').
-
-        """
-        if module is None:
-            return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression | cst.Attribute = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""
-
-    @staticmethod
     def project_class_stem(*, project_name: str) -> str:
         """Derive the facade class name stem from a project name.
 

@@ -207,7 +207,7 @@ def test_skips_definition_files() -> None:
         "id": "unify-typings",
         "fix_action": "unify_typings",
     })
-    updated_tree, changes = rule.apply(tree, file_path=Path("typings.py"))
+    updated_tree, changes = rule.apply(tree, _file_path=Path("typings.py"))
     updated = updated_tree.code
     assert "str | int | float | bool" in updated
     assert "t.Primitives" not in updated

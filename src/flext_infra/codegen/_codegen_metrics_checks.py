@@ -160,11 +160,10 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     @staticmethod
     def quality_gate_detect_duplicate_constant_groups(
         workspace_root: Path,
+        census_reports: Sequence[m.Infra.CensusReport],
     ) -> list[m.Infra.DuplicateConstantGroup]:
-        from flext_infra.codegen.census import FlextInfraCodegenCensus
-
         all_definitions: list[m.Infra.ConstantDefinition] = []
-        for report in FlextInfraCodegenCensus(workspace_root=workspace_root).run():
+        for report in census_reports:
             project_root = workspace_root / report.project
             constants_file = (
                 project_root / "src" / report.project.replace("-", "_") / "constants.py"

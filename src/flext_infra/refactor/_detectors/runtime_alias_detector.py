@@ -9,13 +9,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
 
-from flext_infra import c, p
+from flext_infra import c, p, u
 from flext_infra.models import m
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
@@ -137,7 +136,7 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         if not family:
             return []
         alias_assignments: list[tuple[int, str, str]] = []
-        for stmt in cls._iter_simple_statements(tree.body):
+        for stmt in u.Infra.cst_iter_simple_statements(tree.body):
             if not isinstance(stmt, cst.Assign):
                 continue
             for target in stmt.targets:
@@ -181,20 +180,3 @@ class RuntimeAliasDetector(p.Infra.Scanner):
 
         """
         return c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_name, "")
-
-    @staticmethod
-    def _iter_simple_statements(
-        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
-    ) -> Iterator[cst.BaseSmallStatement]:
-        """Iterate over simple statements from a module or compound body.
-
-        Args:
-            body: Sequence of statement lines or compound statements.
-
-        Yields:
-            Individual small statements from simple statement lines.
-
-        """
-        for item in body:
-            if isinstance(item, cst.SimpleStatementLine):
-                yield from item.body

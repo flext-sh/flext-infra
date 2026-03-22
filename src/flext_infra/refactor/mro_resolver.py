@@ -49,22 +49,6 @@ class FlextInfraRefactorMROResolver:
         return tuple(resolutions)
 
     @classmethod
-    def resolve_from_classification(
-        cls,
-        *,
-        family_classes: Mapping[t.Infra.FacadeFamily, type],
-        classification: m.Infra.ProjectClassification,
-    ) -> tuple[m.Infra.FamilyMROResolution, ...]:
-        """Resolve family MRO expectations from project classification payload."""
-        expected_base_chains = cls._normalize_classifier_chains(
-            family_chains=classification.family_chains,
-        )
-        return cls.resolve(
-            family_classes=family_classes,
-            expected_base_chains=expected_base_chains,
-        )
-
-    @classmethod
     def _resolve_family(
         cls,
         *,

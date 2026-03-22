@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 
 import libcst as cst
+from libcst.metadata import CodeRange
 
 
 class FlextInfraUtilitiesParsing:
@@ -43,6 +44,72 @@ class FlextInfraUtilitiesParsing:
             return cst.parse_module(file_path.read_text(encoding="utf-8"))
         except (OSError, cst.ParserSyntaxError):
             return None
+
+    @staticmethod
+    def cst_module_to_str(module: cst.BaseExpression | None) -> str:
+        """Convert a CST module expression to its dotted string representation.
+
+        Handles ``Name`` and ``Attribute`` nodes using iterative traversal.
+
+        Args:
+            module: A libcst expression or None to convert to string.
+
+        Returns:
+            Dotted module name (e.g., 'package.submodule'), or empty string.
+
+        """
+        if module is None:
+            return ""
+        if isinstance(module, cst.Name):
+            return module.value
+        if isinstance(module, cst.Attribute):
+            parts: list[str] = []
+            current: cst.BaseExpression = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+            return ".".join(reversed(parts))
+        return ""
+
+    @staticmethod
+    def cst_iter_simple_statements(
+        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
+    ) -> Iterator[cst.BaseSmallStatement]:
+        """Iterate over simple statements from a module or compound body.
+
+        Args:
+            body: Sequence of statement lines or compound statements.
+
+        Yields:
+            Individual small statements from simple statement lines.
+
+        """
+        for item in body:
+            if isinstance(item, cst.SimpleStatementLine):
+                yield from item.body
+
+    @staticmethod
+    def cst_line_for(
+        *,
+        node: cst.CSTNode,
+        positions: Mapping[cst.CSTNode, CodeRange],
+    ) -> int:
+        """Get the line number of a CST node.
+
+        Args:
+            node: A libcst node to locate.
+            positions: Mapping from CST nodes to their code ranges.
+
+        Returns:
+            The line number of the node, or 1 if not found in positions.
+
+        """
+        code_range = positions.get(node)
+        if code_range is None:
+            return 1
+        return code_range.start.line
 
     @staticmethod
     def cst_module_name(node: cst.CSTNode | None) -> str:

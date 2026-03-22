@@ -206,19 +206,6 @@ class FlextInfraUtilitiesRefactorMroScan:
         )
 
     @staticmethod
-    def _mro_scan_iter_constants_files(*, project_root: Path) -> list[Path]:
-        constants_spec = m.Infra.MROTargetSpec(
-            family_alias="c",
-            file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,
-            package_directory=c.Infra.MRO_CONSTANTS_DIRECTORY,
-            class_suffix=c.Infra.CONSTANTS_CLASS_SUFFIX,
-        )
-        return FlextInfraUtilitiesRefactorMroScan._mro_scan_iter_target_files(
-            project_root=project_root,
-            target_spec=constants_spec,
-        )
-
-    @staticmethod
     def _mro_scan_iter_target_files(
         *,
         project_root: Path,

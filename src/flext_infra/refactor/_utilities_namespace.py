@@ -21,9 +21,11 @@ import libcst as cst
 from flext_infra import (
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesParsing,
-    NamespaceFacadeScanner,
     c,
     m,
+)
+from flext_infra.refactor._detectors.namespace_facade_scanner import (
+    NamespaceFacadeScanner,
 )
 
 

@@ -637,3 +637,6 @@ class FlextInfraCodegenLazyInit(s[int]):
                 "--quiet",
                 str(path),
             ])
+
+
+__all__ = ["FlextInfraCodegenLazyInit"]

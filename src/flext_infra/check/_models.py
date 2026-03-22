@@ -74,9 +74,6 @@ class FlextInfraCheckModels:
             Field(default=0.0, description="Duration in seconds"),
         ]
 
-    class CheckResult(GateResult):
-        pass
-
     class ProjectResult(FlextModels.ArbitraryTypesModel):
         """Aggregated gate results for a single project."""
 
@@ -105,26 +102,6 @@ class FlextInfraCheckModels:
         def total_errors(self) -> int:
             """Total issue count across all gates."""
             return sum(len(v.issues) for v in self.gates.values())
-
-    class WorkspaceCheckReport(FlextModels.ArbitraryTypesModel):
-        generated_at: Annotated[
-            str,
-            Field(description="UTC timestamp for report generation"),
-        ]
-        gates: Annotated[
-            list[str],
-            Field(
-                default_factory=lambda: list[str](),
-                description="Gates executed in this run",
-            ),
-        ] = Field(default_factory=lambda: list[str]())
-        projects: Annotated[
-            list[FlextInfraCheckModels.ProjectResult],
-            Field(
-                default_factory=lambda: list[FlextInfraCheckModels.ProjectResult](),
-                description="Per-project check results",
-            ),
-        ] = Field(default_factory=lambda: list[FlextInfraCheckModels.ProjectResult]())
 
     # -- SARIF 2.1.0 report models -----------------------------------------
 

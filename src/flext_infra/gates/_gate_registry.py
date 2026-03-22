@@ -37,9 +37,6 @@ class FlextInfraGateRegistry:
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:
         return self._gates.get(gate_id)
 
-    def available_gates(self) -> frozenset[str]:
-        return frozenset(self._gates)
-
     def create(self, gate_id: str, workspace_root: Path) -> FlextInfraGate | None:
         gate_cls = self._gates.get(gate_id)
         return gate_cls(workspace_root) if gate_cls else None

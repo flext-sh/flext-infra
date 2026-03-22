@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
 
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 from yaml import YAMLError, safe_load
 
 from flext_core import r
@@ -31,14 +31,7 @@ class FlextInfraUtilitiesYaml:
         data = u.Infra.safe_load_yaml(path)
     """
 
-    _LIST_ADAPTER: TypeAdapter[list[JsonValue]] | None = None
     _MAPPING_ADAPTER: TypeAdapter[dict[str, t.Infra.InfraValue]] | None = None
-
-    @staticmethod
-    def _get_list_adapter() -> TypeAdapter[list[JsonValue]]:
-        if FlextInfraUtilitiesYaml._LIST_ADAPTER is None:
-            FlextInfraUtilitiesYaml._LIST_ADAPTER = TypeAdapter(list[JsonValue])
-        return FlextInfraUtilitiesYaml._LIST_ADAPTER
 
     @staticmethod
     def _get_mapping_adapter() -> TypeAdapter[dict[str, t.Infra.InfraValue]]:

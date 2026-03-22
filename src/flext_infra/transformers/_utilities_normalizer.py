@@ -66,20 +66,6 @@ class FlextInfraUtilitiesImportNormalizer:
 
     @staticmethod
     @lru_cache(maxsize=1)
-    def normalizer_facade_filenames() -> tuple[str, ...]:
-        """Return facade file names configured for normalization."""
-        config = FlextInfraUtilitiesImportNormalizer.normalizer_load_config().get(
-            "facade_filenames",
-        )
-        if not isinstance(config, list):
-            return ()
-        output: list[str] = [
-            item for item in config if isinstance(item, str) and item.endswith(".py")
-        ]
-        return tuple(output)
-
-    @staticmethod
-    @lru_cache(maxsize=1)
     def normalizer_wrong_source_config() -> tuple[bool, frozenset[str]]:
         """Return wrong-source detection flag and universal aliases."""
         config = FlextInfraUtilitiesImportNormalizer.normalizer_load_config().get(

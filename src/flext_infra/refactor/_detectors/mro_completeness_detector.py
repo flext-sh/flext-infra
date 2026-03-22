@@ -16,7 +16,7 @@ from typing import ClassVar, override
 import libcst as cst
 from libcst import metadata as cst_metadata
 
-from flext_infra import c, p
+from flext_infra import c, p, u
 from flext_infra.models import m
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
@@ -250,7 +250,7 @@ class MROCompletenessDetector(
         if isinstance(value, cst.Name):
             return value.value
         if isinstance(value, cst.Attribute):
-            return MROCompletenessDetector._module_to_str(value)
+            return u.Infra.cst_module_to_str(value)
         if isinstance(value, cst.Subscript):
             return MROCompletenessDetector._expr_to_base_name(value.value)
         return ""
@@ -269,7 +269,7 @@ class MROCompletenessDetector(
         if isinstance(value, cst.Name):
             return value.value
         if isinstance(value, cst.Attribute):
-            return MROCompletenessDetector._module_to_str(value)
+            return u.Infra.cst_module_to_str(value)
         return ""
 
     @classmethod
@@ -418,20 +418,3 @@ class MROCompletenessDetector(
                 detail=detail,
             ),
         )
-
-    @staticmethod
-    def _module_to_str(module: cst.BaseExpression | None) -> str:
-        if module is None:
-            return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression | cst.Attribute = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""

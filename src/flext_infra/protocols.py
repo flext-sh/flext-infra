@@ -103,14 +103,6 @@ class FlextInfraProtocols(FlextProtocols):
                 ...
 
         @runtime_checkable
-        class Reporter(Protocol):
-            """Contract for report writers that persist validation outputs."""
-
-            def report(self, results: Sequence[m.Infra.ProjectResult]) -> r[Path]:
-                """Write validation results to a report file."""
-                ...
-
-        @runtime_checkable
         class Validator(Protocol):
             """Contract for validation services."""
 

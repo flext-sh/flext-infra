@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Annotated, override
 
@@ -31,10 +31,10 @@ class FlextInfraTransformerImportNormalizer:
         project_package: str
         project_aliases: frozenset[str]
         declared_alias: str
-        alias_to_defining_module: Mapping[str, str]
-        alias_tiers: Mapping[str, int]
+        alias_to_defining_module: dict[str, str]
+        alias_tiers: dict[str, int]
         file_tier: int
-        package_reachability: Mapping[str, frozenset[str]]
+        package_reachability: dict[str, frozenset[str]]
         wrong_source_enabled: bool
         universal_aliases: frozenset[str]
         workspace_packages: frozenset[str]
@@ -70,7 +70,7 @@ class FlextInfraTransformerImportNormalizer:
                         if cand.is_dir() and (cand / "__init__.py").is_file():
                             package_dir = cand
 
-            alias_to_module = (
+            alias_to_module: dict[str, str] = (
                 u.Infra.normalizer_build_alias_to_defining_module(
                     package_name=package_name,
                     package_dir=package_dir,
@@ -78,7 +78,7 @@ class FlextInfraTransformerImportNormalizer:
                     alias_map=alias_map,
                 )
                 if package_dir is not None and len(package_name) > 0
-                else {}  # type: dict[str, str]
+                else {}
             )
             file_module = ""
             if package_dir is not None and len(package_name) > 0:
@@ -90,10 +90,10 @@ class FlextInfraTransformerImportNormalizer:
                     )
                 except ValueError:
                     file_module = ""
-            alias_to_facade = (
+            alias_to_facade: dict[str, str] = (
                 u.Infra.discover_project_aliases(project_root)
                 if project_root is not None
-                else {}  # type: dict[str, str]
+                else {}
             )
             facade_to_alias = {v: k for k, v in alias_to_facade.items()}
             declared_alias = facade_to_alias.get(file_path.name, "")

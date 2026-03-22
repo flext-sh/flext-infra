@@ -6,13 +6,12 @@ statement, which is needed for proper PEP 563 deferred evaluation of annotations
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
 
-from flext_infra import p
+from flext_infra import p, u
 from flext_infra.models import m
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
@@ -116,7 +115,7 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
             return []
         if len(tree.body) == 0:
             return []
-        simple_statements = list(cls._iter_simple_statements(tree.body))
+        simple_statements = list(u.Infra.cst_iter_simple_statements(tree.body))
         if (
             len(tree.body) == 1
             and len(simple_statements) == 1
@@ -136,7 +135,7 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         for stmt in tree.body:
             if isinstance(stmt, cst.SimpleStatementLine) and any(
                 isinstance(simple_stmt, cst.ImportFrom)
-                and cls._module_to_str(simple_stmt.module) == "__future__"
+                and u.Infra.cst_module_to_str(simple_stmt.module) == "__future__"
                 and not isinstance(simple_stmt.names, cst.ImportStar)
                 and any(
                     isinstance(alias.name, cst.Name)
@@ -153,46 +152,3 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
                 file=str(file_path),
             ),
         ]
-
-    @staticmethod
-    def _module_to_str(module: cst.BaseExpression | None) -> str:
-        """Convert a module expression to its dotted string representation.
-
-        Args:
-            module: A libcst expression or None to convert to string.
-
-        Returns:
-            Dotted module name (e.g., '__future__').
-
-        """
-        if module is None:
-            return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: list[str] = []
-            current: cst.BaseExpression = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""
-
-    @staticmethod
-    def _iter_simple_statements(
-        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
-    ) -> Iterator[cst.BaseSmallStatement]:
-        """Iterate over simple statements from a module or compound body.
-
-        Args:
-            body: Sequence of statement lines or compound statements.
-
-        Yields:
-            Individual small statements from simple statement lines.
-
-        """
-        for item in body:
-            if isinstance(item, cst.SimpleStatementLine):
-                yield from item.body

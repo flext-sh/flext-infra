@@ -76,48 +76,6 @@ class ImportAliasDetector(p.Infra.Scanner):
         return cls._alias_cache
 
     @classmethod
-    def _suggest_alias_import(cls, *, package: str, imported_names: list[str]) -> str:
-        """Suggest an alias import statement for the given names.
-
-        Args:
-            package: The package name being imported from.
-            imported_names: List of names being imported.
-
-        Returns:
-            Suggested import statement using available aliases.
-
-        """
-        alias_map = cls._get_alias_map()
-        allowed = alias_map.get(package, ())
-        allowed_set = set(allowed)
-        unique_names = {name for name in imported_names if name in allowed_set}
-        ordered_names = [name for name in allowed if name in unique_names]
-        return f"from {package} import {', '.join(ordered_names)}"
-
-    @staticmethod
-    def parse_imported_names(import_clause: str) -> list[str]:
-        """Parse imported names from an import clause string.
-
-        Args:
-            import_clause: The import clause (e.g., 'A, B as C, D').
-
-        Returns:
-            List of original names being imported.
-
-        """
-        no_comment = import_clause.split("#", maxsplit=1)[0].strip()
-        normalized_clause = no_comment.replace("(", "").replace(")", "")
-        names: list[str] = []
-        for part in normalized_clause.split(","):
-            token_text = part.strip()
-            if len(token_text) == 0:
-                continue
-            if " as " in token_text:
-                token_text = token_text.split(" as ", maxsplit=1)[0].strip()
-            names.append(token_text)
-        return names
-
-    @classmethod
     def _discover_package(cls, file_path: Path) -> str:
         """Discover the package name for a file path.
 

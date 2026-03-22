@@ -15,7 +15,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from flext_core import FlextRuntime, r
-from flext_infra import FlextInfraUtilitiesDiscovery, m, output
+from flext_infra import m, output
 
 
 class FlextInfraUtilitiesCli:
@@ -360,26 +360,6 @@ class FlextInfraUtilitiesCli:
             return 0
         output.error(result.error or failure_msg)
         return 1
-
-    @staticmethod
-    def _discover_projects_impl(
-        workspace: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        """Internal implementation that delegates to discovery module.
-
-        This method exists to allow iter_projects() to call the discovery
-        method without circular imports or tight coupling.
-
-        Args:
-            workspace: Workspace root path.
-
-        Returns:
-            Result containing list of ProjectInfo or failure message.
-
-        """
-        # Import here to avoid circular imports at module level
-
-        return FlextInfraUtilitiesDiscovery.discover_projects(workspace)
 
 
 __all__ = ["FlextInfraUtilitiesCli"]

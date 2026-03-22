@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -118,7 +117,7 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         except cst.ParserSyntaxError:
             return []
         violations: list[nem.CompatibilityAliasViolation] = []
-        for stmt in cls._iter_simple_statements(tree.body):
+        for stmt in u.Infra.cst_iter_simple_statements(tree.body):
             if not isinstance(stmt, cst.Assign):
                 continue
             if len(stmt.targets) != 1:
@@ -148,20 +147,3 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
                     ),
                 )
         return violations
-
-    @staticmethod
-    def _iter_simple_statements(
-        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
-    ) -> Iterator[cst.BaseSmallStatement]:
-        """Iterate over simple statements from a module or compound body.
-
-        Args:
-            body: Sequence of statement lines or compound statements.
-
-        Yields:
-            Individual small statements from simple statement lines.
-
-        """
-        for item in body:
-            if isinstance(item, cst.SimpleStatementLine):
-                yield from item.body
