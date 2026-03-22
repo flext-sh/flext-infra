@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from flext_core import r
 from flext_infra import c, u
 from flext_infra._utilities.formatting import FlextInfraUtilitiesSubprocess
 
@@ -21,9 +22,9 @@ class TestFormattingRunRuffFix:
         def _fake_run_checked(
             _self: FlextInfraUtilitiesSubprocess,
             cmd: list[str],
-        ) -> object:
+        ) -> r[bool]:
             calls.append(cmd)
-            return object()
+            return r[bool].ok(True)
 
         monkeypatch.setattr(
             "flext_infra._utilities.formatting.FlextInfraUtilitiesSubprocess.run_checked",

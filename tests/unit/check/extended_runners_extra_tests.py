@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from flext_infra import FlextInfraGate
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
@@ -39,7 +40,7 @@ def _patch_gate_run(
     """Patch gate._run() to return fixed CommandOutput."""
 
     def _stub_run(
-        _self: object,
+        _self: FlextInfraGate,
         _cmd: list[str],
         _cwd: Path,
         timeout: int = 120,

@@ -177,13 +177,13 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
             )
 
     def _is_object_name(self, node: cst.BaseExpression) -> bool:
-        if isinstance(node, cst.Name) and node.value == "object":
+        if isinstance(node, cst.Name) and node.value == "t.NormalizedValue":
             return True
         return bool(
             isinstance(node, cst.Attribute)
             and isinstance(node.value, cst.Name)
             and node.value.value == "builtins"
-            and node.attr.value == "object"
+            and node.attr.value == "t.NormalizedValue"
         )
 
     def _has_typeguard_return(self, node: cst.FunctionDef) -> bool:

@@ -253,7 +253,9 @@ class RedundantCastRemover(cst.CSTTransformer):
             unwrapped = self._unwrap_nested_object_cast(value_arg.value)
             if unwrapped is None:
                 return updated_node
-            self.changes.append("Removed redundant cast chain for type/object")
+            self.changes.append(
+                "Removed redundant cast chain for type/t.NormalizedValue"
+            )
             return unwrapped
         self.changes.append(f"Removed redundant cast for {target}")
         return value_arg.value
@@ -281,7 +283,7 @@ class RedundantCastRemover(cst.CSTTransformer):
         if type_arg.keyword is not None or value_arg.keyword is not None:
             return None
         target = self._extract_target_string(type_arg)
-        if target != "object":
+        if target != "t.NormalizedValue":
             return None
         return value_arg.value
 

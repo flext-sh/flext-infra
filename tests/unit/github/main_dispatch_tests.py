@@ -47,7 +47,7 @@ def _pr_args(**overrides: str | bool) -> m.Infra.PrWorkspaceArgs:
         "pr_release_on_merge": True,
     }
     defaults.update(overrides)
-    return m.Infra.PrWorkspaceArgs(**defaults)
+    return m.Infra.PrWorkspaceArgs.model_validate(defaults)
 
 
 class TestRunPrWorkspace:

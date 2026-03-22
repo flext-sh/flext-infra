@@ -31,9 +31,14 @@ class TestFlextInfraJsonService:
             ("test.json", '{"key": "value", "number": 42}', True, "key"),
             ("missing.json", None, True, "{}"),
             ("invalid.json", "{invalid json}", False, "JSON read error"),
-            ("array.json", "[1, 2, 3]", False, "must be object"),
+            ("array.json", "[1, 2, 3]", False, "must be t.NormalizedValue"),
         ],
-        ids=["read-existing", "read-missing", "read-invalid", "read-non-object"],
+        ids=[
+            "read-existing",
+            "read-missing",
+            "read-invalid",
+            "read-non-t.NormalizedValue",
+        ],
     )
     def test_read_json_scenarios(
         self,

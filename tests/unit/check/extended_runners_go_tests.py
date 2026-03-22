@@ -14,7 +14,8 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraGate, FlextInfraWorkspaceChecker
-from tests import h, m
+from tests import m
+from tests.helpers import h
 
 RunCallable = Callable[
     [list[str], Path, int, dict[str, str] | None],

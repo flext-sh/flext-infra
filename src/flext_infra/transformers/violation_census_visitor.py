@@ -36,7 +36,7 @@ class ViolationCensusVisitor(cst.CSTVisitor):
         if self._is_container_invariance(node):
             self._add_record(
                 kind="container_invariance",
-                detail="Found dict[str, t.Container|object] style annotation.",
+                detail="Found dict[str, t.Container|t.NormalizedValue] style annotation.",
             )
         if self._is_literal_usage(node):
             self._add_record(
@@ -247,12 +247,12 @@ class ViolationCensusVisitor(cst.CSTVisitor):
         if isinstance(expr, cst.Attribute) and isinstance(expr.value, cst.Name):
             return expr.value.value == "t" and expr.attr.value in {
                 "Container",
-                "object",
+                "t.NormalizedValue",
             }
         return False
 
     def _is_object_name(self, expr: cst.BaseExpression) -> bool:
-        return isinstance(expr, cst.Name) and expr.value == "object"
+        return isinstance(expr, cst.Name) and expr.value == "t.NormalizedValue"
 
     def _dotted_name(self, expr: cst.BaseExpression) -> str:
         if isinstance(expr, cst.Name):

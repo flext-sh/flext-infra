@@ -12,6 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import (
+    FlextInfraGate,
     FlextInfraMypyGate,
     FlextInfraPyrightGate,
     FlextInfraWorkspaceChecker,
@@ -49,7 +50,7 @@ def _patch_gate_run(
     """Patch gate._run() to return fixed CommandOutput."""
 
     def _stub_run(
-        _self: object,
+        _self: FlextInfraGate,
         _cmd: list[str],
         _cwd: Path,
         timeout: int = 120,

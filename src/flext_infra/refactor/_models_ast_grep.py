@@ -16,7 +16,7 @@ class FlextInfraRefactorAstGrepModels:
     class AstGrepMatchEnvelope(FlextModels.ArbitraryTypesModel):
         """Compact ast-grep envelope carrying file, symbol and location."""
 
-        model_config = ConfigDict(extra="ignore", populate_by_name=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", populate_by_name=True)
 
         file: Annotated[t.NonEmptyStr, Field(description="Matched file path")]
         symbol_name: Annotated[
@@ -39,7 +39,7 @@ class FlextInfraRefactorAstGrepModels:
     class MROSymbolCandidate(FlextModels.ArbitraryTypesModel):
         """Unified symbol candidate used by MRO scan and rewrites."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         symbol: Annotated[t.NonEmptyStr, Field(description="Symbol name")]
         line: Annotated[t.PositiveInt, Field(description="Source line number")]
@@ -59,7 +59,7 @@ class FlextInfraRefactorAstGrepModels:
     class MROImportRewrite(FlextModels.ArbitraryTypesModel):
         """Unified import rewrite payload for MRO reference updates."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         module: Annotated[t.NonEmptyStr, Field(description="Import module path")]
         import_name: Annotated[
@@ -82,7 +82,7 @@ class FlextInfraRefactorAstGrepModels:
     class MROScanReport(FlextModels.ArbitraryTypesModel):
         """Scan result for one constants module candidate file."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
         module: Annotated[t.NonEmptyStr, Field(description="Import module path")]
@@ -192,7 +192,7 @@ class FlextInfraRefactorAstGrepModels:
         ]
 
     class EngineConfig(FlextModels.FrozenStrictModel):
-        model_config = ConfigDict(extra="ignore", frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
 
         project_scan_dirs: Annotated[
             list[str],
@@ -219,7 +219,7 @@ class FlextInfraRefactorAstGrepModels:
     class MethodOrderRule(FlextModels.FrozenStrictModel):
         """A declarative method ordering rule for class reconstruction."""
 
-        model_config = ConfigDict(extra="ignore")
+        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
         category: Annotated[
             str | None,

@@ -16,6 +16,7 @@ from flext_infra import FlextInfraWorkspaceChecker
 from tests import m
 
 CheckProjectStub = Callable[[Path, list[str], Path], m.Infra.ProjectResult]
+ProjectResult = m.Infra.ProjectResult
 
 
 def _make_gate_exec(

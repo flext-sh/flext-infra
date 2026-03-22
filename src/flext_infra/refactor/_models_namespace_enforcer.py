@@ -12,7 +12,7 @@ class FlextInfraNamespaceEnforcerModels:
     """Namespace enforcer violation and report models."""
 
     class FacadeStatus(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         family: Annotated[t.NonEmptyStr, Field()]
         exists: Annotated[bool, Field()]
@@ -39,7 +39,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class LooseObjectViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.PositiveInt, Field()]
@@ -66,7 +66,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class ImportAliasViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.PositiveInt, Field()]
@@ -90,7 +90,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class NamespaceSourceViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.PositiveInt, Field()]
@@ -123,7 +123,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class ClassPlacementViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.PositiveInt, Field()]
@@ -150,7 +150,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class MROCompletenessViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.PositiveInt, Field()]
@@ -180,7 +180,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class InternalImportViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.PositiveInt, Field()]
@@ -204,7 +204,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class ManualProtocolViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.PositiveInt, Field()]
@@ -233,7 +233,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class CyclicImportViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         cycle: Annotated[tuple[str, ...], Field()]
         files: Annotated[tuple[str, ...], Field(default_factory=tuple)]
@@ -243,7 +243,7 @@ class FlextInfraNamespaceEnforcerModels:
             return cls(cycle=cycle, files=files)
 
     class RuntimeAliasViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.NonNegativeInt, Field(default=0)]
@@ -270,7 +270,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class FutureAnnotationsViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
 
@@ -279,7 +279,7 @@ class FlextInfraNamespaceEnforcerModels:
             return cls(file=file)
 
     class ManualTypingAliasViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.PositiveInt, Field()]
@@ -291,7 +291,7 @@ class FlextInfraNamespaceEnforcerModels:
             return cls(file=file, line=line, name=name, detail=detail)
 
     class CompatibilityAliasViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         line: Annotated[t.PositiveInt, Field()]
@@ -315,7 +315,7 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class ParseFailureViolation(FlextModels.ArbitraryTypesModel):
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field()]
         stage: Annotated[t.NonEmptyStr, Field()]

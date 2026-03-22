@@ -117,7 +117,6 @@ if TYPE_CHECKING:
         test_run_cli_with_multiple_projects,
     )
     from .check.extended_cli_entry_tests import (
-        ProjectResult,
         TestCheckMainEntryPoint,
         TestFixPyrelfyCLI,
         TestRunCLIExtended,
@@ -184,6 +183,7 @@ if TYPE_CHECKING:
     )
     from .check.extended_run_projects_tests import (
         CheckProjectStub,
+        ProjectResult,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
@@ -1011,7 +1011,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraCodegenTestProjectFactory",
     ),
     "GateClass": ("tests.unit.check.extended_runners_extra_tests", "GateClass"),
-    "ProjectResult": ("tests.unit.check.extended_cli_entry_tests", "ProjectResult"),
+    "ProjectResult": ("tests.unit.check.extended_run_projects_tests", "ProjectResult"),
     "RunCallable": ("tests.unit.check.extended_runners_go_tests", "RunCallable"),
     "RunProjectsMock": ("tests.unit.check._shared_fixtures", "RunProjectsMock"),
     "SampleModel": ("tests.unit.io.test_infra_json_io", "SampleModel"),

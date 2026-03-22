@@ -14,8 +14,8 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
 import flext_infra.release.__main__ as _main_mod
-from flext_core import m as core_m, r
-from flext_infra import u
+from flext_core import r
+from flext_infra import m, u
 from flext_infra.release.__main__ import main
 
 
@@ -57,7 +57,7 @@ def _patch_main_deps(
     class _Or:
         def run_release(
             self,
-            release_config: core_m.FrozenStrictModel,
+            release_config: m.Infra.ReleaseOrchestratorConfig,
         ) -> r[bool]:
             if capture is not None:
                 capture.append(
@@ -73,11 +73,12 @@ def _patch_main_deps(
     monkeypatch.setattr(_main_mod, "FlextInfraReleaseOrchestrator", _Or)
 
     if error_calls is not None:
+        ec: list[str] = error_calls
 
         class _Out:
             @staticmethod
             def error(msg: str) -> None:
-                error_calls.append(msg)
+                ec.append(msg)
 
         monkeypatch.setattr(_main_mod, "output", _Out)
 

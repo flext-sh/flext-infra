@@ -6,7 +6,7 @@ from collections.abc import MutableMapping
 from typing import cast
 
 import tomlkit
-from flext_tests import t, tm
+from flext_tests import tm
 
 from flext_infra import m, u
 from flext_infra.deps._phases import EnsurePytestConfigPhase
@@ -54,7 +54,7 @@ class TestEnsurePytestConfigPhase:
         tm.that(isinstance(ini_options, MutableMapping), eq=True)
         if isinstance(ini_options, MutableMapping):
             tm.that(
-                cast("t.Tests.Matcher.MatcherKwargValue", ini_options["minversion"]),
+                cast("str", ini_options["minversion"]),
                 eq="8.0",
             )
 
@@ -78,7 +78,7 @@ def test_ensure_pytest_config_phase_apply_minversion() -> None:
     tm.that(isinstance(ini_options, MutableMapping), eq=True)
     if isinstance(ini_options, MutableMapping):
         tm.that(
-            cast("t.Tests.Matcher.MatcherKwargValue", ini_options["minversion"]),
+            cast("str", ini_options["minversion"]),
             eq="8.0",
         )
 

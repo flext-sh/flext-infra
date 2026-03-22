@@ -34,7 +34,7 @@ class TestFlextInfraPathResolver:
         assert result.value.is_absolute()
 
     def test_workspace_root_with_path_object(self, tmp_path: Path) -> None:
-        """Test resolving workspace root with Path object."""
+        """Test resolving workspace root with Path t.NormalizedValue."""
         resolver = FlextInfraUtilitiesPaths()
         result = resolver.workspace_root(tmp_path)
         tm.ok(result)

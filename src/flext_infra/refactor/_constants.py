@@ -68,7 +68,7 @@ class FlextInfraRefactorConstants:
         "__gt__",
         "__ge__",
     })
-    "Dunder methods where `object` parameter type is canonical Python."
+    "Dunder methods where `t.NormalizedValue` parameter type is canonical Python."
     FUTURE_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({
         "ensure_future_annotations",
     })

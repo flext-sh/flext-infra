@@ -1,4 +1,4 @@
-"""Rule implementation for replacing forbidden ``object`` annotations."""
+"""Rule implementation for replacing forbidden ``t.NormalizedValue`` annotations."""
 
 from __future__ import annotations
 

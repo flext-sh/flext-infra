@@ -14,12 +14,14 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import (
+    FlextInfraGate,
     FlextInfraMypyGate,
     FlextInfraPyreflyGate,
     FlextInfraPyrightGate,
     FlextInfraWorkspaceChecker,
 )
-from tests import h, patch_python_dir_detection
+from tests import patch_python_dir_detection
+from tests.helpers import h
 
 # Local alias for backward compatibility
 _patch_python_dir_detection = patch_python_dir_detection
@@ -43,7 +45,7 @@ def _stub_run(
     result: SimpleNamespace,
 ) -> Callable[..., SimpleNamespace]:
     def _run(
-        _self: object,
+        _self: FlextInfraGate,
         cmd: list[str],
         cwd: Path,
         timeout: int = 120,

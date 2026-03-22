@@ -222,7 +222,7 @@ class FlextInfraCheckModels:
     class SarifReport(FlextModels.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
-        model_config = ConfigDict(extra="forbid", populate_by_name=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", populate_by_name=True)
 
         schema_uri: Annotated[
             str,

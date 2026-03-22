@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import override
 
 from flext_tests import s
 
@@ -22,6 +23,10 @@ class RealGitService(s[bool]):
     Uses c.Infra.Cli.GitCmd constants for git operations and
     r (r) for railway-oriented error handling.
     """
+
+    @override
+    def execute(self) -> r[bool]:
+        return r[bool].ok(True)
 
     def _as_success(self, result: r[bool], operation: str) -> r[bool]:
         if result.is_failure:

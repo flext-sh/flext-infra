@@ -23,7 +23,7 @@ from ...models import m
 
 
 def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
-    defaults: dict[str, t.Scalar | None] = {
+    defaults: dict[str, t.Container | None] = {
         "workspace": Path(),
         "project": None,
         "projects": None,
@@ -35,7 +35,7 @@ def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
 
 
 def _fix_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
-    defaults: dict[str, t.Scalar | None] = {
+    defaults: dict[str, t.Container | None] = {
         "workspace": Path(),
         "project": None,
         "projects": None,

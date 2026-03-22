@@ -14,6 +14,7 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
+from tests import t
 
 
 def _fake_process(
@@ -124,7 +125,7 @@ class TestProcessFileReadError:
 
         def _fake_fix(
             _s: FlextInfraConfigFixer,
-            _d: MutableMapping[str, object],
+            _d: MutableMapping[str, t.Infra.InfraValue],
             _r: Path,
         ) -> list[str]:
             return ["fix1"]

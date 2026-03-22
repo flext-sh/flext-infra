@@ -2,14 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Class Nesting Mappings Schema",
   "description": "Schema for validating class nesting refactoring mappings",
-  "type": "object",
+  "type": "t.NormalizedValue",
   "required": ["class_nesting"],
   "properties": {
     "class_nesting": {
       "type": "array",
       "description": "List of class nesting mappings",
       "items": {
-        "type": "object",
+        "type": "t.NormalizedValue",
         "required": ["loose_name", "current_file", "target_namespace"],
         "properties": {
           "loose_name": {

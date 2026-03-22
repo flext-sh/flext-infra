@@ -39,7 +39,11 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
                 payload,
             )
         except ValidationError:
-            return (None, str(resolved), "baseline payload is not a JSON object")
+            return (
+                None,
+                str(resolved),
+                "baseline payload is not a JSON t.NormalizedValue",
+            )
         return (raw, str(resolved), "")
 
     @staticmethod

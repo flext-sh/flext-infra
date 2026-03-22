@@ -24,6 +24,7 @@ from flext_infra import (
     FlextInfraUtilitiesVersioning,
     m,
 )
+from tests import t
 
 from ._stubs_extra import (
     StubLinter,
@@ -146,7 +147,7 @@ class StubJsonIo(FlextInfraUtilitiesIo):
     """Stub for FlextInfraUtilitiesIo (json_io dependency)."""
 
     write_json_returns: ClassVar[r[bool]] = r[bool].ok(True)
-    write_json_calls: ClassVar[list[tuple[Path, object]]] = []
+    write_json_calls: ClassVar[list[tuple[Path, t.NormalizedValue]]] = []
 
     def __init__(self, write_returns: r[bool] | None = None) -> None:
         StubJsonIo.write_json_returns = write_returns or r[bool].ok(True)

@@ -52,7 +52,9 @@ class FlextInfraUtilitiesIo:
         except (ValidationError, OSError) as exc:
             return r[Mapping[str, JsonValue]].fail(f"JSON read error: {exc}")
         if not isinstance(loaded_obj, dict):
-            return r[Mapping[str, JsonValue]].fail("JSON root must be object")
+            return r[Mapping[str, JsonValue]].fail(
+                "JSON root must be t.NormalizedValue"
+            )
         try:
             parser: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(
                 dict[str, JsonValue],
@@ -61,7 +63,7 @@ class FlextInfraUtilitiesIo:
             return r[Mapping[str, JsonValue]].ok(data)
         except ValidationError as exc:
             return r[Mapping[str, JsonValue]].fail(
-                f"JSON object validation error: {exc}",
+                f"JSON t.NormalizedValue validation error: {exc}",
             )
 
     @staticmethod
@@ -165,7 +167,7 @@ class FlextInfraUtilitiesIo:
         ensure_ascii: bool = False,
         indent: int | None = 2,
     ) -> r[str]:
-        """Serialize a Python object to a JSON string.
+        """Serialize a Python t.NormalizedValue to a JSON string.
 
         Args:
             data: JSON-serializable container value.

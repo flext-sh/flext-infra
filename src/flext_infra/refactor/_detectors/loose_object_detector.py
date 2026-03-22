@@ -53,13 +53,13 @@ class LooseObjectDetector(p.Infra.Scanner):
 
     @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for loose top-level object violations.
+        """Scan a file for loose top-level t.NormalizedValue violations.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected loose object violations.
+            ScanResult containing detected loose t.NormalizedValue violations.
 
         """
         violations = type(self).scan_file_impl(
@@ -124,7 +124,7 @@ class LooseObjectDetector(p.Infra.Scanner):
             _parse_failures: Unused parameter for interface compatibility.
 
         Returns:
-            List of LooseObjectViolation for each loose object found.
+            List of LooseObjectViolation for each loose t.NormalizedValue found.
 
         """
         _ = _parse_failures
@@ -173,7 +173,7 @@ class LooseObjectDetector(p.Infra.Scanner):
             positions: Mapping of nodes to their code ranges.
 
         Returns:
-            LooseObjectViolation if a loose object is found, None otherwise.
+            LooseObjectViolation if a loose t.NormalizedValue is found, None otherwise.
 
         """
         if isinstance(stmt, cst.SimpleStatementLine):
@@ -226,7 +226,7 @@ class LooseObjectDetector(p.Infra.Scanner):
             positions: Mapping of nodes to their code ranges.
 
         Returns:
-            LooseObjectViolation if a loose object is found, None otherwise.
+            LooseObjectViolation if a loose t.NormalizedValue is found, None otherwise.
 
         """
         if isinstance(stmt, (cst.Import, cst.ImportFrom)):

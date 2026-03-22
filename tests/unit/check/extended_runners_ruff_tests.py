@@ -26,10 +26,10 @@ from flext_infra import (
 )
 from tests import (
     create_checker_project,
-    h,
     patch_gate_run,
     run_command_failure_check,
 )
+from tests.helpers import h
 
 
 def _create_run_raw_result(

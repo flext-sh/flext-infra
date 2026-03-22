@@ -83,7 +83,7 @@ class FlextInfraGithubModels:
     class PrWorkspaceArgs(FlextModels.ArbitraryTypesModel):
         """Parsed PR workspace arguments from CLI."""
 
-        model_config = ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
         include_root: Annotated[
             bool,
@@ -126,7 +126,7 @@ class FlextInfraGithubModels:
     class SyncOperation(FlextModels.ArbitraryTypesModel):
         """Describe one workflow synchronization operation."""
 
-        model_config = ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
         project: Annotated[str, Field(..., description="Project name.")]
         path: Annotated[

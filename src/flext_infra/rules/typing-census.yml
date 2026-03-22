@@ -3,11 +3,11 @@
 # Engine discovers violations dynamically via TypingAnnotationCensusVisitor.
 
 rules:
-  - id: replace-object-annotations
-    name: "Replace object-based type annotations"
+  - id: replace-t.NormalizedValue-annotations
+    name: "Replace t.NormalizedValue-based type annotations"
     description: >
-      Detect and replace bare object, dict[str, object], Mapping[str, object],
-      list[object], Sequence[object], and TypeAdapter[object] annotations with
+      Detect and replace bare t.NormalizedValue, dict[str, t.NormalizedValue], Mapping[str, t.NormalizedValue],
+      list[t.NormalizedValue], Sequence[t.NormalizedValue], and TypeAdapter[t.NormalizedValue] annotations with
       t.ContainerValue equivalents. Detection via CST visitor, not regex.
     enabled: true
     severity: error

@@ -107,13 +107,13 @@ def patch_gate_run(
     def _stub_run(
         result: m.Infra.CommandOutput | SimpleNamespace,
     ) -> Callable[
-        [object, list[str], Path, int, dict[str, str] | None],
+        [t.NormalizedValue, list[str], Path, int, dict[str, str] | None],
         m.Infra.CommandOutput,
     ]:
         """Create stub returning fixed result or SimpleNamespace."""
 
         def _run(
-            _self: object,
+            _self: t.NormalizedValue,
             _cmd: list[str],
             _cwd: Path,
             _timeout: int = 120,
@@ -276,7 +276,7 @@ def patch_python_dir_detection(
     Single Responsibility: Mock python directory discovery for gate tests.
     """
 
-    def _existing_dirs(_self: object, _project_dir: Path) -> list[str]:
+    def _existing_dirs(_self: t.NormalizedValue, _project_dir: Path) -> list[str]:
         del _self, _project_dir
         return ["src"]
 

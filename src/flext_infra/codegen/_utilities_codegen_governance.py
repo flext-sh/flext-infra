@@ -5,7 +5,7 @@ from typing import ClassVar, Final
 
 from yaml import safe_load
 
-from flext_infra import m
+from flext_infra import m, t
 
 
 class FlextInfraUtilitiesCodegenGovernance:
@@ -19,7 +19,7 @@ class FlextInfraUtilitiesCodegenGovernance:
         cached = FlextInfraUtilitiesCodegenGovernance._config_cache.get("config")
         if cached is not None:
             return cached
-        raw: dict[str, object] = (
+        raw: dict[str, t.NormalizedValue] = (
             safe_load(
                 FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE.read_text("utf-8"),
             )

@@ -138,7 +138,7 @@ class FlextInfraRefactorModels(
     class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, Field(description="Class name")]
         line: Annotated[
@@ -152,7 +152,7 @@ class FlextInfraRefactorModels(
     class LooseClassViolation(m.ArbitraryTypesModel):
         """A detected loose-class naming violation with confidence."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field(description="Source file path")]
         line: Annotated[t.PositiveInt, Field(description="Line number")]
@@ -169,7 +169,7 @@ class FlextInfraRefactorModels(
     class FamilyMROResolution(m.ArbitraryTypesModel):
         """Resolution payload for one facade family MRO."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         family: Annotated[t.NonEmptyStr, Field(description="Facade family letter")]
         expected_bases: Annotated[
@@ -192,7 +192,7 @@ class FlextInfraRefactorModels(
     class ProjectClassification(m.ArbitraryTypesModel):
         """Result of classifying a project by kind and family chains."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         project_kind: Annotated[
             t.NonEmptyStr,
@@ -210,7 +210,7 @@ class FlextInfraRefactorModels(
     class ClassNestingMapping(m.ArbitraryTypesModel):
         """Unified mapping contract for class-nesting rewrite planning."""
 
-        model_config = ConfigDict(extra="ignore", frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
 
         loose_name: Annotated[
             str,
@@ -244,7 +244,7 @@ class FlextInfraRefactorModels(
     class ClassNestingViolation(m.ArbitraryTypesModel):
         """Normalized class-nesting violation with rewrite metadata."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, Field(description="Source module path")]
         line: Annotated[t.PositiveInt, Field(description="Line number")]
@@ -271,7 +271,7 @@ class FlextInfraRefactorModels(
     class ClassNestingPolicy(m.FrozenStrictModel):
         """Validated policy contract used by class-nesting transformers."""
 
-        model_config = ConfigDict(extra="ignore", frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
 
         family_name: Annotated[
             t.NonEmptyStr,
@@ -645,7 +645,7 @@ class FlextInfraRefactorModels(
     class ParsedPythonModule(m.ArbitraryTypesModel):
         """Result of parsing a Python source file into AST."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         source: Annotated[str, Field(description="Raw source text")]
         tree: Annotated[ast.Module, Field(description="Parsed AST module node")]
@@ -658,7 +658,7 @@ class FlextInfraRefactorModels(
         Defines which MRO family to scan (e.g. utilities, constants, models).
         """
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         family: Annotated[
             t.NonEmptyStr,
@@ -700,7 +700,7 @@ class FlextInfraRefactorModels(
     class CensusMethodInfo(m.ArbitraryTypesModel):
         """A public method extracted from a _utilities class."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, Field(description="Method name")]
         method_type: Annotated[
@@ -712,7 +712,7 @@ class FlextInfraRefactorModels(
     class CensusUsageRecord(m.ArbitraryTypesModel):
         """A single method usage found via CST analysis."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         class_name: Annotated[
             t.NonEmptyStr,
@@ -729,7 +729,7 @@ class FlextInfraRefactorModels(
     class CensusMethodSummary(m.ArbitraryTypesModel):
         """Aggregated usage counts for a single method."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, Field(description="Method name")]
         method_type: Annotated[str, Field(description="Method kind")]
@@ -746,7 +746,7 @@ class FlextInfraRefactorModels(
     class CensusClassSummary(m.ArbitraryTypesModel):
         """Aggregated census for one _utilities class."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         class_name: Annotated[
             t.NonEmptyStr,
@@ -766,7 +766,7 @@ class FlextInfraRefactorModels(
     class CensusProjectMethodUsage(m.ArbitraryTypesModel):
         """Usage of a method within a specific project."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         class_name: Annotated[
             t.NonEmptyStr,
@@ -779,7 +779,7 @@ class FlextInfraRefactorModels(
     class CensusProjectSummary(m.ArbitraryTypesModel):
         """Usage breakdown for one project."""
 
-        model_config = ConfigDict(frozen=True)
+        model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
         project_name: Annotated[
             t.NonEmptyStr,

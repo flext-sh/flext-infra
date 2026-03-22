@@ -56,7 +56,7 @@ class Spy:
         return self.call_args[1]
 
     @property
-    def args(self) -> tuple[object, ...]:
+    def args(self) -> tuple[t.NormalizedValue, ...]:
         """Return positional args from last call."""
         if self.call_args is None:
             return ()

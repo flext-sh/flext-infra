@@ -82,7 +82,7 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
                     returns=updated_node.returns.with_changes(annotation=replacement),
                 )
                 self._mark_modified(
-                    "Replaced return annotation: object -> t.ContainerValue"
+                    "Replaced return annotation: t.NormalizedValue -> t.ContainerValue"
                 )
         self._current_function = (
             self._function_stack.pop() if self._function_stack else ""
@@ -118,7 +118,7 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
                     ),
                 )
                 self._mark_modified(
-                    "Replaced parameter annotation: object -> t.ContainerValue"
+                    "Replaced parameter annotation: t.NormalizedValue -> t.ContainerValue"
                 )
         self._param_depth = max(0, self._param_depth - 1)
         return result_node
@@ -134,7 +134,7 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         if replacement is None:
             return updated_node
         self._mark_modified(
-            "Replaced assignment annotation: object -> t.ContainerValue"
+            "Replaced assignment annotation: t.NormalizedValue -> t.ContainerValue"
         )
         return updated_node.with_changes(
             annotation=updated_node.annotation.with_changes(annotation=replacement),
@@ -158,7 +158,9 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         replacement = self._replace_expression(updated_node.annotation)
         if replacement is None:
             return updated_node
-        self._mark_modified("Replaced annotation: object -> t.ContainerValue")
+        self._mark_modified(
+            "Replaced annotation: t.NormalizedValue -> t.ContainerValue"
+        )
         return updated_node.with_changes(annotation=replacement)
 
     @override
@@ -205,13 +207,13 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
 
     @staticmethod
     def _is_object_ref(node: cst.BaseExpression) -> bool:
-        if isinstance(node, cst.Name) and node.value == "object":
+        if isinstance(node, cst.Name) and node.value == "t.NormalizedValue":
             return True
         return bool(
             isinstance(node, cst.Attribute)
             and isinstance(node.value, cst.Name)
             and node.value.value == "builtins"
-            and node.attr.value == "object"
+            and node.attr.value == "t.NormalizedValue"
         )
 
     def _replace_expression(

@@ -6,7 +6,7 @@ from collections.abc import MutableMapping
 from typing import cast
 
 import tomlkit
-from flext_tests import t, tm
+from flext_tests import tm
 
 from flext_infra import EnsurePyreflyConfigPhase, m, u
 
@@ -58,7 +58,7 @@ def test_ensure_pyrefly_config_phase_apply_python_version() -> None:
     tm.that(isinstance(pyrefly, MutableMapping), eq=True)
     if isinstance(pyrefly, MutableMapping):
         tm.that(
-            cast("t.Tests.Matcher.MatcherKwargValue", pyrefly["python-version"]),
+            cast("str", pyrefly["python-version"]),
             eq="3.13",
         )
 
@@ -81,7 +81,7 @@ def test_ensure_pyrefly_config_phase_apply_ignore_errors() -> None:
     if isinstance(pyrefly, MutableMapping):
         tm.that(
             cast(
-                "t.Tests.Matcher.MatcherKwargValue",
+                "str",
                 pyrefly["ignore-errors-in-generated-code"],
             ),
             eq=True,

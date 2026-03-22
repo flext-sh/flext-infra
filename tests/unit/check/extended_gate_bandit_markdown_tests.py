@@ -146,7 +146,7 @@ class TestWorkspaceCheckerRunMarkdown:
         captured_args: list[list[str]] = []
 
         def _fake_run(
-            _self: object,
+            _self: FlextInfraMarkdownGate,
             cmd: list[str],
             cwd: Path,
             timeout: int = 120,

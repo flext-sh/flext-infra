@@ -61,7 +61,7 @@ def test_generator_generate_with_none_config_uses_default() -> None:
 
 
 def test_generator_generate_with_basemk_config_object() -> None:
-    """Test generate() accepts BaseMkConfig object directly."""
+    """Test generate() accepts BaseMkConfig t.NormalizedValue directly."""
     config = im.Infra.BaseMkConfig(
         project_name="test-proj",
         python_version="3.13",

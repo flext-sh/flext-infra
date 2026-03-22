@@ -154,7 +154,7 @@ class FlextInfraRefactorMROResolver:
     ) -> tuple[str, ...]:
         namespace_order: list[str] = []
         for current in inspect.getmro(facade_class):
-            if current is object:
+            if current is t.NormalizedValue:
                 continue
             class_namespace = cls._namespace_from_class_name(
                 class_name=current.__name__,

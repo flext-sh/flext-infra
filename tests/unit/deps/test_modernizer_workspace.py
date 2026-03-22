@@ -7,7 +7,7 @@ from typing import cast
 from unittest.mock import patch
 
 import tomlkit
-from flext_tests import t, tm
+from flext_tests import tm
 
 from flext_infra import u
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
@@ -23,7 +23,7 @@ class TestReadDoc:
         tm.that(result is None, eq=False)
         if result is not None:
             tm.that(
-                cast("t.Tests.Matcher.MatcherKwargValue", result["key"]),
+                cast("str", result["key"]),
                 eq="value",
             )
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from flext_tests import t, tm
+from flext_tests import tm
 
 from flext_infra import c as infra_c
 
@@ -108,15 +108,15 @@ class TestFlextInfraConstantsExcludedNamespace:
     """Tests for Excluded namespace constants."""
 
     def test_common_excluded_dirs_is_string(self) -> None:
-        excluded = cast(
-            "t.Tests.Matcher.MatcherKwargValue",
+        excluded: frozenset[str] = cast(
+            "frozenset[str]",
             infra_c.Infra.Excluded.COMMON_EXCLUDED_DIRS,
         )
         tm.that(excluded, is_=frozenset)
 
     def test_common_excluded_dirs_contains_standard_dirs(self) -> None:
-        excluded = cast(
-            "t.Tests.Matcher.MatcherKwargValue",
+        excluded: frozenset[str] = cast(
+            "frozenset[str]",
             infra_c.Infra.Excluded.COMMON_EXCLUDED_DIRS,
         )
         tm.that(excluded, contains=".git")
@@ -133,7 +133,7 @@ class TestFlextInfraConstantsExcludedNamespace:
     def test_doc_excluded_dirs_includes_site(self) -> None:
         tm.that(
             cast(
-                "t.Tests.Matcher.MatcherKwargValue",
+                "frozenset[str]",
                 infra_c.Infra.Excluded.DOC_EXCLUDED_DIRS,
             ),
             contains="site",
@@ -145,8 +145,8 @@ class TestFlextInfraConstantsExcludedNamespace:
         tm.that(skip_dirs.issuperset(common), eq=True)
 
     def test_pyproject_skip_dirs_includes_flext_dirs(self) -> None:
-        skip_dirs = cast(
-            "t.Tests.Matcher.MatcherKwargValue",
+        skip_dirs: frozenset[str] = cast(
+            "frozenset[str]",
             infra_c.Infra.Excluded.PYPROJECT_SKIP_DIRS,
         )
         tm.that(skip_dirs, contains=".flext-deps")
@@ -160,7 +160,7 @@ class TestFlextInfraConstantsExcludedNamespace:
     def test_check_excluded_dirs_includes_flext_deps(self) -> None:
         tm.that(
             cast(
-                "t.Tests.Matcher.MatcherKwargValue",
+                "frozenset[str]",
                 infra_c.Infra.Excluded.CHECK_EXCLUDED_DIRS,
             ),
             contains=".flext-deps",
@@ -169,21 +169,21 @@ class TestFlextInfraConstantsExcludedNamespace:
     def test_excluded_dirs_are_strings(self) -> None:
         tm.that(
             cast(
-                "t.Tests.Matcher.MatcherKwargValue",
+                "frozenset[str]",
                 infra_c.Infra.Excluded.DOC_EXCLUDED_DIRS,
             ),
             is_=frozenset,
         )
         tm.that(
             cast(
-                "t.Tests.Matcher.MatcherKwargValue",
+                "frozenset[str]",
                 infra_c.Infra.Excluded.PYPROJECT_SKIP_DIRS,
             ),
             is_=frozenset,
         )
         tm.that(
             cast(
-                "t.Tests.Matcher.MatcherKwargValue",
+                "frozenset[str]",
                 infra_c.Infra.Excluded.CHECK_EXCLUDED_DIRS,
             ),
             is_=frozenset,

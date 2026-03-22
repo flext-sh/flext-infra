@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import types
 from pathlib import Path
+from typing import cast
 
 import pytest
 from flext_tests import tm
 
 import flext_infra.deps as detector_module
 from flext_core import r
+from flext_infra import p
 from flext_infra.deps import detector as _det_mod
 
 
@@ -104,7 +106,7 @@ def _setup_detector(
     )
     _patch_deptry_exists(monkeypatch, deptry_exists)
     det = detector_module.FlextInfraRuntimeDevDependencyDetector()
-    det.deps = deps
+    det.deps = cast("p.Infra.DepsService", deps)
     return det
 
 

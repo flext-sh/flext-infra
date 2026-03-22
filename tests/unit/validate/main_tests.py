@@ -25,7 +25,7 @@ from flext_infra.validate.__main__ import (
 _CWD = "/home/marlonsc/flext/flext-core"
 
 
-def _ns(**kwargs: str | list[str] | None) -> argparse.Namespace:
+def _ns(**kwargs: str | list[str] | Path | None) -> argparse.Namespace:
     """Create a simple namespace from keyword arguments."""
     return argparse.Namespace(**kwargs)
 

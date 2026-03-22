@@ -565,7 +565,7 @@ class FlextInfraUtilitiesRefactor(
         family: str,
         core_project: str = c.Infra.Census.CORE_PROJECT,
     ) -> m.Infra.MROFamilyTarget:
-        """Create a generic target config object from a family code."""
+        """Create a generic target config t.NormalizedValue from a family code."""
         if family not in c.Infra.MRO_FAMILIES:
             msg = f"Invalid MRO family {family}"
             raise ValueError(msg)

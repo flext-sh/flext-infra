@@ -517,7 +517,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         seen_names: set[str] = set()
 
         # Walk MRO to get all attributes (constants, enums, classes, types)
-        for base_cls in cls.__mro__[:-1]:  # Exclude object
+        for base_cls in cls.__mro__[:-1]:  # Exclude t.NormalizedValue
             for attr_name in dir(base_cls):
                 if attr_name.startswith("_") or attr_name in seen_names:
                     continue
