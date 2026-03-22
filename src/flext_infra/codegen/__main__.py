@@ -145,17 +145,25 @@ class FlextInfraCodegenCommand:
         for i, fix in enumerate(fixes, 1):
             value_str = str(fix.get("value", ""))[:50]
             canonical = str(fix.get("canonical_name", ""))
-            usages = int(fix.get("canonical_usages", 0))
-            duplicates = fix.get("duplicates", [])
+            usages_val = fix.get("canonical_usages", 0)
+            usages = int(usages_val) if isinstance(usages_val, int) else 0
+            duplicates_val = fix.get("duplicates", [])
+            duplicates: list[dict[str, str | int]] = (
+                duplicates_val if isinstance(duplicates_val, list) else []
+            )
             output.info(
                 f"{i}. Value: {value_str}"
                 f" | Keep: {canonical} ({usages} uses)"
                 f" | Replace {len(duplicates)} others"
             )
             for dup in duplicates:
-                dup_name = str(dup.get("name", ""))
-                dup_usages = int(dup.get("usages", 0))
-                output.info(f"   - {dup_name} ({dup_usages} uses)")
+                if isinstance(dup, dict):
+                    dup_name = str(dup.get("name", ""))
+                    dup_usages_val = dup.get("usages", 0)
+                    dup_usages = (
+                        int(dup_usages_val) if isinstance(dup_usages_val, int) else 0
+                    )
+                    output.info(f"   - {dup_name} ({dup_usages} uses)")
 
         # Apply fixes
         output.info(f"\nApplying {len(fixes)} deduplication fixes...")
@@ -168,10 +176,14 @@ class FlextInfraCodegenCommand:
                 dry_run=cli.dry_run,
             )
             if result.get("status") == "success":
-                files_mod = int(result.get("files_modified", 0))
+                files_mod_val = result.get("files_modified", 0)
+                files_mod = int(files_mod_val) if isinstance(files_mod_val, int) else 0
                 total_files_modified += files_mod
                 canonical = str(result.get("canonical", ""))
-                replaced = result.get("replaced", [])
+                replaced_val = result.get("replaced", [])
+                replaced: list[str] = (
+                    replaced_val if isinstance(replaced_val, list) else []
+                )
                 output.info(
                     f"✓ {canonical}: replaced {len(replaced)} in {files_mod} files"
                 )

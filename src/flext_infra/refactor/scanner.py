@@ -10,8 +10,6 @@ from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import TopLevelClassCollector, c, m, r, t, u
 
-from ._models import RDictPathGrep
-
 type RConfigMapping = r[t.Infra.ContainerDict]
 type RListPath = r[list[Path]]
 type RPath = r[Path]
@@ -164,7 +162,7 @@ class FlextInfraRefactorLooseClassScanner:
         )
         return out2
 
-    def _scan_with_ast_grep(self, project_root: Path) -> RDictPathGrep:
+    def _scan_with_ast_grep(self, project_root: Path) -> r[dict[Path, dict[str, int]]]:
         cmd = [
             "sg",
             "--pattern",
@@ -176,12 +174,12 @@ class FlextInfraRefactorLooseClassScanner:
         ]
         capture = u.Infra.capture(cmd)
         if capture.is_failure:
-            out: RDictPathGrep = r[dict[Path, dict[str, int]]].fail(
+            out: r[dict[Path, dict[str, int]]] = r[dict[Path, dict[str, int]]].fail(
                 capture.error or "ast-grep failed",
             )
             return out
         if not capture.value:
-            out2: RDictPathGrep = r[dict[Path, dict[str, int]]].ok({})
+            out2: r[dict[Path, dict[str, int]]] = r[dict[Path, dict[str, int]]].ok({})
             return out2
         try:
             json_raw: str | bytes | bytearray = capture.value
@@ -189,7 +187,9 @@ class FlextInfraRefactorLooseClassScanner:
                 list[m.Infra.AstGrepMatchEnvelope],
             ).validate_json(json_raw)
         except ValidationError as exc:
-            out3: RDictPathGrep = r[dict[Path, dict[str, int]]].fail(str(exc))
+            out3: r[dict[Path, dict[str, int]]] = r[dict[Path, dict[str, int]]].fail(
+                str(exc)
+            )
             return out3
         idx: dict[Path, dict[str, int]] = {}
         for entry in entries:
@@ -203,7 +203,7 @@ class FlextInfraRefactorLooseClassScanner:
             if not fp.is_absolute():
                 fp = (project_root / fp).resolve()
             idx.setdefault(fp, {}).setdefault(name, line)
-        out4: RDictPathGrep = r[dict[Path, dict[str, int]]].ok(idx)
+        out4: r[dict[Path, dict[str, int]]] = r[dict[Path, dict[str, int]]].ok(idx)
         return out4
 
 

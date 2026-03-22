@@ -21,12 +21,12 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
     def apply(
         self,
         tree: cst.Module,
-        file_path: Path | None = None,
+        _file_path: Path | None = None,
     ) -> tuple[cst.Module, list[str]]:
-        if file_path is None:
+        if _file_path is None:
             return (tree, [])
         analyzer = Tier0ImportAnalyzer(
-            file_path=file_path,
+            file_path=_file_path,
             tier0_modules=self._tier0_modules(),
             core_aliases=self._core_aliases(),
         )
@@ -35,7 +35,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         if not analysis.has_violations:
             return (tree, [])
 
-        project_root = u.Infra.discover_project_root_from_file(file_path)
+        project_root = u.Infra.discover_project_root_from_file(_file_path)
         core_package = (
             u.Infra.discover_core_package(project_root)
             if project_root

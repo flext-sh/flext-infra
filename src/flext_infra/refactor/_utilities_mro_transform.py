@@ -1,4 +1,11 @@
-"""LibCST-driven migration of module constants into MRO constants facades."""
+"""LibCST-driven migration of module constants into MRO constants facades.
+
+Centralizes the ``FlextInfraRefactorMROMigrationTransformer`` logic
+into the MRO utility chain.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -9,23 +16,32 @@ import libcst as cst
 from flext_infra import (
     FlextInfraRefactorMROPrivateInlineTransformer,
     FlextInfraRefactorMROQualifiedReferenceTransformer,
+    FlextInfraUtilitiesParsing,
     c,
     m,
-    u,
 )
 
 
-class FlextInfraRefactorMROMigrationTransformer:
-    """Move module-level constants into the constants facade class."""
+class FlextInfraUtilitiesRefactorMroTransform:
+    """Move module-level constants into the constants facade class.
+
+    Usage via namespace::
+
+        from flext_infra import u
+
+        code, migration, symbol_map = u.Infra.mro_migrate_file(
+            scan_result=scan_result,
+        )
+    """
 
     @staticmethod
-    def migrate_file(
+    def mro_migrate_file(
         *,
         scan_result: m.Infra.MROScanReport,
     ) -> tuple[str, m.Infra.MROFileMigration, dict[str, str]]:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
-        module = u.Infra.parse_cst_from_source(source)
+        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
         if module is None:
             return (
                 source,
@@ -41,9 +57,11 @@ class FlextInfraRefactorMROMigrationTransformer:
         moved_statements: list[tuple[str, cst.CSTNode]] = []
         retained_module_body: list[cst.CSTNode] = []
         for stmt in module.body:
-            moved = FlextInfraRefactorMROMigrationTransformer._extract_moved_statement(
-                statement=stmt,
-                candidate_symbols=candidate_symbols,
+            moved = (
+                FlextInfraUtilitiesRefactorMroTransform._mro_extract_moved_statement(
+                    statement=stmt,
+                    candidate_symbols=candidate_symbols,
+                )
             )
             if moved is None:
                 retained_module_body.append(stmt)
@@ -73,7 +91,7 @@ class FlextInfraRefactorMROMigrationTransformer:
             ):
                 class_found = True
                 transformed_class, class_symbol_map = (
-                    FlextInfraRefactorMROMigrationTransformer._migrate_constants_class(
+                    FlextInfraUtilitiesRefactorMroTransform._mro_migrate_constants_class(
                         class_def=retained_stmt,
                         moved_by_symbol=moved_by_symbol,
                         ordered_symbols=ordered_symbols,
@@ -86,7 +104,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         created_classes: tuple[str, ...] = ()
         if not class_found:
             new_class, class_symbol_map = (
-                FlextInfraRefactorMROMigrationTransformer._create_constants_class(
+                FlextInfraUtilitiesRefactorMroTransform._mro_create_constants_class(
                     class_name=class_name,
                     moved_by_symbol=moved_by_symbol,
                     ordered_symbols=ordered_symbols,
@@ -100,7 +118,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         for symbol in ordered_symbols:
             if not symbol.startswith("_"):
                 continue
-            value = FlextInfraRefactorMROMigrationTransformer._statement_value(
+            value = FlextInfraUtilitiesRefactorMroTransform._mro_statement_value(
                 statement=moved_by_symbol[symbol],
             )
             if value is None:
@@ -134,7 +152,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         return (updated_module.code, migration, symbol_map)
 
     @staticmethod
-    def _extract_moved_statement(
+    def _mro_extract_moved_statement(
         *,
         statement: cst.CSTNode,
         candidate_symbols: set[str],
@@ -174,7 +192,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         return (symbol, first_stmt)
 
     @staticmethod
-    def _migrate_constants_class(
+    def _mro_migrate_constants_class(
         *,
         class_def: cst.ClassDef,
         moved_by_symbol: dict[str, cst.CSTNode],
@@ -185,13 +203,15 @@ class FlextInfraRefactorMROMigrationTransformer:
         alias_replacement_values: dict[str, cst.BaseExpression] = {}
         is_types_facade = class_def.name.value.endswith("Types")
         for statement in class_def.body.body:
-            alias = FlextInfraRefactorMROMigrationTransformer._extract_alias_assignment(
-                statement=statement,
+            alias = (
+                FlextInfraUtilitiesRefactorMroTransform._mro_extract_alias_assignment(
+                    statement=statement,
+                )
             )
             if alias is not None and alias[1] in moved_by_symbol:
                 alias_by_symbol[alias[1]] = alias[0]
                 private_value = (
-                    FlextInfraRefactorMROMigrationTransformer._statement_value(
+                    FlextInfraUtilitiesRefactorMroTransform._mro_statement_value(
                         statement=moved_by_symbol[alias[1]],
                     )
                 )
@@ -206,7 +226,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         for symbol in ordered_symbols:
             target = alias_by_symbol.get(
                 symbol,
-            ) or FlextInfraRefactorMROMigrationTransformer._default_target(
+            ) or FlextInfraUtilitiesRefactorMroTransform._mro_default_target(
                 symbol=symbol,
             )
             moved_statement = moved_by_symbol[symbol]
@@ -220,10 +240,12 @@ class FlextInfraRefactorMROMigrationTransformer:
             added_targets.add(map_target)
             symbol_map[symbol] = map_target
             replacement_value = alias_replacement_values.get(target)
-            moved_node = FlextInfraRefactorMROMigrationTransformer._retarget_statement(
-                statement=moved_statement,
-                target_name=target,
-                replacement_value=replacement_value,
+            moved_node = (
+                FlextInfraUtilitiesRefactorMroTransform._mro_retarget_statement(
+                    statement=moved_statement,
+                    target_name=target,
+                    replacement_value=replacement_value,
+                )
             )
             if use_core_namespace:
                 moved_core_lines.append(moved_node)
@@ -247,7 +269,7 @@ class FlextInfraRefactorMROMigrationTransformer:
             )
             if has_existing_core:
                 merged_body, _ = (
-                    FlextInfraRefactorMROMigrationTransformer._merge_core_class(
+                    FlextInfraUtilitiesRefactorMroTransform._mro_merge_core_class(
                         class_body=final_nodes,
                         moved_core_lines=moved_core_lines,
                         target_class_name="Core",
@@ -256,7 +278,7 @@ class FlextInfraRefactorMROMigrationTransformer:
                 final_nodes = merged_body
             else:
                 merged_body, inserted_core = (
-                    FlextInfraRefactorMROMigrationTransformer._merge_core_class(
+                    FlextInfraUtilitiesRefactorMroTransform._mro_merge_core_class(
                         class_body=final_nodes,
                         moved_core_lines=moved_core_lines,
                         target_class_name="_Core",
@@ -264,12 +286,12 @@ class FlextInfraRefactorMROMigrationTransformer:
                 )
                 final_nodes = merged_body
                 if inserted_core and (
-                    not FlextInfraRefactorMROMigrationTransformer._has_core_alias(
+                    not FlextInfraUtilitiesRefactorMroTransform._mro_has_core_alias(
                         class_body=final_nodes,
                     )
                 ):
                     final_nodes.append(
-                        FlextInfraRefactorMROMigrationTransformer._core_alias_statement(),
+                        FlextInfraUtilitiesRefactorMroTransform._mro_core_alias_statement(),
                     )
         final_nodes.extend(moved_lines)
         final_body = [
@@ -287,7 +309,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         )
 
     @staticmethod
-    def _create_constants_class(
+    def _mro_create_constants_class(
         *,
         class_name: str,
         moved_by_symbol: dict[str, cst.CSTNode],
@@ -302,7 +324,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         symbol_map: dict[str, str] = {}
         is_types_facade = class_name.endswith("Types")
         for symbol in ordered_symbols:
-            target = FlextInfraRefactorMROMigrationTransformer._default_target(
+            target = FlextInfraUtilitiesRefactorMroTransform._mro_default_target(
                 symbol=symbol,
             )
             statement = moved_by_symbol[symbol]
@@ -311,10 +333,12 @@ class FlextInfraRefactorMROMigrationTransformer:
                 cst.TypeAlias,
             )
             symbol_map[symbol] = f"Core.{target}" if use_core_namespace else target
-            moved_node = FlextInfraRefactorMROMigrationTransformer._retarget_statement(
-                statement=statement,
-                target_name=target,
-                replacement_value=None,
+            moved_node = (
+                FlextInfraUtilitiesRefactorMroTransform._mro_retarget_statement(
+                    statement=statement,
+                    target_name=target,
+                    replacement_value=None,
+                )
             )
             if isinstance(moved_node, cst.BaseStatement):
                 if use_core_namespace:
@@ -328,7 +352,7 @@ class FlextInfraRefactorMROMigrationTransformer:
                         name=cst.Name("_Core"),
                         body=cst.IndentedBlock(body=tuple(core_body)),
                     ),
-                    FlextInfraRefactorMROMigrationTransformer._core_alias_statement(),
+                    FlextInfraUtilitiesRefactorMroTransform._mro_core_alias_statement(),
                 ],
             )
         return (
@@ -339,7 +363,10 @@ class FlextInfraRefactorMROMigrationTransformer:
         )
 
     @staticmethod
-    def _extract_alias_assignment(*, statement: cst.CSTNode) -> tuple[str, str] | None:
+    def _mro_extract_alias_assignment(
+        *,
+        statement: cst.CSTNode,
+    ) -> tuple[str, str] | None:
         if not isinstance(statement, cst.SimpleStatementLine):
             return None
         if len(statement.body) != 1:
@@ -362,12 +389,15 @@ class FlextInfraRefactorMROMigrationTransformer:
         return None
 
     @staticmethod
-    def _default_target(*, symbol: str) -> str:
+    def _mro_default_target(*, symbol: str) -> str:
         stripped = symbol.lstrip("_")
         return stripped or symbol
 
     @staticmethod
-    def _statement_value(*, statement: cst.CSTNode) -> cst.BaseExpression | None:
+    def _mro_statement_value(
+        *,
+        statement: cst.CSTNode,
+    ) -> cst.BaseExpression | None:
         if isinstance(statement, cst.TypeAlias):
             return statement.value
         if isinstance(statement, cst.AnnAssign):
@@ -377,7 +407,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         return None
 
     @staticmethod
-    def _retarget_statement(
+    def _mro_retarget_statement(
         *,
         statement: cst.CSTNode,
         target_name: str,
@@ -418,7 +448,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         raise ValueError(msg)
 
     @staticmethod
-    def _merge_core_class(
+    def _mro_merge_core_class(
         *,
         class_body: list[cst.CSTNode],
         moved_core_lines: list[cst.CSTNode],
@@ -431,7 +461,7 @@ class FlextInfraRefactorMROMigrationTransformer:
             ):
                 continue
             existing_names = {
-                FlextInfraRefactorMROMigrationTransformer._statement_symbol(
+                FlextInfraUtilitiesRefactorMroTransform._mro_statement_symbol(
                     statement=item,
                 )
                 for item in statement.body.body
@@ -439,7 +469,7 @@ class FlextInfraRefactorMROMigrationTransformer:
             appended_lines = [
                 moved
                 for moved in moved_core_lines
-                if FlextInfraRefactorMROMigrationTransformer._statement_symbol(
+                if FlextInfraUtilitiesRefactorMroTransform._mro_statement_symbol(
                     statement=moved,
                 )
                 not in existing_names
@@ -474,7 +504,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         return (merged_body, True)
 
     @staticmethod
-    def _statement_symbol(*, statement: cst.CSTNode) -> str:
+    def _mro_statement_symbol(*, statement: cst.CSTNode) -> str:
         if isinstance(statement, cst.TypeAlias):
             return statement.name.value
         if isinstance(statement, cst.SimpleStatementLine) and len(statement.body) == 1:
@@ -496,7 +526,7 @@ class FlextInfraRefactorMROMigrationTransformer:
         return ""
 
     @staticmethod
-    def _core_alias_statement() -> cst.SimpleStatementLine:
+    def _mro_core_alias_statement() -> cst.SimpleStatementLine:
         return cst.SimpleStatementLine(
             body=[
                 cst.Assign(
@@ -507,18 +537,18 @@ class FlextInfraRefactorMROMigrationTransformer:
         )
 
     @staticmethod
-    def _has_core_alias(*, class_body: list[cst.CSTNode]) -> bool:
+    def _mro_has_core_alias(*, class_body: list[cst.CSTNode]) -> bool:
         for statement in class_body:
             if isinstance(statement, cst.ClassDef) and statement.name.value == "Core":
                 return True
-            alias = FlextInfraRefactorMROMigrationTransformer._extract_alias_assignment(
-                statement=statement,
+            alias = (
+                FlextInfraUtilitiesRefactorMroTransform._mro_extract_alias_assignment(
+                    statement=statement,
+                )
             )
             if alias == ("Core", "_Core"):
                 return True
         return False
 
 
-__all__ = [
-    "FlextInfraRefactorMROMigrationTransformer",
-]
+__all__ = ["FlextInfraUtilitiesRefactorMroTransform"]

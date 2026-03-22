@@ -11,13 +11,12 @@ from flext_core import r
 from flext_infra.github import __main__ as github_main
 from flext_infra.github._models import FlextInfraGithubModels as github_m
 from tests.models import m
-
-SyncOperation = github_m.SyncOperation
 from tests.unit.github._stubs import (
     StubLinter,
     StubSyncer,
 )
 
+SyncOperation = github_m.SyncOperation
 run_lint = getattr(github_main, "run_lint")
 run_pr = getattr(github_main, "run_pr")
 run_pr_workspace = getattr(github_main, "run_pr_workspace")

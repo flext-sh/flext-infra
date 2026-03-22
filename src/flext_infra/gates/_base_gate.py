@@ -148,6 +148,11 @@ class FlextInfraGate(ABC):
         return value if isinstance(value, str) else default
 
     @staticmethod
+    def _result_exit_code(result: m.Infra.CommandOutput) -> int:
+        """Extract exit code from command output."""
+        return result.exit_code
+
+    @staticmethod
     def _nested_mapping(
         data: dict[str, t_infra.Infra.InfraValue],
         *keys: str,

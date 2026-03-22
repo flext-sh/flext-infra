@@ -24,7 +24,6 @@ from flext_infra import (
     FlextInfraNamespaceValidator,
     FlextInfraRefactorEngine,
     FlextInfraRefactorMigrateToClassMRO,
-    NamespaceEnforcementRewriter,
     NamespaceSourceDetector,
     c,
     m,
@@ -330,14 +329,14 @@ class FlextInfraCodegenFixer(s[bool]):
         package_name = NamespaceSourceDetector.discover_project_package_name(
             project_root=project_path,
         )
-        NamespaceEnforcementRewriter.rewrite_import_violations(
+        u.Infra.namespace_rewrite_import_violations(
             py_files=src_files,
             project_package=package_name,
         )
-        NamespaceEnforcementRewriter.rewrite_runtime_alias_violations(
+        u.Infra.namespace_rewrite_runtime_alias_violations(
             py_files=src_files,
         )
-        NamespaceEnforcementRewriter.rewrite_missing_future_annotations(
+        u.Infra.namespace_rewrite_missing_future_annotations(
             py_files=src_files,
         )
         changed_paths: set[str] = FlextInfraCodegenSnapshot.detect_changed_files(

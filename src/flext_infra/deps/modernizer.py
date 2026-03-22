@@ -128,7 +128,6 @@ class FlextInfraPyprojectModernizer:
             EnsureRuffConfigPhase(self._tool_config).apply(
                 doc,
                 path=path,
-                workspace_root=self.root,
             ),
         )
         changes.extend(

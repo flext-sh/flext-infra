@@ -8,7 +8,6 @@ from collections.abc import Mapping, Sequence
 
 from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
-    FlextInfraRefactorMROMigrationScanner,
     c,
     m,
     t,
@@ -233,6 +232,5 @@ class FlextInfraRefactorMROResolver:
 
 __all__ = [
     "FlextInfraRefactorMROImportRewriter",
-    "FlextInfraRefactorMROMigrationScanner",
     "FlextInfraRefactorMROResolver",
 ]

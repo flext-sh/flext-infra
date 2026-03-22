@@ -113,43 +113,47 @@ class FlextInfraTransformerTier0ImportFixer:
                     self._self_import_aliases.add(bound)
 
         @override
-        def leave_ImportFrom(self, node: cst.ImportFrom) -> None:
+        def leave_ImportFrom(self, original_node: cst.ImportFrom) -> None:
             self._import_depth = max(0, self._import_depth - 1)
 
         @override
-        def visit_Annotation(self, node: cst.Annotation) -> None:
+        def visit_Annotation(self, node: cst.Annotation) -> bool:
             self._annotation_depth += 1
+            return True
 
         @override
-        def leave_Annotation(self, node: cst.Annotation) -> None:
+        def leave_Annotation(self, original_node: cst.Annotation) -> None:
             self._annotation_depth = max(0, self._annotation_depth - 1)
 
         @override
-        def visit_TypeAlias(self, node: cst.TypeAlias) -> None:
+        def visit_TypeAlias(self, node: cst.TypeAlias) -> bool:
             self._type_alias_depth += 1
+            return True
 
         @override
-        def leave_TypeAlias(self, node: cst.TypeAlias) -> None:
+        def leave_TypeAlias(self, original_node: cst.TypeAlias) -> None:
             self._type_alias_depth = max(0, self._type_alias_depth - 1)
 
         @override
-        def visit_If(self, node: cst.If) -> None:
+        def visit_If(self, node: cst.If) -> bool:
             if u.Infra.cst_is_type_checking_test(node.test):
                 self._type_checking_depth += 1
+            return True
 
         @override
-        def leave_If(self, node: cst.If) -> None:
-            if u.Infra.cst_is_type_checking_test(node.test):
+        def leave_If(self, original_node: cst.If) -> None:
+            if u.Infra.cst_is_type_checking_test(original_node.test):
                 self._type_checking_depth = max(0, self._type_checking_depth - 1)
 
         @override
-        def visit_Name(self, node: cst.Name) -> None:
+        def visit_Name(self, node: cst.Name) -> bool:
             if node.value not in self._self_import_aliases or self._import_depth > 0:
-                return
+                return True
             if self._type_alias_depth > 0 or not (
                 self._annotation_depth > 0 or self._type_checking_depth > 0
             ):
                 self._runtime_aliases.add(node.value)
+            return True
 
     class Transformer(cst.CSTTransformer):
         """Rewrite Tier 0 imports to remove circularity and enforce order."""
@@ -201,44 +205,49 @@ class FlextInfraTransformerTier0ImportFixer:
             return self._changes
 
         @override
-        def visit_Module(self, node: cst.Module) -> None:
+        def visit_Module(self, node: cst.Module) -> bool:
             src = node.code
             for n in self._CLASS_IMPORTS_MAP:
                 if n in src and f"import {n}" not in src:
                     self._missing_classes.add(n)
+            return True
 
         @override
         def leave_ImportFrom(
-            self, orig: cst.ImportFrom, updated: cst.ImportFrom
+            self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-            mod = u.Infra.cst_module_name(updated.module)
+            mod = u.Infra.cst_module_name(updated_node.module)
             if mod == "typing" and "TYPE_CHECKING" in u.Infra.cst_collect_bound_names(
-                updated
+                updated_node
             ):
                 self._type_checking_import_present = True
             if mod == self._package_name:
-                return self._rewrite_root_self_import(updated)
+                return self._rewrite_root_self_import(updated_node)
             if mod == self._core_package:
-                return self._merge_into_import(updated, self._core_pending)
+                return self._merge_into_import(updated_node, self._core_pending)
             for sub, pnd in self._direct_pending.items():
                 if mod == f"{self._package_name}.{sub}":
-                    return self._merge_into_import(updated, pnd)
-            return updated
+                    return self._merge_into_import(updated_node, pnd)
+            return updated_node
 
         @override
-        def leave_Module(self, orig: cst.Module, updated: cst.Module) -> cst.Module:
-            stmts = list(updated.body)
+        def leave_Module(
+            self, original_node: cst.Module, updated_node: cst.Module
+        ) -> cst.Module:
+            stmts: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = list(
+                updated_node.body
+            )  # type: ignore[assignment]
             if not self._type_checking_import_present and self._type_checking_pending:
                 stmts.insert(
                     self._idx(stmts),
-                    u.Infra.cst_import_line("typing", ["TYPE_CHECKING"]),
+                    u.Infra.cst_import_line("typing", ["TYPE_CHECKING"]),  # type: ignore[arg-type]
                 )
                 self._type_checking_import_present = True
                 self._changes.append("Added 'from typing import TYPE_CHECKING'")
 
             additions = self._build_additions()
             if additions:
-                stmts[self._idx(stmts) : self._idx(stmts)] = additions
+                stmts[self._idx(stmts) : self._idx(stmts)] = additions  # type: ignore[index]
 
             if self._type_checking_pending:
                 stmts.insert(
@@ -247,7 +256,7 @@ class FlextInfraTransformerTier0ImportFixer:
                         test=cst.Name("TYPE_CHECKING"),
                         body=cst.IndentedBlock(
                             body=[
-                                u.Infra.cst_import_line(
+                                u.Infra.cst_import_line(  # type: ignore[arg-type]
                                     self._package_name,
                                     list(self._type_checking_pending),
                                 )
@@ -258,11 +267,13 @@ class FlextInfraTransformerTier0ImportFixer:
                 self._changes.append(
                     f"Added TYPE_CHECKING block for {self._package_name}"
                 )
-            return updated.with_changes(body=tuple(stmts))
+            return updated_node.with_changes(body=tuple(stmts))  # type: ignore[arg-type]
 
         def _rewrite_root_self_import(
             self, node: cst.ImportFrom
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
+            if isinstance(node.names, cst.ImportStar):
+                return node
             rem = [
                 i
                 for i in node.names
@@ -279,12 +290,15 @@ class FlextInfraTransformerTier0ImportFixer:
         def _merge_into_import(
             self, node: cst.ImportFrom, pnd: set[str]
         ) -> cst.ImportFrom:
+            if isinstance(node.names, cst.ImportStar):
+                return node
             ext = u.Infra.cst_collect_bound_names(node)
             add = [cst.ImportAlias(name=cst.Name(a)) for a in sorted(pnd - ext)]
             if not add:
                 return node
             pnd.clear()
-            return node.with_changes(names=tuple(list(node.names) + add))
+            existing = list(node.names)
+            return node.with_changes(names=tuple(existing + add))
 
         def _build_additions(self) -> list[cst.BaseStatement]:
             res: list[cst.BaseStatement] = []
@@ -310,12 +324,14 @@ class FlextInfraTransformerTier0ImportFixer:
 
         def _idx(self, body: Sequence[cst.BaseStatement]) -> int:
             i = u.Infra.index_after_docstring_and_future_imports(body)
-            while (
-                i < len(body)
-                and isinstance(body[i], cst.SimpleStatementLine)
-                and isinstance(body[i].body[0], (cst.Import, cst.ImportFrom))
-            ):
-                i += 1
+            while i < len(body):
+                stmt = body[i]
+                if not isinstance(stmt, cst.SimpleStatementLine):
+                    break
+                if stmt.body and isinstance(stmt.body[0], (cst.Import, cst.ImportFrom)):
+                    i += 1
+                else:
+                    break
             return i
 
 

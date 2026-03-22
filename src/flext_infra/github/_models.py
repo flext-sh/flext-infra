@@ -30,6 +30,9 @@ class FlextInfraGithubModels:
             Field(default=None, description="Log file path"),
         ] = None
 
+    # Alias for backward compatibility
+    PrExecutionResult = PrExecutionResultModel
+
     class PrOrchestrationResult(FlextModels.ArbitraryTypesModel):
         """Aggregated result of workspace-wide PR orchestration."""
 

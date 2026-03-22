@@ -40,19 +40,17 @@ class FlextInfraBaseMkGenerator(s[str]):
             wire_classes=None,
         )
         self._template_engine = template_engine or FlextInfraBaseMkTemplateEngine()
-        self._runner: p.Infra.CommandRunner | None = None
 
     @property
     def _get_runner(self) -> p.Infra.CommandRunner:
-        """Lazily initialize the command runner."""
-        if self._runner is None:
-            self._runner = u.Infra()
-        return self._runner
+        """Return the command runner."""
+        return u.Infra  # type: ignore[return-value]
 
     @override
     def execute(self) -> r[str]:
         return self.generate()
 
+    @override
     def generate(
         self,
         config: m.Infra.BaseMkConfig | Mapping[str, t.Scalar] | None = None,

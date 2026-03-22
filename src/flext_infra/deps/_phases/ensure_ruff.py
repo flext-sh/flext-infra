@@ -22,7 +22,6 @@ class EnsureRuffConfigPhase:
         doc: tomlkit.TOMLDocument,
         *,
         path: Path,
-        workspace_root: Path,
     ) -> list[str]:
         changes: list[str] = []
         tool: Item | Container | None = None

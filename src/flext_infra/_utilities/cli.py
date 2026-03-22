@@ -40,6 +40,16 @@ class FlextInfraUtilitiesCli:
         project: str | None = None
         projects: str | None = None
 
+        @property
+        def dry_run(self) -> bool:
+            """Return True if not in apply mode (i.e., dry-run mode)."""
+            return not self.apply
+
+        @property
+        def mode_label(self) -> str:
+            """Return human-readable mode label."""
+            return "apply" if self.apply else "dry-run"
+
         def project_names(self) -> list[str] | None:
             """Extract project names from single or comma-separated project string.
 

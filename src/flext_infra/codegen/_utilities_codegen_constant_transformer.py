@@ -176,6 +176,8 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
                     and not isinstance(stmt.body[0].names, cst.ImportStar)
                 ):
                     import_node = stmt.body[0]
+                    if isinstance(import_node.names, cst.ImportStar):
+                        continue
                     remaining = [
                         alias
                         for alias in import_node.names

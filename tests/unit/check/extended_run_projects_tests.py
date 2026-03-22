@@ -14,9 +14,9 @@ from flext_tests import tm
 
 from flext_infra.check._models import FlextInfraCheckModels as check_m
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from tests import m
 
 ProjectResult = check_m.ProjectResult
-from tests import m
 
 CheckProjectStub = Callable[[Path, list[str], Path], ProjectResult]
 

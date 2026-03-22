@@ -95,6 +95,12 @@ class FlextInfraUtilitiesOutput:
         )
 
     @classmethod
+    def write(cls, text: str) -> None:
+        """Write raw text to output stream."""
+        cls._stream.write(text)
+        cls._stream.flush()
+
+    @classmethod
     def summary(
         cls, verb: str, total: int, ok: int, fail: int, skip: int, elapsed: float
     ) -> None:

@@ -15,11 +15,11 @@ class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
     def apply(
         self,
         tree: cst.Module,
-        file_path: Path | None = None,
+        _file_path: Path | None = None,
     ) -> tuple[cst.Module, list[str]]:
         transformer = FlextInfraRefactorTypingUnifier(
             canonical_map=c.Infra.TYPING_INLINE_UNION_CANONICAL_MAP,
-            file_path=file_path,
+            file_path=_file_path,
         )
         updated_tree = tree.visit(transformer)
         return (updated_tree, transformer.changes)

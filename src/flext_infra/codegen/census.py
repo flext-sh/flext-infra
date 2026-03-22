@@ -109,11 +109,17 @@ class FlextInfraCodegenCensus(s[bool]):
             )
             if census_data:
                 # Create a pseudo-project report for the analyzed class
-                total_objs = census_data.get("total_objects", 0)
-                total_used = census_data.get("total_used", 0)
+                total_objs_val = census_data.get("total_objects", 0)
+                total_objs = (
+                    int(total_objs_val) if isinstance(total_objs_val, int) else 0
+                )
+                total_used_val = census_data.get("total_used", 0)
+                total_used = (
+                    int(total_used_val) if isinstance(total_used_val, int) else 0
+                )
                 total_unused = total_objs - total_used
                 by_type = census_data.get("by_type", {})
-                type_stats = []
+                type_stats: list[str] = []
                 if isinstance(by_type, dict):
                     for t in sorted(by_type.keys())[:3]:
                         if isinstance(by_type[t], dict):
@@ -159,7 +165,10 @@ class FlextInfraCodegenCensus(s[bool]):
     def _census_project(
         self,
         project: p.Infra.ProjectInfo,
-        class_analysis: dict | None = None,
+        class_analysis: dict[
+            str, str | dict[str, int | dict[str, int | dict[str, int]]]
+        ]
+        | None = None,
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
         validator = FlextInfraNamespaceValidator()
@@ -186,14 +195,16 @@ class FlextInfraCodegenCensus(s[bool]):
             for defs in all_defs.values():
                 flat_defs.extend(defs)
 
-            duplicates = u.Infra.detect_duplicate_constants(
+            duplicates: list[str] = u.Infra.detect_duplicate_constants(
                 flat_defs,
             )
 
             # Count usage
-            all_usage_map = u.Infra.scan_all_constant_usages(
-                src_dir.parent,
-                frozenset({".mypy_cache", "__pycache__"}),
+            all_usage_map: dict[str, list[tuple[str, int]]] = (
+                u.Infra.scan_all_constant_usages(
+                    src_dir.parent,
+                    frozenset({".mypy_cache", "__pycache__"}),
+                )
             )
 
             # Add census info to violations as info (not violations, just counts)
@@ -220,17 +231,29 @@ class FlextInfraCodegenCensus(s[bool]):
         if class_analysis and project.name == "flexcore":
             try:
                 class_name_str = str(class_analysis.get("class_name", "Unknown"))
-                census_data_obj = class_analysis.get("census_data")
-                if not isinstance(census_data_obj, dict):
-                    census_data_obj = {}
+                census_data_obj_raw = class_analysis.get("census_data")
+                if not isinstance(census_data_obj_raw, dict):
+                    census_data_obj_raw = {}
+                census_data_obj: dict[str, int | dict[str, int | dict[str, int]]] = (
+                    census_data_obj_raw
+                )
 
-                total_objs = int(census_data_obj.get("total_objects", 0))
-                total_used = int(census_data_obj.get("total_used", 0))
-                total_unused = int(census_data_obj.get("total_unused", 0))
+                total_objs_val = census_data_obj.get("total_objects", 0)
+                total_objs = (
+                    int(total_objs_val) if isinstance(total_objs_val, int) else 0
+                )
+                total_used_val = census_data_obj.get("total_used", 0)
+                total_used = (
+                    int(total_used_val) if isinstance(total_used_val, int) else 0
+                )
+                total_unused_val = census_data_obj.get("total_unused", 0)
+                total_unused = (
+                    int(total_unused_val) if isinstance(total_unused_val, int) else 0
+                )
 
                 # Build type breakdown
                 type_breakdown = census_data_obj.get("by_type", {})
-                type_stats = []
+                type_stats: list[str] = []
                 if isinstance(type_breakdown, dict):
                     for type_name in sorted(type_breakdown.keys())[:3]:
                         type_info = type_breakdown[type_name]

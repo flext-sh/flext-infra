@@ -6,11 +6,10 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
-    FlextInfraRefactorMROMigrationScanner,
-    FlextInfraRefactorMROMigrationTransformer,
     FlextInfraRefactorMROMigrationValidator,
     c,
     m,
+    u,
 )
 
 
@@ -29,11 +28,9 @@ class FlextInfraRefactorMigrateToClassMRO:
     ) -> m.Infra.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
         normalized_target = self._normalize_target(target=target)
-        scan_results, files_scanned = (
-            FlextInfraRefactorMROMigrationScanner.scan_workspace(
-                workspace_root=self._workspace_root,
-                target=normalized_target,
-            )
+        scan_results, files_scanned = u.Infra.mro_scan_workspace(
+            workspace_root=self._workspace_root,
+            target=normalized_target,
         )
         warnings: list[str] = []
         errors: list[str] = []
@@ -43,10 +40,8 @@ class FlextInfraRefactorMigrateToClassMRO:
         migrations: list[m.Infra.MROFileMigration] = []
         for scan_result in scan_results:
             try:
-                updated_source, migration, symbol_alias_map = (
-                    FlextInfraRefactorMROMigrationTransformer.migrate_file(
-                        scan_result=scan_result,
-                    )
+                updated_source, migration, symbol_alias_map = u.Infra.mro_migrate_file(
+                    scan_result=scan_result,
                 )
             except Exception as exc:
                 errors.append(f"{scan_result.file}: {exc}")

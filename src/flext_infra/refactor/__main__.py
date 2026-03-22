@@ -11,7 +11,6 @@ from flext_infra.utilities import u
 from .census import FlextInfraRefactorCensus
 from .migrate_to_class_mro import FlextInfraRefactorMigrateToClassMRO
 from .namespace_enforcer import FlextInfraNamespaceEnforcer
-from .pydantic_centralizer import FlextInfraRefactorPydanticCentralizer
 
 
 class FlextInfraRefactorCommand:
@@ -101,7 +100,7 @@ class FlextInfraRefactorCommand:
         normalize_remaining: bool,
     ) -> int:
         """Run pydantic centralization workflow for the workspace."""
-        summary = FlextInfraRefactorPydanticCentralizer.centralize_workspace(
+        summary = u.Infra.pydantic_centralize_workspace(
             cli.workspace,
             apply=cli.apply,
             normalize_remaining=normalize_remaining,
@@ -156,7 +155,7 @@ class FlextInfraRefactorCommand:
         normalize_remaining: bool,
     ) -> int:
         """Run centralization, MRO migration, and namespace enforcement together."""
-        centralize_summary = FlextInfraRefactorPydanticCentralizer.centralize_workspace(
+        centralize_summary = u.Infra.pydantic_centralize_workspace(
             cli.workspace,
             apply=cli.apply,
             normalize_remaining=normalize_remaining,

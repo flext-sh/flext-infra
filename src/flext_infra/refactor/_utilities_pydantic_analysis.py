@@ -1,4 +1,11 @@
-"""Static analysis helpers for Pydantic centralization refactors."""
+"""Static analysis helpers for Pydantic centralization refactors.
+
+Centralizes the ``FlextInfraRefactorPydanticCentralizerAnalysis`` logic
+into the MRO utility chain.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -6,11 +13,23 @@ import ast
 import operator
 from pathlib import Path
 
-from flext_infra import m, u
+import libcst as cst
+
+from flext_infra import FlextInfraUtilitiesParsing, m
 
 
-class FlextInfraRefactorPydanticCentralizerAnalysis:
-    _MODEL_BASES: tuple[str, ...] = (
+class FlextInfraUtilitiesRefactorPydanticAnalysis:
+    """Static analysis helpers for Pydantic centralization.
+
+    Usage via namespace::
+
+        from flext_infra import u
+
+        violations = u.Infra.pydantic_scan_file_violations(path)
+        moves = u.Infra.pydantic_collect_moves(path)
+    """
+
+    _PYDANTIC_MODEL_BASES: tuple[str, ...] = (
         "BaseModel",
         "RootModel",
         "TypedDict",
@@ -18,10 +37,10 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         "FrozenModel",
         "FrozenStrictModel",
     )
-    _TYPED_DICT_MIN_ARGS: int = 2
+    _PYDANTIC_TYPED_DICT_MIN_ARGS: int = 2
 
     @staticmethod
-    def _class_base_names(node: ast.ClassDef) -> set[str]:
+    def _pydantic_class_base_names(node: ast.ClassDef) -> set[str]:
         names: set[str] = set()
         for base in node.bases:
             if isinstance(base, ast.Name):
@@ -34,39 +53,44 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         return names
 
     @staticmethod
-    def _is_model_like_base_name(base_name: str) -> bool:
-        if base_name in FlextInfraRefactorPydanticCentralizerAnalysis._MODEL_BASES:
+    def _pydantic_is_model_like_base_name(base_name: str) -> bool:
+        if (
+            base_name
+            in FlextInfraUtilitiesRefactorPydanticAnalysis._PYDANTIC_MODEL_BASES
+        ):
             return True
         return bool(base_name.startswith("FlextModels."))
 
     @staticmethod
-    def is_top_level_model_class(node: ast.stmt) -> bool:
+    def pydantic_is_top_level_model_class(node: ast.stmt) -> bool:
         """Return True when statement is a top-level model-like class."""
         if not isinstance(node, ast.ClassDef):
             return False
-        base_names = FlextInfraRefactorPydanticCentralizerAnalysis._class_base_names(
-            node,
+        base_names = (
+            FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_class_base_names(
+                node,
+            )
         )
         return any(
-            FlextInfraRefactorPydanticCentralizerAnalysis._is_model_like_base_name(
+            FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_model_like_base_name(
                 base_name,
             )
             for base_name in base_names
         )
 
     @staticmethod
-    def _is_typings_scope(file_path: Path) -> bool:
+    def _pydantic_is_typings_scope(file_path: Path) -> bool:
         posix = file_path.as_posix()
         return posix.endswith(("/typings.py", "/_typings.py")) or "/typings/" in posix
 
     @staticmethod
-    def _is_dict_like_expr(expr: str) -> bool:
+    def _pydantic_is_dict_like_expr(expr: str) -> bool:
         return any(
             marker in expr for marker in ("dict[", "Mapping[", "MutableMapping[")
         )
 
     @staticmethod
-    def _is_dict_like_alias(
+    def _pydantic_is_dict_like_alias(
         node: ast.stmt,
         source: str,
         *,
@@ -83,7 +107,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
             "case",
         )
         is_typings_scope = (
-            FlextInfraRefactorPydanticCentralizerAnalysis._is_typings_scope(
+            FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_typings_scope(
                 file_path,
             )
         )
@@ -97,7 +121,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                 expr = ast.get_source_segment(source, node.value)
                 if expr is None:
                     return None
-                if not FlextInfraRefactorPydanticCentralizerAnalysis._is_dict_like_expr(
+                if not FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_expr(
                     expr,
                 ):
                     return None
@@ -120,7 +144,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                 expr = ast.get_source_segment(source, node.value)
                 if expr is None:
                     return None
-                if not FlextInfraRefactorPydanticCentralizerAnalysis._is_dict_like_expr(
+                if not FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_expr(
                     expr,
                 ):
                     return None
@@ -146,7 +170,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                 expr = ast.get_source_segment(source, node.value)
                 if expr is None:
                     return None
-                if not FlextInfraRefactorPydanticCentralizerAnalysis._is_dict_like_expr(
+                if not FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_expr(
                     expr,
                 ):
                     return None
@@ -160,7 +184,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                 return None
 
     @staticmethod
-    def _typed_dict_factory_model(
+    def _pydantic_typed_dict_factory_model(
         node: ast.Assign,
     ) -> m.Infra.ClassMove | None:
         if len(node.targets) != 1:
@@ -180,7 +204,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
             return None
         if (
             len(node.value.args)
-            < FlextInfraRefactorPydanticCentralizerAnalysis._TYPED_DICT_MIN_ARGS
+            < FlextInfraUtilitiesRefactorPydanticAnalysis._PYDANTIC_TYPED_DICT_MIN_ARGS
         ):
             return None
         field_map_arg = node.value.args[1]
@@ -229,18 +253,19 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         )
 
     @staticmethod
-    def _typed_dict_total_false(node: ast.ClassDef) -> bool:
+    def _pydantic_typed_dict_total_false(node: ast.ClassDef) -> bool:
         for keyword in node.keywords:
             if keyword.arg == "total" and isinstance(keyword.value, ast.Constant):
                 return bool(keyword.value.value) is False
         return False
 
     @staticmethod
-    def _build_model_from_typed_dict(node: ast.ClassDef, source: str) -> str:
-        total_false = (
-            FlextInfraRefactorPydanticCentralizerAnalysis._typed_dict_total_false(
-                node,
-            )
+    def _pydantic_build_model_from_typed_dict(
+        node: ast.ClassDef,
+        source: str,
+    ) -> str:
+        total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_typed_dict_total_false(
+            node,
         )
         fields: list[str] = []
         for stmt in node.body:
@@ -260,12 +285,12 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         return f'class {node.name}(BaseModel):\n    model_config = ConfigDict(extra="forbid")\n{body}\n'
 
     @staticmethod
-    def collect_moves(
+    def pydantic_collect_moves(
         file_path: Path,
     ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]]:
         """Collect class and alias moves required for centralization."""
         source = file_path.read_text(encoding="utf-8")
-        tree = u.Infra.parse_ast_from_source(source)
+        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
         if tree is None:
             msg = "Failed to parse source"
             raise SyntaxError(msg)
@@ -274,7 +299,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         alias_moves: list[m.Infra.AliasMove] = []
         for stmt in tree.body:
             typed_dict_factory_move = (
-                FlextInfraRefactorPydanticCentralizerAnalysis._typed_dict_factory_model(
+                FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_typed_dict_factory_model(
                     stmt,
                 )
                 if isinstance(stmt, ast.Assign)
@@ -283,7 +308,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
             if typed_dict_factory_move is not None:
                 class_moves.append(typed_dict_factory_move)
                 continue
-            if FlextInfraRefactorPydanticCentralizerAnalysis.is_top_level_model_class(
+            if FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_is_top_level_model_class(
                 stmt,
             ):
                 if not isinstance(stmt, ast.ClassDef):
@@ -291,14 +316,12 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                 start = stmt.lineno
                 end = stmt.end_lineno or stmt.lineno
                 snippet = "\n".join(lines[start - 1 : end])
-                base_names = (
-                    FlextInfraRefactorPydanticCentralizerAnalysis._class_base_names(
-                        stmt,
-                    )
+                base_names = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_class_base_names(
+                    stmt,
                 )
                 kind = "typed_dict" if "TypedDict" in base_names else "base_model"
                 if kind == "typed_dict":
-                    snippet = FlextInfraRefactorPydanticCentralizerAnalysis._build_model_from_typed_dict(
+                    snippet = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_build_model_from_typed_dict(
                         stmt,
                         source,
                     )
@@ -312,26 +335,24 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
                     ),
                 )
                 continue
-            alias_move = (
-                FlextInfraRefactorPydanticCentralizerAnalysis._is_dict_like_alias(
-                    stmt,
-                    source,
-                    file_path=file_path,
-                )
+            alias_move = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_alias(
+                stmt,
+                source,
+                file_path=file_path,
             )
             if alias_move is not None:
                 alias_moves.append(alias_move)
         return (class_moves, alias_moves)
 
     @staticmethod
-    def collect_moves_safe(
+    def pydantic_collect_moves_safe(
         file_path: Path,
         *,
         failure_stats: m.Infra.CentralizerFailureStats,
     ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]] | None:
         """Collect moves without raising, while recording parse failures."""
         try:
-            return FlextInfraRefactorPydanticCentralizerAnalysis.collect_moves(
+            return FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_collect_moves(
                 file_path,
             )
         except SyntaxError:
@@ -345,25 +366,25 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
             return None
 
     @staticmethod
-    def scan_file_violations(file_path: Path) -> tuple[int, int]:
+    def pydantic_scan_file_violations(file_path: Path) -> tuple[int, int]:
         """Return counts of model and dict-alias violations in one file."""
         try:
             source = file_path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             return (0, 0)
-        tree = u.Infra.parse_ast_from_source(source)
+        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
         if tree is None:
             return (0, 0)
         model_class_count = 0
         dict_alias_count = 0
         for stmt in tree.body:
-            if FlextInfraRefactorPydanticCentralizerAnalysis.is_top_level_model_class(
+            if FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_is_top_level_model_class(
                 stmt,
             ):
                 model_class_count += 1
                 continue
             if (
-                FlextInfraRefactorPydanticCentralizerAnalysis._is_dict_like_alias(
+                FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_alias(
                     stmt,
                     source,
                     file_path=file_path,
@@ -374,7 +395,7 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         return (model_class_count, dict_alias_count)
 
     @staticmethod
-    def rewrite_source(
+    def pydantic_rewrite_source(
         file_path: Path,
         class_moves: list[m.Infra.ClassMove],
         alias_moves: list[m.Infra.AliasMove],
@@ -395,18 +416,65 @@ class FlextInfraRefactorPydanticCentralizerAnalysis:
         updated = "\n".join(lines)
         moved_names = [m.name for m in class_moves] + [a.name for a in alias_moves]
         if moved_names:
-            updated = FlextInfraRefactorPydanticCentralizerAnalysis.insert_import(
-                updated,
-                import_statement,
+            updated = (
+                FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_insert_import(
+                    updated,
+                    import_statement,
+                )
             )
         if source.endswith("\n") and (not updated.endswith("\n")):
             updated += "\n"
         return updated
 
     @staticmethod
-    def insert_import(source: str, import_stmt: str) -> str:
+    def _pydantic_insert_import(source: str, import_stmt: str) -> str:
         """Insert import statement preserving canonical ordering."""
-        return u.Infra.insert_import_statement(source, import_stmt)
+        normalized = import_stmt.strip()
+        if not normalized:
+            return source
+        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
+        if module is None:
+            return source
+        try:
+            parsed = cst.parse_statement(f"{normalized}\n")
+        except cst.ParserSyntaxError:
+            return source
+        if not isinstance(parsed, cst.SimpleStatementLine):
+            return source
+        for stmt in module.body:
+            if not isinstance(stmt, cst.SimpleStatementLine):
+                continue
+            if cst.Module(body=[stmt]).code.strip() == normalized:
+                return source
+        insert_idx = 0
+        for idx, stmt in enumerate(module.body):
+            is_docstring = (
+                isinstance(stmt, cst.SimpleStatementLine)
+                and len(stmt.body) == 1
+                and isinstance(stmt.body[0], cst.Expr)
+                and isinstance(
+                    stmt.body[0].value,
+                    (cst.SimpleString, cst.ConcatenatedString),
+                )
+            )
+            is_import = isinstance(stmt, cst.SimpleStatementLine) and any(
+                isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body
+            )
+            is_future = False
+            if isinstance(stmt, cst.SimpleStatementLine):
+                for s in stmt.body:
+                    if (
+                        isinstance(s, cst.ImportFrom)
+                        and isinstance(s.module, cst.Name)
+                        and s.module.value == "__future__"
+                    ):
+                        is_future = True
+            if is_docstring or is_future or is_import:
+                insert_idx = idx + 1
+                continue
+            break
+        new_body = [*module.body[:insert_idx], parsed, *module.body[insert_idx:]]
+        return module.with_changes(body=new_body).code
 
 
-__all__ = ["FlextInfraRefactorPydanticCentralizerAnalysis"]
+__all__ = ["FlextInfraUtilitiesRefactorPydanticAnalysis"]

@@ -22,9 +22,9 @@ from flext_core import r, t
 from flext_infra.check._models import FlextInfraCheckModels as check_m
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
-ProjectResult = check_m.ProjectResult
-
 from ...models import m
+
+ProjectResult = check_m.ProjectResult
 
 
 def _fake_checker_cls(

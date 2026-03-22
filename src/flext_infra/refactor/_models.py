@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Annotated
 
 import libcst as cst
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
-from flext_core import FlextModels, r
+from flext_core import FlextModels
 from flext_infra.refactor._models_ast_grep import FlextInfraRefactorAstGrepModels
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels,
@@ -844,7 +844,3 @@ class FlextInfraRefactorModels(
 
 
 __all__ = ["FlextInfraRefactorModels"]
-
-
-class RDictPathGrep(RootModel[r[dict[Path, dict[str, int]]]]):
-    pass

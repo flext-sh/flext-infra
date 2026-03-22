@@ -91,15 +91,15 @@ class FlextInfraUtilitiesSubprocess:
     @staticmethod
     def run_to_file(
         cmd: Sequence[str],
-        out_file: Path,
+        output_file: Path,
         cwd: Path | None = None,
         timeout: int | None = None,
         env: Mapping[str, str] | None = None,
     ) -> r[int]:
         """Stream combined output to file."""
         try:
-            out_file.parent.mkdir(parents=True, exist_ok=True)
-            with out_file.open("w", encoding=c.Infra.Encoding.DEFAULT) as h:
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            with output_file.open("w", encoding=c.Infra.Encoding.DEFAULT) as h:
                 res = subprocess.run(
                     list(cmd),
                     cwd=cwd,

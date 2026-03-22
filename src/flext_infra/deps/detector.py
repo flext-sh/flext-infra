@@ -26,12 +26,12 @@ from flext_infra import (
 class FlextInfraRuntimeDevDependencyDetector:
     """CLI tool for detecting runtime vs dev dependencies across workspace."""
 
-    log: p.Logger = FlextLogger.create_module_logger(__name__)
-    paths: PathsService
-    reporting: ReportingService
-    json: JsonService
-    deps: DepsService
-    runner: RunnerService
+    log: p.Logger = FlextLogger.create_module_logger(__name__)  # type: ignore[assignment]
+    paths: PathsService  # type: ignore[name-defined]
+    reporting: ReportingService  # type: ignore[name-defined]
+    json: JsonService  # type: ignore[name-defined]
+    deps: DepsService  # type: ignore[name-defined]
+    runner: RunnerService  # type: ignore[name-defined]
 
     def __init__(self) -> None:
         """Initialize detector runtime services."""

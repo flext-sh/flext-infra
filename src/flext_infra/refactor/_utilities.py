@@ -27,9 +27,15 @@ from flext_infra import (
 )
 from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
 from flext_infra.refactor._utilities_loader import FlextInfraUtilitiesRefactorLoader
+from flext_infra.refactor._utilities_mro_scan import FlextInfraUtilitiesRefactorMroScan
+from flext_infra.refactor._utilities_namespace import (
+    FlextInfraUtilitiesRefactorNamespace,
+)
 
 
 class FlextInfraUtilitiesRefactor(
+    FlextInfraUtilitiesRefactorMroScan,
+    FlextInfraUtilitiesRefactorNamespace,
     FlextInfraUtilitiesRefactorLoader,
     FlextInfraUtilitiesRefactorCli,
 ):

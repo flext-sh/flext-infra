@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flext_infra import FlextInfraCodegenCensus, m, t, u
+from flext_infra import FlextInfraCodegenCensus, c, m, t, u
 
 
 class FlextInfraCodegenConstantsQualityGate:
@@ -162,10 +162,7 @@ class FlextInfraCodegenConstantsQualityGate:
     @staticmethod
     def is_success_verdict(verdict: str) -> bool:
         """Return True for verdicts that should exit with status 0."""
-        return (
-            verdict
-            in FlextInfraCodegenConstantsQualityGate.c.Infra.QualityGate.PASS_VERDICTS
-        )
+        return verdict in c.Infra.QualityGate.PASS_VERDICTS
 
 
 __all__ = ["FlextInfraCodegenConstantsQualityGate"]

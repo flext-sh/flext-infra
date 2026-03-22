@@ -85,7 +85,7 @@ class EnsurePyrightConfigPhase:
                     "root": (relative_root / c.Infra.Directories.SCRIPTS).as_posix(),
                     "reportPrivateUsage": "none",
                 })
-        return expected_envs or default_envs
+        return expected_envs
 
     @staticmethod
     def _expected_envs_for_project(

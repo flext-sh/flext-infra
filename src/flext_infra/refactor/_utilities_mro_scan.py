@@ -1,4 +1,8 @@
-"""Scanner for identifying MRO migration symbol candidates."""
+"""MRO migration scanner utilities for the MRO utility chain.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -6,16 +10,17 @@ import ast
 import re
 from pathlib import Path
 
-from flext_infra import c, m, u
-
-_CONSTANT_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
-_TYPE_CANDIDATE_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Za-z][A-Za-z0-9_]*$")
+from flext_infra import FlextInfraUtilitiesIteration, FlextInfraUtilitiesParsing, c, m
 
 
-class FlextInfraRefactorMROMigrationScanner:
-    @classmethod
-    def scan_workspace(
-        cls,
+class FlextInfraUtilitiesRefactorMroScan:
+    _MRO_SCAN_CONSTANT_PATTERN: re.Pattern[str] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
+    _MRO_SCAN_TYPE_CANDIDATE_PATTERN: re.Pattern[str] = re.compile(
+        r"^_?[A-Za-z][A-Za-z0-9_]*$",
+    )
+
+    @staticmethod
+    def mro_scan_workspace(
         *,
         workspace_root: Path,
         target: str,
@@ -25,15 +30,21 @@ class FlextInfraRefactorMROMigrationScanner:
             return ([], 0)
         results: list[m.Infra.MROScanReport] = []
         scanned = 0
-        target_specs = cls._target_specs(target=target)
-        for project_root in cls._project_roots(workspace_root=workspace_root):
+        target_specs = FlextInfraUtilitiesRefactorMroScan._mro_scan_target_specs(
+            target=target,
+        )
+        for project_root in FlextInfraUtilitiesRefactorMroScan._mro_scan_project_roots(
+            workspace_root=workspace_root,
+        ):
             for target_spec in target_specs:
-                for file_path in cls._iter_target_files(
+                for (
+                    file_path
+                ) in FlextInfraUtilitiesRefactorMroScan._mro_scan_iter_target_files(
                     project_root=project_root,
                     target_spec=target_spec,
                 ):
                     scanned += 1
-                    result = cls.scan_file(
+                    result = FlextInfraUtilitiesRefactorMroScan.mro_scan_file(
                         file_path=file_path,
                         project_root=project_root,
                         target_spec=target_spec,
@@ -43,27 +54,36 @@ class FlextInfraRefactorMROMigrationScanner:
                     results.append(result)
         return (results, scanned)
 
-    @classmethod
-    def scan_file(
-        cls,
+    @staticmethod
+    def mro_scan_file(
         *,
         file_path: Path,
         project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
     ) -> m.Infra.MROScanReport | None:
         """Scan one file and return migration candidates when found."""
-        tree = u.Infra.parse_module_ast(file_path)
+        tree = FlextInfraUtilitiesParsing.parse_module_ast(file_path)
         if tree is None:
             return None
-        constants_class = cls._facade_class_name(tree=tree, target_spec=target_spec)
+        constants_class = (
+            FlextInfraUtilitiesRefactorMroScan._mro_scan_facade_class_name(
+                tree=tree,
+                target_spec=target_spec,
+            )
+        )
         if not constants_class:
             return None
-        module = cls._module_path(file_path=file_path, project_root=project_root)
+        module = FlextInfraUtilitiesRefactorMroScan._mro_scan_module_path(
+            file_path=file_path,
+            project_root=project_root,
+        )
         candidates: list[m.Infra.MROSymbolCandidate] = []
         for stmt in tree.body:
-            candidate = cls._candidate_from_statement(
-                stmt=stmt,
-                target_spec=target_spec,
+            candidate = (
+                FlextInfraUtilitiesRefactorMroScan._mro_scan_candidate_from_statement(
+                    stmt=stmt,
+                    target_spec=target_spec,
+                )
             )
             if candidate is not None:
                 candidates.append(candidate)
@@ -76,27 +96,29 @@ class FlextInfraRefactorMROMigrationScanner:
         )
 
     @staticmethod
-    def _candidate_from_statement(
+    def _mro_scan_candidate_from_statement(
         *,
         stmt: ast.stmt,
         target_spec: m.Infra.MROTargetSpec,
     ) -> m.Infra.MROSymbolCandidate | None:
         if target_spec.family_alias == "t":
-            return (
-                FlextInfraRefactorMROMigrationScanner._typing_candidate_from_statement(
-                    stmt=stmt,
-                )
+            return FlextInfraUtilitiesRefactorMroScan._mro_scan_typing_candidate_from_statement(
+                stmt=stmt,
             )
         if target_spec.family_alias == "p":
-            return FlextInfraRefactorMROMigrationScanner._protocol_candidate_from_statement(
+            return FlextInfraUtilitiesRefactorMroScan._mro_scan_protocol_candidate_from_statement(
                 stmt=stmt,
             )
         if isinstance(stmt, ast.AnnAssign):
             if not isinstance(stmt.target, ast.Name):
                 return None
-            if not _CONSTANT_PATTERN.match(stmt.target.id):
+            if not FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(
+                stmt.target.id,
+            ):
                 return None
-            if not u.Infra.is_final_annotation(annotation=stmt.annotation):
+            if not FlextInfraUtilitiesRefactorMroScan._mro_scan_is_final_annotation(
+                annotation=stmt.annotation,
+            ):
                 return None
             return m.Infra.MROSymbolCandidate(
                 symbol=stmt.target.id,
@@ -111,7 +133,9 @@ class FlextInfraRefactorMROMigrationScanner:
             target = stmt.targets[0]
             if not isinstance(target, ast.Name):
                 return None
-            if not _CONSTANT_PATTERN.match(target.id):
+            if not FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(
+                target.id,
+            ):
                 return None
             return m.Infra.MROSymbolCandidate(
                 symbol=target.id,
@@ -123,11 +147,16 @@ class FlextInfraRefactorMROMigrationScanner:
         return None
 
     @staticmethod
-    def _project_roots(*, workspace_root: Path) -> list[Path]:
-        return u.Infra.discover_project_roots(workspace_root=workspace_root)
+    def _mro_scan_project_roots(*, workspace_root: Path) -> list[Path]:
+        return FlextInfraUtilitiesIteration.discover_project_roots(
+            workspace_root=workspace_root
+        )
 
     @staticmethod
-    def _target_specs(*, target: str) -> tuple[m.Infra.MROTargetSpec, ...]:
+    def _mro_scan_target_specs(
+        *,
+        target: str,
+    ) -> tuple[m.Infra.MROTargetSpec, ...]:
         constants_spec = m.Infra.MROTargetSpec(
             family_alias="c",
             file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,
@@ -177,20 +206,20 @@ class FlextInfraRefactorMROMigrationScanner:
         )
 
     @staticmethod
-    def _iter_constants_files(*, project_root: Path) -> list[Path]:
+    def _mro_scan_iter_constants_files(*, project_root: Path) -> list[Path]:
         constants_spec = m.Infra.MROTargetSpec(
             family_alias="c",
             file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,
             package_directory=c.Infra.MRO_CONSTANTS_DIRECTORY,
             class_suffix=c.Infra.CONSTANTS_CLASS_SUFFIX,
         )
-        return FlextInfraRefactorMROMigrationScanner._iter_target_files(
+        return FlextInfraUtilitiesRefactorMroScan._mro_scan_iter_target_files(
             project_root=project_root,
             target_spec=constants_spec,
         )
 
     @staticmethod
-    def _iter_target_files(
+    def _mro_scan_iter_target_files(
         *,
         project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
@@ -200,7 +229,9 @@ class FlextInfraRefactorMROMigrationScanner:
             root: Path = project_root / directory_name
             if not root.is_dir():
                 continue
-            for file_path in u.Infra.iter_directory_python_files(root):
+            for file_path in FlextInfraUtilitiesIteration.iter_directory_python_files(
+                root
+            ):
                 if file_path.name in target_spec.file_names:
                     candidates.add(file_path)
                     continue
@@ -209,14 +240,28 @@ class FlextInfraRefactorMROMigrationScanner:
         return sorted(candidates)
 
     @staticmethod
-    def _module_path(*, file_path: Path, project_root: Path) -> str:
-        return u.Infra.module_path(
-            file_path=file_path,
-            project_root=project_root,
-        )
+    def _mro_scan_module_path(*, file_path: Path, project_root: Path) -> str:
+        rel = file_path.relative_to(project_root)
+        parts = [part for part in rel.with_suffix("").parts if part != "src"]
+        return ".".join(parts)
 
     @staticmethod
-    def _facade_class_name(
+    def _mro_scan_is_final_annotation(*, annotation: ast.expr) -> bool:
+        final_name = c.Infra.FINAL_ANNOTATION_NAME
+        if isinstance(annotation, ast.Name):
+            return annotation.id == final_name
+        if isinstance(annotation, ast.Attribute):
+            return annotation.attr == final_name
+        if isinstance(annotation, ast.Subscript):
+            base = annotation.value
+            if isinstance(base, ast.Name):
+                return base.id == final_name
+            if isinstance(base, ast.Attribute):
+                return base.attr == final_name
+        return False
+
+    @staticmethod
+    def _mro_scan_facade_class_name(
         *,
         tree: ast.Module,
         target_spec: m.Infra.MROTargetSpec,
@@ -245,13 +290,18 @@ class FlextInfraRefactorMROMigrationScanner:
         return ""
 
     @staticmethod
-    def _typing_candidate_from_statement(
+    def _mro_scan_typing_candidate_from_statement(
         *,
         stmt: ast.stmt,
     ) -> m.Infra.MROSymbolCandidate | None:
         if isinstance(stmt, ast.TypeAlias):
             symbol = stmt.name.id
-            if _TYPE_CANDIDATE_PATTERN.match(symbol) is None:
+            if (
+                FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_TYPE_CANDIDATE_PATTERN.match(
+                    symbol,
+                )
+                is None
+            ):
                 return None
             return m.Infra.MROSymbolCandidate(
                 symbol=symbol,
@@ -264,9 +314,14 @@ class FlextInfraRefactorMROMigrationScanner:
             if not isinstance(stmt.target, ast.Name):
                 return None
             symbol = stmt.target.id
-            if _TYPE_CANDIDATE_PATTERN.match(symbol) is None:
+            if (
+                FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_TYPE_CANDIDATE_PATTERN.match(
+                    symbol,
+                )
+                is None
+            ):
                 return None
-            if not FlextInfraRefactorMROMigrationScanner._is_type_alias_annotation(
+            if not FlextInfraUtilitiesRefactorMroScan._mro_scan_is_type_alias_annotation(
                 annotation=stmt.annotation,
             ):
                 return None
@@ -281,9 +336,14 @@ class FlextInfraRefactorMROMigrationScanner:
             if len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
                 return None
             symbol = stmt.targets[0].id
-            if _TYPE_CANDIDATE_PATTERN.match(symbol) is None:
+            if (
+                FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_TYPE_CANDIDATE_PATTERN.match(
+                    symbol,
+                )
+                is None
+            ):
                 return None
-            if not FlextInfraRefactorMROMigrationScanner._is_typing_factory_call(
+            if not FlextInfraUtilitiesRefactorMroScan._mro_scan_is_typing_factory_call(
                 expr=stmt.value,
             ):
                 return None
@@ -297,7 +357,7 @@ class FlextInfraRefactorMROMigrationScanner:
         return None
 
     @staticmethod
-    def _protocol_candidate_from_statement(
+    def _mro_scan_protocol_candidate_from_statement(
         *,
         stmt: ast.stmt,
     ) -> m.Infra.MROSymbolCandidate | None:
@@ -333,7 +393,7 @@ class FlextInfraRefactorMROMigrationScanner:
         )
 
     @staticmethod
-    def _is_type_alias_annotation(*, annotation: ast.expr) -> bool:
+    def _mro_scan_is_type_alias_annotation(*, annotation: ast.expr) -> bool:
         alias_name = "TypeAlias"
         if isinstance(annotation, ast.Name):
             return annotation.id == alias_name
@@ -348,7 +408,7 @@ class FlextInfraRefactorMROMigrationScanner:
         return False
 
     @staticmethod
-    def _is_typing_factory_call(*, expr: ast.expr) -> bool:
+    def _mro_scan_is_typing_factory_call(*, expr: ast.expr) -> bool:
         if not isinstance(expr, ast.Call):
             return False
         func = expr.func
@@ -359,4 +419,4 @@ class FlextInfraRefactorMROMigrationScanner:
         return False
 
 
-__all__ = ["FlextInfraRefactorMROMigrationScanner"]
+__all__ = ["FlextInfraUtilitiesRefactorMroScan"]

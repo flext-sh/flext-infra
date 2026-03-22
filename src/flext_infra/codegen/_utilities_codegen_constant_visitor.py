@@ -620,7 +620,11 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         root_path: Path,
         exclude_patterns: frozenset[str],
         max_files: int,
-    ) -> tuple[dict, set[str], dict]:
+    ) -> tuple[
+        dict[str, m.Infra.ConstantDefinition],
+        set[str],
+        dict[str, list[tuple[str, int]]],
+    ]:
         """Shared logic: extract attributes and usages for a class."""
         attrs = FlextInfraUtilitiesCodegenConstantDetection.extract_class_attributes_with_mro(
             class_path
@@ -641,7 +645,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         root_path: Path,
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
         max_files: int = 5000,
-    ) -> dict:
+    ) -> dict[
+        str, int | dict[str, int | dict[str, int]] | dict[str, list[tuple[str, int]]]
+    ]:
         """Comprehensive census of all objects in a class."""
         attrs, used_attrs, usage_map = (
             FlextInfraUtilitiesCodegenConstantDetection._analyze_class_internal(
@@ -651,7 +657,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if not attrs:
             return {}
 
-        by_type: dict = {}
+        by_type: dict[str, dict[str, int]] = {}
         for attr_name, attr_def in attrs.items():
             attr_type = attr_def.type_annotation
             if attr_type not in by_type:
@@ -676,7 +682,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         root_path: Path,
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
         max_files: int = 2000,
-    ) -> list[dict]:
+    ) -> list[dict[str, str | int | list[dict[str, str | int]]]]:
         """Propose fixes to deduplicate constant values across a class."""
         attrs, _, usage_map = (
             FlextInfraUtilitiesCodegenConstantDetection._analyze_class_internal(
@@ -687,7 +693,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             return []
 
         # Group by value
-        by_value: dict = {}
+        by_value: dict[str, list[dict[str, str | int]]] = {}
         for name, defn in attrs.items():
             value_key = defn.value_repr[:100]
             if value_key not in by_value:
@@ -699,7 +705,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             })
 
         # Create fix proposals for duplicates
-        fixes: list = []
+        fixes: list[dict[str, str | int | list[dict[str, str | int]]]] = []
         for value, names_list in by_value.items():
             if len(names_list) <= 1:
                 continue  # Not a duplicate
@@ -718,19 +724,26 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
         # Sort by impact (total usages × duplicates)
         fixes.sort(
-            key=lambda x: x["canonical_usages"] * len(x["duplicates"]),
+            key=lambda x: (
+                (
+                    x["canonical_usages"]
+                    if isinstance(x.get("canonical_usages"), int)
+                    else 0
+                )
+                * len(x.get("duplicates", []))
+            ),
             reverse=True,
         )
         return fixes
 
     @staticmethod
     def apply_deduplication_fix(
-        fix_proposal: dict,
+        fix_proposal: dict[str, str | int | list[dict[str, str | int]]],
         root_path: Path,
         class_path: str,
         *,
         dry_run: bool = True,
-    ) -> dict:
+    ) -> dict[str, str | int | list[str] | list[dict[str, str | int]]]:
         """Apply a single deduplication fix.
 
         Returns dict with: status, canonical, replaced, files_modified
@@ -746,14 +759,18 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         )
 
         files_modified = 0
-        replaced_names: list = []
-        replaced_details: list = []  # Track file, line, old_name for each replacement
+        replaced_names: list[str] = []
+        replaced_details: list[
+            dict[str, str | int]
+        ] = []  # Track file, line, old_name for each replacement
 
         # Replace each duplicate
-        duplicates = fix_proposal.get("duplicates", [])
+        duplicates_val = fix_proposal.get("duplicates", [])
+        duplicates = duplicates_val if isinstance(duplicates_val, list) else []
         for dup in duplicates:
-            dup_name = str(dup.get("name", ""))
-            replaced_names.append(dup_name)
+            if isinstance(dup, dict):
+                dup_name = str(dup.get("name", ""))
+                replaced_names.append(dup_name)
 
             # Patterns to find and replace
             patterns = [

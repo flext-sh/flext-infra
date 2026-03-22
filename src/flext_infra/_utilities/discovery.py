@@ -223,16 +223,14 @@ class FlextInfraUtilitiesDiscovery:
                 target = None
                 if isinstance(stmt, cst.Assign) and len(stmt.targets) == 1:
                     target = stmt.targets[0].target
-                elif isinstance(stmt, cst.AnnAssign):
-                    target = stmt.target
-                if (
-                    isinstance(target, cst.Name)
-                    and target.value == "_LAZY_IMPORTS"
-                    and isinstance(stmt.value, cst.Dict)
-                ):
-                    return FlextInfraUtilitiesDiscovery._extract_lazy_aliases(
-                        stmt.value,
-                    )
+                    if (
+                        isinstance(target, cst.Name)
+                        and target.value == "_LAZY_IMPORTS"
+                        and isinstance(stmt.value, cst.Dict)
+                    ):
+                        return FlextInfraUtilitiesDiscovery._extract_lazy_aliases(
+                            stmt.value,
+                        )
         return {}
 
     @staticmethod

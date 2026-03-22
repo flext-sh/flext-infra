@@ -151,5 +151,7 @@ class FlextInfraDocsModels:
             description="Phase-specific item payloads",
         )
 
+    DocsPhaseItem = DocsPhaseItemModel  # Alias for compatibility
+
 
 __all__ = ["FlextInfraDocsModels"]

@@ -9,7 +9,6 @@ from typing import override
 import libcst as cst
 
 from flext_infra import (
-    FlextInfraRefactorMROMigrationTransformer,
     FlextInfraRefactorMROResolver,
     FlextInfraRefactorRule,
     c,
@@ -61,10 +60,8 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
             constants_class=constants_class,
             candidates=tuple(candidates),
         )
-        updated_source, migration, _ = (
-            FlextInfraRefactorMROMigrationTransformer.migrate_file(
-                scan_result=scan_result,
-            )
+        updated_source, migration, _ = u.Infra.mro_migrate_file(
+            scan_result=scan_result,
         )
         if len(migration.moved_symbols) == 0 or updated_source == source:
             return (tree, [])

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraRefactorMROMigrationScanner
+from flext_infra import u
 
 
 class FlextInfraRefactorMROMigrationValidator:
     @classmethod
     def validate(cls, *, workspace_root: Path, target: str) -> tuple[int, int]:
         """Return count of remaining symbols and unsupported entries."""
-        file_results, _ = FlextInfraRefactorMROMigrationScanner.scan_workspace(
+        file_results, _ = u.Infra.mro_scan_workspace(
             workspace_root=workspace_root,
             target=target,
         )

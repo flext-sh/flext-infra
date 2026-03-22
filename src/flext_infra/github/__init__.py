@@ -18,9 +18,18 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core.typings import FlextTypes
-    from flext_infra.github.pr import FlextInfraPrManager, main
-    from flext_infra.github.pr_workspace import FlextInfraPrWorkspaceManager, u
-    from flext_infra.github.workflows import FlextInfraWorkflowSyncer, SyncOperation
+    from flext_infra.github.pr import (  # type: ignore[import-not-found]
+        FlextInfraPrManager,
+        main,
+    )
+    from flext_infra.github.pr_workspace import (  # type: ignore[import-not-found]
+        FlextInfraPrWorkspaceManager,
+        u,
+    )
+    from flext_infra.github.workflows import (  # type: ignore[import-not-found]
+        FlextInfraWorkflowSyncer,
+        SyncOperation,
+    )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FlextInfraPrManager": ("flext_infra.github.pr", "FlextInfraPrManager"),
