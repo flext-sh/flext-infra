@@ -44,7 +44,7 @@ class FlextInfraBaseMkGenerator(s[str]):
     @property
     def _get_runner(self) -> p.Infra.CommandRunner:
         """Return the command runner."""
-        return u.Infra  # type: ignore[return-value]
+        return u.Infra
 
     @override
     def execute(self) -> r[str]:

@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra.refactor.dependency_analyzer import ImportAliasDetector
-    from flext_infra.refactor.namespace_rewriter import NamespaceEnforcementRewriter
+    from flext_infra import u
+    from flext_infra.refactor import ImportAliasDetector
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -65,7 +65,7 @@ def test_namespace_rewriter_only_rewrites_runtime_alias_imports(tmp_path: Path) 
     )
     sample_file.write_text(source, encoding="utf-8")
 
-    NamespaceEnforcementRewriter.rewrite_import_violations(
+    u.Infra.namespace_rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -79,7 +79,7 @@ def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> Non
     source = "from __future__ import annotations\nfrom flext_core.utilities import u\n"
     sample_file.write_text(source, encoding="utf-8")
 
-    NamespaceEnforcementRewriter.rewrite_import_violations(
+    u.Infra.namespace_rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -99,7 +99,7 @@ def test_namespace_rewriter_skips_facade_and_subclass_files(tmp_path: Path) -> N
     )
     sample_file.write_text(source, encoding="utf-8")
 
-    NamespaceEnforcementRewriter.rewrite_import_violations(
+    u.Infra.namespace_rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -123,7 +123,7 @@ def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(
     )
     sample_file.write_text(source, encoding="utf-8")
 
-    NamespaceEnforcementRewriter.rewrite_import_violations(
+    u.Infra.namespace_rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )

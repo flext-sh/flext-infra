@@ -6,7 +6,7 @@ import pytest
 
 try:
     from flext_infra import c
-    from flext_infra.refactor.dependency_analyzer import ClassPlacementDetector
+    from flext_infra.refactor import ClassPlacementDetector
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 

@@ -118,12 +118,17 @@ class FlextInfraCodegenCensus(s[bool]):
                     int(total_used_val) if isinstance(total_used_val, int) else 0
                 )
                 total_unused = total_objs - total_used
-                by_type = census_data.get("by_type", {})
+                by_type_val = census_data.get("by_type", {})
+                by_type = (  # type: ignore[assignment]
+                    by_type_val if isinstance(by_type_val, dict) else {}
+                )
                 type_stats: list[str] = []
                 if isinstance(by_type, dict):
                     for t in sorted(by_type.keys())[:3]:
-                        if isinstance(by_type[t], dict):
-                            cnt = by_type[t].get("total", 0)
+                        type_info_val = by_type[t]
+                        if isinstance(type_info_val, dict):
+                            cnt_val = type_info_val.get("total", 0)
+                            cnt = int(cnt_val) if isinstance(cnt_val, int) else 0
                             type_stats.append(f"{t}:{cnt}")
                 type_detail = f" [{', '.join(type_stats)}]" if type_stats else ""
 
@@ -231,12 +236,13 @@ class FlextInfraCodegenCensus(s[bool]):
         if class_analysis and project.name == "flexcore":
             try:
                 class_name_str = str(class_analysis.get("class_name", "Unknown"))
-                census_data_obj_raw = class_analysis.get("census_data")
-                if not isinstance(census_data_obj_raw, dict):
-                    census_data_obj_raw = {}
-                census_data_obj: dict[str, int | dict[str, int | dict[str, int]]] = (
-                    census_data_obj_raw
-                )
+                census_data_obj_raw_val = class_analysis.get("census_data")
+                if isinstance(census_data_obj_raw_val, dict):
+                    census_data_obj: dict[
+                        str, int | dict[str, int | dict[str, int]]
+                    ] = census_data_obj_raw_val
+                else:
+                    census_data_obj = {}
 
                 total_objs_val = census_data_obj.get("total_objects", 0)
                 total_objs = (
@@ -256,9 +262,10 @@ class FlextInfraCodegenCensus(s[bool]):
                 type_stats: list[str] = []
                 if isinstance(type_breakdown, dict):
                     for type_name in sorted(type_breakdown.keys())[:3]:
-                        type_info = type_breakdown[type_name]
-                        if isinstance(type_info, dict):
-                            cnt = type_info.get("total", 0)
+                        type_info_val = type_breakdown[type_name]
+                        if isinstance(type_info_val, dict):
+                            cnt_val = type_info_val.get("total", 0)
+                            cnt = int(cnt_val) if isinstance(cnt_val, int) else 0
                             type_stats.append(f"{type_name}:{cnt}")
                 type_detail = f" [{', '.join(type_stats)}]" if type_stats else ""
 

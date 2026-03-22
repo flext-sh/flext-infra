@@ -14,6 +14,9 @@ import tokenize
 from collections import defaultdict
 from io import StringIO
 from pathlib import Path
+from typing import override
+
+import libcst as cst
 
 from flext_infra import (
     FlextInfraUtilitiesFormatting,
@@ -469,29 +472,70 @@ class FlextInfraUtilitiesRefactorNamespace:
         py_files: list[Path],
         project_package: str,
     ) -> None:
-        """Normalize all imports using centralized CST transformer."""
-        transformers_module = __import__(
-            "flext_infra.transformers",
-            fromlist=["ImportNormalizerTransformer"],
-        )
-        transformer_obj = getattr(
-            transformers_module,
-            "ImportNormalizerTransformer",
-            None,
-        )
-        if transformer_obj is None:
-            return
-        normalize_file_obj = getattr(transformer_obj, "normalize_file", None)
-        if not callable(normalize_file_obj):
-            return
+        """Normalize all imports: remove deep/submodule imports, keep canonical.
+
+        Removes:
+        - Imports from private submodules (``from pkg._sub import X``)
+        - Imports of aliases/classes from submodule files (``from pkg.models import m``)
+        - Duplicate/renamed alias imports (``from pkg.models import m as mm``)
+
+        Skips ``__init__.py`` files and facade declaration files.
+        """
         for file_path in py_files:
             if file_path.name == "__init__.py":
                 continue
-            _ = normalize_file_obj(
+            FlextInfraUtilitiesRefactorNamespace._namespace_normalize_file_imports(
                 file_path=file_path,
                 project_package=project_package,
-                alias_map=None,
             )
+
+    @staticmethod
+    def _namespace_normalize_file_imports(
+        *,
+        file_path: Path,
+        project_package: str,
+    ) -> None:
+        """Apply import normalization to a single file via CST rewrite."""
+        source_text = file_path.read_text(encoding="utf-8")
+        tree = FlextInfraUtilitiesParsing.parse_cst_from_source(source_text)
+        if tree is None:
+            return
+        is_facade = FlextInfraUtilitiesRefactorNamespace._namespace_is_facade_file(
+            tree=tree,
+        )
+        transformer = _NamespaceImportCleaner(
+            project_package=project_package,
+            is_facade=is_facade,
+        )
+        new_tree = tree.visit(transformer)
+        if not transformer.changed:
+            return
+        file_path.write_text(new_tree.code, encoding="utf-8")
+        FlextInfraUtilitiesFormatting.run_ruff_fix(file_path)
+
+    @staticmethod
+    def _namespace_is_facade_file(
+        *,
+        tree: cst.Module,
+    ) -> bool:
+        """Check if a CST module is a facade declaration file."""
+        max_alias_len = _MAX_ALIAS_NAME_LEN
+        for stmt in tree.body:
+            if not isinstance(stmt, cst.SimpleStatementLine):
+                continue
+            for item in stmt.body:
+                if not isinstance(item, cst.Assign):
+                    continue
+                for target in item.targets:
+                    if not isinstance(target, cst.AssignTarget):
+                        continue
+                    if (
+                        isinstance(target.target, cst.Name)
+                        and len(target.target.value) <= max_alias_len
+                        and isinstance(item.value, cst.Name)
+                    ):
+                        return True
+        return False
 
     @staticmethod
     def namespace_rewrite_mro_completeness_violations(
@@ -826,6 +870,100 @@ class FlextInfraUtilitiesRefactorNamespace:
                 )
             return None
         return m.Infra.ParsedPythonModule(source=source, tree=tree)
+
+
+_MAX_ALIAS_NAME_LEN: int = 2
+
+
+class _NamespaceImportCleaner(cst.CSTTransformer):
+    """CST transformer that removes deep/submodule imports for a project package."""
+
+    def __init__(self, *, project_package: str, is_facade: bool) -> None:
+        self._project_package = project_package
+        self._is_facade = is_facade
+        self.changed = False
+
+    @override
+    def leave_ImportFrom(
+        self,
+        original_node: cst.ImportFrom,
+        updated_node: cst.ImportFrom,
+    ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
+        module_name = self._extract_module_name(updated_node.module)
+        if not module_name or not module_name.startswith(self._project_package):
+            return updated_node
+        if module_name == self._project_package:
+            return updated_node
+        suffix = module_name[len(self._project_package) :]
+        if not suffix.startswith("."):
+            return updated_node
+        is_private = "._" in suffix
+        if self._is_facade and not is_private:
+            return updated_node
+        if isinstance(updated_node.names, cst.ImportStar):
+            self.changed = True
+            return cst.RemovalSentinel.REMOVE
+        remaining: list[cst.ImportAlias] = []
+        for alias in updated_node.names:
+            name = self._alias_name(alias)
+            if alias.asname is not None:
+                self.changed = True
+                continue
+            if is_private or len(name) <= _MAX_ALIAS_NAME_LEN:
+                self.changed = True
+                continue
+            remaining.append(alias)
+        if not remaining:
+            self.changed = True
+            return cst.RemovalSentinel.REMOVE
+        if len(remaining) < len(updated_node.names):
+            self.changed = True
+            cleaned = self._normalize_commas(remaining)
+            return updated_node.with_changes(names=cleaned)
+        return updated_node
+
+    @staticmethod
+    def _extract_module_name(module: cst.BaseExpression | None) -> str:
+        if module is None:
+            return ""
+        if isinstance(module, cst.Name):
+            return module.value
+        if isinstance(module, cst.Attribute):
+            parts: list[str] = []
+            current: cst.BaseExpression = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+            return ".".join(reversed(parts))
+        return ""
+
+    @staticmethod
+    def _alias_name(alias: cst.ImportAlias) -> str:
+        if isinstance(alias.name, cst.Name):
+            return alias.name.value
+        if isinstance(alias.name, cst.Attribute):
+            return alias.name.attr.value
+        return ""
+
+    @staticmethod
+    def _normalize_commas(aliases: list[cst.ImportAlias]) -> list[cst.ImportAlias]:
+        cleaned: list[cst.ImportAlias] = []
+        for idx, alias in enumerate(aliases):
+            if idx < len(aliases) - 1:
+                cleaned.append(
+                    alias.with_changes(
+                        comma=cst.Comma(
+                            whitespace_after=cst.SimpleWhitespace(" "),
+                        ),
+                    ),
+                )
+            else:
+                cleaned.append(
+                    alias.with_changes(comma=cst.MaybeSentinel.DEFAULT),
+                )
+        return cleaned
 
 
 __all__ = ["FlextInfraUtilitiesRefactorNamespace"]

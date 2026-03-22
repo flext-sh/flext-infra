@@ -28,14 +28,26 @@ from flext_infra import (
 from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
 from flext_infra.refactor._utilities_loader import FlextInfraUtilitiesRefactorLoader
 from flext_infra.refactor._utilities_mro_scan import FlextInfraUtilitiesRefactorMroScan
+from flext_infra.refactor._utilities_mro_transform import (
+    FlextInfraUtilitiesRefactorMroTransform,
+)
 from flext_infra.refactor._utilities_namespace import (
     FlextInfraUtilitiesRefactorNamespace,
+)
+from flext_infra.refactor._utilities_pydantic import (
+    FlextInfraUtilitiesRefactorPydantic,
+)
+from flext_infra.refactor._utilities_pydantic_analysis import (
+    FlextInfraUtilitiesRefactorPydanticAnalysis,
 )
 
 
 class FlextInfraUtilitiesRefactor(
     FlextInfraUtilitiesRefactorMroScan,
     FlextInfraUtilitiesRefactorNamespace,
+    FlextInfraUtilitiesRefactorMroTransform,
+    FlextInfraUtilitiesRefactorPydantic,
+    FlextInfraUtilitiesRefactorPydanticAnalysis,
     FlextInfraUtilitiesRefactorLoader,
     FlextInfraUtilitiesRefactorCli,
 ):

@@ -78,7 +78,7 @@ class FlextInfraTransformerImportNormalizer:
                     alias_map=alias_map,
                 )
                 if package_dir is not None and len(package_name) > 0
-                else {}  # type: ignore[return-value]
+                else {}  # type: dict[str, str]
             )
             file_module = ""
             if package_dir is not None and len(package_name) > 0:
@@ -93,7 +93,7 @@ class FlextInfraTransformerImportNormalizer:
             alias_to_facade = (
                 u.Infra.discover_project_aliases(project_root)
                 if project_root is not None
-                else {}  # type: ignore[return-value]
+                else {}  # type: dict[str, str]
             )
             facade_to_alias = {v: k for k, v in alias_to_facade.items()}
             declared_alias = facade_to_alias.get(file_path.name, "")
@@ -110,7 +110,7 @@ class FlextInfraTransformerImportNormalizer:
                     package_name,
                 )
                 if package_dir is not None and len(package_name) > 0
-                else {}  # type: ignore[return-value]
+                else {}
             )
             workspace_root = u.Infra.discover_workspace_root_from_file(file_path)
             workspace_packages = u.Infra.discover_workspace_packages(workspace_root)

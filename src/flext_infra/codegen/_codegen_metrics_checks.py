@@ -161,7 +161,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     def quality_gate_detect_duplicate_constant_groups(
         workspace_root: Path,
     ) -> list[m.Infra.DuplicateConstantGroup]:
-        from flext_infra.codegen.census import FlextInfraCodegenCensus  # noqa: PLC0415
+        from flext_infra.codegen.census import FlextInfraCodegenCensus
 
         all_definitions: list[m.Infra.ConstantDefinition] = []
         for report in FlextInfraCodegenCensus(workspace_root=workspace_root).run():

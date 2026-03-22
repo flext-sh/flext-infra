@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra.refactor.dependency_analyzer import NamespaceSourceDetector
-    from flext_infra.refactor.namespace_rewriter import NamespaceEnforcementRewriter
+    from flext_infra import u
+    from flext_infra.refactor import NamespaceSourceDetector
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -251,7 +251,7 @@ def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
         "_ = (m, r, u)\n",
     )
 
-    NamespaceEnforcementRewriter.rewrite_import_violations(
+    u.Infra.namespace_rewrite_import_violations(
         py_files=[target],
         project_package=package_name,
     )
@@ -275,7 +275,7 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
         "_ = (FlextLogger, u)\n",
     )
 
-    NamespaceEnforcementRewriter.rewrite_import_violations(
+    u.Infra.namespace_rewrite_import_violations(
         py_files=[target],
         project_package=package_name,
     )
@@ -300,13 +300,13 @@ def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> No
         "_ = (FlextLogger, m, r, u)\n",
     )
 
-    NamespaceEnforcementRewriter.rewrite_import_violations(
+    u.Infra.namespace_rewrite_import_violations(
         py_files=[target],
         project_package=package_name,
     )
     first_result = target.read_text(encoding="utf-8")
 
-    NamespaceEnforcementRewriter.rewrite_import_violations(
+    u.Infra.namespace_rewrite_import_violations(
         py_files=[target],
         project_package=package_name,
     )

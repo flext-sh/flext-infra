@@ -8,13 +8,11 @@ from typing import cast
 import tomlkit
 from flext_tests import t, tm
 
-from flext_infra import m
-from flext_infra.deps._phases import EnsurePyreflyConfigPhase
-from flext_infra.deps.tool_config import FlextInfraDependencyToolConfig
+from flext_infra import EnsurePyreflyConfigPhase, m, u
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
-    result = FlextInfraDependencyToolConfig.load_tool_config()
+    result = u.Infra.load_tool_config()
     tm.that(result.is_failure, eq=False)
     if result.is_failure:
         msg = "failed to load tool config"

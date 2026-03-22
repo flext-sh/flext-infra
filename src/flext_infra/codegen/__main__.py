@@ -181,9 +181,11 @@ class FlextInfraCodegenCommand:
                 total_files_modified += files_mod
                 canonical = str(result.get("canonical", ""))
                 replaced_val = result.get("replaced", [])
-                replaced: list[str] = (
-                    replaced_val if isinstance(replaced_val, list) else []
-                )
+                replaced: list[str] = []
+                if isinstance(replaced_val, list):
+                    replaced = [item for item in replaced_val if isinstance(item, str)]
+                else:
+                    replaced = []
                 output.info(
                     f"✓ {canonical}: replaced {len(replaced)} in {files_mod} files"
                 )

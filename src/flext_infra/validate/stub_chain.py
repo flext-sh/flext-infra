@@ -23,7 +23,7 @@ class FlextInfraStubSupplyChain:
 
     def __init__(self) -> None:
         """Initialize the stub supply chain."""
-        self._runner: p.Infra.CommandRunner = u.Infra  # type: ignore[assignment]
+        self._runner: p.Infra.CommandRunner = u.Infra
 
     def _discover_stub_projects(self, workspace_root: Path) -> list[Path]:
         """Discover projects that should participate in stub checks."""

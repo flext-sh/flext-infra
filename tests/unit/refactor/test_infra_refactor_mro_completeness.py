@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra.refactor.dependency_analyzer import MROCompletenessDetector
-    from flext_infra.refactor.namespace_rewriter import NamespaceEnforcementRewriter
+    from flext_infra import u
+    from flext_infra.refactor import MROCompletenessDetector
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -95,7 +95,7 @@ def test_rewriter_adds_missing_base_and_formats(tmp_path: Path) -> None:
     )
 
     violations = MROCompletenessDetector.detect_file(file_path=facade_file)
-    NamespaceEnforcementRewriter.rewrite_mro_completeness_violations(
+    u.Infra.namespace_rewrite_mro_completeness_violations(
         violations=violations,
         parse_failures=[],
     )

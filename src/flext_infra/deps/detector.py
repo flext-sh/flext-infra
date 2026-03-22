@@ -9,13 +9,8 @@ from typing import Protocol, runtime_checkable
 
 from flext_core import FlextLogger
 from flext_infra import (
-    DepsService,
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
-    JsonService,
-    PathsService,
-    ReportingService,
-    RunnerService,
     m,
     p,
     r,
@@ -26,12 +21,12 @@ from flext_infra import (
 class FlextInfraRuntimeDevDependencyDetector:
     """CLI tool for detecting runtime vs dev dependencies across workspace."""
 
-    log: p.Logger = FlextLogger.create_module_logger(__name__)  # type: ignore[assignment]
-    paths: PathsService  # type: ignore[name-defined]
-    reporting: ReportingService  # type: ignore[name-defined]
-    json: JsonService  # type: ignore[name-defined]
-    deps: DepsService  # type: ignore[name-defined]
-    runner: RunnerService  # type: ignore[name-defined]
+    log: p.Logger = FlextLogger.create_module_logger(__name__)
+    paths: p.Infra.PathsService
+    reporting: p.Infra.ReportingService
+    json: p.Infra.JsonService
+    deps: p.Infra.DepsService
+    runner: p.Infra.RunnerService
 
     def __init__(self) -> None:
         """Initialize detector runtime services."""

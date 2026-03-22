@@ -236,18 +236,18 @@ class FlextInfraTransformerTier0ImportFixer:
         ) -> cst.Module:
             stmts: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = list(
                 updated_node.body
-            )  # type: ignore[assignment]
+            )
             if not self._type_checking_import_present and self._type_checking_pending:
                 stmts.insert(
                     self._idx(stmts),
-                    u.Infra.cst_import_line("typing", ["TYPE_CHECKING"]),  # type: ignore[arg-type]
+                    u.Infra.cst_import_line("typing", ["TYPE_CHECKING"]),
                 )
                 self._type_checking_import_present = True
                 self._changes.append("Added 'from typing import TYPE_CHECKING'")
 
             additions = self._build_additions()
             if additions:
-                stmts[self._idx(stmts) : self._idx(stmts)] = additions  # type: ignore[index]
+                stmts[self._idx(stmts) : self._idx(stmts)] = additions
 
             if self._type_checking_pending:
                 stmts.insert(
@@ -256,7 +256,7 @@ class FlextInfraTransformerTier0ImportFixer:
                         test=cst.Name("TYPE_CHECKING"),
                         body=cst.IndentedBlock(
                             body=[
-                                u.Infra.cst_import_line(  # type: ignore[arg-type]
+                                u.Infra.cst_import_line(
                                     self._package_name,
                                     list(self._type_checking_pending),
                                 )
@@ -267,7 +267,7 @@ class FlextInfraTransformerTier0ImportFixer:
                 self._changes.append(
                     f"Added TYPE_CHECKING block for {self._package_name}"
                 )
-            return updated_node.with_changes(body=tuple(stmts))  # type: ignore[arg-type]
+            return updated_node.with_changes(body=tuple(stmts))
 
         def _rewrite_root_self_import(
             self, node: cst.ImportFrom
