@@ -11,6 +11,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from importlib.metadata import PackageMetadata, PackageNotFoundError, metadata
+from typing import Final
+
+_MAJOR_INDEX: Final[int] = 0
+_MINOR_INDEX: Final[int] = 1
+_PATCH_INDEX: Final[int] = 2
 
 
 class FlextInfraVersion:
@@ -58,9 +63,9 @@ class FlextInfraVersion:
     def is_version_at_least(cls, major: int, minor: int = 0, patch: int = 0) -> bool:
         """Return True if the package version is at least major.minor.patch."""
         info = cls.__version_info__
-        cur_major = info[0] if info and isinstance(info[0], int) else 0
-        cur_minor = info[1] if len(info) > 1 and isinstance(info[1], int) else 0
-        cur_patch = info[2] if len(info) > 2 and isinstance(info[2], int) else 0
+        cur_major = info[_MAJOR_INDEX] if info and isinstance(info[_MAJOR_INDEX], int) else 0
+        cur_minor = info[_MINOR_INDEX] if len(info) > _MINOR_INDEX and isinstance(info[_MINOR_INDEX], int) else 0
+        cur_patch = info[_PATCH_INDEX] if len(info) > _PATCH_INDEX and isinstance(info[_PATCH_INDEX], int) else 0
         return (cur_major, cur_minor, cur_patch) >= (major, minor, patch)
 
     @classmethod
