@@ -126,9 +126,8 @@ class RuntimeAliasDetector(p.Infra.Scanner):
             return []
         if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
-        try:
-            tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
-        except cst.ParserSyntaxError:
+        tree = u.Infra.parse_module_cst(file_path)
+        if tree is None:
             return []
         violations: list[nem.RuntimeAliasViolation] = []
         _ = project_name

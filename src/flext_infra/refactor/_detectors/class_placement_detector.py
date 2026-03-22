@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
-from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, p, u
 from flext_infra.refactor._models_namespace_enforcer import (
@@ -135,13 +134,10 @@ class ClassPlacementDetector(p.Infra.Scanner):
             return []
         if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
             return []
-        try:
-            tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
-        except cst.ParserSyntaxError:
+        tree = u.Infra.parse_module_cst(file_path)
+        if tree is None:
             return []
-        wrapper = MetadataWrapper(tree)
-        module = wrapper.module
-        positions = wrapper.resolve(PositionProvider)
+        module, positions = u.Infra.cst_resolve_positions(tree)
         violations: list[nem.ClassPlacementViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.ClassDef):

@@ -7,7 +7,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 
 import libcst as cst
-from libcst.metadata import CodeRange
+from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
 
 class FlextInfraUtilitiesParsing:
@@ -110,6 +110,23 @@ class FlextInfraUtilitiesParsing:
         if code_range is None:
             return 1
         return code_range.start.line
+
+    @staticmethod
+    def cst_resolve_positions(
+        tree: cst.Module,
+    ) -> tuple[cst.Module, Mapping[cst.CSTNode, CodeRange]]:
+        """Wrap a CST module and resolve position metadata.
+
+        Args:
+            tree: The CST module to wrap.
+
+        Returns:
+            Tuple of (wrapped module, positions mapping).
+
+        """
+        wrapper = MetadataWrapper(tree)
+        positions = wrapper.resolve(PositionProvider)
+        return (wrapper.module, positions)
 
     @staticmethod
     def cst_module_name(node: cst.CSTNode | None) -> str:

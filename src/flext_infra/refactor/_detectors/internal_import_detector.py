@@ -113,9 +113,8 @@ class InternalImportDetector(p.Infra.Scanner):
             List of InternalImportViolation for each private import found.
 
         """
-        try:
-            tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
-        except cst.ParserSyntaxError:
+        tree = u.Infra.parse_module_cst(file_path)
+        if tree is None:
             return []
         violations: list[nem.InternalImportViolation] = []
         for stmt in u.Infra.cst_iter_simple_statements(tree.body):

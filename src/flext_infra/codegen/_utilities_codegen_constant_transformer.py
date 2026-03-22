@@ -9,6 +9,7 @@ import libcst as cst
 
 from flext_infra import (
     FlextInfraUtilitiesCodegenConstantDetection,
+    FlextInfraUtilitiesParsing,
     m,
 )
 
@@ -221,10 +222,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         if pkg_dir is not None:
             constants_file = pkg_dir / "constants.py"
             if constants_file.is_file():
-                try:
-                    tree = cst.parse_module(constants_file.read_text("utf-8"))
-                except (cst.ParserSyntaxError, UnicodeDecodeError):
-                    tree = None
+                tree = FlextInfraUtilitiesParsing.parse_module_cst(constants_file)
                 if tree is not None:
                     for stmt in tree.body:
                         if isinstance(stmt, cst.ClassDef):
@@ -240,7 +238,9 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         definitions: list[m.Infra.ConstantDefinition],
     ) -> tuple[bool, list[str]]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
-        tree = cst.parse_module(file_path.read_text("utf-8"))
+        tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
+        if tree is None:
+            return False, []
         transformer = t.CanonicalValueReplacer(
             parent_class=parent_class,
             definitions=definitions,
@@ -256,7 +256,9 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         unused: list[m.Infra.UnusedConstant],
     ) -> tuple[bool, list[str]]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
-        tree = cst.parse_module(file_path.read_text("utf-8"))
+        tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
+        if tree is None:
+            return False, []
         transformer = t.UnusedConstantRemover(
             unused_names={item.name for item in unused},
         )
@@ -281,7 +283,9 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
                     resolved_pkg_dir = parent
                     break
         target_class = t.derive_constants_class(package_name, resolved_pkg_dir)
-        tree = cst.parse_module(file_path.read_text("utf-8"))
+        tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
+        if tree is None:
+            return False, []
         transformer = t.DirectRefAliasNormalizer(
             project_import=project_import,
             target_class=target_class,
@@ -347,10 +351,8 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
                     continue
                 stem = py_file.stem
                 deps: set[str] = set()
-                try:
-                    source = py_file.read_text("utf-8")
-                    tree = cst.parse_module(source)
-                except (cst.ParserSyntaxError, UnicodeDecodeError):
+                tree = FlextInfraUtilitiesParsing.parse_module_cst(py_file)
+                if tree is None:
                     continue
                 for stmt in tree.body:
                     if not isinstance(stmt, cst.SimpleStatementLine):
@@ -427,8 +429,9 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             source_file = pkg_dir / f"{source_mod}.py"
             if not source_file.is_file():
                 continue
-            source_text = source_file.read_text("utf-8")
-            tree = cst.parse_module(source_text)
+            tree = FlextInfraUtilitiesParsing.parse_module_cst(source_file)
+            if tree is None:
+                continue
             new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
             changed = False
 

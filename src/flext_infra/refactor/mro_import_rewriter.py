@@ -53,9 +53,8 @@ class FlextInfraRefactorMROImportRewriter:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except OSError:
             return None
-        try:
-            cst_tree = cst.parse_module(source)
-        except cst.ParserSyntaxError:
+        cst_tree = u.Infra.parse_cst_from_source(source)
+        if cst_tree is None:
             return None
         ast_tree = u.Infra.parse_ast_from_source(source)
         if ast_tree is None:

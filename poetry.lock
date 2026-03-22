@@ -25,38 +25,6 @@ files = [
 ]
 
 [[package]]
-name = "attrs"
-version = "25.4.0"
-description = "Classes Without Boilerplate"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "attrs-25.4.0-py3-none-any.whl", hash = "sha256:adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373"},
-    {file = "attrs-25.4.0.tar.gz", hash = "sha256:16d5969b87f0859ef33a48b35d55ac1be6e42ae49d5e853b597db70c35c57e11"},
-]
-
-[[package]]
-name = "beartype"
-version = "0.22.9"
-description = "Unbearably fast near-real-time pure-Python runtime-static type-checker."
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "beartype-0.22.9-py3-none-any.whl", hash = "sha256:d16c9bbc61ea14637596c5f6fbff2ee99cbe3573e46a716401734ef50c3060c2"},
-    {file = "beartype-0.22.9.tar.gz", hash = "sha256:8f82b54aa723a2848a56008d18875f91c1db02c32ef6a62319a002e3e25a975f"},
-]
-
-[package.extras]
-dev = ["autoapi (>=0.9.0)", "celery", "click", "coverage (>=5.5)", "docutils (>=0.22.0)", "equinox ; sys_platform == \"linux\" and python_version < \"3.15.0\"", "fastmcp ; python_version < \"3.14.0\"", "jax[cpu] ; sys_platform == \"linux\" and python_version < \"3.15.0\"", "jaxtyping ; sys_platform == \"linux\"", "langchain ; python_version < \"3.14.0\" and sys_platform != \"darwin\" and platform_python_implementation != \"PyPy\"", "mypy (>=0.800) ; platform_python_implementation != \"PyPy\"", "nuitka (>=1.2.6) ; sys_platform == \"linux\" and python_version < \"3.14.0\"", "numba ; python_version < \"3.14.0\"", "numpy ; python_version < \"3.15.0\" and sys_platform != \"darwin\" and platform_python_implementation != \"PyPy\"", "pandera (>=0.26.0) ; python_version < \"3.14.0\"", "poetry", "polars ; python_version < \"3.14.0\"", "pydata-sphinx-theme (<=0.7.2)", "pygments", "pyinstaller", "pyright (>=1.1.370)", "pytest (>=6.2.0)", "redis", "rich-click", "setuptools", "sphinx", "sphinx (>=4.2.0,<6.0.0)", "sphinxext-opengraph (>=0.7.5)", "sqlalchemy", "torch ; sys_platform == \"linux\" and python_version < \"3.14.0\"", "tox (>=3.20.1)", "typer", "typing-extensions (>=3.10.0.0)", "xarray ; python_version < \"3.15.0\""]
-doc-ghp = ["mkdocs-material[imaging] (>=9.6.0)", "mkdocstrings-python (>=1.16.0)", "mkdocstrings-python-xref (>=1.16.0)"]
-doc-rtd = ["autoapi (>=0.9.0)", "pydata-sphinx-theme (<=0.7.2)", "setuptools", "sphinx (>=4.2.0,<6.0.0)", "sphinxext-opengraph (>=0.7.5)"]
-test = ["celery", "click", "coverage (>=5.5)", "docutils (>=0.22.0)", "equinox ; sys_platform == \"linux\" and python_version < \"3.15.0\"", "fastmcp ; python_version < \"3.14.0\"", "jax[cpu] ; sys_platform == \"linux\" and python_version < \"3.15.0\"", "jaxtyping ; sys_platform == \"linux\"", "langchain ; python_version < \"3.14.0\" and sys_platform != \"darwin\" and platform_python_implementation != \"PyPy\"", "mypy (>=0.800) ; platform_python_implementation != \"PyPy\"", "nuitka (>=1.2.6) ; sys_platform == \"linux\" and python_version < \"3.14.0\"", "numba ; python_version < \"3.14.0\"", "numpy ; python_version < \"3.15.0\" and sys_platform != \"darwin\" and platform_python_implementation != \"PyPy\"", "pandera (>=0.26.0) ; python_version < \"3.14.0\"", "poetry", "polars ; python_version < \"3.14.0\"", "pygments", "pyinstaller", "pyright (>=1.1.370)", "pytest (>=6.2.0)", "redis", "rich-click", "sphinx", "sqlalchemy", "torch ; sys_platform == \"linux\" and python_version < \"3.14.0\"", "tox (>=3.20.1)", "typer", "typing-extensions (>=3.10.0.0)", "xarray ; python_version < \"3.15.0\""]
-test-tox = ["celery", "click", "docutils (>=0.22.0)", "equinox ; sys_platform == \"linux\" and python_version < \"3.15.0\"", "fastmcp ; python_version < \"3.14.0\"", "jax[cpu] ; sys_platform == \"linux\" and python_version < \"3.15.0\"", "jaxtyping ; sys_platform == \"linux\"", "langchain ; python_version < \"3.14.0\" and sys_platform != \"darwin\" and platform_python_implementation != \"PyPy\"", "mypy (>=0.800) ; platform_python_implementation != \"PyPy\"", "nuitka (>=1.2.6) ; sys_platform == \"linux\" and python_version < \"3.14.0\"", "numba ; python_version < \"3.14.0\"", "numpy ; python_version < \"3.15.0\" and sys_platform != \"darwin\" and platform_python_implementation != \"PyPy\"", "pandera (>=0.26.0) ; python_version < \"3.14.0\"", "poetry", "polars ; python_version < \"3.14.0\"", "pygments", "pyinstaller", "pyright (>=1.1.370)", "pytest (>=6.2.0)", "redis", "rich-click", "sphinx", "sqlalchemy", "torch ; sys_platform == \"linux\" and python_version < \"3.14.0\"", "typer", "typing-extensions (>=3.10.0.0)", "xarray ; python_version < \"3.15.0\""]
-test-tox-coverage = ["coverage (>=5.5)"]
-
-[[package]]
 name = "cachetools"
 version = "7.0.5"
 description = "Extensible memoizing collections and decorators"
@@ -346,7 +314,6 @@ files = []
 develop = false
 
 [package.dependencies]
-attrs = ">=25.4,<26"
 cachetools = ">=5.3"
 click = ">=8.2.1"
 flext-core = {path = "../flext-core"}
@@ -378,8 +345,6 @@ files = []
 develop = false
 
 [package.dependencies]
-attrs = ">=25.4"
-beartype = ">=0.19"
 cachetools = ">=5.3"
 dependency-injector = ">=4.41"
 docker = ">=7.1,<8"
@@ -389,6 +354,7 @@ orjson = ">=3.11.3"
 pybreaker = ">=0.8"
 pydantic = ">=2.12.3"
 pydantic-core = ">=2.41.4"
+pydantic-extra-types = {version = ">=2.10", extras = ["semver"]}
 pydantic-settings = ">=2.10.1"
 python-dotenv = ">=1"
 python-on-whales = ">=0.79"
@@ -400,7 +366,7 @@ tomlkit = ">=0.13"
 wrapt = ">=1.17"
 
 [package.extras]
-dev = ["autoflake (>=2.3.1)", "bandit (>=1.8)", "beartype (>=0.19)", "black (>=25.1)", "codespell (>=2.3)", "deptry (>=0.23)", "detect-secrets (>=1.5)", "django-stubs (>=5.2.2)", "factory-boy (>=3.3.1)", "faker (>=37.4)", "flext-infra @ file:///home/marlonsc/flext/flext-infra", "flext-tests @ file:///home/marlonsc/flext/flext-tests", "hypothesis (>=6.125)", "interrogate (>=1.7)", "isort (>=6.0.1)", "libcst (>=1.5.1)", "mkdocs (>=1.6)", "mkdocs-awesome-pages-plugin (>=2.9)", "mkdocs-encryptcontent-plugin (>=2)", "mkdocs-exclude (>=1)", "mkdocs-get-deps (>=0.2)", "mkdocs-git-revision-date-localized-plugin (>=1.2)", "mkdocs-literate-nav (>=0.6)", "mkdocs-macros-plugin (>=1)", "mkdocs-material (>=9.5)", "mkdocs-material-extensions (>=1.3.1)", "mkdocs-mermaid2-plugin (>=1.1)", "mkdocs-minify-plugin (>=0.7)", "mkdocs-newsletter (>=0.1)", "mkdocs-print-site-plugin (>=0.8)", "mkdocs-redirects (>=1.2)", "mkdocs-section-index (>=0.3)", "mkdocs-versioning (>=0.2)", "mkdocstrings (>=0.24)", "mkdocstrings-python (>=1.7)", "mypy (>=1.18.2)", "pip-audit (>=2.7.3)", "pre-commit (>=4.0.1)", "pylint (>=3.3)", "pytest (>=8.4)", "pytest-benchmark (>=5.1)", "pytest-clarity (>=1.0.1)", "pytest-cov (>=6.2)", "pytest-deadfixtures (>=2.2.1)", "pytest-env (>=1.1.5)", "pytest-mock (>=3.14)", "pytest-randomly (>=3.16)", "pytest-sugar (>=1)", "pytest-timeout (>=2.4)", "pytest-xdist (>=3.8)", "pyupgrade (>=3.19)", "radon (>=6.0.1)", "rope (>=1.14.0)", "ruff (>=0.12.3)", "types-cachetools (>=5.3)", "types-docker (>=7.1)", "types-ldap3 (>=2.9.13.20250622)", "types-protobuf (>=6.30.2.20250703)", "types-psutil (>=7)", "types-psycopg2 (>=2.9.21.20250718)", "types-python-dateutil (>=2.9)", "types-pyyaml (>=6.0.12)", "types-redis (>=4.6)", "types-requests (>=2.32.4)", "types-setuptools (>=80.9)", "types-toml (>=0.10.8.20240310)", "uv (>=0.9.6)", "vulture (>=2.13)"]
+dev = ["autoflake (>=2.3.1)", "bandit (>=1.8)", "black (>=25.1)", "codespell (>=2.3)", "deptry (>=0.23)", "detect-secrets (>=1.5)", "django-stubs (>=5.2.2)", "factory-boy (>=3.3.1)", "faker (>=37.4)", "flext-infra @ file:///home/marlonsc/flext/flext-infra", "flext-tests @ file:///home/marlonsc/flext/flext-tests", "hypothesis (>=6.125)", "interrogate (>=1.7)", "isort (>=6.0.1)", "libcst (>=1.5.1)", "mkdocs (>=1.6)", "mkdocs-awesome-pages-plugin (>=2.9)", "mkdocs-encryptcontent-plugin (>=2)", "mkdocs-exclude (>=1)", "mkdocs-get-deps (>=0.2)", "mkdocs-git-revision-date-localized-plugin (>=1.2)", "mkdocs-literate-nav (>=0.6)", "mkdocs-macros-plugin (>=1)", "mkdocs-material (>=9.5)", "mkdocs-material-extensions (>=1.3.1)", "mkdocs-mermaid2-plugin (>=1.1)", "mkdocs-minify-plugin (>=0.7)", "mkdocs-newsletter (>=0.1)", "mkdocs-print-site-plugin (>=0.8)", "mkdocs-redirects (>=1.2)", "mkdocs-section-index (>=0.3)", "mkdocs-versioning (>=0.2)", "mkdocstrings (>=0.24)", "mkdocstrings-python (>=1.7)", "mypy (>=1.18.2)", "pip-audit (>=2.7.3)", "pre-commit (>=4.0.1)", "pylint (>=3.3)", "pytest (>=8.4)", "pytest-benchmark (>=5.1)", "pytest-clarity (>=1.0.1)", "pytest-cov (>=6.2)", "pytest-deadfixtures (>=2.2.1)", "pytest-env (>=1.1.5)", "pytest-mock (>=3.14)", "pytest-randomly (>=3.16)", "pytest-sugar (>=1)", "pytest-timeout (>=2.4)", "pytest-xdist (>=3.8)", "pyupgrade (>=3.19)", "radon (>=6.0.1)", "rope (>=1.14.0)", "ruff (>=0.12.3)", "types-cachetools (>=5.3)", "types-docker (>=7.1)", "types-ldap3 (>=2.9.13.20250622)", "types-protobuf (>=6.30.2.20250703)", "types-psutil (>=7)", "types-psycopg2 (>=2.9.21.20250718)", "types-python-dateutil (>=2.9)", "types-pyyaml (>=6.0.12)", "types-redis (>=4.6)", "types-requests (>=2.32.4)", "types-setuptools (>=80.9)", "types-toml (>=0.10.8.20240310)", "uv (>=0.9.6)", "vulture (>=2.13)"]
 
 [package.source]
 type = "directory"
@@ -991,6 +957,33 @@ files = [
 typing-extensions = ">=4.14.1"
 
 [[package]]
+name = "pydantic-extra-types"
+version = "2.11.1"
+description = "Extra Pydantic types."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pydantic_extra_types-2.11.1-py3-none-any.whl", hash = "sha256:1722ea2bddae5628ace25f2aa685b69978ef533123e5638cfbddb999e0100ec1"},
+    {file = "pydantic_extra_types-2.11.1.tar.gz", hash = "sha256:46792d2307383859e923d8fcefa82108b1a141f8a9c0198982b3832ab5ef1049"},
+]
+
+[package.dependencies]
+pydantic = ">=2.5.2"
+semver = {version = ">=3.0.2", optional = true, markers = "extra == \"semver\""}
+typing-extensions = "*"
+
+[package.extras]
+all = ["cron-converter (>=1.2.2)", "pendulum (>=3.0.0,<4.0.0)", "phonenumbers (>=8,<10)", "pycountry (>=23)", "pymongo (>=4.0.0,<5.0.0)", "python-ulid (>=1,<2) ; python_version < \"3.9\"", "python-ulid (>=1,<4) ; python_version >= \"3.9\"", "pytz (>=2024.1)", "semver (>=3.0.2)", "semver (>=3.0.2,<3.1.0)", "tzdata (>=2024.1)", "uuid-utils (>=0.6.0) ; python_version < \"3.14\""]
+cron = ["cron-converter (>=1.2.2)"]
+pendulum = ["pendulum (>=3.0.0,<4.0.0)"]
+phonenumbers = ["phonenumbers (>=8,<10)"]
+pycountry = ["pycountry (>=23)"]
+python-ulid = ["python-ulid (>=1,<2) ; python_version < \"3.9\"", "python-ulid (>=1,<4) ; python_version >= \"3.9\""]
+semver = ["semver (>=3.0.2)"]
+uuid-utils = ["uuid-utils (>=0.6.0) ; python_version < \"3.14\""]
+
+[[package]]
 name = "pydantic-settings"
 version = "2.13.1"
 description = "Settings management using Pydantic"
@@ -1304,6 +1297,18 @@ doc = ["pytoolconfig[doc]", "sphinx (>=4.5.0)", "sphinx-autodoc-typehints (>=1.1
 release = ["pip-tools (>=6.12.1)", "toml (>=0.10.2)", "twine (>=4.0.2)"]
 
 [[package]]
+name = "semver"
+version = "3.0.4"
+description = "Python helper for Semantic Versioning (https://semver.org)"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746"},
+    {file = "semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602"},
+]
+
+[[package]]
 name = "shellingham"
 version = "1.5.4"
 description = "Tool to Detect Surrounding Shell"
@@ -1535,4 +1540,4 @@ dev = ["pytest", "setuptools"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<3.14"
-content-hash = "d76ac1bf80a21ccfc4775e5b0a4673f827657722cf4be56ce87a28391c813086"
+content-hash = "bde65241e2af71e921fe35e03b1d4b59c4102507eca0bdbb1e2b2c676fe0e8f5"

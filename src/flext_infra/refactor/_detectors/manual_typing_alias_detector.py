@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
-from libcst.metadata import MetadataWrapper, PositionProvider
 
 from flext_infra import c, p, u
 from flext_infra.models import m
@@ -124,13 +123,10 @@ class ManualTypingAliasDetector(
             return []
         if c.Infra.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts:
             return []
-        try:
-            tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
-        except cst.ParserSyntaxError:
+        tree = u.Infra.parse_module_cst(file_path)
+        if tree is None:
             return []
-        wrapper = MetadataWrapper(tree)
-        module = wrapper.module
-        positions = wrapper.resolve(PositionProvider)
+        module, positions = u.Infra.cst_resolve_positions(tree)
         violations: list[nem.ManualTypingAliasViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.SimpleStatementLine):

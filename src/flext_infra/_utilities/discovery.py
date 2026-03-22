@@ -343,9 +343,8 @@ class FlextInfraUtilitiesDiscovery:
         """Return single-letter aliases declared in a package ``__init__`` file."""
         if not package_init.exists():
             return ()
-        try:
-            tree = cst.parse_module(package_init.read_text(encoding="utf-8"))
-        except cst.ParserSyntaxError:
+        tree = FlextInfraUtilitiesParsing.parse_module_cst(package_init)
+        if tree is None:
             return ()
         aliases: set[str] = set()
         for item in tree.body:
@@ -439,9 +438,8 @@ class FlextInfraUtilitiesDiscovery:
             filepath = package_dir / filename
             if not filepath.exists():
                 continue
-            try:
-                tree = cst.parse_module(filepath.read_text())
-            except cst.ParserSyntaxError:
+            tree = FlextInfraUtilitiesParsing.parse_module_cst(filepath)
+            if tree is None:
                 continue
             for item in tree.body:
                 if not isinstance(item, cst.SimpleStatementLine):

@@ -45,17 +45,16 @@ class FlextInfraRefactorViolationAnalyzer:
             helper_totals.update(helper_analysis.totals)
             helper_manual_review.extend(helper_analysis.manual_review)
             file_counts: dict[str, int] = {}
-            try:
-                tree = cst.parse_module(content)
-                violation_visitor = ViolationCensusVisitor(file_path=file_path)
-                cst.metadata.MetadataWrapper(tree).visit(violation_visitor)
-                for record in violation_visitor.records:
-                    kind = str(record.get("kind", ""))
-                    if kind:
-                        totals[kind] += 1
-                        file_counts[kind] = file_counts.get(kind, 0) + 1
-            except cst.ParserSyntaxError:
-                pass
+            tree = u.Infra.parse_cst_from_source(content)
+            if tree is None:
+                continue
+            violation_visitor = ViolationCensusVisitor(file_path=file_path)
+            cst.metadata.MetadataWrapper(tree).visit(violation_visitor)
+            for record in violation_visitor.records:
+                kind = str(record.get("kind", ""))
+                if kind:
+                    totals[kind] += 1
+                    file_counts[kind] = file_counts.get(kind, 0) + 1
             if file_counts:
                 per_file[str(file_path)] = file_counts
         class_nesting = FlextInfraRefactorClassNestingAnalyzer.analyze_files(files)

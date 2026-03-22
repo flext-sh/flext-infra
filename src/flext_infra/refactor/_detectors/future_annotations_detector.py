@@ -109,9 +109,8 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         """
         if file_path.name == "py.typed":
             return []
-        try:
-            tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
-        except cst.ParserSyntaxError:
+        tree = u.Infra.parse_module_cst(file_path)
+        if tree is None:
             return []
         if len(tree.body) == 0:
             return []

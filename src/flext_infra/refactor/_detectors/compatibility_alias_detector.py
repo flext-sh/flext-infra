@@ -112,9 +112,8 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         """
         if file_path.suffix != ".py":
             return []
-        try:
-            tree = cst.parse_module(file_path.read_text(encoding="utf-8"))
-        except cst.ParserSyntaxError:
+        tree = u.Infra.parse_module_cst(file_path)
+        if tree is None:
             return []
         violations: list[nem.CompatibilityAliasViolation] = []
         for stmt in u.Infra.cst_iter_simple_statements(tree.body):

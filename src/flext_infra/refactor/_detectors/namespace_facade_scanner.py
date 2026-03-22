@@ -14,7 +14,7 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import c
+from flext_infra import c, u
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
@@ -96,9 +96,8 @@ class NamespaceFacadeScanner:
         if not src_dir.is_dir():
             return ("", "", 0)
         for file_path in src_dir.rglob(file_pattern):
-            try:
-                tree = cst.parse_module(file_path.read_text())
-            except (OSError, cst.ParserSyntaxError):
+            tree = u.Infra.parse_module_cst(file_path)
+            if tree is None:
                 continue
             for node in cls._walk_classes(tree.body):
                 class_name = node.name.value

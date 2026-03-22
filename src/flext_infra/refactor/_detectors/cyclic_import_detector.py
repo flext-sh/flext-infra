@@ -15,11 +15,10 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import c
+from flext_infra import c, u
 from flext_infra.refactor._models_namespace_enforcer import (
     FlextInfraNamespaceEnforcerModels as nem,
 )
-from flext_infra.utilities import u
 
 
 class CyclicImportDetector:
@@ -74,9 +73,8 @@ class CyclicImportDetector:
                 if module_name not in file_map:
                     file_map[module_name] = str(py_file)
                 graph.setdefault(module_name, set())
-                try:
-                    tree = cst.parse_module(py_file.read_text())
-                except (OSError, cst.ParserSyntaxError):
+                tree = u.Infra.parse_module_cst(py_file)
+                if tree is None:
                     continue
                 for item in tree.body:
                     if isinstance(item, cst.If):

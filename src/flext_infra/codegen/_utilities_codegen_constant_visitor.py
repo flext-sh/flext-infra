@@ -7,7 +7,11 @@ from typing import Final, override
 
 import libcst as cst
 
-from flext_infra import FlextInfraUtilitiesCodegenGovernance, m
+from flext_infra import (
+    FlextInfraUtilitiesCodegenGovernance,
+    FlextInfraUtilitiesParsing,
+    m,
+)
 
 
 class FlextInfraUtilitiesCodegenConstantDetection:
@@ -232,10 +236,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         file_path: Path,
         project: str,
     ) -> list[m.Infra.ConstantDefinition]:
-        try:
-            source = file_path.read_text("utf-8")
-            tree = cst.parse_module(source)
-        except (cst.ParserSyntaxError, UnicodeDecodeError):
+        tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
+        if tree is None:
             return []
         visitor = FlextInfraUtilitiesCodegenConstantDetection.DeclarationVisitor(
             project=project,
@@ -308,10 +310,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             Tuple of (used_names_set, direct_refs, all_refs_with_lines)
 
         """
-        try:
-            source = file_path.read_text("utf-8")
-            tree = cst.parse_module(source)
-        except (cst.ParserSyntaxError, UnicodeDecodeError):
+        tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
+        if tree is None:
             return set(), [], []
 
         if not target_class and not collect_all_refs:
@@ -469,10 +469,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         constants_file = pkg_dir / "constants.py"
         if not constants_file.is_file():
             return "flext_core"
-        try:
-            source = constants_file.read_text("utf-8")
-            tree = cst.parse_module(source)
-        except (cst.ParserSyntaxError, UnicodeDecodeError):
+        tree = FlextInfraUtilitiesParsing.parse_module_cst(constants_file)
+        if tree is None:
             return "flext_core"
         for stmt in tree.body:
             if not isinstance(stmt, cst.SimpleStatementLine):
