@@ -12,8 +12,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from tests.unit.codegen._project_factory import (
+from flext_infra import FlextInfraCodegenFixer
+from tests import (
     FlextInfraCodegenTestProjectFactory,
 )
 

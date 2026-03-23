@@ -13,11 +13,11 @@ import io
 from pathlib import Path
 
 import pytest
+from flext_core import t
 from flext_tests import tm
 
-from flext_core import t
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from tests.models import m as im
+from flext_infra import FlextInfraBaseMkGenerator
+from tests import m as im
 
 
 def test_generator_write_handles_file_permission_error(tmp_path: Path) -> None:

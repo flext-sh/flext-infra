@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import sys
 
-from flext_infra import __main__ as main_mod
-from flext_infra.__main__ import FlextInfraMainCLI
+from flext_infra import FlextInfraMainCLI, __main__ as main_mod
 
 
 def test_main_returns_error_when_no_args() -> None:

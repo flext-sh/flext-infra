@@ -5,11 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
-from flext_core import r
-from flext_infra import m, u
-from flext_infra.github.__main__ import run_pr_workspace
+from flext_infra import m, run_pr_workspace, u
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:

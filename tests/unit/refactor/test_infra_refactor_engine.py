@@ -6,25 +6,15 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.refactor.engine import FlextInfraRefactorEngine
-from flext_infra.rules.class_reconstructor import (
+from flext_infra import (
     FlextInfraRefactorClassReconstructorRule,
-)
-from flext_infra.rules.ensure_future_annotations import (
+    FlextInfraRefactorEngine,
     FlextInfraRefactorEnsureFutureAnnotationsRule,
-)
-from flext_infra.rules.import_modernizer import FlextInfraRefactorImportModernizerRule
-from flext_infra.rules.legacy_removal import FlextInfraRefactorLegacyRemovalRule
-from flext_infra.rules.mro_class_migration import (
+    FlextInfraRefactorImportModernizerRule,
+    FlextInfraRefactorLegacyRemovalRule,
     FlextInfraRefactorMROClassMigrationRule,
-)
-from flext_infra.rules.mro_redundancy_checker import (
     FlextInfraRefactorMRORedundancyChecker,
-)
-from flext_infra.rules.pattern_corrections import (
     FlextInfraRefactorPatternCorrectionsRule,
-)
-from flext_infra.rules.symbol_propagation import (
     FlextInfraRefactorSignaturePropagationRule,
     FlextInfraRefactorSymbolPropagationRule,
 )

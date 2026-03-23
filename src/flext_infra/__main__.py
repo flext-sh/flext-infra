@@ -29,6 +29,7 @@ from types import MappingProxyType
 from typing import ClassVar, override
 
 from flext_core import FlextService, r
+
 from flext_infra import c, output, u
 
 

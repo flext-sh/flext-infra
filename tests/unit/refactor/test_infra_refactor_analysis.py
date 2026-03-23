@@ -11,7 +11,7 @@ import pytest
 from flext_infra import m
 
 try:
-    from flext_infra.refactor import (
+    from flext_infra import (
         FlextInfraRefactorEngine,
         FlextInfraRefactorViolationAnalyzer,
     )

@@ -4,8 +4,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import u
-from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+from flext_infra import FlextInfraRuntimeDevDependencyDetector, u
 
 
 class TestFlextInfraRuntimeDevDependencyDetectorInit:

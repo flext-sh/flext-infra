@@ -10,11 +10,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from flext_core import r, t
 from flext_tests import tm
 
-from flext_core import r, t
-from flext_infra import FlextInfraUtilitiesDocs
-from flext_infra.docs.builder import FlextInfraDocBuilder
+from flext_infra import FlextInfraDocBuilder, FlextInfraUtilitiesDocs
 from tests import m
 
 

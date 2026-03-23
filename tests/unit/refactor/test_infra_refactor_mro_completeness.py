@@ -5,8 +5,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra import u
-    from flext_infra.refactor import MROCompletenessDetector
+    from flext_infra import MROCompletenessDetector, u
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 

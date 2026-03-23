@@ -9,7 +9,7 @@ from __future__ import annotations
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraWorkspaceChecker
 
 from ._shared_fixtures import create_fake_run_projects
 

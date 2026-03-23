@@ -14,10 +14,12 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from flext_infra import (
+    FlextInfraCodegenCensus,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenScaffolder,
+)
 
 _SRC_MODULES = (
     "constants.py",
@@ -88,7 +90,7 @@ def _make_project(
             "\n".join([
                 '"""Tests init for pipeline test."""',
                 "",
-                f"from tests.constants import Tests{prefix}Constants",
+                f"from tests import Tests{prefix}Constants",
                 "",
                 "__all__ = [",
                 f'    "Tests{prefix}Constants",',

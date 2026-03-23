@@ -9,11 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_core import r, t
 from flext_tests import tm
 
-from flext_core import r, t
-from flext_infra import m as infra_models
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from flext_infra import FlextInfraReleaseOrchestrator, m as infra_models
 
 if TYPE_CHECKING:
     from pathlib import Path

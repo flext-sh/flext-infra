@@ -4,7 +4,7 @@
 rules:
   - id: modernize-constants-import
     name: "Modernize constants imports"
-    description: "Replace from flext_core.constants import X with from flext_core import c"
+    description: "Replace from flext_core import X with from flext_core import c"
     module: "flext_core.constants"
     enabled: true
     severity: error
@@ -20,7 +20,7 @@ rules:
 
   - id: modernize-models-import
     name: "Modernize models imports"
-    description: "Replace from flext_core.models import X with from flext_core import m"
+    description: "Replace from flext_core import X with from flext_core import m"
     module: "flext_core.models"
     enabled: true
     severity: error
@@ -36,7 +36,7 @@ rules:
 
   - id: modernize-result-import
     name: "Modernize result imports"
-    description: "Replace from flext_core.result import X with from flext_core import r"
+    description: "Replace from flext_core import X with from flext_core import r"
     module: "flext_core.result"
     enabled: true
     severity: error

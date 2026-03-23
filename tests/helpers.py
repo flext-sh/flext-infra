@@ -19,10 +19,10 @@ import tomllib
 from pathlib import Path
 from types import SimpleNamespace
 
+from flext_core import r
 from flext_tests import tm
 
-from flext_core import r
-from tests.typings import t
+from tests import t
 
 
 class FlextInfraTestHelpers:

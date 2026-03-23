@@ -13,11 +13,11 @@ import tomllib
 from pathlib import Path
 
 import tomlkit
+from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
-from flext_core import r
 from flext_infra import FlextInfraUtilitiesToml, c, t
 
 
@@ -26,7 +26,7 @@ class FlextInfraUtilitiesTomlParse:
 
     Usage::
 
-        from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
+        from flext_infra import FlextInfraUtilitiesTomlParse
 
         name = FlextInfraUtilitiesTomlParse.dep_name("requests>=2.0")
     """

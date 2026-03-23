@@ -6,12 +6,15 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_core import r, t
 from flext_tests import tm
 
-from flext_core import r, t
-from flext_infra import m as infra_models, u
-from flext_infra.release import orchestrator as _orch_mod
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from flext_infra import (
+    FlextInfraReleaseOrchestrator,
+    m as infra_models,
+    orchestrator as _orch_mod,
+    u,
+)
 
 from ...models import m as _m
 from ._stubs import (

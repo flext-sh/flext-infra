@@ -13,12 +13,11 @@ from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
 
+from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 from yaml import YAMLError, safe_load
 
-from flext_core import r
-from flext_infra import c, t
-from flext_infra.models import m
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesYaml:

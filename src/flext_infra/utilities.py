@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_core import FlextUtilities
+
 from flext_infra import (
     FlextInfraRefactorTransformerPolicyUtilities,
     FlextInfraUtilitiesCli,
@@ -18,6 +19,7 @@ from flext_infra import (
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesGithub,
     FlextInfraUtilitiesImportNormalizer,
     FlextInfraUtilitiesIo,
     FlextInfraUtilitiesIteration,
@@ -38,7 +40,6 @@ from flext_infra import (
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
 )
-from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 
 
 class FlextInfraUtilities(FlextUtilities):

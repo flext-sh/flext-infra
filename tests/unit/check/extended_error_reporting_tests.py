@@ -11,9 +11,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates._base_gate import FlextInfraGate
-from flext_infra.gates.mypy import FlextInfraMypyGate
+from flext_infra import FlextInfraGate, FlextInfraMypyGate, FlextInfraWorkspaceChecker
 
 from ...helpers import h
 from ...models import m

@@ -6,11 +6,10 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
-from flext_infra import u
-from flext_infra.github import __main__ as github_main
-from tests.models import m
+
+from flext_infra import __main__ as github_main, u
+from tests import m
 
 main = github_main.main
 

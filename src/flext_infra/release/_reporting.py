@@ -6,7 +6,7 @@ This module is kept for backwards compatibility of the class name.
 
 from __future__ import annotations
 
-from flext_infra._utilities.release import FlextInfraUtilitiesRelease
+from flext_infra import FlextInfraUtilitiesRelease
 
 
 class FlextInfraReleaseReporting(FlextInfraUtilitiesRelease):

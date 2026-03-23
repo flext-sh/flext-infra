@@ -4,7 +4,7 @@ import tomlkit
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
+from flext_infra import FlextInfraDependencyPathSync
 
 _PATH_SYNC = FlextInfraDependencyPathSync()
 _rewrite_pep621 = _PATH_SYNC._rewrite_pep621

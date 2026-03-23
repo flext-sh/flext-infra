@@ -10,8 +10,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.validate.inventory import FlextInfraInventoryService
-from tests.models import m
+from flext_infra import FlextInfraInventoryService
+from tests import m
 
 
 class TestInventoryServiceCore:

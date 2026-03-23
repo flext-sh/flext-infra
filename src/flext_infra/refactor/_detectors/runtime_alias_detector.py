@@ -14,10 +14,12 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import c, p, u
-from flext_infra.models import m
-from flext_infra.refactor._models_namespace_enforcer import (
+from flext_infra import (
     FlextInfraNamespaceEnforcerModels as nem,
+    c,
+    m,
+    p,
+    u,
 )
 
 

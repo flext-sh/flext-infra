@@ -12,9 +12,9 @@ import time
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
+from flext_core import r
 from pydantic import JsonValue
 
-from flext_core import r
 from flext_infra import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesIo,

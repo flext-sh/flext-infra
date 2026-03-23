@@ -11,10 +11,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import (
+    FlextInfraGate,
     FlextInfraGoGate,
     FlextInfraMarkdownGate,
     FlextInfraRuffLintGate,
@@ -22,7 +23,6 @@ from flext_infra import (
     FlextInfraWorkspaceChecker,
     m,
 )
-from flext_infra.gates._base_gate import FlextInfraGate
 from tests import t
 
 from ...helpers import h

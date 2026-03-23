@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from flext_core import FlextLogger
+
 from flext_infra import (
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,

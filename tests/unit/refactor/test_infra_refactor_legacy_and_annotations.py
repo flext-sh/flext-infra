@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import libcst as cst
 
-from flext_infra.rules.ensure_future_annotations import (
+from flext_infra import (
     FlextInfraRefactorEnsureFutureAnnotationsRule,
+    FlextInfraRefactorLegacyRemovalRule,
 )
-from flext_infra.rules.legacy_removal import FlextInfraRefactorLegacyRemovalRule
 
 
 def test_ensure_future_annotations_after_docstring() -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import libcst as cst
 
-from flext_infra.rules.pattern_corrections import (
+from flext_infra import (
     FlextInfraRefactorPatternCorrectionsRule,
 )
 

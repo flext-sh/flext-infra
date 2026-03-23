@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
-
 from flext_core import FlextModels
+from pydantic import ConfigDict, Field
 
 
 class FlextInfraGatesModels:

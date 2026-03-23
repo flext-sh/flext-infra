@@ -11,7 +11,7 @@ pyenv / asdf / mise for interpreter selection.
 
 Usage::
 
-    from flext_infra.workspace.maintenance.python_version import (
+    from flext_infra import (
         FlextInfraPythonVersionEnforcer,
     )
 
@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import override
 
 from flext_core import FlextLogger
+
 from flext_infra import c, r, s, u
 
 logger = FlextLogger.create_module_logger(__name__)

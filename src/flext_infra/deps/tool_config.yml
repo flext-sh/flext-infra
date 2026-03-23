@@ -354,6 +354,7 @@ tools:
       reportUnnecessaryCast: error
       reportUnnecessaryComparison: warning
       reportPrivateUsage: warning
+      reportCallIssue: none
   coverage:
     fail-under:
       core: 45

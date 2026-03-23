@@ -11,11 +11,10 @@ from io import StringIO
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
+from flext_core import r, t
 from flext_tests import tm
 
-from flext_core import r, t
-from flext_infra.basemk.__main__ import _build_config, main
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra import FlextInfraBaseMkGenerator, _build_config, main
 
 
 def test_basemk_main_with_no_command(monkeypatch: MonkeyPatch) -> None:

@@ -14,14 +14,16 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from flext_core import r
-from flext_infra import m as infra_models
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.bandit import FlextInfraBanditGate
-from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+
+from flext_infra import (
+    FlextInfraBanditGate,
+    FlextInfraMarkdownGate,
+    FlextInfraRuffFormatGate,
+    FlextInfraRuffLintGate,
+    FlextInfraWorkspaceChecker,
+    m as infra_models,
+)
 from tests import t
 
 from ...helpers import h

@@ -15,9 +15,10 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import c, u
-from flext_infra.refactor._models_namespace_enforcer import (
+from flext_infra import (
     FlextInfraNamespaceEnforcerModels as nem,
+    c,
+    u,
 )
 
 

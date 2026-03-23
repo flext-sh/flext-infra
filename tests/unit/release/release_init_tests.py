@@ -11,7 +11,7 @@ import importlib
 import pytest
 from flext_tests import tm
 
-from flext_infra.release import FlextInfraReleaseOrchestrator
+from flext_infra import FlextInfraReleaseOrchestrator
 
 
 class TestReleaseInit:

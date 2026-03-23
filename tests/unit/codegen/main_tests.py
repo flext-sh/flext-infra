@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.codegen import __main__ as codegen_main
+from flext_infra import __main__ as codegen_main
 
 
 class TestHandleLazyInit:

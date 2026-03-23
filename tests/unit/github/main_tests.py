@@ -5,11 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from flext_core import r
-from flext_infra import u
-from flext_infra.github.__main__ import run_lint, run_pr, run_workflows
-from tests.models import m
+
+from flext_infra import run_lint, run_pr, run_workflows, u
+from tests import m
 
 
 class TestRunWorkflows:

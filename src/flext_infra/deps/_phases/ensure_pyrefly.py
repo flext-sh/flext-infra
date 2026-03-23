@@ -41,6 +41,11 @@ class EnsurePyreflyConfigPhase:
         ):
             pyrefly[c.Infra.Toml.PYTHON_VERSION_HYPHEN] = "3.13"
             changes.append("tool.pyrefly.python-version set to 3.13")
+        if "python-interpreter-path" in pyrefly:
+            del pyrefly["python-interpreter-path"]
+            changes.append(
+                "tool.pyrefly.python-interpreter-path removed (non-portable)"
+            )
         if (
             u.Infra.unwrap_item(
                 u.Infra.get(pyrefly, c.Infra.Toml.IGNORE_ERRORS_IN_GENERATED),

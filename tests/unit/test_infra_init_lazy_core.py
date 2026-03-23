@@ -9,10 +9,10 @@ from __future__ import annotations
 import pytest
 
 import flext_infra
-from flext_infra import c
-from flext_infra.__version__ import (
+from flext_infra import (
     __version__ as version,
     __version_info__ as version_info,
+    c,
 )
 
 

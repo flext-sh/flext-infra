@@ -9,17 +9,17 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_core import t
 from flext_tests import tm
 
-from flext_core import t
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.helpers import FlextInfraTestHelpers as h
-from tests.models import m as im
-from tests.unit.test_infra_workspace_migrator import (
+from flext_infra import FlextInfraProjectMigrator
+from tests import (
+    FlextInfraTestHelpers as h,
     _build_migrator,
     _project,
     _StubDiscovery,
     _StubGenerator,
+    m as im,
 )
 
 

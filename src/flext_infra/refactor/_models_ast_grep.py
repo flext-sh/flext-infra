@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
+from flext_core import FlextModels
 from pydantic import AliasPath, ConfigDict, Field
 
-from flext_core import FlextModels
-from flext_infra.typings import FlextInfraTypes as t
+from flext_infra import FlextInfraTypes as t
 
 
 class FlextInfraRefactorAstGrepModels:

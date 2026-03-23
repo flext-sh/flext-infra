@@ -7,12 +7,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
+    from flext_core import FlextTypes
     from flext_tests import d, e, h, r, s, x
 
-    from flext_core import FlextTypes
     from tests import unit
     from tests.constants import FlextInfraTestConstants, FlextInfraTestConstants as c
     from tests.fixtures import (

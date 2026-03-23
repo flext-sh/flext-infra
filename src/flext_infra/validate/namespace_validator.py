@@ -13,6 +13,7 @@ import ast
 from pathlib import Path
 
 from flext_core import r
+
 from flext_infra import c, m, u
 
 __all__ = ["FlextInfraNamespaceValidator"]

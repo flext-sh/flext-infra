@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_core import r
-from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
+from flext_infra import FlextInfraDependencyPathSync
 
 
 def rewrite_dep_paths(

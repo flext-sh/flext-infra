@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
+
     from tests.unit.release.flow_tests import TestReleaseMainFlow
     from tests.unit.release.main_tests import TestReleaseMainParsing
     from tests.unit.release.orchestrator_git_tests import (

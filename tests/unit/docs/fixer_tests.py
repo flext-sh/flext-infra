@@ -9,12 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_core import r, t
 from flext_tests import tf, tm
 
-from flext_core import r, t
-from flext_infra import FlextInfraUtilitiesDocs
-from flext_infra.docs.fixer import FlextInfraDocFixer
-from tests.models import m
+from flext_infra import FlextInfraDocFixer, FlextInfraUtilitiesDocs
+from tests import m
 
 
 class TestFixerCore:

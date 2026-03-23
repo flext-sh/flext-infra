@@ -11,13 +11,16 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from flext_core import r, t
 from flext_tests import tm
 
-from flext_core import r, t
-from flext_infra import u
-from flext_infra.docs.__main__ import _run_audit, _run_fix
-from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.docs.fixer import FlextInfraDocFixer
+from flext_infra import (
+    FlextInfraDocAuditor,
+    FlextInfraDocFixer,
+    _run_audit,
+    _run_fix,
+    u,
+)
 
 from ...models import m
 

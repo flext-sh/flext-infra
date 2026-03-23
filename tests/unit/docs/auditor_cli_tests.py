@@ -10,12 +10,11 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_core import r, t
 from flext_tests import tm
 
-from flext_core import r, t
-from flext_infra import FlextInfraUtilitiesDocs
-from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests.models import m
+from flext_infra import FlextInfraDocAuditor, FlextInfraUtilitiesDocs
+from tests import m
 
 
 class TestAuditorScopeFailure:

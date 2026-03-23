@@ -11,8 +11,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.docs.validator import FlextInfraDocValidator
-from tests.models import m
+from flext_infra import FlextInfraDocValidator
+from tests import m
 
 
 @pytest.fixture

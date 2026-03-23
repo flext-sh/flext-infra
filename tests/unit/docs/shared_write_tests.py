@@ -11,11 +11,11 @@ import pathlib
 from pathlib import Path
 
 import pytest
+from flext_core import t
 from flext_tests import tm
 
-from flext_core import t
 from flext_infra import u
-from tests.models import m
+from tests import m
 
 
 class TestWriteJson:

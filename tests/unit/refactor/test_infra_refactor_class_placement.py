@@ -5,8 +5,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra import c
-    from flext_infra.refactor import ClassPlacementDetector
+    from flext_infra import ClassPlacementDetector, c
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 

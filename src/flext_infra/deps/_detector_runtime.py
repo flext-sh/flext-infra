@@ -6,9 +6,9 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 
+from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_core import r
 from flext_infra import c, m, p, t, u
 
 

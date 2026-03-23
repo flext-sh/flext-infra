@@ -12,11 +12,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_core import r, t
 from flext_tests import tm
 
-from flext_core import r, t
-from flext_infra import FlextInfraModels, u
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from flext_infra import FlextInfraModels, FlextInfraReleaseOrchestrator, u
 
 if TYPE_CHECKING:
     from pathlib import Path

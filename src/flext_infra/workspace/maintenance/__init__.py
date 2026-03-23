@@ -13,10 +13,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
+
     from flext_infra.workspace.maintenance.python_version import (
         FlextInfraPythonVersionEnforcer,
         logger,

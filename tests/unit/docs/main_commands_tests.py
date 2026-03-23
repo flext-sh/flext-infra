@@ -6,14 +6,18 @@ import argparse
 from collections.abc import Callable
 
 import pytest
+from flext_core import r, t
 from flext_tests import tm
 
-from flext_core import r, t
-from flext_infra import u
-from flext_infra.docs.__main__ import _run_build, _run_generate, _run_validate
-from flext_infra.docs.builder import FlextInfraDocBuilder
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.docs.validator import FlextInfraDocValidator
+from flext_infra import (
+    FlextInfraDocBuilder,
+    FlextInfraDocGenerator,
+    FlextInfraDocValidator,
+    _run_build,
+    _run_generate,
+    _run_validate,
+    u,
+)
 
 from ...models import m
 

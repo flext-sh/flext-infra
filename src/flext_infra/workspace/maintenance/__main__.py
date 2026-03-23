@@ -12,6 +12,7 @@ from __future__ import annotations
 import sys
 
 from flext_core import r
+
 from flext_infra import (
     FlextInfraPythonVersionEnforcer,
     output,

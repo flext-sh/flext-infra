@@ -9,11 +9,11 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
+from flext_core import r
 from flext_tests import tm
 
-from flext_core import r
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from tests.models import m as im
+from flext_infra import FlextInfraBaseMkGenerator
+from tests import m as im
 
 
 class _SuccessRenderer:

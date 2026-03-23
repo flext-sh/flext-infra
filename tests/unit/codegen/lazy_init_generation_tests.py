@@ -142,7 +142,7 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: dict[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "other_pkg")
-        tm.that(content, contains="from flext_core.lazy import")
+        tm.that(content, contains="from flext_core import")
 
     def test_with_inline_constants(self) -> None:
         """Test includes inline constants."""

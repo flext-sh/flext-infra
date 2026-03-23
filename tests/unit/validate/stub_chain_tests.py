@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
+from flext_infra import FlextInfraStubSupplyChain
 
 
 class TestStubChainCore:

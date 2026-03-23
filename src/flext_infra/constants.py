@@ -14,6 +14,7 @@ from enum import StrEnum, unique
 from typing import Final
 
 from flext_core import FlextConstants
+
 from flext_infra import (
     FlextInfraBasemkConstants,
     FlextInfraCheckConstants,

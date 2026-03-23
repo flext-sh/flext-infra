@@ -13,10 +13,10 @@ from pathlib import Path
 from typing import override
 
 import tomlkit
+from flext_core import FlextLogger, r, s
 from pydantic import JsonValue, TypeAdapter, ValidationError
 from tomlkit import items
 
-from flext_core import FlextLogger, r, s
 from flext_infra import c, output, t, u
 
 _logger = FlextLogger.create_module_logger(__name__)

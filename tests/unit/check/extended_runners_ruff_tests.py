@@ -13,9 +13,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
-from flext_core import r
 from flext_infra import (
     FlextInfraMarkdownGate,
     FlextInfraRuffFormatGate,
@@ -24,12 +24,12 @@ from flext_infra import (
     FlextInfraWorkspaceChecker,
 )
 from tests import (
+    FlextInfraTestHelpers,
     create_checker_project,
     m,
     patch_gate_run,
     run_command_failure_check,
 )
-from tests.helpers import FlextInfraTestHelpers
 
 
 def _create_run_raw_result(

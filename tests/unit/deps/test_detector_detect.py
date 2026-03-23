@@ -5,12 +5,11 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
 import flext_infra.deps as detector_module
-from flext_core import r
-from flext_infra import p
-from flext_infra.deps import detector as _det_mod
+from flext_infra import detector as _det_mod, p
 
 
 class _ReportStub:

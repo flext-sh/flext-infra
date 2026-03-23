@@ -4,7 +4,7 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra.rules.type_alias_unification import (
+from flext_infra import (
     FlextInfraRefactorTypingUnificationRule,
 )
 

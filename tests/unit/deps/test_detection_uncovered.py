@@ -4,10 +4,10 @@ import json
 from pathlib import Path
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
-from flext_core import r
-from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_infra import FlextInfraDependencyDetectionService
 from tests import m, t
 
 

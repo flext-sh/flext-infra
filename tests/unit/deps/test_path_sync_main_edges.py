@@ -4,11 +4,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
-from flext_core import r
-from flext_infra import FlextInfraDependencyPathSync
-from flext_infra.deps import path_sync as path_sync_module
+from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
 from tests import m
 
 

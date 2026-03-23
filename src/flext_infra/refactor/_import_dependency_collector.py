@@ -4,7 +4,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra.utilities import u
+from flext_infra import u
 
 
 class ImportDependencyCollector(cst.CSTVisitor):

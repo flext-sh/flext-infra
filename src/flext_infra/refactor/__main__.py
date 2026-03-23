@@ -5,8 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from flext_infra._utilities.output import output
-from flext_infra.utilities import u
+from flext_infra import output, u
 
 from .census import FlextInfraRefactorCensus
 from .migrate_to_class_mro import FlextInfraRefactorMigrateToClassMRO

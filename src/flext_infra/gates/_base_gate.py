@@ -6,9 +6,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, t as t_infra
-from flext_infra.models import m
-from flext_infra.utilities import u
+from flext_infra import c, m, t as t_infra, u
 
 
 class FlextInfraGate(ABC):

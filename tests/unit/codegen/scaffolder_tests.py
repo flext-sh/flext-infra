@@ -13,8 +13,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests.unit.codegen._project_factory import (
+from flext_infra import FlextInfraCodegenScaffolder
+from tests import (
     FlextInfraCodegenTestProjectFactory,
 )
 

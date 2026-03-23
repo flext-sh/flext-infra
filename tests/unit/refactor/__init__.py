@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
+
     from tests.unit.refactor.test_infra_refactor_analysis import (
         test_build_impact_map_extracts_rename_entries,
         test_build_impact_map_extracts_signature_entries,

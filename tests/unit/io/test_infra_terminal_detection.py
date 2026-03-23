@@ -15,7 +15,7 @@ import os
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
-from flext_infra._utilities.terminal import FlextInfraUtilitiesTerminal
+from flext_infra import FlextInfraUtilitiesTerminal
 
 _should_use_color = FlextInfraUtilitiesTerminal.terminal_should_use_color
 _should_use_unicode = FlextInfraUtilitiesTerminal.terminal_should_use_unicode

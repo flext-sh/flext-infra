@@ -4,11 +4,14 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
-from flext_core import r
-from flext_infra import FlextInfraUtilitiesSubprocess, FlextInfraUtilitiesTomlParse
-from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_infra import (
+    FlextInfraDependencyDetectionService,
+    FlextInfraUtilitiesSubprocess,
+    FlextInfraUtilitiesTomlParse,
+)
 from tests import m, t
 
 
