@@ -410,6 +410,9 @@ if TYPE_CHECKING:
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
     from flext_infra.workspace.sync import FlextInfraSyncService
+    from flext_infra.workspace.workspace_makefile import (
+        FlextInfraWorkspaceMakefileGenerator,
+    )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "CensusImportDiscoveryVisitor": (
@@ -1053,6 +1056,10 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.workspace.detector",
         "FlextInfraWorkspaceDetector",
     ),
+    "FlextInfraWorkspaceMakefileGenerator": (
+        "flext_infra.workspace.workspace_makefile",
+        "FlextInfraWorkspaceMakefileGenerator",
+    ),
     "FlextInfraWorkspaceModels": (
         "flext_infra.workspace._models",
         "FlextInfraWorkspaceModels",
@@ -1389,6 +1396,7 @@ __all__ = [
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceConstants",
     "FlextInfraWorkspaceDetector",
+    "FlextInfraWorkspaceMakefileGenerator",
     "FlextInfraWorkspaceModels",
     "FunctionDependencyCollector",
     "FutureAnnotationsDetector",

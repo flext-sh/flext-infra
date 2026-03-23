@@ -33,6 +33,9 @@ if TYPE_CHECKING:
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
     from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
     from flext_infra.workspace.sync import FlextInfraSyncService, main
+    from flext_infra.workspace.workspace_makefile import (
+        FlextInfraWorkspaceMakefileGenerator,
+    )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "FlextInfraOrchestratorService": (
@@ -56,6 +59,10 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.workspace.detector",
         "FlextInfraWorkspaceDetector",
     ),
+    "FlextInfraWorkspaceMakefileGenerator": (
+        "flext_infra.workspace.workspace_makefile",
+        "FlextInfraWorkspaceMakefileGenerator",
+    ),
     "WorkspaceMode": ("flext_infra.workspace.detector", "WorkspaceMode"),
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "main": ("flext_infra.workspace.sync", "main"),
@@ -69,6 +76,7 @@ __all__ = [
     "FlextInfraPythonVersionEnforcer",
     "FlextInfraSyncService",
     "FlextInfraWorkspaceDetector",
+    "FlextInfraWorkspaceMakefileGenerator",
     "WorkspaceMode",
     "logger",
     "main",

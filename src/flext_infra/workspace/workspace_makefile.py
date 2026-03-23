@@ -77,9 +77,10 @@ class FlextInfraWorkspaceMakefileGenerator:
                 existing = makefile.read_text(encoding=_ENCODING)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
-            if hashlib.sha256(existing.encode(_ENCODING)).hexdigest() == hashlib.sha256(
-                content.encode(_ENCODING)
-            ).hexdigest():
+            if (
+                hashlib.sha256(existing.encode(_ENCODING)).hexdigest()
+                == hashlib.sha256(content.encode(_ENCODING)).hexdigest()
+            ):
                 return r[bool].ok(False)
 
         return self._atomic_write(makefile, content)
@@ -109,13 +110,23 @@ class FlextInfraWorkspaceMakefileGenerator:
         for line in lines:
             # Replace first non-comment/non-empty block with @generated header
             if not header_done and line.startswith("#"):
-                out.append(f"# =============================================================================\n")
+                out.append(
+                    f"# =============================================================================\n"
+                )
                 out.append(f"# FLEXT Workspace Makefile\n")
-                out.append(f"# =============================================================================\n")
+                out.append(
+                    f"# =============================================================================\n"
+                )
                 out.append(f"{_GENERATED_MARKER}\n")
-                out.append(f"# Run 'make sync' from workspace root to regenerate this file.\n")
-                out.append(f"# DO NOT EDIT — put custom targets in workspace_custom.mk instead.\n")
-                out.append(f"# =============================================================================\n")
+                out.append(
+                    f"# Run 'make sync' from workspace root to regenerate this file.\n"
+                )
+                out.append(
+                    f"# DO NOT EDIT — put custom targets in workspace_custom.mk instead.\n"
+                )
+                out.append(
+                    f"# =============================================================================\n"
+                )
                 # Skip original header lines
                 header_done = True
                 continue
