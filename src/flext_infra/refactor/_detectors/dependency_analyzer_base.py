@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -42,14 +43,14 @@ class DependencyAnalyzer:
         self._projects = self._discover_projects()
         self._pkg_index = self._build_package_index(self._projects)
 
-    def _discover_projects(self) -> list[m.Infra.RefactorProjectInfo]:
+    def _discover_projects(self) -> Sequence[m.Infra.RefactorProjectInfo]:
         """Discover all projects in the workspace.
 
         Returns:
             List of RefactorProjectInfo for each discovered project.
 
         """
-        projects: list[m.Infra.RefactorProjectInfo] = []
+        projects: Sequence[m.Infra.RefactorProjectInfo] = []
         for candidate in sorted(self._workspace_root.iterdir()):
             if not candidate.is_dir() or candidate.name.startswith("."):
                 continue
@@ -92,8 +93,8 @@ class DependencyAnalyzer:
 
     def _build_package_index(
         self,
-        projects: list[m.Infra.RefactorProjectInfo],
-    ) -> dict[str, str]:
+        projects: Sequence[m.Infra.RefactorProjectInfo],
+    ) -> Mapping[str, str]:
         """Build a mapping from package names to owning project names.
 
         Args:
@@ -103,7 +104,7 @@ class DependencyAnalyzer:
             Dict mapping package name to project name.
 
         """
-        idx: dict[str, str] = {}
+        idx: Mapping[str, str] = {}
         for proj in projects:
             for pkg in proj.package_roots:
                 _ = idx.setdefault(pkg, proj.name)
@@ -112,7 +113,7 @@ class DependencyAnalyzer:
     def _find_import_candidate_files(
         self,
         project: m.Infra.RefactorProjectInfo,
-    ) -> list[Path]:
+    ) -> Sequence[Path]:
         """Find all Python files with import statements in a project.
 
         Args:
@@ -135,7 +136,7 @@ class DependencyAnalyzer:
             src_dirs=frozenset({"src"}),
         )
         return files_result.fold(
-            on_failure=lambda _: list[Path](),
+            on_failure=lambda _: Sequence[Path](),
             on_success=lambda v: v,
         )
 
@@ -154,7 +155,7 @@ class DependencyAnalyzer:
             result = self._run_ast_grep(src_path, pattern)
             if result.is_failure:
                 return r[set[Path]].fail(result.error or "ast-grep failed")
-            entries: list[m.Infra.AstGrepMatchEnvelope] = result.value
+            entries: Sequence[m.Infra.AstGrepMatchEnvelope] = result.value
             for entry in entries:
                 fp = Path(entry.file)
                 if not fp.is_absolute():
@@ -167,7 +168,7 @@ class DependencyAnalyzer:
         self,
         src_path: Path,
         pattern: str,
-    ) -> r[list[m.Infra.AstGrepMatchEnvelope]]:
+    ) -> r[Sequence[m.Infra.AstGrepMatchEnvelope]]:
         """Run ast-grep with the given pattern on source directory.
 
         Args:
@@ -189,21 +190,21 @@ class DependencyAnalyzer:
         ]
         capture = u.Infra.capture(cmd)
         if capture.is_failure:
-            return r[list[m.Infra.AstGrepMatchEnvelope]].fail(
+            return r[Sequence[m.Infra.AstGrepMatchEnvelope]].fail(
                 capture.error or "capture failed",
             )
         if not capture.value:
-            return r[list[m.Infra.AstGrepMatchEnvelope]].ok([])
+            return r[Sequence[m.Infra.AstGrepMatchEnvelope]].ok([])
         try:
             json_raw: str | bytes | bytearray = capture.value
-            envelopes: list[m.Infra.AstGrepMatchEnvelope] = TypeAdapter(
-                list[m.Infra.AstGrepMatchEnvelope],
+            envelopes: Sequence[m.Infra.AstGrepMatchEnvelope] = TypeAdapter(
+                Sequence[m.Infra.AstGrepMatchEnvelope],
             ).validate_json(
                 json_raw,
             )
-            return r[list[m.Infra.AstGrepMatchEnvelope]].ok(envelopes)
+            return r[Sequence[m.Infra.AstGrepMatchEnvelope]].ok(envelopes)
         except ValidationError as exc:
-            return r[list[m.Infra.AstGrepMatchEnvelope]].fail(str(exc))
+            return r[Sequence[m.Infra.AstGrepMatchEnvelope]].fail(str(exc))
 
     def _parse_imports(self, file_path: Path) -> r[m.Infra.FileImportData]:
         """Parse a Python file and extract its import information.

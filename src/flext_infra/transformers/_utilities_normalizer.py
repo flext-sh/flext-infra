@@ -36,10 +36,10 @@ class NormalizerContext(m.ArbitraryTypesModel):
     project_package: str
     project_aliases: frozenset[str]
     declared_alias: str
-    alias_to_defining_module: dict[str, str]
-    alias_tiers: dict[str, int]
+    alias_to_defining_module: Mapping[str, str]
+    alias_tiers: Mapping[str, int]
     file_tier: int
-    package_reachability: dict[str, frozenset[str]]
+    package_reachability: Mapping[str, frozenset[str]]
     wrong_source_enabled: bool
     universal_aliases: frozenset[str]
     workspace_packages: frozenset[str]
@@ -68,7 +68,7 @@ class FlextInfraUtilitiesImportNormalizer:
         loaded = FlextInfraUtilitiesYaml.safe_load_yaml(rules_path)
         root = loaded.get("import_normalization")
         if isinstance(root, Mapping):
-            normalized: dict[str, t.Infra.InfraValue] = dict(root.items())
+            normalized: Mapping[str, t.Infra.InfraValue] = dict(root.items())
             return normalized
         return {}
 
@@ -81,7 +81,7 @@ class FlextInfraUtilitiesImportNormalizer:
         )
         if not isinstance(config, Mapping):
             return {}
-        tiers: dict[str, int] = {}
+        tiers: Mapping[str, int] = {}
         for alias_name, tier_value in config.items():
             if len(alias_name) != 1 or not alias_name.islower():
                 continue
@@ -114,8 +114,8 @@ class FlextInfraUtilitiesImportNormalizer:
         package_name: str,
         package_dir: Path,
         project_root: Path | None,
-        alias_map: dict[str, tuple[str, ...]] | None,
-    ) -> dict[str, str]:
+        alias_map: Mapping[str, tuple[str, ...]] | None,
+    ) -> Mapping[str, str]:
         """Build alias-to-module map from project facades and lazy exports."""
         init_path = package_dir / "__init__.py"
         alias_to_module = dict(
@@ -144,13 +144,13 @@ class FlextInfraUtilitiesImportNormalizer:
     def normalizer_build_reachability(
         package_dir: Path,
         package_name: str,
-    ) -> dict[str, frozenset[str]]:
+    ) -> Mapping[str, frozenset[str]]:
         """Build module reachability map from import graph traversal."""
         graph = FlextInfraUtilitiesImportNormalizer.normalizer_build_import_graph(
             package_dir=package_dir,
             package_name=package_name,
         )
-        reachability: dict[str, frozenset[str]] = {}
+        reachability: Mapping[str, frozenset[str]] = {}
         for module_name in graph:
             visited: set[str] = set()
             queue: deque[str] = deque(graph.get(module_name, frozenset()))
@@ -182,9 +182,9 @@ class FlextInfraUtilitiesImportNormalizer:
         *,
         package_dir: Path,
         package_name: str,
-    ) -> dict[str, frozenset[str]]:
+    ) -> Mapping[str, frozenset[str]]:
         """Build direct intra-package import graph from source files."""
-        graph: dict[str, set[str]] = {}
+        graph: Mapping[str, set[str]] = {}
         for py_file in package_dir.rglob("*.py"):
             tree = FlextInfraUtilitiesParsing.parse_module_ast(py_file)
             if tree is None:
@@ -255,7 +255,7 @@ class FlextInfraUtilitiesImportNormalizer:
         *,
         file_path: Path,
         project_package: str,
-        alias_map: dict[str, tuple[str, ...]] | None,
+        alias_map: Mapping[str, tuple[str, ...]] | None,
     ) -> NormalizerContext:
         """Build normalized analysis context for a target file."""
         package_name = (
@@ -280,7 +280,7 @@ class FlextInfraUtilitiesImportNormalizer:
                     if cand.is_dir() and (cand / "__init__.py").is_file():
                         package_dir = cand
 
-        alias_to_module: dict[str, str] = (
+        alias_to_module: Mapping[str, str] = (
             FlextInfraUtilitiesImportNormalizer.normalizer_build_alias_to_defining_module(
                 package_name=package_name,
                 package_dir=package_dir,
@@ -302,7 +302,7 @@ class FlextInfraUtilitiesImportNormalizer:
                 )
             except ValueError:
                 file_module = ""
-        alias_to_facade: dict[str, str] = (
+        alias_to_facade: Mapping[str, str] = (
             FlextInfraUtilitiesDiscovery.discover_project_aliases(project_root)
             if project_root is not None
             else {}

@@ -29,7 +29,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         """Apply import modernizer or lazy-import hoisting based on fix action."""
         fix_action = (
             str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
@@ -46,8 +46,8 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
             forbidden = [self.config]
         if not forbidden:
             return (tree, [])
-        imports_to_remove: list[str] = []
-        symbols_to_replace: dict[str, str] = {}
+        imports_to_remove: Sequence[str] = []
+        symbols_to_replace: Mapping[str, str] = {}
         for rule_config in self._parse_forbidden_rules(forbidden):
             imports_to_remove.append(rule_config.module)
             symbols_to_replace.update(rule_config.symbol_mapping)
@@ -63,12 +63,12 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     @staticmethod
     def _parse_forbidden_rules(
         value: Sequence[JsonValue] | Sequence[Mapping[str, JsonValue]] | JsonValue,
-    ) -> list[m.Infra.ImportModernizerRuleConfig]:
+    ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         try:
-            raw_items = TypeAdapter(list[t.Infra.RuleConfig]).validate_python(value)
+            raw_items = TypeAdapter(Sequence[t.Infra.RuleConfig]).validate_python(value)
         except ValidationError:
             return []
-        normalized: list[t.Infra.RuleConfig] = [
+        normalized: Sequence[t.Infra.RuleConfig] = [
             {
                 "module": item_mapping.get("module", ""),
                 "symbol_mapping": item_mapping.get("symbol_mapping", {}),
@@ -77,7 +77,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         ]
         try:
             return TypeAdapter(
-                list[m.Infra.ImportModernizerRuleConfig],
+                Sequence[m.Infra.ImportModernizerRuleConfig],
             ).validate_python(normalized)
         except ValidationError:
             return []
@@ -204,7 +204,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         tree.visit(FunctionShadowCollector())
         return shadowed_aliases
 
-    def _fix_lazy_imports(self, tree: cst.Module) -> tuple[cst.Module, list[str]]:
+    def _fix_lazy_imports(self, tree: cst.Module) -> tuple[cst.Module, Sequence[str]]:
         transformer = FlextInfraRefactorLazyImportFixer()
         new_tree = tree.visit(transformer)
         return (new_tree, transformer.changes)

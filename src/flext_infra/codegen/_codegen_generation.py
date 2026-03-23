@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
@@ -52,10 +52,10 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def generate_type_checking(
-        groups: Mapping[str, list[tuple[str, str]]],
+        groups: Mapping[str, Sequence[tuple[str, str]]],
         *,
         include_flext_types: bool = True,
-    ) -> list[str]:
+    ) -> Sequence[str]:
         """Generate TYPE_CHECKING import block for type hints.
 
         Creates Python code for conditional imports guarded by TYPE_CHECKING,
@@ -69,7 +69,7 @@ class FlextInfraCodegenGeneration:
             List of code lines forming the TYPE_CHECKING block.
 
         """
-        lines: list[str] = ["if TYPE_CHECKING:"]
+        lines: Sequence[str] = ["if TYPE_CHECKING:"]
         # Only emit the standalone FlextTypes import when it does NOT already
         # appear in the groups (avoids F811 redefinition in flext_core's own
         # __init__.py where FlextTypes is re-exported from flext_core.typings).
@@ -107,7 +107,7 @@ class FlextInfraCodegenGeneration:
                 lines.append(alias_line)
             if not sorted_items:
                 return
-            parts: list[str] = []
+            parts: Sequence[str] = []
             for export_name, attr_name in sorted_items:
                 if export_name == attr_name:
                     parts.append(export_name)
@@ -135,7 +135,7 @@ class FlextInfraCodegenGeneration:
     @staticmethod
     def generate_file(
         docstring_source: str,
-        exports: list[str],
+        exports: Sequence[str],
         filtered: Mapping[str, tuple[str, str]],
         inline_constants: Mapping[str, str],
         current_pkg: str,
@@ -159,7 +159,7 @@ class FlextInfraCodegenGeneration:
 
         """
         tpl = c.Infra.Templates
-        lazy_filtered: dict[str, tuple[str, str]] = {
+        lazy_filtered: Mapping[str, tuple[str, str]] = {
             name: val
             for name, val in filtered.items()
             if name not in eager_typevar_names
@@ -171,7 +171,7 @@ class FlextInfraCodegenGeneration:
         )
 
         # --- header + docstring ---
-        out: list[str] = [c.Infra.AUTOGEN_HEADER]
+        out: Sequence[str] = [c.Infra.AUTOGEN_HEADER]
         if docstring_source:
             out.extend([docstring_source, ""])
 
@@ -193,7 +193,7 @@ class FlextInfraCodegenGeneration:
         out.append("")
 
         # --- TYPE_CHECKING block ---
-        groups: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        groups: Mapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
         for export_name in sorted(lazy_filtered):
             mod, attr = lazy_filtered[export_name]
             groups[mod].append((export_name, attr))

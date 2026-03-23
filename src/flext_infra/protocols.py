@@ -70,7 +70,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Checker(Protocol):
             """Contract for infrastructure checker services."""
 
-            def run(self, argv: list[str] | None = None) -> r[int]:
+            def run(self, argv: Sequence[str] | None = None) -> r[int]:
                 """Execute check and return result."""
                 ...
 
@@ -78,7 +78,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Syncer(Protocol):
             """Contract for synchronization services."""
 
-            def sync(self, argv: list[str] | None = None) -> r[int]:
+            def sync(self, argv: Sequence[str] | None = None) -> r[int]:
                 """Execute sync and return result."""
                 ...
 
@@ -86,7 +86,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Generator(Protocol):
             """Contract for code generation services."""
 
-            def generate(self, argv: list[str] | None = None) -> r[int]:
+            def generate(self, argv: Sequence[str] | None = None) -> r[int]:
                 """Execute generation and return result."""
                 ...
 
@@ -94,7 +94,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Validator(Protocol):
             """Contract for validation services."""
 
-            def validate(self, argv: list[str] | None = None) -> r[int]:
+            def validate(self, argv: Sequence[str] | None = None) -> r[int]:
                 """Execute validation and return result."""
                 ...
 
@@ -102,7 +102,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Orchestrator(Protocol):
             """Contract for orchestration services."""
 
-            def orchestrate(self, argv: list[str] | None = None) -> r[int]:
+            def orchestrate(self, argv: Sequence[str] | None = None) -> r[int]:
                 """Execute orchestration and return result."""
                 ...
 
@@ -113,7 +113,7 @@ class FlextInfraProtocols(FlextProtocols):
             def discover_projects(
                 self,
                 workspace_root: Path,
-            ) -> r[list[m.Infra.ProjectInfo]]:
+            ) -> r[Sequence[m.Infra.ProjectInfo]]:
                 """Discover projects in a workspace root."""
                 ...
 
@@ -186,7 +186,7 @@ class FlextInfraProtocols(FlextProtocols):
 
             def capture(
                 self,
-                cmd: list[str],
+                cmd: Sequence[str],
                 cwd: Path | None = None,
                 timeout: int | None = None,
             ) -> r[str]:
@@ -195,7 +195,7 @@ class FlextInfraProtocols(FlextProtocols):
 
             def run_checked(
                 self,
-                cmd: list[str],
+                cmd: Sequence[str],
                 cwd: Path | None = None,
                 timeout: int | None = None,
             ) -> r[bool]:
@@ -216,7 +216,7 @@ class FlextInfraProtocols(FlextProtocols):
             pip_check: m.Infra.PipCheckReport | None
             dependency_limits: m.Infra.DependencyLimitsInfo | None
 
-            def model_dump(self) -> dict[str, t.Infra.InfraValue]:
+            def model_dump(self) -> Mapping[str, t.Infra.InfraValue]:
                 """Serialize report model payload."""
                 ...
 
@@ -237,7 +237,7 @@ class FlextInfraProtocols(FlextProtocols):
             def write_json(
                 self,
                 path: Path,
-                payload: dict[str, t.Infra.InfraValue],
+                payload: Mapping[str, t.Infra.InfraValue],
             ) -> r[bool]:
                 """Write payload to JSON file."""
                 ...
@@ -245,7 +245,7 @@ class FlextInfraProtocols(FlextProtocols):
         class ProjectReportLike(Protocol):
             """Protocol for project-level dependency report contracts."""
 
-            def model_dump(self) -> dict[str, t.Infra.InfraValue]:
+            def model_dump(self) -> Mapping[str, t.Infra.InfraValue]:
                 """Serialize project report payload."""
                 ...
 
@@ -257,8 +257,8 @@ class FlextInfraProtocols(FlextProtocols):
                 self,
                 workspace_root: Path,
                 *,
-                projects_filter: list[str] | None = None,
-            ) -> r[list[Path]]:
+                projects_filter: Sequence[str] | None = None,
+            ) -> r[Sequence[Path]]:
                 """Discover project paths in workspace root."""
                 ...
 
@@ -266,14 +266,14 @@ class FlextInfraProtocols(FlextProtocols):
                 self,
                 project_path: Path,
                 venv_bin: Path,
-            ) -> r[tuple[list[t.Infra.IssueMap], int]]:
+            ) -> r[tuple[Sequence[t.Infra.IssueMap], int]]:
                 """Run deptry on a project and return issues."""
                 ...
 
             def build_project_report(
                 self,
                 project_name: str,
-                deptry_issues: list[t.Infra.IssueMap],
+                deptry_issues: Sequence[t.Infra.IssueMap],
             ) -> p.Infra.ProjectReportLike:
                 """Build project report from deptry issues."""
                 ...
@@ -308,7 +308,7 @@ class FlextInfraProtocols(FlextProtocols):
                 self,
                 workspace_root: Path,
                 venv_bin: Path,
-            ) -> r[tuple[list[str], int]]:
+            ) -> r[tuple[Sequence[str], int]]:
                 """Run pip check on workspace and return results."""
                 ...
 
@@ -318,10 +318,10 @@ class FlextInfraProtocols(FlextProtocols):
 
             def run_raw(
                 self,
-                cmd: list[str],
+                cmd: Sequence[str],
                 cwd: Path | None = None,
                 timeout: int | None = None,
-                env: dict[str, str] | None = None,
+                env: Mapping[str, str] | None = None,
             ) -> r[m.Infra.CommandOutput]:
                 """Run command and return raw output."""
                 ...
@@ -341,7 +341,7 @@ class FlextInfraProtocols(FlextProtocols):
                 ...
 
             @staticmethod
-            def project_filter(cli: u.Infra.CliArgs) -> list[str] | None:
+            def project_filter(cli: u.Infra.CliArgs) -> Sequence[str] | None:
                 """Resolve project filter list from parsed args."""
                 ...
 
@@ -359,7 +359,7 @@ class FlextInfraProtocols(FlextProtocols):
         class RunnableDetector(Protocol):
             """Contract for detectors that can be invoked via CLI."""
 
-            def run(self, argv: list[str] | None = None) -> r[int]:
+            def run(self, argv: Sequence[str] | None = None) -> r[int]:
                 """Execute the detector and return an exit code."""
                 ...
 
@@ -372,8 +372,8 @@ class FlextInfraProtocols(FlextProtocols):
                 *,
                 file_path: Path,
                 project_package: str,
-                alias_map: dict[str, tuple[str, ...]] | None = None,
-            ) -> list[p.Infra.ViolationWithLine]:
+                alias_map: Mapping[str, tuple[str, ...]] | None = None,
+            ) -> Sequence[p.Infra.ViolationWithLine]:
                 """Detect import violations in a file.
 
                 Args:
@@ -390,7 +390,7 @@ class FlextInfraProtocols(FlextProtocols):
         class ViolationWithLine(Protocol):
             """Protocol for violations that have a line number."""
 
-            def model_dump(self) -> dict[str, JsonValue]:
+            def model_dump(self) -> Mapping[str, JsonValue]:
                 """Dump violation data to a dictionary."""
                 ...
 

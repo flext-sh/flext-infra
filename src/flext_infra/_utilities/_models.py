@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -39,7 +40,7 @@ class FlextInfraUtilitiesModels:
 
         file_path: Annotated[Path, Field(description="Path to the scanned file")]
         violations: Annotated[
-            list[FlextInfraUtilitiesModels._ScanViolation],
+            Sequence[FlextInfraUtilitiesModels._ScanViolation],
             Field(
                 default_factory=list,
                 description="Violations found in the file",

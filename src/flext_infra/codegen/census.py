@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -87,7 +87,7 @@ class FlextInfraCodegenCensus(s[bool]):
         workspace_root: Path | None = None,
         *,
         output_format: str = "json",
-    ) -> list[m.Infra.CensusReport]:
+    ) -> Sequence[m.Infra.CensusReport]:
         """Run census on all projects in workspace.
 
         Returns:
@@ -120,10 +120,10 @@ class FlextInfraCodegenCensus(s[bool]):
                 )
                 total_unused = total_objs - total_used
                 by_type_val = census_data.get("by_type", {})
-                by_type: dict[str, t.Infra.InfraValue] = (
+                by_type: Mapping[str, t.Infra.InfraValue] = (
                     by_type_val if isinstance(by_type_val, dict) else {}
                 )
-                type_stats: list[str] = []
+                type_stats: Sequence[str] = []
                 if isinstance(by_type, dict):
                     for t in sorted(by_type.keys())[:3]:
                         type_info_val = by_type[t]
@@ -159,7 +159,7 @@ class FlextInfraCodegenCensus(s[bool]):
         projects_result = u.Infra.discover_projects(workspace)
         if not projects_result.is_success:
             return []
-        reports: list[m.Infra.CensusReport] = []
+        reports: Sequence[m.Infra.CensusReport] = []
         discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
         for project in discovered:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
@@ -171,15 +171,15 @@ class FlextInfraCodegenCensus(s[bool]):
     def _census_project(
         self,
         project: p.Infra.ProjectInfo,
-        class_analysis: dict[
-            str, str | dict[str, int | dict[str, int | dict[str, int]]]
+        class_analysis: Mapping[
+            str, str | Mapping[str, int | Mapping[str, int | Mapping[str, int]]]
         ]
         | None = None,
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
         validator = FlextInfraNamespaceValidator()
         result = validator.validate(project.path, scan_tests=False)
-        violations: list[m.Infra.CensusViolation] = []
+        violations: Sequence[m.Infra.CensusViolation] = []
         if result.is_success:
             report: m.Infra.ValidationReport = result.unwrap()
             for violation_str in report.violations:
@@ -197,18 +197,18 @@ class FlextInfraCodegenCensus(s[bool]):
             )
 
             # Detect duplicates
-            flat_defs: list[m.Infra.ConstantDefinition] = []
+            flat_defs: Sequence[m.Infra.ConstantDefinition] = []
             for defs in all_defs.values():
                 flat_defs.extend(defs)
 
-            duplicates: list[m.Infra.DuplicateConstantGroup] = (
+            duplicates: Sequence[m.Infra.DuplicateConstantGroup] = (
                 u.Infra.detect_duplicate_constants(
                     flat_defs,
                 )
             )
 
             # Count usage
-            all_usage_map: dict[str, list[tuple[str, int]]] = (
+            all_usage_map: Mapping[str, Sequence[tuple[str, int]]] = (
                 u.Infra.scan_all_constant_usages(
                     src_dir.parent,
                     frozenset({".mypy_cache", "__pycache__"}),
@@ -241,8 +241,8 @@ class FlextInfraCodegenCensus(s[bool]):
                 class_name_str = str(class_analysis.get("class_name", "Unknown"))
                 census_data_obj_raw_val = class_analysis.get("census_data")
                 if isinstance(census_data_obj_raw_val, dict):
-                    census_data_obj: dict[
-                        str, int | dict[str, int | dict[str, int]]
+                    census_data_obj: Mapping[
+                        str, int | Mapping[str, int | Mapping[str, int]]
                     ] = census_data_obj_raw_val
                 else:
                     census_data_obj = {}
@@ -262,7 +262,7 @@ class FlextInfraCodegenCensus(s[bool]):
 
                 # Build type breakdown
                 type_breakdown = census_data_obj.get("by_type", {})
-                type_stats: list[str] = []
+                type_stats: Sequence[str] = []
                 if isinstance(type_breakdown, dict):
                     for type_name in sorted(type_breakdown.keys())[:3]:
                         type_info_val = type_breakdown[type_name]

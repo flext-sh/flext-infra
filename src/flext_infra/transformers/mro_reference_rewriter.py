@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import override
 
 import libcst as cst
@@ -15,10 +16,10 @@ class FlextInfraRefactorMROReferenceRewriter(cst.CSTTransformer):
     def __init__(
         self,
         *,
-        imported_symbols: dict[str, m.Infra.MROImportRewrite],
-        module_aliases: dict[str, str],
-        module_facades: dict[str, str],
-        moved_index: dict[str, dict[str, str]],
+        imported_symbols: Mapping[str, m.Infra.MROImportRewrite],
+        module_aliases: Mapping[str, str],
+        module_facades: Mapping[str, str],
+        moved_index: Mapping[str, Mapping[str, str]],
     ) -> None:
         """Initialize with symbol mappings for rewriting."""
         self._imported_symbols = imported_symbols

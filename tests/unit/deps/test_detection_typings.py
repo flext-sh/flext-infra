@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,7 @@ from tests import m, t
 
 
 class _StubToml:
-    def __init__(self, values: list[r[t.Infra.TomlConfig]]) -> None:
+    def __init__(self, values: Sequence[r[t.Infra.TomlConfig]]) -> None:
         self._values = values
         self._idx = 0
 
@@ -26,12 +27,12 @@ class _StubToml:
 class _StubRunner:
     def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
         self._result = result
-        self.last_kwargs: dict[str, str | int | Path | dict[str, str]] = {}
+        self.last_kwargs: Mapping[str, str | int | Path | Mapping[str, str]] = {}
 
     def run_raw(
         self,
         *args: t.Infra.TomlValue,
-        **kwargs: str | int | Path | dict[str, str],
+        **kwargs: str | int | Path | Mapping[str, str],
     ) -> r[m.Infra.CommandOutput]:
         _ = args
         self.last_kwargs = kwargs

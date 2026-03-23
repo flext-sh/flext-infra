@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
@@ -37,8 +38,8 @@ class CyclicImportDetector:
         cls,
         *,
         project_root: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.CyclicImportViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.CyclicImportViolation]:
         """Scan a project for cyclic import dependencies.
 
         Args:
@@ -56,8 +57,8 @@ class CyclicImportDetector:
         ]
         if len(scan_dirs) == 0:
             return []
-        graph: dict[str, set[str]] = {}
-        file_map: dict[str, str] = {}
+        graph: Mapping[str, set[str]] = {}
+        file_map: Mapping[str, str] = {}
         package_roots = cls._discover_package_roots(scan_dirs=scan_dirs)
         for scan_dir in scan_dirs:
             for py_file in u.Infra.iter_directory_python_files(scan_dir):
@@ -105,7 +106,7 @@ class CyclicImportDetector:
                                 root_pkg = imported.split(".")[0]
                                 if root_pkg in package_roots:
                                     graph[module_name].add(imported)
-        violations: list[nem.CyclicImportViolation] = []
+        violations: Sequence[nem.CyclicImportViolation] = []
         try:
             _ = list(TopologicalSorter(graph).static_order())
         except CycleError as exc:
@@ -129,7 +130,7 @@ class CyclicImportDetector:
         return violations
 
     @staticmethod
-    def _discover_package_roots(*, scan_dirs: list[Path]) -> set[str]:
+    def _discover_package_roots(*, scan_dirs: Sequence[Path]) -> set[str]:
         """Discover Python package names from scan directories.
 
         Args:

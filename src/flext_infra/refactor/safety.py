@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import overload
 
@@ -15,7 +16,7 @@ class FlextInfraRefactorSafetyManager:
         self,
         runner: p.Infra.SafetyRunner | None = None,
         checkpoint_path: Path | None = None,
-        test_command: list[str] | None = None,
+        test_command: Sequence[str] | None = None,
     ) -> None:
         """Initialize safety manager with runner, checkpoint path, and test command."""
         self._runner: p.Infra.SafetyRunner | None = runner
@@ -31,7 +32,7 @@ class FlextInfraRefactorSafetyManager:
         self._emergency_stop_reason = ""
         self._last_workspace_root: Path | None = None
 
-    def _run_checked(self, cmd: list[str], cwd: Path) -> r[bool]:
+    def _run_checked(self, cmd: Sequence[str], cwd: Path) -> r[bool]:
         if self._runner is not None:
             return self._runner.run_checked(cmd, cwd=cwd)
         return u.Infra.run_checked(cmd, cwd=cwd)
@@ -147,7 +148,7 @@ class FlextInfraRefactorSafetyManager:
         *,
         status: str,
         stash_ref: str,
-        processed_targets: list[str],
+        processed_targets: Sequence[str],
     ) -> r[bool]:
         """Build and persist a checkpoint from individual state components."""
         out: r[bool] = self.save_checkpoint(
@@ -173,7 +174,7 @@ class FlextInfraRefactorSafetyManager:
             out3: r[bool] = r[bool].fail(str(exc))
             return out3
 
-    def _resolve_workspace_root(self, files_changed: list[Path]) -> Path | None:
+    def _resolve_workspace_root(self, files_changed: Sequence[Path]) -> Path | None:
         if self._last_workspace_root is not None:
             return self._last_workspace_root
         return files_changed[0].parent if files_changed else None

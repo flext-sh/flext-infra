@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -49,7 +50,7 @@ class TestMain:
             u.Infra,
             "github_sync_workspace_workflows",
             staticmethod(
-                lambda **kw: r[list[m.Infra.SyncOperation]].ok([]),
+                lambda **kw: r[Sequence[m.Infra.SyncOperation]].ok([]),
             ),
         )
         original = sys.argv.copy()
@@ -149,7 +150,7 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        called: list[bool] = []
+        called: Sequence[bool] = []
         monkeypatch.setattr(
             u.Infra,
             "github_lint_workflows",
@@ -192,7 +193,7 @@ class TestMain:
         monkeypatch.setattr(
             u.Infra,
             "github_sync_workspace_workflows",
-            staticmethod(lambda **kw: r[list[m.Infra.SyncOperation]].ok(ops)),
+            staticmethod(lambda **kw: r[Sequence[m.Infra.SyncOperation]].ok(ops)),
         )
         original = sys.argv.copy()
         try:

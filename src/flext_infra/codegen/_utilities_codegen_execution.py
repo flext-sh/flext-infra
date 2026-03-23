@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -29,12 +29,12 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
     def quality_gate_write_artifacts(
         *,
         workspace_root: Path,
-        report: dict[str, t.Infra.InfraValue],
+        report: Mapping[str, t.Infra.InfraValue],
         render_text: str,
         census_reports: Sequence[m.Infra.CensusReport],
-        duplicate_groups: list[m.Infra.DuplicateConstantGroup],
-        before_payload: dict[str, t.Infra.InfraValue] | None,
-    ) -> dict[str, t.Infra.InfraValue]:
+        duplicate_groups: Sequence[m.Infra.DuplicateConstantGroup],
+        before_payload: Mapping[str, t.Infra.InfraValue] | None,
+    ) -> Mapping[str, t.Infra.InfraValue]:
         """Write quality gate artifacts to disk."""
         directory = workspace_root / c.Infra.QualityGate.REPORT_DIR
         directory.mkdir(parents=True, exist_ok=True)
@@ -44,8 +44,8 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
         inventory_json = directory / "inventory-after.json"
         validate_json = directory / "validate-after.json"
         baseline_json = directory / "baseline-used.json"
-        report_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-            dict[str, t.Infra.InfraValue],
+        report_adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+            Mapping[str, t.Infra.InfraValue],
         )
         report_json.write_text(
             report_adapter.dump_json(report, by_alias=True).decode(
@@ -54,11 +54,13 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
             encoding=c.Infra.Encoding.DEFAULT,
         )
         report_text.write_text(render_text, encoding=c.Infra.Encoding.DEFAULT)
-        census_payload: list[dict[str, t.Infra.InfraValue]] = [
+        census_payload: Sequence[Mapping[str, t.Infra.InfraValue]] = [
             item.model_dump() for item in census_reports
         ]
-        census_adapter: TypeAdapter[list[dict[str, t.Infra.InfraValue]]] = TypeAdapter(
-            list[dict[str, t.Infra.InfraValue]],
+        census_adapter: TypeAdapter[Sequence[Mapping[str, t.Infra.InfraValue]]] = (
+            TypeAdapter(
+                Sequence[Mapping[str, t.Infra.InfraValue]],
+            )
         )
         census_json.write_text(
             census_adapter.dump_json(census_payload, by_alias=True).decode(
@@ -66,17 +68,17 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
             ),
             encoding=c.Infra.Encoding.DEFAULT,
         )
-        inventory_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-            dict[str, t.Infra.InfraValue],
+        inventory_adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+            Mapping[str, t.Infra.InfraValue],
         )
-        group_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-            dict[str, t.Infra.InfraValue],
+        group_adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+            Mapping[str, t.Infra.InfraValue],
         )
-        groups_payload: list[t.Infra.InfraValue] = [
+        groups_payload: Sequence[t.Infra.InfraValue] = [
             group_adapter.validate_python(group.model_dump())
             for group in duplicate_groups
         ]
-        inventory_payload: dict[str, t.Infra.InfraValue] = {
+        inventory_payload: Mapping[str, t.Infra.InfraValue] = {
             "groups": groups_payload,
             "count": len(duplicate_groups),
         }
@@ -87,8 +89,8 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
             ).decode(c.Infra.Encoding.DEFAULT),
             encoding=c.Infra.Encoding.DEFAULT,
         )
-        validate_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-            dict[str, t.Infra.InfraValue],
+        validate_adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+            Mapping[str, t.Infra.InfraValue],
         )
         validate_json.write_text(
             validate_adapter.dump_json(
@@ -102,8 +104,10 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
             encoding=c.Infra.Encoding.DEFAULT,
         )
         if before_payload is not None:
-            baseline_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+            baseline_adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = (
+                TypeAdapter(
+                    Mapping[str, t.Infra.InfraValue],
+                )
             )
             baseline_json.write_text(
                 baseline_adapter.dump_json(before_payload, by_alias=True).decode(
@@ -122,7 +126,7 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
         }
 
     @staticmethod
-    def quality_gate_modified_python_files(workspace_root: Path) -> list[str]:
+    def quality_gate_modified_python_files(workspace_root: Path) -> Sequence[str]:
         """Detect modified Python files in workspace."""
         normalized: set[str] = set()
         for rel in FlextInfraCodegenExecutionTools.git_lines(
@@ -172,8 +176,8 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
         if fallback.is_file():
             try:
                 text = fallback.read_text(encoding=c.Infra.Encoding.DEFAULT)
-                adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                    dict[str, t.Infra.InfraValue],
+                adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+                    Mapping[str, t.Infra.InfraValue],
                 )
                 payload = adapter.validate_json(text)
             except (OSError, UnicodeDecodeError, ValueError):

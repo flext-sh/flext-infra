@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -22,9 +22,9 @@ def _fake_process(
     _p: Path,
     *,
     dry_run: bool = False,
-) -> r[list[str]]:
+) -> r[Sequence[str]]:
     del dry_run
-    return r[list[str]].ok(["fix1"])
+    return r[Sequence[str]].ok(["fix1"])
 
 
 class TestConfigFixerRunMethods:
@@ -40,18 +40,18 @@ class TestConfigFixerRunMethods:
 
         def _find(
             _s: FlextInfraConfigFixer,
-            _p: list[Path] | None = None,
-        ) -> r[list[Path]]:
-            return r[list[Path]].ok([pyproject])
+            _p: Sequence[Path] | None = None,
+        ) -> r[Sequence[Path]]:
+            return r[Sequence[Path]].ok([pyproject])
 
         def _proc(
             _s: FlextInfraConfigFixer,
             _p: Path,
             *,
             dry_run: bool = False,
-        ) -> r[list[str]]:
+        ) -> r[Sequence[str]]:
             del dry_run
-            return r[list[str]].ok(["fix1", "fix2"])
+            return r[Sequence[str]].ok(["fix1", "fix2"])
 
         monkeypatch.setattr(FlextInfraConfigFixer, "find_pyproject_files", _find)
         monkeypatch.setattr(FlextInfraConfigFixer, "process_file", _proc)
@@ -70,9 +70,9 @@ class TestConfigFixerRunMethods:
 
         def _find(
             _s: FlextInfraConfigFixer,
-            _p: list[Path] | None = None,
-        ) -> r[list[Path]]:
-            return r[list[Path]].ok([pyproject])
+            _p: Sequence[Path] | None = None,
+        ) -> r[Sequence[Path]]:
+            return r[Sequence[Path]].ok([pyproject])
 
         monkeypatch.setattr(FlextInfraConfigFixer, "find_pyproject_files", _find)
         monkeypatch.setattr(FlextInfraConfigFixer, "process_file", _fake_process)
@@ -127,7 +127,7 @@ class TestProcessFileReadError:
             _s: FlextInfraConfigFixer,
             _d: MutableMapping[str, t.Infra.InfraValue],
             _r: Path,
-        ) -> list[str]:
+        ) -> Sequence[str]:
             return ["fix1"]
 
         original_write = Path.write_text

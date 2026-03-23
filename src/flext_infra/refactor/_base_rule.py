@@ -8,7 +8,7 @@ This module has no dependencies on any rules/ submodule.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -38,7 +38,7 @@ class FlextInfraRefactorRule:
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         """Apply the rule to a CST module and return transformed tree plus changes."""
         return (tree, [])
 

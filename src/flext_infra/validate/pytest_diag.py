@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -30,11 +31,11 @@ class _DiagResult:
     )
 
     def __init__(self) -> None:
-        self.failed_cases: list[str] = []
-        self.error_traces: list[str] = []
-        self.skip_cases: list[str] = []
-        self.warning_lines: list[str] = []
-        self.slow_entries: list[str] = []
+        self.failed_cases: Sequence[str] = []
+        self.error_traces: Sequence[str] = []
+        self.skip_cases: Sequence[str] = []
+        self.warning_lines: Sequence[str] = []
+        self.slow_entries: Sequence[str] = []
 
 
 class FlextInfraPytestDiagExtractor:
@@ -47,7 +48,7 @@ class FlextInfraPytestDiagExtractor:
     _ENCODING: ClassVar[str] = c.Infra.Encoding.DEFAULT
 
     @staticmethod
-    def _extract_slow_from_log(lines: list[str], diag: _DiagResult) -> None:
+    def _extract_slow_from_log(lines: Sequence[str], diag: _DiagResult) -> None:
         """Extract slow test durations from log when XML unavailable."""
         capture_slow = False
         for line in lines:
@@ -60,7 +61,7 @@ class FlextInfraPytestDiagExtractor:
                 diag.slow_entries.append(line)
 
     @staticmethod
-    def _extract_warnings(lines: list[str], diag: _DiagResult) -> None:
+    def _extract_warnings(lines: Sequence[str], diag: _DiagResult) -> None:
         """Extract warning lines from pytest log."""
         capture_warn = False
         for line in lines:
@@ -81,7 +82,7 @@ class FlextInfraPytestDiagExtractor:
             ]
 
     @staticmethod
-    def _parse_log_into_diag(lines: list[str], diag: _DiagResult) -> None:
+    def _parse_log_into_diag(lines: Sequence[str], diag: _DiagResult) -> None:
         """Parse pytest log output for failures/skips when XML unavailable."""
         diag.failed_cases = [
             line for line in lines if re.search(r"(^FAILED |::.* FAILED( |$))", line)
@@ -90,7 +91,7 @@ class FlextInfraPytestDiagExtractor:
             line for line in lines if re.search(r"(^SKIPPED |::.* SKIPPED( |$))", line)
         ]
         capture = False
-        block: list[str] = []
+        block: Sequence[str] = []
         for line in lines:
             if re.match(r"^=+ (FAILURES|ERRORS) =+", line):
                 capture = True
@@ -114,7 +115,7 @@ class FlextInfraPytestDiagExtractor:
             return False
         if root is None:
             return False
-        slow_rows: list[tuple[float, str]] = []
+        slow_rows: Sequence[tuple[float, str]] = []
         for case in root.iter("testcase"):
             classname = case.attrib.get("classname", "")
             name = case.attrib.get(c.Infra.Toml.NAME, "")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -27,24 +27,24 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
-        typed_cfg: dict[str, t.Infra.InfraValue] = TypeAdapter(
-            dict[str, t.Infra.InfraValue],
+    ) -> tuple[cst.Module, Sequence[str]]:
+        typed_cfg: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
+            Mapping[str, t.Infra.InfraValue],
         ).validate_python(self.config)
         target_modules_raw = typed_cfg.get("target_modules", [])
         module_renames_raw = typed_cfg.get("module_renames", {})
         symbol_renames_raw = typed_cfg.get("import_symbol_renames", {})
         target_modules = set(u.Infra.string_list(target_modules_raw))
-        module_renames: dict[str, str]
+        module_renames: Mapping[str, str]
         try:
-            module_renames = TypeAdapter(dict[str, str]).validate_python(
+            module_renames = TypeAdapter(Mapping[str, str]).validate_python(
                 module_renames_raw,
             )
         except ValidationError:
             module_renames = {}
-        symbol_renames: dict[str, str]
+        symbol_renames: Mapping[str, str]
         try:
-            symbol_renames = TypeAdapter(dict[str, str]).validate_python(
+            symbol_renames = TypeAdapter(Mapping[str, str]).validate_python(
                 symbol_renames_raw,
             )
         except ValidationError:
@@ -68,13 +68,13 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
     def __init__(
         self,
         *,
-        migrations: list[m.Infra.SignatureMigration],
+        migrations: Sequence[m.Infra.SignatureMigration],
         on_change: Callable[[str], None] | None = None,
     ) -> None:
         """Initialize transformer state for declarative signature migrations."""
         self._migrations = migrations
         self._on_change = on_change
-        self.changes: list[str] = []
+        self.changes: Sequence[str] = []
 
     @override
     def leave_Call(
@@ -103,7 +103,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
             keyword_renames = self._keyword_renames(migration)
             remove_keywords = self._remove_keywords(migration)
             add_keywords = self._add_keywords(migration)
-            next_args: list[cst.Arg] = []
+            next_args: Sequence[cst.Arg] = []
             changed = False
             seen_keyword_names: set[str] = set()
             for arg in list(result_call.args):
@@ -220,11 +220,11 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         migrations_raw = self.config.get("signature_migrations", [])
         try:
             parsed = TypeAdapter(
-                list[m.Infra.SignatureMigration],
+                Sequence[m.Infra.SignatureMigration],
             ).validate_python(migrations_raw)
         except ValidationError:
             return (tree, [])

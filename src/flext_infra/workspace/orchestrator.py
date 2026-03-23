@@ -59,7 +59,7 @@ class FlextInfraOrchestratorService(s[bool]):
         *,
         fail_fast: bool = False,
         make_args: Sequence[str] = (),
-    ) -> r[list[m.Infra.CommandOutput]]:
+    ) -> r[Sequence[m.Infra.CommandOutput]]:
         """Execute make verb across projects with per-project logging.
 
         Args:
@@ -74,7 +74,7 @@ class FlextInfraOrchestratorService(s[bool]):
         """
         output.header("Workspace Orchestration")
         try:
-            results: list[m.Infra.CommandOutput] = []
+            results: Sequence[m.Infra.CommandOutput] = []
             total = len(projects)
             success = 0
             failed = 0
@@ -122,9 +122,9 @@ class FlextInfraOrchestratorService(s[bool]):
                     skipped = total - idx
             elapsed_total = time.monotonic() - started_total
             output.summary(verb, total, success, failed, skipped, elapsed_total)
-            return r[list[m.Infra.CommandOutput]].ok(results)
+            return r[Sequence[m.Infra.CommandOutput]].ok(results)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
-            return r[list[m.Infra.CommandOutput]].fail(
+            return r[Sequence[m.Infra.CommandOutput]].fail(
                 f"Orchestration failed: {exc}",
             )
 
@@ -134,7 +134,7 @@ class FlextInfraOrchestratorService(s[bool]):
         verb: str,
         _index: int,
         *,
-        make_args: list[str],
+        make_args: Sequence[str],
     ) -> r[m.Infra.CommandOutput]:
         """Execute make verb for a single project.
 
@@ -188,11 +188,11 @@ class FlextInfraOrchestratorService(s[bool]):
         *,
         project: str,
         verb: str,
-        make_args: list[str],
-    ) -> list[str]:
+        make_args: Sequence[str],
+    ) -> Sequence[str]:
         if (verb != c.Infra.Verbs.CHECK) or (not self._is_go_project(project)):
             return make_args
-        normalized_args: list[str] = []
+        normalized_args: Sequence[str] = []
         for make_arg in make_args:
             if make_arg.startswith("CHECK_GATES="):
                 _, _, gates_value = make_arg.partition("=")
@@ -209,7 +209,7 @@ class FlextInfraOrchestratorService(s[bool]):
         raw_gates = [gate.strip() for gate in gates_value.split(",") if gate.strip()]
         if not raw_gates:
             return gates_value
-        normalized_gates: list[str] = []
+        normalized_gates: Sequence[str] = []
         go_supported = {
             c.Infra.Gates.LINT,
             c.Infra.Gates.FORMAT,

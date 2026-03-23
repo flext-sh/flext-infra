@@ -63,7 +63,7 @@ class FlextInfraUtilitiesParsing:
         if isinstance(module, cst.Name):
             return module.value
         if isinstance(module, cst.Attribute):
-            parts: list[str] = []
+            parts: Sequence[str] = []
             current: cst.BaseExpression = module
             while isinstance(current, cst.Attribute):
                 parts.append(current.attr.value)

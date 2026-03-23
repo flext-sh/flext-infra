@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -22,13 +23,13 @@ class EnsurePyrightConfigPhase:
         is_root: bool,
         workspace_root: Path | None,
         project_dir: Path | None = None,
-    ) -> list[dict[str, str]]:
+    ) -> Sequence[Mapping[str, str]]:
         if not is_root:
             return self._expected_envs_for_project(project_dir)
         if workspace_root is None:
             return self._expected_envs_for_project(project_dir)
 
-        expected_envs: list[dict[str, str]] = []
+        expected_envs: Sequence[Mapping[str, str]] = []
         root_src = workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR
         root_tests = workspace_root / c.Infra.Directories.TESTS
         root_examples = workspace_root / c.Infra.Directories.EXAMPLES
@@ -90,7 +91,7 @@ class EnsurePyrightConfigPhase:
     @staticmethod
     def _expected_envs_for_project(
         project_dir: Path | None,
-    ) -> list[dict[str, str]]:
+    ) -> Sequence[Mapping[str, str]]:
         """Build executionEnvironments dynamically from discovered dirs."""
         if project_dir is None:
             return [
@@ -98,7 +99,7 @@ class EnsurePyrightConfigPhase:
                 {"root": c.Infra.Directories.TESTS, "reportPrivateUsage": "none"},
             ]
         discovered = u.Infra.discover_python_dirs(project_dir)
-        envs: list[dict[str, str]] = []
+        envs: Sequence[Mapping[str, str]] = []
         for dir_name in discovered:
             if dir_name == c.Infra.Paths.DEFAULT_SRC_DIR:
                 envs.append({"root": dir_name, "reportPrivateUsage": "error"})
@@ -117,7 +118,7 @@ class EnsurePyrightConfigPhase:
     ) -> m.Infra.ProjectTypeOverrideConfig | None:
         """Return the project-type override config for the given kind, if any."""
         overrides = self._tool_config.project_type_overrides
-        kind_map: dict[str, m.Infra.ProjectTypeOverrideConfig] = {
+        kind_map: Mapping[str, m.Infra.ProjectTypeOverrideConfig] = {
             "core": overrides.core,
             "domain": overrides.domain,
             "platform": overrides.platform,
@@ -134,8 +135,8 @@ class EnsurePyrightConfigPhase:
         workspace_root: Path | None = None,
         project_dir: Path | None = None,
         project_kind: str = "core",
-    ) -> list[str]:
-        changes: list[str] = []
+    ) -> Sequence[str]:
+        changes: Sequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:
             raw_tool = doc[c.Infra.Toml.TOOL]
@@ -169,7 +170,7 @@ class EnsurePyrightConfigPhase:
                 changes.append(f"tool.pyright.{key} set to {value}")
         # Merge extended_settings with project_kind overrides BEFORE applying
         # to avoid double-change noise (set to X then immediately override to Y)
-        merged_settings: dict[str, str] = {
+        merged_settings: Mapping[str, str] = {
             **self._tool_config.tools.pyright.extended_settings,
         }
         override = self._override_for_kind(project_kind)

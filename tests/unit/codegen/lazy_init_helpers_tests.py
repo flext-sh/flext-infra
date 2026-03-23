@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from flext_tests import tm
@@ -18,7 +18,7 @@ _read_existing_docstring: Callable[[Path], str] = getattr(
     FlextInfraCodegenLazyInit,
     "_read_existing_docstring",
 )
-_build_sibling_export_index: Callable[[Path, str], dict[str, tuple[str, str]]] = (
+_build_sibling_export_index: Callable[[Path, str], Mapping[str, tuple[str, str]]] = (
     getattr(FlextInfraCodegenLazyInit, "_build_sibling_export_index")
 )
 

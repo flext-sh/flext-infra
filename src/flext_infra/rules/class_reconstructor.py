@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -29,7 +30,7 @@ class PreCheckGate:
             "class-policy-v2.yml",
         )
         self._schema_path = self._policy_path.with_name("class-policy-v2.schema.json")
-        self._policy_by_family: dict[str, m.Infra.ClassNestingPolicy] = (
+        self._policy_by_family: Mapping[str, m.Infra.ClassNestingPolicy] = (
             self._load_policy()
         )
 
@@ -99,18 +100,18 @@ class PreCheckGate:
             )
         return (True, None)
 
-    def _load_policy(self) -> dict[str, m.Infra.ClassNestingPolicy]:
+    def _load_policy(self) -> Mapping[str, m.Infra.ClassNestingPolicy]:
         try:
             loaded = u.Infra.safe_load_yaml(self._policy_path)
         except (OSError, TypeError):
             return {}
-        loaded_dict: dict[str, t.Infra.InfraValue] = TypeAdapter(
-            dict[str, t.Infra.InfraValue],
+        loaded_dict: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
+            Mapping[str, t.Infra.InfraValue],
         ).validate_python(dict(loaded.items()))
         if not self._schema_valid(loaded_dict):
             return {}
         policy_matrix = u.Infra.mapping_list(loaded_dict.get("policy_matrix"))
-        by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
+        by_family: Mapping[str, m.Infra.ClassNestingPolicy] = {}
         for raw in policy_matrix:
             try:
                 policy = m.Infra.ClassNestingPolicy.model_validate(raw)
@@ -119,11 +120,11 @@ class PreCheckGate:
             by_family[policy.family_name] = policy
         return by_family
 
-    def _schema_valid(self, loaded: dict[str, t.Infra.InfraValue]) -> bool:
+    def _schema_valid(self, loaded: Mapping[str, t.Infra.InfraValue]) -> bool:
         schema_result = u.Infra.read_json(self._schema_path)
         if schema_result.is_failure:
             return True
-        schema: dict[str, JsonValue] = dict(schema_result.value.items())
+        schema: Mapping[str, JsonValue] = dict(schema_result.value.items())
         top_required = u.Infra.string_list(schema.get("required"))
         if not u.Infra.has_required_fields(loaded, top_required):
             return False
@@ -158,9 +159,9 @@ class FlextInfraRefactorClassNestingReconstructor:
     """Reconstruct class nesting by applying rename mappings and propagation."""
 
     @staticmethod
-    def class_rename_mappings(entries: list[t.Infra.StrMap]) -> dict[str, str]:
+    def class_rename_mappings(entries: Sequence[t.Infra.StrMap]) -> Mapping[str, str]:
         """Build a mapping of loose class names to their nested target names."""
-        mappings: dict[str, str] = {}
+        mappings: Mapping[str, str] = {}
         for entry in entries:
             loose_name = entry.get(c.Infra.ReportKeys.LOOSE_NAME)
             target_namespace = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE)
@@ -177,8 +178,8 @@ class FlextInfraRefactorClassNestingReconstructor:
     @staticmethod
     def apply_nested_class_propagation(
         tree: cst.Module,
-        mappings: dict[str, str],
-        changes: list[str],
+        mappings: Mapping[str, str],
+        changes: Sequence[str],
         policy_context: t.Infra.PolicyContext,
         class_families: t.Infra.ClassFamilyMap,
     ) -> cst.Module:
@@ -205,14 +206,14 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         """Apply method reordering transformer when order config is available."""
         order_config_raw = self.config.get("method_order") or self.config.get(
             "order",
             [],
         )
         try:
-            order_config = TypeAdapter(list[t.Infra.RuleConfig]).validate_python(
+            order_config = TypeAdapter(Sequence[t.Infra.RuleConfig]).validate_python(
                 order_config_raw,
             )
         except ValidationError:

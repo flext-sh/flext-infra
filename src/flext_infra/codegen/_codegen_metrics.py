@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -16,7 +16,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
         workspace_root: Path,
         before_report: Path | None,
         baseline_file: Path | None,
-    ) -> tuple[dict[str, t.Infra.InfraValue] | None, str, str]:
+    ) -> tuple[Mapping[str, t.Infra.InfraValue] | None, str, str]:
         baseline_path = before_report or baseline_file
         if baseline_path is None:
             return (None, "", "")
@@ -48,8 +48,8 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
 
     @staticmethod
     def quality_gate_before_metrics(
-        before_payload: dict[str, t.Infra.InfraValue] | None,
-    ) -> dict[str, t.Infra.InfraValue]:
+        before_payload: Mapping[str, t.Infra.InfraValue] | None,
+    ) -> Mapping[str, t.Infra.InfraValue]:
         if before_payload is None:
             return {
                 "total_violations": -1,
@@ -81,10 +81,10 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
         *,
         census_reports: Sequence[m.Infra.CensusReport],
         duplicate_groups: int,
-        import_scan: dict[str, t.Infra.InfraValue],
-        modified_files: list[str],
-    ) -> dict[str, t.Infra.InfraValue]:
-        by_rule: dict[str, int] = dict.fromkeys(
+        import_scan: Mapping[str, t.Infra.InfraValue],
+        modified_files: Sequence[str],
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        by_rule: Mapping[str, int] = dict.fromkeys(
             c.Infra.QualityGate.RULE_KEYS,
             0,
         )
@@ -101,8 +101,8 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
         projects_total = len(census_reports)
         projects_passed = sum(1 for item in census_reports if int(item.total) == 0)
         projects_failed = projects_total - projects_passed
-        violations_by_rule: dict[str, t.Infra.InfraValue] = dict(by_rule)
-        modified_python_files_value: list[t.Infra.InfraValue] = list(modified_files)
+        violations_by_rule: Mapping[str, t.Infra.InfraValue] = dict(by_rule)
+        modified_python_files_value: Sequence[t.Infra.InfraValue] = list(modified_files)
         return {
             "total_violations": total_violations,
             "violations_by_rule": violations_by_rule,
@@ -124,9 +124,9 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
 
     @staticmethod
     def quality_gate_improvement(
-        before_metrics: dict[str, t.Infra.InfraValue],
-        after_metrics: dict[str, t.Infra.InfraValue],
-    ) -> dict[str, t.Infra.InfraValue]:
+        before_metrics: Mapping[str, t.Infra.InfraValue],
+        after_metrics: Mapping[str, t.Infra.InfraValue],
+    ) -> Mapping[str, t.Infra.InfraValue]:
         before_violations = FlextInfraCodegenMetrics.as_int(
             before_metrics.get("total_violations"),
         )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from argparse import Namespace
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -56,7 +57,7 @@ class FlextInfraPyprojectModernizer:
         kind = ProjectClassifier(project_dir).classify().project_kind
         return r[str].ok(kind)
 
-    def find_pyproject_files(self) -> list[Path]:
+    def find_pyproject_files(self) -> Sequence[Path]:
         """Find all workspace pyproject.toml files."""
         result = u.Infra.find_all_pyproject_files(
             self.root,
@@ -71,10 +72,10 @@ class FlextInfraPyprojectModernizer:
         self,
         path: Path,
         *,
-        canonical_dev: list[str],
+        canonical_dev: Sequence[str],
         dry_run: bool,
         skip_comments: bool,
-    ) -> list[str]:
+    ) -> Sequence[str]:
         """Process one pyproject.toml file and collect changes."""
         doc = u.Infra.read(path)
         if doc is None:
@@ -85,7 +86,7 @@ class FlextInfraPyprojectModernizer:
             kind_result = self._classify_project(path.parent)
             if kind_result.is_success:
                 project_kind = kind_result.value
-        changes: list[str] = []
+        changes: Sequence[str] = []
         tool_item = self._table_child(doc, c.Infra.Toml.TOOL)
         if tool_item is None:
             tool_item = tomlkit.table()
@@ -94,7 +95,7 @@ class FlextInfraPyprojectModernizer:
         if poetry_item is not None:
             group_item = self._table_child(poetry_item, c.Infra.Toml.GROUP)
             if group_item is not None:
-                empty_groups: list[str] = []
+                empty_groups: Sequence[str] = []
                 for name in u.Infra.table_string_keys(group_item):
                     group_dep_item = self._table_child(group_item, name)
                     if group_dep_item is None:
@@ -170,7 +171,7 @@ class FlextInfraPyprojectModernizer:
         if root_doc is None:
             return 2
         canonical_dev = u.Infra.canonical_dev_dependencies(root_doc)
-        violations: dict[str, list[str]] = {}
+        violations: Mapping[str, Sequence[str]] = {}
         total = 0
         for file_path in files:
             changes = self.process_file(
@@ -200,7 +201,7 @@ class FlextInfraPyprojectModernizer:
             return self._run_poetry_check(files)
         return 0
 
-    def _run_poetry_check(self, files: list[Path]) -> int:
+    def _run_poetry_check(self, files: Sequence[Path]) -> int:
         has_warning = False
         for path in files:
             project_dir = path.parent
@@ -216,7 +217,7 @@ class FlextInfraPyprojectModernizer:
         return 1 if has_warning else 0
 
     @staticmethod
-    def main(argv: list[str] | None = None) -> int:
+    def main(argv: Sequence[str] | None = None) -> int:
         """Run the pyproject modernizer CLI."""
         parser = u.Infra.create_parser(
             "flext-infra deps modernize",

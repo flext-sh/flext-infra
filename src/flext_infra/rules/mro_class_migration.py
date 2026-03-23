@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -25,7 +26,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         if _file_path is None:
             return (tree, [])
         if _file_path.name != c.Infra.CONSTANTS_FILE_GLOB:
@@ -35,7 +36,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
         module_ast = u.Infra.parse_ast_from_source(source)
         if module_ast is None:
             return (tree, [])
-        candidates: list[m.Infra.MROSymbolCandidate] = []
+        candidates: Sequence[m.Infra.MROSymbolCandidate] = []
         for stmt in module_ast.body:
             if not isinstance(stmt, ast.AnnAssign):
                 continue

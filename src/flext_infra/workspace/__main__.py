@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -51,11 +52,11 @@ class FlextInfraWorkspaceCommand:
 
     @staticmethod
     def run_orchestrate(
-        projects: list[str],
+        projects: Sequence[str],
         verb: str,
         *,
         fail_fast: bool,
-        make_args: list[str],
+        make_args: Sequence[str],
     ) -> int:
         """Run make verb across projects."""
         filtered_projects = [project for project in projects if project]
@@ -72,7 +73,7 @@ class FlextInfraWorkspaceCommand:
             make_args=make_args,
         )
         if result.is_success:
-            outputs: list[m.Infra.CommandOutput] = result.value
+            outputs: Sequence[m.Infra.CommandOutput] = result.value
             failures = [item for item in outputs if item.exit_code != 0]
             return max((item.exit_code for item in failures), default=0)
         return u.Infra.exit_code(result, failure_msg="orchestration failed")
@@ -84,7 +85,7 @@ class FlextInfraWorkspaceCommand:
         result = service.migrate(workspace_root=cli.workspace, dry_run=cli.dry_run)
         if result.is_failure:
             return u.Infra.exit_code(result, failure_msg="migration failed")
-        migrations: list[m.Infra.MigrationResult] = result.value
+        migrations: Sequence[m.Infra.MigrationResult] = result.value
         failed_projects = 0
         for migration in migrations:
             output.info(f"{migration.project}:")
@@ -104,7 +105,7 @@ class FlextInfraWorkspaceCommand:
         return 1 if failed_projects else 0
 
     @staticmethod
-    def run(argv: list[str] | None = None) -> int:
+    def run(argv: Sequence[str] | None = None) -> int:
         """Dispatch workspace subcommands and return process exit code."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext_infra workspace",
@@ -179,11 +180,11 @@ def _run_sync(cli: u.Infra.CliArgs, canonical_root: str | None) -> int:
 
 
 def _run_orchestrate(
-    projects: list[str],
+    projects: Sequence[str],
     verb: str,
     *,
     fail_fast: bool,
-    make_args: list[str],
+    make_args: Sequence[str],
 ) -> int:
     return FlextInfraWorkspaceCommand.run_orchestrate(
         projects,
@@ -197,11 +198,11 @@ def _run_migrate(cli: u.Infra.CliArgs) -> int:
     return FlextInfraWorkspaceCommand.run_migrate(cli)
 
 
-def _main_inner(argv: list[str] | None = None) -> int:
+def _main_inner(argv: Sequence[str] | None = None) -> int:
     return FlextInfraWorkspaceCommand.run(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Run workspace utilities: detect mode, sync base.mk, orchestrate projects."""
     return u.Infra.run_cli(_main_inner, argv)
 

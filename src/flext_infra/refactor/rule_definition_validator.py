@@ -10,6 +10,8 @@ from flext_infra import c
 
 
 class FlextInfraRefactorRuleDefinitionValidator:
+    """Validator for declarative refactor rule definitions."""
+
     def validate_rule_definition(
         self,
         rule_def: Mapping[str, JsonValue],

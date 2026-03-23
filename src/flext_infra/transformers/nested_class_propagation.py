@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import override
 
 import libcst as cst
@@ -18,13 +18,13 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
 
     def __init__(
         self,
-        class_renames: dict[str, str],
+        class_renames: Mapping[str, str],
         policy_context: t.Infra.PolicyContext | None = None,
         class_families: Mapping[str, str] | None = None,
     ) -> None:
         """Initialize with class rename mappings and optional policy context."""
         self._class_renames = class_renames
-        self._name_renames: dict[str, str] = dict(class_renames)
+        self._name_renames: Mapping[str, str] = dict(class_renames)
         self._policy_context = policy_context
         self._class_families = class_families or {}
 
@@ -37,7 +37,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
         _ = original_node
         if isinstance(updated_node.names, cst.ImportStar):
             return updated_node
-        updated_aliases: list[cst.ImportAlias] = []
+        updated_aliases: Sequence[cst.ImportAlias] = []
         changed = False
         for alias in updated_node.names:
             if not isinstance(alias.name, cst.Name):
@@ -139,7 +139,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
     def _attribute_from_base(
         self,
         base: cst.BaseExpression,
-        dotted_parts: list[str],
+        dotted_parts: Sequence[str],
     ) -> cst.BaseExpression:
         expr: cst.BaseExpression = base
         for part in dotted_parts:
@@ -153,7 +153,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
             return expr.attr.value
         return None
 
-    def _split_dotted(self, dotted_name: str) -> list[str]:
+    def _split_dotted(self, dotted_name: str) -> Sequence[str]:
         return [part for part in dotted_name.split(".") if part]
 
     def _should_propagate(self, symbol_name: str, policy_key: str) -> bool:

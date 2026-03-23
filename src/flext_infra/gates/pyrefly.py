@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import sys
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -50,14 +50,14 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             "--summary=none",
         ]
         result = self._run(cmd, project_dir)
-        issues: list[m.Infra.Issue] = []
+        issues: Sequence[m.Infra.Issue] = []
         if json_file.exists():
             try:
                 raw_text = json_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
                 parsed = u.Infra.parse(raw_text)
                 if parsed.is_success and isinstance(parsed.value, Mapping):
                     parsed_map = self._to_mapping(parsed.value)
-                    error_items: list[dict[str, t.Infra.InfraValue]] = (
+                    error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = (
                         self._to_mapping_list(parsed_map.get("errors", []))
                     )
                 elif parsed.is_success and isinstance(parsed.value, list):

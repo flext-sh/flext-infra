@@ -56,6 +56,8 @@ class FlextInfraConstants(FlextConstants):
         FlextInfraReleaseConstants,
         FlextInfraWorkspaceConstants,
     ):
+        """Merged infra-domain constants from all sub-packages."""
+
         Check = FlextInfraCheckConstants
         "Sub-namespace alias for check-domain constants."
         Github = FlextInfraGithubConstants

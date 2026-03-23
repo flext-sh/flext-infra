@@ -79,7 +79,7 @@ class FlextInfraVersion:
         return (cur_major, cur_minor, cur_patch) >= (major, minor, patch)
 
     @classmethod
-    def get_package_info(cls) -> dict[str, str]:
+    def get_package_info(cls) -> Mapping[str, str]:
         """Return package metadata as a string-keyed dict of strings."""
         return {
             "name": cls.__title__,

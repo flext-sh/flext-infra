@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -13,7 +14,7 @@ from flext_infra import FlextInfraRefactorRule, c, t, u
 
 class DictToMappingTransformer(cst.CSTTransformer):
     def __init__(self, *, include_return_annotations: bool) -> None:
-        self.changes: list[str] = []
+        self.changes: Sequence[str] = []
         self._has_mapping_import = False
         self._include_return_annotations = include_return_annotations
 
@@ -203,7 +204,7 @@ class DictToMappingTransformer(cst.CSTTransformer):
         replacement: cst.BaseExpression = annotation.with_changes(
             value=cst.Name("Mapping"),
         )
-        self.changes.append("Converted annotation dict[...] to Mapping[...]")
+        self.changes.append("Converted annotation Mapping[...] to Mapping[...]")
         return replacement
 
     def _rewrite_param_if_safe(
@@ -227,7 +228,7 @@ class DictToMappingTransformer(cst.CSTTransformer):
 class RedundantCastRemover(cst.CSTTransformer):
     def __init__(self, removable_types: set[str]) -> None:
         self.removable_types = removable_types
-        self.changes: list[str] = []
+        self.changes: Sequence[str] = []
 
     @override
     def leave_Call(
@@ -296,7 +297,7 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         fix_action = (
             str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
         )
@@ -308,8 +309,8 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
             updated = tree.visit(dict_to_mapping_transformer)
             return (updated, dict_to_mapping_transformer.changes)
         if fix_action == "remove_redundant_casts":
-            typed_cfg: dict[str, t.Infra.InfraValue] = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+            typed_cfg: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
+                Mapping[str, t.Infra.InfraValue],
             ).validate_python(self.config)
             raw_types = typed_cfg.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))

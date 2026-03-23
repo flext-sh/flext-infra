@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tomllib
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -41,9 +42,9 @@ class FlextInfraUtilitiesTomlParse:
         return base.lower().replace("_", "-")
 
     @staticmethod
-    def dedupe_specs(specs: list[str]) -> list[str]:
+    def dedupe_specs(specs: Sequence[str]) -> Sequence[str]:
         """Deduplicate dependency specifications by normalized name, sorted by full spec string."""
-        seen: dict[str, str] = {}
+        seen: Mapping[str, str] = {}
         for spec in specs:
             key = FlextInfraUtilitiesTomlParse.dep_name(spec)
             if key and key not in seen:
@@ -53,17 +54,17 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def ensure_pyright_execution_envs(
         pyright: Table,
-        expected: list[dict[str, str]],
-        changes: list[str],
+        expected: Sequence[Mapping[str, str]],
+        changes: Sequence[str],
     ) -> None:
         """Ensure pyright executionEnvironments matches expected; append to changes if updated."""
         raw = FlextInfraUtilitiesToml.unwrap_item(
             FlextInfraUtilitiesToml.get(pyright, "executionEnvironments"),
         )
-        current: list[dict[str, str]] = []
+        current: Sequence[Mapping[str, str]] = []
         if isinstance(raw, list):
             try:
-                current = TypeAdapter(list[dict[str, str]]).validate_python(raw)
+                current = TypeAdapter(Sequence[Mapping[str, str]]).validate_python(raw)
             except ValidationError:
                 current = []
         if list(current) != expected:
@@ -73,12 +74,12 @@ class FlextInfraUtilitiesTomlParse:
             )
 
     @staticmethod
-    def discover_first_party_namespaces(project_dir: Path) -> list[str]:
+    def discover_first_party_namespaces(project_dir: Path) -> Sequence[str]:
         """Discover first-party namespace packages from src/ for tool configuration."""
         src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return []
-        namespaces: list[str] = []
+        namespaces: Sequence[str] = []
         for entry in sorted(src_dir.iterdir()):
             if not entry.is_dir() or entry.name == "__pycache__":
                 continue
@@ -88,7 +89,7 @@ class FlextInfraUtilitiesTomlParse:
         return namespaces
 
     @staticmethod
-    def project_dev_groups(doc: tomlkit.TOMLDocument) -> dict[str, list[str]]:
+    def project_dev_groups(doc: tomlkit.TOMLDocument) -> Mapping[str, Sequence[str]]:
         """Extract optional-dependencies groups from project table."""
         project_raw: t.Infra.InfraValue | Item | Container | None = None
         if c.Infra.Toml.PROJECT in doc:
@@ -100,9 +101,9 @@ class FlextInfraUtilitiesTomlParse:
             optional_raw = project_raw[c.Infra.Toml.OPTIONAL_DEPENDENCIES]
         if not isinstance(optional_raw, (Table, dict)):
             return {}
-        opt_deps: Table | dict[str, t.Infra.InfraValue] = optional_raw
+        opt_deps: Table | Mapping[str, t.Infra.InfraValue] = optional_raw
 
-        def _group_values(group_key: str) -> list[str]:
+        def _group_values(group_key: str) -> Sequence[str]:
             value: t.Infra.InfraValue | Item | None = None
             if group_key in opt_deps:
                 value = opt_deps[group_key]
@@ -117,7 +118,7 @@ class FlextInfraUtilitiesTomlParse:
         }
 
     @staticmethod
-    def canonical_dev_dependencies(root_doc: tomlkit.TOMLDocument) -> list[str]:
+    def canonical_dev_dependencies(root_doc: tomlkit.TOMLDocument) -> Sequence[str]:
         """Merge all dev dependency groups from root pyproject."""
         groups = FlextInfraUtilitiesTomlParse.project_dev_groups(root_doc)
         merged = [

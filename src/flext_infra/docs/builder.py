@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -58,7 +59,7 @@ class FlextInfraDocBuilder:
         project: str | None = None,
         projects: str | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-    ) -> r[list[m.Infra.DocsPhaseReport]]:
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes.
 
         Args:
@@ -78,14 +79,14 @@ class FlextInfraDocBuilder:
             output_dir=output_dir,
         )
         if scopes_result.is_failure:
-            return r[list[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: list[m.Infra.DocsPhaseReport] = []
+        reports: Sequence[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._build_scope(scope)
             reports.append(report)
-        return r[list[m.Infra.DocsPhaseReport]].ok(reports)
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
 
     def _build_scope(
         self,

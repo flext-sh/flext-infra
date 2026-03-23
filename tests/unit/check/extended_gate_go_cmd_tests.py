@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -32,8 +32,8 @@ GateClass = type[FlextInfraGoGate] | type[FlextInfraRuffLintGate]
 
 def _create_run_raw_result(
     result: r[SimpleNamespace] | str,
-) -> Callable[[list[str]], r[SimpleNamespace]]:
-    def _fake_run_raw(_cmd: list[str], **_kw: t.Scalar) -> r[SimpleNamespace]:
+) -> Callable[[Sequence[str]], r[SimpleNamespace]]:
+    def _fake_run_raw(_cmd: Sequence[str], **_kw: t.Scalar) -> r[SimpleNamespace]:
         del _cmd, _kw
         if isinstance(result, str):
             return r[SimpleNamespace].fail(result)
@@ -59,13 +59,13 @@ def _create_checker_project(
 
 def _patch_go_gate_run_sequence(
     monkeypatch: pytest.MonkeyPatch,
-    outputs: list[SimpleNamespace],
+    outputs: Sequence[SimpleNamespace],
 ) -> None:
     index = {"value": 0}
 
     def _fake_run(
         _self: FlextInfraGate,
-        _cmd: list[str],
+        _cmd: Sequence[str],
         _cwd: Path,
         timeout: int = 120,
         env: Mapping[str, str] | None = None,

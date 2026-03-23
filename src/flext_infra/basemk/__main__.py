@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkTemplateEngine, m, u
@@ -16,7 +17,7 @@ def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
     )
 
 
-def run(argv: list[str] | None = None) -> int:
+def run(argv: Sequence[str] | None = None) -> int:
     """Run the base.mk CLI command dispatcher."""
     parser = u.Infra.create_parser("basemk", "base.mk generation utilities")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -60,7 +61,7 @@ def run(argv: list[str] | None = None) -> int:
     return u.Infra.exit_code(write_result, failure_msg="base.mk write failed")
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Run the base.mk CLI entrypoint."""
     return u.Infra.run_cli(run, argv)
 

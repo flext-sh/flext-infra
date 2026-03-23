@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -55,7 +56,7 @@ class ImportAliasDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the ImportAliasDetector scanner.
 
@@ -97,8 +98,8 @@ class ImportAliasDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.ImportAliasViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.ImportAliasViolation]:
         """Detect import alias violations in a file.
 
         Args:
@@ -119,8 +120,8 @@ class ImportAliasDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.ImportAliasViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.ImportAliasViolation]:
         """Scan a file for deep import paths that should use aliases.
 
         Args:
@@ -148,7 +149,7 @@ class ImportAliasDetector(p.Infra.Scanner):
             project_package=cls._discover_package(file_path),
             alias_map=None,
         )
-        violations: list[nem.ImportAliasViolation] = []
+        violations: Sequence[nem.ImportAliasViolation] = []
         for raw in violations_raw:
             violation_type = getattr(raw, "violation_type", "")
             file_value = getattr(raw, "file", "")

@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -25,23 +25,23 @@ from ...models import m
 
 
 def _fake_checker_cls(
-    parse_result: list[str],
-    run_result: r[list[SimpleNamespace]] | r[list[m.Infra.ProjectResult]],
+    parse_result: Sequence[str],
+    run_result: r[Sequence[SimpleNamespace]] | r[Sequence[m.Infra.ProjectResult]],
 ) -> type:
     class _Fake:
         def __init__(self, **_kw: t.Scalar) -> None:
             _ = _kw
 
         @staticmethod
-        def parse_gate_csv(_gates: str) -> list[str]:
+        def parse_gate_csv(_gates: str) -> Sequence[str]:
             return parse_result
 
         def run_projects(
             self,
-            projects: list[str] | None = None,
-            gates: list[str] | None = None,
+            projects: Sequence[str] | None = None,
+            gates: Sequence[str] | None = None,
             **kw: t.Scalar,
-        ) -> r[list[SimpleNamespace]] | r[list[m.Infra.ProjectResult]]:
+        ) -> r[Sequence[SimpleNamespace]] | r[Sequence[m.Infra.ProjectResult]]:
             _ = projects, gates, kw
             return run_result
 
@@ -49,7 +49,7 @@ def _fake_checker_cls(
 
 
 def _fake_fixer_cls(
-    run_result: r[list[str]],
+    run_result: r[Sequence[str]],
 ) -> type:
     class _Fake:
         def __init__(self, **_kw: t.Scalar) -> None:
@@ -57,14 +57,14 @@ def _fake_fixer_cls(
 
         def run(
             self,
-            _projects: list[str] | None = None,
+            _projects: Sequence[str] | None = None,
             **kw: t.Scalar,
-        ) -> r[list[str]]:
+        ) -> r[Sequence[str]]:
             _ = _projects, kw
             return run_result
 
         @staticmethod
-        def main(argv: list[str] | None = None) -> int:
+        def main(argv: Sequence[str] | None = None) -> int:
             _ = argv
             instance = _Fake()
             result = instance.run()
@@ -78,7 +78,7 @@ class TestWorkspaceCheckCLI:
         tm.that(ws_mod.main([]), eq=1)
 
     def test_with_projects_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        ok_result = r[list[SimpleNamespace]].ok([SimpleNamespace(passed=True)])
+        ok_result = r[Sequence[SimpleNamespace]].ok([SimpleNamespace(passed=True)])
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraWorkspaceChecker",
@@ -87,7 +87,7 @@ class TestWorkspaceCheckCLI:
         tm.that(ws_mod.main(["p1", "--gates", "lint"]), eq=0)
 
     def test_with_projects_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        ok_result = r[list[SimpleNamespace]].ok([SimpleNamespace(passed=False)])
+        ok_result = r[Sequence[SimpleNamespace]].ok([SimpleNamespace(passed=False)])
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraWorkspaceChecker",
@@ -96,7 +96,7 @@ class TestWorkspaceCheckCLI:
         tm.that(ws_mod.main(["p1", "--gates", "lint"]), eq=1)
 
     def test_run_projects_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fail_result = r[list[SimpleNamespace]].fail("error")
+        fail_result = r[Sequence[SimpleNamespace]].fail("error")
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraWorkspaceChecker",
@@ -107,7 +107,7 @@ class TestWorkspaceCheckCLI:
 
 class TestFixPyrelfyCLI:
     def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fake = _fake_fixer_cls(r[list[str]].ok([]))
+        fake = _fake_fixer_cls(r[Sequence[str]].ok([]))
         monkeypatch.setattr(
             fix_pyrefly_mod,
             "FlextInfraConfigFixer",
@@ -116,7 +116,7 @@ class TestFixPyrelfyCLI:
         tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=0)
 
     def test_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fake = _fake_fixer_cls(r[list[str]].fail("error"))
+        fake = _fake_fixer_cls(r[Sequence[str]].fail("error"))
         monkeypatch.setattr(
             fix_pyrefly_mod,
             "FlextInfraConfigFixer",
@@ -125,8 +125,8 @@ class TestFixPyrelfyCLI:
         tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=1)
 
 
-def _const_cli_result(code: int) -> Callable[[list[str] | None], int]:
-    def _runner(argv: list[str] | None = None) -> int:
+def _const_cli_result(code: int) -> Callable[[Sequence[str] | None], int]:
+    def _runner(argv: Sequence[str] | None = None) -> int:
         _ = argv
         return code
 
@@ -168,7 +168,7 @@ class TestRunCLIExtended:
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraConfigFixer",
-            _fake_fixer_cls(r[list[str]].ok([])),
+            _fake_fixer_cls(r[Sequence[str]].ok([])),
         )
         tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=0)
 
@@ -176,7 +176,7 @@ class TestRunCLIExtended:
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraConfigFixer",
-            _fake_fixer_cls(r[list[str]].fail("error")),
+            _fake_fixer_cls(r[Sequence[str]].fail("error")),
         )
         tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=1)
 
@@ -197,7 +197,7 @@ class TestRunCLIExtended:
         )
         gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
         project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
-        ok_result = r[list[m.Infra.ProjectResult]].ok([project])
+        ok_result = r[Sequence[m.Infra.ProjectResult]].ok([project])
 
         def _fake_init(
             _self: FlextInfraWorkspaceChecker,
@@ -207,10 +207,10 @@ class TestRunCLIExtended:
 
         def _fake_run_projects(
             _self: FlextInfraWorkspaceChecker,
-            projects: list[str] | None = None,
-            gates: list[str] | None = None,
+            projects: Sequence[str] | None = None,
+            gates: Sequence[str] | None = None,
             **kw: t.Scalar,
-        ) -> r[list[m.Infra.ProjectResult]]:
+        ) -> r[Sequence[m.Infra.ProjectResult]]:
             _ = projects, gates, kw
             return ok_result
 

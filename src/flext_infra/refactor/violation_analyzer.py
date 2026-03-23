@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from operator import itemgetter
 from pathlib import Path
 
@@ -22,17 +22,19 @@ from flext_infra import (
 
 
 class FlextInfraRefactorViolationAnalyzer:
+    """Analyzer for refactor violation metrics across source files."""
+
     @classmethod
     def analyze_files(
         cls,
-        files: list[Path],
+        files: Sequence[Path],
     ) -> m.Infra.ViolationAnalysisReport:
         """Analyze files and return aggregated violation and helper metrics."""
         totals: Counter[str] = Counter()
-        per_file: dict[str, dict[str, int]] = {}
-        helper_suggestions: list[m.Infra.HelperClassification] = []
+        per_file: Mapping[str, Mapping[str, int]] = {}
+        helper_suggestions: Sequence[m.Infra.HelperClassification] = []
         helper_totals: Counter[str] = Counter()
-        helper_manual_review: list[m.Infra.HelperClassification] = []
+        helper_manual_review: Sequence[m.Infra.HelperClassification] = []
         for file_path in files:
             try:
                 content = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -44,7 +46,7 @@ class FlextInfraRefactorViolationAnalyzer:
             helper_suggestions.extend(helper_analysis.suggestions)
             helper_totals.update(helper_analysis.totals)
             helper_manual_review.extend(helper_analysis.manual_review)
-            file_counts: dict[str, int] = {}
+            file_counts: Mapping[str, int] = {}
             tree = u.Infra.parse_cst_from_source(content)
             if tree is None:
                 continue
@@ -64,7 +66,7 @@ class FlextInfraRefactorViolationAnalyzer:
         for raw_file, raw_count in class_nesting.per_file_counts.items():
             counts = per_file.setdefault(raw_file, {})
             counts[c.Infra.ReportKeys.CLASS_NESTING] = raw_count
-        ranked_files: list[tuple[str, int, dict[str, int]]] = []
+        ranked_files: Sequence[tuple[str, int, Mapping[str, int]]] = []
         for file_name, counts in per_file.items():
             ranked_files.append((file_name, sum(counts.values()), counts))
         ranked_files.sort(key=itemgetter(1), reverse=True)
@@ -96,9 +98,9 @@ class FlextInfraRefactorViolationAnalyzer:
         *,
         file_path: Path,
     ) -> m.Infra.HelperFileAnalysis:
-        suggestions: list[m.Infra.HelperClassification] = []
+        suggestions: Sequence[m.Infra.HelperClassification] = []
         totals: Counter[str] = Counter()
-        manual_review: list[m.Infra.HelperClassification] = []
+        manual_review: Sequence[m.Infra.HelperClassification] = []
         module = u.Infra.parse_module_cst(file_path)
         if module is None:
             return m.Infra.HelperFileAnalysis(

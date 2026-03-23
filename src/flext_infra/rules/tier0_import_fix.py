@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -21,7 +22,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         if _file_path is None:
             return (tree, [])
         analyzer = FlextInfraTransformerTier0ImportFixer.Analyzer(
@@ -64,7 +65,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
     def _core_package(self) -> str:
         return str(self.config.get("core_package", "flext_core"))
 
-    def _alias_to_submodule(self) -> dict[str, str]:
+    def _alias_to_submodule(self) -> Mapping[str, str]:
         value = self.config.get("alias_to_submodule", {})
         if not isinstance(value, dict):
             return {}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -39,8 +40,8 @@ def test_main_project_obj_not_dict_first_loop(
 
     def _discover_projects(
         _root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
     def _read_document(_path: Path) -> r[TOMLDocument]:
         return r[TOMLDocument].ok(tomlkit.parse('[project]\nvalue = "not-a-dict"\n'))
@@ -64,8 +65,8 @@ def test_main_project_obj_not_dict_second_loop(
 ) -> None:
     def _discover_projects(
         _root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        return r[list[m.Infra.ProjectInfo]].ok([
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].ok([
             _project(tmp_path / "test-project"),
         ])
 

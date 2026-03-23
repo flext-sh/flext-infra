@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -34,7 +35,7 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         self,
         *,
         project_name: str,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the RuntimeAliasDetector scanner.
 
@@ -86,8 +87,8 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         *,
         file_path: Path,
         project_name: str,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.RuntimeAliasViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.RuntimeAliasViolation]:
         """Detect runtime alias violations in a file.
 
         Args:
@@ -111,8 +112,8 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         *,
         file_path: Path,
         project_name: str,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.RuntimeAliasViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.RuntimeAliasViolation]:
         """Scan a file for missing or duplicate runtime alias assignments.
 
         Args:
@@ -131,12 +132,12 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             return []
-        violations: list[nem.RuntimeAliasViolation] = []
+        violations: Sequence[nem.RuntimeAliasViolation] = []
         _ = project_name
         family = cls._family_for_file(file_name=file_path.name)
         if not family:
             return []
-        alias_assignments: list[tuple[int, str, str]] = []
+        alias_assignments: Sequence[tuple[int, str, str]] = []
         for stmt in u.Infra.cst_iter_simple_statements(tree.body):
             if not isinstance(stmt, cst.Assign):
                 continue

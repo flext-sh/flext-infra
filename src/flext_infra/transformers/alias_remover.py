@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import override
 
 import libcst as cst
@@ -22,7 +22,7 @@ class FlextInfraRefactorAliasRemover(cst.CSTTransformer):
         self._allow_aliases = allow_aliases
         self._allow_target_suffixes = allow_target_suffixes
         self._on_change = on_change
-        self.changes: list[str] = []
+        self.changes: Sequence[str] = []
 
     @override
     def leave_Assign(

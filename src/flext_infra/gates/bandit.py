@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -53,7 +54,7 @@ class FlextInfraBanditGate(FlextInfraGate):
             ],
             project_dir,
         )
-        issues: list[m.Infra.Issue] = []
+        issues: Sequence[m.Infra.Issue] = []
         try:
             parsed = u.Infra.parse(result.stdout or "{}")
             bandit_data = self._to_mapping(parsed.value) if parsed.is_success else {}

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -54,7 +55,7 @@ class FlextInfraCodegenPyTyped(s[int]):
         Returns the number of marker files created or removed.
 
         """
-        dirs_to_scan: list[Path] = []
+        dirs_to_scan: Sequence[Path] = []
         for pattern in c.Infra.ALL_SCAN_PATTERNS:
             base = pattern.split("/*")[0]
             base_dir = self._root / base

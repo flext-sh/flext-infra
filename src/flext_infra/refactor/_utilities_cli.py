@@ -12,6 +12,7 @@ from __future__ import annotations
 import difflib
 import re
 import sys
+from collections.abc import Mapping, Sequence
 from operator import itemgetter
 from pathlib import Path
 
@@ -63,10 +64,10 @@ class FlextInfraUtilitiesRefactorCli:
 
     @staticmethod
     def build_impact_map(
-        results: list[m.Infra.Result],
-    ) -> list[dict[str, str]]:
+        results: Sequence[m.Infra.Result],
+    ) -> Sequence[Mapping[str, str]]:
         """Build normalized impact-map rows from refactor results."""
-        impact_map: list[dict[str, str]] = []
+        impact_map: Sequence[Mapping[str, str]] = []
         symbol_pattern = re.compile(r"^(.*):\s+(.+)\s+->\s+(.+?)(?:\s+\(|$)")
         added_pattern = re.compile(r"^\[(.+)\]\s+Added keyword:\s+(.+)$")
         removed_pattern = re.compile(r"^\[(.+)\]\s+Removed keyword:\s+(.+)$")
@@ -128,7 +129,7 @@ class FlextInfraUtilitiesRefactorCli:
 
     @staticmethod
     def write_impact_map(
-        results: list[m.Infra.Result],
+        results: Sequence[m.Infra.Result],
         output_path: Path,
     ) -> bool:
         """Persist impact-map JSON report to disk."""
@@ -170,7 +171,7 @@ class FlextInfraUtilitiesRefactorCli:
         FlextInfraUtilitiesRefactorCli.refactor_info("No changes")
 
     @staticmethod
-    def print_rules_table(rules: list[dict[str, str | bool]]) -> None:
+    def print_rules_table(rules: Sequence[Mapping[str, str | bool]]) -> None:
         """Print configured rule table for interactive CLI output."""
         FlextInfraUtilitiesRefactorCli.refactor_header("Available Rules")
         if not rules:
@@ -209,7 +210,7 @@ class FlextInfraUtilitiesRefactorCli:
                 )
 
     @staticmethod
-    def print_summary(results: list[m.Infra.Result], *, dry_run: bool) -> None:
+    def print_summary(results: Sequence[m.Infra.Result], *, dry_run: bool) -> None:
         """Print execution summary for processed files."""
         modified = sum(1 for item in results if item.modified)
         failed = sum(1 for item in results if not item.success)

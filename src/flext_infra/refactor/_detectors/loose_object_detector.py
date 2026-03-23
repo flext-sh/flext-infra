@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -40,7 +40,7 @@ class LooseObjectDetector(p.Infra.Scanner):
         self,
         *,
         project_name: str,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the LooseObjectDetector scanner.
 
@@ -91,8 +91,8 @@ class LooseObjectDetector(p.Infra.Scanner):
         *,
         file_path: Path,
         project_name: str,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.LooseObjectViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.LooseObjectViolation]:
         """Detect loose objects in a file.
 
         Args:
@@ -116,8 +116,8 @@ class LooseObjectDetector(p.Infra.Scanner):
         *,
         file_path: Path,
         project_name: str,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.LooseObjectViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.LooseObjectViolation]:
         """Scan a file for loose top-level objects outside namespace classes.
 
         Args:
@@ -142,7 +142,7 @@ class LooseObjectDetector(p.Infra.Scanner):
         class_stem = NamespaceFacadeScanner.project_class_stem(
             project_name=project_name
         )
-        violations: list[nem.LooseObjectViolation] = []
+        violations: Sequence[nem.LooseObjectViolation] = []
         for stmt in module.body:
             violation = cls._check_statement(
                 stmt=stmt,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -42,7 +42,7 @@ class FlextInfraGate(ABC):
 
     def _run(
         self,
-        cmd: list[str],
+        cmd: Sequence[str],
         cwd: Path,
         timeout: int = c.Infra.Timeouts.DEFAULT,
         env: Mapping[str, str] | None = None,
@@ -61,7 +61,7 @@ class FlextInfraGate(ABC):
         *,
         project: str,
         passed: bool,
-        issues: list[m.Infra.Issue],
+        issues: Sequence[m.Infra.Issue],
         duration: float,
         raw_output: str = "",
     ) -> m.Infra.GateExecution:
@@ -78,7 +78,7 @@ class FlextInfraGate(ABC):
             raw_output=raw_output,
         )
 
-    def _existing_check_dirs(self, project_dir: Path) -> list[str]:
+    def _existing_check_dirs(self, project_dir: Path) -> Sequence[str]:
         dirs = (
             c.Infra.DEFAULT_CHECK_DIRS
             if project_dir.resolve() == self._workspace_root.resolve()
@@ -87,8 +87,8 @@ class FlextInfraGate(ABC):
         return [d for d in dirs if (project_dir / d).is_dir()]
 
     @staticmethod
-    def _dirs_with_py(project_dir: Path, dirs: list[str]) -> list[str]:
-        out: list[str] = []
+    def _dirs_with_py(project_dir: Path, dirs: Sequence[str]) -> Sequence[str]:
+        out: Sequence[str] = []
         for directory in dirs:
             path = project_dir / directory
             if not path.is_dir():
@@ -103,24 +103,28 @@ class FlextInfraGate(ABC):
     @staticmethod
     def _to_mapping(
         value: t_infra.Infra.InfraValue,
-    ) -> dict[str, t_infra.Infra.InfraValue]:
+    ) -> Mapping[str, t_infra.Infra.InfraValue]:
         if not isinstance(value, Mapping):
             return {}
-        return TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(value)
+        return TypeAdapter(Mapping[str, t_infra.Infra.InfraValue]).validate_python(
+            value
+        )
 
     @classmethod
     def _to_mapping_list(
         cls,
         value: t_infra.Infra.InfraValue,
-    ) -> list[dict[str, t_infra.Infra.InfraValue]]:
+    ) -> Sequence[Mapping[str, t_infra.Infra.InfraValue]]:
         if not isinstance(value, list):
             return []
-        typed_items = TypeAdapter(list[t_infra.Infra.InfraValue]).validate_python(value)
-        normalized: list[dict[str, t_infra.Infra.InfraValue]] = []
+        typed_items = TypeAdapter(Sequence[t_infra.Infra.InfraValue]).validate_python(
+            value
+        )
+        normalized: Sequence[Mapping[str, t_infra.Infra.InfraValue]] = []
         for raw_item in typed_items:
             try:
                 typed_item = TypeAdapter(
-                    dict[str, t_infra.Infra.InfraValue],
+                    Mapping[str, t_infra.Infra.InfraValue],
                 ).validate_python(raw_item)
             except ValidationError:
                 continue
@@ -151,15 +155,15 @@ class FlextInfraGate(ABC):
 
     @staticmethod
     def _nested_mapping(
-        data: dict[str, t_infra.Infra.InfraValue],
+        data: Mapping[str, t_infra.Infra.InfraValue],
         *keys: str,
-    ) -> dict[str, t_infra.Infra.InfraValue]:
+    ) -> Mapping[str, t_infra.Infra.InfraValue]:
         current: t_infra.Infra.InfraValue = data
         for key in keys:
             if not isinstance(current, Mapping):
                 return {}
             typed_current = TypeAdapter(
-                dict[str, t_infra.Infra.InfraValue],
+                Mapping[str, t_infra.Infra.InfraValue],
             ).validate_python(current)
             if key not in typed_current:
                 return {}
@@ -169,12 +173,14 @@ class FlextInfraGate(ABC):
             current = child
         if not isinstance(current, Mapping):
             return {}
-        return TypeAdapter(dict[str, t_infra.Infra.InfraValue]).validate_python(current)
+        return TypeAdapter(Mapping[str, t_infra.Infra.InfraValue]).validate_python(
+            current
+        )
 
     @classmethod
     def _nested_int(
         cls,
-        data: dict[str, t_infra.Infra.InfraValue],
+        data: Mapping[str, t_infra.Infra.InfraValue],
         *keys: str,
         default: int = 0,
     ) -> int:

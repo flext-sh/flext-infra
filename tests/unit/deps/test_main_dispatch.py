@@ -7,14 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from types import ModuleType, SimpleNamespace
 
 import pytest
 from flext_tests import tm
 
-from flext_infra.deps.__main__ import _SUBCOMMAND_MODULES, _main_impl, main
 from flext_infra.deps import __main__ as main_mod
+from flext_infra.deps.__main__ import _SUBCOMMAND_MODULES, _main_impl, main
 from tests import t
 
 
@@ -34,7 +34,7 @@ def _stub_import(mod: ModuleType) -> Callable[[str], ModuleType]:
 
 def _patch_dispatch(
     mp: pytest.MonkeyPatch,
-    argv: list[str],
+    argv: Sequence[str],
     ret: t.Infra.TomlValue = 0,
 ) -> None:
     mp.setattr(sys, "argv", argv)
@@ -74,7 +74,7 @@ class TestMainModuleImport:
         expected_module: str,
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", subcommand, "--workspace", "."])
-        imported: list[str] = []
+        imported: Sequence[str] = []
         fake = _fake_module(0)
 
         def tracking_import(name: str) -> ModuleType:
@@ -113,9 +113,9 @@ class TestMainDelegation:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        received: list[Callable[[list[str] | None], int]] = []
+        received: Sequence[Callable[[Sequence[str] | None], int]] = []
 
-        def fake_run_cli(fn: Callable[[list[str] | None], int]) -> int:
+        def fake_run_cli(fn: Callable[[Sequence[str] | None], int]) -> int:
             received.append(fn)
             return 0
 

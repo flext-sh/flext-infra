@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -34,7 +35,7 @@ class MROCompletenessDetector(
     ensuring complete composition of constants, types, protocols, models, and utilities.
     """
 
-    FAMILY_DIR_BY_ALIAS: ClassVar[dict[str, str]] = {
+    FAMILY_DIR_BY_ALIAS: ClassVar[Mapping[str, str]] = {
         "c": "_constants",
         "t": "_typings",
         "p": "_protocols",
@@ -45,7 +46,7 @@ class MROCompletenessDetector(
     def __init__(
         self,
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the MROCompletenessDetector scanner.
 
@@ -87,8 +88,8 @@ class MROCompletenessDetector(
         cls,
         *,
         file_path: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.MROCompletenessViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.MROCompletenessViolation]:
         """Detect MRO completeness violations in a file.
 
         Args:
@@ -109,8 +110,8 @@ class MROCompletenessDetector(
         cls,
         *,
         file_path: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.MROCompletenessViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.MROCompletenessViolation]:
         """Scan a facade file for missing local composition bases.
 
         Args:
@@ -155,7 +156,7 @@ class MROCompletenessDetector(
             family=family,
             _parse_failures=_parse_failures,
         )
-        violations: list[nem.MROCompletenessViolation] = []
+        violations: Sequence[nem.MROCompletenessViolation] = []
         for candidate_name, candidate_line in sorted(
             candidates,
             key=operator.itemgetter(0),
@@ -275,7 +276,7 @@ class MROCompletenessDetector(
         file_path: Path,
         facade_name: str,
         family: str,
-        _parse_failures: list[nem.ParseFailureViolation] | None,
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None,
     ) -> set[tuple[str, int]]:
         """Collect candidate base classes from the family module.
 
@@ -330,7 +331,7 @@ class MROCompletenessDetector(
         file_path: Path,
         facade_prefix: str,
         facade_name: str,
-        _parse_failures: list[nem.ParseFailureViolation] | None,
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None,
     ) -> set[tuple[str, int]]:
         tree = MROCompletenessDetector._parse_module(
             file_path=file_path,
@@ -362,7 +363,7 @@ class MROCompletenessDetector(
         *,
         file_path: Path,
         stage: str,
-        parse_failures: list[nem.ParseFailureViolation] | None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None,
     ) -> cst.Module | None:
         try:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -398,7 +399,7 @@ class MROCompletenessDetector(
     @staticmethod
     def _append_parse_failure(
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None,
         file_path: Path,
         stage: str,
         error_type: str,

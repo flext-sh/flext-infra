@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import ClassVar
 
 from flext_tests import m
@@ -18,7 +19,7 @@ class SubprocessScenario(m.Value):
     """Single scenario for subprocess operation testing using m.Value."""
 
     name: str
-    cmd: list[str]
+    cmd: Sequence[str]
     expected_output: str = ""
     should_succeed: bool = True
     description: str | None = None
@@ -28,7 +29,7 @@ class GitScenario(m.Value):
     """Single scenario for git operation testing using m.Value."""
 
     name: str
-    operations: list[str]
+    operations: Sequence[str]
     expected_state: str
     should_succeed: bool = True
     description: str | None = None
@@ -38,7 +39,7 @@ class WorkspaceScenario(m.Value):
     """Single scenario for workspace state testing using m.Value."""
 
     name: str
-    structure: dict[str, dict[str, str]]
+    structure: Mapping[str, Mapping[str, str]]
     should_be_valid: bool = True
     description: str | None = None
 
@@ -48,7 +49,7 @@ class DependencyScenario(m.Value):
 
     name: str
     pyproject_content: str
-    expected_deps: list[str]
+    expected_deps: Sequence[str]
     should_succeed: bool = True
     description: str | None = None
 
@@ -56,7 +57,7 @@ class DependencyScenario(m.Value):
 class SubprocessScenarios:
     """Centralized subprocess scenarios - single source of truth."""
 
-    BASIC_SCENARIOS: ClassVar[list[SubprocessScenario]] = [
+    BASIC_SCENARIOS: ClassVar[Sequence[SubprocessScenario]] = [
         SubprocessScenario(
             name="echo_simple",
             cmd=["echo", "hello"],
@@ -75,7 +76,7 @@ class SubprocessScenarios:
 class GitScenarios:
     """Centralized git operation scenarios - single source of truth."""
 
-    BASIC_SCENARIOS: ClassVar[list[GitScenario]] = [
+    BASIC_SCENARIOS: ClassVar[Sequence[GitScenario]] = [
         GitScenario(
             name="git_init",
             operations=["init"],
@@ -94,7 +95,7 @@ class GitScenarios:
 class WorkspaceScenarios:
     """Centralized workspace state scenarios - single source of truth."""
 
-    VALID_SCENARIOS: ClassVar[list[WorkspaceScenario]] = [
+    VALID_SCENARIOS: ClassVar[Sequence[WorkspaceScenario]] = [
         WorkspaceScenario(
             name="workspace_minimal",
             structure={
@@ -116,7 +117,7 @@ class WorkspaceScenarios:
         ),
     ]
 
-    INVALID_SCENARIOS: ClassVar[list[WorkspaceScenario]] = [
+    INVALID_SCENARIOS: ClassVar[Sequence[WorkspaceScenario]] = [
         WorkspaceScenario(
             name="workspace_no_pyproject",
             structure={"src": {}, "tests": {}},
@@ -128,7 +129,7 @@ class WorkspaceScenarios:
 class DependencyScenarios:
     """Centralized dependency detection scenarios - single source of truth."""
 
-    BASIC_SCENARIOS: ClassVar[list[DependencyScenario]] = [
+    BASIC_SCENARIOS: ClassVar[Sequence[DependencyScenario]] = [
         DependencyScenario(
             name="deps_single",
             pyproject_content=(

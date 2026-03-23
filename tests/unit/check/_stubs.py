@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from types import SimpleNamespace
 
 from ...models import m
@@ -20,18 +21,19 @@ class Spy:
     def __init__(
         self,
         return_value: t.Infra.InfraValue = None,
-        side_effect: list[t.Infra.InfraValue] | None = None,
+        side_effect: Sequence[t.Infra.InfraValue] | None = None,
     ) -> None:
         self.call_count: int = 0
         self.call_args: (
-            tuple[tuple[t.Infra.InfraValue, ...], dict[str, t.Infra.InfraValue]] | None
+            tuple[tuple[t.Infra.InfraValue, ...], Mapping[str, t.Infra.InfraValue]]
+            | None
         ) = None
-        self.call_args_list: list[
-            tuple[tuple[t.Infra.InfraValue, ...], dict[str, t.Infra.InfraValue]]
+        self.call_args_list: Sequence[
+            tuple[tuple[t.Infra.InfraValue, ...], Mapping[str, t.Infra.InfraValue]]
         ] = []
         self.called: bool = False
         self._return_value: t.Infra.InfraValue = return_value
-        self._side_effect: list[t.Infra.InfraValue] | None = (
+        self._side_effect: Sequence[t.Infra.InfraValue] | None = (
             list(side_effect) if side_effect else None
         )
 
@@ -49,7 +51,7 @@ class Spy:
         return self._return_value
 
     @property
-    def kwargs(self) -> dict[str, t.Infra.InfraValue]:
+    def kwargs(self) -> Mapping[str, t.Infra.InfraValue]:
         """Return kwargs from last call."""
         if self.call_args is None:
             return {}
@@ -81,7 +83,7 @@ def make_gate_exec(
     gate: str = "lint",
     project: str = "p",
     passed: bool = True,
-    issues: list[m.Infra.Issue] | None = None,
+    issues: Sequence[m.Infra.Issue] | None = None,
 ) -> m.Infra.GateExecution:
     """Create a _GateExecution with defaults."""
     return m.Infra.GateExecution(
@@ -117,7 +119,7 @@ def make_issue(
 
 def make_project(
     name: str = "p",
-    gates: dict[str, m.Infra.GateExecution] | None = None,
+    gates: Mapping[str, m.Infra.GateExecution] | None = None,
 ) -> m.Infra.ProjectResult:
     """Create a _ProjectResult with defaults."""
     return m.Infra.ProjectResult(

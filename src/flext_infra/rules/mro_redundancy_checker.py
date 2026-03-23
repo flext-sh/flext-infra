@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -18,7 +19,7 @@ class FlextInfraRefactorMRORedundancyChecker(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         """Apply MRO redeclaration cleanup transformer."""
         transformer = FlextInfraRefactorMRORemover()
         new_tree = tree.visit(transformer)

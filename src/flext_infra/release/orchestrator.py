@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -47,7 +48,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         self,
         workspace_root: Path,
         version: str,
-        project_names: list[str],
+        project_names: Sequence[str],
     ) -> r[bool]:
         """Execute the build phase and write build-report.json."""
         output_dir = (
@@ -63,7 +64,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         except OSError as exc:
             return r[bool].fail(f"report dir creation failed: {exc}")
         targets = self._build_targets(workspace_root, project_names)
-        records: list[m.Infra.BuildRecord] = []
+        records: Sequence[m.Infra.BuildRecord] = []
         failures = 0
         for name, path in targets:
             make_result = self._run_make(path, c.Infra.Directories.BUILD)
@@ -113,7 +114,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         workspace_root: Path,
         version: str,
         tag: str,
-        project_names: list[str],
+        project_names: Sequence[str],
         *,
         dry_run: bool = False,
         push: bool = False,
@@ -174,7 +175,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         self,
         workspace_root: Path,
         version: str,
-        project_names: list[str],
+        project_names: Sequence[str],
         *,
         dry_run: bool = False,
         dev_suffix: bool = False,
@@ -264,15 +265,17 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     def _build_targets(
         self,
         workspace_root: Path,
-        project_names: list[str],
-    ) -> list[tuple[str, Path]]:
+        project_names: Sequence[str],
+    ) -> Sequence[tuple[str, Path]]:
         """Resolve unique build targets from project names."""
-        targets: list[tuple[str, Path]] = [(c.Infra.ReportKeys.ROOT, workspace_root)]
+        targets: Sequence[tuple[str, Path]] = [
+            (c.Infra.ReportKeys.ROOT, workspace_root)
+        ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:
             targets.extend((p.name, p.path) for p in projects_result.value)
         seen: set[str] = set()
-        unique: list[tuple[str, Path]] = []
+        unique: Sequence[tuple[str, Path]] = []
         for name, path in targets:
             if name in seen or not path.exists():
                 continue
@@ -284,7 +287,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         self,
         workspace_root: Path,
         version: str,
-        project_names: list[str],
+        project_names: Sequence[str],
         bump: str,
     ) -> r[bool]:
         """Bump to the next development version."""
@@ -311,7 +314,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         self,
         workspace_root: Path,
         version: str,
-        project_names: list[str],
+        project_names: Sequence[str],
     ) -> r[bool]:
         """Create local release branches for workspace and projects."""
         branch = f"release/{version}"
@@ -376,7 +379,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         workspace_root: Path,
         version: str,
         tag: str,
-        project_names: list[str],
+        project_names: Sequence[str],
         output_path: Path,
     ) -> r[bool]:
         """Generate release notes from Git history."""
@@ -385,7 +388,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         changes_result = self._collect_changes(workspace_root, previous, tag)
         changes: str = str(changes_result.value) if changes_result.is_success else ""
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
-        project_list: list[m.Infra.ProjectInfo] = (
+        project_list: Sequence[m.Infra.ProjectInfo] = (
             projects_result.value if projects_result.is_success else []
         )
         return u.Infra.generate_notes(
@@ -413,13 +416,13 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     def _version_files(
         self,
         workspace_root: Path,
-        project_names: list[str],
-    ) -> list[Path]:
+        project_names: Sequence[str],
+    ) -> Sequence[Path]:
         """Discover pyproject.toml files that need version updates."""
-        files: list[Path] = [workspace_root / c.Infra.Files.PYPROJECT_FILENAME]
+        files: Sequence[Path] = [workspace_root / c.Infra.Files.PYPROJECT_FILENAME]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:
-            projects: list[m.Infra.ProjectInfo] = projects_result.value
+            projects: Sequence[m.Infra.ProjectInfo] = projects_result.value
             for project in projects:
                 pyproject = project.path / c.Infra.Files.PYPROJECT_FILENAME
                 if pyproject.exists():

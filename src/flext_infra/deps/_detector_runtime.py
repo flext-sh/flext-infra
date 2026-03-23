@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -27,7 +27,7 @@ class FlextInfraDependencyDetectorRuntime:
         self._dependency_limits_factory = dependency_limits_factory
         self._pip_check_factory = pip_check_factory
 
-    def run(self, argv: list[str] | None = None) -> r[int]:
+    def run(self, argv: Sequence[str] | None = None) -> r[int]:
         """Execute dependency detection and generate workspace report."""
         detector = self._detector
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
@@ -42,7 +42,7 @@ class FlextInfraDependencyDetectorRuntime:
         )
         if projects_result.is_failure:
             return r[int].fail(projects_result.error or "project discovery failed")
-        projects: list[Path] = projects_result.value
+        projects: Sequence[Path] = projects_result.value
         if not projects:
             detector.log.error("deps_no_projects_found")
             return r[int].ok(2)
@@ -55,7 +55,7 @@ class FlextInfraDependencyDetectorRuntime:
         apply_typings = bool(args.apply_typings)
         do_typings = bool(args.typings) or apply_typings
         limits_path = Path(args.limits) if args.limits else limits_default
-        projects_report: dict[str, dict[str, t.Infra.InfraValue]] = {}
+        projects_report: Mapping[str, Mapping[str, t.Infra.InfraValue]] = {}
         report_model = self._workspace_report_factory(
             workspace=str(root),
             projects=projects_report,
@@ -114,7 +114,7 @@ class FlextInfraDependencyDetectorRuntime:
                 projects_report[project_name][c.Infra.Directories.TYPINGS] = (
                     typings_report.model_dump()
                 )
-                to_add: list[str] = typings_report.to_add
+                to_add: Sequence[str] = typings_report.to_add
                 if apply_typings and to_add and cli.apply:
                     env = {
                         **os.environ,
@@ -189,7 +189,7 @@ class FlextInfraDependencyDetectorRuntime:
             if isinstance(deptry_obj, dict):
                 try:
                     deptry_payload = TypeAdapter(
-                        dict[str, t.Infra.InfraValue],
+                        Mapping[str, t.Infra.InfraValue],
                     ).validate_python(deptry_obj)
                 except ValidationError:
                     continue

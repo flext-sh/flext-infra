@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -29,14 +30,14 @@ class ViolationCensusVisitor(cst.CSTVisitor):
         """Initialize visitor state for one file violation census."""
         self._file_path = file_path
         self._renderer = cst.Module(body=[])
-        self.records: list[dict[str, str | int]] = []
+        self.records: Sequence[Mapping[str, str | int]] = []
 
     @override
     def visit_Subscript(self, node: cst.Subscript) -> None:
         if self._is_container_invariance(node):
             self._add_record(
                 kind="container_invariance",
-                detail="Found dict[str, t.Container|t.NormalizedValue] style annotation.",
+                detail="Found Mapping[str, t.Container|t.NormalizedValue] style annotation.",
             )
         if self._is_literal_usage(node):
             self._add_record(
@@ -134,10 +135,10 @@ class ViolationCensusVisitor(cst.CSTVisitor):
             return node.module.value
         return self._dotted_name(node.module)
 
-    def _imported_names(self, node: cst.ImportFrom) -> list[str]:
+    def _imported_names(self, node: cst.ImportFrom) -> Sequence[str]:
         if isinstance(node.names, cst.ImportStar):
             return []
-        names: list[str] = []
+        names: Sequence[str] = []
         for alias in node.names:
             if isinstance(alias.name, cst.Name):
                 names.append(alias.name.value)

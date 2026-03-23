@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -24,7 +25,7 @@ class FlextInfraCodegenConstantsQualityGate:
         self._before_report = before_report
         self._baseline_file = baseline_file
 
-    def run(self) -> dict[str, t.Infra.InfraValue]:
+    def run(self) -> Mapping[str, t.Infra.InfraValue]:
         """Execute quality gate and return structured report payload."""
         before_payload, before_source, before_load_error = (
             u.Infra.quality_gate_load_before_payload(
@@ -75,11 +76,11 @@ class FlextInfraCodegenConstantsQualityGate:
             before_load_error=before_load_error,
         )
         verdict = u.Infra.quality_gate_compute_verdict(checks, improvement)
-        checks_infra: list[t.Infra.InfraValue] = list(checks)
-        projects_infra: list[t.Infra.InfraValue] = list(
+        checks_infra: Sequence[t.Infra.InfraValue] = list(checks)
+        projects_infra: Sequence[t.Infra.InfraValue] = list(
             u.Infra.quality_gate_project_findings(census_reports),
         )
-        report: dict[str, t.Infra.InfraValue] = {
+        report: Mapping[str, t.Infra.InfraValue] = {
             "workspace": str(self._workspace_root),
             "generated_at": datetime.now(UTC).isoformat(),
             "verdict": verdict,
@@ -108,14 +109,14 @@ class FlextInfraCodegenConstantsQualityGate:
         return report
 
     @classmethod
-    def render_text(cls, report: dict[str, t.Infra.InfraValue]) -> str:
+    def render_text(cls, report: Mapping[str, t.Infra.InfraValue]) -> str:
         """Render compact human-readable summary."""
         checks = u.Infra.dict_list(report.get("checks"))
         before = u.Infra.dict_or_empty(report.get("before"))
         after = u.Infra.dict_or_empty(report.get("after"))
         improvement = u.Infra.dict_or_empty(report.get("improvement"))
         duplicate_groups = u.Infra.dict_list(report.get("duplicate_constant_groups"))
-        lines: list[str] = [
+        lines: Sequence[str] = [
             f"Workspace: {report.get('workspace', '')}",
             f"Verdict: {report.get('verdict', 'FAIL')}",
             "",

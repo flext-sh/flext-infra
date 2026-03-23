@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import types
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
@@ -16,12 +17,12 @@ class _ReportStub:
     def __init__(self, raw_count: int) -> None:
         self._raw_count = raw_count
 
-    def model_dump(self) -> dict[str, dict[str, int]]:
+    def model_dump(self) -> Mapping[str, Mapping[str, int]]:
         return {"deptry": {"raw_count": self._raw_count}}
 
 
 class _DepsStub:
-    def __init__(self, project_paths: list[Path]) -> None:
+    def __init__(self, project_paths: Sequence[Path]) -> None:
         self.project_paths = project_paths
         self.discovery_failure: str | None = None
         self.deptry_failure: str | None = None
@@ -31,29 +32,29 @@ class _DepsStub:
         self,
         root: Path,
         *,
-        projects_filter: list[str] | None = None,
-    ) -> r[list[Path]]:
+        projects_filter: Sequence[str] | None = None,
+    ) -> r[Sequence[Path]]:
         _ = root
         _ = projects_filter
         if self.discovery_failure is not None:
-            return r[list[Path]].fail(self.discovery_failure)
-        return r[list[Path]].ok(self.project_paths)
+            return r[Sequence[Path]].fail(self.discovery_failure)
+        return r[Sequence[Path]].ok(self.project_paths)
 
     def run_deptry(
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[tuple[list[dict[str, str]], int]]:
+    ) -> r[tuple[Sequence[Mapping[str, str]], int]]:
         _ = project_path
         _ = venv_bin
         if self.deptry_failure is not None:
-            return r[tuple[list[dict[str, str]], int]].fail(self.deptry_failure)
-        return r[tuple[list[dict[str, str]], int]].ok(([], 0))
+            return r[tuple[Sequence[Mapping[str, str]], int]].fail(self.deptry_failure)
+        return r[tuple[Sequence[Mapping[str, str]], int]].ok(([], 0))
 
     def build_project_report(
         self,
         project_name: str,
-        issues: list[dict[str, str]],
+        issues: Sequence[Mapping[str, str]],
     ) -> _ReportStub:
         _ = project_name
         _ = issues
@@ -73,13 +74,15 @@ class _DepsStub:
             return r[types.SimpleNamespace].fail(self.typings_failure)
         typings = types.SimpleNamespace(to_add=[])
 
-        def _model_dump() -> dict[str, list[str]]:
+        def _model_dump() -> Mapping[str, Sequence[str]]:
             return {"to_add": []}
 
         setattr(typings, "model_dump", _model_dump)
         return r[types.SimpleNamespace].ok(typings)
 
-    def load_dependency_limits(self, limits_path: Path | None = None) -> dict[str, str]:
+    def load_dependency_limits(
+        self, limits_path: Path | None = None
+    ) -> Mapping[str, str]:
         _ = limits_path
         return {}
 

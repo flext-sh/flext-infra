@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import Annotated, ClassVar
 
 from flext_core import FlextModels
@@ -197,21 +198,21 @@ class FlextInfraRefactorAstGrepModels:
         model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
 
         project_scan_dirs: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=lambda: ["src", "tests", "scripts", "examples"],
                 description="Relative directories scanned for candidate files",
             ),
         ]
         ignore_patterns: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Glob/file patterns ignored during scan",
             ),
         ]
         file_extensions: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Allowed file extensions (empty = all by pattern)",
@@ -235,28 +236,28 @@ class FlextInfraRefactorAstGrepModels:
             ),
         ]
         exclude_decorators: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Decorators to exclude",
             ),
         ]
         decorators: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Decorators to match",
             ),
         ]
         patterns: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Pattern rules",
             ),
         ]
         order: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Explicit method order",
@@ -278,35 +279,35 @@ class FlextInfraRefactorAstGrepModels:
             ),
         ]
         target_qualified_names: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Qualified names to match",
             ),
         ]
         target_simple_names: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Simple names to match",
             ),
         ]
         keyword_renames: Annotated[
-            dict[str, str],
+            Mapping[str, str],
             Field(
                 default_factory=dict,
                 description="Keyword rename mapping",
             ),
         ]
         remove_keywords: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Keywords to remove",
             ),
         ]
         add_keywords: Annotated[
-            dict[str, str],
+            Mapping[str, str],
             Field(
                 default_factory=dict,
                 description="Keywords to add",
@@ -321,7 +322,7 @@ class FlextInfraRefactorAstGrepModels:
             Field(default="", description="Module path to modernize"),
         ]
         symbol_mapping: Annotated[
-            dict[str, str],
+            Mapping[str, str],
             Field(
                 default_factory=dict,
                 description="Symbol-to-alias mapping",

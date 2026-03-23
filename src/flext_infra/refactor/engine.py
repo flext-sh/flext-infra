@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter
@@ -42,11 +42,11 @@ class FlextInfraRefactorEngine:
     def __init__(self, config_path: Path | None = None) -> None:
         """Initialize engine state and config file path."""
         self.config_path = config_path or self._default_config_path()
-        config_map: dict[str, t.Infra.InfraValue] = {}
+        config_map: Mapping[str, t.Infra.InfraValue] = {}
         self.config: t.Infra.InfraValue = config_map
-        self.rules: list[FlextInfraRefactorRule] = []
-        self.file_rules: list[ClassNestingRefactorRule] = []
-        self.rule_filters: list[str] = []
+        self.rules: Sequence[FlextInfraRefactorRule] = []
+        self.file_rules: Sequence[ClassNestingRefactorRule] = []
+        self.rule_filters: Sequence[str] = []
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
         self.rule_validator = FlextInfraRefactorRuleDefinitionValidator()
         self.safety_manager = self._build_safety_manager()
@@ -61,7 +61,7 @@ class FlextInfraRefactorEngine:
         *,
         apply_safety: bool,
         dry_run: bool,
-    ) -> tuple[str, list[m.Infra.Result] | None]:
+    ) -> tuple[str, Sequence[m.Infra.Result] | None]:
         """Attempt to create a safety stash before transformations.
 
         Returns (stash_ref, None) on success or ("", error_results) on failure.
@@ -85,14 +85,14 @@ class FlextInfraRefactorEngine:
 
     @staticmethod
     def build_impact_map(
-        results: list[m.Infra.Result],
-    ) -> list[dict[str, str]]:
+        results: Sequence[m.Infra.Result],
+    ) -> Sequence[Mapping[str, str]]:
         """Build a normalized impact-map payload from refactor results."""
         return u.Infra.build_impact_map(results)
 
     @staticmethod
     def write_impact_map(
-        results: list[m.Infra.Result],
+        results: Sequence[m.Infra.Result],
         output_path: Path,
     ) -> bool:
         """Write the impact-map payload to the target output path."""
@@ -138,7 +138,7 @@ class FlextInfraRefactorEngine:
             u.Infra.print_rules_table(engine.list_rules())
             return 0
         if args.analyze_violations:
-            files_to_analyze: list[Path] = []
+            files_to_analyze: Sequence[Path] = []
             if args.project:
                 scan_dirs = frozenset(
                     engine.rule_loader.extract_project_scan_dirs(engine.config),
@@ -214,7 +214,7 @@ class FlextInfraRefactorEngine:
                     f"Analysis report written: {args.analysis_output}"
                 )
             return 0
-        results: list[m.Infra.Result] = []
+        results: Sequence[m.Infra.Result] = []
         if args.project:
             results = engine.refactor_project(
                 args.project,
@@ -254,7 +254,7 @@ class FlextInfraRefactorEngine:
         workspace_root: Path,
         *,
         pattern: str = c.Infra.Extensions.PYTHON_GLOB,
-    ) -> list[Path]:
+    ) -> Sequence[Path]:
         """Collect all candidate files under workspace projects."""
         root = workspace_root.resolve()
         scan_dirs = frozenset(self.rule_loader.extract_project_scan_dirs(self.config))
@@ -267,7 +267,7 @@ class FlextInfraRefactorEngine:
         )
         ignore_patterns = {str(item) for item in ignore_items}
         allowed_extensions = {str(item) for item in extension_items}
-        all_files: list[Path] = []
+        all_files: Sequence[Path] = []
         for project in project_paths:
             iter_result = u.Infra.iter_python_files(
                 workspace_root=root,
@@ -304,7 +304,7 @@ class FlextInfraRefactorEngine:
                 all_files.append(py_file)
         return all_files
 
-    def list_rules(self) -> list[dict[str, str | bool]]:
+    def list_rules(self) -> Sequence[Mapping[str, str | bool]]:
         """Return loaded rules metadata for listing."""
         return [
             {
@@ -321,14 +321,14 @@ class FlextInfraRefactorEngine:
         """Load YAML configuration for this engine instance."""
         result = self.rule_loader.load_config()
         if result.is_success:
-            config_dict: dict[str, t.Infra.InfraValue] = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+            config_dict: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
+                Mapping[str, t.Infra.InfraValue],
             ).validate_python(dict(result.value.items()))
             self.config = config_dict
             u.Infra.refactor_info(f"Loaded config from {self.config_path}")
         return result
 
-    def load_rules(self) -> r[list[FlextInfraRefactorRule]]:
+    def load_rules(self) -> r[Sequence[FlextInfraRefactorRule]]:
         """Load and instantiate enabled rules from rules directory."""
         rules_result = self.rule_loader.load_rules(
             self.rule_filters,
@@ -337,7 +337,7 @@ class FlextInfraRefactorEngine:
             self._build_file_rules,
         )
         if rules_result.is_failure:
-            return r[list[FlextInfraRefactorRule]].fail(rules_result.error or "")
+            return r[Sequence[FlextInfraRefactorRule]].fail(rules_result.error or "")
         loaded_rules, loaded_file_rules = rules_result.value
         self.rules = loaded_rules
         self.file_rules = loaded_file_rules
@@ -350,7 +350,7 @@ class FlextInfraRefactorEngine:
             u.Infra.refactor_info(
                 f"Active filters: {', '.join(self.rule_filters)}",
             )
-        return r[list[FlextInfraRefactorRule]].ok(loaded_rules)
+        return r[Sequence[FlextInfraRefactorRule]].ok(loaded_rules)
 
     def refactor_file(
         self,
@@ -370,7 +370,7 @@ class FlextInfraRefactorEngine:
                 )
             original_source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             source = original_source
-            all_changes: list[str] = []
+            all_changes: Sequence[str] = []
             file_rule_modified = False
             for file_rule in self.file_rules:
                 file_rule_result = file_rule.apply(file_path, dry_run=True)
@@ -424,12 +424,12 @@ class FlextInfraRefactorEngine:
 
     def refactor_files(
         self,
-        file_paths: list[Path],
+        file_paths: Sequence[Path],
         *,
         dry_run: bool = False,
-    ) -> list[m.Infra.Result]:
+    ) -> Sequence[m.Infra.Result]:
         """Refactor many files and collect individual results."""
-        results: list[m.Infra.Result] = []
+        results: Sequence[m.Infra.Result] = []
         for file_path in file_paths:
             if file_path.suffix != c.Infra.Extensions.PYTHON:
                 u.Infra.refactor_info(
@@ -469,7 +469,7 @@ class FlextInfraRefactorEngine:
         dry_run: bool = False,
         pattern: str = c.Infra.Extensions.PYTHON_GLOB,
         apply_safety: bool = True,
-    ) -> list[m.Infra.Result]:
+    ) -> Sequence[m.Infra.Result]:
         """Refactor files under configured project directories matching the pattern."""
         stash_ref, stash_error = self._try_safety_stash(
             project_path,
@@ -553,7 +553,7 @@ class FlextInfraRefactorEngine:
         dry_run: bool = False,
         pattern: str = c.Infra.Extensions.PYTHON_GLOB,
         apply_safety: bool = True,
-    ) -> list[m.Infra.Result]:
+    ) -> Sequence[m.Infra.Result]:
         """Refactor all discoverable workspace projects with one command."""
         root = workspace_root.resolve()
         if not root.exists() or not root.is_dir():
@@ -574,8 +574,8 @@ class FlextInfraRefactorEngine:
         u.Infra.refactor_info(
             f"Discovered {len(project_paths)} projects in workspace",
         )
-        results: list[m.Infra.Result] = []
-        processed_targets: list[str] = []
+        results: Sequence[m.Infra.Result] = []
+        processed_targets: Sequence[str] = []
         stash_ref, stash_error = self._try_safety_stash(
             root,
             apply_safety=apply_safety,
@@ -619,7 +619,7 @@ class FlextInfraRefactorEngine:
         *,
         target_path: Path,
         stash_ref: str,
-        results: list[m.Infra.Result],
+        results: Sequence[m.Infra.Result],
     ) -> None:
         validation_result = self.safety_manager.run_semantic_validation(target_path)
         if validation_result.is_failure:
@@ -657,11 +657,11 @@ class FlextInfraRefactorEngine:
             return r[str].fail(error_msg)
         return r[str].ok(stash_result.value)
 
-    def set_rule_filters(self, filters: list[str]) -> None:
+    def set_rule_filters(self, filters: Sequence[str]) -> None:
         """Set active rule filters using normalized lowercase rule ids."""
         self.rule_filters = [item.lower() for item in filters]
 
-    def _build_file_rules(self) -> list[ClassNestingRefactorRule]:
+    def _build_file_rules(self) -> Sequence[ClassNestingRefactorRule]:
         return [ClassNestingRefactorRule()]
 
     def _build_rule(

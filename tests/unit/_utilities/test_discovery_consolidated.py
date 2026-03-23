@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -69,7 +70,7 @@ class TestDiscoveryIterPythonFiles:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _raise_oserror(workspace_root: Path, **_kwargs: t.Scalar) -> list[Path]:
+        def _raise_oserror(workspace_root: Path, **_kwargs: t.Scalar) -> Sequence[Path]:
             del workspace_root  # Mock function doesn't use the parameter
             msg = "forced failure"
             raise OSError(msg)
@@ -127,7 +128,7 @@ class TestDiscoveryFindAllPyprojectFiles:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _raise_oserror(_: Path, _pattern: str) -> list[Path]:
+        def _raise_oserror(_: Path, _pattern: str) -> Sequence[Path]:
             msg = "scan failed"
             raise OSError(msg)
 
@@ -170,7 +171,7 @@ class TestDiscoveryDiscoverProjects:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _raise_oserror(_: Path) -> list[Path]:
+        def _raise_oserror(_: Path) -> Sequence[Path]:
             msg = "no permission"
             raise OSError(msg)
 

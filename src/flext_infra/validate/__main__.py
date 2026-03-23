@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -43,7 +43,7 @@ class FlextInfraValidateCommand:
     def list_str(
         payload: m.Infra.InventoryReport | m.Infra.PytestDiagnostics,
         key: str,
-    ) -> list[str]:
+    ) -> Sequence[str]:
         """Extract string list from payload attribute."""
         return [item for item in getattr(payload, key, []) if isinstance(item, str)]
 
@@ -136,8 +136,8 @@ class FlextInfraValidateCommand:
     def run_scan(
         cli: u.Infra.CliArgs,
         pattern: str,
-        include: list[str],
-        exclude: list[str],
+        include: Sequence[str],
+        exclude: Sequence[str],
         match: str,
     ) -> int:
         """Scan text files for patterns."""
@@ -171,10 +171,10 @@ class FlextInfraValidateCommand:
         return 1
 
     @staticmethod
-    def run_stub_validate(cli: u.Infra.CliArgs, project: list[str] | None) -> int:
+    def run_stub_validate(cli: u.Infra.CliArgs, project: Sequence[str] | None) -> int:
         """Validate stub supply chain."""
         chain = FlextInfraStubSupplyChain()
-        project_dirs: list[Path] | None = (
+        project_dirs: Sequence[Path] | None = (
             [cli.workspace / project_name for project_name in project]
             if project
             else None
@@ -190,7 +190,7 @@ class FlextInfraValidateCommand:
         return 1
 
     @staticmethod
-    def run(argv: list[str] | None = None) -> int:
+    def run(argv: Sequence[str] | None = None) -> int:
         """Run validation command dispatcher."""
         parser, subs = u.Infra.create_subcommand_parser(
             prog="flext_infra validate",
@@ -342,8 +342,8 @@ def _run_pytest_diag(
 def _run_scan(
     cli: u.Infra.CliArgs,
     pattern: str,
-    include: list[str],
-    exclude: list[str],
+    include: Sequence[str],
+    exclude: Sequence[str],
     match: str,
 ) -> int:
     return FlextInfraValidateCommand.run_scan(
@@ -359,11 +359,11 @@ def _run_skill_validate(cli: u.Infra.CliArgs, skill: str, mode: str) -> int:
     return FlextInfraValidateCommand.run_skill_validate(cli, skill, mode)
 
 
-def _run_stub_validate(cli: u.Infra.CliArgs, project: list[str] | None) -> int:
+def _run_stub_validate(cli: u.Infra.CliArgs, project: Sequence[str] | None) -> int:
     return FlextInfraValidateCommand.run_stub_validate(cli, project)
 
 
-def _main_inner(argv: list[str] | None = None) -> int:
+def _main_inner(argv: Sequence[str] | None = None) -> int:
     return FlextInfraValidateCommand.run(argv)
 
 

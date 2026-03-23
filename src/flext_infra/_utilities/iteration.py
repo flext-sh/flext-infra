@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -27,7 +28,7 @@ class FlextInfraUtilitiesIteration:
         workspace_root: Path,
         *,
         scan_dirs: frozenset[str] | None = None,
-    ) -> list[Path]:
+    ) -> Sequence[Path]:
         """Discover all project directories under workspace root.
 
         Algorithm:
@@ -49,7 +50,7 @@ class FlextInfraUtilitiesIteration:
             At minimum returns [workspace_root] if workspace_root/src/ exists.
 
         """
-        roots: list[Path] = []
+        roots: Sequence[Path] = []
         effective_scan_dirs = scan_dirs or c.Infra.MRO_SCAN_DIRECTORIES
 
         def _looks_like_project(path: Path) -> bool:
@@ -92,7 +93,7 @@ class FlextInfraUtilitiesIteration:
         *,
         pattern: str | None = None,
         skip_pycache: bool = True,
-    ) -> list[Path]:
+    ) -> Sequence[Path]:
         """Iterate Python files in a single directory tree.
 
         Scoped to one directory (project src, subdirectory, etc.) — unlike
@@ -120,12 +121,12 @@ class FlextInfraUtilitiesIteration:
     def iter_python_files(
         workspace_root: Path,
         *,
-        project_roots: list[Path] | None = None,
+        project_roots: Sequence[Path] | None = None,
         include_tests: bool = True,
         include_examples: bool = True,
         include_scripts: bool = True,
         src_dirs: frozenset[str] | None = None,
-    ) -> r[list[Path]]:
+    ) -> r[Sequence[Path]]:
         """Discover and iterate all Python files across workspace projects.
 
         Unlike iter_directory_python_files() which scans a single directory,
@@ -155,7 +156,7 @@ class FlextInfraUtilitiesIteration:
                 src/ is always included regardless of include_* flags.
 
         Returns:
-            Result[list[Path]] - Success contains sorted unique file paths.
+            Result[Sequence[Path]] - Success contains sorted unique file paths.
             Failure if: workspace inaccessible, discovery fails, or OSError.
 
         Raises:
@@ -185,7 +186,7 @@ class FlextInfraUtilitiesIteration:
                 c.Infra.Directories.EXAMPLES: include_examples,
                 c.Infra.Directories.SCRIPTS: include_scripts,
             }
-            files: list[Path] = []
+            files: Sequence[Path] = []
             for project_root in roots:
                 # First: include explicitly specified directories if enabled
                 for dir_name, enabled in include_flags.items():
@@ -226,9 +227,9 @@ class FlextInfraUtilitiesIteration:
                     if py_files:
                         files.extend(py_files)
 
-            return r[list[Path]].ok(sorted(set(files)))
+            return r[Sequence[Path]].ok(sorted(set(files)))
         except OSError as exc:
-            return r[list[Path]].fail(f"python file iteration failed: {exc}")
+            return r[Sequence[Path]].fail(f"python file iteration failed: {exc}")
 
     @staticmethod
     def iter_workspace_python_modules(
@@ -236,7 +237,7 @@ class FlextInfraUtilitiesIteration:
         *,
         exclude_packages: frozenset[str] | None = None,
         include_tests: bool = True,
-    ) -> r[list[tuple[Path, Path]]]:
+    ) -> r[Sequence[tuple[Path, Path]]]:
         """Discover all Python modules across workspace projects.
 
         Returns tuples of (project_root, file_path) for every Python file
@@ -257,7 +258,7 @@ class FlextInfraUtilitiesIteration:
                 workspace_root=workspace_root,
             )
             effective_exclude = exclude_packages or frozenset()
-            result: list[tuple[Path, Path]] = []
+            result: Sequence[tuple[Path, Path]] = []
             for project_root in roots:
                 if project_root.name in effective_exclude:
                     continue
@@ -271,9 +272,9 @@ class FlextInfraUtilitiesIteration:
                 result.extend(
                     (project_root, file_path) for file_path in files_result.value
                 )
-            return r[list[tuple[Path, Path]]].ok(result)
+            return r[Sequence[tuple[Path, Path]]].ok(result)
         except OSError as exc:
-            return r[list[tuple[Path, Path]]].fail(
+            return r[Sequence[tuple[Path, Path]]].fail(
                 f"workspace python module iteration failed: {exc}"
             )
 

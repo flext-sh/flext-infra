@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,7 @@ from flext_infra.deps import modernizer as modernizer_module
 
 def _modernizer_args(**overrides: t.NormalizedValue) -> argparse.Namespace:
     """Create standard modernizer args namespace with defaults."""
-    defaults: dict[str, t.NormalizedValue] = {
+    defaults: Mapping[str, t.NormalizedValue] = {
         "project": None,
         "dry_run": True,
         "verbose": False,
@@ -79,7 +80,7 @@ class TestModernizerUncoveredLines:
         modernizer = FlextInfraPyprojectModernizer(tmp_path)
         args = _modernizer_args()
 
-        def _find_files() -> list[Path]:
+        def _find_files() -> Sequence[Path]:
             return [pyproject]
 
         def _read_doc(_path: Path) -> tomlkit.TOMLDocument:
@@ -87,10 +88,10 @@ class TestModernizerUncoveredLines:
 
         def _process_file(
             _path: Path,
-            canonical_dev: list[str],
+            canonical_dev: Sequence[str],
             dry_run: bool,
             skip_comments: bool,
-        ) -> list[str]:
+        ) -> Sequence[str]:
             _ = (_path, canonical_dev, dry_run, skip_comments)
             return []
 

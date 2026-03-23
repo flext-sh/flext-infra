@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import Annotated, ClassVar
 
 from flext_core import FlextModels
@@ -48,12 +49,12 @@ class FlextInfraCheckModels:
             ),
         ]
         issues: Annotated[
-            list[FlextInfraCheckModels.Issue],
+            Sequence[FlextInfraCheckModels.Issue],
             Field(
-                default_factory=lambda: list[FlextInfraCheckModels.Issue](),
+                default_factory=lambda: Sequence[FlextInfraCheckModels.Issue](),
                 description="Detected issues",
             ),
-        ] = Field(default_factory=lambda: list[FlextInfraCheckModels.Issue]())
+        ] = Field(default_factory=lambda: Sequence[FlextInfraCheckModels.Issue]())
         raw_output: Annotated[str, Field(default="", description="Raw tool output")]
 
     class GateResult(FlextModels.ArbitraryTypesModel):
@@ -63,12 +64,12 @@ class FlextInfraCheckModels:
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         passed: Annotated[bool, Field(description="Gate execution status")]
         errors: Annotated[
-            list[str],
+            Sequence[str],
             Field(
-                default_factory=lambda: list[str](),
+                default_factory=lambda: Sequence[str](),
                 description="Gate error messages",
             ),
-        ] = Field(default_factory=lambda: list[str]())
+        ] = Field(default_factory=lambda: Sequence[str]())
         duration: Annotated[
             t.NonNegativeFloat,
             Field(default=0.0, description="Duration in seconds"),
@@ -79,16 +80,16 @@ class FlextInfraCheckModels:
 
         project: Annotated[str, Field(description="Project name")]
         gates: Annotated[
-            dict[str, FlextInfraCheckModels.GateExecution],
+            Mapping[str, FlextInfraCheckModels.GateExecution],
             Field(
-                default_factory=lambda: dict[
+                default_factory=lambda: Mapping[
                     str,
                     FlextInfraCheckModels.GateExecution,
                 ](),
                 description="Gate name to execution mapping",
             ),
         ] = Field(
-            default_factory=lambda: dict[str, FlextInfraCheckModels.GateExecution](),
+            default_factory=lambda: Mapping[str, FlextInfraCheckModels.GateExecution](),
         )
 
         @computed_field
@@ -115,7 +116,7 @@ class FlextInfraCheckModels:
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> dict[str, t.Infra.InfraValue]:
+        def _serialize(self) -> Mapping[str, t.Infra.InfraValue]:
             return {
                 "id": self.id,
                 "shortDescription": {"text": self.short_description},
@@ -136,7 +137,7 @@ class FlextInfraCheckModels:
         ] = "%SRCROOT%"
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> dict[str, t.Infra.InfraValue]:
+        def _serialize(self) -> Mapping[str, t.Infra.InfraValue]:
             return {
                 "physicalLocation": {
                     "artifactLocation": {
@@ -157,14 +158,14 @@ class FlextInfraCheckModels:
         level: Annotated[str, Field(description="Result level (error/warning)")]
         message: Annotated[str, Field(description="Result message")]
         locations: Annotated[
-            list[FlextInfraCheckModels.SarifLocation],
+            Sequence[FlextInfraCheckModels.SarifLocation],
             Field(
                 description="Result locations",
             ),
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> dict[str, t.Infra.InfraValue]:
+        def _serialize(self) -> Mapping[str, t.Infra.InfraValue]:
             return {
                 "ruleId": self.rule_id,
                 "level": self.level,
@@ -186,24 +187,24 @@ class FlextInfraCheckModels:
             ),
         ] = ""
         rules: Annotated[
-            list[FlextInfraCheckModels.SarifRule],
+            Sequence[FlextInfraCheckModels.SarifRule],
             Field(
-                default_factory=lambda: list[FlextInfraCheckModels.SarifRule](),
+                default_factory=lambda: Sequence[FlextInfraCheckModels.SarifRule](),
                 description="Rule descriptors",
             ),
-        ] = Field(default_factory=lambda: list[FlextInfraCheckModels.SarifRule]())
+        ] = Field(default_factory=lambda: Sequence[FlextInfraCheckModels.SarifRule]())
         results: Annotated[
-            list[FlextInfraCheckModels.SarifResult],
+            Sequence[FlextInfraCheckModels.SarifResult],
             Field(
-                default_factory=lambda: list[FlextInfraCheckModels.SarifResult](),
+                default_factory=lambda: Sequence[FlextInfraCheckModels.SarifResult](),
                 description="Run results",
             ),
         ] = Field(
-            default_factory=lambda: list[FlextInfraCheckModels.SarifResult](),
+            default_factory=lambda: Sequence[FlextInfraCheckModels.SarifResult](),
         )
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> dict[str, t.Infra.InfraValue]:
+        def _serialize(self) -> Mapping[str, t.Infra.InfraValue]:
             return {
                 "tool": {
                     "driver": {
@@ -237,12 +238,12 @@ class FlextInfraCheckModels:
             Field(default="2.1.0", description="SARIF version"),
         ] = "2.1.0"
         runs: Annotated[
-            list[FlextInfraCheckModels.SarifRun],
+            Sequence[FlextInfraCheckModels.SarifRun],
             Field(
-                default_factory=lambda: list[FlextInfraCheckModels.SarifRun](),
+                default_factory=lambda: Sequence[FlextInfraCheckModels.SarifRun](),
                 description="SARIF runs",
             ),
-        ] = Field(default_factory=lambda: list[FlextInfraCheckModels.SarifRun]())
+        ] = Field(default_factory=lambda: Sequence[FlextInfraCheckModels.SarifRun]())
 
 
 __all__ = ["FlextInfraCheckModels"]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import re
 import tomllib
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t, u
@@ -41,7 +41,7 @@ class ProjectClassifier:
             family_chains=family_chains,
         )
 
-    def _read_project_metadata(self) -> tuple[str, list[str]]:
+    def _read_project_metadata(self) -> tuple[str, Sequence[str]]:
         if not self._pyproject_path.is_file():
             return ("", [])
         parsed: t.Infra.TomlConfig = tomllib.loads(
@@ -49,7 +49,7 @@ class ProjectClassifier:
         )
         raw_project = self._as_mapping(parsed.get(c.Infra.Toml.PROJECT))
         project_name = self._normalized_name_from_mapping(raw_project)
-        dependencies: list[str] = []
+        dependencies: Sequence[str] = []
         self._append_project_dependencies(
             raw_project=raw_project, dependencies=dependencies
         )
@@ -83,7 +83,7 @@ class ProjectClassifier:
         self,
         *,
         raw_project: Mapping[str, t.Infra.InfraValue],
-        dependencies: list[str],
+        dependencies: Sequence[str],
     ) -> None:
         raw_dependencies = raw_project.get(c.Infra.Toml.DEPENDENCIES)
         if not isinstance(raw_dependencies, list):
@@ -101,7 +101,7 @@ class ProjectClassifier:
         self,
         *,
         raw_poetry: Mapping[str, t.Infra.InfraValue],
-        dependencies: list[str],
+        dependencies: Sequence[str],
     ) -> None:
         self._append_poetry_dependency_mapping(
             raw_mapping=self._as_mapping(raw_poetry.get(c.Infra.Toml.DEPENDENCIES)),
@@ -118,7 +118,7 @@ class ProjectClassifier:
         self,
         *,
         raw_mapping: Mapping[str, t.Infra.InfraValue],
-        dependencies: list[str],
+        dependencies: Sequence[str],
     ) -> None:
         dependency_keys = self._ordered_mapping_keys(raw_mapping)
         for dependency_key in dependency_keys:
@@ -133,7 +133,7 @@ class ProjectClassifier:
     def _ordered_mapping_keys(
         self,
         raw_mapping: Mapping[str, t.Infra.InfraValue],
-    ) -> list[str]:
+    ) -> Sequence[str]:
         keys = list(raw_mapping.keys())
         if self._mapping_order_is_trusted(raw_mapping):
             return keys
@@ -149,7 +149,7 @@ class ProjectClassifier:
         self,
         *,
         dependency_name: str,
-        dependencies: list[str],
+        dependencies: Sequence[str],
     ) -> None:
         if (not dependency_name) or (dependency_name in dependencies):
             return
@@ -158,10 +158,10 @@ class ProjectClassifier:
     def _internal_dependencies(
         self,
         *,
-        dependencies: list[str],
+        dependencies: Sequence[str],
         project_name: str,
-    ) -> list[str]:
-        internal: list[str] = []
+    ) -> Sequence[str]:
+        internal: Sequence[str] = []
         for dependency in dependencies:
             if not dependency.startswith("flext-"):
                 continue
@@ -187,8 +187,8 @@ class ProjectClassifier:
         normalized = raw_name.strip().lower().replace("_", "-")
         return normalized.strip("./")
 
-    def _discover_facade_inheritance(self) -> tuple[dict[str, set[str]], set[str]]:
-        family_bases: dict[str, set[str]] = {
+    def _discover_facade_inheritance(self) -> tuple[Mapping[str, set[str]], set[str]]:
+        family_bases: Mapping[str, set[str]] = {
             family: set() for family in c.Infra.FAMILY_SUFFIXES
         }
         local_facade_classes: set[str] = set()
@@ -230,10 +230,10 @@ class ProjectClassifier:
     def _build_confirmed_family_chains(
         self,
         *,
-        internal_dependencies: list[str],
-        family_bases: dict[str, set[str]],
-    ) -> dict[str, list[str]]:
-        family_chains: dict[str, list[str]] = {}
+        internal_dependencies: Sequence[str],
+        family_bases: Mapping[str, set[str]],
+    ) -> Mapping[str, Sequence[str]]:
+        family_chains: Mapping[str, Sequence[str]] = {}
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_parents = self._expected_parents_for_family(
                 family_suffix=suffix,
@@ -253,9 +253,9 @@ class ProjectClassifier:
         self,
         *,
         family_suffix: str,
-        internal_dependencies: list[str],
-    ) -> list[str]:
-        expected: list[str] = []
+        internal_dependencies: Sequence[str],
+    ) -> Sequence[str]:
+        expected: Sequence[str] = []
         for dependency in internal_dependencies:
             stem = self._dependency_to_class_stem(dependency)
             if not stem:
@@ -283,7 +283,7 @@ class ProjectClassifier:
     def _infer_project_kind(
         self,
         *,
-        internal_dependencies: list[str],
+        internal_dependencies: Sequence[str],
         local_facade_classes: set[str],
     ) -> str:
         if not internal_dependencies:

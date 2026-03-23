@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -22,10 +22,10 @@ class StubPrManager:
 
     def __init__(
         self,
-        status_returns: Sequence[r[dict[str, t.Scalar]]] | None = None,
-        create_returns: Sequence[r[dict[str, t.Scalar]]] | None = None,
+        status_returns: Sequence[r[Mapping[str, t.Scalar]]] | None = None,
+        create_returns: Sequence[r[Mapping[str, t.Scalar]]] | None = None,
         view_returns: Sequence[r[str]] | None = None,
-        checks_returns: Sequence[r[dict[str, t.Scalar]]] | None = None,
+        checks_returns: Sequence[r[Mapping[str, t.Scalar]]] | None = None,
         merge_returns: Sequence[r[t.Container]] | None = None,
         close_returns: Sequence[r[bool]] | None = None,
     ) -> None:
@@ -37,27 +37,29 @@ class StubPrManager:
         self._close = list(close_returns or [])
 
     @staticmethod
-    def _pop_status(returns: list[r[dict[str, t.Scalar]]]) -> r[dict[str, t.Scalar]]:
+    def _pop_status(
+        returns: Sequence[r[Mapping[str, t.Scalar]]],
+    ) -> r[Mapping[str, t.Scalar]]:
         if not returns:
-            return r[dict[str, t.Scalar]].fail("no return configured")
+            return r[Mapping[str, t.Scalar]].fail("no return configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
-    def _pop_view(returns: list[r[str]]) -> r[str]:
+    def _pop_view(returns: Sequence[r[str]]) -> r[str]:
         if not returns:
             return r[str].fail("no return configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
     def _pop_merge(
-        returns: list[r[t.Container]],
+        returns: Sequence[r[t.Container]],
     ) -> r[t.Container]:
         if not returns:
             return r[t.Container].fail("no return configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
-    def _pop_close(returns: list[r[bool]]) -> r[bool]:
+    def _pop_close(returns: Sequence[r[bool]]) -> r[bool]:
         if not returns:
             return r[bool].fail("no return configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
@@ -67,7 +69,7 @@ class StubPrManager:
         repo_root: Path,
         base: str,
         head: str,
-    ) -> r[dict[str, t.Scalar]]:
+    ) -> r[Mapping[str, t.Scalar]]:
         _ = repo_root, base, head
         return self._pop_status(self._status)
 
@@ -80,7 +82,7 @@ class StubPrManager:
         body: str,
         *,
         draft: bool = False,
-    ) -> r[dict[str, t.Scalar]]:
+    ) -> r[Mapping[str, t.Scalar]]:
         _ = repo_root, base, head, title, body, draft
         return self._pop_status(self._create)
 
@@ -94,7 +96,7 @@ class StubPrManager:
         selector: str,
         *,
         strict: bool = False,
-    ) -> r[dict[str, t.Scalar]]:
+    ) -> r[Mapping[str, t.Scalar]]:
         _ = repo_root, selector, strict
         return self._pop_status(self._checks)
 
@@ -122,14 +124,14 @@ class StubSyncer:
 
     def __init__(
         self,
-        sync_returns: r[list[m.Infra.SyncOperation]] | None = None,
+        sync_returns: r[Sequence[m.Infra.SyncOperation]] | None = None,
     ) -> None:
         self._sync_returns = (
             sync_returns
             if sync_returns is not None
-            else r[list[m.Infra.SyncOperation]].ok([])
+            else r[Sequence[m.Infra.SyncOperation]].ok([])
         )
-        self.sync_workspace_calls: list[dict[str, t.Infra.InfraValue]] = []
+        self.sync_workspace_calls: Sequence[Mapping[str, t.Infra.InfraValue]] = []
 
     def sync_workspace(
         self,
@@ -139,8 +141,8 @@ class StubSyncer:
         report_path: Path | None = None,
         apply: bool = False,
         prune: bool = False,
-    ) -> r[list[m.Infra.SyncOperation]]:
-        kwargs: dict[str, t.Infra.InfraValue] = {
+    ) -> r[Sequence[m.Infra.SyncOperation]]:
+        kwargs: Mapping[str, t.Infra.InfraValue] = {
             "workspace_root": str(workspace_root),
             "source_workflow": str(source_workflow) if source_workflow else None,
             "report_path": str(report_path) if report_path else None,
@@ -165,7 +167,7 @@ class StubLinter:
                 m.Infra.WorkflowLintResult(status="ok", exit_code=0),
             )
         )
-        self.lint_calls: list[dict[str, t.Infra.InfraValue]] = []
+        self.lint_calls: Sequence[Mapping[str, t.Infra.InfraValue]] = []
 
     def lint(
         self,
@@ -174,7 +176,7 @@ class StubLinter:
         report_path: Path | None = None,
         strict: bool = False,
     ) -> r[m.Infra.WorkflowLintResult]:
-        kwargs: dict[str, t.Infra.InfraValue] = {
+        kwargs: Mapping[str, t.Infra.InfraValue] = {
             "root": str(root),
             "report_path": str(report_path) if report_path else None,
             "strict": strict,
@@ -202,26 +204,26 @@ class StubWorkspaceManager:
                 ),
             )
         )
-        self.orchestrate_calls: list[dict[str, t.Infra.InfraValue]] = []
+        self.orchestrate_calls: Sequence[Mapping[str, t.Infra.InfraValue]] = []
 
     def orchestrate(
         self,
         workspace_root: Path,
         *,
-        projects: list[str] | None = None,
+        projects: Sequence[str] | None = None,
         include_root: bool = True,
         branch: str = "",
         checkpoint: bool = True,
         fail_fast: bool = False,
-        pr_args: dict[str, str] | None = None,
+        pr_args: Mapping[str, str] | None = None,
     ) -> r[m.Infra.PrOrchestrationResult]:
-        infra_projects: list[t.Infra.InfraValue] | None = (
+        infra_projects: Sequence[t.Infra.InfraValue] | None = (
             [str(p) for p in projects] if projects else None
         )
-        infra_pr_args: dict[str, t.Infra.InfraValue] | None = (
-            dict[str, t.Infra.InfraValue](pr_args) if pr_args else None
+        infra_pr_args: Mapping[str, t.Infra.InfraValue] | None = (
+            Mapping[str, t.Infra.InfraValue](pr_args) if pr_args else None
         )
-        kwargs: dict[str, t.Infra.InfraValue] = {
+        kwargs: Mapping[str, t.Infra.InfraValue] = {
             "workspace_root": str(workspace_root),
             "projects": infra_projects,
             "include_root": include_root,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -70,14 +71,14 @@ class FlextInfraMypyGate(FlextInfraGate):
             project_dir,
             env=mypy_env,
         )
-        issues: list[m.Infra.Issue] = []
+        issues: Sequence[m.Infra.Issue] = []
         for raw_line in (result.stdout or "").splitlines():
             stripped = raw_line.strip()
             if not stripped:
                 continue
             try:
                 line_data = TypeAdapter(
-                    dict[str, t_infra.Infra.InfraValue],
+                    Mapping[str, t_infra.Infra.InfraValue],
                 ).validate_json(stripped)
             except ValidationError:
                 continue

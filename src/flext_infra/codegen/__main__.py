@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter
@@ -32,14 +33,16 @@ from flext_infra import (
     u,
 )
 
-_JSON_OUTPUT_ADAPTER: TypeAdapter[dict[str, t.NormalizedValue]] = TypeAdapter(
-    dict[str, t.NormalizedValue],
+_JSON_OUTPUT_ADAPTER: TypeAdapter[Mapping[str, t.NormalizedValue]] = TypeAdapter(
+    Mapping[str, t.NormalizedValue],
 )
 
 
 class FlextInfraCodegenCommand:
+    """CLI entry point for code generation operations."""
+
     @staticmethod
-    def run(argv: list[str] | None) -> int:
+    def run(argv: Sequence[str] | None) -> int:
         """Run codegen command dispatcher."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext-infra codegen",
@@ -154,7 +157,7 @@ class FlextInfraCodegenCommand:
             usages_val = fix.get("canonical_usages", 0)
             usages = int(usages_val) if isinstance(usages_val, int) else 0
             duplicates_val = fix.get("duplicates", [])
-            duplicates: list[dict[str, str | int]] = (
+            duplicates: Sequence[Mapping[str, str | int]] = (
                 duplicates_val if isinstance(duplicates_val, list) else []
             )
             output.info(
@@ -187,7 +190,7 @@ class FlextInfraCodegenCommand:
                 total_files_modified += files_mod
                 canonical = str(result.get("canonical", ""))
                 replaced_val = result.get("replaced", [])
-                replaced: list[str] = []
+                replaced: Sequence[str] = []
                 if isinstance(replaced_val, list):
                     replaced = [item for item in replaced_val if isinstance(item, str)]
                 else:
@@ -356,7 +359,7 @@ class FlextInfraCodegenCommand:
         )
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Run codegen service CLI with centralized bootstrap."""
     return u.Infra.run_cli(FlextInfraCodegenCommand.run, argv)
 

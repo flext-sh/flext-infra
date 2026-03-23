@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraUtilitiesIteration, FlextInfraUtilitiesParsing, c, m
@@ -24,11 +25,11 @@ class FlextInfraUtilitiesRefactorMroScan:
         *,
         workspace_root: Path,
         target: str,
-    ) -> tuple[list[m.Infra.MROScanReport], int]:
+    ) -> tuple[Sequence[m.Infra.MROScanReport], int]:
         """Scan workspace and collect migration reports for a target family."""
         if target not in c.Infra.MRO_TARGETS:
             return ([], 0)
-        results: list[m.Infra.MROScanReport] = []
+        results: Sequence[m.Infra.MROScanReport] = []
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._mro_scan_target_specs(
             target=target,
@@ -77,7 +78,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             file_path=file_path,
             project_root=project_root,
         )
-        candidates: list[m.Infra.MROSymbolCandidate] = []
+        candidates: Sequence[m.Infra.MROSymbolCandidate] = []
         for stmt in tree.body:
             candidate = (
                 FlextInfraUtilitiesRefactorMroScan._mro_scan_candidate_from_statement(
@@ -147,7 +148,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         return None
 
     @staticmethod
-    def _mro_scan_project_roots(*, workspace_root: Path) -> list[Path]:
+    def _mro_scan_project_roots(*, workspace_root: Path) -> Sequence[Path]:
         return FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root
         )
@@ -210,7 +211,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         *,
         project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
-    ) -> list[Path]:
+    ) -> Sequence[Path]:
         candidates: set[Path] = set()
         for directory_name in c.Infra.MRO_SCAN_DIRECTORIES:
             root: Path = project_root / directory_name

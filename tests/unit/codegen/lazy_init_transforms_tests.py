@@ -14,20 +14,25 @@ from flext_tests import tm
 
 from flext_infra import FlextInfraCodegenLazyInit, u
 
-_scan_ast_public_defs: Callable[[ast.Module, str, dict[str, tuple[str, str]]], None] = (
-    getattr(FlextInfraCodegenLazyInit, "_scan_ast_public_defs")
-)
+_scan_ast_public_defs: Callable[
+    [ast.Module, str, Mapping[str, tuple[str, str]]], None
+] = getattr(FlextInfraCodegenLazyInit, "_scan_ast_public_defs")
 _should_bubble_up: Callable[[str], bool] = getattr(
     FlextInfraCodegenLazyInit,
     "_should_bubble_up",
 )
 _merge_child_exports: Callable[
-    [Path, str, dict[str, tuple[str, str]], Mapping[str, dict[str, tuple[str, str]]]],
+    [
+        Path,
+        str,
+        Mapping[str, tuple[str, str]],
+        Mapping[str, Mapping[str, tuple[str, str]]],
+    ],
     None,
 ] = getattr(FlextInfraCodegenLazyInit, "_merge_child_exports")
 _extract_version_exports: Callable[
     [Path, str],
-    tuple[dict[str, str], dict[str, tuple[str, str]]],
+    tuple[Mapping[str, str], Mapping[str, tuple[str, str]]],
 ] = getattr(FlextInfraCodegenLazyInit, "_extract_version_exports")
 
 
@@ -37,28 +42,28 @@ class TestScanAstPublicDefs:
     def test_finds_classes(self) -> None:
         """Test scanning finds public classes."""
         tree = ast.parse("class PublicClass:\n    pass\n")
-        index: dict[str, tuple[str, str]] = {}
+        index: Mapping[str, tuple[str, str]] = {}
         _scan_ast_public_defs(tree, "mod", index)
         tm.that(index, contains="PublicClass")
 
     def test_skips_private(self) -> None:
         """Test scanning skips private names."""
         tree = ast.parse("class _PrivateClass:\n    pass\n")
-        index: dict[str, tuple[str, str]] = {}
+        index: Mapping[str, tuple[str, str]] = {}
         _scan_ast_public_defs(tree, "mod", index)
         tm.that(index, excludes="_PrivateClass")
 
     def test_finds_functions(self) -> None:
         """Test scanning finds public functions."""
         tree = ast.parse("def public_func():\n    pass\n")
-        index: dict[str, tuple[str, str]] = {}
+        index: Mapping[str, tuple[str, str]] = {}
         _scan_ast_public_defs(tree, "mod", index)
         tm.that(index, contains="public_func")
 
     def test_finds_assignments(self) -> None:
         """Test scanning finds public assignments."""
         tree = ast.parse("MY_CONST = 42\n")
-        index: dict[str, tuple[str, str]] = {}
+        index: Mapping[str, tuple[str, str]] = {}
         _scan_ast_public_defs(tree, "mod", index)
         tm.that(index, contains="MY_CONST")
 
@@ -120,7 +125,7 @@ class TestMergeChildExports:
         """Test that child exports are merged into parent."""
         sub_dir = tmp_path / "sub"
         sub_dir.mkdir()
-        lazy_map: dict[str, tuple[str, str]] = {}
+        lazy_map: Mapping[str, tuple[str, str]] = {}
         dir_exports = {
             str(sub_dir): {
                 "SubService": ("pkg.sub.service", "SubService"),
@@ -134,7 +139,7 @@ class TestMergeChildExports:
         """Test that existing sibling exports are NOT overwritten."""
         sub_dir = tmp_path / "sub"
         sub_dir.mkdir()
-        lazy_map: dict[str, tuple[str, str]] = {
+        lazy_map: Mapping[str, tuple[str, str]] = {
             "Model": ("pkg.models", "Model"),
         }
         dir_exports = {
@@ -150,7 +155,7 @@ class TestMergeChildExports:
         """Test that ALL_CAPS constants don't bubble up."""
         sub_dir = tmp_path / "sub"
         sub_dir.mkdir()
-        lazy_map: dict[str, tuple[str, str]] = {}
+        lazy_map: Mapping[str, tuple[str, str]] = {}
         dir_exports = {
             str(sub_dir): {
                 "BLUE": ("pkg.sub.colors", "BLUE"),

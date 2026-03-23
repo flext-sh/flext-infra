@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
@@ -25,10 +26,10 @@ class FlextInfraStubSupplyChain:
         """Initialize the stub supply chain."""
         self._runner: p.Infra.CommandRunner = u.Infra
 
-    def _discover_stub_projects(self, workspace_root: Path) -> list[Path]:
+    def _discover_stub_projects(self, workspace_root: Path) -> Sequence[Path]:
         """Discover projects that should participate in stub checks."""
         _ = self
-        projects: list[Path] = []
+        projects: Sequence[Path] = []
         for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name):
             if not entry.is_dir() or entry.name.startswith("."):
                 continue
@@ -104,7 +105,7 @@ class FlextInfraStubSupplyChain:
     def validate(
         self,
         workspace_root: Path,
-        project_dirs: list[Path] | None = None,
+        project_dirs: Sequence[Path] | None = None,
     ) -> r[m.Infra.ValidationReport]:
         """Validate stub supply chain across projects.
 
@@ -119,7 +120,7 @@ class FlextInfraStubSupplyChain:
         try:
             root = workspace_root.resolve()
             projects = project_dirs or self._discover_stub_projects(root)
-            violations: list[str] = []
+            violations: Sequence[str] = []
             for proj in projects:
                 result = self.analyze(proj, root)
                 if result.is_failure:
@@ -150,7 +151,7 @@ class FlextInfraStubSupplyChain:
                 f"stub validation failed: {exc}",
             )
 
-    def _run_mypy_hints(self, project_dir: Path) -> list[str]:
+    def _run_mypy_hints(self, project_dir: Path) -> Sequence[str]:
         """Run mypy and extract types-package hints."""
         result = self._runner.run(
             [
@@ -174,7 +175,7 @@ class FlextInfraStubSupplyChain:
             if m.group(1).strip()
         })
 
-    def _run_pyrefly_missing(self, project_dir: Path) -> list[str]:
+    def _run_pyrefly_missing(self, project_dir: Path) -> Sequence[str]:
         """Run pyrefly check and extract missing imports."""
         result = self._runner.run(
             [
@@ -193,7 +194,7 @@ class FlextInfraStubSupplyChain:
             cmd_output: p.Infra.CommandOutput = result.value
             output = cmd_output.stdout
         seen: set[str] = set()
-        ordered: list[str] = []
+        ordered: Sequence[str] = []
         for match in c.Infra.MISSING_IMPORT_RE.finditer(output):
             name = match.group(1).strip()
             if name and name not in seen:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from operator import itemgetter
 from pathlib import Path
 from typing import Final, TextIO
@@ -135,7 +135,7 @@ class FlextInfraUtilitiesOutput:
         """Render a human-readable namespace enforcement report."""
         max_loose = c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS
         max_imports = c.Infra.NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS
-        lines: list[str] = [
+        lines: Sequence[str] = [
             f"Workspace: {report.workspace}",
             f"Projects scanned: {len(report.projects)}",
             f"Files scanned: {report.total_files_scanned}",
@@ -286,7 +286,7 @@ class FlextInfraUtilitiesOutput:
     def render_census_report(report: m.Infra.UtilitiesCensusReport) -> str:
         """Render a human-readable census report."""
         sep = "=" * 110
-        lines: list[str] = [
+        lines: Sequence[str] = [
             sep,
             "FLEXT MRO Family Method Usage Census",
             "Engine: libcst + stdlib ast | Infrastructure: flext_infra",

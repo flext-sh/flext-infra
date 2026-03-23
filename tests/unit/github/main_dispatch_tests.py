@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -28,7 +29,7 @@ def _cli(tmp_path: Path) -> u.Infra.CliArgs:
 
 
 def _pr_args(**overrides: str | bool) -> m.Infra.PrWorkspaceArgs:
-    defaults: dict[str, str | bool] = {
+    defaults: Mapping[str, str | bool] = {
         "include_root": True,
         "branch": "",
         "checkpoint": True,
@@ -94,9 +95,11 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: dict[str, dict[str, str]] = {}
+        captured: Mapping[str, Mapping[str, str]] = {}
 
-        def _fake_orchestrate(**kw: dict[str, str]) -> r[m.Infra.PrOrchestrationResult]:
+        def _fake_orchestrate(
+            **kw: Mapping[str, str],
+        ) -> r[m.Infra.PrOrchestrationResult]:
             captured.update(kw)
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
@@ -117,7 +120,7 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: dict[str, str] = {}
+        captured: Mapping[str, str] = {}
 
         def _fake_orchestrate(**kw: str) -> r[m.Infra.PrOrchestrationResult]:
             captured.update(kw)
@@ -137,7 +140,7 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: dict[str, bool] = {}
+        captured: Mapping[str, bool] = {}
 
         def _fake_orchestrate(**kw: bool) -> r[m.Infra.PrOrchestrationResult]:
             captured.update(kw)
@@ -157,7 +160,7 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: dict[str, bool] = {}
+        captured: Mapping[str, bool] = {}
 
         def _fake_orchestrate(**kw: bool) -> r[m.Infra.PrOrchestrationResult]:
             captured.update(kw)

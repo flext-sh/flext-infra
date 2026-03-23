@@ -12,6 +12,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -163,7 +164,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
     def _ensure_gitignore_entries(
         self,
         workspace_root: Path,
-        required: list[str],
+        required: Sequence[str],
     ) -> r[bool]:
         """Idempotently add missing .gitignore entries.
 
@@ -180,7 +181,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         """
         gitignore = workspace_root / c.Infra.Files.GITIGNORE
         try:
-            existing_lines: list[str] = []
+            existing_lines: Sequence[str] = []
             if gitignore.exists():
                 existing_lines = gitignore.read_text(
                     encoding=c.Infra.Encoding.DEFAULT,

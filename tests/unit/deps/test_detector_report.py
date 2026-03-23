@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import types
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,7 @@ class _ReportStub:
     def __init__(self, raw_count: int) -> None:
         self._raw_count = raw_count
 
-    def model_dump(self) -> dict[str, dict[str, int]]:
+    def model_dump(self) -> Mapping[str, Mapping[str, int]]:
         return {"deptry": {"raw_count": self._raw_count}}
 
 
@@ -28,34 +29,34 @@ class _DepsStub:
         self,
         root: Path,
         *,
-        projects_filter: list[str] | None = None,
-    ) -> r[list[Path]]:
+        projects_filter: Sequence[str] | None = None,
+    ) -> r[Sequence[Path]]:
         _ = root
         _ = projects_filter
-        return r[list[Path]].ok([self._project])
+        return r[Sequence[Path]].ok([self._project])
 
     def run_deptry(
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[tuple[list[dict[str, str]], int]]:
+    ) -> r[tuple[Sequence[Mapping[str, str]], int]]:
         _ = project_path
         _ = venv_bin
-        return r[tuple[list[dict[str, str]], int]].ok(([], 0))
+        return r[tuple[Sequence[Mapping[str, str]], int]].ok(([], 0))
 
     def build_project_report(
         self,
         project_name: str,
-        issues: list[dict[str, str]],
+        issues: Sequence[Mapping[str, str]],
     ) -> _ReportStub:
         _ = project_name
         _ = issues
         return _ReportStub(self._raw_count)
 
-    def run_pip_check(self, root: Path, venv_bin: Path) -> r[tuple[list[str], int]]:
+    def run_pip_check(self, root: Path, venv_bin: Path) -> r[tuple[Sequence[str], int]]:
         _ = root
         _ = venv_bin
-        return r[tuple[list[str], int]].ok(([], self._pip_exit))
+        return r[tuple[Sequence[str], int]].ok(([], self._pip_exit))
 
 
 def _setup(
@@ -87,11 +88,11 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        call_paths: list[str] = []
+        call_paths: Sequence[str] = []
 
         def _write_json(
             path: Path,
-            payload: dict[str, dict[str, dict[str, int]]],
+            payload: Mapping[str, Mapping[str, Mapping[str, int]]],
         ) -> r[bool]:
             _ = payload
             call_paths.append(str(path))
@@ -169,7 +170,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
     ) -> None:
         def _write_json_fail(
             path: Path,
-            payload: dict[str, dict[str, dict[str, int]]],
+            payload: Mapping[str, Mapping[str, Mapping[str, int]]],
         ) -> r[bool]:
             del path
             del payload

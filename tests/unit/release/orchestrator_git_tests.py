@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
@@ -49,7 +50,7 @@ class TestCreateBranches:
         monkeypatch.setattr(
             FakeUtilsNamespace.Infra,
             "resolve_projects",
-            classmethod(lambda cls, ws, names: r[list[SimpleNamespace]].ok([])),
+            classmethod(lambda cls, ws, names: r[Sequence[SimpleNamespace]].ok([])),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator._create_branches(workspace_root, "1.0.0", []))
@@ -77,7 +78,7 @@ class TestCreateBranches:
             FakeUtilsNamespace.Infra,
             "resolve_projects",
             classmethod(
-                lambda cls, ws, names: r[list[SimpleNamespace]].ok([mock_project]),
+                lambda cls, ws, names: r[Sequence[SimpleNamespace]].ok([mock_project]),
             ),
         )
         orchestrator = FlextInfraReleaseOrchestrator()

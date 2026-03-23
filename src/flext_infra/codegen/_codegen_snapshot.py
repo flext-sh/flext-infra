@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import operator
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -29,8 +29,8 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         return None
 
     @staticmethod
-    def _snapshot_init_files(*, project_path: Path) -> dict[str, str]:
-        snapshot: dict[str, str] = {}
+    def _snapshot_init_files(*, project_path: Path) -> Mapping[str, str]:
+        snapshot: Mapping[str, str] = {}
         for root_name in c.Infra.MRO_SCAN_DIRECTORIES:
             root = project_path / root_name
             if not root.is_dir():
@@ -48,8 +48,8 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         return snapshot
 
     @staticmethod
-    def _snapshot_files(*, file_paths: Sequence[Path]) -> dict[str, str]:
-        snapshot: dict[str, str] = {}
+    def _snapshot_files(*, file_paths: Sequence[Path]) -> Mapping[str, str]:
+        snapshot: Mapping[str, str] = {}
         for file_path in file_paths:
             try:
                 snapshot[str(file_path)] = file_path.read_text(
@@ -62,7 +62,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
     @staticmethod
     def _detect_changed_files(
         *,
-        before_snapshot: dict[str, str],
+        before_snapshot: Mapping[str, str],
         file_paths: Sequence[Path],
     ) -> set[str]:
         changed: set[str] = set()
@@ -83,7 +83,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         source_path: Path,
         target_path: Path,
         nodes_moved: Sequence[ast.stmt],
-        moved_names: list[str],
+        moved_names: Sequence[str],
         source_tree: ast.Module,
         pkg_name: str,
         target_module: str,
@@ -96,8 +96,8 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         source_lines = source_text.splitlines()
         target_text = target_path.read_text(encoding=encoding)
 
-        extracted: list[str] = []
-        ranges: list[tuple[int, int]] = []
+        extracted: Sequence[str] = []
+        ranges: Sequence[tuple[int, int]] = []
         for node in nodes_moved:
             start = node.lineno
             end = node.end_lineno or node.lineno
@@ -144,17 +144,17 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         FlextInfraUtilitiesFormatting.run_ruff_fix(target_path)
 
     @staticmethod
-    def snapshot_init_files(*, project_path: Path) -> dict[str, str]:
+    def snapshot_init_files(*, project_path: Path) -> Mapping[str, str]:
         return FlextInfraCodegenSnapshot._snapshot_init_files(project_path=project_path)
 
     @staticmethod
-    def snapshot_files(*, file_paths: Sequence[Path]) -> dict[str, str]:
+    def snapshot_files(*, file_paths: Sequence[Path]) -> Mapping[str, str]:
         return FlextInfraCodegenSnapshot._snapshot_files(file_paths=file_paths)
 
     @staticmethod
     def detect_changed_files(
         *,
-        before_snapshot: dict[str, str],
+        before_snapshot: Mapping[str, str],
         file_paths: Sequence[Path],
     ) -> set[str]:
         return FlextInfraCodegenSnapshot._detect_changed_files(
@@ -168,7 +168,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         source_path: Path,
         target_path: Path,
         nodes_moved: Sequence[ast.stmt],
-        moved_names: list[str],
+        moved_names: Sequence[str],
         source_tree: ast.Module,
         pkg_name: str,
         target_module: str,

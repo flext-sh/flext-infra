@@ -9,7 +9,7 @@ from __future__ import annotations
 import contextlib
 import shutil
 import time
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -87,27 +87,27 @@ class FlextInfraUtilitiesGithub(
         report_path: Path | None = None,
         apply: bool = False,
         prune: bool = False,
-    ) -> r[list[m.Infra.SyncOperation]]:
+    ) -> r[Sequence[m.Infra.SyncOperation]]:
         """Sync workflows across all workspace projects."""
         source_result = cls._github_resolve_source_workflow(
             workspace_root,
             source_workflow,
         )
         if source_result.is_failure:
-            return r[list[m.Infra.SyncOperation]].fail(
+            return r[Sequence[m.Infra.SyncOperation]].fail(
                 source_result.error or "source resolution failed",
             )
         template_result = cls._github_render_template(source_result.value)
         if template_result.is_failure:
-            return r[list[m.Infra.SyncOperation]].fail(
+            return r[Sequence[m.Infra.SyncOperation]].fail(
                 template_result.error or "template render failed",
             )
         projects_result = cls.resolve_projects(workspace_root, [])
         if projects_result.is_failure:
-            return r[list[m.Infra.SyncOperation]].fail(
+            return r[Sequence[m.Infra.SyncOperation]].fail(
                 projects_result.error or "project discovery failed",
             )
-        all_operations: list[m.Infra.SyncOperation] = []
+        all_operations: Sequence[m.Infra.SyncOperation] = []
         for project in projects_result.value:
             ops_result = cls._github_sync_project(
                 project_name=project.name,
@@ -122,7 +122,7 @@ class FlextInfraUtilitiesGithub(
             cls._github_write_report(
                 report_path, apply=apply, operations=all_operations
             )
-        return r[list[m.Infra.SyncOperation]].ok(all_operations)
+        return r[Sequence[m.Infra.SyncOperation]].ok(all_operations)
 
     @classmethod
     def _github_render_template(cls, template_path: Path) -> r[str]:
@@ -165,8 +165,8 @@ class FlextInfraUtilitiesGithub(
         rendered_template: str,
         apply: bool = False,
         prune: bool = False,
-    ) -> r[list[m.Infra.SyncOperation]]:
-        operations: list[m.Infra.SyncOperation] = []
+    ) -> r[Sequence[m.Infra.SyncOperation]]:
+        operations: Sequence[m.Infra.SyncOperation] = []
         workflows_dir = project_root / ".github" / "workflows"
         destination = workflows_dir / "ci.yml"
         try:
@@ -228,8 +228,8 @@ class FlextInfraUtilitiesGithub(
                         ),
                     )
         except OSError as exc:
-            return r[list[m.Infra.SyncOperation]].fail(f"sync error: {exc}")
-        return r[list[m.Infra.SyncOperation]].ok(operations)
+            return r[Sequence[m.Infra.SyncOperation]].fail(f"sync error: {exc}")
+        return r[Sequence[m.Infra.SyncOperation]].ok(operations)
 
     @classmethod
     def _github_write_report(
@@ -237,13 +237,13 @@ class FlextInfraUtilitiesGithub(
         report_path: Path,
         *,
         apply: bool,
-        operations: list[m.Infra.SyncOperation],
+        operations: Sequence[m.Infra.SyncOperation],
     ) -> None:
         by_action: MutableMapping[str, int] = {}
         for op in operations:
             by_action[op.action] = by_action.get(op.action, 0) + 1
-        summary_dict: dict[str, JsonValue] = dict(by_action)
-        ops_list: list[JsonValue] = [
+        summary_dict: Mapping[str, JsonValue] = dict(by_action)
+        ops_list: Sequence[JsonValue] = [
             {
                 c.Infra.Toml.PROJECT: op.project,
                 c.Infra.Toml.PATH: op.path,
@@ -264,7 +264,7 @@ class FlextInfraUtilitiesGithub(
         cls,
         workspace_root: Path,
         *,
-        projects: list[str] | None = None,
+        projects: Sequence[str] | None = None,
         include_root: bool = True,
         branch: str = "",
         checkpoint: bool = True,
@@ -285,7 +285,7 @@ class FlextInfraUtilitiesGithub(
             "base": c.Infra.Git.MAIN,
         }
         failures = 0
-        results: list[m.Infra.PrExecutionResultModel] = []
+        results: Sequence[m.Infra.PrExecutionResultModel] = []
         for repo_root in repos:
             if branch:
                 cls.git_checkout(repo_root, branch)

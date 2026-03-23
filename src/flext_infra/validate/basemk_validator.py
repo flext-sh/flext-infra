@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraBaseMkGenerator, c, m, r
@@ -68,7 +69,7 @@ class FlextInfraBaseMkValidator:
                 )
             generated_hash = self._sha256(gen_result.value)
             existing_hash = self._sha256_file(source)
-            violations: list[str] = []
+            violations: Sequence[str] = []
             if generated_hash != existing_hash:
                 violations.append(
                     "root base.mk is stale (does not match generated template)",

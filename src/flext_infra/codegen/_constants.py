@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Final
 
 
@@ -44,7 +45,7 @@ class FlextInfraCodegenConstants:
         r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)",
     )
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
-    ALIAS_TO_SUFFIX: Final[dict[str, str]] = {
+    ALIAS_TO_SUFFIX: Final[Mapping[str, str]] = {
         "c": "Constants",
         "d": "Decorators",
         "e": "Exceptions",

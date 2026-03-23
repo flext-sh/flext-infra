@@ -159,7 +159,7 @@ class FlextInfraRefactorConstants:
         "u": "Utilities",
     }
     "Facade family letter → class suffix mapping."
-    FAMILY_FILES: ClassVar[dict[str, str]] = {
+    FAMILY_FILES: ClassVar[Mapping[str, str]] = {
         "c": "*constants.py",
         "t": "*typings.py",
         "p": "*protocols.py",
@@ -214,7 +214,7 @@ class FlextInfraRefactorConstants:
         "low": 0.55,
     }
     "Confidence level → numeric score mapping for violations."
-    CONFIDENCE_RANKS: ClassVar[dict[str, int]] = {"low": 0, "medium": 1, "high": 2}
+    CONFIDENCE_RANKS: ClassVar[Mapping[str, int]] = {"low": 0, "medium": 1, "high": 2}
     "Confidence level → priority rank mapping."
     REQUIRED_CLASS_TARGETS: ClassVar[tuple[str, ...]] = (
         "TimeoutEnforcer",
@@ -282,10 +282,10 @@ class FlextInfraRefactorConstants:
     NAMESPACE_MIN_ALIAS_LENGTH: ClassVar[int] = 2
     NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS: ClassVar[int] = 10
     NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS: ClassVar[int] = 5
-    NAMESPACE_FILE_TO_FAMILY: ClassVar[dict[str, str]] = {
+    NAMESPACE_FILE_TO_FAMILY: ClassVar[Mapping[str, str]] = {
         f"{suffix.lower()}.py": alias for alias, suffix in FAMILY_SUFFIXES.items()
     }
-    NAMESPACE_FAMILY_EXPECTED_ALIAS: ClassVar[dict[str, tuple[str, str]]] = {
+    NAMESPACE_FAMILY_EXPECTED_ALIAS: ClassVar[Mapping[str, tuple[str, str]]] = {
         f"{suffix.lower()}.py": (alias, suffix)
         for alias, suffix in FAMILY_SUFFIXES.items()
     }

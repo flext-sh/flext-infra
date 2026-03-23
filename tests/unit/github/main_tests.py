@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -16,8 +17,8 @@ class TestRunWorkflows:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             u.Infra,
-            "github_sync_workspace_workflows",
-            staticmethod(lambda **kw: r[list[m.Infra.SyncOperation]].ok([])),
+            "github_sync_workspace_workflist",
+            staticmethod(lambda **kw: r[Sequence[m.Infra.SyncOperation]].ok([])),
         )
         cli = u.Infra.resolve(type("NS", (), {"workspace": tmp_path, "apply": False})())
         assert run_workflows(cli, prune=False, report=None) == 0
@@ -25,9 +26,9 @@ class TestRunWorkflows:
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             u.Infra,
-            "github_sync_workspace_workflows",
+            "github_sync_workspace_workflist",
             staticmethod(
-                lambda **kw: r[list[m.Infra.SyncOperation]].fail("sync failed"),
+                lambda **kw: r[Sequence[m.Infra.SyncOperation]].fail("sync failed"),
             ),
         )
         cli = u.Infra.resolve(type("NS", (), {"workspace": tmp_path, "apply": False})())
@@ -40,9 +41,9 @@ class TestRunWorkflows:
     ) -> None:
         captured: dict[str, bool] = {}
 
-        def _fake_sync(**kw: bool) -> r[list[m.Infra.SyncOperation]]:
+        def _fake_sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
             captured.update(kw)
-            return r[list[m.Infra.SyncOperation]].ok([])
+            return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
             u.Infra,
@@ -60,9 +61,9 @@ class TestRunWorkflows:
     ) -> None:
         captured: dict[str, bool] = {}
 
-        def _fake_sync(**kw: bool) -> r[list[m.Infra.SyncOperation]]:
+        def _fake_sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
             captured.update(kw)
-            return r[list[m.Infra.SyncOperation]].ok([])
+            return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
             u.Infra,
@@ -76,9 +77,9 @@ class TestRunWorkflows:
     def test_with_report(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         captured: dict[str, Path | None] = {}
 
-        def _fake_sync(**kw: Path | None) -> r[list[m.Infra.SyncOperation]]:
+        def _fake_sync(**kw: Path | None) -> r[Sequence[m.Infra.SyncOperation]]:
             captured.update(kw)
-            return r[list[m.Infra.SyncOperation]].ok([])
+            return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
             u.Infra,
@@ -121,7 +122,7 @@ class TestRunLint:
         assert run_lint(cli, report=None, strict=False) == 1
 
     def test_with_report(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        captured: dict[str, Path | None] = {}
+        captured: Mapping[str, Path | None] = {}
         ok = self._ok_lint()
 
         def _fake_lint(**kw: Path | None) -> r[m.Infra.WorkflowLintResult]:
@@ -143,7 +144,7 @@ class TestRunLint:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: dict[str, bool] = {}
+        captured: Mapping[str, bool] = {}
         ok = self._ok_lint()
 
         def _fake_lint(**kw: bool) -> r[m.Infra.WorkflowLintResult]:

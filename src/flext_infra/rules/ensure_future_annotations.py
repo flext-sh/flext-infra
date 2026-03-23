@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -18,9 +19,9 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         """Ensure future annotations import exists after docstring/header."""
-        changes: list[str] = []
+        changes: Sequence[str] = []
         body = list(tree.body)
         insert_idx = 0
         has_docstring = False
@@ -34,8 +35,8 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
             has_docstring = True
             insert_idx = 1
         existing_annotations_stmt: cst.SimpleStatementLine | None = None
-        non_annotation_future_stmts: list[cst.BaseStatement] = []
-        body_without_future: list[cst.BaseStatement] = []
+        non_annotation_future_stmts: Sequence[cst.BaseStatement] = []
+        body_without_future: Sequence[cst.BaseStatement] = []
         for stmt in body:
             if not isinstance(stmt, cst.SimpleStatementLine):
                 body_without_future.append(stmt)

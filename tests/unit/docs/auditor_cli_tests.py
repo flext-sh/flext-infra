@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -31,8 +32,8 @@ class TestAuditorScopeFailure:
         def mock_build_scopes(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.DocScope]]:
-            return r[list[m.Infra.DocScope]].fail("scope build error")
+        ) -> r[Sequence[m.Infra.DocScope]]:
+            return r[Sequence[m.Infra.DocScope]].fail("scope build error")
 
         monkeypatch.setattr(FlextInfraUtilitiesDocs, "build_scopes", mock_build_scopes)
         result = auditor.audit(tmp_path)
@@ -52,8 +53,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.DocsPhaseReport]]:
-            return r[list[m.Infra.DocsPhaseReport]].fail("audit error")
+        ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail("audit error")
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--workspace", str(tmp_path)])
@@ -78,8 +79,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.DocsPhaseReport]]:
-            return r[list[m.Infra.DocsPhaseReport]].ok([failed_report])
+        ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+            return r[Sequence[m.Infra.DocsPhaseReport]].ok([failed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--workspace", str(tmp_path)])
@@ -104,8 +105,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.DocsPhaseReport]]:
-            return r[list[m.Infra.DocsPhaseReport]].ok([passed_report])
+        ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+            return r[Sequence[m.Infra.DocsPhaseReport]].ok([passed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--workspace", str(tmp_path)])
@@ -130,8 +131,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.DocsPhaseReport]]:
-            return r[list[m.Infra.DocsPhaseReport]].ok([passed_report])
+        ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+            return r[Sequence[m.Infra.DocsPhaseReport]].ok([passed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(
@@ -170,8 +171,8 @@ class TestAuditorMainCli:
         def mock_audit(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.DocsPhaseReport]]:
-            return r[list[m.Infra.DocsPhaseReport]].ok([passed_report])
+        ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+            return r[Sequence[m.Infra.DocsPhaseReport]].ok([passed_report])
 
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", mock_audit)
         monkeypatch.setattr(sys, "argv", ["auditor", "--workspace", str(tmp_path)])

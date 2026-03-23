@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import operator
 import re
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Final, override
 
@@ -60,8 +61,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             self._render = FlextInfraUtilitiesCodegenConstantDetection.RenderContext(
                 Path(file_path).read_text("utf-8"),
             )
-            self._class_stack: list[str] = []
-            self.definitions: list[m.Infra.ConstantDefinition] = []
+            self._class_stack: Sequence[str] = []
+            self.definitions: Sequence[m.Infra.ConstantDefinition] = []
 
         @override
         def visit_ClassDef(self, node: cst.ClassDef) -> None:
@@ -110,8 +111,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                 Path(file_path).read_text("utf-8"),
             )
             self.used_constants: set[str] = set()
-            self.direct_refs: list[m.Infra.DirectConstantRef] = []
-            self.all_constant_refs: list[tuple[str, int]] = []  # (name, line)
+            self.direct_refs: Sequence[m.Infra.DirectConstantRef] = []
+            self.all_constant_refs: Sequence[tuple[str, int]] = []  # (name, line)
 
         @override
         def visit_Attribute(self, node: cst.Attribute) -> None:
@@ -161,7 +162,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                 self.all_constant_refs.append((constant_name, line))
 
     @staticmethod
-    def attribute_chain(expr: cst.BaseExpression) -> list[str]:
+    def attribute_chain(expr: cst.BaseExpression) -> Sequence[str]:
         if isinstance(expr, cst.Name):
             return [expr.value]
         if isinstance(expr, cst.Attribute):
@@ -235,7 +236,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     def extract_constant_definitions(
         file_path: Path,
         project: str,
-    ) -> list[m.Infra.ConstantDefinition]:
+    ) -> Sequence[m.Infra.ConstantDefinition]:
         tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if tree is None:
             return []
@@ -250,7 +251,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     def extract_all_constant_definitions(
         root_path: Path,
         exclude_packages: frozenset[str] | None = None,
-    ) -> dict[str, list[m.Infra.ConstantDefinition]]:
+    ) -> Mapping[str, Sequence[m.Infra.ConstantDefinition]]:
         """Extract all constant definitions from all Python files (generic).
 
         Scans recursively for files named constants.py or any class with Final attrs.
@@ -266,7 +267,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if exclude_packages is None:
             exclude_packages = frozenset()
 
-        all_defs: dict[str, list[m.Infra.ConstantDefinition]] = {}
+        all_defs: Mapping[str, Sequence[m.Infra.ConstantDefinition]] = {}
 
         for py_file in root_path.rglob("*.py"):
             # Skip excluded packages
@@ -297,7 +298,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         *,
         target_class: str = "",
         collect_all_refs: bool = False,
-    ) -> tuple[set[str], list[m.Infra.DirectConstantRef], list[tuple[str, int]]]:
+    ) -> tuple[
+        set[str], Sequence[m.Infra.DirectConstantRef], Sequence[tuple[str, int]]
+    ]:
         """Scan constant usages in a file.
 
         Args:
@@ -335,7 +338,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     def scan_all_constant_usages(
         root_path: Path,
         exclude_packages: frozenset[str] | None = None,
-    ) -> dict[str, list[tuple[str, int]]]:
+    ) -> Mapping[str, Sequence[tuple[str, int]]]:
         """Scan all constant usages across workspace (generic).
 
         Args:
@@ -349,7 +352,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if exclude_packages is None:
             exclude_packages = frozenset()
 
-        usage_map: dict[str, list[tuple[str, int]]] = {}
+        usage_map: Mapping[str, Sequence[tuple[str, int]]] = {}
 
         for py_file in root_path.rglob("*.py"):
             if any(excl in py_file.parts for excl in exclude_packages):
@@ -378,8 +381,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
     @staticmethod
     def detect_hardcoded_canonicals(
-        definitions: list[m.Infra.ConstantDefinition],
-    ) -> list[m.Infra.ConstantDefinition]:
+        definitions: Sequence[m.Infra.ConstantDefinition],
+    ) -> Sequence[m.Infra.ConstantDefinition]:
         return [
             definition
             for definition in definitions
@@ -391,9 +394,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
     @staticmethod
     def detect_unused_constants(
-        definitions: list[m.Infra.ConstantDefinition],
+        definitions: Sequence[m.Infra.ConstantDefinition],
         all_used_names: set[str],
-    ) -> list[m.Infra.UnusedConstant]:
+    ) -> Sequence[m.Infra.UnusedConstant]:
         return [
             m.Infra.UnusedConstant(
                 name=definition.name,
@@ -409,8 +412,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
     @staticmethod
     def detect_duplicate_constants(
-        definitions: list[m.Infra.ConstantDefinition],
-    ) -> list[m.Infra.DuplicateConstantGroup]:
+        definitions: Sequence[m.Infra.ConstantDefinition],
+    ) -> Sequence[m.Infra.DuplicateConstantGroup]:
         """Detect duplicate constants by name and value across projects.
 
         Groups constants that have:
@@ -418,21 +421,21 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         - Same value (potential consolidation candidates)
         """
         # Group by name
-        by_name: dict[str, list[m.Infra.ConstantDefinition]] = {}
+        by_name: Mapping[str, Sequence[m.Infra.ConstantDefinition]] = {}
         for defn in definitions:
             if defn.name not in by_name:
                 by_name[defn.name] = []
             by_name[defn.name].append(defn)
 
         # Group by value (for value duplicates)
-        by_value: dict[str, list[m.Infra.ConstantDefinition]] = {}
+        by_value: Mapping[str, Sequence[m.Infra.ConstantDefinition]] = {}
         for defn in definitions:
             value_key = defn.value_repr
             if value_key not in by_value:
                 by_value[value_key] = []
             by_value[value_key].append(defn)
 
-        duplicates: list[m.Infra.DuplicateConstantGroup] = []
+        duplicates: Sequence[m.Infra.DuplicateConstantGroup] = []
 
         # Name-based duplicates (at least 2 definitions)
         for name, defs in by_name.items():
@@ -490,7 +493,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     @staticmethod
     def extract_class_attributes_with_mro(
         class_path: str,
-    ) -> dict[str, m.Infra.ConstantDefinition]:
+    ) -> Mapping[str, m.Infra.ConstantDefinition]:
         """Extract all attributes from a class including MRO inheritance.
 
         Includes: constants, enums, classes, types, and other public attributes.
@@ -513,7 +516,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         except (ImportError, AttributeError, ValueError):
             return {}
 
-        result: dict[str, m.Infra.ConstantDefinition] = {}
+        result: Mapping[str, m.Infra.ConstantDefinition] = {}
         seen_names: set[str] = set()
 
         # Walk MRO to get all attributes (constants, enums, classes, types)
@@ -552,7 +555,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         class_name: str,
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
         max_files: int = 10000,
-    ) -> tuple[set[str], dict[str, list[tuple[str, int]]]]:
+    ) -> tuple[set[str], Mapping[str, Sequence[tuple[str, int]]]]:
         """Scan workspace for usages of a specific class's attributes.
 
         Args:
@@ -566,7 +569,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
         """
         used_names: set[str] = set()
-        usage_map: dict[str, list[tuple[str, int]]] = {}
+        usage_map: Mapping[str, Sequence[tuple[str, int]]] = {}
 
         # Fast lookup for class usages
         search_prefix = f"{class_name}."
@@ -619,9 +622,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         exclude_patterns: frozenset[str],
         max_files: int,
     ) -> tuple[
-        dict[str, m.Infra.ConstantDefinition],
+        Mapping[str, m.Infra.ConstantDefinition],
         set[str],
-        dict[str, list[tuple[str, int]]],
+        Mapping[str, Sequence[tuple[str, int]]],
     ]:
         """Shared logic: extract attributes and usages for a class."""
         attrs = FlextInfraUtilitiesCodegenConstantDetection.extract_class_attributes_with_mro(
@@ -643,12 +646,12 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         root_path: Path,
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
         max_files: int = 5000,
-    ) -> dict[
+    ) -> Mapping[
         str,
         int
-        | dict[str, int | dict[str, int]]
-        | dict[str, dict[str, int]]
-        | dict[str, list[tuple[str, int]]],
+        | Mapping[str, int | Mapping[str, int]]
+        | Mapping[str, Mapping[str, int]]
+        | Mapping[str, Sequence[tuple[str, int]]],
     ]:
         """Comprehensive census of all objects in a class."""
         attrs, used_attrs, usage_map = (
@@ -659,7 +662,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if not attrs:
             return {}
 
-        by_type: dict[str, dict[str, int]] = {}
+        by_type: Mapping[str, Mapping[str, int]] = {}
         for attr_name, attr_def in attrs.items():
             attr_type = attr_def.type_annotation
             if attr_type not in by_type:
@@ -684,7 +687,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         root_path: Path,
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
         max_files: int = 2000,
-    ) -> list[dict[str, str | int | list[dict[str, str | int]]]]:
+    ) -> Sequence[Mapping[str, str | int | Sequence[Mapping[str, str | int]]]]:
         """Propose fixes to deduplicate constant values across a class."""
         attrs, _, usage_map = (
             FlextInfraUtilitiesCodegenConstantDetection._analyze_class_internal(
@@ -695,7 +698,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             return []
 
         # Group by value
-        by_value: dict[str, list[dict[str, str | int]]] = {}
+        by_value: Mapping[str, Sequence[Mapping[str, str | int]]] = {}
         for name, defn in attrs.items():
             value_key = defn.value_repr[:100]
             if value_key not in by_value:
@@ -707,7 +710,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             })
 
         # Create fix proposals for duplicates
-        fixes: list[dict[str, str | int | list[dict[str, str | int]]]] = []
+        fixes: Sequence[
+            Mapping[str, str | int | Sequence[Mapping[str, str | int]]]
+        ] = []
         for value, names_list in by_value.items():
             if len(names_list) <= 1:
                 continue  # Not a duplicate
@@ -740,12 +745,12 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
     @staticmethod
     def apply_deduplication_fix(
-        fix_proposal: dict[str, str | int | list[dict[str, str | int]]],
+        fix_proposal: Mapping[str, str | int | Sequence[Mapping[str, str | int]]],
         root_path: Path,
         class_path: str,
         *,
         dry_run: bool = True,
-    ) -> dict[str, str | int | list[str] | list[dict[str, str | int]]]:
+    ) -> Mapping[str, str | int | Sequence[str] | Sequence[Mapping[str, str | int]]]:
         """Apply a single deduplication fix.
 
         Returns dict with: status, canonical, replaced, files_modified
@@ -761,9 +766,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         )
 
         files_modified = 0
-        replaced_names: list[str] = []
-        replaced_details: list[
-            dict[str, str | int]
+        replaced_names: Sequence[str] = []
+        replaced_details: Sequence[
+            Mapping[str, str | int]
         ] = []  # Track file, line, old_name for each replacement
 
         # Replace each duplicate

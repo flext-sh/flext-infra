@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -73,7 +74,7 @@ class FlextInfraDocGenerator:
         projects: str | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         apply: bool = False,
-    ) -> r[list[m.Infra.DocsPhaseReport]]:
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Generate docs across project scopes.
 
         Args:
@@ -94,10 +95,10 @@ class FlextInfraDocGenerator:
             output_dir=output_dir,
         )
         if scopes_result.is_failure:
-            return r[list[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: list[m.Infra.DocsPhaseReport] = []
+        reports: Sequence[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._generate_scope(
                 scope,
@@ -105,11 +106,11 @@ class FlextInfraDocGenerator:
                 workspace_root=workspace_root,
             )
             reports.append(report)
-        return r[list[m.Infra.DocsPhaseReport]].ok(reports)
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
 
     def _build_toc(self, content: str) -> str:
         """Build a markdown TOC from level-2 and level-3 headings."""
-        items: list[str] = []
+        items: Sequence[str] = []
         for level, title in u.Infra.HEADING_H2_H3_RE.findall(content):
             anchor = self._normalize_anchor(title)
             if not anchor:
@@ -126,12 +127,12 @@ class FlextInfraDocGenerator:
         workspace_root: Path,
         *,
         apply: bool,
-    ) -> list[m.Infra.GeneratedFile]:
+    ) -> Sequence[m.Infra.GeneratedFile]:
         """Copy workspace guides into a project, injecting the project name."""
         source_dir = workspace_root / "docs/guides"
         if not source_dir.exists():
             return []
-        files: list[m.Infra.GeneratedFile] = []
+        files: Sequence[m.Infra.GeneratedFile] = []
         for source in sorted(source_dir.glob("*.md")):
             rendered = self._project_guide_content(
                 content=source.read_text(encoding=c.Infra.Encoding.DEFAULT),
@@ -152,7 +153,7 @@ class FlextInfraDocGenerator:
         scope: m.Infra.DocScope,
         *,
         apply: bool,
-    ) -> list[m.Infra.GeneratedFile]:
+    ) -> Sequence[m.Infra.GeneratedFile]:
         """Generate mkdocs.yml for projects that do not have one yet."""
         mkdocs_path = scope.path / "mkdocs.yml"
         if mkdocs_path.exists():
@@ -193,7 +194,7 @@ class FlextInfraDocGenerator:
         scope: m.Infra.DocScope,
         *,
         apply: bool,
-    ) -> list[m.Infra.GeneratedFile]:
+    ) -> Sequence[m.Infra.GeneratedFile]:
         """Generate placeholder docs at the workspace root."""
         changelog = self._update_toc(
             "# Changelog\n\nThis file is managed by `make docs DOCS_PHASE=generate`.\n",
@@ -303,7 +304,7 @@ class FlextInfraDocGenerator:
     ) -> str:
         """Render workspace guide content with project-specific heading."""
         lines = content.splitlines()
-        out: list[str] = [
+        out: Sequence[str] = [
             f"<!-- Generated from docs/guides/{source_name} for {project}. -->",
             "<!-- Source of truth: workspace docs/guides/. -->",
             "",

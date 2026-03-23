@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -120,7 +121,7 @@ class FlextInfraNamespaceValidator:
         try:
             files = self._discover_files(project_root, scan_tests=scan_tests)
             prefix = self._derive_prefix(project_root)
-            violations: list[str] = []
+            violations: Sequence[str] = []
             for filepath in files:
                 tree = self._parse_file(filepath)
                 if tree is None:
@@ -147,14 +148,16 @@ class FlextInfraNamespaceValidator:
                 f"Namespace validation failed: {exc}",
             )
 
-    def _check_rule_0(self, tree: ast.Module, filepath: Path, prefix: str) -> list[str]:
+    def _check_rule_0(
+        self, tree: ast.Module, filepath: Path, prefix: str
+    ) -> Sequence[str]:
         """Rule 0 — One namespace class per module.
 
         Checks that each module has exactly one top-level class whose name
         starts with the project prefix, and that all other top-level
         statements are on the allowlist.
         """
-        violations: list[str] = []
+        violations: Sequence[str] = []
         seq = 0
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         class_count = len(outer_classes)
@@ -182,7 +185,7 @@ class FlextInfraNamespaceValidator:
                 )
         return violations
 
-    def _check_rule_1(self, tree: ast.Module, filepath: Path) -> list[str]:
+    def _check_rule_1(self, tree: ast.Module, filepath: Path) -> Sequence[str]:
         """Rule 1 — Constants centralization.
 
         In ``constants.py``: outer class must inherit from a Constants base,
@@ -191,7 +194,7 @@ class FlextInfraNamespaceValidator:
         In other modules: no loose ``Final`` constants, no loose Enum classes,
         no loose collection constant assignments.
         """
-        violations: list[str] = []
+        violations: Sequence[str] = []
         seq = 0
         is_constants = filepath.name == "constants.py"
         if is_constants:
@@ -247,7 +250,7 @@ class FlextInfraNamespaceValidator:
                         )
         return violations
 
-    def _check_rule_2(self, tree: ast.Module, filepath: Path) -> list[str]:
+    def _check_rule_2(self, tree: ast.Module, filepath: Path) -> Sequence[str]:
         """Rule 2 — Types centralization.
 
         In ``typings.py``: outer class must inherit from a Types base,
@@ -256,7 +259,7 @@ class FlextInfraNamespaceValidator:
         In other modules: no TypeVar/ParamSpec/TypeVarTuple calls,
         no TypeAlias annotations, no PEP 695 TypeAlias statements.
         """
-        violations: list[str] = []
+        violations: Sequence[str] = []
         seq = 0
         is_typings = filepath.name == "typings.py"
         if is_typings:
@@ -310,9 +313,11 @@ class FlextInfraNamespaceValidator:
                     )
         return violations
 
-    def _discover_files(self, workspace_root: Path, *, scan_tests: bool) -> list[Path]:
+    def _discover_files(
+        self, workspace_root: Path, *, scan_tests: bool
+    ) -> Sequence[Path]:
         """Walk ``src/`` (and optionally ``tests/``) for non-exempt .py files."""
-        result: list[Path] = []
+        result: Sequence[Path] = []
         dirs_to_scan = [workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR]
         if scan_tests:
             dirs_to_scan.append(workspace_root / c.Infra.Directories.TESTS)

@@ -56,8 +56,8 @@ class FlextInfraUtilitiesIo:
                 "JSON root must be t.NormalizedValue"
             )
         try:
-            parser: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(
-                dict[str, JsonValue],
+            parser: TypeAdapter[Mapping[str, JsonValue]] = TypeAdapter(
+                Mapping[str, JsonValue],
             )
             data = parser.validate_python(loaded_obj)
             return r[Mapping[str, JsonValue]].ok(data)
@@ -123,11 +123,11 @@ class FlextInfraUtilitiesIo:
     @staticmethod
     def _sort_json_keys(data: JsonValue) -> JsonValue:
         if isinstance(data, dict):
-            dict_parser: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(
-                dict[str, JsonValue],
+            dict_parser: TypeAdapter[Mapping[str, JsonValue]] = TypeAdapter(
+                Mapping[str, JsonValue],
             )
             mapped_data = dict_parser.validate_python(data)
-            sorted_items: list[tuple[str, JsonValue]] = sorted(
+            sorted_items: Sequence[tuple[str, JsonValue]] = sorted(
                 mapped_data.items(),
                 key=operator.itemgetter(0),
             )
@@ -136,7 +136,9 @@ class FlextInfraUtilitiesIo:
                 for key, value in sorted_items
             }
         if isinstance(data, list):
-            list_parser: TypeAdapter[list[JsonValue]] = TypeAdapter(list[JsonValue])
+            list_parser: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(
+                Sequence[JsonValue]
+            )
             items = list_parser.validate_python(data)
             return [FlextInfraUtilitiesIo._sort_json_keys(item) for item in items]
         return data

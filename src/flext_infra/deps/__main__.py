@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 
 from flext_infra import output, u
@@ -23,8 +23,10 @@ _SUBCOMMAND_MODULES: Mapping[str, str] = MappingProxyType({
 
 
 class FlextInfraDepsCommand:
+    """CLI entry point for dependency management operations."""
+
     @staticmethod
-    def run(argv: list[str] | None = None) -> int:
+    def run(argv: Sequence[str] | None = None) -> int:
         """Dispatch to the appropriate deps subcommand."""
         parser, _ = u.Infra.create_subcommand_parser(
             "flext-infra deps",
@@ -54,7 +56,7 @@ class FlextInfraDepsCommand:
         return int(exit_code) if exit_code is not None else 0
 
 
-def _main_impl(argv: list[str] | None = None) -> int:
+def _main_impl(argv: Sequence[str] | None = None) -> int:
     return FlextInfraDepsCommand.run(argv)
 
 

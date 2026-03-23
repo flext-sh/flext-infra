@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -58,7 +59,7 @@ class FlextInfraDocValidator:
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         check: str = "all",
         apply: bool = False,
-    ) -> r[list[m.Infra.DocsPhaseReport]]:
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Run documentation validation across project scopes.
 
         Args:
@@ -73,26 +74,26 @@ class FlextInfraDocValidator:
             r with list of ValidateReport objects.
 
         """
-        scopes_result: r[list[m.Infra.DocScope]] = u.Infra.build_scopes(
+        scopes_result: r[Sequence[m.Infra.DocScope]] = u.Infra.build_scopes(
             workspace_root=workspace_root,
             project=project,
             projects=projects,
             output_dir=output_dir,
         )
         if scopes_result.is_failure:
-            return r[list[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: list[m.Infra.DocsPhaseReport] = []
+        reports: Sequence[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._validate_scope(scope, check=check, apply_mode=apply)
             reports.append(report)
-        return r[list[m.Infra.DocsPhaseReport]].ok(reports)
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
 
-    def _run_adr_skill_check(self, workspace_root: Path) -> tuple[int, list[str]]:
+    def _run_adr_skill_check(self, workspace_root: Path) -> tuple[int, Sequence[str]]:
         """Run ADR skill check and return exit code with missing skill names."""
         skills_root = workspace_root / ".claude/skills"
-        required: list[str] = []
+        required: Sequence[str] = []
         config = workspace_root / "docs/architecture/architecture_config.json"
         if config.exists():
             payload_result = u.Infra.read_json(config)
@@ -104,7 +105,7 @@ class FlextInfraDocValidator:
                 configured = docs_validation.get("required_skills")
                 if isinstance(configured, list):
                     try:
-                        required_items = TypeAdapter(list[str]).validate_python(
+                        required_items = TypeAdapter(Sequence[str]).validate_python(
                             configured,
                             strict=True,
                         )
@@ -113,7 +114,7 @@ class FlextInfraDocValidator:
                         required = []
         if not required:
             required = ["rules-docs", "scripts-maintenance", "readme-standardization"]
-        missing: list[str] = []
+        missing: Sequence[str] = []
         for name in required:
             skill = skills_root / name / "SKILL.md"
             if not skill.exists() or not self._has_adr_reference(skill):
@@ -130,7 +131,7 @@ class FlextInfraDocValidator:
         """Run validation for a single project scope."""
         status = c.Infra.Status.OK
         message = "validation passed"
-        missing_adr_skills: list[str] = []
+        missing_adr_skills: Sequence[str] = []
         config_exists = (
             scope.path / "docs/architecture/architecture_config.json"
         ).exists()
@@ -145,7 +146,7 @@ class FlextInfraDocValidator:
                 status = c.Infra.Status.FAIL
                 message = f"missing adr references in skills: {', '.join(missing)}"
         wrote_todo = self._maybe_write_todo(scope, apply_mode=apply_mode)
-        adr_skills_json: list[JsonValue] = list(missing_adr_skills)
+        adr_skills_json: Sequence[JsonValue] = list(missing_adr_skills)
         payload: JsonValue = {
             c.Infra.ReportKeys.SUMMARY: {
                 c.Infra.ReportKeys.SCOPE: scope.name,

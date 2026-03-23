@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -23,7 +23,7 @@ from tests import (
 _SRC_MODULE_FILES = FlextInfraCodegenTestProjectFactory.SRC_MODULE_FILES
 
 
-def _parse_class_names(source: str) -> list[str]:
+def _parse_class_names(source: str) -> Sequence[str]:
     """Extract all class names from Python source code via AST.
 
     Single Responsibility: parse and extract class definitions only.
@@ -44,7 +44,7 @@ def _validate_modules_parse(base_dir: Path, modules: Sequence[str]) -> None:
 
 
 def _validate_class_names(
-    base_dir: Path, filename_to_expected_class: dict[str, str]
+    base_dir: Path, filename_to_expected_class: Mapping[str, str]
 ) -> None:
     """Validate expected class names exist in modules.
 

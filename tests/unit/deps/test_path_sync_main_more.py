@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -27,7 +28,7 @@ def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
 
 class _OutputRecorder:
     def __init__(self) -> None:
-        self.calls: list[str] = []
+        self.calls: Sequence[str] = []
 
     def info(self, message: str) -> None:
         self.calls.append(message)
@@ -44,8 +45,8 @@ def test_main_project_invalid_toml(
 
     def _discover_project(
         _root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(
@@ -64,8 +65,8 @@ def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
     def _discover_project(
         _root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(
@@ -87,8 +88,8 @@ def test_main_project_non_string_name(
 
     def _discover_project(
         _root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
     monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
     monkeypatch.setattr(
@@ -102,8 +103,8 @@ def test_main_project_non_string_name(
 def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def _discover_fail(
         _root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        return r[list[m.Infra.ProjectInfo]].fail("discovery failed")
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].fail("discovery failed")
 
     monkeypatch.setattr(
         "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
@@ -116,8 +117,8 @@ def test_main_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
     def _discover_none(
         _root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        return r[list[m.Infra.ProjectInfo]].ok([])
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
     def _rewrite_ok(
         _self: FlextInfraDependencyPathSync,
@@ -127,9 +128,9 @@ def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
         internal_names: set[str],
         is_root: bool = False,
         dry_run: bool = False,
-    ) -> r[list[str]]:
+    ) -> r[Sequence[str]]:
         _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
-        return r[list[str]].ok([])
+        return r[Sequence[str]].ok([])
 
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
     monkeypatch.setattr(
@@ -159,8 +160,8 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
 
     def _discover_none(
         _root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        return r[list[m.Infra.ProjectInfo]].ok([])
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
     def _rewrite_changes(
         _self: FlextInfraDependencyPathSync,
@@ -170,9 +171,9 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         internal_names: set[str],
         is_root: bool = False,
         dry_run: bool = False,
-    ) -> r[list[str]]:
+    ) -> r[Sequence[str]]:
         _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
-        return r[list[str]].ok(["  PEP621: old -> new"])
+        return r[Sequence[str]].ok(["  PEP621: old -> new"])
 
     monkeypatch.setattr(sys, "argv", ["sync-paths", "--dry-run"])
     monkeypatch.setattr(
@@ -194,8 +195,8 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
 
     def _discover_none(
         _root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
-        return r[list[m.Infra.ProjectInfo]].ok([])
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
     def _rewrite_changes(
         _self: FlextInfraDependencyPathSync,
@@ -205,9 +206,9 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         internal_names: set[str],
         is_root: bool = False,
         dry_run: bool = False,
-    ) -> r[list[str]]:
+    ) -> r[Sequence[str]]:
         _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
-        return r[list[str]].ok(["  PEP621: old -> new"])
+        return r[Sequence[str]].ok(["  PEP621: old -> new"])
 
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
     monkeypatch.setattr(

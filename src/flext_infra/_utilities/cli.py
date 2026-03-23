@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from argparse import ArgumentParser, Namespace
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from flext_core import FlextRuntime, r
@@ -51,7 +51,7 @@ class FlextInfraUtilitiesCli:
             """Return human-readable mode label."""
             return "apply" if self.apply else "dry-run"
 
-        def project_names(self) -> list[str] | None:
+        def project_names(self) -> Sequence[str] | None:
             """Extract project names from single or comma-separated project string.
 
             Combines --project (single) and --projects (comma-separated) arguments.
@@ -61,14 +61,14 @@ class FlextInfraUtilitiesCli:
                 List of project names if any specified, None if both arguments empty.
 
             """
-            names: list[str] = []
+            names: Sequence[str] = []
             if self.project:
                 names.append(self.project)
             if self.projects:
                 names.extend(p.strip() for p in self.projects.split(",") if p.strip())
             return names or None
 
-        def project_dirs(self) -> list[Path] | None:
+        def project_dirs(self) -> Sequence[Path] | None:
             """Convert project names to absolute directory paths under workspace.
 
             Uses project_names() to resolve projects, then prepends workspace root
@@ -165,7 +165,7 @@ class FlextInfraUtilitiesCli:
         include_format: bool = False,
         include_check: bool = False,
         include_project: bool = False,
-    ) -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
+    ) -> tuple[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags.
 
         Builds an ArgumentParser supporting multiple subcommands (e.g., "check",
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesCli:
         )
         parser = ArgumentParser(prog=prog, description=description, parents=[shared])
         subparsers = parser.add_subparsers(dest="command")
-        command_parsers: dict[str, ArgumentParser] = {}
+        command_parsers: Mapping[str, ArgumentParser] = {}
         for command, command_help in subcommands.items():
             command_parsers[command] = subparsers.add_parser(
                 command,
@@ -338,8 +338,8 @@ class FlextInfraUtilitiesCli:
 
     @staticmethod
     def run_cli(
-        main_fn: Callable[[list[str] | None], int],
-        argv: list[str] | None = None,
+        main_fn: Callable[[Sequence[str] | None], int],
+        argv: Sequence[str] | None = None,
     ) -> int:
         try:
             FlextRuntime.ensure_structlog_configured()

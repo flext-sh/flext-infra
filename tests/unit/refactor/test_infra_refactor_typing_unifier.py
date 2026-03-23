@@ -270,7 +270,7 @@ def test_removes_unused_preserves_used_when_import_precedes_usage() -> None:
         "from typing import ClassVar, Final, Literal, override\n\n"
         "class Config:\n"
         "    NAME: Final[str] = 'app'\n"
-        "    ITEMS: ClassVar[list[str]] = []\n"
+        "    ITEMS: ClassVar[Sequence[str]] = []\n"
     )
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorTypingUnificationRule({

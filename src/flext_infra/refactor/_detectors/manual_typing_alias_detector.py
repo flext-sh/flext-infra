@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -35,7 +36,7 @@ class ManualTypingAliasDetector(
     def __init__(
         self,
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the ManualTypingAliasDetector scanner.
 
@@ -80,8 +81,8 @@ class ManualTypingAliasDetector(
         cls,
         *,
         file_path: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.ManualTypingAliasViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.ManualTypingAliasViolation]:
         """Detect type alias placement violations in a file.
 
         Args:
@@ -102,8 +103,8 @@ class ManualTypingAliasDetector(
         cls,
         *,
         file_path: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.ManualTypingAliasViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.ManualTypingAliasViolation]:
         """Scan a file for type aliases outside canonical locations.
 
         Args:
@@ -125,7 +126,7 @@ class ManualTypingAliasDetector(
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: list[nem.ManualTypingAliasViolation] = []
+        violations: Sequence[nem.ManualTypingAliasViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.SimpleStatementLine):
                 continue

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import output, u
@@ -14,7 +15,7 @@ from .namespace_enforcer import FlextInfraNamespaceEnforcer
 
 class FlextInfraRefactorCommand:
     @staticmethod
-    def run(argv: list[str] | None = None) -> int:
+    def run(argv: Sequence[str] | None = None) -> int:
         """Dispatch CLI command handlers and return process exit code."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext_infra refactor",
@@ -227,7 +228,7 @@ class FlextInfraRefactorCommand:
         return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Wrapped CLI entry point with centralized error handling."""
     return u.Infra.run_cli(FlextInfraRefactorCommand.run, argv)
 

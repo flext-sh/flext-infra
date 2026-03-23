@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import sys
 from argparse import ArgumentParser
+from collections.abc import Mapping, Sequence
 
 from flext_infra import (
     FlextInfraDocAuditor,
@@ -29,9 +30,9 @@ from flext_infra import (
 
 class FlextInfraDocsCommand:
     @staticmethod
-    def run(argv: list[str] | None = None) -> int:
+    def run(argv: Sequence[str] | None = None) -> int:
         """Run documentation command dispatcher."""
-        parser_subs: tuple[ArgumentParser, dict[str, ArgumentParser]] = (
+        parser_subs: tuple[ArgumentParser, Mapping[str, ArgumentParser]] = (
             u.Infra.create_subcommand_parser(
                 "flext-infra docs",
                 "Documentation management services",
@@ -252,7 +253,7 @@ def _run_validate(
     )
 
 
-def _main_inner(argv: list[str] | None = None) -> int:
+def _main_inner(argv: Sequence[str] | None = None) -> int:
     return FlextInfraDocsCommand.run(argv)
 
 

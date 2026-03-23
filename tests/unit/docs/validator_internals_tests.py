@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -71,7 +72,7 @@ class TestValidateScope:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def mock_adr_check(path: Path | str) -> tuple[int, list[str]]:
+        def mock_adr_check(path: Path | str) -> tuple[int, Sequence[str]]:
             return (1, ["missing_skill"])
 
         monkeypatch.setattr(validator, "_run_adr_skill_check", mock_adr_check)
@@ -92,7 +93,7 @@ class TestValidateScope:
         arch_dir.mkdir(parents=True, exist_ok=True)
         (arch_dir / "architecture_config.json").write_text("{}")
 
-        def mock_adr_check(path: Path | str) -> tuple[int, list[str]]:
+        def mock_adr_check(path: Path | str) -> tuple[int, Sequence[str]]:
             return (1, ["missing_skill_1", "missing_skill_2"])
 
         monkeypatch.setattr(validator, "_run_adr_skill_check", mock_adr_check)

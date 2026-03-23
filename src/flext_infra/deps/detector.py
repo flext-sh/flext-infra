@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -88,13 +89,13 @@ class FlextInfraRuntimeDevDependencyDetector:
         return parser
 
     @staticmethod
-    def project_filter(cli: u.Infra.CliArgs) -> list[str] | None:
+    def project_filter(cli: u.Infra.CliArgs) -> Sequence[str] | None:
         """Extract project filter list from parsed CLI arguments."""
         return cli.project_names()
 
     def run(
         self: FlextInfraRuntimeDevDependencyDetector,
-        argv: list[str] | None = None,
+        argv: Sequence[str] | None = None,
     ) -> r[int]:
         """Execute dependency detection and generate workspace report."""
         runtime = FlextInfraDependencyDetectorRuntime(

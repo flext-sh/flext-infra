@@ -57,33 +57,33 @@ class StubRunner:
         self._capture_returns = list(capture_returns or [])
         self._run_checked_returns = list(run_checked_returns or [])
         self._run_to_file_returns = list(run_to_file_returns or [])
-        self.run_calls: list[list[str]] = []
-        self.capture_calls: list[list[str]] = []
-        self.run_checked_calls: list[list[str]] = []
-        self.run_to_file_calls: list[list[str]] = []
+        self.run_calls: Sequence[Sequence[str]] = []
+        self.capture_calls: Sequence[Sequence[str]] = []
+        self.run_checked_calls: Sequence[Sequence[str]] = []
+        self.run_to_file_calls: Sequence[Sequence[str]] = []
 
     @staticmethod
     def _pop_run(
-        returns: list[r[m.Infra.CommandOutput]],
+        returns: Sequence[r[m.Infra.CommandOutput]],
     ) -> r[m.Infra.CommandOutput]:
         if not returns:
             return r[m.Infra.CommandOutput].fail("no return value configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
-    def _pop_capture(returns: list[r[str]]) -> r[str]:
+    def _pop_capture(returns: Sequence[r[str]]) -> r[str]:
         if not returns:
             return r[str].fail("no return value configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
-    def _pop_checked(returns: list[r[bool]]) -> r[bool]:
+    def _pop_checked(returns: Sequence[r[bool]]) -> r[bool]:
         if not returns:
             return r[bool].fail("no return value configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
-    def _pop_to_file(returns: list[r[int]]) -> r[int]:
+    def _pop_to_file(returns: Sequence[r[int]]) -> r[int]:
         if not returns:
             return r[int].fail("no return value configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
@@ -147,7 +147,7 @@ class StubJsonIo(FlextInfraUtilitiesIo):
     """Stub for FlextInfraUtilitiesIo (json_io dependency)."""
 
     write_json_returns: ClassVar[r[bool]] = r[bool].ok(True)
-    write_json_calls: ClassVar[list[tuple[Path, t.NormalizedValue]]] = []
+    write_json_calls: ClassVar[Sequence[tuple[Path, t.NormalizedValue]]] = []
 
     def __init__(self, write_returns: r[bool] | None = None) -> None:
         StubJsonIo.write_json_returns = write_returns or r[bool].ok(True)
@@ -188,26 +188,26 @@ class StubVersioning(FlextInfraUtilitiesVersioning):
 class StubSelector(FlextInfraUtilitiesSelection):
     """Stub for FlextInfraUtilitiesSelection."""
 
-    _resolve_returns: ClassVar[r[list[m.Infra.ProjectInfo]]] = r[
-        list[m.Infra.ProjectInfo]
+    _resolve_returns: ClassVar[r[Sequence[m.Infra.ProjectInfo]]] = r[
+        Sequence[m.Infra.ProjectInfo]
     ].ok([])
 
     def __init__(
         self,
-        resolve_returns: r[list[m.Infra.ProjectInfo]] | None = None,
+        resolve_returns: r[Sequence[m.Infra.ProjectInfo]] | None = None,
     ) -> None:
         StubSelector._resolve_returns = (
             resolve_returns
             if resolve_returns is not None
-            else r[list[m.Infra.ProjectInfo]].ok([])
+            else r[Sequence[m.Infra.ProjectInfo]].ok([])
         )
 
     @staticmethod
     @override
     def resolve_projects(
         workspace_root: Path,
-        names: list[str],
-    ) -> r[list[m.Infra.ProjectInfo]]:
+        names: Sequence[str],
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
         _ = workspace_root, names
         return StubSelector._resolve_returns
 

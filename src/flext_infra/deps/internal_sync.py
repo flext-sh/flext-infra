@@ -6,7 +6,7 @@ import configparser
 import os
 import re
 import shutil
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -343,25 +343,25 @@ class FlextInfraInternalDependencySyncService:
     @staticmethod
     def _normalize_str_object_mapping(
         value: t.Infra.InfraValue,
-    ) -> dict[str, t.Infra.InfraValue]:
+    ) -> Mapping[str, t.Infra.InfraValue]:
         try:
-            adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+            adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+                Mapping[str, t.Infra.InfraValue],
             )
             return adapter.validate_python(value)
         except ValidationError:
             return {}
 
     @staticmethod
-    def _normalize_string_list(value: t.Infra.InfraValue) -> list[str]:
+    def _normalize_string_list(value: t.Infra.InfraValue) -> Sequence[str]:
         try:
-            adapter: TypeAdapter[list[str]] = TypeAdapter(list[str])
+            adapter: TypeAdapter[Sequence[str]] = TypeAdapter(Sequence[str])
             return adapter.validate_python(value)
         except ValidationError:
             if not isinstance(value, list):
                 return []
-            raw_items: list[JsonValue] = TypeAdapter(
-                list[JsonValue],
+            raw_items: Sequence[JsonValue] = TypeAdapter(
+                Sequence[JsonValue],
             ).validate_python(value)
             return [str(item) for item in raw_items]
 

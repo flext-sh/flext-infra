@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import override
 
 import libcst as cst
@@ -17,18 +17,18 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
 
     def __init__(
         self,
-        order_config: list[t.Infra.RuleConfig],
+        order_config: Sequence[t.Infra.RuleConfig],
         on_change: Callable[[str], None] | None = None,
     ) -> None:
         """Initialize with rule order config and optional change callback."""
         try:
             self._order_config = TypeAdapter(
-                list[m.Infra.MethodOrderRule],
+                Sequence[m.Infra.MethodOrderRule],
             ).validate_python(order_config)
         except ValidationError:
             self._order_config = []
         self._on_change = on_change
-        self.changes: list[str] = []
+        self.changes: Sequence[str] = []
 
     @override
     def leave_ClassDef(
@@ -42,7 +42,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
         body = list(updated_node.body.body)
         if not body:
             return updated_node
-        new_body: list[cst.BaseStatement] = list(body)
+        new_body: Sequence[cst.BaseStatement] = list(body)
         block_start = 0
         changed_blocks = 0
         reordered_methods_total = 0
@@ -57,7 +57,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
             ):
                 block_end += 1
             method_indices = list(range(block_start, block_end))
-            methods: list[m.Infra.MethodInfo] = []
+            methods: Sequence[m.Infra.MethodInfo] = []
             for idx in method_indices:
                 block_item = body[idx]
                 if isinstance(block_item, cst.FunctionDef):
@@ -82,7 +82,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
 
     def _analyze_method(self, node: cst.FunctionDef) -> m.Infra.MethodInfo:
         name = node.name.value
-        decorators: list[str] = []
+        decorators: Sequence[str] = []
         for dec in node.decorators:
             if isinstance(dec.decorator, cst.Name):
                 decorators.append(dec.decorator.value)
@@ -96,7 +96,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
             decorators=decorators,
         )
 
-    def _categorize(self, name: str, decorators: list[str]) -> str:
+    def _categorize(self, name: str, decorators: Sequence[str]) -> str:
         if any(
             decorator_name in decorators
             for decorator_name in ["property", "cached_property", "computed_field"]
@@ -121,8 +121,8 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
 
     def _sort_methods(
         self,
-        methods: list[m.Infra.MethodInfo],
-    ) -> list[m.Infra.MethodInfo]:
+        methods: Sequence[m.Infra.MethodInfo],
+    ) -> Sequence[m.Infra.MethodInfo]:
 
         def matches_rule(
             method: m.Infra.MethodInfo,

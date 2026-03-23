@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import tomlkit
@@ -22,8 +23,8 @@ class EnsurePyreflyConfigPhase:
         *,
         is_root: bool,
         project_dir: Path | None = None,
-    ) -> list[str]:
-        changes: list[str] = []
+    ) -> Sequence[str]:
+        changes: Sequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:
             raw_tool = doc[c.Infra.Toml.TOOL]

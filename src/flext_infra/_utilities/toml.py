@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -32,24 +33,24 @@ class FlextInfraUtilitiesToml:
 
     logger = FlextLogger(__name__)
 
-    _CONTAINER_DICT_ADAPTER: TypeAdapter[dict[str, t.Infra.InfraValue]] | None = None
-    _CONTAINER_LIST_ADAPTER: TypeAdapter[list[JsonValue]] | None = None
+    _CONTAINER_DICT_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] | None = None
+    _CONTAINER_LIST_ADAPTER: TypeAdapter[Sequence[JsonValue]] | None = None
 
     @staticmethod
-    def _get_container_dict_adapter() -> TypeAdapter[dict[str, t.Infra.InfraValue]]:
-        """Get or create TypeAdapter for dict[str, t.Infra.InfraValue]."""
+    def _get_container_dict_adapter() -> TypeAdapter[Mapping[str, t.Infra.InfraValue]]:
+        """Get or create TypeAdapter for Mapping[str, t.Infra.InfraValue]."""
         if FlextInfraUtilitiesToml._CONTAINER_DICT_ADAPTER is None:
             FlextInfraUtilitiesToml._CONTAINER_DICT_ADAPTER = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+                Mapping[str, t.Infra.InfraValue],
             )
         return FlextInfraUtilitiesToml._CONTAINER_DICT_ADAPTER
 
     @staticmethod
-    def _get_container_list_adapter() -> TypeAdapter[list[JsonValue]]:
-        """Get or create TypeAdapter for list[JsonValue]."""
+    def _get_container_list_adapter() -> TypeAdapter[Sequence[JsonValue]]:
+        """Get or create TypeAdapter for Sequence[JsonValue]."""
         if FlextInfraUtilitiesToml._CONTAINER_LIST_ADAPTER is None:
             FlextInfraUtilitiesToml._CONTAINER_LIST_ADAPTER = TypeAdapter(
-                list[JsonValue],
+                Sequence[JsonValue],
             )
         return FlextInfraUtilitiesToml._CONTAINER_LIST_ADAPTER
 
@@ -76,13 +77,13 @@ class FlextInfraUtilitiesToml:
         value: t.Infra.InfraValue
         | Item
         | TOMLDocument
-        | dict[str, t.Infra.InfraValue]
+        | Mapping[str, t.Infra.InfraValue]
         | None,
     ) -> t.Infra.InfraValue | None:
         """Normalize TOML items/documents to a concrete container value."""
-        normalized: t.Infra.InfraValue | Item | dict[str, t.Infra.InfraValue] | None = (
-            value
-        )
+        normalized: (
+            t.Infra.InfraValue | Item | Mapping[str, t.Infra.InfraValue] | None
+        ) = value
         if isinstance(value, (TOMLDocument, Item)):
             normalized = value.unwrap()
         if isinstance(normalized, Item):
@@ -92,7 +93,7 @@ class FlextInfraUtilitiesToml:
     @staticmethod
     def as_container_list(
         value: t.Infra.InfraValue | Item | None,
-    ) -> list[t.Infra.InfraValue]:
+    ) -> Sequence[t.Infra.InfraValue]:
         """Validate and normalize list-like values to typed container list."""
         normalized = FlextInfraUtilitiesToml.normalize_container_value(value)
         if normalized is None:
@@ -114,7 +115,7 @@ class FlextInfraUtilitiesToml:
         return FlextInfraUtilitiesToml.normalize_container_value(value)
 
     @staticmethod
-    def as_string_list(value: t.Infra.InfraValue | Item | None) -> list[str]:
+    def as_string_list(value: t.Infra.InfraValue | Item | None) -> Sequence[str]:
         """Convert TOML value to list of strings."""
         normalized = FlextInfraUtilitiesToml.normalize_container_value(value)
         if normalized is None or isinstance(normalized, str):
@@ -132,7 +133,7 @@ class FlextInfraUtilitiesToml:
         ]
 
     @staticmethod
-    def array(items: list[str]) -> Array:
+    def array(items: Sequence[str]) -> Array:
         """Create multiline TOML array from string items."""
         arr: Array = tomlkit.array()
         for item in items:
@@ -200,7 +201,7 @@ class FlextInfraUtilitiesToml:
             return None
 
     @staticmethod
-    def table_string_keys(table: Table) -> list[str]:
+    def table_string_keys(table: Table) -> Sequence[str]:
         """Return table keys as strings."""
         return list(table)
 

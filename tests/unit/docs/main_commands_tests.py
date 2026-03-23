@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 
 import pytest
 from flext_core import r, t
@@ -23,10 +23,10 @@ _R = m.Infra.DocsPhaseReport
 
 
 def _cli_args(
-    extra_defaults: dict[str, t.Scalar | None],
+    extra_defaults: Mapping[str, t.Scalar | None],
     **overrides: t.Scalar,
 ) -> u.Infra.CliArgs:
-    defaults: dict[str, t.Scalar | None] = {
+    defaults: Mapping[str, t.Scalar | None] = {
         "workspace": ".",
         "project": None,
         "projects": None,
@@ -50,12 +50,12 @@ def _val_args(**overrides: t.Scalar) -> u.Infra.CliArgs:
     return _cli_args({"check": True, "apply": False}, **overrides)
 
 
-def _stub_ok(val: list[_R]) -> Callable[..., r[list[_R]]]:
-    return lambda *_a, **_kw: r[list[_R]].ok(val)
+def _stub_ok(val: Sequence[_R]) -> Callable[..., r[Sequence[_R]]]:
+    return lambda *_a, **_kw: r[Sequence[_R]].ok(val)
 
 
-def _stub_fail(err: str) -> Callable[..., r[list[_R]]]:
-    return lambda *_a, **_kw: r[list[_R]].fail(err)
+def _stub_fail(err: str) -> Callable[..., r[Sequence[_R]]]:
+    return lambda *_a, **_kw: r[Sequence[_R]].fail(err)
 
 
 class TestRunBuild:
@@ -97,11 +97,11 @@ class TestRunGenerate:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_kwargs: dict[str, t.Scalar] = {}
+        captured_kwargs: Mapping[str, t.Scalar] = {}
 
-        def mock_gen(*_a: t.Scalar, **kw: t.Scalar) -> r[list[_R]]:
+        def mock_gen(*_a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_R]]:
             captured_kwargs.update(kw)
-            return r[list[_R]].ok([])
+            return r[Sequence[_R]].ok([])
 
         monkeypatch.setattr(FlextInfraDocGenerator, "generate", mock_gen)
         _run_generate(_gen_args(apply=True))
@@ -137,11 +137,11 @@ class TestRunValidate:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_kwargs: dict[str, t.Scalar] = {}
+        captured_kwargs: Mapping[str, t.Scalar] = {}
 
-        def mock_val(*_a: t.Scalar, **kw: t.Scalar) -> r[list[_R]]:
+        def mock_val(*_a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_R]]:
             captured_kwargs.update(kw)
-            return r[list[_R]].ok([])
+            return r[Sequence[_R]].ok([])
 
         monkeypatch.setattr(FlextInfraDocValidator, "validate", mock_val)
         _run_validate(_val_args(), check=True)

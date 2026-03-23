@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+
 import tomlkit
 from tomlkit.items import Item, Table
 
@@ -19,8 +21,8 @@ class EnsureCoverageConfigPhase:
         doc: tomlkit.TOMLDocument,
         *,
         project_kind: str = "core",
-    ) -> list[str]:
-        changes: list[str] = []
+    ) -> Sequence[str]:
+        changes: Sequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:
             raw_tool = doc[c.Infra.Toml.TOOL]
@@ -34,7 +36,7 @@ class EnsureCoverageConfigPhase:
         report_tbl = u.Infra.ensure_table(coverage_tbl, "report")
 
         cov_config = self._tool_config.tools.coverage
-        fail_under_map: dict[str, int] = {
+        fail_under_map: Mapping[str, int] = {
             "core": cov_config.fail_under.core,
             "domain": cov_config.fail_under.domain,
             "platform": cov_config.fail_under.platform,

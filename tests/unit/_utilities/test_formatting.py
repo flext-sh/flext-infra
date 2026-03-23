@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -16,11 +17,11 @@ class TestFormattingRunRuffFix:
     ) -> None:
         target = tmp_path / "sample.py"
         target.write_text("x=1\n", encoding="utf-8")
-        calls: list[list[str]] = []
+        calls: Sequence[Sequence[str]] = []
 
         def _fake_run_checked(
             _self: FlextInfraUtilitiesSubprocess,
-            cmd: list[str],
+            cmd: Sequence[str],
         ) -> r[bool]:
             calls.append(cmd)
             return r[bool].ok(True)
@@ -51,11 +52,11 @@ class TestFormattingRunRuffFix:
     ) -> None:
         target = tmp_path / "sample.py"
         target.write_text("x=1\n", encoding="utf-8")
-        calls: list[list[str]] = []
+        calls: Sequence[Sequence[str]] = []
 
         def _raise_missing(
             _self: FlextInfraUtilitiesSubprocess,
-            cmd: list[str],
+            cmd: Sequence[str],
         ) -> None:
             calls.append(cmd)
             msg = "ruff not found"

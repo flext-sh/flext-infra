@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -16,12 +16,12 @@ from flext_tests import tm
 import flext_infra.codegen as mod
 from flext_infra import FlextInfraCodegenLazyInit, u
 
-_resolve_aliases: Callable[[dict[str, tuple[str, str]]], None] = getattr(
+_resolve_aliases: Callable[[Mapping[str, tuple[str, str]]], None] = getattr(
     FlextInfraCodegenLazyInit,
     "_resolve_aliases",
 )
 _generate_file: Callable[
-    [str, list[str], Mapping[str, tuple[str, str]], Mapping[str, str], str],
+    [str, Sequence[str], Mapping[str, tuple[str, str]], Mapping[str, str], str],
     str,
 ] = getattr(FlextInfraCodegenLazyInit, "_generate_file")
 _run_ruff_fix: Callable[[Path], None] = getattr(
@@ -35,7 +35,7 @@ class TestResolveAliases:
 
     def test_resolves_c_alias(self) -> None:
         """Test resolving 'c' alias to Constants class."""
-        lazy_map: dict[str, tuple[str, str]] = {
+        lazy_map: Mapping[str, tuple[str, str]] = {
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
         _resolve_aliases(lazy_map)
@@ -44,7 +44,7 @@ class TestResolveAliases:
 
     def test_does_not_overwrite_canonical_existing(self) -> None:
         """Test that canonical alias pointing to correct facade is preserved."""
-        lazy_map: dict[str, tuple[str, str]] = {
+        lazy_map: Mapping[str, tuple[str, str]] = {
             "c": ("pkg.constants", "FlextConstants"),
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
@@ -53,7 +53,7 @@ class TestResolveAliases:
 
     def test_overwrites_non_canonical_existing(self) -> None:
         """Test that non-canonical alias is replaced with canonical facade."""
-        lazy_map: dict[str, tuple[str, str]] = {
+        lazy_map: Mapping[str, tuple[str, str]] = {
             "c": ("pkg.custom", "CustomConst"),
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
@@ -62,7 +62,7 @@ class TestResolveAliases:
 
     def test_resolves_multiple_aliases(self) -> None:
         """Test resolving multiple aliases at once."""
-        lazy_map: dict[str, tuple[str, str]] = {
+        lazy_map: Mapping[str, tuple[str, str]] = {
             "FlextConstants": ("pkg.constants", "FlextConstants"),
             "FlextModels": ("pkg.models", "FlextModels"),
             "FlextTypes": ("pkg.typings", "FlextTypes"),
@@ -78,14 +78,14 @@ class TestGenerateTypeChecking:
 
     def test_with_empty_groups(self) -> None:
         """Test with no imports returns header + FlextTypes only."""
-        groups: dict[str, list[tuple[str, str]]] = {}
+        groups: Mapping[str, Sequence[tuple[str, str]]] = {}
         lines = u.Infra.generate_type_checking(groups)
         tm.that(lines, contains="if TYPE_CHECKING:")
         tm.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
         """Test with no imports and no FlextTypes returns empty list."""
-        groups: dict[str, list[tuple[str, str]]] = {}
+        groups: Mapping[str, Sequence[tuple[str, str]]] = {}
         lines = u.Infra.generate_type_checking(
             groups,
             include_flext_types=False,
@@ -107,7 +107,7 @@ class TestGenerateTypeChecking:
 
     def test_with_long_import_line(self) -> None:
         """Test wraps long import lines."""
-        groups: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        groups: Mapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
         groups["module"] = [
             ("VeryLongClassName1", "VeryLongClassName1"),
             ("VeryLongClassName2", "VeryLongClassName2"),
@@ -118,7 +118,7 @@ class TestGenerateTypeChecking:
 
     def test_with_multiple_modules_spacing(self) -> None:
         """Test blank lines between different top-level package groups."""
-        groups: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        groups: Mapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
         groups["alpha_pkg.module"] = [("Test1", "Test1")]
         groups["beta_pkg.module"] = [("Test2", "Test2")]
         lines = u.Infra.generate_type_checking(groups)
@@ -132,7 +132,7 @@ class TestGenerateFile:
         """Test uses correct lazy import for flext_core."""
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
-        inline_constants: dict[str, str] = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "flext_core")
         tm.that(content, contains="flext_core.lazy")
 
@@ -140,7 +140,7 @@ class TestGenerateFile:
         """Test uses correct lazy import for non-core packages."""
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
-        inline_constants: dict[str, str] = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "other_pkg")
         tm.that(content, contains="from flext_core import")
 
@@ -157,7 +157,7 @@ class TestGenerateFile:
         docstring = '"""Test module."""'
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
-        inline_constants: dict[str, str] = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file(
             docstring,
             exports,
@@ -171,7 +171,7 @@ class TestGenerateFile:
         """Test generated file starts with autogen header."""
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
-        inline_constants: dict[str, str] = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
         tm.that(content, contains="AUTO-GENERATED")
 
@@ -179,7 +179,7 @@ class TestGenerateFile:
         """Test generated file has __all__ list."""
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
-        inline_constants: dict[str, str] = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
         tm.that(content, contains="__all__")
         tm.that(content, contains='"Alpha"')

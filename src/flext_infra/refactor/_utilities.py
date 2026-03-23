@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import ast
 from collections import Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -52,14 +52,14 @@ class FlextInfraUtilitiesRefactor(
         name = u.Infra.cst_module_name(cst_expr)
     """
 
-    _CONTAINER_DICT_ADAPTER: TypeAdapter[dict[str, t.Infra.InfraValue]] | None = None
+    _CONTAINER_DICT_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] | None = None
 
     @staticmethod
-    def _get_container_dict_adapter() -> TypeAdapter[dict[str, t.Infra.InfraValue]]:
-        """Get or create TypeAdapter for dict[str, t.Infra.InfraValue]."""
+    def _get_container_dict_adapter() -> TypeAdapter[Mapping[str, t.Infra.InfraValue]]:
+        """Get or create TypeAdapter for Mapping[str, t.Infra.InfraValue]."""
         if FlextInfraUtilitiesRefactor._CONTAINER_DICT_ADAPTER is None:
             FlextInfraUtilitiesRefactor._CONTAINER_DICT_ADAPTER = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+                Mapping[str, t.Infra.InfraValue],
             )
         return FlextInfraUtilitiesRefactor._CONTAINER_DICT_ADAPTER
 
@@ -98,18 +98,18 @@ class FlextInfraUtilitiesRefactor(
         return "other_private"
 
     @staticmethod
-    def entry_list(value: t.Infra.InfraValue | None) -> list[dict[str, str]]:
+    def entry_list(value: t.Infra.InfraValue | None) -> Sequence[Mapping[str, str]]:
         """Normalize class-nesting config entries to a strict list."""
         if value is None:
             return []
         try:
-            return TypeAdapter(list[dict[str, str]]).validate_python(value)
+            return TypeAdapter(Sequence[Mapping[str, str]]).validate_python(value)
         except ValidationError:
             msg = "class nesting entries must be a list"
             raise ValueError(msg) from None
 
     @staticmethod
-    def string_list(value: t.Infra.InfraValue | None) -> list[str]:
+    def string_list(value: t.Infra.InfraValue | None) -> Sequence[str]:
         """Normalize policy fields that should contain string collections."""
         if value is None:
             return []
@@ -117,52 +117,52 @@ class FlextInfraUtilitiesRefactor(
             return [value]
         if isinstance(value, list):
             try:
-                value_items: list[t.Infra.InfraValue] = TypeAdapter(
-                    list[t.Infra.InfraValue],
+                value_items: Sequence[t.Infra.InfraValue] = TypeAdapter(
+                    Sequence[t.Infra.InfraValue],
                 ).validate_python(value)
             except ValidationError as exc:
-                msg = "expected list[str] value"
+                msg = "expected Sequence[str] value"
                 raise ValueError(msg) from exc
-            items: list[str] = []
+            items: Sequence[str] = []
             for item in value_items:
                 if not isinstance(item, str):
-                    msg = "expected list[str] value"
+                    msg = "expected Sequence[str] value"
                     raise TypeError(msg)
                 items.append(item)
             return items
-        msg = "expected list[str] value"
+        msg = "expected Sequence[str] value"
         raise ValueError(msg)
 
     @staticmethod
     def mapping_list(
         value: t.Infra.InfraValue | None,
-    ) -> list[dict[str, t.Infra.InfraValue]]:
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         """Normalize policy fields that should contain mapping collections."""
         if value is None:
             return []
         if isinstance(value, list):
             try:
-                value_items: list[t.Infra.InfraValue] = TypeAdapter(
-                    list[t.Infra.InfraValue],
+                value_items: Sequence[t.Infra.InfraValue] = TypeAdapter(
+                    Sequence[t.Infra.InfraValue],
                 ).validate_python(value)
             except ValidationError as exc:
-                msg = "expected list[dict[str, t.Infra.InfraValue]] value"
+                msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
                 raise ValueError(msg) from exc
-            normalized: list[dict[str, t.Infra.InfraValue]] = []
+            normalized: Sequence[Mapping[str, t.Infra.InfraValue]] = []
             for item in value_items:
                 if not isinstance(item, dict):
                     continue
                 normalized.append(
-                    TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(item),
+                    TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(item),
                 )
             return normalized
-        msg = "expected list[dict[str, t.Infra.InfraValue]] value"
+        msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
         raise ValueError(msg)
 
     @staticmethod
     def has_required_fields(
         entry: t.Infra.InfraValue,
-        required_fields: list[str],
+        required_fields: Sequence[str],
     ) -> bool:
         if not isinstance(entry, dict):
             return False
@@ -233,14 +233,14 @@ class FlextInfraUtilitiesRefactor(
 
     @staticmethod
     def policy_document_schema_valid(
-        loaded: dict[str, t.Infra.InfraValue],
+        loaded: Mapping[str, t.Infra.InfraValue],
         schema_path: Path,
     ) -> bool:
         schema_result = FlextInfraUtilitiesIo.read_json(schema_path)
         if schema_result.is_failure:
             return False
         raw_schema: Mapping[str, JsonValue] = schema_result.value
-        schema: dict[str, t.Infra.InfraValue] = dict(raw_schema.items())
+        schema: Mapping[str, t.Infra.InfraValue] = dict(raw_schema.items())
         top_required = FlextInfraUtilitiesRefactor.string_list(
             schema.get("required", []),
         )
@@ -250,7 +250,7 @@ class FlextInfraUtilitiesRefactor(
         if not isinstance(definitions_raw, dict):
             return False
         try:
-            definitions = TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(
+            definitions = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
                 definitions_raw,
             )
         except ValidationError:
@@ -261,10 +261,10 @@ class FlextInfraUtilitiesRefactor(
             return False
         if not isinstance(class_rule_raw, dict):
             return False
-        policy_entry = TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(
+        policy_entry = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
             policy_entry_raw,
         )
-        class_rule = TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(
+        class_rule = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
             class_rule_raw,
         )
         policy_entry_required = FlextInfraUtilitiesRefactor.string_list(
@@ -298,7 +298,7 @@ class FlextInfraUtilitiesRefactor(
         except (OSError, TypeError) as exc:
             msg = f"failed to read policy document: {policy_path}"
             raise ValueError(msg) from exc
-        raw_dict: dict[str, t.Infra.InfraValue] = dict(loaded.items())
+        raw_dict: Mapping[str, t.Infra.InfraValue] = dict(loaded.items())
         loaded_dict: t.Infra.ContainerDict = (
             FlextInfraUtilitiesRefactor._get_container_dict_adapter().validate_python(
                 raw_dict,
@@ -380,14 +380,14 @@ class FlextInfraUtilitiesRefactor(
     @staticmethod
     def extract_public_methods_from_dir(
         package_dir: Path,
-    ) -> dict[str, list[tuple[str, str, str]]]:
+    ) -> Mapping[str, Sequence[tuple[str, str, str]]]:
         """Extract public methods from all .py files in a package directory.
 
         Returns:
             ``{class_name: [(method_name, method_type, source_file), ...]}``.
 
         """
-        result: dict[str, list[tuple[str, str, str]]] = {}
+        result: Mapping[str, Sequence[tuple[str, str, str]]] = {}
         for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
             if py_file.name == c.Infra.Files.INIT_PY:
                 continue
@@ -399,7 +399,7 @@ class FlextInfraUtilitiesRefactor(
     @staticmethod
     def extract_public_methods_from_file(
         file_path: Path,
-    ) -> dict[str, list[tuple[str, str, str]]]:
+    ) -> Mapping[str, Sequence[tuple[str, str, str]]]:
         """Extract public methods from a single .py file.
 
         Returns:
@@ -413,16 +413,16 @@ class FlextInfraUtilitiesRefactor(
     @staticmethod
     def _extract_classes_ast(
         py_file: Path,
-    ) -> dict[str, list[tuple[str, str, str]]]:
+    ) -> Mapping[str, Sequence[tuple[str, str, str]]]:
         """Internal: extract all public methods from classes using stdlib ast."""
         tree = FlextInfraUtilitiesParsing.parse_module_ast(py_file)
         if tree is None:
             return {}
-        result: dict[str, list[tuple[str, str, str]]] = {}
+        result: Mapping[str, Sequence[tuple[str, str, str]]] = {}
         for node in ast.iter_child_nodes(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
-            methods: list[tuple[str, str, str]] = []
+            methods: Sequence[tuple[str, str, str]] = []
             for item in ast.iter_child_nodes(node):
                 if isinstance(item, ast.FunctionDef) and not item.name.startswith("_"):
                     decs = [
@@ -462,7 +462,7 @@ class FlextInfraUtilitiesRefactor(
     def build_facade_alias_map(
         facade_path: Path,
         facade_class_name: str,
-    ) -> dict[str, tuple[str, str]]:
+    ) -> Mapping[str, tuple[str, str]]:
         """Parse a facade class to build flat alias → (class, method) map.
 
         Inspects ``staticmethod(...)`` assignments in the facade class.
@@ -471,7 +471,7 @@ class FlextInfraUtilitiesRefactor(
         if tree is None:
             return {}
 
-        alias_map: dict[str, tuple[str, str]] = {}
+        alias_map: Mapping[str, tuple[str, str]] = {}
         for node in ast.iter_child_nodes(tree):
             if not (isinstance(node, ast.ClassDef) and node.name == facade_class_name):
                 continue
@@ -509,7 +509,7 @@ class FlextInfraUtilitiesRefactor(
     def build_facade_inner_class_map(
         facade_path: Path,
         facade_class_name: str,
-    ) -> dict[str, str]:
+    ) -> Mapping[str, str]:
         """Map inner class names → base class names in a facade.
 
         E.g. ``{"Conversion": "FlextUtilitiesConversion", ...}``.
@@ -518,7 +518,7 @@ class FlextInfraUtilitiesRefactor(
         if tree is None:
             return {}
 
-        name_map: dict[str, str] = {}
+        name_map: Mapping[str, str] = {}
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.ClassDef) and node.name == facade_class_name:
                 for item in ast.iter_child_nodes(node):
@@ -531,7 +531,7 @@ class FlextInfraUtilitiesRefactor(
     @staticmethod
     def identify_project_by_roots(
         file_path: Path,
-        project_roots: list[Path],
+        project_roots: Sequence[Path],
     ) -> str:
         """Identify project name for a file path (most-specific root wins)."""
         matching_roots = [
@@ -573,8 +573,8 @@ class FlextInfraUtilitiesRefactor(
 
     @staticmethod
     def aggregate_usage_metrics(
-        methods: dict[str, list[m.Infra.CensusMethodInfo]],
-        records: list[m.Infra.CensusUsageRecord],
+        methods: Mapping[str, Sequence[m.Infra.CensusMethodInfo]],
+        records: Sequence[m.Infra.CensusUsageRecord],
         files_scanned: int,
         parse_errors: int,
     ) -> m.Infra.UtilitiesCensusReport:
@@ -586,10 +586,10 @@ class FlextInfraUtilitiesRefactor(
             cnt[rec.class_name, rec.method_name, rec.access_mode] += 1
             pcnt[rec.project, rec.class_name, rec.method_name, rec.access_mode] += 1
 
-        cls_sums: list[m.Infra.CensusClassSummary] = []
+        cls_sums: Sequence[m.Infra.CensusClassSummary] = []
         unused = 0
         for cls, items in sorted(methods.items()):
-            m_list: list[m.Infra.CensusMethodSummary] = []
+            m_list: Sequence[m.Infra.CensusMethodSummary] = []
             for m_info in items:
                 af = cnt.get(
                     (cls, m_info.name, c.Infra.Census.MODE_ALIAS_FLAT),
@@ -621,7 +621,9 @@ class FlextInfraUtilitiesRefactor(
                 ),
             )
 
-        pj_sums: dict[str, list[m.Infra.CensusProjectMethodUsage]] = defaultdict(list)
+        pj_sums: Mapping[str, Sequence[m.Infra.CensusProjectMethodUsage]] = defaultdict(
+            list
+        )
         for (pj, cls, mx, mo), co in sorted(pcnt.items()):
             pj_sums[pj].append(
                 m.Infra.CensusProjectMethodUsage(

@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -60,7 +61,7 @@ class FlextInfraDocFixer:
         projects: str | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         apply: bool = False,
-    ) -> r[list[m.Infra.DocsPhaseReport]]:
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Run documentation fixes across project scopes.
 
         Args:
@@ -81,18 +82,18 @@ class FlextInfraDocFixer:
             output_dir=output_dir,
         )
         if scopes_result.is_failure:
-            return r[list[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: list[m.Infra.DocsPhaseReport] = []
+        reports: Sequence[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._fix_scope(scope, apply=apply)
             reports.append(report)
-        return r[list[m.Infra.DocsPhaseReport]].ok(reports)
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
 
     def _build_toc(self, content: str) -> str:
         """Generate a TOC block from ## and ### headings in content."""
-        items: list[str] = []
+        items: Sequence[str] = []
         for level, title in u.Infra.HEADING_H2_H3_RE.findall(content):
             anchor = self._anchorize(title)
             if not anchor:
@@ -110,7 +111,7 @@ class FlextInfraDocFixer:
         apply: bool,
     ) -> m.Infra.DocsPhaseReport:
         """Run link and TOC fixes across all markdown files in scope."""
-        items: list[m.Infra.DocsPhaseItemModel] = []
+        items: Sequence[m.Infra.DocsPhaseItemModel] = []
         for md in u.Infra.iter_markdown_files(scope.path):
             item = self._process_file(md, apply=apply)
             if item.links or item.toc:

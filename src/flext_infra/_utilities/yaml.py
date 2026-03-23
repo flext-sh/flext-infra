@@ -30,13 +30,13 @@ class FlextInfraUtilitiesYaml:
         data = u.Infra.safe_load_yaml(path)
     """
 
-    _MAPPING_ADAPTER: TypeAdapter[dict[str, t.Infra.InfraValue]] | None = None
+    _MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] | None = None
 
     @staticmethod
-    def _get_mapping_adapter() -> TypeAdapter[dict[str, t.Infra.InfraValue]]:
+    def _get_mapping_adapter() -> TypeAdapter[Mapping[str, t.Infra.InfraValue]]:
         if FlextInfraUtilitiesYaml._MAPPING_ADAPTER is None:
             FlextInfraUtilitiesYaml._MAPPING_ADAPTER = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+                Mapping[str, t.Infra.InfraValue],
             )
         return FlextInfraUtilitiesYaml._MAPPING_ADAPTER
 

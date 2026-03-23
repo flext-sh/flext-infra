@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -48,7 +48,7 @@ class FlextInfraDependencyPathSync:
         """Configure workspace root for path resolution."""
         self._root = workspace_root
 
-    def _discover_projects(self) -> r[list[m.Infra.ProjectInfo]]:
+    def _discover_projects(self) -> r[Sequence[m.Infra.ProjectInfo]]:
         return u.Infra.discover_projects(self._root)
 
     def _read_document(self, path: Path) -> r[TOMLDocument]:
@@ -121,18 +121,18 @@ class FlextInfraDependencyPathSync:
         is_root: bool,
         mode: str,
         internal_names: set[str],
-    ) -> list[str]:
+    ) -> Sequence[str]:
         project_raw = self._table_get(doc, c.Infra.Toml.PROJECT)
         if not isinstance(project_raw, Table):
             return []
         project_section: Table = project_raw
-        deps: list[str] = u.Infra.as_string_list(
+        deps: Sequence[str] = u.Infra.as_string_list(
             self._table_get(project_section, c.Infra.Toml.DEPENDENCIES),
         )
         if not deps:
             return []
-        changes: list[str] = []
-        updated_deps: list[str] = []
+        changes: Sequence[str] = []
+        updated_deps: Sequence[str] = []
         for item_raw in deps:
             item = item_raw
             marker = ""
@@ -164,7 +164,9 @@ class FlextInfraDependencyPathSync:
         return changes
 
     @staticmethod
-    def _rewrite_poetry(doc: TOMLDocument, *, is_root: bool, mode: str) -> list[str]:
+    def _rewrite_poetry(
+        doc: TOMLDocument, *, is_root: bool, mode: str
+    ) -> Sequence[str]:
         tool_raw = FlextInfraDependencyPathSync._table_get(doc, c.Infra.Toml.TOOL)
         if not isinstance(tool_raw, Table):
             return []
@@ -183,7 +185,7 @@ class FlextInfraDependencyPathSync:
         if not isinstance(deps_raw, Table):
             return []
         deps: Table = deps_raw
-        changes: list[str] = []
+        changes: Sequence[str] = []
         for dep_key_raw in deps:
             dep_key = dep_key_raw
             value = deps[dep_key_raw]
@@ -214,11 +216,13 @@ class FlextInfraDependencyPathSync:
         internal_names: set[str],
         is_root: bool = False,
         dry_run: bool = False,
-    ) -> r[list[str]]:
+    ) -> r[Sequence[str]]:
         """Rewrite PEP 621 and Poetry dependency paths."""
         doc_result = self._read_document(pyproject_path)
         if doc_result.is_failure:
-            return r[list[str]].fail(doc_result.error or "failed to read TOML document")
+            return r[Sequence[str]].fail(
+                doc_result.error or "failed to read TOML document"
+            )
         doc: TOMLDocument = doc_result.value
         changes = self._rewrite_pep621(
             doc,
@@ -230,14 +234,16 @@ class FlextInfraDependencyPathSync:
         if changes and (not dry_run):
             write_result = self._write_document(pyproject_path, doc)
             if write_result.is_failure:
-                return r[list[str]].fail(write_result.error or "failed to write TOML")
-        return r[list[str]].ok(changes)
+                return r[Sequence[str]].fail(
+                    write_result.error or "failed to write TOML"
+                )
+        return r[Sequence[str]].ok(changes)
 
     def run(self, *, cli: u.Infra.CliArgs, mode: str) -> int:
         """Execute path synchronization for the given CLI arguments."""
         self.set_workspace_root(cli.workspace)
         dry_run = cli.dry_run
-        selected_projects: list[str] = cli.project_names() or []
+        selected_projects: Sequence[str] = cli.project_names() or []
 
         if mode == "auto":
             mode = self.detect_mode(self._root)
@@ -273,7 +279,7 @@ class FlextInfraDependencyPathSync:
                     error_detail=root_error,
                 )
                 return 1
-            changes: list[str] = changes_result.value
+            changes: Sequence[str] = changes_result.value
             if changes:
                 prefix = "[DRY-RUN] " if dry_run else ""
                 output.info(f"{prefix}{root_pyproject}:")
@@ -291,7 +297,7 @@ class FlextInfraDependencyPathSync:
             )
             return 1
 
-        projects_list: list[m.Infra.ProjectInfo] = discover_result.value
+        projects_list: Sequence[m.Infra.ProjectInfo] = discover_result.value
         all_project_dirs = [project.path for project in projects_list]
         if selected_projects:
             project_dirs = [self._root / project for project in selected_projects]
@@ -332,7 +338,7 @@ class FlextInfraDependencyPathSync:
                     error_detail=project_error,
                 )
                 return 1
-            project_changes: list[str] = changes_result.value
+            project_changes: Sequence[str] = changes_result.value
             if project_changes:
                 prefix = "[DRY-RUN] " if dry_run else ""
                 output.info(f"{prefix}{pyproject}:")
@@ -350,7 +356,7 @@ class FlextInfraDependencyPathSync:
         return 0
 
     @staticmethod
-    def main(argv: list[str] | None = None) -> int:
+    def main(argv: Sequence[str] | None = None) -> int:
         """Entry point for path sync CLI."""
         parser = u.Infra.create_parser(
             "flext-infra deps path-sync",

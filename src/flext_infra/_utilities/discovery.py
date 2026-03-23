@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -17,10 +18,10 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def discover_projects(
         workspace_root: Path,
-    ) -> r[list[m.Infra.ProjectInfo]]:
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
         """Find all FLEXT projects in the workspace."""
         try:
-            projects: list[m.Infra.ProjectInfo] = []
+            projects: Sequence[m.Infra.ProjectInfo] = []
             submodules = FlextInfraUtilitiesDiscovery._submodule_names(workspace_root)
             for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name):
                 if (
@@ -46,9 +47,9 @@ class FlextInfraUtilitiesDiscovery:
                         has_src=(entry / "src").is_dir(),
                     ),
                 )
-            return r[list[m.Infra.ProjectInfo]].ok(projects)
+            return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
         except OSError as exc:
-            return r[list[m.Infra.ProjectInfo]].fail(f"discovery failed: {exc}")
+            return r[Sequence[m.Infra.ProjectInfo]].fail(f"discovery failed: {exc}")
 
     @staticmethod
     def _submodule_names(workspace_root: Path) -> set[str]:
@@ -161,7 +162,7 @@ class FlextInfraUtilitiesDiscovery:
         return "flext_core"
 
     @staticmethod
-    def discover_project_aliases(project_root: Path) -> dict[str, str]:
+    def discover_project_aliases(project_root: Path) -> Mapping[str, str]:
         """Discover all single-char aliases in a project."""
         src_package = FlextInfraUtilitiesDiscovery.discover_src_package_dir(
             project_root
@@ -169,7 +170,7 @@ class FlextInfraUtilitiesDiscovery:
         if src_package is None:
             return {}
         _package_name, package_dir = src_package
-        alias_to_facade: dict[str, str] = {}
+        alias_to_facade: Mapping[str, str] = {}
         facades = [
             "models.py",
             "utilities.py",
@@ -209,7 +210,7 @@ class FlextInfraUtilitiesDiscovery:
         return ""
 
     @staticmethod
-    def extract_lazy_import_map(init_path: Path) -> dict[str, str]:
+    def extract_lazy_import_map(init_path: Path) -> Mapping[str, str]:
         """Extract PEP 562 lazy import map from an __init__.py file."""
         if not init_path.is_file():
             return {}
@@ -234,8 +235,8 @@ class FlextInfraUtilitiesDiscovery:
         return {}
 
     @staticmethod
-    def _extract_lazy_aliases(value: cst.Dict) -> dict[str, str]:
-        result: dict[str, str] = {}
+    def _extract_lazy_aliases(value: cst.Dict) -> Mapping[str, str]:
+        result: Mapping[str, str] = {}
         for element in value.elements:
             if not isinstance(element, cst.DictElement):
                 continue
@@ -259,7 +260,7 @@ class FlextInfraUtilitiesDiscovery:
         project_dir: Path,
         *,
         skip_dirs: frozenset[str] | None = None,
-    ) -> list[str]:
+    ) -> Sequence[str]:
         """Discover all directories containing Python files in a project.
 
         SSOT discovery function used by all tool config phases
@@ -276,7 +277,7 @@ class FlextInfraUtilitiesDiscovery:
         if not project_dir.is_dir():
             return []
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
-        dirs: list[str] = []
+        dirs: Sequence[str] = []
         for subdir in sorted(project_dir.iterdir()):
             if not subdir.is_dir():
                 continue
@@ -303,8 +304,8 @@ class FlextInfraUtilitiesDiscovery:
         workspace_root: Path,
         *,
         skip_dirs: frozenset[str] | None = None,
-        project_paths: list[Path] | None = None,
-    ) -> r[list[Path]]:
+        project_paths: Sequence[Path] | None = None,
+    ) -> r[Sequence[Path]]:
         """Find all pyproject.toml files in the workspace, respecting skip_dirs and project_paths.
 
         Args:
@@ -313,11 +314,11 @@ class FlextInfraUtilitiesDiscovery:
             project_paths: If provided, only include files within these paths
 
         Returns:
-            r[list[Path]]: Result with list of pyproject.toml paths, or failure if OSError occurs
+            r[Sequence[Path]]: Result with list of pyproject.toml paths, or failure if OSError occurs
 
         """
         if not workspace_root.exists():
-            return r[list[Path]].ok([])
+            return r[Sequence[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
         try:
             all_files = [
@@ -329,14 +330,14 @@ class FlextInfraUtilitiesDiscovery:
                 )
             ]
         except OSError as exc:
-            return r[list[Path]].fail(f"pyproject file scan failed: {exc}")
+            return r[Sequence[Path]].fail(f"pyproject file scan failed: {exc}")
         if project_paths is not None:
             all_files = [
                 f
                 for f in all_files
                 if any(f.is_relative_to(pp) for pp in project_paths)
             ]
-        return r[list[Path]].ok(all_files)
+        return r[Sequence[Path]].ok(all_files)
 
 
 __all__ = ["FlextInfraUtilitiesDiscovery"]

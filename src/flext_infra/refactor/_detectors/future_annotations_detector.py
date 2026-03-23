@@ -6,6 +6,7 @@ statement, which is needed for proper PEP 563 deferred evaluation of annotations
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -29,7 +30,7 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FutureAnnotationsDetector scanner.
 
@@ -74,8 +75,8 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.FutureAnnotationsViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.FutureAnnotationsViolation]:
         """Detect missing future annotations in a file.
 
         Args:
@@ -96,8 +97,8 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.FutureAnnotationsViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.FutureAnnotationsViolation]:
         """Scan a file for missing future annotations import.
 
         Args:

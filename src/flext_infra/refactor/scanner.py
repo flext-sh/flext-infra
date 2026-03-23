@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -22,19 +22,19 @@ class FlextInfraRefactorLooseClassScanner:
                 files_result.error or "discovery failed",
             )
             return out
-        discovered_files: list[Path] = files_result.value
+        discovered_files: Sequence[Path] = files_result.value
         grep_result = self._scan_with_ast_grep(project_root)
-        grep_index: dict[Path, dict[str, int]] = (
+        grep_index: Mapping[Path, Mapping[str, int]] = (
             grep_result.value if grep_result.is_success else {}
         )
-        violations: list[m.Infra.LooseClassViolation] = []
+        violations: Sequence[m.Infra.LooseClassViolation] = []
         targets_found = dict.fromkeys(c.Infra.REQUIRED_CLASS_TARGETS, False)
         classes_scanned = 0
         for fp in discovered_files:
             parsed = self._scan_file_with_libcst(fp)
             if parsed.is_failure:
                 continue
-            occurrences: list[m.Infra.ClassOccurrence] = parsed.value
+            occurrences: Sequence[m.Infra.ClassOccurrence] = parsed.value
             classes_scanned += len(occurrences)
             rel = self._relative_module_path(project_root, fp)
             if rel.is_failure:
@@ -48,11 +48,11 @@ class FlextInfraRefactorLooseClassScanner:
                 if viol.class_name in targets_found:
                     targets_found[viol.class_name] = True
         counters = Counter(v.confidence for v in violations)
-        violations_infra: list[t.Infra.InfraValue] = [
+        violations_infra: Sequence[t.Infra.InfraValue] = [
             v.model_dump() for v in violations
         ]
-        confidence_counts: dict[str, t.Infra.InfraValue] = dict(counters)
-        required_targets_infra: dict[str, t.Infra.InfraValue] = dict(targets_found)
+        confidence_counts: Mapping[str, t.Infra.InfraValue] = dict(counters)
+        required_targets_infra: Mapping[str, t.Infra.InfraValue] = dict(targets_found)
         result_dict: t.Infra.ContainerDict = {
             "rule": c.Infra.ReportKeys.CLASS_NESTING,
             "files_scanned": len(discovered_files),
@@ -101,17 +101,17 @@ class FlextInfraRefactorLooseClassScanner:
             return "high"
         return "medium" if parts else c.Infra.Severity.LOW
 
-    def _discover_python_files(self, project_root: Path) -> r[list[Path]]:
+    def _discover_python_files(self, project_root: Path) -> r[Sequence[Path]]:
         src = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src.is_dir():
-            out: r[list[Path]] = r[list[Path]].fail(f"src not found: {src}")
+            out: r[Sequence[Path]] = r[Sequence[Path]].fail(f"src not found: {src}")
             return out
-        file_list: list[Path] = [
+        file_list: Sequence[Path] = [
             fp
             for fp in u.Infra.iter_directory_python_files(src)
             if not (fp.name.startswith("__") and fp.name != c.Infra.Files.INIT_PY)
         ]
-        out2: r[list[Path]] = r[list[Path]].ok(file_list)
+        out2: r[Sequence[Path]] = r[Sequence[Path]].ok(file_list)
         return out2
 
     def _expected_prefix_for_module(self, rel_path: Path) -> str:
@@ -143,23 +143,27 @@ class FlextInfraRefactorLooseClassScanner:
     def _scan_file_with_libcst(
         self,
         file_path: Path,
-    ) -> r[list[m.Infra.ClassOccurrence]]:
+    ) -> r[Sequence[m.Infra.ClassOccurrence]]:
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
-            out: r[list[m.Infra.ClassOccurrence]] = r[
-                list[m.Infra.ClassOccurrence]
+            out: r[Sequence[m.Infra.ClassOccurrence]] = r[
+                Sequence[m.Infra.ClassOccurrence]
             ].fail(
                 f"{file_path}: parse_failed",
             )
             return out
         col = TopLevelClassCollector()
         tree.visit(col)
-        out2: r[list[m.Infra.ClassOccurrence]] = r[list[m.Infra.ClassOccurrence]].ok(
+        out2: r[Sequence[m.Infra.ClassOccurrence]] = r[
+            Sequence[m.Infra.ClassOccurrence]
+        ].ok(
             col.classes,
         )
         return out2
 
-    def _scan_with_ast_grep(self, project_root: Path) -> r[dict[Path, dict[str, int]]]:
+    def _scan_with_ast_grep(
+        self, project_root: Path
+    ) -> r[Mapping[Path, Mapping[str, int]]]:
         cmd = [
             "sg",
             "--pattern",
@@ -171,24 +175,28 @@ class FlextInfraRefactorLooseClassScanner:
         ]
         capture = u.Infra.capture(cmd)
         if capture.is_failure:
-            out: r[dict[Path, dict[str, int]]] = r[dict[Path, dict[str, int]]].fail(
+            out: r[Mapping[Path, Mapping[str, int]]] = r[
+                Mapping[Path, Mapping[str, int]]
+            ].fail(
                 capture.error or "ast-grep failed",
             )
             return out
         if not capture.value:
-            out2: r[dict[Path, dict[str, int]]] = r[dict[Path, dict[str, int]]].ok({})
+            out2: r[Mapping[Path, Mapping[str, int]]] = r[
+                Mapping[Path, Mapping[str, int]]
+            ].ok({})
             return out2
         try:
             json_raw: str | bytes | bytearray = capture.value
             entries = TypeAdapter(
-                list[m.Infra.AstGrepMatchEnvelope],
+                Sequence[m.Infra.AstGrepMatchEnvelope],
             ).validate_json(json_raw)
         except ValidationError as exc:
-            out3: r[dict[Path, dict[str, int]]] = r[dict[Path, dict[str, int]]].fail(
-                str(exc)
-            )
+            out3: r[Mapping[Path, Mapping[str, int]]] = r[
+                Mapping[Path, Mapping[str, int]]
+            ].fail(str(exc))
             return out3
-        idx: dict[Path, dict[str, int]] = {}
+        idx: Mapping[Path, Mapping[str, int]] = {}
         for entry in entries:
             name = entry.symbol_name
             if name is None:
@@ -200,7 +208,9 @@ class FlextInfraRefactorLooseClassScanner:
             if not fp.is_absolute():
                 fp = (project_root / fp).resolve()
             idx.setdefault(fp, {}).setdefault(name, line)
-        out4: r[dict[Path, dict[str, int]]] = r[dict[Path, dict[str, int]]].ok(idx)
+        out4: r[Mapping[Path, Mapping[str, int]]] = r[
+            Mapping[Path, Mapping[str, int]]
+        ].ok(idx)
         return out4
 
 

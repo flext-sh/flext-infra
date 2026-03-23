@@ -16,8 +16,8 @@ class PostCheckGate:
         self,
         result: m.Infra.Result,
         expected: t.Infra.ContainerDict,
-    ) -> tuple[bool, list[str]]:
-        errors: list[str] = []
+    ) -> tuple[bool, Sequence[str]]:
+        errors: Sequence[str] = []
         if not result.success:
             if result.error:
                 return (False, [result.error])
@@ -46,14 +46,14 @@ class PostCheckGate:
             errors.extend(self._validate_types(file_path))
         return (len(errors) == 0, errors)
 
-    def _check_enabled(self, check_name: str, checks: list[str]) -> bool:
+    def _check_enabled(self, check_name: str, checks: Sequence[str]) -> bool:
         return check_name in checks
 
-    def _validate_imports(self, file_path: Path) -> list[str]:
+    def _validate_imports(self, file_path: Path) -> Sequence[str]:
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
             return [f"parse_error:{file_path}:parse_failed"]
-        unresolved: list[str] = [
+        unresolved: Sequence[str] = [
             f"line_{node.lineno}:invalid_import_from"
             for node in ast.walk(tree)
             if isinstance(node, ast.ImportFrom)
@@ -67,7 +67,7 @@ class PostCheckGate:
         file_path: Path,
         class_name: str,
         expected_bases: Sequence[str],
-    ) -> list[str]:
+    ) -> Sequence[str]:
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
             return [f"mro_parse_error:{file_path}:parse_failed"]
@@ -83,7 +83,7 @@ class PostCheckGate:
                 return []
         return [f"class_not_found:{class_name}"]
 
-    def _validate_types(self, file_path: Path) -> list[str]:
+    def _validate_types(self, file_path: Path) -> Sequence[str]:
         cmd = [sys.executable, "-m", "py_compile", str(file_path)]
         result = u.Infra.capture(cmd)
         return result.fold(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Final
 
 
@@ -50,7 +51,7 @@ class FlextInfraWorkspaceConstants:
         "__pycache__/",
         "base.mk",
     )
-    REQUIRED_GITIGNORE_ENTRIES: Final[list[str]] = [
+    REQUIRED_GITIGNORE_ENTRIES: Final[Sequence[str]] = [
         ".reports/",
         ".venv/",
         "__pycache__/",

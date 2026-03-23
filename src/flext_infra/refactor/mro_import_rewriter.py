@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -21,12 +22,12 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        moved_index: dict[str, dict[str, str]],
-        module_facade_aliases: dict[str, str],
+        moved_index: Mapping[str, Mapping[str, str]],
+        module_facade_aliases: Mapping[str, str],
         apply: bool,
-    ) -> list[m.Infra.MRORewriteResult]:
+    ) -> Sequence[m.Infra.MRORewriteResult]:
         """Rewrite all eligible Python files inside a workspace."""
-        results: list[m.Infra.MRORewriteResult] = []
+        results: Sequence[m.Infra.MRORewriteResult] = []
         for file_path in cls._iter_workspace_python_files(
             workspace_root=workspace_root,
         ):
@@ -44,8 +45,8 @@ class FlextInfraRefactorMROImportRewriter:
     def rewrite_file(
         *,
         file_path: Path,
-        moved_index: dict[str, dict[str, str]],
-        module_facade_aliases: dict[str, str],
+        moved_index: Mapping[str, Mapping[str, str]],
+        module_facade_aliases: Mapping[str, str],
         apply: bool,
     ) -> m.Infra.MRORewriteResult | None:
         """Rewrite one file and return replacement statistics."""
@@ -59,12 +60,12 @@ class FlextInfraRefactorMROImportRewriter:
         ast_tree = u.Infra.parse_ast_from_source(source)
         if ast_tree is None:
             return None
-        imported_symbols: dict[str, m.Infra.MROImportRewrite] = {}
-        module_aliases: dict[str, str] = {}
-        facade_aliases: dict[str, str] = {}
-        module_facade_alias: dict[str, str] = {}
+        imported_symbols: Mapping[str, m.Infra.MROImportRewrite] = {}
+        module_aliases: Mapping[str, str] = {}
+        facade_aliases: Mapping[str, str] = {}
+        module_facade_alias: Mapping[str, str] = {}
         facade_imports_needed: set[str] = set()
-        facade_import_objects: dict[str, m.Infra.MROImportRewrite] = {}
+        facade_import_objects: Mapping[str, m.Infra.MROImportRewrite] = {}
         for stmt in ast_tree.body:
             if isinstance(stmt, ast.ImportFrom):
                 module_name = stmt.module
@@ -72,7 +73,7 @@ class FlextInfraRefactorMROImportRewriter:
                     continue
                 if any(alias.name == "*" for alias in stmt.names):
                     continue
-                kept_names: list[ast.alias] = []
+                kept_names: Sequence[ast.alias] = []
                 for alias in stmt.names:
                     default_facade_alias = module_facade_aliases.get(
                         module_name,
@@ -156,7 +157,7 @@ class FlextInfraRefactorMROImportRewriter:
         )
 
     @staticmethod
-    def _iter_workspace_python_files(*, workspace_root: Path) -> list[Path]:
+    def _iter_workspace_python_files(*, workspace_root: Path) -> Sequence[Path]:
         result = u.Infra.iter_python_files(workspace_root=workspace_root)
         return result.fold(
             on_failure=lambda _: [],

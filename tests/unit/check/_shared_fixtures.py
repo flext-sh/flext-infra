@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -42,7 +42,7 @@ def create_gate_execution(
     project: str = "p",
     *,
     passed: bool = True,
-    issues: list[m.Infra.Issue] | None = None,
+    issues: Sequence[m.Infra.Issue] | None = None,
 ) -> m.Infra.GateExecution:
     """Factory for GateExecution with standard defaults.
 
@@ -109,17 +109,17 @@ def patch_gate_run(
     def _stub_run(
         result: m.Infra.CommandOutput | SimpleNamespace,
     ) -> Callable[
-        [t.NormalizedValue, list[str], Path, int, dict[str, str] | None],
+        [t.NormalizedValue, Sequence[str], Path, int, Mapping[str, str] | None],
         m.Infra.CommandOutput,
     ]:
         """Create stub returning fixed result or SimpleNamespace."""
 
         def _run(
             _self: t.NormalizedValue,
-            _cmd: list[str],
+            _cmd: Sequence[str],
             _cwd: Path,
             _timeout: int = 120,
-            _env: dict[str, str] | None = None,
+            _env: Mapping[str, str] | None = None,
         ) -> m.Infra.CommandOutput:
             del _self, _cmd, _cwd, _timeout, _env
             return _as_command_output(result)
@@ -135,7 +135,7 @@ def patch_gate_run(
 
 def create_fake_run_raw(
     result: r[m.Infra.CommandOutput] | str,
-) -> Callable[[list[str]], r[m.Infra.CommandOutput]]:
+) -> Callable[[Sequence[str]], r[m.Infra.CommandOutput]]:
     """Factory for _fake_run_raw that handles both success and failure.
 
     Single Responsibility: Encapsulate subprocess.run_raw mock creation.
@@ -147,7 +147,7 @@ def create_fake_run_raw(
     """
 
     def _fake_run_raw(
-        _cmd: list[str],
+        _cmd: Sequence[str],
         **_kw: t.Scalar,
     ) -> r[m.Infra.CommandOutput]:
         if isinstance(result, str):
@@ -170,23 +170,23 @@ class RunProjectsMock:
     ) -> None:
         self.passed = True if passed is None else passed
         self.error_msg = error_msg
-        self.captured_projects: list[str] = []
+        self.captured_projects: Sequence[str] = []
         self.captured_fail_fast: bool = False
 
     def __call__(
         self,
-        projects: list[str],
-        gates: list[str],
+        projects: Sequence[str],
+        gates: Sequence[str],
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
-    ) -> r[list[m.Infra.ProjectResult]]:
+    ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Mock run_projects method with captured argument state."""
         del gates, reports_dir  # Not used in mock, but required by signature
         self.captured_projects = projects
         self.captured_fail_fast = fail_fast
         if self.error_msg:
-            return r[list[m.Infra.ProjectResult]].fail(self.error_msg)
+            return r[Sequence[m.Infra.ProjectResult]].fail(self.error_msg)
         result = infra_models.Infra.ProjectResult(project="test-project")
         if not self.passed:
             # Add failing gate to make passed=False (computed from gates dict)
@@ -202,7 +202,7 @@ class RunProjectsMock:
                 raw_output="",
             )
             result.gates["test"] = fail_gate
-        return r[list[m.Infra.ProjectResult]].ok([result])
+        return r[Sequence[m.Infra.ProjectResult]].ok([result])
 
 
 def create_fake_run_projects(
@@ -228,7 +228,7 @@ def create_fake_run_projects(
 
 def create_check_project_stub(
     project: m.Infra.ProjectResult,
-) -> Callable[[Path, list[str], Path], m.Infra.ProjectResult]:
+) -> Callable[[Path, Sequence[str], Path], m.Infra.ProjectResult]:
     """Factory for _check_project stub that returns fixed project result.
 
     Single Responsibility: Create consistent project checking mocks.
@@ -237,7 +237,7 @@ def create_check_project_stub(
 
     def _fake_check(
         _project_dir: Path,
-        _gates: list[str],
+        _gates: Sequence[str],
         _reports_dir: Path,
     ) -> m.Infra.ProjectResult:
         del _project_dir, _gates, _reports_dir
@@ -247,8 +247,8 @@ def create_check_project_stub(
 
 
 def create_check_project_iter_stub(
-    projects: list[m.Infra.ProjectResult],
-) -> Callable[[Path, list[str], Path], m.Infra.ProjectResult]:
+    projects: Sequence[m.Infra.ProjectResult],
+) -> Callable[[Path, Sequence[str], Path], m.Infra.ProjectResult]:
     """Factory for _check_project stub that iterates through project results.
 
     Single Responsibility: Create consistent project checking mocks with state.
@@ -258,7 +258,7 @@ def create_check_project_iter_stub(
 
     def _fake_check(
         _project_dir: Path,
-        _gates: list[str],
+        _gates: Sequence[str],
         _reports_dir: Path,
     ) -> m.Infra.ProjectResult:
         del _project_dir, _gates, _reports_dir
@@ -278,15 +278,15 @@ def patch_python_dir_detection(
     Single Responsibility: Mock python directory discovery for gate tests.
     """
 
-    def _existing_dirs(_self: t.NormalizedValue, _project_dir: Path) -> list[str]:
+    def _existing_dirs(_self: t.NormalizedValue, _project_dir: Path) -> Sequence[str]:
         del _self, _project_dir
         return ["src"]
 
-    def _no_python_dirs(_project_dir: Path, _dirs: list[str]) -> list[str]:
+    def _no_python_dirs(_project_dir: Path, _dirs: Sequence[str]) -> Sequence[str]:
         del _project_dir, _dirs
         return []
 
-    def _src_python_dirs(_project_dir: Path, _dirs: list[str]) -> list[str]:
+    def _src_python_dirs(_project_dir: Path, _dirs: Sequence[str]) -> Sequence[str]:
         del _project_dir, _dirs
         return ["src"]
 

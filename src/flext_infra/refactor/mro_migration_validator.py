@@ -8,6 +8,8 @@ from flext_infra import u
 
 
 class FlextInfraRefactorMROMigrationValidator:
+    """Validator for MRO migration completeness and correctness."""
+
     @classmethod
     def validate(cls, *, workspace_root: Path, target: str) -> tuple[int, int]:
         """Return count of remaining symbols and unsupported entries."""

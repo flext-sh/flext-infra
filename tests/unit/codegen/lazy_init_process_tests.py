@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_tests import tm
@@ -24,7 +25,7 @@ class TestProcessDirectory:
         (src_dir / "models.py").write_text(
             '"""Models."""\n\n__all__ = ["TestModel"]\n\nclass TestModel:\n    pass\n',
         )
-        dir_exports: dict[str, dict[str, tuple[str, str]]] = {}
+        dir_exports: Mapping[str, Mapping[str, tuple[str, str]]] = {}
         result, exports = generator._process_directory(
             src_dir,
             check_only=False,
@@ -43,7 +44,7 @@ class TestProcessDirectory:
         (src_dir / "models.py").write_text(
             '"""Models."""\n\n__all__ = ["TestModel"]\n\nclass TestModel:\n    pass\n',
         )
-        dir_exports: dict[str, dict[str, tuple[str, str]]] = {}
+        dir_exports: Mapping[str, Mapping[str, tuple[str, str]]] = {}
         result, exports = generator._process_directory(
             src_dir,
             check_only=True,
@@ -60,7 +61,7 @@ class TestProcessDirectory:
         random_dir = tmp_path / "random"
         random_dir.mkdir()
         (random_dir / "models.py").write_text("class Model: pass\n")
-        dir_exports: dict[str, dict[str, tuple[str, str]]] = {}
+        dir_exports: Mapping[str, Mapping[str, tuple[str, str]]] = {}
         result, exports = generator._process_directory(
             random_dir,
             check_only=False,
@@ -103,7 +104,7 @@ class TestProcessDirectory:
         (src_dir / "__version__.py").write_text(
             '__version__ = "1.0.0"\n__version_info__ = (1, 0, 0)\n',
         )
-        dir_exports: dict[str, dict[str, tuple[str, str]]] = {}
+        dir_exports: Mapping[str, Mapping[str, tuple[str, str]]] = {}
         result, _ = generator._process_directory(
             src_dir,
             check_only=False,

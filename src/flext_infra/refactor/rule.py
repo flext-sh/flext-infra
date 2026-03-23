@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import fnmatch
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
@@ -31,8 +31,8 @@ class FlextInfraRefactorRuleLoader:
         """Load and validate the refactor engine configuration."""
         try:
             loaded = u.Infra.safe_load_yaml(self.config_path)
-            normalized: dict[str, t.Infra.InfraValue] = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+            normalized: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
+                Mapping[str, t.Infra.InfraValue],
             ).validate_python(dict(loaded.items()))
             scope_raw = normalized.get("refactor_engine")
             scope_map = self._normalize_str_object_mapping(scope_raw)
@@ -45,36 +45,36 @@ class FlextInfraRefactorRuleLoader:
     def extract_engine_file_filters(
         self,
         config: t.Infra.InfraValue,
-    ) -> tuple[list[str], list[str]]:
+    ) -> tuple[Sequence[str], Sequence[str]]:
         """Extract ignore patterns and file extensions from engine config."""
         scope = self._resolve_engine_config(config)
         return (list(scope.ignore_patterns), list(scope.file_extensions))
 
-    def extract_project_scan_dirs(self, config: t.Infra.InfraValue) -> list[str]:
+    def extract_project_scan_dirs(self, config: t.Infra.InfraValue) -> Sequence[str]:
         """Extract project scan directories from engine config."""
         scope = self._resolve_engine_config(config)
         return list(scope.project_scan_dirs)
 
     def load_rules(
         self,
-        rule_filters: list[str],
+        rule_filters: Sequence[str],
         validator: FlextInfraRefactorRuleDefinitionValidator,
         build_rule: Callable[
             [Mapping[str, t.Infra.InfraValue]],
             FlextInfraRefactorRule | None,
         ],
-        build_file_rules: Callable[[], list[ClassNestingRefactorRule]],
-    ) -> r[tuple[list[FlextInfraRefactorRule], list[ClassNestingRefactorRule]]]:
+        build_file_rules: Callable[[], Sequence[ClassNestingRefactorRule]],
+    ) -> r[tuple[Sequence[FlextInfraRefactorRule], Sequence[ClassNestingRefactorRule]]]:
         """Load rules from YAML files, validate, and build rule instances."""
         try:
             rules_dir = self.config_path.parent / c.Infra.ReportKeys.RULES
-            loaded_rules: list[FlextInfraRefactorRule] = []
+            loaded_rules: Sequence[FlextInfraRefactorRule] = []
             loaded_file_rules = build_file_rules()
-            unknown_rules: list[str] = []
+            unknown_rules: Sequence[str] = []
             for rule_file in sorted(rules_dir.glob("*.yml")):
                 try:
-                    rule_config: dict[str, t.Infra.InfraValue] = TypeAdapter(
-                        dict[str, t.Infra.InfraValue],
+                    rule_config: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
+                        Mapping[str, t.Infra.InfraValue],
                     ).validate_python(dict(u.Infra.safe_load_yaml(rule_file).items()))
                 except (OSError, TypeError):
                     continue
@@ -127,16 +127,20 @@ class FlextInfraRefactorRuleLoader:
                 unknown = ", ".join(sorted(unknown_rules))
                 return r[
                     tuple[
-                        list[FlextInfraRefactorRule],
-                        list[ClassNestingRefactorRule],
+                        Sequence[FlextInfraRefactorRule],
+                        Sequence[ClassNestingRefactorRule],
                     ]
                 ].fail(f"Unknown rule mapping for: {unknown}")
             return r[
-                tuple[list[FlextInfraRefactorRule], list[ClassNestingRefactorRule]]
+                tuple[
+                    Sequence[FlextInfraRefactorRule], Sequence[ClassNestingRefactorRule]
+                ]
             ].ok((loaded_rules, loaded_file_rules))
         except Exception as exc:
             return r[
-                tuple[list[FlextInfraRefactorRule], list[ClassNestingRefactorRule]]
+                tuple[
+                    Sequence[FlextInfraRefactorRule], Sequence[ClassNestingRefactorRule]
+                ]
             ].fail(f"Failed to load rules: {exc}")
 
     def _resolve_engine_config(
@@ -151,14 +155,14 @@ class FlextInfraRefactorRuleLoader:
     @staticmethod
     def _coerce_rule_definitions(
         value: t.Infra.InfraValue | None,
-    ) -> list[dict[str, t.Infra.InfraValue]]:
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         try:
-            entries: list[JsonValue] = TypeAdapter(
-                list[JsonValue],
+            entries: Sequence[JsonValue] = TypeAdapter(
+                Sequence[JsonValue],
             ).validate_python(value)
         except ValidationError:
             return []
-        definitions: list[dict[str, t.Infra.InfraValue]] = []
+        definitions: Sequence[Mapping[str, t.Infra.InfraValue]] = []
         for item in entries:
             normalized = FlextInfraRefactorRuleLoader._normalize_str_object_mapping(
                 item,
@@ -171,10 +175,10 @@ class FlextInfraRefactorRuleLoader:
     @staticmethod
     def _normalize_str_object_mapping(
         value: t.Infra.InfraValue | None,
-    ) -> dict[str, t.Infra.InfraValue]:
+    ) -> Mapping[str, t.Infra.InfraValue]:
         try:
-            adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+            adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+                Mapping[str, t.Infra.InfraValue],
             )
             return adapter.validate_python(value)
         except ValidationError:

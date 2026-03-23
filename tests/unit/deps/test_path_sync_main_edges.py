@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -34,8 +35,8 @@ class TestMainEdgeCases:
 
         def _discover_none(
             _root: Path,
-        ) -> r[list[m.Infra.ProjectInfo]]:
-            return r[list[m.Infra.ProjectInfo]].ok([])
+        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+            return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
@@ -59,8 +60,8 @@ class TestMainEdgeCases:
 
         def _discover_project(
             _root: Path,
-        ) -> r[list[m.Infra.ProjectInfo]]:
-            return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
+        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+            return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
@@ -77,12 +78,12 @@ class TestMainEdgeCases:
             internal_names: set[str],
             is_root: bool = False,
             dry_run: bool = False,
-        ) -> r[list[str]]:
+        ) -> r[Sequence[str]]:
             _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
             calls["n"] += 1
             if calls["n"] == 1:
-                return r[list[str]].ok([])
-            return r[list[str]].ok(["change1"])
+                return r[Sequence[str]].ok([])
+            return r[Sequence[str]].ok(["change1"])
 
         monkeypatch.setattr(
             FlextInfraDependencyPathSync,
@@ -103,8 +104,8 @@ class TestMainEdgeCases:
 
         def _discover_none(
             _root: Path,
-        ) -> r[list[m.Infra.ProjectInfo]]:
-            return r[list[m.Infra.ProjectInfo]].ok([])
+        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+            return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
@@ -128,8 +129,8 @@ class TestMainEdgeCases:
 
         def _discover_project(
             _root: Path,
-        ) -> r[list[m.Infra.ProjectInfo]]:
-            return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
+        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+            return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
@@ -145,9 +146,9 @@ class TestMainEdgeCases:
             internal_names: set[str],
             is_root: bool = False,
             dry_run: bool = False,
-        ) -> r[list[str]]:
+        ) -> r[Sequence[str]]:
             _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
-            return r[list[str]].ok([])
+            return r[Sequence[str]].ok([])
 
         monkeypatch.setattr(
             FlextInfraDependencyPathSync,
@@ -176,8 +177,8 @@ class TestMainEdgeCases:
 
         def _discover_none(
             _root: Path,
-        ) -> r[list[m.Infra.ProjectInfo]]:
-            return r[list[m.Infra.ProjectInfo]].ok([])
+        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+            return r[Sequence[m.Infra.ProjectInfo]].ok([])
 
         monkeypatch.setattr(
             "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
@@ -200,8 +201,8 @@ class TestMainEdgeCases:
 
         def _discover_project(
             _root: Path,
-        ) -> r[list[m.Infra.ProjectInfo]]:
-            return r[list[m.Infra.ProjectInfo]].ok([_project(project_dir)])
+        ) -> r[Sequence[m.Infra.ProjectInfo]]:
+            return r[Sequence[m.Infra.ProjectInfo]].ok([_project(project_dir)])
 
         monkeypatch.setattr(
             "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",

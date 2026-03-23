@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -118,7 +118,7 @@ class TestModernizerRunAndMain:
         )
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
 
-        def _find_files() -> list[Path]:
+        def _find_files() -> Sequence[Path]:
             return [pyproject]
 
         def _read_doc(_path: Path) -> tomlkit.TOMLDocument:
@@ -148,13 +148,13 @@ class TestModernizerRunAndMain:
         )
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
 
-        def _find_files() -> list[Path]:
+        def _find_files() -> Sequence[Path]:
             return [pyproject]
 
         def _read_doc(_path: Path) -> tomlkit.TOMLDocument:
             return doc
 
-        def _check(_files: list[Path]) -> int:
+        def _check(_files: Sequence[Path]) -> int:
             return 0
 
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
@@ -181,7 +181,7 @@ class TestModernizerRunAndMain:
             _cmd: Sequence[str],
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: dict[str, str] | None = None,
+            env: Mapping[str, str] | None = None,
         ) -> SimpleNamespace:
             _ = (cwd, timeout, env)
             return SimpleNamespace(is_failure=False, value=SimpleNamespace(exit_code=0))
@@ -190,7 +190,7 @@ class TestModernizerRunAndMain:
             _cmd: Sequence[str],
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: dict[str, str] | None = None,
+            env: Mapping[str, str] | None = None,
         ) -> SimpleNamespace:
             _ = (cwd, timeout, env)
             return SimpleNamespace(is_failure=True)
@@ -199,7 +199,7 @@ class TestModernizerRunAndMain:
             _cmd: Sequence[str],
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: dict[str, str] | None = None,
+            env: Mapping[str, str] | None = None,
         ) -> SimpleNamespace:
             _ = (cwd, timeout, env)
             return SimpleNamespace(is_failure=False, value=SimpleNamespace(exit_code=1))

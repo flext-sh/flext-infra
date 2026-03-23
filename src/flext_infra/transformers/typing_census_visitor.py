@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -30,7 +31,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         self._current_function: str = ""
         self._current_function_is_typeguard: bool = False
         self._renderer = cst.Module(body=[])
-        self.violations: list[dict[str, str | int]] = []
+        self.violations: Sequence[Mapping[str, str | int]] = []
 
     @override
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
@@ -115,7 +116,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
                 annotation_text=self._renderer.code_for_node(annotation),
                 violation_kind="container_object",
                 context=context,
-                suggested_replacement="dict[str, t.ContainerValue]",
+                suggested_replacement="Mapping[str, t.ContainerValue]",
             )
 
         if base_name == "Mapping" and self._is_str_object_pair(values):
@@ -135,7 +136,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
                 annotation_text=self._renderer.code_for_node(annotation),
                 violation_kind="list_object",
                 context=context,
-                suggested_replacement="list[t.ContainerValue]",
+                suggested_replacement="Sequence[t.ContainerValue]",
             )
 
         if (
@@ -233,8 +234,10 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
             },
         )
 
-    def _get_subscript_values(self, node: cst.Subscript) -> list[cst.BaseExpression]:
-        values: list[cst.BaseExpression] = []
+    def _get_subscript_values(
+        self, node: cst.Subscript
+    ) -> Sequence[cst.BaseExpression]:
+        values: Sequence[cst.BaseExpression] = []
         for element in node.slice:
             if isinstance(element.slice, cst.Index):
                 values.append(element.slice.value)
@@ -257,7 +260,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         values = self._get_subscript_values(node)
         return base_name == "dict" and self._is_str_object_pair(values)
 
-    def _is_str_object_pair(self, values: list[cst.BaseExpression]) -> bool:
+    def _is_str_object_pair(self, values: Sequence[cst.BaseExpression]) -> bool:
         if len(values) != _PAIR_LENGTH:
             return False
         key_node = values[0]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from argparse import ArgumentParser
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -69,11 +70,13 @@ def run_workflows(
     report: Path | None,
 ) -> int:
     """Sync GitHub workflow files."""
-    result: r[list[m.Infra.SyncOperation]] = u.Infra.github_sync_workspace_workflows(
-        workspace_root=cli.workspace,
-        apply=cli.apply,
-        prune=prune,
-        report_path=report,
+    result: r[Sequence[m.Infra.SyncOperation]] = (
+        u.Infra.github_sync_workspace_workflows(
+            workspace_root=cli.workspace,
+            apply=cli.apply,
+            prune=prune,
+            report_path=report,
+        )
     )
     return u.Infra.exit_code(result, failure_msg="Workflow sync failed")
 
@@ -99,7 +102,7 @@ def run_lint(
     return 0
 
 
-def run_pr(argv: list[str]) -> int:
+def run_pr(argv: Sequence[str]) -> int:
     """Manage pull requests for a single project."""
     parser = u.Infra.create_parser(
         "flext-infra github pr",
@@ -226,7 +229,7 @@ def run_pr_workspace(
     return u.Infra.exit_code(result, failure_msg="PR workspace orchestration failed")
 
 
-def run(argv: list[str] | None = None) -> int:
+def run(argv: Sequence[str] | None = None) -> int:
     """Run GitHub command dispatcher."""
     parser, subs = u.Infra.create_subcommand_parser(
         "flext-infra github",

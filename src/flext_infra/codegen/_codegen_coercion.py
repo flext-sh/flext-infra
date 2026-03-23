@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+
 from pydantic import TypeAdapter
 
 from flext_infra import FlextInfraUtilitiesCodegenTransforms, c, t
 
 
 class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
-    container_mapping_adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-        dict[str, t.Infra.InfraValue],
+    container_mapping_adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = (
+        TypeAdapter(
+            Mapping[str, t.Infra.InfraValue],
+        )
     )
 
     @staticmethod
@@ -26,26 +30,28 @@ class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
         return 0
 
     @staticmethod
-    def dict_or_empty(value: t.Infra.InfraValue) -> dict[str, t.Infra.InfraValue]:
+    def dict_or_empty(value: t.Infra.InfraValue) -> Mapping[str, t.Infra.InfraValue]:
         if not isinstance(value, dict):
             return {}
-        return TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(value)
+        return TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(value)
 
     @staticmethod
-    def dict_list(value: t.Infra.InfraValue) -> list[dict[str, t.Infra.InfraValue]]:
+    def dict_list(
+        value: t.Infra.InfraValue,
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         if not isinstance(value, list):
             return []
-        result: list[dict[str, t.Infra.InfraValue]] = []
+        result: Sequence[Mapping[str, t.Infra.InfraValue]] = []
         for item in value:
             if not isinstance(item, dict):
                 continue
             result.append(
-                TypeAdapter(dict[str, t.Infra.InfraValue]).validate_python(item),
+                TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(item),
             )
         return result
 
     @staticmethod
-    def extract_total_violations(payload: dict[str, t.Infra.InfraValue]) -> int:
+    def extract_total_violations(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         if "total_violations" in payload:
             return FlextInfraCodegenCoercion.as_int(payload.get("total_violations"))
         totals = FlextInfraCodegenCoercion.dict_or_empty(payload.get("totals"))
@@ -65,7 +71,7 @@ class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
         return -1
 
     @staticmethod
-    def extract_duplicate_groups(payload: dict[str, t.Infra.InfraValue]) -> int:
+    def extract_duplicate_groups(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         if "duplicate_groups" in payload:
             return FlextInfraCodegenCoercion.as_int(payload.get("duplicate_groups"))
         duplicates = payload.get("duplicates")
@@ -74,7 +80,7 @@ class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
         return -1
 
     @staticmethod
-    def extract_projects_total(payload: dict[str, t.Infra.InfraValue]) -> int:
+    def extract_projects_total(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         totals = FlextInfraCodegenCoercion.dict_or_empty(payload.get("totals"))
         value = totals.get(c.Infra.ReportKeys.PROJECTS)
         if value is not None:
@@ -85,12 +91,12 @@ class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
         return 0
 
     @staticmethod
-    def extract_projects_passed(payload: dict[str, t.Infra.InfraValue]) -> int:
+    def extract_projects_passed(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         totals = FlextInfraCodegenCoercion.dict_or_empty(payload.get("totals"))
         return FlextInfraCodegenCoercion.as_int(totals.get("passed"))
 
     @staticmethod
-    def extract_projects_failed(payload: dict[str, t.Infra.InfraValue]) -> int:
+    def extract_projects_failed(payload: Mapping[str, t.Infra.InfraValue]) -> int:
         totals = FlextInfraCodegenCoercion.dict_or_empty(payload.get("totals"))
         return FlextInfraCodegenCoercion.as_int(totals.get("failed"))
 

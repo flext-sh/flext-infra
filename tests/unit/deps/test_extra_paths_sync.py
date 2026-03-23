@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -54,11 +55,11 @@ def test_sync_extra_paths_success_modes(
     pyright_content: str,
     mode: str,
     dry_run: bool,
-    project_dirs: list[str] | None,
+    project_dirs: Sequence[str] | None,
     expect_fail: bool,
     expect_has: str | None,
 ) -> None:
-    project_dirs_arg: list[Path] | None = None
+    project_dirs_arg: Sequence[Path] | None = None
     if mode == "project":
         project = tmp_path / "proj"
         project.mkdir()
@@ -138,7 +139,7 @@ def test_main_success_modes(
     monkeypatch: pytest.MonkeyPatch,
     pyright_content: str,
     mode: str,
-    argv: list[str],
+    argv: Sequence[str],
     expected_exit: int,
 ) -> None:
     monkeypatch.setattr(extra_paths, "FlextInfraExtraPathsManager", _ManagerAdapter)
@@ -172,7 +173,7 @@ def test_main_sync_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         _self: FlextInfraExtraPathsManager,
         *,
         dry_run: bool = False,
-        project_dirs: list[Path] | None = None,
+        project_dirs: Sequence[Path] | None = None,
     ) -> r[int]:
         _ = _self, dry_run, project_dirs
         return r[int].fail("sync error")

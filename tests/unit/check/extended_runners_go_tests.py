@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -18,7 +18,7 @@ from tests import m
 from tests.helpers import FlextInfraTestHelpers as h
 
 RunCallable = Callable[
-    [list[str], Path, int, dict[str, str] | None],
+    [Sequence[str], Path, int, Mapping[str, str] | None],
     m.Infra.CommandOutput,
 ]
 
@@ -36,13 +36,13 @@ def _as_command_output(
 
 
 def _stub_run_seq(
-    results: list[m.Infra.CommandOutput | SimpleNamespace],
+    results: Sequence[m.Infra.CommandOutput | SimpleNamespace],
 ) -> Callable[..., m.Infra.CommandOutput]:
     idx = [0]
 
     def _run(
         _self: FlextInfraGate,
-        _cmd: list[str],
+        _cmd: Sequence[str],
         _cwd: Path,
         timeout: int = 120,
         env: Mapping[str, str] | None = None,

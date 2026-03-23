@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -103,8 +104,8 @@ class FlextInfraCodegenFixer(s[bool]):
                 violations_skipped=[],
                 files_modified=[],
             )
-        violations_fixed: list[m.Infra.CensusViolation] = []
-        violations_skipped: list[m.Infra.CensusViolation] = []
+        violations_fixed: Sequence[m.Infra.CensusViolation] = []
+        violations_skipped: Sequence[m.Infra.CensusViolation] = []
         files_modified: set[str] = set()
         src_dir = project_path / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
@@ -173,8 +174,8 @@ class FlextInfraCodegenFixer(s[bool]):
         *,
         src_dir: Path,
         pkg_dir: Path,
-        violations_fixed: list[m.Infra.CensusViolation],
-        violations_skipped: list[m.Infra.CensusViolation],
+        violations_fixed: Sequence[m.Infra.CensusViolation],
+        violations_skipped: Sequence[m.Infra.CensusViolation],
         files_modified: set[str],
     ) -> None:
         """Apply NS-001 and NS-002 rules to all Python files in src_dir."""
@@ -239,7 +240,7 @@ class FlextInfraCodegenFixer(s[bool]):
         *,
         project_path: Path,
         files_modified: set[str],
-        violations_skipped: list[m.Infra.CensusViolation],
+        violations_skipped: Sequence[m.Infra.CensusViolation],
     ) -> None:
         engine = FlextInfraRefactorEngine()
         config_result = engine.load_config()
@@ -324,7 +325,7 @@ class FlextInfraCodegenFixer(s[bool]):
             for file_path in py_files
             if c.Infra.Paths.DEFAULT_SRC_DIR in file_path.parts
         ]
-        before_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_files(
+        before_snapshot: Mapping[str, str] = FlextInfraCodegenSnapshot.snapshot_files(
             file_paths=src_files,
         )
         package_name = NamespaceSourceDetector.discover_project_package_name(
@@ -350,8 +351,8 @@ class FlextInfraCodegenFixer(s[bool]):
     def _record_mro_migration_result(
         *,
         report: m.Infra.MROMigrationReport,
-        violations_fixed: list[m.Infra.CensusViolation],
-        violations_skipped: list[m.Infra.CensusViolation],
+        violations_fixed: Sequence[m.Infra.CensusViolation],
+        violations_skipped: Sequence[m.Infra.CensusViolation],
     ) -> None:
         for migration in report.migrations:
             violations_fixed.extend(
@@ -434,12 +435,16 @@ class FlextInfraCodegenFixer(s[bool]):
         project_path: Path,
         files_modified: set[str],
     ) -> None:
-        before_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_init_files(
-            project_path=project_path,
+        before_snapshot: Mapping[str, str] = (
+            FlextInfraCodegenSnapshot.snapshot_init_files(
+                project_path=project_path,
+            )
         )
         _ = FlextInfraCodegenLazyInit(workspace_root=project_path).run(check_only=False)
-        after_snapshot: dict[str, str] = FlextInfraCodegenSnapshot.snapshot_init_files(
-            project_path=project_path,
+        after_snapshot: Mapping[str, str] = (
+            FlextInfraCodegenSnapshot.snapshot_init_files(
+                project_path=project_path,
+            )
         )
         for path_str, updated in after_snapshot.items():
             previous = before_snapshot.get(path_str)
@@ -447,7 +452,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 continue
             files_modified.add(path_str)
 
-    def run(self) -> list[m.Infra.AutoFixResult]:
+    def run(self) -> Sequence[m.Infra.AutoFixResult]:
         """Run auto-fix on all projects in workspace.
 
         Returns:
@@ -457,8 +462,8 @@ class FlextInfraCodegenFixer(s[bool]):
         projects_result = u.Infra.discover_projects(self._workspace_root)
         if not projects_result.is_success:
             return []
-        results: list[m.Infra.AutoFixResult] = []
-        discovered: list[m.Infra.ProjectInfo] = projects_result.unwrap()
+        results: Sequence[m.Infra.AutoFixResult] = []
+        discovered: Sequence[m.Infra.ProjectInfo] = projects_result.unwrap()
         for project in discovered:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue
@@ -477,8 +482,8 @@ class FlextInfraCodegenFixer(s[bool]):
         *,
         source_file: Path,
         pkg_dir: Path,
-        violations_fixed: list[m.Infra.CensusViolation],
-        violations_skipped: list[m.Infra.CensusViolation],
+        violations_fixed: Sequence[m.Infra.CensusViolation],
+        violations_skipped: Sequence[m.Infra.CensusViolation],
         files_modified: set[str],
     ) -> None:
         """Fix Rule 1 — move loose Final constants to constants.py."""
@@ -494,7 +499,7 @@ class FlextInfraCodegenFixer(s[bool]):
         target_tree = u.Infra.parse_module_ast(target_path)
         if target_tree is None:
             return
-        nodes_to_move: list[ast.AnnAssign] = []
+        nodes_to_move: Sequence[ast.AnnAssign] = []
         for node in finals:
             target_name = ""
             if isinstance(node.target, ast.Name):
@@ -514,8 +519,8 @@ class FlextInfraCodegenFixer(s[bool]):
         if not nodes_to_move:
             return
         pkg_name = pkg_dir.name
-        actually_moved: list[ast.AnnAssign] = []
-        moved_names: list[str] = []
+        actually_moved: Sequence[ast.AnnAssign] = []
+        moved_names: Sequence[str] = []
         for node in nodes_to_move:
             target_name = ""
             if isinstance(node.target, ast.Name):
@@ -579,8 +584,8 @@ class FlextInfraCodegenFixer(s[bool]):
         *,
         source_file: Path,
         pkg_dir: Path,
-        violations_fixed: list[m.Infra.CensusViolation],
-        violations_skipped: list[m.Infra.CensusViolation],
+        violations_fixed: Sequence[m.Infra.CensusViolation],
+        violations_skipped: Sequence[m.Infra.CensusViolation],
         files_modified: set[str],
     ) -> None:
         """Fix Rule 2 — move loose TypeVars/TypeAliases to typings.py."""
@@ -597,7 +602,7 @@ class FlextInfraCodegenFixer(s[bool]):
         target_tree = u.Infra.parse_module_ast(target_path)
         if target_tree is None:
             return
-        nodes_to_move: list[ast.stmt] = []
+        nodes_to_move: Sequence[ast.stmt] = []
         for tv_node in typevars:
             target_name = ""
             if tv_node.targets:
@@ -633,8 +638,8 @@ class FlextInfraCodegenFixer(s[bool]):
         if not nodes_to_move:
             return
         pkg_name = pkg_dir.name
-        actually_moved: list[ast.stmt] = []
-        moved_names: list[str] = []
+        actually_moved: Sequence[ast.stmt] = []
+        moved_names: Sequence[str] = []
         for move_node in nodes_to_move:
             target_name = u.Infra.get_node_name(move_node)
             if not target_name:
@@ -733,8 +738,8 @@ class FlextInfraCodegenFixer(s[bool]):
         self,
         *,
         pkg_dir: Path,
-        violations_fixed: list[m.Infra.CensusViolation],
-        violations_skipped: list[m.Infra.CensusViolation],
+        violations_fixed: Sequence[m.Infra.CensusViolation],
+        violations_skipped: Sequence[m.Infra.CensusViolation],
         files_modified: set[str],
     ) -> None:
         constants_file = pkg_dir / "constants.py"
@@ -800,8 +805,8 @@ class FlextInfraCodegenFixer(s[bool]):
         *,
         src_dir: Path,
         pkg_dir: Path,
-        violations_fixed: list[m.Infra.CensusViolation],
-        violations_skipped: list[m.Infra.CensusViolation],
+        violations_fixed: Sequence[m.Infra.CensusViolation],
+        violations_skipped: Sequence[m.Infra.CensusViolation],
         files_modified: set[str],
     ) -> None:
         constants_file = pkg_dir / "constants.py"
@@ -817,7 +822,9 @@ class FlextInfraCodegenFixer(s[bool]):
         all_used_names: set[str] = set()
         projects_result = u.Infra.discover_projects(self._workspace_root)
         if projects_result.is_success:
-            discovered_projects: list[m.Infra.ProjectInfo] = projects_result.unwrap()
+            discovered_projects: Sequence[m.Infra.ProjectInfo] = (
+                projects_result.unwrap()
+            )
             for project in discovered_projects:
                 discovered_src = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
                 if not discovered_src.is_dir():
@@ -875,8 +882,8 @@ class FlextInfraCodegenFixer(s[bool]):
         *,
         src_dir: Path,
         pkg_dir: Path,
-        violations_fixed: list[m.Infra.CensusViolation],
-        violations_skipped: list[m.Infra.CensusViolation],
+        violations_fixed: Sequence[m.Infra.CensusViolation],
+        violations_skipped: Sequence[m.Infra.CensusViolation],
         files_modified: set[str],
     ) -> None:
         project_import = f"from {pkg_dir.name} import c"

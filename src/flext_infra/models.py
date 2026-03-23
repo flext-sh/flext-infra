@@ -28,6 +28,8 @@ from flext_infra import (
 
 
 class FlextInfraModels(FlextModels):
+    """Merged model namespace for flext-infra domain objects."""
+
     class Infra(
         FlextInfraUtilitiesModels,
         FlextInfraBasemkModels,

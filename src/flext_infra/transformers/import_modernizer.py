@@ -18,7 +18,7 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
 
     def __init__(
         self,
-        imports_to_remove: list[str],
+        imports_to_remove: Sequence[str],
         symbols_to_replace: Mapping[str, str],
         runtime_aliases: set[str],
         blocked_aliases: set[str],
@@ -33,8 +33,8 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         self.modified_imports = False
         self.aliases_needed: set[str] = set()
         self.aliases_present: set[str] = set()
-        self.active_symbol_replacements: dict[str, str] = {}
-        self.changes: list[str] = []
+        self.active_symbol_replacements: Mapping[str, str] = {}
+        self.changes: Sequence[str] = []
 
     @override
     def leave_ImportFrom(
@@ -64,8 +64,8 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
             imported_aliases = self._extract_import_aliases(original_node.names)
             if not imported_aliases:
                 return updated_node
-            mapped_aliases: list[cst.ImportAlias] = []
-            unmapped_aliases: list[cst.ImportAlias] = []
+            mapped_aliases: Sequence[cst.ImportAlias] = []
+            unmapped_aliases: Sequence[cst.ImportAlias] = []
             for imported_alias in imported_aliases:
                 if not isinstance(imported_alias.name, cst.Name):
                     unmapped_aliases.append(imported_alias)
@@ -161,7 +161,7 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
     def _extract_import_aliases(
         self,
         names: Sequence[cst.ImportAlias] | cst.ImportStar,
-    ) -> list[cst.ImportAlias]:
+    ) -> Sequence[cst.ImportAlias]:
         if isinstance(names, cst.ImportStar):
             return []
         return list(names)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -16,7 +16,7 @@ class _StubDiscovery:
 
     def __init__(
         self,
-        projects: list[im.Infra.ProjectInfo] | None = None,
+        projects: Sequence[im.Infra.ProjectInfo] | None = None,
         *,
         error: str = "",
     ) -> None:
@@ -26,11 +26,11 @@ class _StubDiscovery:
     def discover_projects(
         self,
         workspace_root: Path,
-    ) -> r[list[im.Infra.ProjectInfo]]:
+    ) -> r[Sequence[im.Infra.ProjectInfo]]:
         _ = workspace_root
         if self._error:
-            return r[list[im.Infra.ProjectInfo]].fail(self._error)
-        return r[list[im.Infra.ProjectInfo]].ok(self._projects)
+            return r[Sequence[im.Infra.ProjectInfo]].fail(self._error)
+        return r[Sequence[im.Infra.ProjectInfo]].ok(self._projects)
 
 
 class _StubGenerator(FlextInfraBaseMkGenerator):

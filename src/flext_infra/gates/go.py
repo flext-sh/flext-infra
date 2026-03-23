@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -36,7 +37,7 @@ class FlextInfraGoGate(FlextInfraGate):
                 duration=time.monotonic() - started,
                 raw_output="",
             )
-        issues: list[m.Infra.Issue] = []
+        issues: Sequence[m.Infra.Issue] = []
         raw_output = ""
         vet_result = self._run(
             [c.Infra.Cli.GOVET, "vet", "./..."],

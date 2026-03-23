@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -21,14 +21,14 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     @staticmethod
     def quality_gate_build_checks(
         *,
-        after_metrics: dict[str, t.Infra.InfraValue],
-        improvement: dict[str, t.Infra.InfraValue],
-        pyrefly_check: dict[str, t.Infra.InfraValue],
-        ruff_check: dict[str, t.Infra.InfraValue],
+        after_metrics: Mapping[str, t.Infra.InfraValue],
+        improvement: Mapping[str, t.Infra.InfraValue],
+        pyrefly_check: Mapping[str, t.Infra.InfraValue],
+        ruff_check: Mapping[str, t.Infra.InfraValue],
         before_available: bool,
         before_load_error: str,
-    ) -> list[dict[str, t.Infra.InfraValue]]:
-        checks: list[m.Infra.QualityGateCheck] = []
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
+        checks: Sequence[m.Infra.QualityGateCheck] = []
         violations_total = FlextInfraCodegenMetricsChecks.as_int(
             after_metrics.get("total_violations"),
         )
@@ -134,8 +134,8 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
 
     @staticmethod
     def quality_gate_compute_verdict(
-        checks: Sequence[dict[str, t.Infra.InfraValue]],
-        improvement: dict[str, t.Infra.InfraValue],
+        checks: Sequence[Mapping[str, t.Infra.InfraValue]],
+        improvement: Mapping[str, t.Infra.InfraValue],
     ) -> str:
         if all(bool(item.get("passed", False)) for item in checks):
             return "PASS"
@@ -161,8 +161,8 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     def quality_gate_detect_duplicate_constant_groups(
         workspace_root: Path,
         census_reports: Sequence[m.Infra.CensusReport],
-    ) -> list[m.Infra.DuplicateConstantGroup]:
-        all_definitions: list[m.Infra.ConstantDefinition] = []
+    ) -> Sequence[m.Infra.DuplicateConstantGroup]:
+        all_definitions: Sequence[m.Infra.ConstantDefinition] = []
         for report in census_reports:
             project_root = workspace_root / report.project
             constants_file = (
@@ -175,10 +175,10 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
                 report.project,
             )
             all_definitions.extend(definitions)
-        name_to_defs: dict[str, list[m.Infra.ConstantDefinition]] = {}
+        name_to_defs: Mapping[str, Sequence[m.Infra.ConstantDefinition]] = {}
         for definition in all_definitions:
             name_to_defs.setdefault(definition.name, []).append(definition)
-        groups: list[m.Infra.DuplicateConstantGroup] = []
+        groups: Sequence[m.Infra.DuplicateConstantGroup] = []
         for name, definitions in sorted(name_to_defs.items()):
             projects = {item.project for item in definitions}
             if (
@@ -200,8 +200,8 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     @staticmethod
     def quality_gate_project_findings(
         census_reports: Sequence[m.Infra.CensusReport],
-    ) -> list[dict[str, t.Infra.InfraValue]]:
-        findings: list[m.Infra.QualityGateProjectFinding] = [
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
+        findings: Sequence[m.Infra.QualityGateProjectFinding] = [
             m.Infra.QualityGateProjectFinding(
                 project=entry.project,
                 violations_total=len(tuple(entry.violations)),

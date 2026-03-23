@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -127,7 +128,7 @@ class TestSyncOne:
     def test_sync_one_success_cases(
         self,
         tmp_path: Path,
-        tool_doc: dict[str, t.Infra.TomlValue],
+        tool_doc: Mapping[str, t.Infra.TomlValue],
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         doc = tomlkit.document()

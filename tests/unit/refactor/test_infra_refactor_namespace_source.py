@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+
 from pathlib import Path
 
 import pytest
@@ -60,7 +62,9 @@ def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
         )
     )
     target = package_dir / "consumer.py"
-    target.write_text("from __future__ import annotations\nfrom flext_core import m\n")
+    target.write_text("from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\nfrom flext_core import m\n")
 
     violations = NamespaceSourceDetector.detect_file(
         file_path=target,
@@ -79,7 +83,9 @@ def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
         )
     )
     target = package_dir / "consumer.py"
-    target.write_text("from __future__ import annotations\nfrom flext_core import u\n")
+    target.write_text("from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\nfrom flext_core import u\n")
 
     violations = NamespaceSourceDetector.detect_file(
         file_path=target,
@@ -98,7 +104,9 @@ def test_skips_r_alias_universal_exception(tmp_path: Path) -> None:
         )
     )
     target = package_dir / "consumer.py"
-    target.write_text("from __future__ import annotations\nfrom flext_core import r\n")
+    target.write_text("from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\nfrom flext_core import r\n")
 
     violations = NamespaceSourceDetector.detect_file(
         file_path=target,
@@ -118,7 +126,9 @@ def test_skips_facade_declaration_files(tmp_path: Path) -> None:
     )
     target = package_dir / "models.py"
     target.write_text(
-        "from __future__ import annotations\n"
+        "from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\n"
         "from flext_core import m\n"
         "class FlextXyzModels:\n"
         "    pass\n\n"
@@ -162,7 +172,9 @@ def test_skips_import_as_rename(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\nfrom flext_core import m as mm\n",
+        "from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\nfrom flext_core import m as mm\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(
@@ -183,7 +195,9 @@ def test_skips_non_alias_symbols(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\nfrom flext_core import FlextLogger\n",
+        "from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\nfrom flext_core import FlextLogger\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(
@@ -204,7 +218,9 @@ def test_detects_only_wrong_alias_in_mixed_import(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\nfrom flext_core import m, r\n",
+        "from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\nfrom flext_core import m, r\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(
@@ -224,7 +240,9 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
         )
     )
     target = package_dir / "consumer.py"
-    target.write_text("from __future__ import annotations\nfrom flext_core import m\n")
+    target.write_text("from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\nfrom flext_core import m\n")
 
     violations = NamespaceSourceDetector.detect_file(
         file_path=target,
@@ -244,7 +262,9 @@ def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\n"
+        "from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\n"
         "from flext_core import m, r\n"
         f"from {package_name} import u\n"
         "_ = (m, r, u)\n",
@@ -269,7 +289,9 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\n"
+        "from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\n"
         "from flext_core import FlextLogger, u\n"
         "_ = (FlextLogger, u)\n",
     )
@@ -293,7 +315,9 @@ def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> No
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\n"
+        "from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\n"
         "from flext_core import FlextLogger, m, r\n"
         f"from {package_name}.utilities import u\n"
         "_ = (FlextLogger, m, r, u)\n",
@@ -323,7 +347,9 @@ def test_detects_same_project_submodule_alias_import(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        f"from __future__ import annotations\nfrom {package_name}.constants import c\n",
+        f"from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\nfrom {package_name}.constants import c\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(
@@ -344,7 +370,9 @@ def test_skips_same_project_submodule_class_import(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\n"
+        "from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\n"
         f"from {package_name}.constants import FlextXyzConstants\n",
     )
 
@@ -366,7 +394,9 @@ def test_skips_same_project_private_submodule(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\n"
+        "from __future__ import annotations
+
+from collections.abc import Mapping, Sequence\n"
         f"from {package_name}._constants import c\n",
     )
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import ast
 import builtins as _builtins_module
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraUtilitiesParsing, FlextInfraUtilitiesRefactor, c
@@ -43,14 +43,14 @@ class FlextInfraUtilitiesCodegenTransforms:
         return last_import_idx
 
     @staticmethod
-    def find_standalone_finals(tree: ast.Module) -> list[ast.AnnAssign]:
+    def find_standalone_finals(tree: ast.Module) -> Sequence[ast.AnnAssign]:
         """Find module-level Final-annotated assignments.
 
         Returns all top-level ``X: Final = ...`` and ``X: Final[T] = ...``
         statements.  The caller decides whether to move them based on
         additional guards (private prefix, circular-import risk, etc.).
         """
-        matches: list[ast.AnnAssign] = []
+        matches: Sequence[ast.AnnAssign] = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.AnnAssign):
                 continue
@@ -61,13 +61,13 @@ class FlextInfraUtilitiesCodegenTransforms:
         return matches
 
     @staticmethod
-    def find_standalone_typealiases(tree: ast.Module) -> list[ast.stmt]:
+    def find_standalone_typealiases(tree: ast.Module) -> Sequence[ast.stmt]:
         """Find module-level TypeAlias declarations (old-style and PEP 695).
 
         Detects both ``X: TypeAlias = ...`` (ast.AnnAssign) and
         ``type X = ...`` (ast.TypeAlias, PEP 695 / Python 3.12+).
         """
-        matches: list[ast.stmt] = []
+        matches: Sequence[ast.stmt] = []
         for stmt in tree.body:
             # Old-style: X: TypeAlias = ...
             if isinstance(stmt, ast.AnnAssign):
@@ -81,14 +81,14 @@ class FlextInfraUtilitiesCodegenTransforms:
         return matches
 
     @staticmethod
-    def find_standalone_typevars(tree: ast.Module) -> list[ast.Assign]:
+    def find_standalone_typevars(tree: ast.Module) -> Sequence[ast.Assign]:
         """Find module-level TypeVar/ParamSpec/TypeVarTuple assignments.
 
         Detects ``X = TypeVar(...)``, ``P = ParamSpec(...)``, and
         ``Ts = TypeVarTuple(...)`` at module level.
         """
         typevar_names = {"TypeVar", "ParamSpec", "TypeVarTuple"}
-        matches: list[ast.Assign] = []
+        matches: Sequence[ast.Assign] = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.Assign):
                 continue
@@ -209,7 +209,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         )
         if not names_used:
             return
-        source_imports: dict[str, ast.stmt] = {}
+        source_imports: Mapping[str, ast.stmt] = {}
         for stmt in source_tree.body:
             if isinstance(stmt, ast.Import):
                 for alias in stmt.names:
@@ -233,7 +233,7 @@ class FlextInfraUtilitiesCodegenTransforms:
                     if imported_name != "*":
                         target_available.add(imported_name)
         seen_modules: set[str] = set()
-        imports_to_add: list[ast.stmt] = []
+        imports_to_add: Sequence[ast.stmt] = []
         for name in sorted(names_used):
             if name in target_available:
                 continue
@@ -315,10 +315,10 @@ class FlextInfraUtilitiesCodegenTransforms:
     @staticmethod
     def collect_import_texts_for_nodes(
         nodes: Sequence[ast.stmt],
-        source_lines: list[str],
+        source_lines: Sequence[str],
         source_tree: ast.Module,
         target_text: str,
-    ) -> list[str]:
+    ) -> Sequence[str]:
         """Collect import text lines from source needed by moved nodes.
 
         Returns import statement strings that should be added to the target
@@ -338,7 +338,7 @@ class FlextInfraUtilitiesCodegenTransforms:
             )
         if not all_names:
             return []
-        import_texts: list[str] = []
+        import_texts: Sequence[str] = []
         seen: set[str] = set()
         for stmt in source_tree.body:
             if not isinstance(stmt, (ast.Import, ast.ImportFrom)):
@@ -374,7 +374,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         if tree is None:
             return False
         assignment: ast.Assign | None = None
-        exports: list[str] = []
+        exports: Sequence[str] = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1:
                 continue
@@ -383,7 +383,7 @@ class FlextInfraUtilitiesCodegenTransforms:
                 continue
             if not isinstance(stmt.value, (ast.List, ast.Tuple)):
                 continue
-            names: list[str] = []
+            names: Sequence[str] = []
             is_literal_list = True
             for element in stmt.value.elts:
                 if isinstance(element, ast.Constant) and isinstance(element.value, str):

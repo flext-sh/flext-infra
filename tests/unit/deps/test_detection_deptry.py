@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,7 @@ class _FakeResult:
     def __init__(
         self,
         success: bool,
-        value: list[m.Infra.ProjectInfo] | m.Infra.CommandOutput | None = None,
+        value: Sequence[m.Infra.ProjectInfo] | m.Infra.CommandOutput | None = None,
         error: str | None = None,
     ) -> None:
         self.is_success = success
@@ -41,7 +42,9 @@ class _StubSelector:
     def __init__(self, result: _FakeResult) -> None:
         self._result = result
 
-    def resolve_projects(self, workspace_root: Path, names: list[str]) -> _FakeResult:
+    def resolve_projects(
+        self, workspace_root: Path, names: Sequence[str]
+    ) -> _FakeResult:
         _ = workspace_root
         _ = names
         return self._result

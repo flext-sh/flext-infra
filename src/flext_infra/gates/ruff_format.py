@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -41,7 +42,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             ],
             project_dir,
         )
-        issues: list[m.Infra.Issue] = []
+        issues: Sequence[m.Infra.Issue] = []
         if self._result_exit_code(result) != 0 and result.stdout.strip():
             seen: set[str] = set()
             for line in result.stdout.strip().splitlines():

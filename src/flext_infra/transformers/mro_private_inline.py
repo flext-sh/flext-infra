@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import override
 
 import libcst as cst
@@ -10,7 +11,7 @@ import libcst as cst
 class FlextInfraRefactorMROPrivateInlineTransformer(cst.CSTTransformer):
     """Inline configured private-name values after migration."""
 
-    def __init__(self, *, replacement_values: dict[str, cst.BaseExpression]) -> None:
+    def __init__(self, *, replacement_values: Mapping[str, cst.BaseExpression]) -> None:
         """Initialize with symbol-to-value mapping for private constant inlining."""
         self.replacement_values = replacement_values
 
@@ -32,7 +33,7 @@ class FlextInfraRefactorMROQualifiedReferenceTransformer(cst.CSTTransformer):
     so only reference occurrences are renamed.
     """
 
-    def __init__(self, *, renames: dict[str, cst.BaseExpression]) -> None:
+    def __init__(self, *, renames: Mapping[str, cst.BaseExpression]) -> None:
         """Initialize with symbol-to-qualified-expression rename mapping."""
         self._renames = renames
         self._defining: set[str] = set()

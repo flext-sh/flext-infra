@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from flext_tests import tm
 
 from tests import c, m
@@ -76,4 +78,4 @@ class TestCensusReportModel:
         tm.that(report.fixable, eq=2)
 
 
-__all__: list[str] = []
+__all__: Sequence[str] = []

@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pytest
 from flext_tests import tm
 
@@ -31,4 +33,4 @@ def test_codegen_lazy_imports_work() -> None:
     tm.that(hasattr(FlextInfraCodegenLazyInit, "run"), eq=True)
 
 
-__all__: list[str] = []
+__all__: Sequence[str] = []

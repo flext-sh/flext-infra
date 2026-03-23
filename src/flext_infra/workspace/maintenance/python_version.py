@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -100,14 +101,14 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         )
         return r[int].ok(0)
 
-    def _discover_projects(self, workspace_root: Path) -> list[Path]:
+    def _discover_projects(self, workspace_root: Path) -> Sequence[Path]:
         """Discover all Python projects in workspace.
 
         Args:
             workspace_root: Path to workspace root.
 
         Returns:
-            list[Path]: List of project paths.
+            Sequence[Path]: List of project paths.
 
         """
         result = u.Infra.discover_projects(workspace_root)

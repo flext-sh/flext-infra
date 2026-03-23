@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -16,7 +17,7 @@ class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, list[str]]:
+    ) -> tuple[cst.Module, Sequence[str]]:
         transformer = FlextInfraRefactorTypingUnifier(
             canonical_map=c.Infra.TYPING_INLINE_UNION_CANONICAL_MAP,
             file_path=_file_path,

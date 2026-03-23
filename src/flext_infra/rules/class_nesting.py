@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -119,7 +120,7 @@ class ClassNestingRefactorRule:
                     changes=precheck_violations,
                     refactored_code=None,
                 )
-            changes: list[str] = []
+            changes: Sequence[str] = []
             tree = self._apply_class_nesting(
                 tree,
                 class_mappings,
@@ -202,10 +203,10 @@ class ClassNestingRefactorRule:
         class_nesting_raw = loaded.get(c.Infra.ReportKeys.CLASS_NESTING)
         if isinstance(class_nesting_raw, list):
             try:
-                typed_class_nesting: list[t.Infra.InfraValue] = TypeAdapter(
-                    list[t.Infra.InfraValue],
+                typed_class_nesting: Sequence[t.Infra.InfraValue] = TypeAdapter(
+                    Sequence[t.Infra.InfraValue],
                 ).validate_python(class_nesting_raw)
-                coerced_nesting: list[t.Infra.InfraValue] = [
+                coerced_nesting: Sequence[t.Infra.InfraValue] = [
                     dict(e)
                     for e in self._coerce_entries(
                         u.Infra.mapping_list(typed_class_nesting),
@@ -217,10 +218,10 @@ class ClassNestingRefactorRule:
         helper_raw = loaded.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION)
         if isinstance(helper_raw, list):
             try:
-                typed_helper_entries: list[t.Infra.InfraValue] = TypeAdapter(
-                    list[t.Infra.InfraValue],
+                typed_helper_entries: Sequence[t.Infra.InfraValue] = TypeAdapter(
+                    Sequence[t.Infra.InfraValue],
                 ).validate_python(helper_raw)
-                coerced_helpers: list[t.Infra.InfraValue] = [
+                coerced_helpers: Sequence[t.Infra.InfraValue] = [
                     dict(e)
                     for e in self._coerce_entries(
                         u.Infra.mapping_list(typed_helper_entries),
@@ -256,8 +257,8 @@ class ClassNestingRefactorRule:
         config: t.Infra.RuleConfig,
         file_path: Path,
         confidence_threshold: str,
-    ) -> dict[str, str]:
-        mappings: dict[str, str] = {}
+    ) -> Mapping[str, str]:
+        mappings: Mapping[str, str] = {}
         for entry in self._entries_for_source_file(
             u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
             file_path,
@@ -274,8 +275,8 @@ class ClassNestingRefactorRule:
         config: t.Infra.RuleConfig,
         file_path: Path,
         confidence_threshold: str,
-    ) -> list[str]:
-        violations: list[str] = []
+    ) -> Sequence[str]:
+        violations: Sequence[str] = []
         entries = self._entries_for_source_file(
             u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
             file_path,
@@ -307,8 +308,8 @@ class ClassNestingRefactorRule:
         config: t.Infra.RuleConfig,
         file_path: Path,
         confidence_threshold: str,
-    ) -> dict[str, str]:
-        mappings: dict[str, str] = {}
+    ) -> Mapping[str, str]:
+        mappings: Mapping[str, str] = {}
         for entry in self._entries_for_source_file(
             u.Infra.entry_list(
                 config.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION),
@@ -324,15 +325,15 @@ class ClassNestingRefactorRule:
 
     def _entries_for_source_file(
         self,
-        raw_entries: list[t.Infra.StrMap],
+        raw_entries: Sequence[t.Infra.StrMap],
         file_path: Path,
         confidence_threshold: str,
-    ) -> list[t.Infra.StrMap]:
+    ) -> Sequence[t.Infra.StrMap]:
         entries = raw_entries
         if not entries:
             return []
         module_path = u.Infra.normalize_module_path(file_path)
-        accepted: list[t.Infra.StrMap] = []
+        accepted: Sequence[t.Infra.StrMap] = []
         for entry in entries:
             current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE)
             if current_file is None:
@@ -350,14 +351,14 @@ class ClassNestingRefactorRule:
 
     def _entries_for_scope(
         self,
-        raw_entries: list[t.Infra.StrMap],
+        raw_entries: Sequence[t.Infra.StrMap],
         file_path: Path,
         confidence_threshold: str,
-    ) -> list[t.Infra.StrMap]:
+    ) -> Sequence[t.Infra.StrMap]:
         entries = raw_entries
         if not entries:
             return []
-        accepted: list[t.Infra.StrMap] = []
+        accepted: Sequence[t.Infra.StrMap] = []
         for entry in entries:
             confidence = entry.get(c.Infra.ReportKeys.CONFIDENCE, c.Infra.Severity.LOW)
             if not self._confidence_allowed(confidence, confidence_threshold):
@@ -376,9 +377,9 @@ class ClassNestingRefactorRule:
 
     def _coerce_entries(
         self,
-        entries: list[dict[str, t.Infra.InfraValue]],
-    ) -> list[t.Infra.StrMap]:
-        coerced: list[t.Infra.StrMap] = []
+        entries: Sequence[Mapping[str, t.Infra.InfraValue]],
+    ) -> Sequence[t.Infra.StrMap]:
+        coerced: Sequence[t.Infra.StrMap] = []
         for typed in entries:
             current_file = typed.get(c.Infra.ReportKeys.CURRENT_FILE)
             if not isinstance(current_file, str):
@@ -433,18 +434,18 @@ class ClassNestingRefactorRule:
         for rule in rules:
             if rule.get(c.Infra.ReportKeys.SOURCE_SYMBOL, "") != source_symbol:
                 continue
-            base_chain: list[t.Infra.InfraValue] = list(
+            base_chain: Sequence[t.Infra.InfraValue] = list(
                 u.Infra.string_list(
                     rule.get("expected_base_chain"),
                 ),
             )
             payload["expected_base_chain"] = base_chain
             post_checks_raw = rule.get(c.Infra.ReportKeys.POST_CHECKS, [])
-            post_checks: list[t.Infra.InfraValue] = []
+            post_checks: Sequence[t.Infra.InfraValue] = []
             if not isinstance(post_checks_raw, list):
                 continue
-            typed_post_checks: list[t.Infra.InfraValue] = TypeAdapter(
-                list[t.Infra.InfraValue],
+            typed_post_checks: Sequence[t.Infra.InfraValue] = TypeAdapter(
+                Sequence[t.Infra.InfraValue],
             ).validate_python(post_checks_raw)
             checks = u.Infra.mapping_list(typed_post_checks)
             for check in checks:
@@ -459,8 +460,8 @@ class ClassNestingRefactorRule:
     def _apply_class_nesting(
         self,
         tree: cst.Module,
-        mappings: dict[str, str],
-        changes: list[str],
+        mappings: Mapping[str, str],
+        changes: Sequence[str],
         policy_context: t.Infra.PolicyContext,
         class_families: t.Infra.ClassFamilyMap,
     ) -> cst.Module:
@@ -479,8 +480,8 @@ class ClassNestingRefactorRule:
     def _apply_helper_consolidation(
         self,
         tree: cst.Module,
-        mappings: dict[str, str],
-        changes: list[str],
+        mappings: Mapping[str, str],
+        changes: Sequence[str],
         policy_context: t.Infra.PolicyContext,
         helper_families: t.Infra.ClassFamilyMap,
     ) -> cst.Module:
@@ -501,7 +502,7 @@ class ClassNestingRefactorRule:
         *,
         tree: cst.Module,
         transformer: cst.CSTTransformer,
-        changes: list[str],
+        changes: Sequence[str],
         label: str,
         mapping_count: int,
     ) -> cst.Module:
@@ -516,7 +517,7 @@ class ClassNestingRefactorRule:
             return self._cached_policy_context
         policy_doc = u.Infra.load_validated_policy_document(self._policy_path)
         policy_entries = u.Infra.mapping_list(policy_doc.get("policy_matrix"))
-        policy_context: dict[str, t.Infra.ContainerDict] = {}
+        policy_context: Mapping[str, t.Infra.ContainerDict] = {}
         for entry in policy_entries:
             family_name = entry.get("family_name")
             if not isinstance(family_name, str):
@@ -528,10 +529,10 @@ class ClassNestingRefactorRule:
     def _families_for_scope(
         self,
         *,
-        entries: list[t.Infra.StrMap],
+        entries: Sequence[t.Infra.StrMap],
         symbol_key: str,
-    ) -> dict[str, str]:
-        families: dict[str, str] = {}
+    ) -> Mapping[str, str]:
+        families: Mapping[str, str] = {}
         for entry in entries:
             symbol = entry.get(symbol_key)
             current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE)

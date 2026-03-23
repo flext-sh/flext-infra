@@ -4,7 +4,9 @@
 
 rules:
   - id: ensure-future-annotations
-    name: "Ensure from __future__ import annotations"
+    name: "Ensure from __future__ import annotations
+
+from collections.abc import Mapping, Sequence"
     description: "Garante que o import de __future__ annotations existe no arquivo"
     enabled: true
     severity: error

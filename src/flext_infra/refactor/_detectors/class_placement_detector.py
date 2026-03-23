@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -51,7 +52,7 @@ class ClassPlacementDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the ClassPlacementDetector scanner.
 
@@ -93,8 +94,8 @@ class ClassPlacementDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.ClassPlacementViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.ClassPlacementViolation]:
         """Detect class placement violations in a file.
 
         Args:
@@ -115,8 +116,8 @@ class ClassPlacementDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.ClassPlacementViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.ClassPlacementViolation]:
         """Scan a file for BaseModel subclasses outside canonical locations.
 
         Args:
@@ -140,7 +141,7 @@ class ClassPlacementDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: list[nem.ClassPlacementViolation] = []
+        violations: Sequence[nem.ClassPlacementViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.ClassDef):
                 continue

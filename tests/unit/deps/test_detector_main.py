@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import types
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -12,20 +13,20 @@ import flext_infra.deps.detector as detector_main_module
 
 
 class _ReportStub:
-    def model_dump(self) -> dict[str, dict[str, int]]:
+    def model_dump(self) -> Mapping[str, Mapping[str, int]]:
         return {"deptry": {"raw_count": 0}}
 
 
 class _TypingsStub:
-    def __init__(self, to_add: list[str | int | None]) -> None:
+    def __init__(self, to_add: Sequence[str | int | None]) -> None:
         self.to_add = to_add
 
-    def model_dump(self) -> dict[str, list[str | int | None]]:
+    def model_dump(self) -> Mapping[str, Sequence[str | int | None]]:
         return {"to_add": self.to_add}
 
 
 class _DepsStub:
-    def __init__(self, project: Path, to_add: list[str | int | None]) -> None:
+    def __init__(self, project: Path, to_add: Sequence[str | int | None]) -> None:
         self._project = project
         self._to_add = to_add
 
@@ -33,25 +34,25 @@ class _DepsStub:
         self,
         root: Path,
         *,
-        projects_filter: list[str] | None = None,
-    ) -> r[list[Path]]:
+        projects_filter: Sequence[str] | None = None,
+    ) -> r[Sequence[Path]]:
         _ = root
         _ = projects_filter
-        return r[list[Path]].ok([self._project])
+        return r[Sequence[Path]].ok([self._project])
 
     def run_deptry(
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[tuple[list[dict[str, str]], int]]:
+    ) -> r[tuple[Sequence[Mapping[str, str]], int]]:
         _ = project_path
         _ = venv_bin
-        return r[tuple[list[dict[str, str]], int]].ok(([], 0))
+        return r[tuple[Sequence[Mapping[str, str]], int]].ok(([], 0))
 
     def build_project_report(
         self,
         project_name: str,
-        issues: list[dict[str, str]],
+        issues: Sequence[Mapping[str, str]],
     ) -> _ReportStub:
         _ = project_name
         _ = issues
@@ -69,35 +70,37 @@ class _DepsStub:
         _ = limits_path
         return r[_TypingsStub].ok(_TypingsStub(self._to_add))
 
-    def load_dependency_limits(self, limits_path: Path) -> dict[str, dict[str, str]]:
+    def load_dependency_limits(
+        self, limits_path: Path
+    ) -> Mapping[str, Mapping[str, str]]:
         del limits_path
         return {}
 
-    def run_pip_check(self, root: Path, venv_bin: Path) -> r[tuple[list[str], int]]:
+    def run_pip_check(self, root: Path, venv_bin: Path) -> r[tuple[Sequence[str], int]]:
         _ = root
         _ = venv_bin
-        return r[tuple[list[str], int]].ok(([], 0))
+        return r[tuple[Sequence[str], int]].ok(([], 0))
 
 
 def _setup_typings_detector(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-    to_add: list[str | int | None],
+    to_add: Sequence[str | int | None],
     run_raw_result: r[types.SimpleNamespace],
 ) -> tuple[
     detector_module.FlextInfraRuntimeDevDependencyDetector,
-    list[list[str | int | None]],
+    Sequence[Sequence[str | int | None]],
 ]:
     project_path = tmp_path / "proj-a"
     (project_path / "src").mkdir(parents=True)
-    captured_commands: list[list[str | int | None]] = []
+    captured_commands: Sequence[Sequence[str | int | None]] = []
 
     def _run_raw(
-        cmd: list[str | int | None],
+        cmd: Sequence[str | int | None],
         *,
         cwd: Path,
         timeout: int,
-        env: dict[str, str],
+        env: Mapping[str, str],
     ) -> r[types.SimpleNamespace]:
         _ = cwd
         _ = timeout

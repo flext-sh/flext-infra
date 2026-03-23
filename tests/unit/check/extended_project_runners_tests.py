@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -27,7 +28,7 @@ class TestCheckProjectRunners:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "test.py").touch()
-        called: dict[str, bool] = {"lint": False, "format": False, "pyrefly": False}
+        called: Mapping[str, bool] = {"lint": False, "format": False, "pyrefly": False}
 
         class _FakeGate:
             def __init__(self, gate_name: str) -> None:

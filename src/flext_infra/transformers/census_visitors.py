@@ -6,6 +6,7 @@ the census module to detect method access patterns across the codebase.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -32,7 +33,7 @@ class CensusImportDiscoveryVisitor(cst.CSTVisitor):
         self.family_alias = family_alias
         self.facade_class_prefix = facade_class_prefix
         self.alias_locals: set[str] = set()
-        self.direct_imports: dict[str, str] = {}
+        self.direct_imports: Mapping[str, str] = {}
 
     @override
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
@@ -77,11 +78,11 @@ class CensusUsageCollector(cst.CSTVisitor):
     def __init__(
         self,
         *,
-        method_index: dict[str, set[str]],
-        flat_aliases: dict[str, tuple[str, str]],
-        inner_class_map: dict[str, str],
+        method_index: Mapping[str, set[str]],
+        flat_aliases: Mapping[str, tuple[str, str]],
+        inner_class_map: Mapping[str, str],
         alias_locals: set[str],
-        direct_imports: dict[str, str],
+        direct_imports: Mapping[str, str],
         file_path: Path,
         project_name: str,
     ) -> None:
@@ -94,7 +95,7 @@ class CensusUsageCollector(cst.CSTVisitor):
         self.direct_imports = direct_imports
         self.file_path = file_path
         self.project_name = project_name
-        self.records: list[m.Infra.CensusUsageRecord] = []
+        self.records: Sequence[m.Infra.CensusUsageRecord] = []
 
     @override
     def visit_Attribute(self, node: cst.Attribute) -> None:

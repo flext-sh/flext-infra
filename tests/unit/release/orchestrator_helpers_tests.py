@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
@@ -67,7 +68,7 @@ class TestVersionFiles:
         proj_dir.mkdir()
         (proj_dir / "pyproject.toml").touch()
         fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[list[SimpleNamespace]].ok([
+        fake_sel._resolve_result = r[Sequence[SimpleNamespace]].ok([
             SimpleNamespace(name="proj1", path=proj_dir),
         ])
         _patch_sel(monkeypatch, fake_sel)
@@ -94,7 +95,7 @@ class TestBuildTargets:
         monkeypatch: MonkeyPatch,
     ) -> None:
         fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[list[SimpleNamespace]].ok([
+        fake_sel._resolve_result = r[Sequence[SimpleNamespace]].ok([
             SimpleNamespace(name="proj1", path=workspace_root / "proj1"),
         ])
         _patch_sel(monkeypatch, fake_sel)
@@ -109,7 +110,7 @@ class TestRunMake:
         output = _m.Infra.CommandOutput(exit_code=0, stdout="ok", stderr="")
 
         def _fake_run_raw(
-            cmd: list[str],
+            cmd: Sequence[str],
             **kw: t.Scalar,
         ) -> r[_m.Infra.CommandOutput]:
             return r[_m.Infra.CommandOutput].ok(output)
@@ -122,7 +123,7 @@ class TestRunMake:
 
     def test_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         def _fake_run_raw(
-            cmd: list[str],
+            cmd: Sequence[str],
             **kw: t.Scalar,
         ) -> r[_m.Infra.CommandOutput]:
             return r[_m.Infra.CommandOutput].fail("failed")

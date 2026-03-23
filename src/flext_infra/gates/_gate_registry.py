@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import (
@@ -32,7 +33,7 @@ class FlextInfraGateRegistry:
     """Explicit gate registry mapping gate IDs to gate classes."""
 
     def __init__(self) -> None:
-        self._gates: dict[str, type[FlextInfraGate]] = {g.gate_id: g for g in _GATES}
+        self._gates: Mapping[str, type[FlextInfraGate]] = {g.gate_id: g for g in _GATES}
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:
         return self._gates.get(gate_id)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -20,7 +20,7 @@ class FlextInfraTransformerImportNormalizer:
             *,
             file_path: Path,
             project_package: str = "",
-            alias_map: dict[str, tuple[str, ...]] | None = None,
+            alias_map: Mapping[str, tuple[str, ...]] | None = None,
             on_change: Callable[[str], None] | None = None,
         ) -> None:
             """Initialize transformer with file context and change callback."""
@@ -32,7 +32,7 @@ class FlextInfraTransformerImportNormalizer:
             self._on_change = on_change
             self.modified_imports = False
             self.aliases_present: set[str] = set()
-            self.changes: list[str] = []
+            self.changes: Sequence[str] = []
 
         @override
         def leave_ImportFrom(

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -15,7 +15,7 @@ from flext_tests import tm
 from flext_infra import FlextInfraWorkspaceChecker
 from tests import m
 
-CheckProjectStub = Callable[[Path, list[str], Path], m.Infra.ProjectResult]
+CheckProjectStub = Callable[[Path, Sequence[str], Path], m.Infra.ProjectResult]
 
 
 def _make_gate_exec(
@@ -23,7 +23,7 @@ def _make_gate_exec(
     project: str = "p",
     *,
     passed: bool = True,
-    issues: list[m.Infra.Issue] | None = None,
+    issues: Sequence[m.Infra.Issue] | None = None,
 ) -> m.Infra.GateExecution:
     """Helper to create a _m.Infra.GateExecution."""
     return m.Infra.GateExecution(
@@ -50,7 +50,7 @@ def _setup_project(tmp_path: Path, name: str) -> Path:
 def _check_project_stub(project: m.Infra.ProjectResult) -> CheckProjectStub:
     def _fake_check(
         _project_dir: Path,
-        _gates: list[str],
+        _gates: Sequence[str],
         _reports_dir: Path,
     ) -> m.Infra.ProjectResult:
         return project
@@ -58,12 +58,14 @@ def _check_project_stub(project: m.Infra.ProjectResult) -> CheckProjectStub:
     return _fake_check
 
 
-def _iter_check_project_stub(projects: list[m.Infra.ProjectResult]) -> CheckProjectStub:
+def _iter_check_project_stub(
+    projects: Sequence[m.Infra.ProjectResult],
+) -> CheckProjectStub:
     project_iter = iter(projects)
 
     def _fake_check(
         _project_dir: Path,
-        _gates: list[str],
+        _gates: Sequence[str],
         _reports_dir: Path,
     ) -> m.Infra.ProjectResult:
         return next(project_iter)
@@ -145,7 +147,7 @@ class TestRunProjectsBehavior:
 
         def _fake_check(
             _project_dir: Path,
-            _gates: list[str],
+            _gates: Sequence[str],
             _reports_dir: Path,
         ) -> m.Infra.ProjectResult:
             del _project_dir, _gates, _reports_dir

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Annotated
 
 from flext_core import FlextModels
@@ -36,7 +37,7 @@ class FlextInfraCodegenModels:
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         violations: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
+            Sequence[FlextInfraCodegenModels.CensusViolation],
             Field(
                 default_factory=list,
                 description="Detected violations",
@@ -53,14 +54,14 @@ class FlextInfraCodegenModels:
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         files_created: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Newly created file paths",
             ),
         ]
         files_skipped: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Skipped (already existing) file paths",
@@ -72,21 +73,21 @@ class FlextInfraCodegenModels:
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         violations_fixed: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
+            Sequence[FlextInfraCodegenModels.CensusViolation],
             Field(
                 default_factory=list,
                 description="Fixed violations",
             ),
         ]
         violations_skipped: Annotated[
-            list[FlextInfraCodegenModels.CensusViolation],
+            Sequence[FlextInfraCodegenModels.CensusViolation],
             Field(
                 default_factory=list,
                 description="Skipped violations (not auto-fixable)",
             ),
         ]
         files_modified: Annotated[
-            list[str],
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Modified file paths",
@@ -162,7 +163,7 @@ class FlextInfraCodegenModels:
             Field(description="Constant identifier"),
         ]
         definitions: Annotated[
-            list[FlextInfraCodegenModels.ConstantDefinition],
+            Sequence[FlextInfraCodegenModels.ConstantDefinition],
             Field(description="Definitions across projects"),
         ]
         is_value_identical: Annotated[
@@ -208,7 +209,7 @@ class FlextInfraCodegenModels:
         value: int | str = Field(...)
         type: str = Field(...)
         canonical_ref: str = Field(...)
-        semantic_names: list[str] = Field(default_factory=list)
+        semantic_names: Sequence[str] = Field(default_factory=list)
 
     class NsRule(FlextModels.ArbitraryTypesModel):
         id: str = Field(...)
@@ -218,8 +219,10 @@ class FlextInfraCodegenModels:
 
     class ConstantsGovernanceConfig(FlextModels.ArbitraryTypesModel):
         version: str = Field(...)
-        rules: list[FlextInfraCodegenModels.NsRule] = Field(...)
-        canonical_values: list[FlextInfraCodegenModels.CanonicalValueRule] = Field(...)
+        rules: Sequence[FlextInfraCodegenModels.NsRule] = Field(...)
+        canonical_values: Sequence[FlextInfraCodegenModels.CanonicalValueRule] = Field(
+            ...
+        )
         constants_class_pattern: str = Field(...)
 
 

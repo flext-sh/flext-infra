@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
@@ -40,10 +40,10 @@ class FlextInfraSkillValidator:
     @staticmethod
     def _normalize_str_object_mapping(
         value: Mapping[str, JsonValue] | JsonValue,
-    ) -> dict[str, t.Infra.InfraValue]:
+    ) -> Mapping[str, t.Infra.InfraValue]:
         try:
-            adapter: TypeAdapter[dict[str, t.Infra.InfraValue]] = TypeAdapter(
-                dict[str, t.Infra.InfraValue],
+            adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+                Mapping[str, t.Infra.InfraValue],
             )
             return adapter.validate_python(value)
         except ValidationError:
@@ -55,7 +55,7 @@ class FlextInfraSkillValidator:
         skill_name: str,
         *,
         mode: str = c.Infra.Modes.BASELINE,
-        _project_filter: list[str] | None = None,
+        _project_filter: Sequence[str] | None = None,
     ) -> r[m.Infra.ValidationReport]:
         """Validate a single skill across workspace projects.
 
@@ -96,11 +96,11 @@ class FlextInfraSkillValidator:
             rules_list_obj = rules.get(c.Infra.ReportKeys.RULES, [])
             if not isinstance(rules_list_obj, list):
                 return r[m.Infra.ValidationReport].fail("rules must be a list")
-            rules_list: list[JsonValue] = TypeAdapter(
-                list[JsonValue],
+            rules_list: Sequence[JsonValue] = TypeAdapter(
+                Sequence[JsonValue],
             ).validate_python(rules_list_obj)
             counts: MutableMapping[str, int] = {}
-            violations: list[str] = []
+            violations: Sequence[str] = []
             for rule_obj_raw in rules_list:
                 rule_obj = self._normalize_str_object_mapping(rule_obj_raw)
                 if not rule_obj:
@@ -160,7 +160,7 @@ class FlextInfraSkillValidator:
                             bl_counts_raw_map = self._normalize_str_object_mapping(
                                 bl_data.get("counts", {}),
                             )
-                            bl_counts: dict[str, int] = {}
+                            bl_counts: Mapping[str, int] = {}
                             for key_obj, val_obj in bl_counts_raw_map.items():
                                 if isinstance(val_obj, int):
                                     bl_counts[str(key_obj)] = int(val_obj)
@@ -191,8 +191,8 @@ class FlextInfraSkillValidator:
         rule: Mapping[str, t.Infra.InfraValue],
         skill_dir: Path,
         project_path: Path,
-        include_globs: list[str],
-        exclude_globs: list[str],
+        include_globs: Sequence[str],
+        exclude_globs: Sequence[str],
     ) -> int:
         """Run an ast-grep rule and return match count."""
         rule_file_raw = str(rule.get(c.Infra.ReportKeys.FILE, "")).strip()
@@ -251,7 +251,7 @@ class FlextInfraSkillValidator:
             script = (skill_dir / script_raw).resolve()
         if not script.exists():
             return 0
-        cmd: list[str] = (
+        cmd: Sequence[str] = (
             [sys.executable, str(script)]
             if script.suffix == c.Infra.Extensions.PYTHON
             else [str(script)]

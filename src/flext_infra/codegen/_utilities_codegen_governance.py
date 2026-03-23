@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar, Final
 
@@ -9,7 +10,7 @@ from flext_infra import m, t
 
 
 class FlextInfraUtilitiesCodegenGovernance:
-    _config_cache: ClassVar[dict[str, m.Infra.ConstantsGovernanceConfig]] = {}
+    _config_cache: ClassVar[Mapping[str, m.Infra.ConstantsGovernanceConfig]] = {}
     GOVERNANCE_FILE: Final[Path] = (
         Path(__file__).parent.parent / "rules" / "constants-governance.yml"
     )
@@ -19,7 +20,7 @@ class FlextInfraUtilitiesCodegenGovernance:
         cached = FlextInfraUtilitiesCodegenGovernance._config_cache.get("config")
         if cached is not None:
             return cached
-        raw: dict[str, t.NormalizedValue] = (
+        raw: Mapping[str, t.NormalizedValue] = (
             safe_load(
                 FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE.read_text("utf-8"),
             )
@@ -30,7 +31,7 @@ class FlextInfraUtilitiesCodegenGovernance:
         return config
 
     @staticmethod
-    def get_canonical_int_values() -> dict[int, str]:
+    def get_canonical_int_values() -> Mapping[int, str]:
         config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
         return {
             entry.value: entry.canonical_ref
@@ -39,7 +40,7 @@ class FlextInfraUtilitiesCodegenGovernance:
         }
 
     @staticmethod
-    def get_canonical_str_values() -> dict[str, str]:
+    def get_canonical_str_values() -> Mapping[str, str]:
         config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
         return {
             entry.value: entry.canonical_ref

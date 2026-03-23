@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -13,7 +13,7 @@ from tests import t
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: list[r[t.Infra.TomlConfig]],
+    values: Sequence[r[t.Infra.TomlConfig]],
 ) -> None:
     state = {"index": 0}
 

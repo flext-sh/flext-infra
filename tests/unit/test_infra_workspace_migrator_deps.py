@@ -13,7 +13,7 @@ from flext_core import t
 from flext_tests import tm
 
 from flext_infra import FlextInfraProjectMigrator
-from tests import (
+from tests.unit.test_infra_workspace_migrator import (
     _build_migrator,
     _project,
 )

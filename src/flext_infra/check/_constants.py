@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from typing import Final
 
 
@@ -19,7 +20,7 @@ class FlextInfraCheckConstants:
         "markdown",
         "go",
     })
-    SARIF_TOOL_INFO: Final[dict[str, tuple[str, str]]] = {
+    SARIF_TOOL_INFO: Final[Mapping[str, tuple[str, str]]] = {
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
         "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),
@@ -32,7 +33,7 @@ class FlextInfraCheckConstants:
         ),
         "go": ("Go Vet", "https://pkg.go.dev/cmd/vet"),
     }
-    REQUIRED_EXCLUDES: Final[list[str]] = ["**/*_pb2*.py", "**/*_pb2_grpc*.py"]
+    REQUIRED_EXCLUDES: Final[Sequence[str]] = ["**/*_pb2*.py", "**/*_pb2_grpc*.py"]
     RUFF_FORMAT_FILE_RE: Final[re.Pattern[str]] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )

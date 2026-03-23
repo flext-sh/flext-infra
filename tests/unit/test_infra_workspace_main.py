@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 from flext_core import r, t
 from flext_tests import tm
 
+import flext_infra.workspace.__main__ as workspace_main
 from flext_infra import (
     FlextInfraModels as m,
     FlextInfraOrchestratorService,
@@ -14,7 +16,6 @@ from flext_infra import (
     FlextInfraUtilitiesCli,
     FlextInfraWorkspaceDetector,
     WorkspaceMode,
-    __main__ as workspace_main,
 )
 
 
@@ -101,13 +102,13 @@ class TestRunOrchestrate:
     def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _orchestrate_success(
             _self: FlextInfraOrchestratorService,
-            projects: list[str],
+            projects: Sequence[str],
             verb: str,
             fail_fast: bool = False,
-            make_args: list[str] | None = None,
-        ) -> r[list[m.Infra.CommandOutput]]:
+            make_args: Sequence[str] | None = None,
+        ) -> r[Sequence[m.Infra.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
-            return r[list[m.Infra.CommandOutput]].ok([_cmd_out(0), _cmd_out(0)])
+            return r[Sequence[m.Infra.CommandOutput]].ok([_cmd_out(0), _cmd_out(0)])
 
         monkeypatch.setattr(
             FlextInfraOrchestratorService,
@@ -138,13 +139,13 @@ class TestRunOrchestrate:
     def test_with_failures(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _orchestrate_partial(
             _self: FlextInfraOrchestratorService,
-            projects: list[str],
+            projects: Sequence[str],
             verb: str,
             fail_fast: bool = False,
-            make_args: list[str] | None = None,
-        ) -> r[list[m.Infra.CommandOutput]]:
+            make_args: Sequence[str] | None = None,
+        ) -> r[Sequence[m.Infra.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
-            return r[list[m.Infra.CommandOutput]].ok([_cmd_out(0), _cmd_out(1)])
+            return r[Sequence[m.Infra.CommandOutput]].ok([_cmd_out(0), _cmd_out(1)])
 
         monkeypatch.setattr(
             FlextInfraOrchestratorService,
@@ -164,13 +165,13 @@ class TestRunOrchestrate:
     def test_orchestration_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _orchestrate_failure(
             _self: FlextInfraOrchestratorService,
-            projects: list[str],
+            projects: Sequence[str],
             verb: str,
             fail_fast: bool = False,
-            make_args: list[str] | None = None,
-        ) -> r[list[m.Infra.CommandOutput]]:
+            make_args: Sequence[str] | None = None,
+        ) -> r[Sequence[m.Infra.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
-            return r[list[m.Infra.CommandOutput]].fail("Orchestration failed")
+            return r[Sequence[m.Infra.CommandOutput]].fail("Orchestration failed")
 
         monkeypatch.setattr(
             FlextInfraOrchestratorService,
@@ -193,7 +194,7 @@ class TestRunMigrate:
         ("result", "expected"),
         [
             (
-                r[list[m.Infra.MigrationResult]].ok([
+                r[Sequence[m.Infra.MigrationResult]].ok([
                     m.Infra.MigrationResult(
                         project="test",
                         errors=[],
@@ -202,21 +203,21 @@ class TestRunMigrate:
                 ]),
                 0,
             ),
-            (r[list[m.Infra.MigrationResult]].fail("Migration failed"), 1),
+            (r[Sequence[m.Infra.MigrationResult]].fail("Migration failed"), 1),
         ],
     )
     def test_success_or_failure(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        result: r[list[m.Infra.MigrationResult]],
+        result: r[Sequence[m.Infra.MigrationResult]],
         expected: int,
     ) -> None:
         def _migrate_stub(
             _self: FlextInfraProjectMigrator,
             workspace_root: Path,
             dry_run: bool,
-        ) -> r[list[m.Infra.MigrationResult]]:
+        ) -> r[Sequence[m.Infra.MigrationResult]]:
             del _self, workspace_root, dry_run
             return result
 
@@ -233,7 +234,7 @@ class TestRunMigrate:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        mrs: list[m.Infra.MigrationResult] = [
+        mrs: Sequence[m.Infra.MigrationResult] = [
             m.Infra.MigrationResult(
                 project="p1",
                 errors=["Error 1"],
@@ -246,9 +247,9 @@ class TestRunMigrate:
             _self: FlextInfraProjectMigrator,
             workspace_root: Path,
             dry_run: bool,
-        ) -> r[list[m.Infra.MigrationResult]]:
+        ) -> r[Sequence[m.Infra.MigrationResult]]:
             del _self, workspace_root, dry_run
-            return r[list[m.Infra.MigrationResult]].ok(mrs)
+            return r[Sequence[m.Infra.MigrationResult]].ok(mrs)
 
         monkeypatch.setattr(
             FlextInfraProjectMigrator,
@@ -265,15 +266,15 @@ class TestRunMigrate:
 
 def _capture(
     monkeypatch: pytest.MonkeyPatch,
-) -> list[tuple[list[str], str, bool, list[str]]]:
-    captured: list[tuple[list[str], str, bool, list[str]]] = []
+) -> Sequence[tuple[Sequence[str], str, bool, Sequence[str]]]:
+    captured: Sequence[tuple[Sequence[str], str, bool, Sequence[str]]] = []
 
     def _capture_orchestrate(
-        projects: list[str],
+        projects: Sequence[str],
         verb: str,
         *,
         fail_fast: bool,
-        make_args: list[str],
+        make_args: Sequence[str],
     ) -> int:
         captured.append((projects, verb, fail_fast, make_args))
         return 0

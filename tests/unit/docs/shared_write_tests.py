@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -51,7 +52,7 @@ class TestWriteJson:
     def test_with_dict_payload(self, tmp_path: Path) -> None:
         """Test write_json with dictionary payload."""
         json_file = tmp_path / "test.json"
-        payload: dict[str, str] = {
+        payload: Mapping[str, str] = {
             "key": "value",
         }
         result = u.Infra.write_json(json_file, payload)
@@ -73,14 +74,14 @@ class TestWriteJson:
     def test_with_nested_structure(self, tmp_path: Path) -> None:
         """Test write_json with nested dictionary."""
         json_file = tmp_path / "nested.json"
-        payload: dict[str, str] = {"level1": "value"}
+        payload: Mapping[str, str] = {"level1": "value"}
         result = u.Infra.write_json(json_file, payload)
         tm.ok(result)
 
     def test_file_readable(self, tmp_path: Path) -> None:
         """Test write_json creates readable JSON file."""
         json_file = tmp_path / "readable.json"
-        payload: dict[str, str | int] = {"key": "value", "number": 42}
+        payload: Mapping[str, str | int] = {"key": "value", "number": 42}
         u.Infra.write_json(json_file, payload)
         content = json.loads(json_file.read_text())
         tm.that(content["key"], eq="value")

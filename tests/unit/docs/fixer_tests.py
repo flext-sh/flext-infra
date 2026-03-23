@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -156,8 +157,8 @@ class TestFixerCore:
         def mock_build_scopes(
             *args: t.Scalar,
             **kwargs: t.Scalar,
-        ) -> r[list[m.Infra.DocScope]]:
-            return r[list[m.Infra.DocScope]].fail("Scope error")
+        ) -> r[Sequence[m.Infra.DocScope]]:
+            return r[Sequence[m.Infra.DocScope]].fail("Scope error")
 
         monkeypatch.setattr(FlextInfraUtilitiesDocs, "build_scopes", mock_build_scopes)
         result = fixer.fix(tmp_path)

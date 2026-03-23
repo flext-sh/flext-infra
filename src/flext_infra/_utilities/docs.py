@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -17,7 +18,7 @@ class FlextInfraUtilitiesDocs:
         workspace_root: Path,
         project: str | None,
         projects: str | None,
-    ) -> list[str]:
+    ) -> Sequence[str]:
         """Resolve CLI project flags to a concrete name list."""
         if project:
             return [project]
@@ -28,7 +29,7 @@ class FlextInfraUtilitiesDocs:
                     part.strip() for part in requested[0].split(" ") if part.strip()
                 ]
             return requested
-        result: r[list[m.Infra.ProjectInfo]] = (
+        result: r[Sequence[m.Infra.ProjectInfo]] = (
             FlextInfraUtilitiesDiscovery.discover_projects(workspace_root)
         )
         return result.fold(
@@ -42,10 +43,10 @@ class FlextInfraUtilitiesDocs:
         project: str | None,
         projects: str | None,
         output_dir: str,
-    ) -> r[list[m.Infra.DocScope]]:
+    ) -> r[Sequence[m.Infra.DocScope]]:
         """Build DocScope objects for workspace root and each selected project."""
         try:
-            scopes: list[m.Infra.DocScope] = [
+            scopes: Sequence[m.Infra.DocScope] = [
                 m.Infra.DocScope(
                     name=c.Infra.ReportKeys.ROOT,
                     path=workspace_root,
@@ -71,14 +72,14 @@ class FlextInfraUtilitiesDocs:
                         report_dir=(path / output_dir).resolve(),
                     ),
                 )
-            return r[list[m.Infra.DocScope]].ok(scopes)
+            return r[Sequence[m.Infra.DocScope]].ok(scopes)
         except (OSError, TypeError, ValueError) as exc:
-            return r[list[m.Infra.DocScope]].fail(
+            return r[Sequence[m.Infra.DocScope]].fail(
                 f"scope resolution failed: {exc}",
             )
 
     @staticmethod
-    def iter_markdown_files(workspace_root: Path) -> list[Path]:
+    def iter_markdown_files(workspace_root: Path) -> Sequence[Path]:
         """Recursively collect markdown files under the docs scope."""
         docs_root = workspace_root / c.Infra.Directories.DOCS
         search_root = docs_root if docs_root.is_dir() else workspace_root
@@ -92,7 +93,7 @@ class FlextInfraUtilitiesDocs:
         )
 
     @staticmethod
-    def write_markdown(path: Path, lines: list[str]) -> r[bool]:
+    def write_markdown(path: Path, lines: Sequence[str]) -> r[bool]:
         """Write markdown lines to path, creating parent dirs as needed."""
         try:
             path.parent.mkdir(parents=True, exist_ok=True)

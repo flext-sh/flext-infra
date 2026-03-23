@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import tomlkit
 from pydantic import TypeAdapter, ValidationError
 from tomlkit.items import Item, Table
@@ -15,8 +17,8 @@ class EnsureFormattingToolingPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         self._tool_config = tool_config
 
-    def apply(self, doc: tomlkit.TOMLDocument) -> list[str]:
-        changes: list[str] = []
+    def apply(self, doc: tomlkit.TOMLDocument) -> Sequence[str]:
+        changes: Sequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:
             raw_tool = doc[c.Infra.Toml.TOOL]
@@ -34,11 +36,11 @@ class EnsureFormattingToolingPhase:
             current = u.Infra.unwrap_item(u.Infra.get(tomlsort, key))
             if isinstance(value, list) and isinstance(current, list):
                 try:
-                    current_values = TypeAdapter(list[str]).validate_python([
+                    current_values = TypeAdapter(Sequence[str]).validate_python([
                         str(x) for x in current
                     ])
                 except ValidationError:
-                    current_values: list[str] = []
+                    current_values: Sequence[str] = []
                 if sorted(str(i) for i in current_values) != sorted(
                     str(i) for i in value
                 ):

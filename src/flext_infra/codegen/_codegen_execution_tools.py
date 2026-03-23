@@ -12,6 +12,7 @@ from __future__ import annotations
 import ast
 import shutil
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -27,7 +28,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     """Execution tools for external command invocation and import scanning."""
 
     @staticmethod
-    def git_lines(workspace_root: Path, args: list[str]) -> list[str]:
+    def git_lines(workspace_root: Path, args: Sequence[str]) -> Sequence[str]:
         """Run git command and return output lines."""
         git_bin = shutil.which(c.Infra.Cli.GIT)
         if not git_bin:
@@ -45,8 +46,8 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     @staticmethod
     def quality_gate_run_pyrefly_check(
         workspace_root: Path,
-        modified_files: list[str],
-    ) -> dict[str, t.Infra.InfraValue]:
+        modified_files: Sequence[str],
+    ) -> Mapping[str, t.Infra.InfraValue]:
         """Run pyrefly check on modified files."""
         if not modified_files:
             return {
@@ -75,8 +76,8 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     @staticmethod
     def quality_gate_run_ruff_check(
         workspace_root: Path,
-        modified_files: list[str],
-    ) -> dict[str, t.Infra.InfraValue]:
+        modified_files: Sequence[str],
+    ) -> Mapping[str, t.Infra.InfraValue]:
         """Run ruff check on modified files."""
         if not modified_files:
             return {
@@ -99,8 +100,8 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     @staticmethod
     def run_external_check(
         workspace_root: Path,
-        cmd: list[str],
-    ) -> dict[str, t.Infra.InfraValue]:
+        cmd: Sequence[str],
+    ) -> Mapping[str, t.Infra.InfraValue]:
         """Execute external check command and return result."""
         result = FlextInfraUtilitiesSubprocess().run_raw(cmd, cwd=workspace_root)
         if result.is_failure:
@@ -122,11 +123,11 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     @staticmethod
     def quality_gate_scan_import_nodes(
         workspace_root: Path,
-        modified_files: list[str],
-    ) -> dict[str, t.Infra.InfraValue]:
+        modified_files: Sequence[str],
+    ) -> Mapping[str, t.Infra.InfraValue]:
         """Scan import nodes in modified files for invalid patterns."""
-        invalid_import_from: list[str] = []
-        parse_errors: list[str] = []
+        invalid_import_from: Sequence[str] = []
+        parse_errors: Sequence[str] = []
         for rel_path in modified_files:
             file_path = (workspace_root / rel_path).resolve()
             if not file_path.is_file():
@@ -142,8 +143,10 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
                 and node.module is None
                 and (node.level == 0)
             )
-        invalid_import_from_value: list[t.Infra.InfraValue] = list(invalid_import_from)
-        parse_errors_value: list[t.Infra.InfraValue] = list(parse_errors)
+        invalid_import_from_value: Sequence[t.Infra.InfraValue] = list(
+            invalid_import_from
+        )
+        parse_errors_value: Sequence[t.Infra.InfraValue] = list(parse_errors)
         return {
             "invalid_import_from_count": len(invalid_import_from),
             "parse_error_count": len(parse_errors),

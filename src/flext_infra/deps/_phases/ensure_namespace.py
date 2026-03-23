@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import tomlkit
@@ -14,8 +15,8 @@ from flext_infra import c, u
 class EnsureNamespaceToolingPhase:
     """Ensure namespace discovery is reflected across project tooling tables."""
 
-    def apply(self, doc: tomlkit.TOMLDocument, *, path: Path) -> list[str]:
-        changes: list[str] = []
+    def apply(self, doc: tomlkit.TOMLDocument, *, path: Path) -> Sequence[str]:
+        changes: Sequence[str] = []
         detected = sorted(u.Infra.discover_first_party_namespaces(path.parent))
         if not detected:
             return changes

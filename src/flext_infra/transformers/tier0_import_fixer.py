@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar, override
@@ -28,7 +28,7 @@ class FlextInfraTransformerTier0ImportFixer:
 
         package_name: str
         file_path: Path
-        alias_to_module: dict[str, str] = field(default_factory=dict)
+        alias_to_module: Mapping[str, str] = field(default_factory=dict)
         category_a: set[str] = field(default_factory=set)
         category_b: set[str] = field(default_factory=set)
         category_c: set[str] = field(default_factory=set)
@@ -158,7 +158,7 @@ class FlextInfraTransformerTier0ImportFixer:
     class Transformer(cst.CSTTransformer):
         """Rewrite Tier 0 imports to remove circularity and enforce order."""
 
-        _CLASS_IMPORTS_MAP: ClassVar[dict[str, str]] = {
+        _CLASS_IMPORTS_MAP: ClassVar[Mapping[str, str]] = {
             "FlextRuntime": "flext_core.runtime",
             "FlextUtilitiesGuardsTypeCore": "flext_core._utilities.guards_type_core",
             "FlextUtilitiesGuards": "flext_core._utilities.guards",
@@ -176,7 +176,7 @@ class FlextInfraTransformerTier0ImportFixer:
             self,
             *,
             analysis: FlextInfraTransformerTier0ImportFixer.Analysis,
-            alias_to_submodule: dict[str, str],
+            alias_to_submodule: Mapping[str, str],
             core_package: str,
         ) -> None:
             """Initialize transformer with analysis and insertion configuration."""
@@ -190,17 +190,17 @@ class FlextInfraTransformerTier0ImportFixer:
             )
             self._core_pending = set(analysis.category_b)
             self._type_checking_pending = set(analysis.category_c)
-            self._direct_pending: dict[str, set[str]] = {}
+            self._direct_pending: Mapping[str, set[str]] = {}
             for a in sorted(analysis.category_d):
                 sub = alias_to_submodule.get(a, analysis.alias_to_module.get(a, ""))
                 if sub:
                     self._direct_pending.setdefault(sub, set()).add(a)
-            self._changes: list[str] = []
+            self._changes: Sequence[str] = []
             self._type_checking_import_present = False
             self._missing_classes: set[str] = set()
 
         @property
-        def changes(self) -> list[str]:
+        def changes(self) -> Sequence[str]:
             """Return recorded transformation changes."""
             return self._changes
 
@@ -234,7 +234,7 @@ class FlextInfraTransformerTier0ImportFixer:
         def leave_Module(
             self, original_node: cst.Module, updated_node: cst.Module
         ) -> cst.Module:
-            stmts: list[cst.BaseStatement] = list(updated_node.body)
+            stmts: Sequence[cst.BaseStatement] = list(updated_node.body)
             if not self._type_checking_import_present and self._type_checking_pending:
                 stmts.insert(
                     self._idx(stmts),
@@ -298,8 +298,8 @@ class FlextInfraTransformerTier0ImportFixer:
             existing = list(node.names)
             return node.with_changes(names=tuple(existing + add))
 
-        def _build_additions(self) -> list[cst.BaseStatement]:
-            res: list[cst.BaseStatement] = []
+        def _build_additions(self) -> Sequence[cst.BaseStatement]:
+            res: Sequence[cst.BaseStatement] = []
             if self._core_pending:
                 res.append(
                     u.Infra.cst_import_line(

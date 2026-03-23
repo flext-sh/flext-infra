@@ -16,6 +16,7 @@ import argparse
 import shutil
 import sys
 import tomllib
+from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -150,7 +151,7 @@ class FlextInfraTestHelpers:
         cls,
         path: Path,
         msg: str | None = None,
-    ) -> dict[str, t.Infra.InfraValue]:
+    ) -> Mapping[str, t.Infra.InfraValue]:
         """Assert TOML file is valid and return parsed content.
 
         Args:
@@ -166,7 +167,7 @@ class FlextInfraTestHelpers:
         """
         cls.assert_file_exists(path, msg)
         try:
-            content: dict[str, t.Infra.InfraValue] = tomllib.loads(
+            content: Mapping[str, t.Infra.InfraValue] = tomllib.loads(
                 path.read_text(encoding="utf-8"),
             )
         except tomllib.TOMLDecodeError as exc:
@@ -179,7 +180,7 @@ class FlextInfraTestHelpers:
         path: Path,
         section: str,
         msg: str | None = None,
-    ) -> dict[str, t.Infra.InfraValue]:
+    ) -> Mapping[str, t.Infra.InfraValue]:
         """Assert TOML file has specific section.
 
         Args:
@@ -193,7 +194,7 @@ class FlextInfraTestHelpers:
         """
         content = cls.assert_toml_valid(path, msg)
         parts = section.split(".")
-        current: dict[str, t.Infra.InfraValue] | t.Infra.InfraValue = content
+        current: Mapping[str, t.Infra.InfraValue] | t.Infra.InfraValue = content
         for part in parts:
             tm.that(
                 isinstance(current, dict),
@@ -201,7 +202,7 @@ class FlextInfraTestHelpers:
                 msg=msg or f"TOML section '{section}' not found in {path}",
             )
             assert isinstance(current, dict)
-            current_map: dict[str, t.Infra.InfraValue] = current
+            current_map: Mapping[str, t.Infra.InfraValue] = current
             tm.that(
                 part in current_map,
                 eq=True,

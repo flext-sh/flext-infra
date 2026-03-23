@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -86,7 +87,7 @@ class TestFlextInfraJsonService:
         self,
         tmp_path: Path,
         path_parts: tuple[str, ...],
-        payload: dict[str, str | int] | SampleModel,
+        payload: Mapping[str, str | int] | SampleModel,
         sort_keys: bool,
         ensure_ascii: bool,
         expected: str,

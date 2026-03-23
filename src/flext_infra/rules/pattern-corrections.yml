@@ -3,7 +3,7 @@
 rules:
   - id: fix-container-invariance-annotations
     name: "Fix dict annotation invariance hotspots"
-    description: "Convert dict[...] annotations to Mapping[...] to reduce Container variance violations"
+    description: "Convert Mapping[...] annotations to Mapping[...] to reduce Container variance violations"
     enabled: true
     severity: error
     fix_action: convert_dict_to_mapping_annotations

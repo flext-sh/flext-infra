@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import stat
+from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
@@ -163,7 +164,7 @@ class TestFlextInfraTomlHelpers:
         tm.that(cast("str", table["key"]), eq="value")
 
     def test_as_toml_mapping_and_get_helpers(self) -> None:
-        mapping: dict[str, FlextInfraTypes.Infra.InfraValue] = {"key": "value"}
+        mapping: Mapping[str, FlextInfraTypes.Infra.InfraValue] = {"key": "value"}
         tm.that(FlextInfraUtilitiesToml.as_toml_mapping(mapping), eq=mapping)
         tm.that(FlextInfraUtilitiesToml.as_toml_mapping("bad"), none=True)
         doc = tomlkit.document()

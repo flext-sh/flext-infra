@@ -59,31 +59,31 @@ class FlextInfraWorkspaceChecker(s[bool]):
 
     @staticmethod
     def generate_sarif_report(
-        results: list[m.Infra.ProjectResult],
-        gates: list[str],
+        results: Sequence[m.Infra.ProjectResult],
+        gates: Sequence[str],
     ) -> JsonValue:
         """Generate a SARIF payload from gate results."""
         return u.Infra.generate_sarif(results, gates)
 
     @staticmethod
-    def parse_gate_csv(raw: str) -> list[str]:
+    def parse_gate_csv(raw: str) -> Sequence[str]:
         """Parse a comma-separated gate list."""
         return [gate.strip() for gate in raw.split(",") if gate.strip()]
 
     @staticmethod
-    def resolve_gates(gates: Sequence[str]) -> r[list[str]]:
+    def resolve_gates(gates: Sequence[str]) -> r[Sequence[str]]:
         """Resolve and validate requested gate names."""
-        resolved: list[str] = []
+        resolved: Sequence[str] = []
         for gate in gates:
             name = gate.strip()
             if not name:
                 continue
             mapped = c.Infra.Gates.PYREFLY if name == c.Infra.Gates.TYPE_ALIAS else name
             if mapped not in c.Infra.ALLOWED_GATES:
-                return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
+                return r[Sequence[str]].fail(f"ERROR: unknown gate '{gate}'")
             if mapped not in resolved:
                 resolved.append(mapped)
-        return r[list[str]].ok(resolved)
+        return r[Sequence[str]].ok(resolved)
 
     @override
     def execute(self) -> r[bool]:
@@ -97,8 +97,8 @@ class FlextInfraWorkspaceChecker(s[bool]):
 
     def generate_markdown_report(
         self,
-        results: list[m.Infra.ProjectResult],
-        gates: list[str],
+        results: Sequence[m.Infra.ProjectResult],
+        gates: Sequence[str],
         timestamp: str,
     ) -> str:
         """Generate a markdown summary report for check results."""
@@ -141,7 +141,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         return parser
 
     @staticmethod
-    def run_cli(argv: list[str] | None = None) -> int:
+    def run_cli(argv: Sequence[str] | None = None) -> int:
         """Run the subcommand-based workspace check CLI."""
         parser = FlextInfraWorkspaceChecker.build_parser()
         args = parser.parse_args(argv)
@@ -161,12 +161,12 @@ class FlextInfraWorkspaceChecker(s[bool]):
             if run_result.is_failure:
                 output.error(run_result.error or "check failed")
                 return 2
-            run_results: list[m.Infra.ProjectResult] = run_result.value
+            run_results: Sequence[m.Infra.ProjectResult] = run_result.value
             failed_projects = [project for project in run_results if not project.passed]
             return 1 if failed_projects else 0
         if args.command == "fix-pyrefly-config":
             fixer = FlextInfraConfigFixer()
-            fix_result: r[list[str]] = fixer.run(
+            fix_result: r[Sequence[str]] = fixer.run(
                 projects=args.projects,
                 dry_run=args.dry_run,
                 verbose=args.verbose,
@@ -179,7 +179,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         return 1
 
     @staticmethod
-    def main(argv: list[str] | None = None) -> int:
+    def main(argv: Sequence[str] | None = None) -> int:
         """Run the legacy workspace check CLI entrypoint."""
         parser = u.Infra.create_parser(
             "flext-infra check-workspace",
@@ -219,7 +219,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         self,
         project: str,
         gates: Sequence[str],
-    ) -> r[list[m.Infra.ProjectResult]]:
+    ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Run selected gates for one project."""
         return self.run_projects([project], list(gates)).map(lambda value: value)
 
@@ -230,17 +230,17 @@ class FlextInfraWorkspaceChecker(s[bool]):
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
-    ) -> r[list[m.Infra.ProjectResult]]:
+    ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.is_failure:
-            return r[list[m.Infra.ProjectResult]].fail(
+            return r[Sequence[m.Infra.ProjectResult]].fail(
                 resolved_gates_result.error or "invalid gates",
             )
-        resolved_gates: list[str] = resolved_gates_result.value
+        resolved_gates: Sequence[str] = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         report_base.mkdir(parents=True, exist_ok=True)
-        results: list[m.Infra.ProjectResult] = []
+        results: Sequence[m.Infra.ProjectResult] = []
         total = len(projects)
         failed = 0
         skipped = 0
@@ -279,7 +279,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         sarif_payload = self.generate_sarif_report(results, resolved_gates)
         json_write_result = u.Infra.write_json(sarif_path, sarif_payload)
         if json_write_result.is_failure:
-            return r[list[m.Infra.ProjectResult]].fail(
+            return r[Sequence[m.Infra.ProjectResult]].fail(
                 json_write_result.error or "failed to write sarif report",
             )
         total_errors = sum(project.total_errors for project in results)
@@ -311,7 +311,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 output.error(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",
                 )
-        return r[list[m.Infra.ProjectResult]].ok(results)
+        return r[Sequence[m.Infra.ProjectResult]].ok(results)
 
     def _gate_ctx(self, reports_dir: Path | None = None) -> m.Infra.GateContext:
         return m.Infra.GateContext(
@@ -399,7 +399,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
     def _check_project(
         self,
         project_dir: Path,
-        gates: list[str],
+        gates: Sequence[str],
         reports_dir: Path,
     ) -> m.Infra.ProjectResult:
         result = m.Infra.ProjectResult(project=project_dir.name)

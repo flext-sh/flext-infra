@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Final, override
 
@@ -22,7 +22,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             self,
             *,
             parent_class: str,
-            definitions: list[m.Infra.ConstantDefinition],
+            definitions: Sequence[m.Infra.ConstantDefinition],
         ) -> None:
             super().__init__()
             self._parent_class = parent_class
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
                 )
                 for item in definitions
             }
-            self.changes: list[str] = []
+            self.changes: Sequence[str] = []
             self.replacements = 0
 
         @override
@@ -69,8 +69,8 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         def __init__(self, *, unused_names: set[str]) -> None:
             super().__init__()
             self._unused_names = unused_names
-            self._class_stack: list[str] = []
-            self.changes: list[str] = []
+            self._class_stack: Sequence[str] = []
+            self.changes: Sequence[str] = []
             self.removals = 0
 
         @override
@@ -116,7 +116,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             self._target_class = target_class
             self._has_c_import = False
             self._replaced_classes: set[str] = set()
-            self.changes: list[str] = []
+            self.changes: Sequence[str] = []
             self.replacements = 0
 
         @override
@@ -167,7 +167,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             t = FlextInfraUtilitiesCodegenConstantTransformation
             if self.replacements == 0:
                 return updated_node
-            new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
+            new_body: Sequence[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
             c_import_present = self._has_c_import
             for stmt in updated_node.body:
                 if (
@@ -235,8 +235,8 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
     def replace_canonical_values(
         file_path: Path,
         parent_class: str,
-        definitions: list[m.Infra.ConstantDefinition],
-    ) -> tuple[bool, list[str]]:
+        definitions: Sequence[m.Infra.ConstantDefinition],
+    ) -> tuple[bool, Sequence[str]]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
         tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if tree is None:
@@ -253,8 +253,8 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
     @staticmethod
     def remove_unused_constants(
         file_path: Path,
-        unused: list[m.Infra.UnusedConstant],
-    ) -> tuple[bool, list[str]]:
+        unused: Sequence[m.Infra.UnusedConstant],
+    ) -> tuple[bool, Sequence[str]]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
         tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if tree is None:
@@ -272,7 +272,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         file_path: Path,
         project_import: str,
         pkg_dir: Path | None = None,
-    ) -> tuple[bool, list[str]]:
+    ) -> tuple[bool, Sequence[str]]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
         parts = project_import.replace("from ", "").split(" import ")
         package_name = parts[0].strip() if parts else ""
@@ -327,12 +327,12 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         return index
 
     @staticmethod
-    def break_import_cycles(pkg_dir: Path) -> tuple[bool, list[str]]:
-        def parse_lazy_imports(init_file: Path) -> dict[str, str]:
+    def break_import_cycles(pkg_dir: Path) -> tuple[bool, Sequence[str]]:
+        def parse_lazy_imports(init_file: Path) -> Mapping[str, str]:
             if not init_file.is_file():
                 return {}
             source = init_file.read_text("utf-8")
-            mapping: dict[str, str] = {}
+            mapping: Mapping[str, str] = {}
             for match in re.finditer(
                 r'"(\w+)":\s*\("([\w.]+)",\s*"(\w+)"\)',
                 source,
@@ -343,9 +343,9 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
 
         def build_self_import_graph(
             package_name: str,
-            lazy_map: dict[str, str],
-        ) -> dict[str, set[str]]:
-            graph: dict[str, set[str]] = {}
+            lazy_map: Mapping[str, str],
+        ) -> Mapping[str, set[str]]:
+            graph: Mapping[str, set[str]] = {}
             for py_file in pkg_dir.glob("*.py"):
                 if py_file.name == "__init__.py":
                     continue
@@ -378,10 +378,10 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
                     graph[stem] = deps
             return graph
 
-        def find_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
-            cycles: list[list[str]] = []
+        def find_cycles(graph: Mapping[str, set[str]]) -> Sequence[Sequence[str]]:
+            cycles: Sequence[Sequence[str]] = []
             visited: set[str] = set()
-            path: list[str] = []
+            path: Sequence[str] = []
             path_set: set[str] = set()
 
             def dfs(node: str) -> None:
@@ -422,7 +422,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             edges = [(cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1)]
             cycle_edges.update(edges)
 
-        all_changes: list[str] = []
+        all_changes: Sequence[str] = []
         any_modified = False
 
         for source_mod, target_mod in cycle_edges:
@@ -432,7 +432,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             tree = FlextInfraUtilitiesParsing.parse_module_cst(source_file)
             if tree is None:
                 continue
-            new_body: list[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
+            new_body: Sequence[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
             changed = False
 
             canonical_aliases = frozenset([

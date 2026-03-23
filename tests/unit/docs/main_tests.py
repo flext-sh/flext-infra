@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+
 import argparse
 from collections.abc import Callable
 from pathlib import Path
@@ -25,7 +27,7 @@ from ...models import m
 
 
 def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
-    defaults: dict[str, t.Container | None] = {
+    defaults: Mapping[str, t.Container | None] = {
         "workspace": Path(),
         "project": None,
         "projects": None,
@@ -37,7 +39,7 @@ def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
 
 
 def _fix_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
-    defaults: dict[str, t.Container | None] = {
+    defaults: Mapping[str, t.Container | None] = {
         "workspace": Path(),
         "project": None,
         "projects": None,
@@ -49,69 +51,64 @@ def _fix_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
 
 
 def _ok(
-    val: list[m.Infra.DocsPhaseReport],
-) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
+    val: Sequence[m.Infra.DocsPhaseReport],
+) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **_kw: t.Scalar,
-    ) -> r[list[m.Infra.DocsPhaseReport]]:
-        _ = (_self, _a, _kw)
-        return r[list[m.Infra.DocsPhaseReport]].ok(val)
-
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+        _ = (_self, *_a, **_kw)
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(val)
     return _fn
 
 
-def _fail_report(err: str) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
+def _fail_report(err: str) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **_kw: t.Scalar,
-    ) -> r[list[m.Infra.DocsPhaseReport]]:
-        _ = (_self, _a, _kw)
-        return r[list[m.Infra.DocsPhaseReport]].fail(err)
-
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+        _ = (_self, *_a, **_kw)
+        return r[Sequence[m.Infra.DocsPhaseReport]].fail(err)
     return _fn
 
 
 def _ok_list(
-    val: list[m.Infra.DocsPhaseReport],
-) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
+    val: Sequence[m.Infra.DocsPhaseReport],
+) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **_kw: t.Scalar,
-    ) -> r[list[m.Infra.DocsPhaseReport]]:
-        _ = (_self, _a, _kw)
-        return r[list[m.Infra.DocsPhaseReport]].ok(val)
-
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+        _ = (_self, *_a, **_kw)
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(val)
     return _fn
 
 
-def _fail_list(err: str) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
+def _fail_list(err: str) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **_kw: t.Scalar,
-    ) -> r[list[m.Infra.DocsPhaseReport]]:
-        _ = (_self, _a, _kw)
-        return r[list[m.Infra.DocsPhaseReport]].fail(err)
-
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+        _ = (_self, *_a, **_kw)
+        return r[Sequence[m.Infra.DocsPhaseReport]].fail(err)
     return _fn
 
 
 def _capturing(
-    captured: dict[str, t.Scalar],
-) -> Callable[..., r[list[m.Infra.DocsPhaseReport]]]:
+    captured: Mapping[str, t.Scalar],
+) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **kw: t.Scalar,
-    ) -> r[list[m.Infra.DocsPhaseReport]]:
-        _ = (_self, _a)
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+        _ = (_self, *_a, **_kw)
         captured.update(kw)
-        return r[list[m.Infra.DocsPhaseReport]].ok([])
-
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
     return _fn
 
 
@@ -153,11 +150,11 @@ class TestRunAudit:
     def test_run_audit_forwards_arguments(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        kwargs: dict[str, t.Scalar],
+        kwargs: Mapping[str, t.Scalar],
         field: str,
         expected: t.Scalar,
     ) -> None:
-        captured_kwargs: dict[str, t.Scalar] = {}
+        captured_kwargs: Mapping[str, t.Scalar] = {}
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capturing(captured_kwargs))
         _run_audit(
             _audit_args(**kwargs),
@@ -183,17 +180,16 @@ class TestRunFix:
         apply: bool,
         expected: bool,
     ) -> None:
-        captured_kwargs: dict[str, t.Scalar] = {}
+        captured_kwargs: Mapping[str, t.Scalar] = {}
 
         def mock_fix(
             _self: t.Scalar,
             *_a: t.Scalar,
             **kw: t.Scalar,
-        ) -> r[list[m.Infra.DocsPhaseReport]]:
-            _ = (_self, _a)
+        ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+            _ = (_self, *_a, **_kw)
             captured_kwargs.update(kw)
-            return r[list[m.Infra.DocsPhaseReport]].ok([])
-
+            return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
         monkeypatch.setattr(FlextInfraDocFixer, "fix", mock_fix)
         _run_fix(_fix_args(apply=apply))
         assert captured_kwargs.get("apply") == expected

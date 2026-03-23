@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -195,4 +196,4 @@ class TestPytestDiagLogParsing:
         tm.that(diag.slow_entries, length_gt=0)
 
 
-__all__: list[str] = []
+__all__: Sequence[str] = []

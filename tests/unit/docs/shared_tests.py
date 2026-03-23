@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -70,7 +71,7 @@ class TestBuildScopes:
         project: str | None = None,
         projects: str | None = None,
         output_dir: str = _OUT,
-    ) -> r[list[m.Infra.DocScope]]:
+    ) -> r[Sequence[m.Infra.DocScope]]:
         return u.Infra.build_scopes(
             workspace_root=root,
             project=project,

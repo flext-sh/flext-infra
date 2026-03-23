@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -25,7 +26,7 @@ from flext_infra import (
 _CWD = "/home/marlonsc/flext/flext-core"
 
 
-def _ns(**kwargs: str | list[str] | Path | None) -> argparse.Namespace:
+def _ns(**kwargs: str | Sequence[str] | Path | None) -> argparse.Namespace:
     """Create a simple namespace from keyword arguments."""
     return argparse.Namespace(**kwargs)
 
@@ -169,4 +170,4 @@ class TestMainCliRouting:
         tm.that(result.returncode in {0, 1}, eq=True)
 
 
-__all__: list[str] = []
+__all__: Sequence[str] = []

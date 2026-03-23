@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -80,7 +81,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         return posix.endswith(("/models.py", "/_models.py")) or "/models/" in posix
 
     @staticmethod
-    def _pydantic_dest_import_statement(file_path: Path, names: list[str]) -> str:
+    def _pydantic_dest_import_statement(file_path: Path, names: Sequence[str]) -> str:
         joined = ", ".join(sorted(set(names)))
         if (file_path.parent / "__init__.py").exists():
             return f"from ._models import {joined}"
@@ -110,8 +111,8 @@ class FlextInfraUtilitiesRefactorPydantic:
     @staticmethod
     def _pydantic_append_unique_blocks(
         existing: str,
-        blocks: list[str],
-        names: list[str],
+        blocks: Sequence[str],
+        names: Sequence[str],
     ) -> str:
         updated = existing
         for name, block in zip(names, blocks, strict=True):
@@ -142,9 +143,9 @@ class FlextInfraUtilitiesRefactorPydantic:
 
     @staticmethod
     def _pydantic_filter_moves_for_necessity(
-        class_moves: list[m.Infra.ClassMove],
-        alias_moves: list[m.Infra.AliasMove],
-    ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]]:
+        class_moves: Sequence[m.Infra.ClassMove],
+        alias_moves: Sequence[m.Infra.AliasMove],
+    ) -> tuple[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]]:
         filtered_classes = [
             move
             for move in class_moves
@@ -159,7 +160,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         *,
         apply: bool,
         normalize_remaining: bool,
-    ) -> dict[str, int]:
+    ) -> Mapping[str, int]:
         """Centralize model contracts and normalize namespace scaffolds."""
         moved_classes = 0
         moved_aliases = 0

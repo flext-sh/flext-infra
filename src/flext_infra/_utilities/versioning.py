@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -49,7 +50,7 @@ class FlextInfraUtilitiesVersioning:
     def _replace_project_version_in_text(content: str, version: str) -> str | None:
         lines = content.splitlines(keepends=True)
         in_project_section = False
-        updated_lines: list[str] = []
+        updated_lines: Sequence[str] = []
         replaced = False
         for raw_line in lines:
             line = raw_line.strip()

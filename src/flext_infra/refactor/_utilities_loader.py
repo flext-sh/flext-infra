@@ -103,7 +103,7 @@ class FlextInfraUtilitiesRefactorLoader:
         file_path: Path,
         *,
         stage: str = "scan",
-        parse_failures: list[m.Infra.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> m.Infra.ParsedPythonModule | None:
         """Load and parse a Python module while recording parse failures."""
         try:

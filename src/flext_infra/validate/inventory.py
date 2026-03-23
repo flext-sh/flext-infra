@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -42,7 +43,7 @@ class FlextInfraInventoryService:
         try:
             root = workspace_root.resolve()
             scripts_dir = root / c.Infra.Directories.SCRIPTS
-            scripts: list[str] = []
+            scripts: Sequence[str] = []
             if scripts_dir.exists():
                 scripts = sorted(
                     path.relative_to(root).as_posix()
@@ -51,7 +52,7 @@ class FlextInfraInventoryService:
                     and path.suffix in {c.Infra.Extensions.PYTHON, ".sh"}
                 )
             now = datetime.now(UTC).isoformat()
-            scripts_infra: list[t.Infra.InfraValue] = list(scripts)
+            scripts_infra: Sequence[t.Infra.InfraValue] = list(scripts)
             inventory: t.Infra.ContainerDict = {
                 "generated_at": now,
                 "repo_root": str(root),
@@ -65,7 +66,7 @@ class FlextInfraInventoryService:
             }
             external: t.Infra.ContainerDict = {"generated_at": now, "candidates": []}
             reports_dir = output_dir or root / c.Infra.Reporting.REPORTS_DIR_NAME
-            written: list[str] = []
+            written: Sequence[str] = []
             inventory_path = reports_dir / "scripts-infra--json--scripts-inventory.json"
             wiring_path = reports_dir / "scripts-infra--json--scripts-wiring.json"
             external_path = (

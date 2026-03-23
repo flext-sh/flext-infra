@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -148,4 +149,4 @@ class TestFixabilityClassification:
             tm.that(result.fixable, eq=False)
 
 
-__all__: list[str] = []
+__all__: Sequence[str] = []

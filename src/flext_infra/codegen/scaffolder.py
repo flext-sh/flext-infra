@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -56,7 +57,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
     def execute(self) -> r[bool]:
         return r[bool].fail("Use run() directly")
 
-    def run(self) -> list[m.Infra.ScaffoldResult]:
+    def run(self) -> Sequence[m.Infra.ScaffoldResult]:
         """Scaffold missing base modules for all projects in workspace.
 
         Returns:
@@ -66,8 +67,8 @@ class FlextInfraCodegenScaffolder(s[bool]):
         projects_result = u.Infra.discover_projects(self._workspace_root)
         if not projects_result.is_success:
             return []
-        results: list[m.Infra.ScaffoldResult] = []
-        discovered: list[m.Infra.ProjectInfo] = projects_result.unwrap()
+        results: Sequence[m.Infra.ScaffoldResult] = []
+        discovered: Sequence[m.Infra.ProjectInfo] = projects_result.unwrap()
         projects = discovered
         for project in projects:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
@@ -95,8 +96,8 @@ class FlextInfraCodegenScaffolder(s[bool]):
                 files_created=[],
                 files_skipped=[],
             )
-        files_created: list[str] = []
-        files_skipped: list[str] = []
+        files_created: Sequence[str] = []
+        files_skipped: Sequence[str] = []
         pkg_dir = self._find_package_dir(project_path)
         if pkg_dir is not None:
             self._scaffold_dir(
@@ -130,8 +131,8 @@ class FlextInfraCodegenScaffolder(s[bool]):
         prefix: str,
         modules: tuple[tuple[str, str, str, str], ...],
         test_prefix: str,
-        files_created: list[str],
-        files_skipped: list[str],
+        files_created: Sequence[str],
+        files_skipped: Sequence[str],
     ) -> None:
         """Generate missing modules in a directory."""
         for filename, suffix, base_class, doc_suffix in modules:

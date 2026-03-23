@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -42,7 +43,7 @@ class FakeUtilsNamespace:
         _git_run_checked_result: r[bool] = r[bool].ok(True)
         _git_tag_exists_result: r[bool] = r[bool].ok(False)
         _git_create_tag_result: r[bool] = r[bool].ok(True)
-        _git_checkout_side_effects: list[r[bool]] | None = None
+        _git_checkout_side_effects: Sequence[r[bool]] | None = None
         _call_count: int = 0
 
         @classmethod
@@ -73,16 +74,16 @@ class FakeUtilsNamespace:
         def resolve_projects(
             cls,
             workspace_root: Path,
-            names: list[str],
-        ) -> r[list[SimpleNamespace]]:
-            return r[list[SimpleNamespace]].ok([])
+            names: Sequence[str],
+        ) -> r[Sequence[SimpleNamespace]]:
+            return r[Sequence[SimpleNamespace]].ok([])
 
         @classmethod
         def generate_notes(
             cls,
             version: str,
             tag: str,
-            projects: list[SimpleNamespace],
+            projects: Sequence[SimpleNamespace],
             changes: str,
             output_path: Path,
         ) -> r[bool]:
@@ -151,9 +152,11 @@ class FakeReporting:
 class FakeSelection:
     """Fake for FlextInfraUtilitiesSelection."""
 
-    _resolve_result: r[list[SimpleNamespace]] = r[list[SimpleNamespace]].ok([])
+    _resolve_result: r[Sequence[SimpleNamespace]] = r[Sequence[SimpleNamespace]].ok([])
 
-    def resolve_projects(self, *args: str, **kwargs: str) -> r[list[SimpleNamespace]]:
+    def resolve_projects(
+        self, *args: str, **kwargs: str
+    ) -> r[Sequence[SimpleNamespace]]:
         return self._resolve_result
 
 

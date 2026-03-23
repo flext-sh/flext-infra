@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import override
 
 import libcst as cst
@@ -13,11 +13,11 @@ class FlextInfraRefactorDeprecatedRemover(cst.CSTTransformer):
 
     def __init__(
         self,
-        changes: list[str] | None = None,
+        changes: Sequence[str] | None = None,
         on_change: Callable[[str], None] | None = None,
     ) -> None:
         """Initialize change sinks used by the transformer."""
-        self.changes: list[str] = changes if changes is not None else []
+        self.changes: Sequence[str] = changes if changes is not None else []
         self._on_change = on_change
 
     @override

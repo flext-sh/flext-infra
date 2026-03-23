@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -20,8 +21,8 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.MARKDOWN][0]
     tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.MARKDOWN][1]
 
-    def _collect_markdown_files(self, project_dir: Path) -> list[Path]:
-        files: list[Path] = []
+    def _collect_markdown_files(self, project_dir: Path) -> Sequence[Path]:
+        files: Sequence[Path] = []
         for path in project_dir.rglob("*.md"):
             if any(part in c.Infra.Excluded.CHECK_EXCLUDED_DIRS for part in path.parts):
                 continue
@@ -55,7 +56,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             cmd.extend(["--config", str(local_config)])
         cmd.extend(str(path.relative_to(project_dir)) for path in md_files)
         result = self._run(cmd, project_dir)
-        issues: list[m.Infra.Issue] = []
+        issues: Sequence[m.Infra.Issue] = []
         if not fix:
             for line in (result.stdout + "\n" + result.stderr).splitlines():
                 match = c.Infra.MARKDOWN_RE.match(line.strip())

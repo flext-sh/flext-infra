@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -38,7 +39,7 @@ class ManualProtocolDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the ManualProtocolDetector scanner.
 
@@ -80,8 +81,8 @@ class ManualProtocolDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.ManualProtocolViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations.
 
         Args:
@@ -102,8 +103,8 @@ class ManualProtocolDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.ManualProtocolViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.ManualProtocolViolation]:
         """Scan a file for Protocol classes outside canonical locations.
 
         Args:
@@ -125,7 +126,7 @@ class ManualProtocolDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: list[nem.ManualProtocolViolation] = []
+        violations: Sequence[nem.ManualProtocolViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.ClassDef):
                 continue

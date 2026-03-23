@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -12,7 +12,7 @@ from tests import t
 
 def _set_toml_sequence(
     service: FlextInfraInternalDependencySyncService,
-    values: list[r[t.Infra.TomlConfig]],
+    values: Sequence[r[t.Infra.TomlConfig]],
 ) -> None:
     state = {"index": 0}
 

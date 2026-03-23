@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -35,7 +36,7 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the CompatibilityAliasDetector scanner.
 
@@ -77,8 +78,8 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.CompatibilityAliasViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a file.
 
         Args:
@@ -99,8 +100,8 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.CompatibilityAliasViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.CompatibilityAliasViolation]:
         """Scan a file for removable compatibility aliases.
 
         Args:
@@ -117,7 +118,7 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: list[nem.CompatibilityAliasViolation] = []
+        violations: Sequence[nem.CompatibilityAliasViolation] = []
         for stmt in u.Infra.cst_iter_simple_statements(module.body):
             if not isinstance(stmt, cst.Assign):
                 continue

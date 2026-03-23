@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -14,10 +15,12 @@ from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import FlextInfraBaseMkGenerator, c, m, p, r, s, u
 
-_OBJECT_LIST_ADAPTER: TypeAdapter[list[JsonValue]] = TypeAdapter(list[JsonValue])
+_OBJECT_LIST_ADAPTER: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(
+    Sequence[JsonValue]
+)
 
 
-class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
+class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
     """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
 
     def __init__(
@@ -48,7 +51,9 @@ class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
         return f"[DRY-RUN] {action}" if dry_run else action
 
     @staticmethod
-    def _append_result(result: r[str], changes: list[str], errors: list[str]) -> None:
+    def _append_result(
+        result: r[str], changes: Sequence[str], errors: Sequence[str]
+    ) -> None:
         if result.is_failure:
             errors.append(result.error or "migration action failed")
             return
@@ -83,7 +88,9 @@ class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
                 c.Infra.Toml.DEPENDENCIES,
             )
             if isinstance(deps, list):
-                deps_list: list[JsonValue] = _OBJECT_LIST_ADAPTER.validate_python(deps)
+                deps_list: Sequence[JsonValue] = _OBJECT_LIST_ADAPTER.validate_python(
+                    deps
+                )
                 for dep_raw in deps_list:
                     dep: str = str(dep_raw)
                     if str(dep).strip().startswith(c.Infra.Packages.CORE):
@@ -125,8 +132,8 @@ class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
         )
 
     @override
-    def execute(self) -> r[list[m.Infra.MigrationResult]]:
-        return r[list[m.Infra.MigrationResult]].fail(
+    def execute(self) -> r[Sequence[m.Infra.MigrationResult]]:
+        return r[Sequence[m.Infra.MigrationResult]].fail(
             "Use migrate() method directly",
         )
 
@@ -135,11 +142,11 @@ class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
         *,
         workspace_root: Path,
         dry_run: bool = False,
-    ) -> r[list[m.Infra.MigrationResult]]:
+    ) -> r[Sequence[m.Infra.MigrationResult]]:
         """Migrate all projects in workspace."""
         root = workspace_root.resolve()
         if not root.is_dir():
-            return r[list[m.Infra.MigrationResult]].fail(
+            return r[Sequence[m.Infra.MigrationResult]].fail(
                 f"workspace root does not exist: {root}",
             )
         if self._discovery is not None:
@@ -147,17 +154,17 @@ class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
         else:
             discovered = u.Infra.discover_projects(root)
         if discovered.is_failure:
-            return r[list[m.Infra.MigrationResult]].fail(
+            return r[Sequence[m.Infra.MigrationResult]].fail(
                 discovered.error or "project discovery failed",
             )
-        discovered_projects: list[m.Infra.ProjectInfo] = discovered.value
+        discovered_projects: Sequence[m.Infra.ProjectInfo] = discovered.value
         projects = list(discovered_projects)
         workspace_project = self._workspace_root_project(root)
         if workspace_project is not None and all(
             existing.path != workspace_project.path for existing in projects
         ):
             projects.append(workspace_project)
-        results: list[m.Infra.MigrationResult] = [
+        results: Sequence[m.Infra.MigrationResult] = [
             self._migrate_project(
                 project=project,
                 dry_run=dry_run,
@@ -165,7 +172,7 @@ class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
             )
             for project in projects
         ]
-        return r[list[m.Infra.MigrationResult]].ok(results)
+        return r[Sequence[m.Infra.MigrationResult]].ok(results)
 
     def _migrate_basemk(
         self,
@@ -315,8 +322,8 @@ class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
         workspace_root: Path,
     ) -> m.Infra.MigrationResult:
         is_root = project.path.resolve() == workspace_root.resolve()
-        changes: list[str] = []
-        errors: list[str] = []
+        changes: Sequence[str] = []
+        errors: Sequence[str] = []
         self._append_result(
             self._migrate_basemk(
                 project.path,
@@ -393,10 +400,12 @@ class FlextInfraProjectMigrator(s[list[m.Infra.MigrationResult]]):
             return r[str].ok("")
         project_table = self._ensure_table(document, c.Infra.Toml.PROJECT)
         dependencies_raw = self._toml_get(project_table, c.Infra.Toml.DEPENDENCIES)
-        dependencies: list[str] = []
+        dependencies: Sequence[str] = []
         if isinstance(dependencies_raw, list):
-            dependency_items: list[JsonValue] = _OBJECT_LIST_ADAPTER.validate_python(
-                dependencies_raw,
+            dependency_items: Sequence[JsonValue] = (
+                _OBJECT_LIST_ADAPTER.validate_python(
+                    dependencies_raw,
+                )
             )
             dependencies = [str(dep_raw) for dep_raw in dependency_items]
         dependency_spec = "flext-core @ ../flext-core"

@@ -6,6 +6,7 @@ packages instead of the correct canonical source.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -30,7 +31,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         *,
         project_name: str,
         project_root: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the NamespaceSourceDetector scanner.
 
@@ -80,8 +81,8 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         file_path: Path,
         project_name: str,
         project_root: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.NamespaceSourceViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.NamespaceSourceViolation]:
         """Detect namespace source violations in a file.
 
         Args:
@@ -108,8 +109,8 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         file_path: Path,
         project_name: str,
         project_root: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.NamespaceSourceViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.NamespaceSourceViolation]:
         """Scan a file for wrong-source alias imports."""
         _ = project_name
         _ = _parse_failures
@@ -132,7 +133,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
             project_package=package_name,
             alias_map=None,
         )
-        violations: list[nem.NamespaceSourceViolation] = []
+        violations: Sequence[nem.NamespaceSourceViolation] = []
         for raw in violations_cst:
             violation_type = getattr(raw, "violation_type", "")
             file_value = getattr(raw, "file", "")

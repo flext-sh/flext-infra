@@ -16,7 +16,7 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
 
     def __init__(
         self,
-        mappings: dict[str, str],
+        mappings: Mapping[str, str],
         policy_context: t.Infra.PolicyContext,
         class_families: Mapping[str, str],
     ) -> None:
@@ -26,7 +26,7 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
         self._class_families = class_families
         self._class_depth = 0
         self._existing_namespaces: set[str] = set()
-        self._collected_nested: dict[str, list[cst.ClassDef]] = defaultdict(list)
+        self._collected_nested: Mapping[str, Sequence[cst.ClassDef]] = defaultdict(list)
 
     @override
     def visit_Module(self, node: cst.Module) -> bool:
@@ -135,7 +135,7 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
     def _namespace_operation_allowed(
         self,
         *,
-        nested_classes: list[cst.ClassDef],
+        nested_classes: Sequence[cst.ClassDef],
         target_namespace: str,
         operation: str,
     ) -> bool:
@@ -175,8 +175,8 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
         self,
         *,
         namespace_class: cst.ClassDef,
-        nested_classes: list[cst.ClassDef],
-    ) -> list[cst.ClassDef]:
+        nested_classes: Sequence[cst.ClassDef],
+    ) -> Sequence[cst.ClassDef]:
         existing_nested_names = {
             statement.name.value
             for statement in namespace_class.body.body
@@ -191,9 +191,9 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
     def _merged_namespace_body(
         self,
         namespace_class: cst.ClassDef,
-        classes_to_insert: list[cst.ClassDef],
-    ) -> list[cst.BaseStatement]:
-        namespace_body: list[cst.BaseStatement] = []
+        classes_to_insert: Sequence[cst.ClassDef],
+    ) -> Sequence[cst.BaseStatement]:
+        namespace_body: Sequence[cst.BaseStatement] = []
         for statement in namespace_class.body.body:
             if isinstance(statement, cst.BaseSmallStatement):
                 continue

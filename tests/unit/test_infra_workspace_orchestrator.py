@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pytest
 from flext_core import r
 from flext_tests import tm
@@ -58,7 +60,7 @@ class TestOrchestratorFailures:
             project: str,
             verb: str,
             idx: int,
-            make_args: list[str],
+            make_args: Sequence[str],
         ) -> r[m.Infra.CommandOutput]:
             del self, project, verb, idx, make_args
             return r[m.Infra.CommandOutput].fail("Failed")
@@ -83,7 +85,7 @@ class TestOrchestratorFailures:
             project: str,
             verb: str,
             idx: int,
-            make_args: list[str],
+            make_args: Sequence[str],
         ) -> r[m.Infra.CommandOutput]:
             del self, project, verb, idx, make_args
             msg = "Runner failed"
@@ -108,7 +110,7 @@ class TestOrchestratorFailures:
             project: str,
             verb: str,
             idx: int,
-            make_args: list[str],
+            make_args: Sequence[str],
         ) -> r[m.Infra.CommandOutput]:
             del self, project, verb, idx, make_args
             call_count[0] += 1

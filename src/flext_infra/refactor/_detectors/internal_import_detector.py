@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -32,7 +33,7 @@ class InternalImportDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the InternalImportDetector scanner.
 
@@ -80,8 +81,8 @@ class InternalImportDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.InternalImportViolation]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.InternalImportViolation]:
         """Detect internal import violations in a file.
 
         Args:
@@ -102,8 +103,8 @@ class InternalImportDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.InternalImportViolation]:
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.InternalImportViolation]:
         """Scan a file for private module or symbol imports.
 
         Args:
@@ -118,7 +119,7 @@ class InternalImportDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: list[nem.InternalImportViolation] = []
+        violations: Sequence[nem.InternalImportViolation] = []
         for stmt in u.Infra.cst_iter_simple_statements(module.body):
             if not isinstance(stmt, cst.ImportFrom):
                 continue
@@ -128,7 +129,7 @@ class InternalImportDetector(p.Infra.Scanner):
             if file_path.name == "__init__.py":
                 continue
             if isinstance(stmt.names, cst.ImportStar):
-                imported_names: list[str] = []
+                imported_names: Sequence[str] = []
                 import_list = "*"
             else:
                 imported_names = [

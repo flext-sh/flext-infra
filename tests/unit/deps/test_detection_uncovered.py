@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -89,7 +90,7 @@ class TestDetectionUncoveredLines:
             def __init__(self) -> None:
                 self._i = 0
 
-            def read_plain(self, path: Path) -> r[dict[str, t.Infra.TomlValue]]:
+            def read_plain(self, path: Path) -> r[Mapping[str, t.Infra.TomlValue]]:
                 _ = path
                 self._i += 1
                 if self._i == 1:

@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -51,7 +52,7 @@ class TestPhaseValidate:
         called = False
 
         def _fake_run_checked(
-            cmd: list[str],
+            cmd: Sequence[str],
             **kw: t.Scalar,
         ) -> r[bool]:
             nonlocal called
@@ -132,7 +133,7 @@ class TestPhaseVersion:
     ) -> None:
         orchestrator = FlextInfraReleaseOrchestrator()
 
-        def _fake_version_files(*a: t.Scalar, **kw: t.Scalar) -> list[Path]:
+        def _fake_version_files(*a: t.Scalar, **kw: t.Scalar) -> Sequence[Path]:
             del a, kw
             return [workspace_root / "nonexistent.toml"]
 
@@ -200,7 +201,9 @@ class TestPhaseBuild:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        def _fake_build_targets(*a: t.Scalar, **kw: t.Scalar) -> list[tuple[str, Path]]:
+        def _fake_build_targets(
+            *a: t.Scalar, **kw: t.Scalar
+        ) -> Sequence[tuple[str, Path]]:
             del a, kw
             return [("root", workspace_root)]
 

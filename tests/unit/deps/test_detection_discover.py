@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -11,14 +12,14 @@ from tests import m
 
 
 class _StubSelector:
-    def __init__(self, result: r[list[m.Infra.ProjectInfo]]) -> None:
+    def __init__(self, result: r[Sequence[m.Infra.ProjectInfo]]) -> None:
         self._result = result
 
     def resolve_projects(
         self,
         workspace_root: Path,
-        names: list[str],
-    ) -> r[list[m.Infra.ProjectInfo]]:
+        names: Sequence[str],
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
         _ = workspace_root
         _ = names
         return self._result
@@ -37,7 +38,7 @@ class TestDiscoverProjects:
         monkeypatch.setattr(
             service,
             "selector",
-            _StubSelector(r[list[m.Infra.ProjectInfo]].ok([proj])),
+            _StubSelector(r[Sequence[m.Infra.ProjectInfo]].ok([proj])),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.is_success, eq=True)
@@ -49,7 +50,7 @@ class TestDiscoverProjects:
         monkeypatch.setattr(
             service,
             "selector",
-            _StubSelector(r[list[m.Infra.ProjectInfo]].fail("failed")),
+            _StubSelector(r[Sequence[m.Infra.ProjectInfo]].fail("failed")),
         )
         tm.fail(service.discover_project_paths(tmp_path))
 
@@ -68,7 +69,7 @@ class TestDiscoverProjects:
         monkeypatch.setattr(
             service,
             "selector",
-            _StubSelector(r[list[m.Infra.ProjectInfo]].ok([proj])),
+            _StubSelector(r[Sequence[m.Infra.ProjectInfo]].ok([proj])),
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.is_success, eq=True)

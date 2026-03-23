@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ast
 import operator
+from collections.abc import Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -86,7 +87,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     @staticmethod
     def _pydantic_is_dict_like_expr(expr: str) -> bool:
         return any(
-            marker in expr for marker in ("dict[", "Mapping[", "MutableMapping[")
+            marker in expr for marker in ("Mapping[", "Mapping[", "MutableMapping[")
         )
 
     @staticmethod
@@ -210,7 +211,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         field_map_arg = node.value.args[1]
         if not isinstance(field_map_arg, ast.Dict):
             return None
-        field_lines: list[str] = []
+        field_lines: Sequence[str] = []
         total_false = False
         for kw in node.value.keywords:
             if (
@@ -267,7 +268,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_typed_dict_total_false(
             node,
         )
-        fields: list[str] = []
+        fields: Sequence[str] = []
         for stmt in node.body:
             if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
                 ann = ast.get_source_segment(source, stmt.annotation)
@@ -287,7 +288,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     @staticmethod
     def pydantic_collect_moves(
         file_path: Path,
-    ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]]:
+    ) -> tuple[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]]:
         """Collect class and alias moves required for centralization."""
         source = file_path.read_text(encoding="utf-8")
         tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
@@ -295,8 +296,8 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             msg = "Failed to parse source"
             raise SyntaxError(msg)
         lines = source.splitlines()
-        class_moves: list[m.Infra.ClassMove] = []
-        alias_moves: list[m.Infra.AliasMove] = []
+        class_moves: Sequence[m.Infra.ClassMove] = []
+        alias_moves: Sequence[m.Infra.AliasMove] = []
         for stmt in tree.body:
             typed_dict_factory_move = (
                 FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_typed_dict_factory_model(
@@ -349,7 +350,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         file_path: Path,
         *,
         failure_stats: m.Infra.CentralizerFailureStats,
-    ) -> tuple[list[m.Infra.ClassMove], list[m.Infra.AliasMove]] | None:
+    ) -> tuple[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]] | None:
         """Collect moves without raising, while recording parse failures."""
         try:
             return FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_collect_moves(
@@ -397,8 +398,8 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     @staticmethod
     def pydantic_rewrite_source(
         file_path: Path,
-        class_moves: list[m.Infra.ClassMove],
-        alias_moves: list[m.Infra.AliasMove],
+        class_moves: Sequence[m.Infra.ClassMove],
+        alias_moves: Sequence[m.Infra.AliasMove],
         *,
         import_statement: str,
     ) -> str:

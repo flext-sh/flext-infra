@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_core import FlextTypes
@@ -38,7 +38,7 @@ class FlextInfraTypes(FlextTypes):
         for infrastructure payload contracts and common patterns.
         """
 
-        type StrMap = dict[str, str]
+        type StrMap = Mapping[str, str]
         "Mutable string-to-string mapping (symbol replacements, renames)."
         type InfraValue = (
             str
@@ -46,21 +46,27 @@ class FlextInfraTypes(FlextTypes):
             | float
             | bool
             | None
-            | dict[str, FlextInfraTypes.Infra.InfraValue]
-            | list[FlextInfraTypes.Infra.InfraValue]
+            | Mapping[str, FlextInfraTypes.Infra.InfraValue]
+            | Sequence[FlextInfraTypes.Infra.InfraValue]
         )
         "Recursive infrastructure value: primitive, nested dict/list, or null."
-        type ContainerDict = dict[str, InfraValue]
+        type ContainerDict = Mapping[str, InfraValue]
         "Dict with string keys and infra values (project reports, etc.)."
         type TomlValue = (
-            str | int | float | bool | None | dict[str, InfraValue] | list[InfraValue]
+            str
+            | int
+            | float
+            | bool
+            | None
+            | Mapping[str, InfraValue]
+            | Sequence[InfraValue]
         )
         "Recursive TOML value (scalar, table, or array)."
-        type TomlConfig = dict[str, InfraValue]
+        type TomlConfig = Mapping[str, InfraValue]
         "Top-level TOML document mapping."
         type IssueMap = Mapping[str, InfraValue]
         "Dependency issue mapping: string-keyed mapping of infra values."
-        type RuleConfig = dict[str, InfraValue]
+        type RuleConfig = Mapping[str, InfraValue]
         "A single rule configuration dict (parsed from TOML/YAML)."
         type FacadeFamily = c.FacadeFamily
         "Facade family identifier for MRO chain resolution."

@@ -34,8 +34,8 @@ class NamespaceFacadeScanner:
         *,
         project_root: Path,
         project_name: str,
-        parse_failures: list[nem.ParseFailureViolation] | None = None,
-    ) -> list[nem.FacadeStatus]:
+        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+    ) -> Sequence[nem.FacadeStatus]:
         """Scan a project for namespace facade classes and return their status.
 
         Args:
@@ -47,7 +47,7 @@ class NamespaceFacadeScanner:
             List of FacadeStatus objects for each family's facade class.
 
         """
-        results: list[nem.FacadeStatus] = []
+        results: Sequence[nem.FacadeStatus] = []
         class_stem = cls.project_class_stem(project_name=project_name)
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_class = f"{class_stem}{suffix}"
@@ -77,7 +77,7 @@ class NamespaceFacadeScanner:
         family: str,
         expected_class: str,
         suffix: str,
-        _parse_failures: list[nem.ParseFailureViolation] | None,
+        _parse_failures: Sequence[nem.ParseFailureViolation] | None,
     ) -> tuple[str, str, int]:
         """Find a facade class for a given family in a project.
 
