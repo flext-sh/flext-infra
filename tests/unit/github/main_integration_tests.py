@@ -10,10 +10,8 @@ import pytest
 from flext_core import r
 from flext_infra import u
 from flext_infra.github import __main__ as github_main
-from flext_infra.github._models import FlextInfraGithubModels as github_m
 from tests.models import m
 
-SyncOperation = github_m.SyncOperation
 main = github_main.main
 
 
@@ -52,7 +50,7 @@ class TestMain:
             u.Infra,
             "github_sync_workspace_workflows",
             staticmethod(
-                lambda **kw: r[list[SyncOperation]].ok([]),
+                lambda **kw: r[list[m.Infra.SyncOperation]].ok([]),
             ),
         )
         original = sys.argv.copy()
@@ -182,8 +180,8 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         ops = [
-            SyncOperation(project="p1", path="ci.yml", action="create", reason="new"),
-            SyncOperation(
+            m.Infra.SyncOperation(project="p1", path="ci.yml", action="create", reason="new"),
+            m.Infra.SyncOperation(
                 project="p2",
                 path="ci.yml",
                 action="update",
@@ -193,7 +191,7 @@ class TestMain:
         monkeypatch.setattr(
             u.Infra,
             "github_sync_workspace_workflows",
-            staticmethod(lambda **kw: r[list[SyncOperation]].ok(ops)),
+            staticmethod(lambda **kw: r[list[m.Infra.SyncOperation]].ok(ops)),
         )
         original = sys.argv.copy()
         try:

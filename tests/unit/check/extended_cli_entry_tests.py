@@ -19,17 +19,14 @@ import flext_infra.check.__main__ as check_main_mod
 import flext_infra.check.workspace_check as ws_mod
 import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
 from flext_core import r, t
-from flext_infra.check._models import FlextInfraCheckModels as check_m
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 from ...models import m
 
-ProjectResult = check_m.ProjectResult
-
 
 def _fake_checker_cls(
     parse_result: list[str],
-    run_result: r[list[SimpleNamespace]] | r[list[ProjectResult]],
+    run_result: r[list[SimpleNamespace]] | r[list[m.Infra.ProjectResult]],
 ) -> type:
     class _Fake:
         def __init__(self, **_kw: t.Scalar) -> None:
@@ -44,7 +41,7 @@ def _fake_checker_cls(
             projects: list[str] | None = None,
             gates: list[str] | None = None,
             **kw: t.Scalar,
-        ) -> r[list[SimpleNamespace]] | r[list[ProjectResult]]:
+        ) -> r[list[SimpleNamespace]] | r[list[m.Infra.ProjectResult]]:
             _ = projects, gates, kw
             return run_result
 
@@ -199,8 +196,8 @@ class TestRunCLIExtended:
             duration=0.0,
         )
         gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
-        project = ProjectResult(project="p", gates={"lint": gate_exec})
-        ok_result = r[list[ProjectResult]].ok([project])
+        project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
+        ok_result = r[list[m.Infra.ProjectResult]].ok([project])
 
         def _fake_init(
             _self: FlextInfraWorkspaceChecker,
@@ -213,7 +210,7 @@ class TestRunCLIExtended:
             projects: list[str] | None = None,
             gates: list[str] | None = None,
             **kw: t.Scalar,
-        ) -> r[list[ProjectResult]]:
+        ) -> r[list[m.Infra.ProjectResult]]:
             _ = projects, gates, kw
             return ok_result
 
