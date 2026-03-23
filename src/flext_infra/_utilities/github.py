@@ -242,8 +242,8 @@ class FlextInfraUtilitiesGithub(
         by_action: MutableMapping[str, int] = {}
         for op in operations:
             by_action[op.action] = by_action.get(op.action, 0) + 1
-        summary_dict: MutableMapping[str, JsonValue] = dict(by_action)
-        ops_list: MutableSequence[JsonValue] = [
+        summary_dict: dict[str, JsonValue] = dict(by_action)
+        ops_list: list[JsonValue] = [
             {
                 c.Infra.Toml.PROJECT: op.project,
                 c.Infra.Toml.PATH: op.path,
@@ -252,7 +252,7 @@ class FlextInfraUtilitiesGithub(
             }
             for op in operations
         ]
-        payload: JsonValue = {
+        payload: dict[str, JsonValue] = {
             "mode": "apply" if apply else "dry-run",
             c.Infra.ReportKeys.SUMMARY: summary_dict,
             "operations": ops_list,

@@ -146,8 +146,8 @@ class FlextInfraDocValidator:
                 status = c.Infra.Status.FAIL
                 message = f"missing adr references in skills: {', '.join(missing)}"
         wrote_todo = self._maybe_write_todo(scope, apply_mode=apply_mode)
-        adr_skills_json: Sequence[JsonValue] = list(missing_adr_skills)
-        payload: JsonValue = {
+        adr_skills_json: list[JsonValue] = list(missing_adr_skills)
+        payload: dict[str, JsonValue] = {
             c.Infra.ReportKeys.SUMMARY: {
                 c.Infra.ReportKeys.SCOPE: scope.name,
                 "result": status,

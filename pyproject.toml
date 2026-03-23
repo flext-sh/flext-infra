@@ -491,6 +491,7 @@ split-on-trailing-comma = true
   "D107",
   "F822",
   "N999",
+  "PLC2701",
   "RUF067",
 ]
 "**/_utilities/parser.py" = [
@@ -569,6 +570,12 @@ split-on-trailing-comma = true
 ]
 "**/typings.py" = [
   "RUF036",
+]
+"**/workspace/*.py" = [
+  "PLC0415",
+  "S404",
+  "S603",
+  "S607",
 ]
 
 [tool.ruff.format]
