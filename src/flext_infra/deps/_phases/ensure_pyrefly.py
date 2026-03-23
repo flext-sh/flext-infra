@@ -61,7 +61,7 @@ class EnsurePyreflyConfigPhase:
             dep_paths = manager.get_dep_paths(doc, is_root=is_root)
             if is_root:
                 expected_search = sorted(
-                    {*local_dirs, "typings", *dep_paths},
+                    {".", *local_dirs, "typings", *dep_paths},
                 )
             else:
                 expected_search = sorted(
