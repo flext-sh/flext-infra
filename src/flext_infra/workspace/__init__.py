@@ -31,12 +31,17 @@ if TYPE_CHECKING:
     )
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
     from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+    from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
     from flext_infra.workspace.sync import FlextInfraSyncService, main
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "FlextInfraOrchestratorService": (
         "flext_infra.workspace.orchestrator",
         "FlextInfraOrchestratorService",
+    ),
+    "FlextInfraProjectMakefileUpdater": (
+        "flext_infra.workspace.project_makefile",
+        "FlextInfraProjectMakefileUpdater",
     ),
     "FlextInfraProjectMigrator": (
         "flext_infra.workspace.migrator",
@@ -59,6 +64,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
 
 __all__ = [
     "FlextInfraOrchestratorService",
+    "FlextInfraProjectMakefileUpdater",
     "FlextInfraProjectMigrator",
     "FlextInfraPythonVersionEnforcer",
     "FlextInfraSyncService",

@@ -147,6 +147,20 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
                             gitignore_result.error or ".gitignore sync failed",
                         )
                     changed += 1 if gitignore_result.value else 0
+                    if (
+                        effective_root is not None
+                        and effective_root.resolve() != resolved
+                        and (resolved / "pyproject.toml").exists()
+                    ):
+                        makefile_result = self._sync_project_makefile(
+                            resolved,
+                            effective_root,
+                        )
+                        if makefile_result.is_failure:
+                            return r[m.Infra.SyncResult].fail(
+                                makefile_result.error or "Makefile sync failed",
+                            )
+                        changed += 1 if makefile_result.value else 0
                     return r[m.Infra.SyncResult].ok(
                         m.Infra.SyncResult(
                             files_changed=changed,
@@ -160,6 +174,21 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             return r[m.Infra.SyncResult].fail(
                 f"sync lock acquisition failed: {exc}",
             )
+
+    @staticmethod
+    def _sync_project_makefile(
+        workspace_root: Path,
+        canonical_root: Path,
+    ) -> r[bool]:
+        """Sync the generated section of a project Makefile from pyproject.toml."""
+        from flext_infra.workspace.project_makefile import (  # noqa: PLC0415
+            FlextInfraProjectMakefileUpdater,
+        )
+
+        return FlextInfraProjectMakefileUpdater().update(
+            workspace_root,
+            canonical_root=canonical_root,
+        )
 
     def _ensure_gitignore_entries(
         self,

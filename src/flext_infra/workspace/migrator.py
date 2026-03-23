@@ -88,9 +88,9 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
                 c.Infra.Toml.DEPENDENCIES,
             )
             if isinstance(deps, list):
-                deps_list: Sequence[JsonValue] = _OBJECT_LIST_ADAPTER.validate_python(
-                    [*deps]
-                )
+                deps_list: Sequence[JsonValue] = _OBJECT_LIST_ADAPTER.validate_python([
+                    *deps
+                ])
                 for dep_raw in deps_list:
                     dep: str = str(dep_raw)
                     if str(dep).strip().startswith(c.Infra.Packages.CORE):
