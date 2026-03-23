@@ -1,7 +1,8 @@
-"""Project Makefile updater for workspace sync.
+"""Project Makefile generator for workspace sync.
 
-Generates and updates the generated section of project Makefiles from
-pyproject.toml metadata, preserving custom targets intact.
+Fully generates project Makefiles from pyproject.toml metadata and the
+base bootstrap template.  Custom targets live in ``custom.mk`` alongside
+the generated ``Makefile``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -19,15 +20,9 @@ from flext_infra import FlextInfraBaseMkGenerator, r
 
 _ENCODING = "utf-8"
 
-# Variable name prefixes that belong to the generated section.
-# Any variable declared before the ifneq bootstrap block that matches
-# one of these prefixes is superseded by the new generated header.
-_GENERATED_VAR_PREFIXES: tuple[str, ...] = (
-    "PROJECT_NAME ",
-    "PYTHON_VERSION ",
-    "SRC_DIR ",
-    "TESTS_DIR ",
-)
+# Legacy sentinel used by the previous sentinel-based approach.
+# Present only during migration; the new generated Makefile has no sentinel.
+_LEGACY_SENTINEL: str = "# --- FLEXT:custom-targets ---"
 
 
 class _ProjectMeta(NamedTuple):
@@ -39,35 +34,32 @@ class _ProjectMeta(NamedTuple):
 
 
 class FlextInfraProjectMakefileUpdater:
-    """Update the generated section of project Makefiles from pyproject.toml.
+    """Fully generate project Makefiles from pyproject.toml metadata.
 
-    Splits Makefiles at the FLEXT sentinel, regenerates the header and
-    bootstrap block from current pyproject.toml metadata, and preserves
-    all custom targets.  SHA-256 idempotency skips unchanged files.
+    The generated ``Makefile`` is 100% managed — do not edit it.  Put any
+    project-specific Make targets in ``custom.mk`` next to the ``Makefile``;
+    it is automatically included via ``-include custom.mk`` at the end.
 
-    Sentinel line: ``# --- FLEXT:custom-targets ---``
+    Migration (legacy sentinel-based Makefiles):
+      - If the existing ``Makefile`` contains the legacy sentinel
+        ``# --- FLEXT:custom-targets ---``, the inline custom section is
+        extracted and written to ``custom.mk`` (only if ``custom.mk`` does
+        not yet exist and the custom section is non-empty).
 
-    First-run behaviour (no sentinel present):
-      - Finds the ``ifneq ("$(wildcard ../base.mk)"`` bootstrap block.
-      - Preserves any non-standard variable declarations before that block.
-      - Replaces everything up to and including the closing ``endif``.
-      - Appends the sentinel and the preserved custom section.
-
-    Subsequent runs:
-      - Splits on the sentinel and replaces only the generated part.
+    Idempotency:
+      - SHA-256 comparison skips the write if the generated content is
+        identical to the file already on disk.
     """
 
-    SENTINEL: str = "# --- FLEXT:custom-targets ---"
-
     def update(self, project_root: Path, *, canonical_root: Path) -> r[bool]:
-        """Update project Makefile generated section from pyproject.toml.
+        """Regenerate project Makefile from pyproject.toml.
 
         Args:
             project_root: Root directory of the project.
-            canonical_root: Workspace canonical root (used for context).
+            canonical_root: Workspace canonical root (reserved for future use).
 
         Returns:
-            r with True if Makefile was updated, False if unchanged,
+            r with True if Makefile was written, False if unchanged,
             failure with error message on I/O or parse error.
 
         """
@@ -88,28 +80,27 @@ class FlextInfraProjectMakefileUpdater:
             )
         bootstrap = bootstrap_result.value
 
-        generated = self._build_generated_section(meta, bootstrap)
-
+        new_content = self._build_makefile(meta, bootstrap)
         makefile_path = project_root / "Makefile"
-        custom_result = self._extract_custom_section(makefile_path)
-        if custom_result.is_failure:
-            return r[bool].fail(
-                custom_result.error or "custom section extraction failed",
-            )
-        custom = custom_result.value
 
-        new_content = generated + "\n" + self.SENTINEL + "\n" + custom
-        content_hash = hashlib.sha256(new_content.encode(_ENCODING)).hexdigest()
-
+        # Migration: move any legacy inline custom section to custom.mk
         if makefile_path.exists():
             try:
-                existing_text = makefile_path.read_text(encoding=_ENCODING)
+                existing = makefile_path.read_text(encoding=_ENCODING)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
-            existing_hash = hashlib.sha256(
-                existing_text.encode(_ENCODING),
-            ).hexdigest()
-            if content_hash == existing_hash:
+
+            migrate_result = self._migrate_custom_section(
+                existing, project_root / "custom.mk"
+            )
+            if migrate_result.is_failure:
+                return r[bool].fail(
+                    migrate_result.error or "custom.mk migration failed"
+                )
+
+            existing_hash = hashlib.sha256(existing.encode(_ENCODING)).hexdigest()
+            new_hash = hashlib.sha256(new_content.encode(_ENCODING)).hexdigest()
+            if existing_hash == new_hash:
                 return r[bool].ok(False)
 
         return self._atomic_write(makefile_path, new_content)
@@ -145,8 +136,8 @@ class FlextInfraProjectMakefileUpdater:
         )
 
     @staticmethod
-    def _build_generated_section(meta: _ProjectMeta, bootstrap: str) -> str:
-        """Build the generated Makefile header from metadata and bootstrap block."""
+    def _build_makefile(meta: _ProjectMeta, bootstrap: str) -> str:
+        """Build the fully-generated Makefile content."""
         title = f"# {meta.name}"
         if meta.description:
             title += f" - {meta.description}"
@@ -156,8 +147,8 @@ class FlextInfraProjectMakefileUpdater:
             title,
             sep,
             "# @generated by: flext_infra workspace sync",
-            "# Run 'make sync' from workspace root to update this section.",
-            "# Edit below # --- FLEXT:custom-targets --- only.",
+            "# Run 'make sync' from workspace root to regenerate this file.",
+            "# DO NOT EDIT — put custom targets in custom.mk instead.",
             sep,
             "",
             f"PROJECT_NAME := {meta.name}",
@@ -165,80 +156,58 @@ class FlextInfraProjectMakefileUpdater:
             "SRC_DIR ?= src",
             "TESTS_DIR ?= tests",
             bootstrap,
+            "",
+            "# Project-specific targets (optional, never overwritten by sync)",
+            "-include custom.mk",
         ]
-        return "\n".join(lines)
+        return "\n".join(lines) + "\n"
 
-    def _extract_custom_section(self, makefile_path: Path) -> r[str]:
-        """Extract the custom (user-managed) section from an existing Makefile.
+    @staticmethod
+    def _migrate_custom_section(existing_content: str, custom_mk_path: Path) -> r[bool]:
+        """Migrate inline custom section to custom.mk (one-time, non-destructive).
 
-        On first run (no sentinel):
-          - Finds the bootstrap ``ifneq`` block.
-          - Preserves non-standard pre-bootstrap variable declarations.
-          - Custom section = preserved vars + everything after the closing ``endif``.
+        Only writes ``custom.mk`` if:
+        - The existing Makefile contains the legacy sentinel.
+        - The extracted custom section is non-empty (after stripping).
+        - ``custom.mk`` does not already exist.
 
-        On subsequent runs (sentinel present):
-          - Splits on sentinel and returns everything after it.
-
+        Returns True if migration was performed, False if skipped.
         """
-        if not makefile_path.exists():
-            return r[str].ok("")
+        sentinel_line = "\n" + _LEGACY_SENTINEL + "\n"
+        if sentinel_line not in existing_content:
+            return r[bool].ok(False)
 
+        if custom_mk_path.exists():
+            return r[bool].ok(False)
+
+        # Use last sentinel occurrence (handles files with multiple sentinels)
+        idx = existing_content.rindex(sentinel_line)
+        custom_raw = existing_content[idx + len(sentinel_line) :]
+
+        # Strip trivial content (empty lines, standalone comments from the old header)
+        custom_lines = [
+            ln
+            for ln in custom_raw.splitlines()
+            if ln.strip() and not ln.strip().startswith("# ===")
+        ]
+        if not custom_lines:
+            return r[bool].ok(False)
+
+        custom_content = "\n".join(custom_lines) + "\n"
         try:
-            content = makefile_path.read_text(encoding=_ENCODING)
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                dir=str(custom_mk_path.parent),
+                delete=False,
+                encoding=_ENCODING,
+                suffix=".tmp",
+            ) as tmp:
+                _ = tmp.write(custom_content)
+                tmp_path = Path(tmp.name)
+            _ = tmp_path.replace(custom_mk_path)
         except OSError as exc:
-            return r[str].fail(f"Makefile read failed: {exc}")
-
-        # --- Subsequent runs: sentinel present as a standalone line ---
-        # Match only when the sentinel occupies its own line to avoid
-        # splitting on the reference to it inside the generated header comment.
-        sentinel_line = "\n" + self.SENTINEL + "\n"
-        if sentinel_line in content:
-            idx = content.index(sentinel_line)
-            return r[str].ok(content[idx + len(sentinel_line) :])
-
-        # --- First run: locate the bootstrap block boundary ---
-        lines = content.splitlines()
-        search_limit = min(100, len(lines))
-
-        bootstrap_start = -1
-        for i, line in enumerate(lines[:search_limit]):
-            if line.startswith('ifneq ("$(wildcard ../base.mk)"'):
-                bootstrap_start = i
-                break
-
-        start = max(0, bootstrap_start)
-        last_endif_idx = -1
-        for i in range(start, search_limit):
-            if lines[i].strip() == "endif":
-                last_endif_idx = i
-
-        if last_endif_idx == -1:
-            # No bootstrap block found — preserve entire file as custom
-            return r[str].ok(content)
-
-        # Collect extra pre-bootstrap vars that are NOT in the generated header
-        extra_pre: list[str] = []
-        if bootstrap_start > 0:
-            for line in lines[:bootstrap_start]:
-                stripped = line.strip()
-                if not stripped or stripped.startswith("#"):
-                    continue
-                if any(stripped.startswith(p) for p in _GENERATED_VAR_PREFIXES):
-                    continue
-                extra_pre.append(line)
-
-        # Custom = extra pre-bootstrap vars + everything after `endif`
-        after_endif = lines[last_endif_idx + 1 :]
-        combined: list[str] = extra_pre + after_endif
-
-        # Strip leading empty lines
-        while combined and not combined[0].strip():
-            combined.pop(0)
-
-        custom = "\n".join(combined)
-        if custom and not custom.endswith("\n"):
-            custom += "\n"
-        return r[str].ok(custom)
+            return r[bool].fail(f"custom.mk write failed: {exc}")
+        return r[bool].ok(True)
 
     @staticmethod
     def _atomic_write(target: Path, content: str) -> r[bool]:
