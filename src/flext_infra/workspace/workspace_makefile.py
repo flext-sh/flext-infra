@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
-import subprocess
+import subprocess  # noqa: S404 — subprocess required for git branch detection
 import tempfile
 import tomllib
 from pathlib import Path
@@ -46,6 +46,7 @@ class FlextInfraWorkspaceMakefileGenerator:
 
     @property
     def template_path(self) -> Path:
+        """Path to the Makefile Jinja2 template used for workspace generation."""
         return _TEMPLATES_DIR / _TEMPLATE_NAME
 
     def generate(self, workspace_root: Path) -> r[bool]:
@@ -122,7 +123,7 @@ class FlextInfraWorkspaceMakefileGenerator:
                 # Skip original header lines
                 header_done = True
                 continue
-            if not header_done and line.strip() == "":
+            if not header_done and not line.strip():
                 continue
             # Parameterise PR_BRANCH
             if line.startswith("PR_BRANCH ?="):
@@ -155,10 +156,11 @@ class FlextInfraWorkspaceMakefileGenerator:
     def _current_branch(workspace_root: Path) -> str:
         """Return current git branch or version from pyproject.toml."""
         try:
-            result = subprocess.run(  # noqa: S603
+            result = subprocess.run(  # noqa: S603, S607 — git executable resolved via PATH, safe for CLI tooling
                 ["git", "-C", str(workspace_root), "rev-parse", "--abbrev-ref", "HEAD"],
                 capture_output=True,
                 text=True,
+                check=False,
                 timeout=5,
             )
             if result.returncode == 0:
