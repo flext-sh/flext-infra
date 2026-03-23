@@ -89,7 +89,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             )
             if isinstance(deps, list):
                 deps_list: Sequence[JsonValue] = _OBJECT_LIST_ADAPTER.validate_python(
-                    deps
+                    [*deps]
                 )
                 for dep_raw in deps_list:
                     dep: str = str(dep_raw)
@@ -403,9 +403,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         dependencies: MutableSequence[str] = []
         if isinstance(dependencies_raw, list):
             dependency_items: Sequence[JsonValue] = (
-                _OBJECT_LIST_ADAPTER.validate_python(
-                    dependencies_raw,
-                )
+                _OBJECT_LIST_ADAPTER.validate_python([*dependencies_raw])
             )
             dependencies = [str(dep_raw) for dep_raw in dependency_items]
         dependency_spec = "flext-core @ ../flext-core"

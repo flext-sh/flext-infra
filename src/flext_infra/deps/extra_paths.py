@@ -17,7 +17,7 @@ class FlextInfraExtraPathsManager:
     """Manager for synchronizing pyright and mypy extraPaths from path dependencies."""
 
     ROOT = u.Infra.resolve_workspace_root(__file__)
-    _STRING_LIST_ADAPTER: TypeAdapter[Sequence[str]] = TypeAdapter(list[str])
+    _STRING_LIST_ADAPTER: TypeAdapter[Sequence[str]] = TypeAdapter(Sequence[str])
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize the extra paths manager with path resolver and TOML service."""
@@ -42,13 +42,13 @@ class FlextInfraExtraPathsManager:
     @staticmethod
     def _as_string_list(value: Item | None) -> Sequence[str]:
         """Normalize sequence-like values to a list of strings."""
-        if value is None:
+        if value is None or isinstance(value, str):
             return []
-        if isinstance(value, str):
+        if not isinstance(value, list):
             return []
         try:
             return FlextInfraExtraPathsManager._STRING_LIST_ADAPTER.validate_python(
-                value,
+                [*value],
             )
         except ValidationError:
             return []

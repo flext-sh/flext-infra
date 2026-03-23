@@ -172,7 +172,7 @@ class FlextInfraConfigFixer(s[bool]):
             exclude_items: Sequence[JsonValue] = []
             with contextlib.suppress(ValidationError):
                 exclude_items = TypeAdapter(Sequence[JsonValue]).validate_python(
-                    excludes
+                    [*excludes]
                 )
             current = [str(value) for value in exclude_items]
         stripped_to_add: MutableSequence[str] = []
@@ -200,7 +200,7 @@ class FlextInfraConfigFixer(s[bool]):
             search_items: Sequence[JsonValue] = []
             with contextlib.suppress(ValidationError):
                 search_items = TypeAdapter(Sequence[JsonValue]).validate_python(
-                    search_path
+                    [*search_path]
                 )
             for path_item in search_items:
                 if not isinstance(path_item, str):
