@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
-import subprocess  # noqa: S404 — subprocess required for git branch detection
+import subprocess
 import tempfile
 import tomllib
 from pathlib import Path
@@ -156,7 +156,7 @@ class FlextInfraWorkspaceMakefileGenerator:
     def _current_branch(workspace_root: Path) -> str:
         """Return current git branch or version from pyproject.toml."""
         try:
-            result = subprocess.run(  # noqa: S603, S607 — git executable resolved via PATH, safe for CLI tooling
+            result = subprocess.run(
                 ["git", "-C", str(workspace_root), "rev-parse", "--abbrev-ref", "HEAD"],
                 capture_output=True,
                 text=True,

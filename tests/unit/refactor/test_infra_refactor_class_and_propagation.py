@@ -77,28 +77,7 @@ def test_mro_checker_keeps_external_attribute_base() -> None:
 
 
 def test_symbol_propagation_renames_import_and_local_references() -> None:
-    source = (
-        "from flext_infra import LegacyRemovalRule\n\nrule_cls = LegacyRemovalRule\n"
-    )
-    tree = cst.parse_module(source)
-    rule = FlextInfraRefactorSymbolPropagationRule({
-        "id": "propagate-refactor-api-renames",
-        "fix_action": "propagate_symbol_renames",
-        "target_modules": ["flext_infra.refactor"],
-        "import_symbol_renames": {
-            "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule",
-        },
-    })
-    updated_tree, _ = rule.apply(tree)
-    updated = updated_tree.code
-    assert "from flext_infra import FlextInfraRefactorLegacyRemovalRule" in updated
-    assert "rule_cls = FlextInfraRefactorLegacyRemovalRule" in updated
-
-
-def test_symbol_propagation_keeps_alias_reference_when_asname_used() -> None:
-    source = (
-        "from flext_infra import LegacyRemovalRule as Legacy\n\nrule_cls = Legacy\n"
-    )
+    source = "from flext_infra.refactor import LegacyRemovalRule\n\nrule_cls = LegacyRemovalRule\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorSymbolPropagationRule({
         "id": "propagate-refactor-api-renames",
@@ -111,14 +90,34 @@ def test_symbol_propagation_keeps_alias_reference_when_asname_used() -> None:
     updated_tree, _ = rule.apply(tree)
     updated = updated_tree.code
     assert (
-        "from flext_infra import FlextInfraRefactorLegacyRemovalRule as Legacy"
+        "from flext_infra.refactor import FlextInfraRefactorLegacyRemovalRule"
+        in updated
+    )
+    assert "rule_cls = FlextInfraRefactorLegacyRemovalRule" in updated
+
+
+def test_symbol_propagation_keeps_alias_reference_when_asname_used() -> None:
+    source = "from flext_infra.refactor import LegacyRemovalRule as Legacy\n\nrule_cls = Legacy\n"
+    tree = cst.parse_module(source)
+    rule = FlextInfraRefactorSymbolPropagationRule({
+        "id": "propagate-refactor-api-renames",
+        "fix_action": "propagate_symbol_renames",
+        "target_modules": ["flext_infra.refactor"],
+        "import_symbol_renames": {
+            "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule",
+        },
+    })
+    updated_tree, _ = rule.apply(tree)
+    updated = updated_tree.code
+    assert (
+        "from flext_infra.refactor import FlextInfraRefactorLegacyRemovalRule as Legacy"
         in updated
     )
     assert "rule_cls = Legacy" in updated
 
 
 def test_symbol_propagation_updates_mro_base_references() -> None:
-    source = "from flext_infra import LegacyRemovalRule\n\nclass RuleV2(LegacyRemovalRule):\n    pass\n"
+    source = "from flext_infra.refactor import LegacyRemovalRule\n\nclass RuleV2(LegacyRemovalRule):\n    pass\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorSymbolPropagationRule({
         "id": "propagate-refactor-api-renames",

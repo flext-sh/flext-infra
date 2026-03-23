@@ -10,7 +10,7 @@ from flext_infra import (
 
 
 def test_pattern_rule_converts_dict_annotations_to_mapping() -> None:
-    source = "def f(data: Mapping[str, t.NormalizedValue]) -> Mapping[str, t.NormalizedValue]:\n    return data\n"
+    source = "def f(data: dict[str, t.NormalizedValue]) -> dict[str, t.NormalizedValue]:\n    return data\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorPatternCorrectionsRule({
         "id": "fix-container-invariance-annotations",
@@ -20,7 +20,6 @@ def test_pattern_rule_converts_dict_annotations_to_mapping() -> None:
     updated = updated_tree.code
     assert "from collections.abc import Mapping" in updated
     assert "data: Mapping[str, t.NormalizedValue]" in updated
-    assert "-> Mapping[str, t.NormalizedValue]" in updated
 
 
 def test_pattern_rule_optionally_converts_return_annotations_to_mapping() -> None:

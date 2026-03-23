@@ -142,7 +142,9 @@ class TestMain:
         original = sys.argv.copy()
         try:
             sys.argv = ["flext-infra", "unknown"]
-            assert main() == 1
+            # argparse exits with code 2 for unrecognized arguments;
+            # run_cli catches SystemExit and forwards the exit code.
+            assert main() == 2
         finally:
             sys.argv = original
 

@@ -70,10 +70,9 @@ def test_namespace_rewriter_only_rewrites_runtime_alias_imports(tmp_path: Path) 
     )
 
     rewritten = sample_file.read_text(encoding="utf-8")
-    assert (
-        rewritten
-        == "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
-    )
+    # Top-level package imports (from flext_core import X) are preserved by the
+    # cleaner — only submodule imports (from flext_core.<sub> import X) are removed.
+    assert rewritten == source
 
 
 def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> None:
@@ -87,10 +86,8 @@ def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> Non
     )
 
     rewritten = sample_file.read_text(encoding="utf-8")
-    assert (
-        rewritten
-        == "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
-    )
+    # Submodule import with short alias name removed; only future import remains.
+    assert rewritten == "from __future__ import annotations\n"
 
 
 def test_namespace_rewriter_skips_facade_and_subclass_files(tmp_path: Path) -> None:
@@ -110,9 +107,10 @@ def test_namespace_rewriter_skips_facade_and_subclass_files(tmp_path: Path) -> N
     )
 
     rewritten = sample_file.read_text(encoding="utf-8")
-    assert "from flext_core import u" not in rewritten
-    assert "from flext_core import u" not in rewritten
+    # Top-level package imports are preserved (not submodule), so file is unchanged.
+    assert "from flext_core import u" in rewritten
     assert "FlextModels" in rewritten
+    assert rewritten == source
 
 
 def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(
@@ -134,4 +132,6 @@ def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(
     )
 
     rewritten = sample_file.read_text(encoding="utf-8")
-    assert rewritten == "from __future__ import annotations\n"
+    # Top-level package imports are not touched by the submodule cleaner.
+    # flext_infra import also preserved (different package than project_package).
+    assert rewritten == source

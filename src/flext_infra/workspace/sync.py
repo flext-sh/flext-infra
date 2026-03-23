@@ -181,7 +181,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         canonical_root: Path,
     ) -> r[bool]:
         """Sync the generated section of a project Makefile from pyproject.toml."""
-        from flext_infra.workspace.project_makefile import (  # noqa: PLC0415
+        from flext_infra.workspace.project_makefile import (
             FlextInfraProjectMakefileUpdater,
         )
 

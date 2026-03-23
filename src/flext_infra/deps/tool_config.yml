@@ -193,6 +193,7 @@ tools:
           - D102
           - D103
           - D104
+          - D106
           - D107
           - EM102
           - F822
@@ -250,6 +251,8 @@ tools:
           - ANN401
         '**/*utilities*':
           - C901
+          - E402
+          - PLC2801
           - PLW1510
           - S404
           - S603
@@ -258,6 +261,7 @@ tools:
           - D107
           - F822
           - N999
+          - PLC2701
           - RUF067
         '**/_utilities/parser.py':
           - ARG004
@@ -277,8 +281,10 @@ tools:
         '**/managers.py':
           - S105
         '**/models.py':
-          - S102
+          - PLC0415
           - PLC2801
+          - S102
+          - S105
         '**/output.py':
           - FBT001
         '**/plugins/*.py':
@@ -296,6 +302,8 @@ tools:
           - D107
         '**/settings.py':
           - ANN401
+          - PLC0415
+          - S105
         '**/singer/*.py':
           - S404
           - S603
@@ -318,8 +326,23 @@ tools:
           - S603
           - S607
           - T201
+        '**/alert_manager*.py':
+          - S310
+        '**/external_command*.py':
+          - S404
+          - S603
+        '**/orchestrator*.py':
+          - S404
+          - S603
+        '**/protocol_impls/*.py':
+          - SLF001
         '**/typings.py':
           - RUF036
+        '**/workspace/*.py':
+          - PLC0415
+          - S404
+          - S603
+          - S607
   mypy:
     plugins:
       - pydantic.mypy
