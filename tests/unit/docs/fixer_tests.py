@@ -60,7 +60,7 @@ class TestFixerCore:
 
     def test_fix_item_structure(self) -> None:
         """Test FixItem model structure."""
-        item = m.Infra.DocsPhaseItem(phase="fix", file="README.md", links=2, toc=1)
+        item = m.Infra.DocsPhaseItemModel(phase="fix", file="README.md", links=2, toc=1)
         tm.that(item.file, eq="README.md")
         tm.that(item.links, eq=2)
         tm.that(item.toc, eq=1)
@@ -71,7 +71,7 @@ class TestFixerCore:
 
     def test_fix_item_frozen(self) -> None:
         """Test FixItem is frozen (immutable)."""
-        tm.that(m.Infra.DocsPhaseItem.model_config.get("frozen"), eq=True)
+        tm.that(m.Infra.DocsPhaseItemModel.model_config.get("frozen"), eq=True)
 
     @pytest.mark.parametrize(
         ("project", "projects", "apply", "output_dir"),
@@ -133,8 +133,8 @@ class TestFixerCore:
     def test_fix_report_items_list(self) -> None:
         """Test FixReport items list."""
         items = [
-            m.Infra.DocsPhaseItem(phase="fix", file="file1.md", links=1, toc=0),
-            m.Infra.DocsPhaseItem(phase="fix", file="file2.md", links=0, toc=1),
+            m.Infra.DocsPhaseItemModel(phase="fix", file="file1.md", links=1, toc=0),
+            m.Infra.DocsPhaseItemModel(phase="fix", file="file2.md", links=0, toc=1),
         ]
         report = m.Infra.DocsPhaseReport(
             phase="fix",

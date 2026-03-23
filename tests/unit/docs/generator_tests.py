@@ -153,8 +153,8 @@ class TestGeneratorCore:
     def test_generate_report_files_list(self) -> None:
         """Test GenerateReport files list."""
         items = [
-            m.Infra.DocsPhaseItem(phase="generate", path="file1.md", written=True),
-            m.Infra.DocsPhaseItem(
+            m.Infra.DocsPhaseItemModel(phase="generate", path="file1.md", written=True),
+            m.Infra.DocsPhaseItemModel(
                 phase="generate",
                 path="file2.md",
                 written=False,
