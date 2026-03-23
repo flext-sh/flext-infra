@@ -9,7 +9,7 @@ def __getattr__(name: str) -> type:
     raise AttributeError(msg)
 
 
-def __dir__() -> list[str]:
+def __dir__() -> Sequence[str]:
     return sorted(__all__)
 
 

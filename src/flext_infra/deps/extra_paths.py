@@ -17,7 +17,7 @@ class FlextInfraExtraPathsManager:
     """Manager for synchronizing pyright and mypy extraPaths from path dependencies."""
 
     ROOT = u.Infra.resolve_workspace_root(__file__)
-    _STRING_LIST_ADAPTER: TypeAdapter[Sequence[str]] = TypeAdapter(Sequence[str])
+    _STRING_LIST_ADAPTER: TypeAdapter[Sequence[str]] = TypeAdapter(list[str])
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize the extra paths manager with path resolver and TOML service."""

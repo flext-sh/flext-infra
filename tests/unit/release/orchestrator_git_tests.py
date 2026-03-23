@@ -17,7 +17,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraReleaseOrchestrator, orchestrator as _orch_mod
+import flext_infra.release.orchestrator as _orch_mod
+from flext_infra import FlextInfraReleaseOrchestrator
 from tests import FakeUtilsNamespace
 
 if TYPE_CHECKING:

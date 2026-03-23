@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -39,7 +39,7 @@ class TestRunWorkflows:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: dict[str, bool] = {}
+        captured: MutableMapping[str, bool] = {}
 
         def _fake_sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
             captured.update(kw)
@@ -59,7 +59,7 @@ class TestRunWorkflows:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: dict[str, bool] = {}
+        captured: MutableMapping[str, bool] = {}
 
         def _fake_sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
             captured.update(kw)
@@ -75,7 +75,7 @@ class TestRunWorkflows:
         assert captured["prune"] is True
 
     def test_with_report(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        captured: dict[str, Path | None] = {}
+        captured: MutableMapping[str, Path | None] = {}
 
         def _fake_sync(**kw: Path | None) -> r[Sequence[m.Infra.SyncOperation]]:
             captured.update(kw)

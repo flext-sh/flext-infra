@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-
 from pathlib import Path
 
 import pytest
@@ -59,9 +57,7 @@ def test_import_alias_detector_skips_facade_and_subclass_files(tmp_path: Path) -
 def test_namespace_rewriter_only_rewrites_runtime_alias_imports(tmp_path: Path) -> None:
     sample_file = tmp_path / "sample.py"
     source = (
-        "from __future__ import annotations
-
-from collections.abc import Mapping, Sequence\n"
+        "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
         "from flext_core import FlextModelFoundation\n"
         "from flext_core import FlextModels\n"
         "from flext_core import m\n"
@@ -74,9 +70,10 @@ from collections.abc import Mapping, Sequence\n"
     )
 
     rewritten = sample_file.read_text(encoding="utf-8")
-    assert rewritten == "from __future__ import annotations
-
-from collections.abc import Mapping, Sequence\n"
+    assert (
+        rewritten
+        == "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
+    )
 
 
 def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> None:
@@ -90,9 +87,10 @@ def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> Non
     )
 
     rewritten = sample_file.read_text(encoding="utf-8")
-    assert rewritten == "from __future__ import annotations
-
-from collections.abc import Mapping, Sequence\n"
+    assert (
+        rewritten
+        == "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
+    )
 
 
 def test_namespace_rewriter_skips_facade_and_subclass_files(tmp_path: Path) -> None:

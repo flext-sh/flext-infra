@@ -10,7 +10,8 @@ from flext_core import r
 from flext_tests import tm
 
 import flext_infra.deps as detector_module
-from flext_infra import detector as _det_mod, p
+import flext_infra.deps.detector as _det_mod
+from flext_infra import p
 
 
 class _ReportStub:

@@ -16,11 +16,13 @@ from flext_tests import tm
 from flext_infra import FlextInfraProjectMigrator
 from tests import (
     FlextInfraTestHelpers as h,
+    m as im,
+)
+from tests.unit.test_infra_workspace_migrator import (
     _build_migrator,
     _project,
     _StubDiscovery,
     _StubGenerator,
-    m as im,
 )
 
 

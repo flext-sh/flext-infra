@@ -54,7 +54,7 @@ class FlextInfraInventoryService:
                     and path.suffix in {c.Infra.Extensions.PYTHON, ".sh"}
                 )
             now = datetime.now(UTC).isoformat()
-            scripts_infra: list[JsonValue] = list(scripts)
+            scripts_infra: Sequence[JsonValue] = list(scripts)
             inventory: Mapping[str, JsonValue] = {
                 "generated_at": now,
                 "repo_root": str(root),
@@ -64,11 +64,11 @@ class FlextInfraInventoryService:
             wiring: Mapping[str, JsonValue] = {
                 "generated_at": now,
                 "root_makefile": [c.Infra.Files.MAKEFILE_FILENAME],
-                "unwired_scripts": list[JsonValue](),
+                "unwired_scripts": [],
             }
             external: Mapping[str, JsonValue] = {
                 "generated_at": now,
-                "candidates": list[JsonValue](),
+                "candidates": [],
             }
             reports_dir = output_dir or root / c.Infra.Reporting.REPORTS_DIR_NAME
             written: MutableSequence[str] = []

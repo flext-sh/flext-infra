@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue
@@ -134,7 +134,7 @@ class FlextInfraUtilitiesReporting:
                 ),
             )
         sarif_report = m.Infra.SarifReport(runs=sarif_runs)
-        sarif_dict: dict[str, JsonValue] = sarif_report.model_dump(by_alias=True)
+        sarif_dict: Mapping[str, JsonValue] = sarif_report.model_dump(by_alias=True)
         return sarif_dict
 
     @staticmethod

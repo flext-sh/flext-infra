@@ -121,16 +121,16 @@ class FlextInfraUtilitiesRefactor(
                     Sequence[t.Infra.InfraValue],
                 ).validate_python(value)
             except ValidationError as exc:
-                msg = "expected Sequence[str] value"
+                msg = "expected list value"
                 raise ValueError(msg) from exc
             items: MutableSequence[str] = []
             for item in value_items:
                 if not isinstance(item, str):
-                    msg = "expected Sequence[str] value"
+                    msg = "expected list value"
                     raise TypeError(msg)
                 items.append(item)
             return items
-        msg = "expected Sequence[str] value"
+        msg = "expected list value"
         raise ValueError(msg)
 
     @staticmethod

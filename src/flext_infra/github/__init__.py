@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
     from flext_infra.github._models import FlextInfraGithubModels
 
-_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "FlextInfraGithubModels": (
         "flext_infra.github._models",
         "FlextInfraGithubModels",
@@ -38,7 +39,7 @@ def __getattr__(name: str) -> FlextTypes.ModuleExport:
     return lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
 
 
-def __dir__() -> list[str]:
+def __dir__() -> Sequence[str]:
     """Return list of available attributes for dir() and autocomplete."""
     return sorted(__all__)
 

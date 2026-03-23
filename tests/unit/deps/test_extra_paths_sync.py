@@ -13,8 +13,8 @@ from tomlkit.toml_document import TOMLDocument
 from flext_infra import (
     FlextInfraExtraPathsManager,
     FlextInfraUtilitiesToml,
-    extra_paths,
 )
+from flext_infra.deps import extra_paths
 
 
 @pytest.fixture

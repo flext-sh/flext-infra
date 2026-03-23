@@ -1,4 +1,4 @@
-_LAZY_CACHE: dict[str, FlextTypes.ModuleExport] = {}
+_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
 
 
 def __getattr__(name: str) -> FlextTypes.ModuleExport:
@@ -24,7 +24,7 @@ def __getattr__(name: str) -> FlextTypes.ModuleExport:
     return value
 
 
-def __dir__() -> list[str]:
+def __dir__() -> Sequence[str]:
     """Return list of available attributes for dir() and autocomplete.
 
     Returns:

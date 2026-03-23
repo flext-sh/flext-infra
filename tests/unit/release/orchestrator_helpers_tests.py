@@ -10,10 +10,10 @@ import pytest
 from flext_core import r, t
 from flext_tests import tm
 
+import flext_infra.release.orchestrator as _orch_mod
 from flext_infra import (
     FlextInfraReleaseOrchestrator,
     m as infra_models,
-    orchestrator as _orch_mod,
     u,
 )
 
