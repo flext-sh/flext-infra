@@ -11,18 +11,23 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-
-    from .test_discovery_consolidated import (
+    from tests.unit._utilities.test_discovery_consolidated import (
         TestDiscoveryDiscoverProjects,
         TestDiscoveryFindAllPyprojectFiles,
         TestDiscoveryIterPythonFiles,
         TestDiscoveryProjectRoots,
     )
-    from .test_formatting import TestFormattingRunRuffFix
-    from .test_iteration import TestIterWorkspacePythonModules
-    from .test_parsing import TestParsingModuleAst, TestParsingModuleCst
-    from .test_safety import TestSafetyCheckpoint, TestSafetyRollback
-    from .test_scanning import TestScanModels
+    from tests.unit._utilities.test_formatting import TestFormattingRunRuffFix
+    from tests.unit._utilities.test_iteration import TestIterWorkspacePythonModules
+    from tests.unit._utilities.test_parsing import (
+        TestParsingModuleAst,
+        TestParsingModuleCst,
+    )
+    from tests.unit._utilities.test_safety import (
+        TestSafetyCheckpoint,
+        TestSafetyRollback,
+    )
+    from tests.unit._utilities.test_scanning import TestScanModels
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestDiscoveryDiscoverProjects": (

@@ -11,17 +11,16 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-
-    from .flow_tests import TestReleaseMainFlow
-    from .main_tests import TestReleaseMainParsing
-    from .orchestrator_git_tests import (
+    from tests.unit.release.flow_tests import TestReleaseMainFlow
+    from tests.unit.release.main_tests import TestReleaseMainParsing
+    from tests.unit.release.orchestrator_git_tests import (
         TestCollectChanges,
         TestCreateBranches,
         TestCreateTag,
         TestPreviousTag,
         TestPushRelease,
     )
-    from .orchestrator_helpers_tests import (
+    from tests.unit.release.orchestrator_helpers_tests import (
         TestBuildTargets,
         TestBumpNextDev,
         TestDispatchPhase,
@@ -30,15 +29,18 @@ if TYPE_CHECKING:
         TestUpdateChangelog,
         TestVersionFiles,
     )
-    from .orchestrator_phases_tests import (
+    from tests.unit.release.orchestrator_phases_tests import (
         TestPhaseBuild,
         TestPhaseValidate,
         TestPhaseVersion,
     )
-    from .orchestrator_publish_tests import TestPhasePublish
-    from .orchestrator_tests import TestReleaseOrchestratorExecute, workspace_root
-    from .release_init_tests import TestReleaseInit
-    from .version_resolution_tests import (
+    from tests.unit.release.orchestrator_publish_tests import TestPhasePublish
+    from tests.unit.release.orchestrator_tests import (
+        TestReleaseOrchestratorExecute,
+        workspace_root,
+    )
+    from tests.unit.release.release_init_tests import TestReleaseInit
+    from tests.unit.release.version_resolution_tests import (
         TestReleaseMainTagResolution,
         TestReleaseMainVersionResolution,
         TestResolveVersionInteractive,

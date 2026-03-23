@@ -11,8 +11,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-
-    from .test_infra_container import (
+    from tests.unit.container.test_infra_container import (
         TestInfraContainerFunctions,
         TestInfraMroPattern,
         TestInfraServiceRetrieval,

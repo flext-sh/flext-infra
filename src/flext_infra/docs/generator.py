@@ -282,7 +282,7 @@ class FlextInfraDocGenerator:
             applied=apply,
             source=source,
             items=[
-                m.Infra.DocsPhaseItem(
+                m.Infra.DocsPhaseItemModel(
                     phase="generate",
                     path=file.path,
                     written=file.written,

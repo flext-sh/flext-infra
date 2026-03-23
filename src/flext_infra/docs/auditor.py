@@ -231,7 +231,7 @@ class FlextInfraDocAuditor:
             phase="audit",
             scope=scope.name,
             items=[
-                m.Infra.DocsPhaseItem(
+                m.Infra.DocsPhaseItemModel(
                     phase="audit",
                     file=issue.file,
                     issue_type=issue.issue_type,

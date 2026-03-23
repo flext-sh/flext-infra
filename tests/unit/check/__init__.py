@@ -11,8 +11,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-
-    from .cli_tests import (
+    from tests.unit.check.cli_tests import (
         test_resolve_gates_maps_type_alias,
         test_run_cli_run_returns_one_for_fail,
         test_run_cli_run_returns_two_for_error,
@@ -20,19 +19,19 @@ if TYPE_CHECKING:
         test_run_cli_with_fail_fast_flag,
         test_run_cli_with_multiple_projects,
     )
-    from .extended_cli_entry_tests import (
+    from tests.unit.check.extended_cli_entry_tests import (
         TestCheckMainEntryPoint,
         TestFixPyrelfyCLI,
         TestRunCLIExtended,
         TestWorkspaceCheckCLI,
     )
-    from .extended_config_fixer_errors_tests import (
+    from tests.unit.check.extended_config_fixer_errors_tests import (
         TestConfigFixerPathResolution,
         TestConfigFixerRunMethods,
         TestConfigFixerRunWithVerbose,
         TestProcessFileReadError,
     )
-    from .extended_config_fixer_tests import (
+    from tests.unit.check.extended_config_fixer_tests import (
         TestConfigFixerEnsureProjectExcludes,
         TestConfigFixerExecute,
         TestConfigFixerFindPyprojectFiles,
@@ -42,38 +41,38 @@ if TYPE_CHECKING:
         TestConfigFixerRun,
         TestConfigFixerToArray,
     )
-    from .extended_error_reporting_tests import (
+    from tests.unit.check.extended_error_reporting_tests import (
         TestErrorReporting,
         TestGoFmtEmptyLinesInOutput,
         TestMarkdownReportEmptyGates,
         TestMypyEmptyLinesInOutput,
         TestRuffFormatDuplicateFiles,
     )
-    from .extended_gate_bandit_markdown_tests import (
+    from tests.unit.check.extended_gate_bandit_markdown_tests import (
         TestWorkspaceCheckerRunBandit,
         TestWorkspaceCheckerRunMarkdown,
     )
-    from .extended_gate_go_cmd_tests import (
+    from tests.unit.check.extended_gate_go_cmd_tests import (
         TestWorkspaceCheckerCollectMarkdownFiles,
         TestWorkspaceCheckerRunCommand,
         TestWorkspaceCheckerRunGo,
         run_command_failure_check,
     )
-    from .extended_gate_mypy_pyright_tests import (
+    from tests.unit.check.extended_gate_mypy_pyright_tests import (
         TestWorkspaceCheckerRunMypy,
         TestWorkspaceCheckerRunPyright,
     )
-    from .extended_models_tests import (
+    from tests.unit.check.extended_models_tests import (
         TestCheckIssueFormatted,
         TestProjectResultProperties,
         TestWorkspaceCheckerErrorSummary,
     )
-    from .extended_project_runners_tests import TestJsonWriteFailure
-    from .extended_projects_tests import (
+    from tests.unit.check.extended_project_runners_tests import TestJsonWriteFailure
+    from tests.unit.check.extended_projects_tests import (
         TestCheckProjectRunners,
         TestLintAndFormatPublicMethods,
     )
-    from .extended_reports_tests import (
+    from tests.unit.check.extended_reports_tests import (
         TestMarkdownReportSkipsEmptyGates,
         TestMarkdownReportWithErrors,
         TestWorkspaceCheckerMarkdownReport,
@@ -81,11 +80,11 @@ if TYPE_CHECKING:
         TestWorkspaceCheckerSARIFReport,
         TestWorkspaceCheckerSARIFReportEdgeCases,
     )
-    from .extended_resolve_gates_tests import (
+    from tests.unit.check.extended_resolve_gates_tests import (
         TestWorkspaceCheckerParseGateCSV,
         TestWorkspaceCheckerResolveGates,
     )
-    from .extended_run_projects_tests import (
+    from tests.unit.check.extended_run_projects_tests import (
         CheckProjectStub,
         ProjectResult,
         TestRunProjectsBehavior,
@@ -93,15 +92,21 @@ if TYPE_CHECKING:
         TestRunProjectsValidation,
         TestRunSingleProject,
     )
-    from .extended_runners_extra_tests import (
+    from tests.unit.check.extended_runners_extra_tests import (
         GateClass,
         TestRunBandit,
         TestRunMarkdown,
         TestRunPyright,
     )
-    from .extended_runners_go_tests import RunCallable, TestRunGo
-    from .extended_runners_tests import TestRunMypy, TestRunPyrefly
-    from .extended_workspace_init_tests import (
+    from tests.unit.check.extended_runners_go_tests import RunCallable, TestRunGo
+    from tests.unit.check.extended_runners_ruff_tests import (
+        TestCollectMarkdownFiles,
+        TestRunCommand,
+        TestRunRuffFormat,
+        TestRunRuffLint,
+    )
+    from tests.unit.check.extended_runners_tests import TestRunMypy, TestRunPyrefly
+    from tests.unit.check.extended_workspace_init_tests import (
         TestWorkspaceCheckerBuildGateResult,
         TestWorkspaceCheckerDirsWithPy,
         TestWorkspaceCheckerExecute,
@@ -110,16 +115,16 @@ if TYPE_CHECKING:
         TestWorkspaceCheckerInitOSError,
         TestWorkspaceCheckerResolveWorkspaceRootFallback,
     )
-    from .fix_pyrefly_config_tests import (
+    from tests.unit.check.fix_pyrefly_config_tests import (
         test_fix_pyrefly_config_main_executes_real_cli_help,
     )
-    from .init_tests import TestFlextInfraCheck
-    from .main_tests import test_check_main_executes_real_cli
-    from .pyrefly_tests import TestFlextInfraConfigFixer
-    from .workspace_check_tests import (
+    from tests.unit.check.init_tests import TestFlextInfraCheck
+    from tests.unit.check.main_tests import test_check_main_executes_real_cli
+    from tests.unit.check.pyrefly_tests import TestFlextInfraConfigFixer
+    from tests.unit.check.workspace_check_tests import (
         test_workspace_check_main_returns_error_without_projects,
     )
-    from .workspace_tests import TestFlextInfraWorkspaceChecker
+    from tests.unit.check.workspace_tests import TestFlextInfraWorkspaceChecker
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "CheckProjectStub": (
@@ -140,6 +145,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestCheckProjectRunners": (
         "tests.unit.check.extended_projects_tests",
         "TestCheckProjectRunners",
+    ),
+    "TestCollectMarkdownFiles": (
+        "tests.unit.check.extended_runners_ruff_tests",
+        "TestCollectMarkdownFiles",
     ),
     "TestConfigFixerEnsureProjectExcludes": (
         "tests.unit.check.extended_config_fixer_tests",
@@ -247,6 +256,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.unit.check.extended_cli_entry_tests",
         "TestRunCLIExtended",
     ),
+    "TestRunCommand": (
+        "tests.unit.check.extended_runners_ruff_tests",
+        "TestRunCommand",
+    ),
     "TestRunGo": ("tests.unit.check.extended_runners_go_tests", "TestRunGo"),
     "TestRunMarkdown": (
         "tests.unit.check.extended_runners_extra_tests",
@@ -269,6 +282,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestRunPyright": (
         "tests.unit.check.extended_runners_extra_tests",
         "TestRunPyright",
+    ),
+    "TestRunRuffFormat": (
+        "tests.unit.check.extended_runners_ruff_tests",
+        "TestRunRuffFormat",
+    ),
+    "TestRunRuffLint": (
+        "tests.unit.check.extended_runners_ruff_tests",
+        "TestRunRuffLint",
     ),
     "TestRunSingleProject": (
         "tests.unit.check.extended_run_projects_tests",
@@ -412,6 +433,7 @@ __all__ = [
     "TestCheckIssueFormatted",
     "TestCheckMainEntryPoint",
     "TestCheckProjectRunners",
+    "TestCollectMarkdownFiles",
     "TestConfigFixerEnsureProjectExcludes",
     "TestConfigFixerExecute",
     "TestConfigFixerFindPyprojectFiles",
@@ -440,6 +462,7 @@ __all__ = [
     "TestRuffFormatDuplicateFiles",
     "TestRunBandit",
     "TestRunCLIExtended",
+    "TestRunCommand",
     "TestRunGo",
     "TestRunMarkdown",
     "TestRunMypy",
@@ -448,6 +471,8 @@ __all__ = [
     "TestRunProjectsValidation",
     "TestRunPyrefly",
     "TestRunPyright",
+    "TestRunRuffFormat",
+    "TestRunRuffLint",
     "TestRunSingleProject",
     "TestWorkspaceCheckCLI",
     "TestWorkspaceCheckerBuildGateResult",

@@ -11,39 +11,42 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-
-    from .basemk_validator_tests import (
+    from tests.unit.validate.basemk_validator_tests import (
         TestBaseMkValidatorCore,
         TestBaseMkValidatorEdgeCases,
         TestBaseMkValidatorSha256,
         v,
     )
-    from .init_tests import TestCoreModuleInit
-    from .inventory_tests import (
+    from tests.unit.validate.init_tests import TestCoreModuleInit
+    from tests.unit.validate.inventory_tests import (
         TestInventoryServiceCore,
         TestInventoryServiceReports,
         TestInventoryServiceScripts,
     )
-    from .main_tests import (
+    from tests.unit.validate.main_tests import (
         TestMainBaseMkValidate,
         TestMainCliRouting,
         TestMainInventory,
         TestMainScan,
     )
-    from .pytest_diag import (
+    from tests.unit.validate.pytest_diag import (
         TestPytestDiagExtractorCore,
         TestPytestDiagLogParsing,
         TestPytestDiagParseXml,
     )
-    from .scanner_tests import TestScannerCore, TestScannerHelpers, TestScannerMultiFile
-    from .skill_validator_tests import (
+    from tests.unit.validate.scanner_tests import (
+        TestScannerCore,
+        TestScannerHelpers,
+        TestScannerMultiFile,
+    )
+    from tests.unit.validate.skill_validator_tests import (
         TestSafeLoadYaml,
         TestSkillValidatorAstGrepCount,
         TestSkillValidatorCore,
         TestSkillValidatorRenderTemplate,
         TestStringList,
     )
-    from .stub_chain_tests import (
+    from tests.unit.validate.stub_chain_tests import (
         TestStubChainAnalyze,
         TestStubChainCore,
         TestStubChainDiscoverProjects,

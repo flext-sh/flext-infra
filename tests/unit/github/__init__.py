@@ -11,10 +11,9 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-
-    from .main_dispatch_tests import TestRunPrWorkspace
-    from .main_integration_tests import SyncOperation, TestMain, main
-    from .main_tests import TestRunLint, TestRunPr, TestRunWorkflows
+    from tests.unit.github.main_dispatch_tests import TestRunPrWorkspace
+    from tests.unit.github.main_integration_tests import SyncOperation, TestMain, main
+    from tests.unit.github.main_tests import TestRunLint, TestRunPr, TestRunWorkflows
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "SyncOperation": ("tests.unit.github.main_integration_tests", "SyncOperation"),

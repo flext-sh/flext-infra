@@ -110,13 +110,13 @@ class FlextInfraDocFixer:
         apply: bool,
     ) -> m.Infra.DocsPhaseReport:
         """Run link and TOC fixes across all markdown files in scope."""
-        items: list[m.Infra.DocsPhaseItem] = []
+        items: list[m.Infra.DocsPhaseItemModel] = []
         for md in u.Infra.iter_markdown_files(scope.path):
             item = self._process_file(md, apply=apply)
             if item.links or item.toc:
                 rel = md.relative_to(scope.path).as_posix()
                 items.append(
-                    m.Infra.DocsPhaseItem(
+                    m.Infra.DocsPhaseItemModel(
                         phase="fix",
                         file=rel,
                         links=item.links,
@@ -175,7 +175,7 @@ class FlextInfraDocFixer:
         md_file: Path,
         *,
         apply: bool,
-    ) -> m.Infra.DocsPhaseItem:
+    ) -> m.Infra.DocsPhaseItemModel:
         """Fix links and TOC in a single markdown file."""
         original = md_file.read_text(
             encoding=c.Infra.Encoding.DEFAULT,
@@ -196,7 +196,7 @@ class FlextInfraDocFixer:
         updated, toc_changed = self._update_toc(updated)
         if apply and (link_count > 0 or toc_changed > 0) and (updated != original):
             _ = md_file.write_text(updated, encoding=c.Infra.Encoding.DEFAULT)
-        return m.Infra.DocsPhaseItem(
+        return m.Infra.DocsPhaseItemModel(
             phase="fix",
             file=md_file.as_posix(),
             links=link_count,

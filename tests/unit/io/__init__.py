@@ -11,14 +11,13 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-
-    from .test_infra_json_io import SampleModel, TestFlextInfraJsonService
-    from .test_infra_output_edge_cases import (
+    from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
+    from tests.unit.io.test_infra_output_edge_cases import (
         TestInfraOutputEdgeCases,
         TestInfraOutputNoColor,
         TestMroFacadeMethods,
     )
-    from .test_infra_output_formatting import (
+    from tests.unit.io.test_infra_output_formatting import (
         ANSI_RE,
         TestInfraOutputHeader,
         TestInfraOutputMessages,
@@ -26,7 +25,10 @@ if TYPE_CHECKING:
         TestInfraOutputStatus,
         TestInfraOutputSummary,
     )
-    from .test_infra_terminal_detection import TestShouldUseColor, TestShouldUseUnicode
+    from tests.unit.io.test_infra_terminal_detection import (
+        TestShouldUseColor,
+        TestShouldUseUnicode,
+    )
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ANSI_RE": ("tests.unit.io.test_infra_output_formatting", "ANSI_RE"),

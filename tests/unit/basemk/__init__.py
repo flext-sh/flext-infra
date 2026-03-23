@@ -11,8 +11,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-
-    from .test_engine import (
+    from tests.unit.basemk.test_engine import (
         test_basemk_cli_generate_to_file,
         test_basemk_cli_generate_to_stdout,
         test_basemk_engine_execute_calls_render_all,
@@ -25,7 +24,7 @@ if TYPE_CHECKING:
         test_render_all_generates_large_makefile,
         test_render_all_has_no_scripts_path_references,
     )
-    from .test_generator import (
+    from tests.unit.basemk.test_generator import (
         test_generator_execute_returns_generated_content,
         test_generator_generate_propagates_render_failure,
         test_generator_generate_with_basemk_config_object,
@@ -39,7 +38,7 @@ if TYPE_CHECKING:
         test_generator_write_to_file,
         test_generator_write_to_stream,
     )
-    from .test_generator_edge_cases import (
+    from tests.unit.basemk.test_generator_edge_cases import (
         test_generator_normalize_config_with_basemk_config,
         test_generator_normalize_config_with_dict,
         test_generator_normalize_config_with_invalid_dict,
@@ -48,8 +47,8 @@ if TYPE_CHECKING:
         test_generator_write_handles_file_permission_error,
         test_generator_write_to_stream_handles_oserror,
     )
-    from .test_init import TestFlextInfraBaseMk
-    from .test_main import (
+    from tests.unit.basemk.test_init import TestFlextInfraBaseMk
+    from tests.unit.basemk.test_main import (
         test_basemk_build_config_with_none,
         test_basemk_build_config_with_project_name,
         test_basemk_main_ensures_structlog_configured,

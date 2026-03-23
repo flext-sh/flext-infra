@@ -11,12 +11,20 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-
-    from .auditor_budgets_tests import TestLoadAuditBudgets
-    from .auditor_cli_tests import TestAuditorMainCli, TestAuditorScopeFailure
-    from .auditor_links_tests import TestAuditorBrokenLinks, TestAuditorToMarkdown
-    from .auditor_scope_tests import TestAuditorForbiddenTerms, TestAuditorScope
-    from .auditor_tests import (
+    from tests.unit.docs.auditor_budgets_tests import TestLoadAuditBudgets
+    from tests.unit.docs.auditor_cli_tests import (
+        TestAuditorMainCli,
+        TestAuditorScopeFailure,
+    )
+    from tests.unit.docs.auditor_links_tests import (
+        TestAuditorBrokenLinks,
+        TestAuditorToMarkdown,
+    )
+    from tests.unit.docs.auditor_scope_tests import (
+        TestAuditorForbiddenTerms,
+        TestAuditorScope,
+    )
+    from tests.unit.docs.auditor_tests import (
         TestAuditorCore,
         TestAuditorNormalize,
         auditor,
@@ -24,32 +32,43 @@ if TYPE_CHECKING:
         normalize_link,
         should_skip_target,
     )
-    from .builder_scope_tests import TestBuilderScope
-    from .builder_tests import TestBuilderCore, builder
-    from .fixer_internals_tests import (
+    from tests.unit.docs.builder_scope_tests import TestBuilderScope
+    from tests.unit.docs.builder_tests import TestBuilderCore, builder
+    from tests.unit.docs.fixer_internals_tests import (
         TestFixerMaybeFixLink,
         TestFixerProcessFile,
         TestFixerScope,
         TestFixerToc,
         fixer,
     )
-    from .fixer_tests import TestFixerCore
-    from .generator_internals_tests import TestGeneratorHelpers, TestGeneratorScope, gen
-    from .generator_tests import TestGeneratorCore
-    from .init_tests import TestFlextInfraDocs
-    from .main_commands_tests import TestRunBuild, TestRunGenerate, TestRunValidate
-    from .main_entry_tests import TestMainRouting, TestMainWithFlags
-    from .main_tests import TestRunAudit, TestRunFix
-    from .shared_iter_tests import TestIterMarkdownFiles, TestSelectedProjectNames
-    from .shared_tests import TestBuildScopes, TestFlextInfraDocScope
-    from .shared_write_tests import TestWriteJson, TestWriteMarkdown
-    from .validator_internals_tests import (
+    from tests.unit.docs.fixer_tests import TestFixerCore
+    from tests.unit.docs.generator_internals_tests import (
+        TestGeneratorHelpers,
+        TestGeneratorScope,
+        gen,
+    )
+    from tests.unit.docs.generator_tests import TestGeneratorCore
+    from tests.unit.docs.init_tests import TestFlextInfraDocs
+    from tests.unit.docs.main_commands_tests import (
+        TestRunBuild,
+        TestRunGenerate,
+        TestRunValidate,
+    )
+    from tests.unit.docs.main_entry_tests import TestMainRouting, TestMainWithFlags
+    from tests.unit.docs.main_tests import TestRunAudit, TestRunFix
+    from tests.unit.docs.shared_iter_tests import (
+        TestIterMarkdownFiles,
+        TestSelectedProjectNames,
+    )
+    from tests.unit.docs.shared_tests import TestBuildScopes, TestFlextInfraDocScope
+    from tests.unit.docs.shared_write_tests import TestWriteJson, TestWriteMarkdown
+    from tests.unit.docs.validator_internals_tests import (
         TestAdrHelpers,
         TestMaybeWriteTodo,
         TestValidateScope,
         validator,
     )
-    from .validator_tests import TestValidateCore, TestValidateReport
+    from tests.unit.docs.validator_tests import TestValidateCore, TestValidateReport
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "TestAdrHelpers": ("tests.unit.docs.validator_internals_tests", "TestAdrHelpers"),

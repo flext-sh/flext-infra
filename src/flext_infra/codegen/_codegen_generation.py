@@ -34,38 +34,21 @@ class FlextInfraCodegenGeneration:
     """Generate Python module files with lazy import infrastructure."""
 
     @staticmethod
-    def _render_type_checking_module(mod: str, current_pkg: str) -> str:
+    def _render_type_checking_module(mod: str, _current_pkg: str) -> str:
         """Render module path for TYPE_CHECKING imports.
 
-        Converts module paths to relative imports for test packages to enable
-        static analysis without requiring an installed top-level ``tests`` package.
+        Returns absolute module paths for all packages (src, tests, examples,
+        scripts) to maintain consistency across the codebase.
 
         Args:
             mod: Module path to render.
-            current_pkg: Current package name to determine relative import strategy.
+            _current_pkg: Current package name (unused, kept for API compat).
 
         Returns:
-            Rendered module path (absolute or relative).
+            Absolute module path.
 
         """
-        if not current_pkg.startswith("tests"):
-            return mod
-        pkg_parts = current_pkg.split(".")
-        mod_parts = mod.split(".")
-        if not mod_parts or mod_parts[0] != "tests":
-            return mod
-        common = 0
-        limit = min(len(pkg_parts), len(mod_parts))
-        while common < limit and pkg_parts[common] == mod_parts[common]:
-            common += 1
-        if common == 0:
-            return mod
-        up_levels = len(pkg_parts) - common
-        prefix = "." * (up_levels + 1)
-        remainder = ".".join(mod_parts[common:])
-        if not remainder:
-            return prefix
-        return f"{prefix}{remainder}"
+        return mod
 
     @staticmethod
     def generate_type_checking(
