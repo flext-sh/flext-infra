@@ -34,7 +34,7 @@ class FlextInfraCodegenGeneration:
     """Generate Python module files with lazy import infrastructure."""
 
     @staticmethod
-    def _render_type_checking_module(mod: str, _current_pkg: str) -> str:
+    def normalized_value_key_cases(mod: str, _current_pkg: str) -> str:
         """Render module path for TYPE_CHECKING imports.
 
         Returns absolute module paths for all packages (src, tests, examples,
@@ -55,7 +55,6 @@ class FlextInfraCodegenGeneration:
         groups: Mapping[str, list[tuple[str, str]]],
         *,
         include_flext_types: bool = True,
-        current_pkg: str = "",
     ) -> list[str]:
         """Generate TYPE_CHECKING import block for type hints.
 
@@ -65,7 +64,6 @@ class FlextInfraCodegenGeneration:
         Args:
             groups: Mapping of module paths to lists of (export_name, attr_name) tuples.
             include_flext_types: Whether to import FlextTypes from flext_core.
-            current_pkg: Current package name for module path rendering.
 
         Returns:
             List of code lines forming the TYPE_CHECKING block.
@@ -88,10 +86,7 @@ class FlextInfraCodegenGeneration:
 
         def _emit_module(mod: str) -> None:
             items = groups[mod]
-            rendered_mod = FlextInfraCodegenGeneration._render_type_checking_module(
-                mod,
-                current_pkg,
-            )
+            rendered_mod = mod
             alias_items = sorted(
                 (item for item in items if not item[1]),
                 key=operator.itemgetter(0),
@@ -206,7 +201,6 @@ class FlextInfraCodegenGeneration:
         type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
             groups,
             include_flext_types=not is_l0_typings,
-            current_pkg=current_pkg,
         )
 
         # --- body (inline constants + _LAZY_IMPORTS + __all__) from .j2 ---

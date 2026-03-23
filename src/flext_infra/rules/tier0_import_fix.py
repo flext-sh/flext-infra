@@ -9,8 +9,7 @@ import libcst as cst
 
 from flext_infra import (
     FlextInfraRefactorRule,
-    Tier0ImportAnalyzer,
-    Tier0ImportFixer,
+    FlextInfraTransformerTier0ImportFixer,
     c,
     u,
 )
@@ -25,7 +24,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
     ) -> tuple[cst.Module, list[str]]:
         if _file_path is None:
             return (tree, [])
-        analyzer = Tier0ImportAnalyzer(
+        analyzer = FlextInfraTransformerTier0ImportFixer.Analyzer(
             file_path=_file_path,
             tier0_modules=self._tier0_modules(),
             core_aliases=self._core_aliases(),
@@ -42,7 +41,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
             else self._core_package()
         )
 
-        fixer = Tier0ImportFixer(
+        fixer = FlextInfraTransformerTier0ImportFixer.Transformer(
             analysis=analysis,
             alias_to_submodule=self._alias_to_submodule(),
             core_package=core_package,
