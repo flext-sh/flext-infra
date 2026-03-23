@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence
 from typing import override
 
 import libcst as cst
@@ -14,7 +14,7 @@ class FlextInfraRefactorImportBypassRemover(cst.CSTTransformer):
     def __init__(self, on_change: Callable[[str], None] | None = None) -> None:
         """Initialize optional callback for emitted change messages."""
         self._on_change = on_change
-        self.changes: Sequence[str] = []
+        self.changes: MutableSequence[str] = []
 
     @override
     def leave_Try(

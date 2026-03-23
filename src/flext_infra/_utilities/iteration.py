@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesIteration:
             At minimum returns [workspace_root] if workspace_root/src/ exists.
 
         """
-        roots: Sequence[Path] = []
+        roots: MutableSequence[Path] = []
         effective_scan_dirs = scan_dirs or c.Infra.MRO_SCAN_DIRECTORIES
 
         def _looks_like_project(path: Path) -> bool:
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesIteration:
                 c.Infra.Directories.EXAMPLES: include_examples,
                 c.Infra.Directories.SCRIPTS: include_scripts,
             }
-            files: Sequence[Path] = []
+            files: MutableSequence[Path] = []
             for project_root in roots:
                 # First: include explicitly specified directories if enabled
                 for dir_name, enabled in include_flags.items():
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesIteration:
                 workspace_root=workspace_root,
             )
             effective_exclude = exclude_packages or frozenset()
-            result: Sequence[tuple[Path, Path]] = []
+            result: MutableSequence[tuple[Path, Path]] = []
             for project_root in roots:
                 if project_root.name in effective_exclude:
                     continue

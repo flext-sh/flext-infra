@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -52,7 +52,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
 
     @staticmethod
     def _append_result(
-        result: r[str], changes: Sequence[str], errors: Sequence[str]
+        result: r[str], changes: MutableSequence[str], errors: MutableSequence[str]
     ) -> None:
         if result.is_failure:
             errors.append(result.error or "migration action failed")
@@ -322,8 +322,8 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         workspace_root: Path,
     ) -> m.Infra.MigrationResult:
         is_root = project.path.resolve() == workspace_root.resolve()
-        changes: Sequence[str] = []
-        errors: Sequence[str] = []
+        changes: MutableSequence[str] = []
+        errors: MutableSequence[str] = []
         self._append_result(
             self._migrate_basemk(
                 project.path,
@@ -400,7 +400,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             return r[str].ok("")
         project_table = self._ensure_table(document, c.Infra.Toml.PROJECT)
         dependencies_raw = self._toml_get(project_table, c.Infra.Toml.DEPENDENCIES)
-        dependencies: Sequence[str] = []
+        dependencies: MutableSequence[str] = []
         if isinstance(dependencies_raw, list):
             dependency_items: Sequence[JsonValue] = (
                 _OBJECT_LIST_ADAPTER.validate_python(

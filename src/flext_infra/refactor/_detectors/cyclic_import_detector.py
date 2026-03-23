@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
@@ -57,8 +57,8 @@ class CyclicImportDetector:
         ]
         if len(scan_dirs) == 0:
             return []
-        graph: Mapping[str, set[str]] = {}
-        file_map: Mapping[str, str] = {}
+        graph: MutableMapping[str, set[str]] = {}
+        file_map: MutableMapping[str, str] = {}
         package_roots = cls._discover_package_roots(scan_dirs=scan_dirs)
         for scan_dir in scan_dirs:
             for py_file in u.Infra.iter_directory_python_files(scan_dir):
@@ -106,7 +106,7 @@ class CyclicImportDetector:
                                 root_pkg = imported.split(".")[0]
                                 if root_pkg in package_roots:
                                     graph[module_name].add(imported)
-        violations: Sequence[nem.CyclicImportViolation] = []
+        violations: MutableSequence[nem.CyclicImportViolation] = []
         try:
             _ = list(TopologicalSorter(graph).static_order())
         except CycleError as exc:

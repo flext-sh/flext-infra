@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -83,7 +83,9 @@ class FlextInfraConfigFixer(s[bool]):
         tool_data = doc_data.get(c.Infra.Toml.TOOL)
         if not isinstance(tool_data, dict):
             return r[Sequence[str]].ok([])
-        typed_tool_data = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
+        typed_tool_data: MutableMapping[str, t.Infra.InfraValue] = TypeAdapter(
+            MutableMapping[str, t.Infra.InfraValue],
+        ).validate_python(
             tool_data,
         )
         pyrefly_data = typed_tool_data.get(c.Infra.Toml.PYREFLY)
@@ -91,11 +93,11 @@ class FlextInfraConfigFixer(s[bool]):
             return r[Sequence[str]].ok([])
         try:
             pyrefly: MutableMapping[str, t.Infra.InfraValue] = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
+                MutableMapping[str, t.Infra.InfraValue],
             ).validate_python(pyrefly_data)
         except ValidationError:
             return r[Sequence[str]].ok([])
-        all_fixes: Sequence[str] = []
+        all_fixes: MutableSequence[str] = []
         fixes = self._fix_search_paths_tk(pyrefly, path.parent)
         all_fixes.extend(fixes)
         fixes = self._remove_ignore_sub_config_tk(pyrefly)
@@ -133,7 +135,7 @@ class FlextInfraConfigFixer(s[bool]):
             return r[Sequence[str]].fail(
                 files_result.error or "failed to find pyproject files",
             )
-        messages: Sequence[str] = []
+        messages: MutableSequence[str] = []
         total_fixes = 0
         pyproject_files: Sequence[Path] = files_result.value
         for path in pyproject_files:
@@ -163,7 +165,7 @@ class FlextInfraConfigFixer(s[bool]):
         self,
         pyrefly: MutableMapping[str, t.Infra.InfraValue],
     ) -> Sequence[str]:
-        fixes: Sequence[str] = []
+        fixes: MutableSequence[str] = []
         excludes = pyrefly.get(c.Infra.Toml.PROJECT_EXCLUDES)
         current: Sequence[str] = []
         if isinstance(excludes, list):
@@ -173,7 +175,7 @@ class FlextInfraConfigFixer(s[bool]):
                     excludes
                 )
             current = [str(value) for value in exclude_items]
-        stripped_to_add: Sequence[str] = []
+        stripped_to_add: MutableSequence[str] = []
         for glob in c.Infra.REQUIRED_EXCLUDES:
             clean_glob = glob.strip('"').strip("'")
             if clean_glob not in current and glob not in current:
@@ -189,12 +191,12 @@ class FlextInfraConfigFixer(s[bool]):
         pyrefly: MutableMapping[str, t.Infra.InfraValue],
         project_dir: Path,
     ) -> Sequence[str]:
-        fixes: Sequence[str] = []
+        fixes: MutableSequence[str] = []
         search_path = pyrefly.get(c.Infra.Toml.SEARCH_PATH)
         if not isinstance(search_path, list):
             return []
         if project_dir == self._workspace_root:
-            new_paths: Sequence[str] = []
+            new_paths: MutableSequence[str] = []
             search_items: Sequence[JsonValue] = []
             with contextlib.suppress(ValidationError):
                 search_items = TypeAdapter(Sequence[JsonValue]).validate_python(
@@ -243,11 +245,11 @@ class FlextInfraConfigFixer(s[bool]):
         self,
         pyrefly: MutableMapping[str, t.Infra.InfraValue],
     ) -> Sequence[str]:
-        fixes: Sequence[str] = []
+        fixes: MutableSequence[str] = []
         sub_configs = pyrefly.get(c.Infra.Toml.SUB_CONFIG)
         if not isinstance(sub_configs, list):
             return []
-        new_configs: Sequence[t.Infra.InfraValue] = []
+        new_configs: MutableSequence[t.Infra.InfraValue] = []
         configs: Sequence[t.Infra.InfraValue] = []
         with contextlib.suppress(ValidationError):
             configs = TypeAdapter(Sequence[t.Infra.InfraValue]).validate_python(

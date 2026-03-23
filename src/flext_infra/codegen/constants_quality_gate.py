@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -80,7 +80,7 @@ class FlextInfraCodegenConstantsQualityGate:
         projects_infra: Sequence[t.Infra.InfraValue] = list(
             u.Infra.quality_gate_project_findings(census_reports),
         )
-        report: Mapping[str, t.Infra.InfraValue] = {
+        report: MutableMapping[str, t.Infra.InfraValue] = {
             "workspace": str(self._workspace_root),
             "generated_at": datetime.now(UTC).isoformat(),
             "verdict": verdict,
@@ -116,7 +116,7 @@ class FlextInfraCodegenConstantsQualityGate:
         after = u.Infra.dict_or_empty(report.get("after"))
         improvement = u.Infra.dict_or_empty(report.get("improvement"))
         duplicate_groups = u.Infra.dict_list(report.get("duplicate_constant_groups"))
-        lines: Sequence[str] = [
+        lines: MutableSequence[str] = [
             f"Workspace: {report.get('workspace', '')}",
             f"Verdict: {report.get('verdict', 'FAIL')}",
             "",

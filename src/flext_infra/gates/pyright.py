@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
@@ -49,7 +49,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
             project_dir,
             timeout=c.Infra.Timeouts.LONG,
         )
-        issues: Sequence[m.Infra.Issue] = []
+        issues: MutableSequence[m.Infra.Issue] = []
         parsed = u.Infra.parse(result.stdout or "{}")
         data = self._to_mapping(parsed.value if parsed.is_success else {})
         try:

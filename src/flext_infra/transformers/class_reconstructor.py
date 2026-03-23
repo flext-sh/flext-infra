@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
@@ -28,7 +28,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
         except ValidationError:
             self._order_config = []
         self._on_change = on_change
-        self.changes: Sequence[str] = []
+        self.changes: MutableSequence[str] = []
 
     @override
     def leave_ClassDef(
@@ -42,7 +42,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
         body = list(updated_node.body.body)
         if not body:
             return updated_node
-        new_body: Sequence[cst.BaseStatement] = list(body)
+        new_body: MutableSequence[cst.BaseStatement] = list(body)
         block_start = 0
         changed_blocks = 0
         reordered_methods_total = 0
@@ -57,7 +57,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
             ):
                 block_end += 1
             method_indices = list(range(block_start, block_end))
-            methods: Sequence[m.Infra.MethodInfo] = []
+            methods: MutableSequence[m.Infra.MethodInfo] = []
             for idx in method_indices:
                 block_item = body[idx]
                 if isinstance(block_item, cst.FunctionDef):
@@ -82,7 +82,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
 
     def _analyze_method(self, node: cst.FunctionDef) -> m.Infra.MethodInfo:
         name = node.name.value
-        decorators: Sequence[str] = []
+        decorators: MutableSequence[str] = []
         for dec in node.decorators:
             if isinstance(dec.decorator, cst.Name):
                 decorators.append(dec.decorator.value)

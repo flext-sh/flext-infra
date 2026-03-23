@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -46,7 +46,7 @@ class FlextInfraUtilitiesDocs:
     ) -> r[Sequence[m.Infra.DocScope]]:
         """Build DocScope objects for workspace root and each selected project."""
         try:
-            scopes: Sequence[m.Infra.DocScope] = [
+            scopes: MutableSequence[m.Infra.DocScope] = [
                 m.Infra.DocScope(
                     name=c.Infra.ReportKeys.ROOT,
                     path=workspace_root,

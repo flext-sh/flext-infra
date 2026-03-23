@@ -6,10 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-
 import argparse
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -27,7 +25,7 @@ from ...models import m
 
 
 def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
-    defaults: Mapping[str, t.Container | None] = {
+    defaults: MutableMapping[str, t.Container | None] = {
         "workspace": Path(),
         "project": None,
         "projects": None,
@@ -39,7 +37,7 @@ def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
 
 
 def _fix_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
-    defaults: Mapping[str, t.Container | None] = {
+    defaults: MutableMapping[str, t.Container | None] = {
         "workspace": Path(),
         "project": None,
         "projects": None,
@@ -58,8 +56,9 @@ def _ok(
         *_a: t.Scalar,
         **_kw: t.Scalar,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        _ = (_self, *_a, **_kw)
+        _ = (_self, *_a, _kw)
         return r[Sequence[m.Infra.DocsPhaseReport]].ok(val)
+
     return _fn
 
 
@@ -69,8 +68,9 @@ def _fail_report(err: str) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]
         *_a: t.Scalar,
         **_kw: t.Scalar,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        _ = (_self, *_a, **_kw)
+        _ = (_self, *_a, _kw)
         return r[Sequence[m.Infra.DocsPhaseReport]].fail(err)
+
     return _fn
 
 
@@ -82,8 +82,9 @@ def _ok_list(
         *_a: t.Scalar,
         **_kw: t.Scalar,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        _ = (_self, *_a, **_kw)
+        _ = (_self, *_a, _kw)
         return r[Sequence[m.Infra.DocsPhaseReport]].ok(val)
+
     return _fn
 
 
@@ -93,22 +94,24 @@ def _fail_list(err: str) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
         *_a: t.Scalar,
         **_kw: t.Scalar,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        _ = (_self, *_a, **_kw)
+        _ = (_self, *_a, _kw)
         return r[Sequence[m.Infra.DocsPhaseReport]].fail(err)
+
     return _fn
 
 
 def _capturing(
-    captured: Mapping[str, t.Scalar],
+    captured: MutableMapping[str, t.Scalar],
 ) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
     def _fn(
         _self: t.Scalar,
         *_a: t.Scalar,
         **kw: t.Scalar,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        _ = (_self, *_a, **_kw)
+        _ = (_self, *_a, kw)
         captured.update(kw)
         return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
+
     return _fn
 
 
@@ -154,7 +157,7 @@ class TestRunAudit:
         field: str,
         expected: t.Scalar,
     ) -> None:
-        captured_kwargs: Mapping[str, t.Scalar] = {}
+        captured_kwargs: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capturing(captured_kwargs))
         _run_audit(
             _audit_args(**kwargs),
@@ -180,16 +183,17 @@ class TestRunFix:
         apply: bool,
         expected: bool,
     ) -> None:
-        captured_kwargs: Mapping[str, t.Scalar] = {}
+        captured_kwargs: MutableMapping[str, t.Scalar] = {}
 
         def mock_fix(
             _self: t.Scalar,
             *_a: t.Scalar,
             **kw: t.Scalar,
         ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-            _ = (_self, *_a, **_kw)
+            _ = (_self, *_a, kw)
             captured_kwargs.update(kw)
             return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
+
         monkeypatch.setattr(FlextInfraDocFixer, "fix", mock_fix)
         _run_fix(_fix_args(apply=apply))
         assert captured_kwargs.get("apply") == expected

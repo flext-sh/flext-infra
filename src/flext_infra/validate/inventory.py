@@ -9,11 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flext_infra import c, m, r, t, u
+from pydantic import JsonValue
+
+from flext_infra import c, m, r, u
 
 
 class FlextInfraInventoryService:
@@ -52,21 +54,24 @@ class FlextInfraInventoryService:
                     and path.suffix in {c.Infra.Extensions.PYTHON, ".sh"}
                 )
             now = datetime.now(UTC).isoformat()
-            scripts_infra: Sequence[t.Infra.InfraValue] = list(scripts)
-            inventory: t.Infra.ContainerDict = {
+            scripts_infra: list[JsonValue] = list(scripts)
+            inventory: Mapping[str, JsonValue] = {
                 "generated_at": now,
                 "repo_root": str(root),
                 "total_scripts": len(scripts),
                 "scripts": scripts_infra,
             }
-            wiring: t.Infra.ContainerDict = {
+            wiring: Mapping[str, JsonValue] = {
                 "generated_at": now,
                 "root_makefile": [c.Infra.Files.MAKEFILE_FILENAME],
-                "unwired_scripts": [],
+                "unwired_scripts": list[JsonValue](),
             }
-            external: t.Infra.ContainerDict = {"generated_at": now, "candidates": []}
+            external: Mapping[str, JsonValue] = {
+                "generated_at": now,
+                "candidates": list[JsonValue](),
+            }
             reports_dir = output_dir or root / c.Infra.Reporting.REPORTS_DIR_NAME
-            written: Sequence[str] = []
+            written: MutableSequence[str] = []
             inventory_path = reports_dir / "scripts-infra--json--scripts-inventory.json"
             wiring_path = reports_dir / "scripts-infra--json--scripts-wiring.json"
             external_path = (

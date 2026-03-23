@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -21,7 +21,7 @@ class FlextInfraUtilitiesDiscovery:
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         """Find all FLEXT projects in the workspace."""
         try:
-            projects: Sequence[m.Infra.ProjectInfo] = []
+            projects: MutableSequence[m.Infra.ProjectInfo] = []
             submodules = FlextInfraUtilitiesDiscovery._submodule_names(workspace_root)
             for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name):
                 if (
@@ -170,7 +170,7 @@ class FlextInfraUtilitiesDiscovery:
         if src_package is None:
             return {}
         _package_name, package_dir = src_package
-        alias_to_facade: Mapping[str, str] = {}
+        alias_to_facade: MutableMapping[str, str] = {}
         facades = [
             "models.py",
             "utilities.py",
@@ -236,7 +236,7 @@ class FlextInfraUtilitiesDiscovery:
 
     @staticmethod
     def _extract_lazy_aliases(value: cst.Dict) -> Mapping[str, str]:
-        result: Mapping[str, str] = {}
+        result: MutableMapping[str, str] = {}
         for element in value.elements:
             if not isinstance(element, cst.DictElement):
                 continue
@@ -277,7 +277,7 @@ class FlextInfraUtilitiesDiscovery:
         if not project_dir.is_dir():
             return []
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
-        dirs: Sequence[str] = []
+        dirs: MutableSequence[str] = []
         for subdir in sorted(project_dir.iterdir()):
             if not subdir.is_dir():
                 continue

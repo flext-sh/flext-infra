@@ -435,9 +435,7 @@ class FlextInfraRefactorModels(
         violations: Annotated[
             Sequence[FlextInfraRefactorModels.ClassNestingViolation],
             Field(
-                default_factory=lambda: Sequence[
-                    FlextInfraRefactorModels.ClassNestingViolation
-                ](),
+                default_factory=lambda: (),
                 description="Violation details",
             ),
         ]
@@ -494,18 +492,14 @@ class FlextInfraRefactorModels(
         suggestions: Annotated[
             Sequence[FlextInfraRefactorModels.HelperClassification],
             Field(
-                default_factory=lambda: Sequence[
-                    FlextInfraRefactorModels.HelperClassification
-                ](),
+                default_factory=lambda: (),
                 description="Classification suggestions",
             ),
         ]
         manual_review: Annotated[
             Sequence[FlextInfraRefactorModels.HelperClassification],
             Field(
-                default_factory=lambda: Sequence[
-                    FlextInfraRefactorModels.HelperClassification
-                ](),
+                default_factory=lambda: (),
                 description="Manual-review candidates",
             ),
         ]
@@ -514,9 +508,7 @@ class FlextInfraRefactorModels(
         suggestions: Annotated[
             Sequence[FlextInfraRefactorModels.HelperClassification],
             Field(
-                default_factory=lambda: Sequence[
-                    FlextInfraRefactorModels.HelperClassification
-                ](),
+                default_factory=lambda: (),
                 description="Helper classifications from one file",
             ),
         ]
@@ -530,9 +522,7 @@ class FlextInfraRefactorModels(
         manual_review: Annotated[
             Sequence[FlextInfraRefactorModels.HelperClassification],
             Field(
-                default_factory=lambda: Sequence[
-                    FlextInfraRefactorModels.HelperClassification
-                ](),
+                default_factory=lambda: (),
                 description="Helpers requiring manual review",
             ),
         ]
@@ -570,9 +560,7 @@ class FlextInfraRefactorModels(
             ),
         ]
         top_files: Sequence[FlextInfraRefactorModels.ViolationTopFileSection] = Field(
-            default_factory=lambda: Sequence[
-                FlextInfraRefactorModels.ViolationTopFileSection
-            ](),
+            default_factory=lambda: (),
             description="Top hotspot files",
         )
         files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
@@ -757,9 +745,7 @@ class FlextInfraRefactorModels(
         methods: Annotated[
             Sequence[FlextInfraRefactorModels.CensusMethodSummary],
             Field(
-                default_factory=lambda: Sequence[
-                    FlextInfraRefactorModels.CensusMethodSummary
-                ](),
+                default_factory=lambda: (),
                 description="Method summaries",
             ),
         ]
@@ -789,9 +775,7 @@ class FlextInfraRefactorModels(
         usages: Annotated[
             Sequence[FlextInfraRefactorModels.CensusProjectMethodUsage],
             Field(
-                default_factory=lambda: Sequence[
-                    FlextInfraRefactorModels.CensusProjectMethodUsage
-                ](),
+                default_factory=lambda: (),
                 description="Per-method usages",
             ),
         ]
@@ -803,18 +787,14 @@ class FlextInfraRefactorModels(
         classes: Annotated[
             Sequence[FlextInfraRefactorModels.CensusClassSummary],
             Field(
-                default_factory=lambda: Sequence[
-                    FlextInfraRefactorModels.CensusClassSummary
-                ](),
+                default_factory=lambda: (),
                 description="Per-class summaries",
             ),
         ]
         projects: Annotated[
             Sequence[FlextInfraRefactorModels.CensusProjectSummary],
             Field(
-                default_factory=lambda: Sequence[
-                    FlextInfraRefactorModels.CensusProjectSummary
-                ](),
+                default_factory=lambda: (),
                 description="Per-project breakdowns",
             ),
         ]

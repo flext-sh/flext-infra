@@ -714,34 +714,6 @@ if TYPE_CHECKING:
         test_skips_private_candidate_classes,
         test_skips_when_candidate_is_already_in_facade_bases,
     )
-    from tests.unit.refactor.test_infra_refactor_namespace_aliases import (
-        test_import_alias_detector_skips_facade_and_subclass_files,
-        test_import_alias_detector_skips_nested_private_and_as_renames,
-        test_import_alias_detector_skips_private_and_class_imports,
-        test_namespace_rewriter_keeps_contextual_alias_subset,
-        test_namespace_rewriter_only_rewrites_runtime_alias_imports,
-        test_namespace_rewriter_skips_facade_and_subclass_files,
-        test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates,
-    )
-    from tests.unit.refactor.test_infra_refactor_namespace_source import (
-        FAMILY_FILE_MAP,
-        FAMILY_SUFFIX_MAP,
-        test_detects_only_wrong_alias_in_mixed_import,
-        test_detects_same_project_submodule_alias_import,
-        test_detects_wrong_source_m_import,
-        test_detects_wrong_source_u_import,
-        test_project_without_alias_facade_has_no_violation,
-        test_rewriter_namespace_source_is_idempotent_with_ruff,
-        test_rewriter_preserves_non_alias_symbols,
-        test_rewriter_splits_mixed_imports_correctly,
-        test_skips_facade_declaration_files,
-        test_skips_import_as_rename,
-        test_skips_init_file,
-        test_skips_non_alias_symbols,
-        test_skips_r_alias_universal_exception,
-        test_skips_same_project_private_submodule,
-        test_skips_same_project_submodule_class_import,
-    )
     from tests.unit.refactor.test_infra_refactor_pattern_corrections import (
         test_pattern_rule_converts_dict_annotations_to_mapping,
         test_pattern_rule_keeps_dict_param_when_copy_used,
@@ -1066,14 +1038,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "EngineSafetyStub": (
         "tests.unit.refactor.test_infra_refactor_safety",
         "EngineSafetyStub",
-    ),
-    "FAMILY_FILE_MAP": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "FAMILY_FILE_MAP",
-    ),
-    "FAMILY_SUFFIX_MAP": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "FAMILY_SUFFIX_MAP",
     ),
     "FakeReporting": ("tests.unit.release._stubs", "FakeReporting"),
     "FakeSelection": ("tests.unit.release._stubs", "FakeSelection"),
@@ -2633,22 +2597,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_detects_multiple_models",
     ),
-    "test_detects_only_wrong_alias_in_mixed_import": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_detects_only_wrong_alias_in_mixed_import",
-    ),
-    "test_detects_same_project_submodule_alias_import": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_detects_same_project_submodule_alias_import",
-    ),
-    "test_detects_wrong_source_m_import": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_detects_wrong_source_m_import",
-    ),
-    "test_detects_wrong_source_u_import": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_detects_wrong_source_u_import",
-    ),
     "test_engine_always_enables_class_nesting_file_rule": (
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_engine_always_enables_class_nesting_file_rule",
@@ -2828,18 +2776,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_helpers_alias_is_reachable_project_obj": (
         "tests.unit.deps.test_path_sync_main_project_obj",
         "test_helpers_alias_is_reachable_project_obj",
-    ),
-    "test_import_alias_detector_skips_facade_and_subclass_files": (
-        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
-        "test_import_alias_detector_skips_facade_and_subclass_files",
-    ),
-    "test_import_alias_detector_skips_nested_private_and_as_renames": (
-        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
-        "test_import_alias_detector_skips_nested_private_and_as_renames",
-    ),
-    "test_import_alias_detector_skips_private_and_class_imports": (
-        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
-        "test_import_alias_detector_skips_private_and_class_imports",
     ),
     "test_import_modernizer_adds_c_when_existing_c_is_aliased": (
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
@@ -3089,22 +3025,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_mro_redundancy_checker_removes_nested_attribute_inheritance",
     ),
-    "test_namespace_rewriter_keeps_contextual_alias_subset": (
-        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
-        "test_namespace_rewriter_keeps_contextual_alias_subset",
-    ),
-    "test_namespace_rewriter_only_rewrites_runtime_alias_imports": (
-        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
-        "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
-    ),
-    "test_namespace_rewriter_skips_facade_and_subclass_files": (
-        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
-        "test_namespace_rewriter_skips_facade_and_subclass_files",
-    ),
-    "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates": (
-        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
-        "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
-    ),
     "test_no_duplicate_t_import_when_t_from_project_package": (
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_no_duplicate_t_import_when_t_from_project_package",
@@ -3200,10 +3120,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_project_dev_groups_missing_sections": (
         "tests.unit.deps.test_modernizer_helpers",
         "test_project_dev_groups_missing_sections",
-    ),
-    "test_project_without_alias_facade_has_no_violation": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_project_without_alias_facade_has_no_violation",
     ),
     "test_project_without_src_returns_empty": (
         "tests.unit.codegen.autofix_workspace_tests",
@@ -3325,18 +3241,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.unit.refactor.test_infra_refactor_mro_completeness",
         "test_rewriter_adds_missing_base_and_formats",
     ),
-    "test_rewriter_namespace_source_is_idempotent_with_ruff": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_rewriter_namespace_source_is_idempotent_with_ruff",
-    ),
-    "test_rewriter_preserves_non_alias_symbols": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_rewriter_preserves_non_alias_symbols",
-    ),
-    "test_rewriter_splits_mixed_imports_correctly": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_rewriter_splits_mixed_imports_correctly",
-    ),
     "test_rule_dispatch_fails_on_invalid_pattern_rule_config": (
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_rule_dispatch_fails_on_invalid_pattern_rule_config",
@@ -3390,18 +3294,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_skips_definition_files",
     ),
-    "test_skips_facade_declaration_files": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_skips_facade_declaration_files",
-    ),
-    "test_skips_import_as_rename": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_skips_import_as_rename",
-    ),
-    "test_skips_init_file": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_skips_init_file",
-    ),
     "test_skips_models_directory": (
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_models_directory",
@@ -3409,10 +3301,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_skips_models_file": (
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_models_file",
-    ),
-    "test_skips_non_alias_symbols": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_skips_non_alias_symbols",
     ),
     "test_skips_non_facade_files": (
         "tests.unit.refactor.test_infra_refactor_mro_completeness",
@@ -3429,18 +3317,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "test_skips_protected_files": (
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_protected_files",
-    ),
-    "test_skips_r_alias_universal_exception": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_skips_r_alias_universal_exception",
-    ),
-    "test_skips_same_project_private_submodule": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_skips_same_project_private_submodule",
-    ),
-    "test_skips_same_project_submodule_class_import": (
-        "tests.unit.refactor.test_infra_refactor_namespace_source",
-        "test_skips_same_project_submodule_class_import",
     ),
     "test_skips_settings_file": (
         "tests.unit.refactor.test_infra_refactor_class_placement",
@@ -3583,8 +3459,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 
 __all__ = [
     "ANSI_RE",
-    "FAMILY_FILE_MAP",
-    "FAMILY_SUFFIX_MAP",
     "BrokenScenario",
     "CheckProjectStub",
     "DependencyScenario",
@@ -4108,10 +3982,6 @@ __all__ = [
     "test_detects_basemodel_in_non_model_file",
     "test_detects_missing_local_composition_base",
     "test_detects_multiple_models",
-    "test_detects_only_wrong_alias_in_mixed_import",
-    "test_detects_same_project_submodule_alias_import",
-    "test_detects_wrong_source_m_import",
-    "test_detects_wrong_source_u_import",
     "test_engine_always_enables_class_nesting_file_rule",
     "test_ensure_future_annotations_after_docstring",
     "test_ensure_future_annotations_moves_existing_import_to_top",
@@ -4157,9 +4027,6 @@ __all__ = [
     "test_gitignore_write_failure",
     "test_helpers_alias_is_reachable_helpers",
     "test_helpers_alias_is_reachable_project_obj",
-    "test_import_alias_detector_skips_facade_and_subclass_files",
-    "test_import_alias_detector_skips_nested_private_and_as_renames",
-    "test_import_alias_detector_skips_private_and_class_imports",
     "test_import_modernizer_adds_c_when_existing_c_is_aliased",
     "test_import_modernizer_does_not_rewrite_function_parameter_shadow",
     "test_import_modernizer_does_not_rewrite_rebound_local_name_usage",
@@ -4222,10 +4089,6 @@ __all__ = [
     "test_migrator_workspace_root_project_detection",
     "test_mro_checker_keeps_external_attribute_base",
     "test_mro_redundancy_checker_removes_nested_attribute_inheritance",
-    "test_namespace_rewriter_keeps_contextual_alias_subset",
-    "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
-    "test_namespace_rewriter_skips_facade_and_subclass_files",
-    "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
     "test_no_duplicate_t_import_when_t_from_project_package",
     "test_non_pydantic_class_not_flagged",
     "test_noop_clean_module",
@@ -4250,7 +4113,6 @@ __all__ = [
     "test_preserves_used_typing_imports",
     "test_project_dev_groups",
     "test_project_dev_groups_missing_sections",
-    "test_project_without_alias_facade_has_no_violation",
     "test_project_without_src_returns_empty",
     "test_read_project_metadata_preserves_pep621_dependency_order",
     "test_read_project_metadata_preserves_poetry_dependency_order",
@@ -4281,9 +4143,6 @@ __all__ = [
     "test_rewrite_poetry_no_tool_table",
     "test_rewrite_poetry_with_non_dict_value",
     "test_rewriter_adds_missing_base_and_formats",
-    "test_rewriter_namespace_source_is_idempotent_with_ruff",
-    "test_rewriter_preserves_non_alias_symbols",
-    "test_rewriter_splits_mixed_imports_correctly",
     "test_rule_dispatch_fails_on_invalid_pattern_rule_config",
     "test_rule_dispatch_fails_on_unknown_rule_mapping",
     "test_rule_dispatch_keeps_legacy_id_fallback_mapping",
@@ -4298,19 +4157,12 @@ __all__ = [
     "test_signature_propagation_removes_and_adds_keywords",
     "test_signature_propagation_renames_call_keyword",
     "test_skips_definition_files",
-    "test_skips_facade_declaration_files",
-    "test_skips_import_as_rename",
-    "test_skips_init_file",
     "test_skips_models_directory",
     "test_skips_models_file",
-    "test_skips_non_alias_symbols",
     "test_skips_non_facade_files",
     "test_skips_private_candidate_classes",
     "test_skips_private_class",
     "test_skips_protected_files",
-    "test_skips_r_alias_universal_exception",
-    "test_skips_same_project_private_submodule",
-    "test_skips_same_project_submodule_class_import",
     "test_skips_settings_file",
     "test_skips_union_with_none",
     "test_skips_when_candidate_is_already_in_facade_bases",

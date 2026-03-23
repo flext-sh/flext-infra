@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue
@@ -86,15 +86,15 @@ class FlextInfraUtilitiesReporting:
         gates: Sequence[str],
     ) -> JsonValue:
         """Generate a SARIF 2.1.0 payload from gate results."""
-        sarif_runs: Sequence[m.Infra.SarifRun] = []
+        sarif_runs: MutableSequence[m.Infra.SarifRun] = []
         for gate in gates:
             tool_name, tool_url = c.Infra.SARIF_TOOL_INFO.get(
                 gate,
                 (gate, ""),
             )
-            sarif_results: Sequence[m.Infra.SarifResult] = []
+            sarif_results: MutableSequence[m.Infra.SarifResult] = []
             rules_seen: set[str] = set()
-            rules: Sequence[m.Infra.SarifRule] = []
+            rules: MutableSequence[m.Infra.SarifRule] = []
             for project in results:
                 gate_result = project.gates.get(gate)
                 if not gate_result:
@@ -134,7 +134,7 @@ class FlextInfraUtilitiesReporting:
                 ),
             )
         sarif_report = m.Infra.SarifReport(runs=sarif_runs)
-        sarif_dict: Mapping[str, JsonValue] = sarif_report.model_dump(by_alias=True)
+        sarif_dict: dict[str, JsonValue] = sarif_report.model_dump(by_alias=True)
         return sarif_dict
 
     @staticmethod
@@ -144,7 +144,7 @@ class FlextInfraUtilitiesReporting:
         timestamp: str,
     ) -> str:
         """Generate a markdown summary report."""
-        lines: Sequence[str] = [
+        lines: MutableSequence[str] = [
             "# FLEXT Check Report",
             "",
             f"**Generated**: {timestamp}  ",

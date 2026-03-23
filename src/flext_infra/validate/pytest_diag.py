@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -31,11 +31,11 @@ class _DiagResult:
     )
 
     def __init__(self) -> None:
-        self.failed_cases: Sequence[str] = []
-        self.error_traces: Sequence[str] = []
-        self.skip_cases: Sequence[str] = []
-        self.warning_lines: Sequence[str] = []
-        self.slow_entries: Sequence[str] = []
+        self.failed_cases: MutableSequence[str] = []
+        self.error_traces: MutableSequence[str] = []
+        self.skip_cases: MutableSequence[str] = []
+        self.warning_lines: MutableSequence[str] = []
+        self.slow_entries: MutableSequence[str] = []
 
 
 class FlextInfraPytestDiagExtractor:
@@ -91,7 +91,7 @@ class FlextInfraPytestDiagExtractor:
             line for line in lines if re.search(r"(^SKIPPED |::.* SKIPPED( |$))", line)
         ]
         capture = False
-        block: Sequence[str] = []
+        block: MutableSequence[str] = []
         for line in lines:
             if re.match(r"^=+ (FAILURES|ERRORS) =+", line):
                 capture = True
@@ -115,7 +115,7 @@ class FlextInfraPytestDiagExtractor:
             return False
         if root is None:
             return False
-        slow_rows: Sequence[tuple[float, str]] = []
+        slow_rows: MutableSequence[tuple[float, str]] = []
         for case in root.iter("testcase"):
             classname = case.attrib.get("classname", "")
             name = case.attrib.get(c.Infra.Toml.NAME, "")

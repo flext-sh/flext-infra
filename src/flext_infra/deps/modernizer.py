@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from argparse import Namespace
-from collections.abc import Mapping, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -86,7 +86,7 @@ class FlextInfraPyprojectModernizer:
             kind_result = self._classify_project(path.parent)
             if kind_result.is_success:
                 project_kind = kind_result.value
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         tool_item = self._table_child(doc, c.Infra.Toml.TOOL)
         if tool_item is None:
             tool_item = tomlkit.table()
@@ -95,7 +95,7 @@ class FlextInfraPyprojectModernizer:
         if poetry_item is not None:
             group_item = self._table_child(poetry_item, c.Infra.Toml.GROUP)
             if group_item is not None:
-                empty_groups: Sequence[str] = []
+                empty_groups: MutableSequence[str] = []
                 for name in u.Infra.table_string_keys(group_item):
                     group_dep_item = self._table_child(group_item, name)
                     if group_dep_item is None:
@@ -171,7 +171,7 @@ class FlextInfraPyprojectModernizer:
         if root_doc is None:
             return 2
         canonical_dev = u.Infra.canonical_dev_dependencies(root_doc)
-        violations: Mapping[str, Sequence[str]] = {}
+        violations: MutableMapping[str, Sequence[str]] = {}
         total = 0
         for file_path in files:
             changes = self.process_file(

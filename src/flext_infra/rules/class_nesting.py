@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -120,7 +120,7 @@ class ClassNestingRefactorRule:
                     changes=precheck_violations,
                     refactored_code=None,
                 )
-            changes: Sequence[str] = []
+            changes: MutableSequence[str] = []
             tree = self._apply_class_nesting(
                 tree,
                 class_mappings,
@@ -196,7 +196,7 @@ class ClassNestingRefactorRule:
         except (OSError, TypeError) as exc:
             msg = "invalid class nesting mapping config"
             raise ValueError(msg) from exc
-        config: t.Infra.RuleConfig = {}
+        config: MutableMapping[str, t.Infra.InfraValue] = {}
         confidence_threshold = loaded.get("confidence_threshold")
         if isinstance(confidence_threshold, str):
             config["confidence_threshold"] = confidence_threshold
@@ -257,8 +257,8 @@ class ClassNestingRefactorRule:
         config: t.Infra.RuleConfig,
         file_path: Path,
         confidence_threshold: str,
-    ) -> Mapping[str, str]:
-        mappings: Mapping[str, str] = {}
+    ) -> MutableMapping[str, str]:
+        mappings: MutableMapping[str, str] = {}
         for entry in self._entries_for_source_file(
             u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
             file_path,
@@ -275,12 +275,14 @@ class ClassNestingRefactorRule:
         config: t.Infra.RuleConfig,
         file_path: Path,
         confidence_threshold: str,
-    ) -> Sequence[str]:
-        violations: Sequence[str] = []
-        entries = self._entries_for_source_file(
-            u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
-            file_path,
-            confidence_threshold,
+    ) -> MutableSequence[str]:
+        violations: MutableSequence[str] = []
+        entries: MutableSequence[t.Infra.StrMap] = list(
+            self._entries_for_source_file(
+                u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
+                file_path,
+                confidence_threshold,
+            )
         )
         helper_entries = self._entries_for_source_file(
             u.Infra.entry_list(
@@ -308,8 +310,8 @@ class ClassNestingRefactorRule:
         config: t.Infra.RuleConfig,
         file_path: Path,
         confidence_threshold: str,
-    ) -> Mapping[str, str]:
-        mappings: Mapping[str, str] = {}
+    ) -> MutableMapping[str, str]:
+        mappings: MutableMapping[str, str] = {}
         for entry in self._entries_for_source_file(
             u.Infra.entry_list(
                 config.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION),
@@ -333,7 +335,7 @@ class ClassNestingRefactorRule:
         if not entries:
             return []
         module_path = u.Infra.normalize_module_path(file_path)
-        accepted: Sequence[t.Infra.StrMap] = []
+        accepted: MutableSequence[t.Infra.StrMap] = []
         for entry in entries:
             current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE)
             if current_file is None:
@@ -358,7 +360,7 @@ class ClassNestingRefactorRule:
         entries = raw_entries
         if not entries:
             return []
-        accepted: Sequence[t.Infra.StrMap] = []
+        accepted: MutableSequence[t.Infra.StrMap] = []
         for entry in entries:
             confidence = entry.get(c.Infra.ReportKeys.CONFIDENCE, c.Infra.Severity.LOW)
             if not self._confidence_allowed(confidence, confidence_threshold):
@@ -379,12 +381,14 @@ class ClassNestingRefactorRule:
         self,
         entries: Sequence[Mapping[str, t.Infra.InfraValue]],
     ) -> Sequence[t.Infra.StrMap]:
-        coerced: Sequence[t.Infra.StrMap] = []
+        coerced: MutableSequence[t.Infra.StrMap] = []
         for typed in entries:
             current_file = typed.get(c.Infra.ReportKeys.CURRENT_FILE)
             if not isinstance(current_file, str):
                 continue
-            entry: t.Infra.StrMap = {c.Infra.ReportKeys.CURRENT_FILE: current_file}
+            entry: MutableMapping[str, str] = {
+                c.Infra.ReportKeys.CURRENT_FILE: current_file
+            }
             loose_name = typed.get(c.Infra.ReportKeys.LOOSE_NAME)
             if isinstance(loose_name, str):
                 entry[c.Infra.ReportKeys.LOOSE_NAME] = loose_name
@@ -412,7 +416,7 @@ class ClassNestingRefactorRule:
         file_path: Path,
         confidence_threshold: str,
     ) -> t.Infra.ContainerDict:
-        payload: t.Infra.ContainerDict = {
+        payload: MutableMapping[str, t.Infra.InfraValue] = {
             c.Infra.ReportKeys.SOURCE_SYMBOL: "",
             "expected_base_chain": [],
             c.Infra.ReportKeys.POST_CHECKS: ["imports_resolve", "mro_valid"],
@@ -441,7 +445,7 @@ class ClassNestingRefactorRule:
             )
             payload["expected_base_chain"] = base_chain
             post_checks_raw = rule.get(c.Infra.ReportKeys.POST_CHECKS, [])
-            post_checks: Sequence[t.Infra.InfraValue] = []
+            post_checks: MutableSequence[t.Infra.InfraValue] = []
             if not isinstance(post_checks_raw, list):
                 continue
             typed_post_checks: Sequence[t.Infra.InfraValue] = TypeAdapter(
@@ -461,7 +465,7 @@ class ClassNestingRefactorRule:
         self,
         tree: cst.Module,
         mappings: Mapping[str, str],
-        changes: Sequence[str],
+        changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
         class_families: t.Infra.ClassFamilyMap,
     ) -> cst.Module:
@@ -481,7 +485,7 @@ class ClassNestingRefactorRule:
         self,
         tree: cst.Module,
         mappings: Mapping[str, str],
-        changes: Sequence[str],
+        changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
         helper_families: t.Infra.ClassFamilyMap,
     ) -> cst.Module:
@@ -502,7 +506,7 @@ class ClassNestingRefactorRule:
         *,
         tree: cst.Module,
         transformer: cst.CSTTransformer,
-        changes: Sequence[str],
+        changes: MutableSequence[str],
         label: str,
         mapping_count: int,
     ) -> cst.Module:
@@ -517,7 +521,7 @@ class ClassNestingRefactorRule:
             return self._cached_policy_context
         policy_doc = u.Infra.load_validated_policy_document(self._policy_path)
         policy_entries = u.Infra.mapping_list(policy_doc.get("policy_matrix"))
-        policy_context: Mapping[str, t.Infra.ContainerDict] = {}
+        policy_context: MutableMapping[str, t.Infra.ContainerDict] = {}
         for entry in policy_entries:
             family_name = entry.get("family_name")
             if not isinstance(family_name, str):
@@ -531,8 +535,8 @@ class ClassNestingRefactorRule:
         *,
         entries: Sequence[t.Infra.StrMap],
         symbol_key: str,
-    ) -> Mapping[str, str]:
-        families: Mapping[str, str] = {}
+    ) -> MutableMapping[str, str]:
+        families: MutableMapping[str, str] = {}
         for entry in entries:
             symbol = entry.get(symbol_key)
             current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE)

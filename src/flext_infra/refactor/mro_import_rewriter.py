@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -27,7 +27,7 @@ class FlextInfraRefactorMROImportRewriter:
         apply: bool,
     ) -> Sequence[m.Infra.MRORewriteResult]:
         """Rewrite all eligible Python files inside a workspace."""
-        results: Sequence[m.Infra.MRORewriteResult] = []
+        results: MutableSequence[m.Infra.MRORewriteResult] = []
         for file_path in cls._iter_workspace_python_files(
             workspace_root=workspace_root,
         ):
@@ -60,12 +60,12 @@ class FlextInfraRefactorMROImportRewriter:
         ast_tree = u.Infra.parse_ast_from_source(source)
         if ast_tree is None:
             return None
-        imported_symbols: Mapping[str, m.Infra.MROImportRewrite] = {}
-        module_aliases: Mapping[str, str] = {}
-        facade_aliases: Mapping[str, str] = {}
-        module_facade_alias: Mapping[str, str] = {}
+        imported_symbols: MutableMapping[str, m.Infra.MROImportRewrite] = {}
+        module_aliases: MutableMapping[str, str] = {}
+        facade_aliases: MutableMapping[str, str] = {}
+        module_facade_alias: MutableMapping[str, str] = {}
         facade_imports_needed: set[str] = set()
-        facade_import_objects: Mapping[str, m.Infra.MROImportRewrite] = {}
+        facade_import_objects: MutableMapping[str, m.Infra.MROImportRewrite] = {}
         for stmt in ast_tree.body:
             if isinstance(stmt, ast.ImportFrom):
                 module_name = stmt.module
@@ -73,7 +73,7 @@ class FlextInfraRefactorMROImportRewriter:
                     continue
                 if any(alias.name == "*" for alias in stmt.names):
                     continue
-                kept_names: Sequence[ast.alias] = []
+                kept_names: MutableSequence[ast.alias] = []
                 for alias in stmt.names:
                     default_facade_alias = module_facade_aliases.get(
                         module_name,
@@ -132,7 +132,7 @@ class FlextInfraRefactorMROImportRewriter:
                     facade_key = f"{facade_import.module}:{facade_import.import_name}:{facade_import.as_name or ''}"
                     facade_imports_needed.add(facade_key)
                     facade_import_objects[facade_key] = facade_import
-                stmt.names = kept_names
+                stmt.names = list(kept_names)
             if isinstance(stmt, ast.Import):
                 for alias in stmt.names:
                     if alias.name in moved_index:

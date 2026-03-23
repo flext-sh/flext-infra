@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence
 from typing import override
 
 import libcst as cst
@@ -29,8 +29,8 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
         self._module_renames = module_renames
         self._import_symbol_renames = import_symbol_renames
         self._on_change = on_change
-        self._local_name_renames: Mapping[str, str] = {}
-        self.changes: Sequence[str] = []
+        self._local_name_renames: MutableMapping[str, str] = {}
+        self.changes: MutableSequence[str] = []
 
     @override
     def leave_ImportFrom(
@@ -54,7 +54,7 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
             cst.ImportStar,
         ):
             return next_node
-        next_aliases: Sequence[cst.ImportAlias] = []
+        next_aliases: MutableSequence[cst.ImportAlias] = []
         changed = False
         for alias in list(next_node.names):
             if not isinstance(alias.name, cst.Name):

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -55,8 +55,8 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 {},
             )
         candidate_symbols = {candidate.symbol for candidate in scan_result.candidates}
-        moved_statements: Sequence[tuple[str, cst.CSTNode]] = []
-        retained_module_body: Sequence[cst.CSTNode] = []
+        moved_statements: MutableSequence[tuple[str, cst.CSTNode]] = []
+        retained_module_body: MutableSequence[cst.CSTNode] = []
         for stmt in module.body:
             moved = (
                 FlextInfraUtilitiesRefactorMroTransform._mro_extract_moved_statement(
@@ -81,8 +81,8 @@ class FlextInfraUtilitiesRefactorMroTransform:
             )
         moved_by_symbol = dict(moved_statements)
         ordered_symbols = [symbol for symbol, _ in moved_statements]
-        transformed_body: Sequence[cst.CSTNode] = []
-        symbol_map: Mapping[str, str] = {}
+        transformed_body: MutableSequence[cst.CSTNode] = []
+        symbol_map: MutableMapping[str, str] = {}
         class_name = scan_result.constants_class or c.Infra.DEFAULT_CONSTANTS_CLASS
         class_found = False
         for retained_stmt in retained_module_body:
@@ -115,7 +115,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
             symbol_map.update(class_symbol_map)
             created_classes = (class_name,)
         updated_module = module.with_changes(body=tuple(transformed_body))
-        replacement_values: Mapping[str, cst.BaseExpression] = {}
+        replacement_values: MutableMapping[str, cst.BaseExpression] = {}
         for symbol in ordered_symbols:
             if not symbol.startswith("_"):
                 continue
@@ -130,7 +130,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         )
         updated_module = updated_module.visit(inline_transformer)
         facade_alias = scan_result.facade_alias or class_name
-        qualified_renames: Mapping[str, cst.BaseExpression] = {}
+        qualified_renames: MutableMapping[str, cst.BaseExpression] = {}
         for symbol, target_path in symbol_map.items():
             if symbol.startswith("_") or "." not in target_path:
                 continue
@@ -199,9 +199,9 @@ class FlextInfraUtilitiesRefactorMroTransform:
         moved_by_symbol: Mapping[str, cst.CSTNode],
         ordered_symbols: Sequence[str],
     ) -> tuple[cst.ClassDef, Mapping[str, str]]:
-        retained_class_body: Sequence[cst.CSTNode] = []
-        alias_by_symbol: Mapping[str, str] = {}
-        alias_replacement_values: Mapping[str, cst.BaseExpression] = {}
+        retained_class_body: MutableSequence[cst.CSTNode] = []
+        alias_by_symbol: MutableMapping[str, str] = {}
+        alias_replacement_values: MutableMapping[str, cst.BaseExpression] = {}
         is_types_facade = class_def.name.value.endswith("Types")
         for statement in class_def.body.body:
             alias = (
@@ -220,10 +220,10 @@ class FlextInfraUtilitiesRefactorMroTransform:
                     alias_replacement_values[alias[0]] = private_value
                 continue
             retained_class_body.append(statement)
-        symbol_map: Mapping[str, str] = {}
+        symbol_map: MutableMapping[str, str] = {}
         added_targets: set[str] = set()
-        moved_lines: Sequence[cst.CSTNode] = []
-        moved_core_lines: Sequence[cst.CSTNode] = []
+        moved_lines: MutableSequence[cst.CSTNode] = []
+        moved_core_lines: MutableSequence[cst.CSTNode] = []
         for symbol in ordered_symbols:
             target = alias_by_symbol.get(
                 symbol,
@@ -262,7 +262,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 and isinstance(statement.body[0], cst.Pass)
             )
         ]
-        final_nodes: Sequence[cst.CSTNode] = [*cleaned_body]
+        final_nodes: MutableSequence[cst.CSTNode] = [*cleaned_body]
         if len(moved_core_lines) > 0:
             has_existing_core = any(
                 isinstance(s, cst.ClassDef) and s.name.value == "Core"
@@ -276,7 +276,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
                         target_class_name="Core",
                     )
                 )
-                final_nodes = merged_body
+                final_nodes = list(merged_body)
             else:
                 merged_body, inserted_core = (
                     FlextInfraUtilitiesRefactorMroTransform._mro_merge_core_class(
@@ -285,7 +285,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
                         target_class_name="_Core",
                     )
                 )
-                final_nodes = merged_body
+                final_nodes = list(merged_body)
                 if inserted_core and (
                     not FlextInfraUtilitiesRefactorMroTransform._mro_has_core_alias(
                         class_body=final_nodes,
@@ -320,9 +320,9 @@ class FlextInfraUtilitiesRefactorMroTransform:
             name=cst.Name(class_name),
             body=cst.IndentedBlock(body=()),
         )
-        class_body: Sequence[cst.BaseStatement] = []
-        core_body: Sequence[cst.BaseStatement] = []
-        symbol_map: Mapping[str, str] = {}
+        class_body: MutableSequence[cst.BaseStatement] = []
+        core_body: MutableSequence[cst.BaseStatement] = []
+        symbol_map: MutableMapping[str, str] = {}
         is_types_facade = class_name.endswith("Types")
         for symbol in ordered_symbols:
             target = FlextInfraUtilitiesRefactorMroTransform._mro_default_target(

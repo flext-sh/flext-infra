@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -72,7 +72,7 @@ class FlextInfraDocAuditor:
                 )
             except ValidationError:
                 by_scope_raw = {}
-        by_scope: Mapping[str, int] = {}
+        by_scope: MutableMapping[str, int] = {}
         for name, value in by_scope_raw.items():
             if isinstance(value, (int, float)):
                 by_scope[name] = int(value)
@@ -153,7 +153,7 @@ class FlextInfraDocAuditor:
                 scopes_result.error or "scope error",
             )
         default_budget, by_scope_budget = self.load_audit_budgets(workspace_root)
-        reports: Sequence[m.Infra.DocsPhaseReport] = []
+        reports: MutableSequence[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self.audit_scope(
                 scope,
@@ -178,12 +178,12 @@ class FlextInfraDocAuditor:
         checks = {part.strip() for part in check.split(",") if part.strip()}
         if not checks or "all" in checks:
             checks = {"links", "forbidden-terms"}
-        issues: Sequence[m.Infra.AuditIssue] = []
+        issues: MutableSequence[m.Infra.AuditIssue] = []
         if "links" in checks:
             issues.extend(self.broken_link_issues(scope))
         if "forbidden-terms" in checks:
             issues.extend(self.forbidden_term_issues(scope))
-        sorted_checks: Sequence[JsonValue] = [str(ck) for ck in sorted(checks)]
+        sorted_checks: list[JsonValue] = [str(ck) for ck in sorted(checks)]
         summary: JsonValue = {
             c.Infra.ReportKeys.SCOPE: scope.name,
             "issues": len(issues),
@@ -253,7 +253,7 @@ class FlextInfraDocAuditor:
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect broken internal-link issues for markdown files in scope."""
-        issues: Sequence[m.Infra.AuditIssue] = []
+        issues: MutableSequence[m.Infra.AuditIssue] = []
         for md_file in u.Infra.iter_markdown_files(scope.path):
             content = md_file.read_text(
                 encoding=c.Infra.Encoding.DEFAULT,
@@ -292,7 +292,7 @@ class FlextInfraDocAuditor:
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect forbidden-term issues for markdown files in scope."""
-        issues: Sequence[m.Infra.AuditIssue] = []
+        issues: MutableSequence[m.Infra.AuditIssue] = []
         terms: tuple[str, ...] = ()
         for md_file in u.Infra.iter_markdown_files(scope.path):
             rel = md_file.relative_to(scope.path).as_posix()

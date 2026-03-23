@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -37,7 +37,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         )
         confidence_counts: Counter[str] = Counter()
         per_file_counts: Counter[str] = Counter()
-        violations: Sequence[m.Infra.ClassNestingViolation] = []
+        violations: MutableSequence[m.Infra.ClassNestingViolation] = []
         for project_root, target_files in grouped_targets.items():
             scan_result = scanner.scan(project_root)
             if scan_result.is_failure:
@@ -93,7 +93,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     def _group_targets_by_project_root(
         cls, files: Sequence[Path]
     ) -> Mapping[Path, set[str]]:
-        grouped: Mapping[Path, set[str]] = {}
+        grouped: MutableMapping[Path, set[str]] = {}
         for file_path in files:
             project_root = cls._find_project_root(file_path)
             if project_root is None:
@@ -150,7 +150,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             return r[Mapping[tuple[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc)
             )
-        index: Mapping[tuple[str, str], m.Infra.ClassNestingMapping] = {}
+        index: MutableMapping[tuple[str, str], m.Infra.ClassNestingMapping] = {}
         for entry in entries:
             scope = cls._normalize_rewrite_scope(entry.rewrite_scope)
             norm = cls._normalize_module_path(entry.current_file)

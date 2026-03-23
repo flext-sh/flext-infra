@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraUtilitiesIteration, FlextInfraUtilitiesParsing, c, m
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         """Scan workspace and collect migration reports for a target family."""
         if target not in c.Infra.MRO_TARGETS:
             return ([], 0)
-        results: Sequence[m.Infra.MROScanReport] = []
+        results: MutableSequence[m.Infra.MROScanReport] = []
         scanned = 0
         target_specs = FlextInfraUtilitiesRefactorMroScan._mro_scan_target_specs(
             target=target,
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             file_path=file_path,
             project_root=project_root,
         )
-        candidates: Sequence[m.Infra.MROSymbolCandidate] = []
+        candidates: MutableSequence[m.Infra.MROSymbolCandidate] = []
         for stmt in tree.body:
             candidate = (
                 FlextInfraUtilitiesRefactorMroScan._mro_scan_candidate_from_statement(

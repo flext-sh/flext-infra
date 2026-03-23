@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -142,7 +142,7 @@ class LooseObjectDetector(p.Infra.Scanner):
         class_stem = NamespaceFacadeScanner.project_class_stem(
             project_name=project_name
         )
-        violations: Sequence[nem.LooseObjectViolation] = []
+        violations: MutableSequence[nem.LooseObjectViolation] = []
         for stmt in module.body:
             violation = cls._check_statement(
                 stmt=stmt,

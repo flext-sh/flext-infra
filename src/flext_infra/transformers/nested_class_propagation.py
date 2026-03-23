@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
@@ -24,7 +24,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
     ) -> None:
         """Initialize with class rename mappings and optional policy context."""
         self._class_renames = class_renames
-        self._name_renames: Mapping[str, str] = dict(class_renames)
+        self._name_renames: MutableMapping[str, str] = dict(class_renames)
         self._policy_context = policy_context
         self._class_families = class_families or {}
 
@@ -37,7 +37,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
         _ = original_node
         if isinstance(updated_node.names, cst.ImportStar):
             return updated_node
-        updated_aliases: Sequence[cst.ImportAlias] = []
+        updated_aliases: MutableSequence[cst.ImportAlias] = []
         changed = False
         for alias in updated_node.names:
             if not isinstance(alias.name, cst.Name):

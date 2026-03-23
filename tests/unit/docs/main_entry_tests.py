@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, MutableMapping, Sequence
 
 import pytest
 from flext_core import r
@@ -91,7 +91,7 @@ class TestMainRouting:
 
 
 def _capture_audit(
-    store: Mapping[str, t.Scalar],
+    store: MutableMapping[str, t.Scalar],
 ) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
     def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         store.update(kw)
@@ -101,7 +101,7 @@ def _capture_audit(
 
 
 def _capture_simple(
-    store: Mapping[str, t.Scalar],
+    store: MutableMapping[str, t.Scalar],
 ) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
     def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         store.update(kw)
@@ -112,7 +112,7 @@ def _capture_simple(
 
 class TestMainWithFlags:
     def test_audit_custom_root(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: Mapping[str, t.Scalar] = {}
+        kw: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(
             sys, "argv", ["prog", "audit", "--workspace", "/custom/path"]
         )
@@ -121,49 +121,49 @@ class TestMainWithFlags:
         tm.that(str(kw.get("workspace_root", "")).endswith("custom/path"), eq=True)
 
     def test_audit_project_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: Mapping[str, t.Scalar] = {}
+        kw: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(sys, "argv", ["prog", "audit", "--project", "test-proj"])
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
         main()
         tm.that(kw.get("project"), eq="test-proj")
 
     def test_audit_strict_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: Mapping[str, t.Scalar] = {}
+        kw: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(sys, "argv", ["prog", "audit", "--strict"])
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
         main()
         tm.that(kw.get("strict"), eq=True)
 
     def test_fix_apply_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: Mapping[str, t.Scalar] = {}
+        kw: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(sys, "argv", ["prog", "fix", "--apply"])
         monkeypatch.setattr(FlextInfraDocFixer, "fix", _capture_simple(kw))
         main()
         tm.that(kw.get("apply"), eq=True)
 
     def test_generate_apply_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: Mapping[str, t.Scalar] = {}
+        kw: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(sys, "argv", ["prog", "generate", "--apply"])
         monkeypatch.setattr(FlextInfraDocGenerator, "generate", _capture_simple(kw))
         main()
         tm.that(kw.get("apply"), eq=True)
 
     def test_validate_apply_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: Mapping[str, t.Scalar] = {}
+        kw: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(sys, "argv", ["prog", "validate", "--apply"])
         monkeypatch.setattr(FlextInfraDocValidator, "validate", _capture_simple(kw))
         main()
         tm.that(kw.get("apply"), eq=True)
 
     def test_audit_check_parameter(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: Mapping[str, t.Scalar] = {}
+        kw: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(sys, "argv", ["prog", "audit", "--check"])
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
         main()
         tm.that(kw.get("check"), eq="all")
 
     def test_validate_check_parameter(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        kw: Mapping[str, t.Scalar] = {}
+        kw: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(sys, "argv", ["prog", "validate", "--check"])
         monkeypatch.setattr(FlextInfraDocValidator, "validate", _capture_simple(kw))
         main()

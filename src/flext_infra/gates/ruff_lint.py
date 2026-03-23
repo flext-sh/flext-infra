@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import override
 
@@ -46,7 +46,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             ],
             project_dir,
         )
-        issues: Sequence[m.Infra.Issue] = []
+        issues: MutableSequence[m.Infra.Issue] = []
         ruff_parse_result = u.Infra.parse(result.stdout or "[]")
         ruff_data: t.Infra.InfraValue = (
             ruff_parse_result.value if ruff_parse_result.is_success else []

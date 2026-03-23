@@ -92,7 +92,7 @@ def main_inner(argv: Sequence[str] | None = None) -> int:
         output.error(f"unknown group '{group}'")
         FlextInfraMainCLI.print_help()
         return 1
-    sys.argv = [f"flext-infra {group}"] + args[2:]
+    sys.argv = [f"flext-infra {group}"] + list(args[2:])
     module = importlib.import_module(FlextInfraMainCLI.GROUPS[group])
     exit_code = module.main()
     return int(exit_code) if exit_code is not None else 0

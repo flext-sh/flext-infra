@@ -9,7 +9,7 @@ from __future__ import annotations
 import contextlib
 import shutil
 import time
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -107,7 +107,7 @@ class FlextInfraUtilitiesGithub(
             return r[Sequence[m.Infra.SyncOperation]].fail(
                 projects_result.error or "project discovery failed",
             )
-        all_operations: Sequence[m.Infra.SyncOperation] = []
+        all_operations: MutableSequence[m.Infra.SyncOperation] = []
         for project in projects_result.value:
             ops_result = cls._github_sync_project(
                 project_name=project.name,
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesGithub(
         apply: bool = False,
         prune: bool = False,
     ) -> r[Sequence[m.Infra.SyncOperation]]:
-        operations: Sequence[m.Infra.SyncOperation] = []
+        operations: MutableSequence[m.Infra.SyncOperation] = []
         workflows_dir = project_root / ".github" / "workflows"
         destination = workflows_dir / "ci.yml"
         try:
@@ -242,8 +242,8 @@ class FlextInfraUtilitiesGithub(
         by_action: MutableMapping[str, int] = {}
         for op in operations:
             by_action[op.action] = by_action.get(op.action, 0) + 1
-        summary_dict: Mapping[str, JsonValue] = dict(by_action)
-        ops_list: Sequence[JsonValue] = [
+        summary_dict: dict[str, JsonValue] = dict(by_action)
+        ops_list: list[JsonValue] = [
             {
                 c.Infra.Toml.PROJECT: op.project,
                 c.Infra.Toml.PATH: op.path,
@@ -285,7 +285,7 @@ class FlextInfraUtilitiesGithub(
             "base": c.Infra.Git.MAIN,
         }
         failures = 0
-        results: Sequence[m.Infra.PrExecutionResultModel] = []
+        results: MutableSequence[m.Infra.PrExecutionResultModel] = []
         for repo_root in repos:
             if branch:
                 cls.git_checkout(repo_root, branch)

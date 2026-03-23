@@ -7,16 +7,12 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from flext_infra import c
-
-# ---------------------------------------------------------------------------
-# Shared Jinja2 environment (module-level singleton, loaded once)
-# ---------------------------------------------------------------------------
 
 _TEMPLATE_ROOT = Path(__file__).resolve().parent.parent / "templates"
 
@@ -69,7 +65,7 @@ class FlextInfraCodegenGeneration:
             List of code lines forming the TYPE_CHECKING block.
 
         """
-        lines: Sequence[str] = ["if TYPE_CHECKING:"]
+        lines: MutableSequence[str] = ["if TYPE_CHECKING:"]
         # Only emit the standalone FlextTypes import when it does NOT already
         # appear in the groups (avoids F811 redefinition in flext_core's own
         # __init__.py where FlextTypes is re-exported from flext_core.typings).
@@ -107,7 +103,7 @@ class FlextInfraCodegenGeneration:
                 lines.append(alias_line)
             if not sorted_items:
                 return
-            parts: Sequence[str] = []
+            parts: MutableSequence[str] = []
             for export_name, attr_name in sorted_items:
                 if export_name == attr_name:
                     parts.append(export_name)
@@ -171,7 +167,7 @@ class FlextInfraCodegenGeneration:
         )
 
         # --- header + docstring ---
-        out: Sequence[str] = [c.Infra.AUTOGEN_HEADER]
+        out: MutableSequence[str] = [c.Infra.AUTOGEN_HEADER]
         if docstring_source:
             out.extend([docstring_source, ""])
 
@@ -193,7 +189,7 @@ class FlextInfraCodegenGeneration:
         out.append("")
 
         # --- TYPE_CHECKING block ---
-        groups: Mapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
+        groups: Mapping[str, MutableSequence[tuple[str, str]]] = defaultdict(list)
         for export_name in sorted(lazy_filtered):
             mod, attr = lazy_filtered[export_name]
             groups[mod].append((export_name, attr))

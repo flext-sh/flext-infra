@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -14,7 +14,7 @@ from flext_infra import FlextInfraRefactorRule, c, t, u
 
 class DictToMappingTransformer(cst.CSTTransformer):
     def __init__(self, *, include_return_annotations: bool) -> None:
-        self.changes: Sequence[str] = []
+        self.changes: MutableSequence[str] = []
         self._has_mapping_import = False
         self._include_return_annotations = include_return_annotations
 
@@ -228,7 +228,7 @@ class DictToMappingTransformer(cst.CSTTransformer):
 class RedundantCastRemover(cst.CSTTransformer):
     def __init__(self, removable_types: set[str]) -> None:
         self.removable_types = removable_types
-        self.changes: Sequence[str] = []
+        self.changes: MutableSequence[str] = []
 
     @override
     def leave_Call(

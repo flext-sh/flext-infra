@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -82,7 +82,7 @@ class FlextInfraDocBuilder:
             return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: Sequence[m.Infra.DocsPhaseReport] = []
+        reports: MutableSequence[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._build_scope(scope)
             reports.append(report)

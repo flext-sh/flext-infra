@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -119,7 +119,7 @@ class InternalImportDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: Sequence[nem.InternalImportViolation] = []
+        violations: MutableSequence[nem.InternalImportViolation] = []
         for stmt in u.Infra.cst_iter_simple_statements(module.body):
             if not isinstance(stmt, cst.ImportFrom):
                 continue

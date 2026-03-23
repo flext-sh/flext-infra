@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -84,7 +84,7 @@ class FlextInfraDocValidator:
             return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: Sequence[m.Infra.DocsPhaseReport] = []
+        reports: MutableSequence[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._validate_scope(scope, check=check, apply_mode=apply)
             reports.append(report)
@@ -114,7 +114,7 @@ class FlextInfraDocValidator:
                         required = []
         if not required:
             required = ["rules-docs", "scripts-maintenance", "readme-standardization"]
-        missing: Sequence[str] = []
+        missing: MutableSequence[str] = []
         for name in required:
             skill = skills_root / name / "SKILL.md"
             if not skill.exists() or not self._has_adr_reference(skill):
@@ -146,7 +146,7 @@ class FlextInfraDocValidator:
                 status = c.Infra.Status.FAIL
                 message = f"missing adr references in skills: {', '.join(missing)}"
         wrote_todo = self._maybe_write_todo(scope, apply_mode=apply_mode)
-        adr_skills_json: Sequence[JsonValue] = list(missing_adr_skills)
+        adr_skills_json: list[JsonValue] = list(missing_adr_skills)
         payload: JsonValue = {
             c.Infra.ReportKeys.SUMMARY: {
                 c.Infra.ReportKeys.SCOPE: scope.name,

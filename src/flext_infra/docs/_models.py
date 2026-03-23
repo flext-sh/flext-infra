@@ -149,7 +149,7 @@ class FlextInfraDocsModels:
             ),
         ] = False
         items: Sequence[FlextInfraDocsModels.DocsPhaseItemModel] = Field(
-            default_factory=lambda: Sequence[FlextInfraDocsModels.DocsPhaseItemModel](),
+            default_factory=lambda: (),
             description="Phase-specific item payloads",
         )
 

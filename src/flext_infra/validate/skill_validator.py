@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
@@ -100,7 +100,7 @@ class FlextInfraSkillValidator:
                 Sequence[JsonValue],
             ).validate_python(rules_list_obj)
             counts: MutableMapping[str, int] = {}
-            violations: Sequence[str] = []
+            violations: MutableSequence[str] = []
             for rule_obj_raw in rules_list:
                 rule_obj = self._normalize_str_object_mapping(rule_obj_raw)
                 if not rule_obj:
@@ -160,7 +160,7 @@ class FlextInfraSkillValidator:
                             bl_counts_raw_map = self._normalize_str_object_mapping(
                                 bl_data.get("counts", {}),
                             )
-                            bl_counts: Mapping[str, int] = {}
+                            bl_counts: MutableMapping[str, int] = {}
                             for key_obj, val_obj in bl_counts_raw_map.items():
                                 if isinstance(val_obj, int):
                                     bl_counts[str(key_obj)] = int(val_obj)
@@ -251,7 +251,7 @@ class FlextInfraSkillValidator:
             script = (skill_dir / script_raw).resolve()
         if not script.exists():
             return 0
-        cmd: Sequence[str] = (
+        cmd: MutableSequence[str] = (
             [sys.executable, str(script)]
             if script.suffix == c.Infra.Extensions.PYTHON
             else [str(script)]

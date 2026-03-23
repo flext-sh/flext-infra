@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -94,7 +94,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> tuple[cst.Module, Sequence[str]]:
         """Apply configured legacy-removal transforms to module tree."""
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         fix_action = (
             str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
         )
@@ -199,8 +199,8 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         self,
         call_args: Sequence[cst.Arg],
     ) -> tuple[Sequence[str], Mapping[str, str], str | None, str | None] | None:
-        positional_forwarded: Sequence[str] = []
-        keyword_forwarded: Mapping[str, str] = {}
+        positional_forwarded: MutableSequence[str] = []
+        keyword_forwarded: MutableMapping[str, str] = {}
         star_forwarded: str | None = None
         star_kw_forwarded: str | None = None
         for arg in call_args:
@@ -263,8 +263,8 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         return (new_tree, transformer.changes)
 
     def _remove_wrappers(self, tree: cst.Module) -> tuple[cst.Module, Sequence[str]]:
-        changes: Sequence[str] = []
-        new_body: Sequence[cst.BaseStatement] = []
+        changes: MutableSequence[str] = []
+        new_body: MutableSequence[cst.BaseStatement] = []
         for stmt in tree.body:
             if not isinstance(stmt, cst.FunctionDef):
                 new_body.append(stmt)

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -123,7 +123,7 @@ class FlextInfraCodegenCensus(s[bool]):
                 by_type: Mapping[str, t.Infra.InfraValue] = (
                     by_type_val if isinstance(by_type_val, dict) else {}
                 )
-                type_stats: Sequence[str] = []
+                type_stats: MutableSequence[str] = []
                 if isinstance(by_type, dict):
                     for t in sorted(by_type.keys())[:3]:
                         type_info_val = by_type[t]
@@ -159,7 +159,7 @@ class FlextInfraCodegenCensus(s[bool]):
         projects_result = u.Infra.discover_projects(workspace)
         if not projects_result.is_success:
             return []
-        reports: Sequence[m.Infra.CensusReport] = []
+        reports: MutableSequence[m.Infra.CensusReport] = []
         discovered: Sequence[p.Infra.ProjectInfo] = projects_result.unwrap()
         for project in discovered:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
@@ -179,7 +179,7 @@ class FlextInfraCodegenCensus(s[bool]):
         """Run census on a single project."""
         validator = FlextInfraNamespaceValidator()
         result = validator.validate(project.path, scan_tests=False)
-        violations: Sequence[m.Infra.CensusViolation] = []
+        violations: MutableSequence[m.Infra.CensusViolation] = []
         if result.is_success:
             report: m.Infra.ValidationReport = result.unwrap()
             for violation_str in report.violations:
@@ -197,7 +197,7 @@ class FlextInfraCodegenCensus(s[bool]):
             )
 
             # Detect duplicates
-            flat_defs: Sequence[m.Infra.ConstantDefinition] = []
+            flat_defs: MutableSequence[m.Infra.ConstantDefinition] = []
             for defs in all_defs.values():
                 flat_defs.extend(defs)
 
@@ -262,7 +262,7 @@ class FlextInfraCodegenCensus(s[bool]):
 
                 # Build type breakdown
                 type_breakdown = census_data_obj.get("by_type", {})
-                type_stats: Sequence[str] = []
+                type_stats: MutableSequence[str] = []
                 if isinstance(type_breakdown, dict):
                     for type_name in sorted(type_breakdown.keys())[:3]:
                         type_info_val = type_breakdown[type_name]

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -126,7 +126,7 @@ class ManualProtocolDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: Sequence[nem.ManualProtocolViolation] = []
+        violations: MutableSequence[nem.ManualProtocolViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.ClassDef):
                 continue

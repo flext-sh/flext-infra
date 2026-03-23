@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 
 from pydantic import TypeAdapter
 
@@ -41,7 +41,7 @@ class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         if not isinstance(value, list):
             return []
-        result: Sequence[Mapping[str, t.Infra.InfraValue]] = []
+        result: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
         for item in value:
             if not isinstance(item, dict):
                 continue

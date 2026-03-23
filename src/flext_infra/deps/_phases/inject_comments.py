@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 
 from flext_infra import c
 
@@ -11,10 +11,10 @@ class InjectCommentsPhase:
     """Inject managed/custom/auto markers into pyproject.toml."""
 
     def apply(self, rendered: str) -> tuple[str, Sequence[str]]:
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         lines = rendered.splitlines()
         existing_text = rendered
-        out: Sequence[str] = []
+        out: MutableSequence[str] = []
         has_banner = bool(
             lines and "[MANAGED] FLEXT pyproject standardization" in lines[0],
         )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from typing import Annotated
 
 from flext_core import m, t
@@ -437,19 +437,19 @@ class FlextInfraDepsModels:
     class DeptryIssueGroups(m.ArbitraryTypesModel):
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 
-        dep001: Sequence[Mapping[str, t.Primitives | None]] = Field(
+        dep001: MutableSequence[Mapping[str, t.Primitives | None]] = Field(
             default_factory=list,
             description="DEP001 issues",
         )
-        dep002: Sequence[Mapping[str, t.Primitives | None]] = Field(
+        dep002: MutableSequence[Mapping[str, t.Primitives | None]] = Field(
             default_factory=list,
             description="DEP002 issues",
         )
-        dep003: Sequence[Mapping[str, t.Primitives | None]] = Field(
+        dep003: MutableSequence[Mapping[str, t.Primitives | None]] = Field(
             default_factory=list,
             description="DEP003 issues",
         )
-        dep004: Sequence[Mapping[str, t.Primitives | None]] = Field(
+        dep004: MutableSequence[Mapping[str, t.Primitives | None]] = Field(
             default_factory=list,
             description="DEP004 issues",
         )

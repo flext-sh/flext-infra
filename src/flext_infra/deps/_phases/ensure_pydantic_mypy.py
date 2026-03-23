@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 
 import tomlkit
 from tomlkit.container import Container
@@ -18,7 +18,7 @@ class EnsurePydanticMypyConfigPhase:
         self._tool_config = tool_config
 
     def apply(self, doc: tomlkit.TOMLDocument) -> Sequence[str]:
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         tool: Item | Container | None = None
         if c.Infra.Toml.TOOL in doc:
             tool = doc[c.Infra.Toml.TOOL]

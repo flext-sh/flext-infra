@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 from typing import TypeVar
 
@@ -103,7 +103,7 @@ class FlextInfraUtilitiesRefactorLoader:
         file_path: Path,
         *,
         stage: str = "scan",
-        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> m.Infra.ParsedPythonModule | None:
         """Load and parse a Python module while recording parse failures."""
         try:

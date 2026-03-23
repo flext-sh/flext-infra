@@ -12,7 +12,7 @@ from __future__ import annotations
 import difflib
 import re
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 
@@ -67,7 +67,7 @@ class FlextInfraUtilitiesRefactorCli:
         results: Sequence[m.Infra.Result],
     ) -> Sequence[Mapping[str, str]]:
         """Build normalized impact-map rows from refactor results."""
-        impact_map: Sequence[Mapping[str, str]] = []
+        impact_map: MutableSequence[Mapping[str, str]] = []
         symbol_pattern = re.compile(r"^(.*):\s+(.+)\s+->\s+(.+?)(?:\s+\(|$)")
         added_pattern = re.compile(r"^\[(.+)\]\s+Added keyword:\s+(.+)$")
         removed_pattern = re.compile(r"^\[(.+)\]\s+Removed keyword:\s+(.+)$")

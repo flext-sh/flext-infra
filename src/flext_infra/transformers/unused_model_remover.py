@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence
 from typing import override
 
 import libcst as cst
@@ -19,7 +19,7 @@ class UnusedModelRemover(cst.CSTTransformer):
         self._unused_classes = unused_classes
         self._on_change = on_change
         self.modified: bool = False
-        self.changes: Sequence[str] = []
+        self.changes: MutableSequence[str] = []
 
     @override
     def leave_ClassDef(

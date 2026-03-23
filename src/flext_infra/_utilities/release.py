@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -25,7 +25,7 @@ class FlextInfraUtilitiesRelease:
         output_path: Path,
     ) -> r[bool]:
         """Generate release notes markdown from release context."""
-        lines: Sequence[str] = [
+        lines: MutableSequence[str] = [
             f"# Release {tag}",
             "",
             "## Status",

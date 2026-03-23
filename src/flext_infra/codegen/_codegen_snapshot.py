@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import operator
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -30,7 +30,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
 
     @staticmethod
     def _snapshot_init_files(*, project_path: Path) -> Mapping[str, str]:
-        snapshot: Mapping[str, str] = {}
+        snapshot: MutableMapping[str, str] = {}
         for root_name in c.Infra.MRO_SCAN_DIRECTORIES:
             root = project_path / root_name
             if not root.is_dir():
@@ -49,7 +49,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
 
     @staticmethod
     def _snapshot_files(*, file_paths: Sequence[Path]) -> Mapping[str, str]:
-        snapshot: Mapping[str, str] = {}
+        snapshot: MutableMapping[str, str] = {}
         for file_path in file_paths:
             try:
                 snapshot[str(file_path)] = file_path.read_text(
@@ -96,8 +96,8 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         source_lines = source_text.splitlines()
         target_text = target_path.read_text(encoding=encoding)
 
-        extracted: Sequence[str] = []
-        ranges: Sequence[tuple[int, int]] = []
+        extracted: MutableSequence[str] = []
+        ranges: MutableSequence[tuple[int, int]] = []
         for node in nodes_moved:
             start = node.lineno
             end = node.end_lineno or node.lineno

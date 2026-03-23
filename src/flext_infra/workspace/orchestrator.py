@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -74,7 +74,7 @@ class FlextInfraOrchestratorService(s[bool]):
         """
         output.header("Workspace Orchestration")
         try:
-            results: Sequence[m.Infra.CommandOutput] = []
+            results: MutableSequence[m.Infra.CommandOutput] = []
             total = len(projects)
             success = 0
             failed = 0
@@ -192,7 +192,7 @@ class FlextInfraOrchestratorService(s[bool]):
     ) -> Sequence[str]:
         if (verb != c.Infra.Verbs.CHECK) or (not self._is_go_project(project)):
             return make_args
-        normalized_args: Sequence[str] = []
+        normalized_args: MutableSequence[str] = []
         for make_arg in make_args:
             if make_arg.startswith("CHECK_GATES="):
                 _, _, gates_value = make_arg.partition("=")
@@ -209,7 +209,7 @@ class FlextInfraOrchestratorService(s[bool]):
         raw_gates = [gate.strip() for gate in gates_value.split(",") if gate.strip()]
         if not raw_gates:
             return gates_value
-        normalized_gates: Sequence[str] = []
+        normalized_gates: MutableSequence[str] = []
         go_supported = {
             c.Infra.Gates.LINT,
             c.Infra.Gates.FORMAT,

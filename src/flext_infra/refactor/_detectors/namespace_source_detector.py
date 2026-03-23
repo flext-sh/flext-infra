@@ -6,7 +6,7 @@ packages instead of the correct canonical source.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -133,7 +133,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
             project_package=package_name,
             alias_map=None,
         )
-        violations: Sequence[nem.NamespaceSourceViolation] = []
+        violations: MutableSequence[nem.NamespaceSourceViolation] = []
         for raw in violations_cst:
             violation_type = getattr(raw, "violation_type", "")
             file_value = getattr(raw, "file", "")

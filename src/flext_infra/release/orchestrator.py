@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -64,7 +64,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         except OSError as exc:
             return r[bool].fail(f"report dir creation failed: {exc}")
         targets = self._build_targets(workspace_root, project_names)
-        records: Sequence[m.Infra.BuildRecord] = []
+        records: MutableSequence[m.Infra.BuildRecord] = []
         failures = 0
         for name, path in targets:
             make_result = self._run_make(path, c.Infra.Directories.BUILD)
@@ -268,14 +268,14 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         project_names: Sequence[str],
     ) -> Sequence[tuple[str, Path]]:
         """Resolve unique build targets from project names."""
-        targets: Sequence[tuple[str, Path]] = [
+        targets: MutableSequence[tuple[str, Path]] = [
             (c.Infra.ReportKeys.ROOT, workspace_root)
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:
             targets.extend((p.name, p.path) for p in projects_result.value)
         seen: set[str] = set()
-        unique: Sequence[tuple[str, Path]] = []
+        unique: MutableSequence[tuple[str, Path]] = []
         for name, path in targets:
             if name in seen or not path.exists():
                 continue
@@ -419,7 +419,9 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         project_names: Sequence[str],
     ) -> Sequence[Path]:
         """Discover pyproject.toml files that need version updates."""
-        files: Sequence[Path] = [workspace_root / c.Infra.Files.PYPROJECT_FILENAME]
+        files: MutableSequence[Path] = [
+            workspace_root / c.Infra.Files.PYPROJECT_FILENAME
+        ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:
             projects: Sequence[m.Infra.ProjectInfo] = projects_result.value

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -27,7 +27,7 @@ class FlextInfraRefactorLooseClassScanner:
         grep_index: Mapping[Path, Mapping[str, int]] = (
             grep_result.value if grep_result.is_success else {}
         )
-        violations: Sequence[m.Infra.LooseClassViolation] = []
+        violations: MutableSequence[m.Infra.LooseClassViolation] = []
         targets_found = dict.fromkeys(c.Infra.REQUIRED_CLASS_TARGETS, False)
         classes_scanned = 0
         for fp in discovered_files:
@@ -196,7 +196,7 @@ class FlextInfraRefactorLooseClassScanner:
                 Mapping[Path, Mapping[str, int]]
             ].fail(str(exc))
             return out3
-        idx: Mapping[Path, Mapping[str, int]] = {}
+        idx: MutableMapping[Path, MutableMapping[str, int]] = {}
         for entry in entries:
             name = entry.symbol_name
             if name is None:

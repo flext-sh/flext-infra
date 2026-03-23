@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -98,7 +98,7 @@ class FlextInfraDocGenerator:
             return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: Sequence[m.Infra.DocsPhaseReport] = []
+        reports: MutableSequence[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._generate_scope(
                 scope,
@@ -110,7 +110,7 @@ class FlextInfraDocGenerator:
 
     def _build_toc(self, content: str) -> str:
         """Build a markdown TOC from level-2 and level-3 headings."""
-        items: Sequence[str] = []
+        items: MutableSequence[str] = []
         for level, title in u.Infra.HEADING_H2_H3_RE.findall(content):
             anchor = self._normalize_anchor(title)
             if not anchor:
@@ -132,7 +132,7 @@ class FlextInfraDocGenerator:
         source_dir = workspace_root / "docs/guides"
         if not source_dir.exists():
             return []
-        files: Sequence[m.Infra.GeneratedFile] = []
+        files: MutableSequence[m.Infra.GeneratedFile] = []
         for source in sorted(source_dir.glob("*.md")):
             rendered = self._project_guide_content(
                 content=source.read_text(encoding=c.Infra.Encoding.DEFAULT),
@@ -235,10 +235,12 @@ class FlextInfraDocGenerator:
             files = self._generate_root_docs(scope=scope, apply=apply)
             source = "root-generated-artifacts"
         else:
-            files = self._generate_project_guides(
-                scope=scope,
-                workspace_root=workspace_root,
-                apply=apply,
+            files = list(
+                self._generate_project_guides(
+                    scope=scope,
+                    workspace_root=workspace_root,
+                    apply=apply,
+                )
             )
             files.extend(self._generate_project_mkdocs(scope=scope, apply=apply))
             source = "workspace-docs-guides"
@@ -304,7 +306,7 @@ class FlextInfraDocGenerator:
     ) -> str:
         """Render workspace guide content with project-specific heading."""
         lines = content.splitlines()
-        out: Sequence[str] = [
+        out: MutableSequence[str] = [
             f"<!-- Generated from docs/guides/{source_name} for {project}. -->",
             "<!-- Source of truth: workspace docs/guides/. -->",
             "",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraCodegenSnapshot
@@ -24,7 +24,7 @@ class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
 
     @staticmethod
     def extract_exports(tree: ast.Module) -> tuple[bool, Sequence[str]]:
-        exports: Sequence[str] = []
+        exports: MutableSequence[str] = []
         has_all = False
         for node in tree.body:
             if isinstance(node, ast.Assign):
@@ -42,7 +42,7 @@ class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
 
     @staticmethod
     def extract_inline_constants(tree: ast.Module) -> Mapping[str, str]:
-        constants: Mapping[str, str] = {}
+        constants: MutableMapping[str, str] = {}
         for node in tree.body:
             if isinstance(node, ast.Assign) and len(node.targets) == 1:
                 target = node.targets[0]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -24,7 +24,7 @@ class EnsureRuffConfigPhase:
         *,
         path: Path,
     ) -> Sequence[str]:
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         tool: Item | Container | None = None
         if c.Infra.Toml.TOOL in doc:
             tool = doc[c.Infra.Toml.TOOL]

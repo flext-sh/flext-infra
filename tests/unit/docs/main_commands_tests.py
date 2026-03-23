@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 
 import pytest
 from flext_core import r, t
@@ -26,7 +26,7 @@ def _cli_args(
     extra_defaults: Mapping[str, t.Scalar | None],
     **overrides: t.Scalar,
 ) -> u.Infra.CliArgs:
-    defaults: Mapping[str, t.Scalar | None] = {
+    defaults: MutableMapping[str, t.Scalar | None] = {
         "workspace": ".",
         "project": None,
         "projects": None,
@@ -97,7 +97,7 @@ class TestRunGenerate:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_kwargs: Mapping[str, t.Scalar] = {}
+        captured_kwargs: MutableMapping[str, t.Scalar] = {}
 
         def mock_gen(*_a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_R]]:
             captured_kwargs.update(kw)
@@ -137,7 +137,7 @@ class TestRunValidate:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_kwargs: Mapping[str, t.Scalar] = {}
+        captured_kwargs: MutableMapping[str, t.Scalar] = {}
 
         def mock_val(*_a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_R]]:
             captured_kwargs.update(kw)

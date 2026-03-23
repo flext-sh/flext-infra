@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -111,7 +111,7 @@ class PreCheckGate:
         if not self._schema_valid(loaded_dict):
             return {}
         policy_matrix = u.Infra.mapping_list(loaded_dict.get("policy_matrix"))
-        by_family: Mapping[str, m.Infra.ClassNestingPolicy] = {}
+        by_family: MutableMapping[str, m.Infra.ClassNestingPolicy] = {}
         for raw in policy_matrix:
             try:
                 policy = m.Infra.ClassNestingPolicy.model_validate(raw)
@@ -161,7 +161,7 @@ class FlextInfraRefactorClassNestingReconstructor:
     @staticmethod
     def class_rename_mappings(entries: Sequence[t.Infra.StrMap]) -> Mapping[str, str]:
         """Build a mapping of loose class names to their nested target names."""
-        mappings: Mapping[str, str] = {}
+        mappings: MutableMapping[str, str] = {}
         for entry in entries:
             loose_name = entry.get(c.Infra.ReportKeys.LOOSE_NAME)
             target_namespace = entry.get(c.Infra.ReportKeys.TARGET_NAMESPACE)
@@ -179,7 +179,7 @@ class FlextInfraRefactorClassNestingReconstructor:
     def apply_nested_class_propagation(
         tree: cst.Module,
         mappings: Mapping[str, str],
-        changes: Sequence[str],
+        changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
         class_families: t.Infra.ClassFamilyMap,
     ) -> cst.Module:

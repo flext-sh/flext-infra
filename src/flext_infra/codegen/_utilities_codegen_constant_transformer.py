@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Final, override
 
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
                 )
                 for item in definitions
             }
-            self.changes: Sequence[str] = []
+            self.changes: MutableSequence[str] = []
             self.replacements = 0
 
         @override
@@ -69,8 +69,8 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         def __init__(self, *, unused_names: set[str]) -> None:
             super().__init__()
             self._unused_names = unused_names
-            self._class_stack: Sequence[str] = []
-            self.changes: Sequence[str] = []
+            self._class_stack: MutableSequence[str] = []
+            self.changes: MutableSequence[str] = []
             self.removals = 0
 
         @override
@@ -116,7 +116,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             self._target_class = target_class
             self._has_c_import = False
             self._replaced_classes: set[str] = set()
-            self.changes: Sequence[str] = []
+            self.changes: MutableSequence[str] = []
             self.replacements = 0
 
         @override
@@ -167,7 +167,9 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             t = FlextInfraUtilitiesCodegenConstantTransformation
             if self.replacements == 0:
                 return updated_node
-            new_body: Sequence[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
+            new_body: MutableSequence[
+                cst.BaseCompoundStatement | cst.SimpleStatementLine
+            ] = []
             c_import_present = self._has_c_import
             for stmt in updated_node.body:
                 if (
@@ -332,7 +334,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             if not init_file.is_file():
                 return {}
             source = init_file.read_text("utf-8")
-            mapping: Mapping[str, str] = {}
+            mapping: MutableMapping[str, str] = {}
             for match in re.finditer(
                 r'"(\w+)":\s*\("([\w.]+)",\s*"(\w+)"\)',
                 source,
@@ -345,7 +347,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             package_name: str,
             lazy_map: Mapping[str, str],
         ) -> Mapping[str, set[str]]:
-            graph: Mapping[str, set[str]] = {}
+            graph: MutableMapping[str, set[str]] = {}
             for py_file in pkg_dir.glob("*.py"):
                 if py_file.name == "__init__.py":
                     continue
@@ -379,9 +381,9 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             return graph
 
         def find_cycles(graph: Mapping[str, set[str]]) -> Sequence[Sequence[str]]:
-            cycles: Sequence[Sequence[str]] = []
+            cycles: MutableSequence[Sequence[str]] = []
             visited: set[str] = set()
-            path: Sequence[str] = []
+            path: MutableSequence[str] = []
             path_set: set[str] = set()
 
             def dfs(node: str) -> None:
@@ -422,7 +424,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             edges = [(cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1)]
             cycle_edges.update(edges)
 
-        all_changes: Sequence[str] = []
+        all_changes: MutableSequence[str] = []
         any_modified = False
 
         for source_mod, target_mod in cycle_edges:
@@ -432,7 +434,9 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             tree = FlextInfraUtilitiesParsing.parse_module_cst(source_file)
             if tree is None:
                 continue
-            new_body: Sequence[cst.BaseCompoundStatement | cst.SimpleStatementLine] = []
+            new_body: MutableSequence[
+                cst.BaseCompoundStatement | cst.SimpleStatementLine
+            ] = []
             changed = False
 
             canonical_aliases = frozenset([

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence
 from typing import override
 
 import libcst as cst
@@ -26,8 +26,8 @@ class HelperConsolidationTransformer(cst.CSTTransformer):
         self._helper_families = helper_families or {}
         self._scope_depth = 0
         self._existing_namespaces: set[str] = set()
-        self._collected_helpers: Mapping[str, Sequence[cst.FunctionDef]] = defaultdict(
-            list
+        self._collected_helpers: Mapping[str, MutableSequence[cst.FunctionDef]] = (
+            defaultdict(list)
         )
 
     @override

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import ast
 import operator
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -211,7 +211,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         field_map_arg = node.value.args[1]
         if not isinstance(field_map_arg, ast.Dict):
             return None
-        field_lines: Sequence[str] = []
+        field_lines: MutableSequence[str] = []
         total_false = False
         for kw in node.value.keywords:
             if (
@@ -268,7 +268,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_typed_dict_total_false(
             node,
         )
-        fields: Sequence[str] = []
+        fields: MutableSequence[str] = []
         for stmt in node.body:
             if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
                 ann = ast.get_source_segment(source, stmt.annotation)
@@ -296,8 +296,8 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             msg = "Failed to parse source"
             raise SyntaxError(msg)
         lines = source.splitlines()
-        class_moves: Sequence[m.Infra.ClassMove] = []
-        alias_moves: Sequence[m.Infra.AliasMove] = []
+        class_moves: MutableSequence[m.Infra.ClassMove] = []
+        alias_moves: MutableSequence[m.Infra.AliasMove] = []
         for stmt in tree.body:
             typed_dict_factory_move = (
                 FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_typed_dict_factory_model(

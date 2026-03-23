@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -85,7 +85,7 @@ class FlextInfraDocFixer:
             return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error",
             )
-        reports: Sequence[m.Infra.DocsPhaseReport] = []
+        reports: MutableSequence[m.Infra.DocsPhaseReport] = []
         for scope in scopes_result.value:
             report = self._fix_scope(scope, apply=apply)
             reports.append(report)
@@ -93,7 +93,7 @@ class FlextInfraDocFixer:
 
     def _build_toc(self, content: str) -> str:
         """Generate a TOC block from ## and ### headings in content."""
-        items: Sequence[str] = []
+        items: MutableSequence[str] = []
         for level, title in u.Infra.HEADING_H2_H3_RE.findall(content):
             anchor = self._anchorize(title)
             if not anchor:
@@ -111,7 +111,7 @@ class FlextInfraDocFixer:
         apply: bool,
     ) -> m.Infra.DocsPhaseReport:
         """Run link and TOC fixes across all markdown files in scope."""
-        items: Sequence[m.Infra.DocsPhaseItemModel] = []
+        items: MutableSequence[m.Infra.DocsPhaseItemModel] = []
         for md in u.Infra.iter_markdown_files(scope.path):
             item = self._process_file(md, apply=apply)
             if item.links or item.toc:

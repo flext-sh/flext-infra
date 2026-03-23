@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 
 import tomlkit
 from tomlkit.container import Container
@@ -17,7 +17,7 @@ class ConsolidateGroupsPhase:
     def apply(
         self, doc: tomlkit.TOMLDocument, canonical_dev: Sequence[str]
     ) -> Sequence[str]:
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         project: Item | Container | None = None
         if c.Infra.Toml.PROJECT in doc:
             project = doc[c.Infra.Toml.PROJECT]

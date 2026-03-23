@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import os
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger, r
@@ -68,7 +68,7 @@ class FlextInfraDependencyDetectionService:
                 ).validate_python(value)
             except ValidationError:
                 return None
-            converted: Sequence[t.Infra.InfraValue] = []
+            converted: MutableSequence[t.Infra.InfraValue] = []
             for item in sequence:
                 converted_item = FlextInfraDependencyDetectionService.to_infra_value(
                     item,
@@ -87,7 +87,7 @@ class FlextInfraDependencyDetectionService:
             )
         except ValidationError:
             return None
-        converted_map: Mapping[str, t.Infra.InfraValue] = {}
+        converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, item in mapping_value.items():
             converted_item = FlextInfraDependencyDetectionService.to_infra_value(item)
             if converted_item is None and item is not None:
@@ -106,7 +106,7 @@ class FlextInfraDependencyDetectionService:
         mapped_value = u.Infra.as_toml_mapping(value)
         if mapped_value is None:
             return {}
-        normalized: t.Infra.TomlConfig = {}
+        normalized: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, raw_value in mapped_value.items():
             converted = FlextInfraDependencyDetectionService.to_infra_value(raw_value)
             if converted is None and raw_value is not None:
@@ -126,7 +126,7 @@ class FlextInfraDependencyDetectionService:
             "dep004": [],
         })
         for item in issues:
-            normalized_item: Mapping[str, str] = {}
+            normalized_item: MutableMapping[str, str] = {}
             for key, raw_value in item.items():
                 if raw_value is None:
                     normalized_item[str(key)] = ""
@@ -159,7 +159,7 @@ class FlextInfraDependencyDetectionService:
     def _to_toml_config(
         payload: Mapping[str, t.Infra.TomlValue | t.Infra.InfraValue],
     ) -> t.Infra.TomlConfig:
-        normalized: t.Infra.TomlConfig = {}
+        normalized: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, value in payload.items():
             converted = FlextInfraDependencyDetectionService.to_infra_value(value)
             if converted is None and value is not None:
@@ -181,10 +181,10 @@ class FlextInfraDependencyDetectionService:
                 return None
             return str(val)
 
-        missing: Sequence[str] = []
-        unused: Sequence[str] = []
-        transitive: Sequence[str] = []
-        dev_in_runtime: Sequence[str] = []
+        missing: MutableSequence[str] = []
+        unused: MutableSequence[str] = []
+        transitive: MutableSequence[str] = []
+        dev_in_runtime: MutableSequence[str] = []
 
         for item in classified.dep001:
             name = _module_name(item)
@@ -403,7 +403,7 @@ class FlextInfraDependencyDetectionService:
         if not config.exists():
             return r[tuple[Sequence[t.Infra.IssueMap], int]].ok(([], 0))
         out_file = json_output_path or project_path / ".deptry-report.json"
-        cmd: Sequence[str] = [
+        cmd: MutableSequence[str] = [
             str(venv_bin / c.Infra.Toml.DEPTRY),
             ".",
             "--config",
@@ -433,11 +433,11 @@ class FlextInfraDependencyDetectionService:
                 and loaded_result.is_success
                 and isinstance(loaded_result.value, list)
             ):
-                normalized_issues: Sequence[t.Infra.IssueMap] = []
+                normalized_issues: MutableSequence[t.Infra.IssueMap] = []
                 for item in loaded_result.value:
                     if not isinstance(item, dict):
                         continue
-                    converted_issue: Mapping[str, t.Infra.TomlValue] = {}
+                    converted_issue: MutableMapping[str, t.Infra.TomlValue] = {}
                     valid = True
                     for key, value in item.items():
                         converted = FlextInfraDependencyDetectionService.to_infra_value(

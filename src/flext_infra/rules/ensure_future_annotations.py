@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -21,7 +21,7 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> tuple[cst.Module, Sequence[str]]:
         """Ensure future annotations import exists after docstring/header."""
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         body = list(tree.body)
         insert_idx = 0
         has_docstring = False
@@ -35,8 +35,8 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
             has_docstring = True
             insert_idx = 1
         existing_annotations_stmt: cst.SimpleStatementLine | None = None
-        non_annotation_future_stmts: Sequence[cst.BaseStatement] = []
-        body_without_future: Sequence[cst.BaseStatement] = []
+        non_annotation_future_stmts: MutableSequence[cst.BaseStatement] = []
+        body_without_future: MutableSequence[cst.BaseStatement] = []
         for stmt in body:
             if not isinstance(stmt, cst.SimpleStatementLine):
                 body_without_future.append(stmt)
@@ -80,11 +80,11 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
                 leading_lines=[cst.EmptyLine()],
             )
         future_block = [annotations_stmt, *non_annotation_future_stmts]
-        new_body = (
-            body_without_future[:insert_idx]
-            + future_block
-            + body_without_future[insert_idx:]
-        )
+        new_body = [
+            *body_without_future[:insert_idx],
+            *future_block,
+            *body_without_future[insert_idx:],
+        ]
         if (
             new_body != body
             and "Ensured: from __future__ import annotations" not in changes

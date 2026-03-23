@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import fnmatch
 import re
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, r, t
@@ -33,7 +33,7 @@ class FlextInfraTextPatternScanner:
         excludes: Sequence[str],
     ) -> Sequence[Path]:
         """Collect files matching include/exclude globs."""
-        selected: Sequence[Path] = []
+        selected: MutableSequence[Path] = []
         for path in root.rglob("*"):
             if not path.is_file():
                 continue

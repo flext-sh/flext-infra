@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 
 from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
@@ -28,7 +28,7 @@ class FlextInfraRefactorMROResolver:
         ],
     ) -> tuple[m.Infra.FamilyMROResolution, ...]:
         """Resolve expected and effective MRO data for all facade families."""
-        resolutions: Sequence[m.Infra.FamilyMROResolution] = []
+        resolutions: MutableSequence[m.Infra.FamilyMROResolution] = []
         for family in (
             c.FacadeFamily.C,
             c.FacadeFamily.T,
@@ -84,7 +84,7 @@ class FlextInfraRefactorMROResolver:
         *,
         expected_chain: Sequence[t.Infra.ExpectedBase],
     ) -> tuple[str, ...]:
-        expected_names: Sequence[str] = []
+        expected_names: MutableSequence[str] = []
         for base in expected_chain:
             if isinstance(base, str):
                 expected_names.append(base)
@@ -130,7 +130,7 @@ class FlextInfraRefactorMROResolver:
         expected_names: tuple[str, ...],
         accessible_namespaces: tuple[str, ...],
     ) -> None:
-        missing_namespaces: Sequence[str] = []
+        missing_namespaces: MutableSequence[str] = []
         for base_name in expected_names:
             namespace = cls._namespace_from_class_name(
                 class_name=base_name,
@@ -152,7 +152,7 @@ class FlextInfraRefactorMROResolver:
         family: t.Infra.FacadeFamily,
         facade_class: type,
     ) -> tuple[str, ...]:
-        namespace_order: Sequence[str] = []
+        namespace_order: MutableSequence[str] = []
         for current in inspect.getmro(facade_class):
             if current is t.NormalizedValue:
                 continue
@@ -187,7 +187,7 @@ class FlextInfraRefactorMROResolver:
         return root
 
     @staticmethod
-    def _append_unique(namespaces: Sequence[str], candidate: str) -> None:
+    def _append_unique(namespaces: MutableSequence[str], candidate: str) -> None:
         if candidate not in namespaces:
             namespaces.append(candidate)
 

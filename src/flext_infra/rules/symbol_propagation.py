@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -74,7 +74,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
         """Initialize transformer state for declarative signature migrations."""
         self._migrations = migrations
         self._on_change = on_change
-        self.changes: Sequence[str] = []
+        self.changes: MutableSequence[str] = []
 
     @override
     def leave_Call(
@@ -103,7 +103,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
             keyword_renames = self._keyword_renames(migration)
             remove_keywords = self._remove_keywords(migration)
             add_keywords = self._add_keywords(migration)
-            next_args: Sequence[cst.Arg] = []
+            next_args: MutableSequence[cst.Arg] = []
             changed = False
             seen_keyword_names: set[str] = set()
             for arg in list(result_call.args):

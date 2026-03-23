@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from argparse import ArgumentParser, Namespace
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextRuntime, r
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesCli:
                 List of project names if any specified, None if both arguments empty.
 
             """
-            names: Sequence[str] = []
+            names: MutableSequence[str] = []
             if self.project:
                 names.append(self.project)
             if self.projects:
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesCli:
         )
         parser = ArgumentParser(prog=prog, description=description, parents=[shared])
         subparsers = parser.add_subparsers(dest="command")
-        command_parsers: Mapping[str, ArgumentParser] = {}
+        command_parsers: MutableMapping[str, ArgumentParser] = {}
         for command, command_help in subcommands.items():
             command_parsers[command] = subparsers.add_parser(
                 command,

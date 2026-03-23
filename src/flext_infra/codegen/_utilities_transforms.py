@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import ast
 import builtins as _builtins_module
-from collections.abc import Mapping, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraUtilitiesParsing, FlextInfraUtilitiesRefactor, c
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         statements.  The caller decides whether to move them based on
         additional guards (private prefix, circular-import risk, etc.).
         """
-        matches: Sequence[ast.AnnAssign] = []
+        matches: MutableSequence[ast.AnnAssign] = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.AnnAssign):
                 continue
@@ -67,7 +67,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         Detects both ``X: TypeAlias = ...`` (ast.AnnAssign) and
         ``type X = ...`` (ast.TypeAlias, PEP 695 / Python 3.12+).
         """
-        matches: Sequence[ast.stmt] = []
+        matches: MutableSequence[ast.stmt] = []
         for stmt in tree.body:
             # Old-style: X: TypeAlias = ...
             if isinstance(stmt, ast.AnnAssign):
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         ``Ts = TypeVarTuple(...)`` at module level.
         """
         typevar_names = {"TypeVar", "ParamSpec", "TypeVarTuple"}
-        matches: Sequence[ast.Assign] = []
+        matches: MutableSequence[ast.Assign] = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.Assign):
                 continue
@@ -209,7 +209,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         )
         if not names_used:
             return
-        source_imports: Mapping[str, ast.stmt] = {}
+        source_imports: MutableMapping[str, ast.stmt] = {}
         for stmt in source_tree.body:
             if isinstance(stmt, ast.Import):
                 for alias in stmt.names:
@@ -233,7 +233,7 @@ class FlextInfraUtilitiesCodegenTransforms:
                     if imported_name != "*":
                         target_available.add(imported_name)
         seen_modules: set[str] = set()
-        imports_to_add: Sequence[ast.stmt] = []
+        imports_to_add: MutableSequence[ast.stmt] = []
         for name in sorted(names_used):
             if name in target_available:
                 continue
@@ -338,7 +338,7 @@ class FlextInfraUtilitiesCodegenTransforms:
             )
         if not all_names:
             return []
-        import_texts: Sequence[str] = []
+        import_texts: MutableSequence[str] = []
         seen: set[str] = set()
         for stmt in source_tree.body:
             if not isinstance(stmt, (ast.Import, ast.ImportFrom)):
@@ -383,7 +383,7 @@ class FlextInfraUtilitiesCodegenTransforms:
                 continue
             if not isinstance(stmt.value, (ast.List, ast.Tuple)):
                 continue
-            names: Sequence[str] = []
+            names: MutableSequence[str] = []
             is_literal_list = True
             for element in stmt.value.elts:
                 if isinstance(element, ast.Constant) and isinstance(element.value, str):

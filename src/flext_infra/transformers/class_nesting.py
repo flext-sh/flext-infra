@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
@@ -26,7 +26,9 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
         self._class_families = class_families
         self._class_depth = 0
         self._existing_namespaces: set[str] = set()
-        self._collected_nested: Mapping[str, Sequence[cst.ClassDef]] = defaultdict(list)
+        self._collected_nested: Mapping[str, MutableSequence[cst.ClassDef]] = (
+            defaultdict(list)
+        )
 
     @override
     def visit_Module(self, node: cst.Module) -> bool:
@@ -193,7 +195,7 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
         namespace_class: cst.ClassDef,
         classes_to_insert: Sequence[cst.ClassDef],
     ) -> Sequence[cst.BaseStatement]:
-        namespace_body: Sequence[cst.BaseStatement] = []
+        namespace_body: MutableSequence[cst.BaseStatement] = []
         for statement in namespace_class.body.body:
             if isinstance(statement, cst.BaseSmallStatement):
                 continue

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -63,7 +63,7 @@ class FlextInfraUtilitiesParsing:
         if isinstance(module, cst.Name):
             return module.value
         if isinstance(module, cst.Attribute):
-            parts: Sequence[str] = []
+            parts: MutableSequence[str] = []
             current: cst.BaseExpression = module
             while isinstance(current, cst.Attribute):
                 parts.append(current.attr.value)

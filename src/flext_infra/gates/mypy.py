@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import override
 
@@ -71,7 +71,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             project_dir,
             env=mypy_env,
         )
-        issues: Sequence[m.Infra.Issue] = []
+        issues: MutableSequence[m.Infra.Issue] = []
         for raw_line in (result.stdout or "").splitlines():
             stripped = raw_line.strip()
             if not stripped:

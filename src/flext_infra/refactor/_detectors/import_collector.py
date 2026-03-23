@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
@@ -84,7 +84,7 @@ class ImportCollector(cst.CSTVisitor):
         if isinstance(node, cst.Name):
             return node.value
         if isinstance(node, cst.Attribute):
-            parts: Sequence[str] = []
+            parts: MutableSequence[str] = []
             cur: cst.BaseExpression | None = node
             while isinstance(cur, cst.Attribute):
                 parts.append(cur.attr.value)

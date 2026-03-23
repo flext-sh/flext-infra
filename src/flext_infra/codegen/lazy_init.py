@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -91,7 +91,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         pkg_dirs = self._find_package_dirs()
         total = ok = errors = 0
         # Bottom-up: child exports computed before parents consume them
-        dir_exports: Mapping[str, Mapping[str, tuple[str, str]]] = {}
+        dir_exports: MutableMapping[str, Mapping[str, tuple[str, str]]] = {}
 
         for pkg_dir in pkg_dirs:
             total += 1
@@ -328,7 +328,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _build_sibling_export_index(
         pkg_dir: Path,
         current_pkg: str,
-    ) -> Mapping[str, tuple[str, str]]:
+    ) -> MutableMapping[str, tuple[str, str]]:
         """Scan sibling ``.py`` files for exports (including nested submodules).
 
         For each non-private, non-dunder sibling ``.py`` file (at any depth):
@@ -340,7 +340,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         files in nested submodules (e.g., ``_context/_data.py``).
         Returns ``{export_name: (module_path, attr_name)}``.
         """
-        index: Mapping[str, tuple[str, str]] = {}
+        index: MutableMapping[str, tuple[str, str]] = {}
         for py_file in sorted(pkg_dir.rglob("*.py")):
             if py_file.name in {"__init__.py", "__main__.py", "__version__.py"}:
                 continue
@@ -382,11 +382,11 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _scan_ast_public_defs(
         tree: ast.Module,
         mod_path: str,
-        index: Mapping[str, tuple[str, str]],
+        index: MutableMapping[str, tuple[str, str]],
     ) -> None:
         """Scan AST for public classes, functions, and assignments."""
         for node in ast.iter_child_nodes(tree):
-            names: Sequence[str] = []
+            names: MutableSequence[str] = []
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 names.append(node.name)
             elif isinstance(node, ast.Assign):
@@ -450,7 +450,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _merge_child_exports(
         pkg_dir: Path,
         current_pkg: str,
-        lazy_map: Mapping[str, tuple[str, str]],
+        lazy_map: MutableMapping[str, tuple[str, str]],
         dir_exports: Mapping[str, Mapping[str, tuple[str, str]]],
     ) -> None:
         """Merge child subdirectory exports into parent's lazy map.
@@ -509,7 +509,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         inline = u.Infra.extract_inline_constants(tree)
         ver_mod = f"{current_pkg}.__version__" if current_pkg else "__version__"
 
-        lazy: Mapping[str, tuple[str, str]] = {}
+        lazy: MutableMapping[str, tuple[str, str]] = {}
         for node in tree.body:
             if isinstance(node, ast.Assign) and len(node.targets) == 1:
                 target = node.targets[0]
@@ -525,7 +525,7 @@ class FlextInfraCodegenLazyInit(s[int]):
 
     @staticmethod
     def _resolve_aliases(
-        lazy_map: Mapping[str, tuple[str, str]],
+        lazy_map: MutableMapping[str, tuple[str, str]],
         pkg_dir: Path | None = None,
     ) -> None:
         """Resolve single-letter aliases from ``ALIAS_TO_SUFFIX`` mapping.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t, u
@@ -17,7 +17,7 @@ class PostCheckGate:
         result: m.Infra.Result,
         expected: t.Infra.ContainerDict,
     ) -> tuple[bool, Sequence[str]]:
-        errors: Sequence[str] = []
+        errors: MutableSequence[str] = []
         if not result.success:
             if result.error:
                 return (False, [result.error])

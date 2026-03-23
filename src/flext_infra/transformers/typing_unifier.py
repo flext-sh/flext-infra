@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -23,14 +23,14 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         """Initialize unifier context and accumulated import/type state."""
         self._scope_depth = 0
         self._typing_import_names: set[str] = set()
-        self._typing_import_aliases: Sequence[cst.ImportAlias] = []
+        self._typing_import_aliases: MutableSequence[cst.ImportAlias] = []
         self._all_name_usages: set[str] = set()
         self._has_t_import = False
         self._needs_t_import = False
         self._typealias_unconverted = 0
         self._is_definition_file = self._is_typing_definition_file(file_path)
         self._canonical_map = canonical_map
-        self.changes: Sequence[str] = []
+        self.changes: MutableSequence[str] = []
 
     @override
     def visit_ImportFrom(self, node: cst.ImportFrom) -> bool:
@@ -163,7 +163,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         return result
 
     def _filter_typing_imports(self, module: cst.Module) -> cst.Module:
-        new_body: Sequence[cst.BaseStatement] = []
+        new_body: MutableSequence[cst.BaseStatement] = []
         for stmt in module.body:
             replacement = self._maybe_filter_typing_import_stmt(stmt)
             if replacement is not None:
@@ -186,7 +186,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
             return stmt
         if isinstance(only.names, cst.ImportStar):
             return stmt
-        retained: Sequence[cst.ImportAlias] = []
+        retained: MutableSequence[cst.ImportAlias] = []
         for alias in tuple(only.names):
             if not isinstance(alias.name, cst.Name):
                 retained.append(alias)

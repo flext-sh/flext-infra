@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
@@ -11,7 +11,7 @@ from flext_infra import m
 class TopLevelClassCollector(cst.CSTVisitor):
     def __init__(self) -> None:
         self._depth = 0
-        self.classes: Sequence[m.Infra.ClassOccurrence] = []
+        self.classes: MutableSequence[m.Infra.ClassOccurrence] = []
 
     @override
     def visit_ClassDef(self, node: cst.ClassDef) -> None:

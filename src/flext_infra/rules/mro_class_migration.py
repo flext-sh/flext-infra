@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -36,7 +36,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
         module_ast = u.Infra.parse_ast_from_source(source)
         if module_ast is None:
             return (tree, [])
-        candidates: Sequence[m.Infra.MROSymbolCandidate] = []
+        candidates: MutableSequence[m.Infra.MROSymbolCandidate] = []
         for stmt in module_ast.body:
             if not isinstance(stmt, ast.AnnAssign):
                 continue

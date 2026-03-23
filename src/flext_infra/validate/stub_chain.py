@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
@@ -29,7 +29,7 @@ class FlextInfraStubSupplyChain:
     def _discover_stub_projects(self, workspace_root: Path) -> Sequence[Path]:
         """Discover projects that should participate in stub checks."""
         _ = self
-        projects: Sequence[Path] = []
+        projects: MutableSequence[Path] = []
         for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name):
             if not entry.is_dir() or entry.name.startswith("."):
                 continue
@@ -120,7 +120,7 @@ class FlextInfraStubSupplyChain:
         try:
             root = workspace_root.resolve()
             projects = project_dirs or self._discover_stub_projects(root)
-            violations: Sequence[str] = []
+            violations: MutableSequence[str] = []
             for proj in projects:
                 result = self.analyze(proj, root)
                 if result.is_failure:
@@ -194,7 +194,7 @@ class FlextInfraStubSupplyChain:
             cmd_output: p.Infra.CommandOutput = result.value
             output = cmd_output.stdout
         seen: set[str] = set()
-        ordered: Sequence[str] = []
+        ordered: MutableSequence[str] = []
         for match in c.Infra.MISSING_IMPORT_RE.finditer(output):
             name = match.group(1).strip()
             if name and name not in seen:

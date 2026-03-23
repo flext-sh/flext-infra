@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence
 from typing import override
 
 import libcst as cst
@@ -16,8 +16,8 @@ class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
     def __init__(self, on_change: Callable[[str], None] | None = None) -> None:
         """Initialize lazy import collector and emitted change sink."""
         self._on_change = on_change
-        self.changes: Sequence[str] = []
-        self.hoisted_imports: Sequence[cst.SimpleStatementLine] = []
+        self.changes: MutableSequence[str] = []
+        self.hoisted_imports: MutableSequence[cst.SimpleStatementLine] = []
 
     @override
     def leave_FunctionDef(
@@ -28,7 +28,7 @@ class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
         """Extract imports from function body and keep other statements."""
         if not isinstance(updated_node.body, cst.IndentedBlock):
             return updated_node
-        new_function_body: Sequence[cst.BaseStatement] = []
+        new_function_body: MutableSequence[cst.BaseStatement] = []
         for stmt in updated_node.body.body:
             if (
                 isinstance(stmt, cst.SimpleStatementLine)
@@ -64,7 +64,7 @@ class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
                 continue
             if isinstance(stmt.body[0], (cst.Import, cst.ImportFrom)):
                 existing_import_codes.add(cst.Module(body=[stmt]).code)
-        unique_hoisted: Sequence[cst.SimpleStatementLine] = []
+        unique_hoisted: MutableSequence[cst.SimpleStatementLine] = []
         for stmt in self.hoisted_imports:
             stmt_code = cst.Module(body=[stmt]).code
             if stmt_code in existing_import_codes:
@@ -77,5 +77,5 @@ class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
         insert_idx = u.Infra.index_after_docstring_and_future_imports(
             body,
         )
-        new_body = body[:insert_idx] + unique_hoisted + body[insert_idx:]
+        new_body = body[:insert_idx] + list(unique_hoisted) + body[insert_idx:]
         return updated_node.with_changes(body=new_body)

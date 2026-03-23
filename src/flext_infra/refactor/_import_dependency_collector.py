@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import MutableMapping
 from typing import override
 
 import libcst as cst
@@ -10,7 +10,7 @@ from flext_infra import u
 
 class ImportDependencyCollector(cst.CSTVisitor):
     def __init__(self) -> None:
-        self.local_to_import: Mapping[str, str] = {}
+        self.local_to_import: MutableMapping[str, str] = {}
 
     @override
     def visit_Import(self, node: cst.Import) -> None:

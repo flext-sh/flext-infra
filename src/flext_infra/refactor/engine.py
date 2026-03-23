@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter
@@ -44,9 +44,9 @@ class FlextInfraRefactorEngine:
         self.config_path = config_path or self._default_config_path()
         config_map: Mapping[str, t.Infra.InfraValue] = {}
         self.config: t.Infra.InfraValue = config_map
-        self.rules: Sequence[FlextInfraRefactorRule] = []
-        self.file_rules: Sequence[ClassNestingRefactorRule] = []
-        self.rule_filters: Sequence[str] = []
+        self.rules: MutableSequence[FlextInfraRefactorRule] = []
+        self.file_rules: MutableSequence[ClassNestingRefactorRule] = []
+        self.rule_filters: MutableSequence[str] = []
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
         self.rule_validator = FlextInfraRefactorRuleDefinitionValidator()
         self.safety_manager = self._build_safety_manager()
@@ -138,7 +138,7 @@ class FlextInfraRefactorEngine:
             u.Infra.print_rules_table(engine.list_rules())
             return 0
         if args.analyze_violations:
-            files_to_analyze: Sequence[Path] = []
+            files_to_analyze: MutableSequence[Path] = []
             if args.project:
                 scan_dirs = frozenset(
                     engine.rule_loader.extract_project_scan_dirs(engine.config),
@@ -189,9 +189,11 @@ class FlextInfraRefactorEngine:
                     )
                 ]
             elif args.workspace:
-                files_to_analyze = engine.collect_workspace_files(
-                    args.workspace,
-                    pattern=args.pattern,
+                files_to_analyze = list(
+                    engine.collect_workspace_files(
+                        args.workspace,
+                        pattern=args.pattern,
+                    )
                 )
             elif args.file:
                 if not args.file.exists():
@@ -214,18 +216,22 @@ class FlextInfraRefactorEngine:
                     f"Analysis report written: {args.analysis_output}"
                 )
             return 0
-        results: Sequence[m.Infra.Result] = []
+        results: MutableSequence[m.Infra.Result] = []
         if args.project:
-            results = engine.refactor_project(
-                args.project,
-                dry_run=args.dry_run,
-                pattern=args.pattern,
+            results = list(
+                engine.refactor_project(
+                    args.project,
+                    dry_run=args.dry_run,
+                    pattern=args.pattern,
+                )
             )
         elif args.workspace:
-            results = engine.refactor_workspace(
-                args.workspace,
-                dry_run=args.dry_run,
-                pattern=args.pattern,
+            results = list(
+                engine.refactor_workspace(
+                    args.workspace,
+                    dry_run=args.dry_run,
+                    pattern=args.pattern,
+                )
             )
         elif args.file:
             if not args.file.exists():
@@ -242,7 +248,7 @@ class FlextInfraRefactorEngine:
             missing_files = [item for item in args.files if not item.exists()]
             for file_path in missing_files:
                 u.Infra.refactor_error(f"File not found: {file_path}")
-            results = engine.refactor_files(existing_files, dry_run=args.dry_run)
+            results = list(engine.refactor_files(existing_files, dry_run=args.dry_run))
         u.Infra.print_summary(results, dry_run=args.dry_run)
         if args.impact_map_output is not None:
             _ = u.Infra.write_impact_map(results, args.impact_map_output)
@@ -267,7 +273,7 @@ class FlextInfraRefactorEngine:
         )
         ignore_patterns = {str(item) for item in ignore_items}
         allowed_extensions = {str(item) for item in extension_items}
-        all_files: Sequence[Path] = []
+        all_files: MutableSequence[Path] = []
         for project in project_paths:
             iter_result = u.Infra.iter_python_files(
                 workspace_root=root,
@@ -339,8 +345,8 @@ class FlextInfraRefactorEngine:
         if rules_result.is_failure:
             return r[Sequence[FlextInfraRefactorRule]].fail(rules_result.error or "")
         loaded_rules, loaded_file_rules = rules_result.value
-        self.rules = loaded_rules
-        self.file_rules = loaded_file_rules
+        self.rules = list(loaded_rules)
+        self.file_rules = list(loaded_file_rules)
         u.Infra.refactor_info(f"Loaded {len(self.rules)} rules")
         if self.file_rules:
             u.Infra.refactor_info(
@@ -370,7 +376,7 @@ class FlextInfraRefactorEngine:
                 )
             original_source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             source = original_source
-            all_changes: Sequence[str] = []
+            all_changes: MutableSequence[str] = []
             file_rule_modified = False
             for file_rule in self.file_rules:
                 file_rule_result = file_rule.apply(file_path, dry_run=True)
@@ -429,7 +435,7 @@ class FlextInfraRefactorEngine:
         dry_run: bool = False,
     ) -> Sequence[m.Infra.Result]:
         """Refactor many files and collect individual results."""
-        results: Sequence[m.Infra.Result] = []
+        results: MutableSequence[m.Infra.Result] = []
         for file_path in file_paths:
             if file_path.suffix != c.Infra.Extensions.PYTHON:
                 u.Infra.refactor_info(
@@ -527,7 +533,9 @@ class FlextInfraRefactorEngine:
             )
         ]
         u.Infra.refactor_info(f"Found {len(files)} files to process")
-        results = self.refactor_files(files, dry_run=dry_run)
+        results: MutableSequence[m.Infra.Result] = list(
+            self.refactor_files(files, dry_run=dry_run),
+        )
         if apply_safety and (not dry_run):
             checkpoint_result = self.safety_manager.save_checkpoint_state(
                 project_path,
@@ -574,8 +582,8 @@ class FlextInfraRefactorEngine:
         u.Infra.refactor_info(
             f"Discovered {len(project_paths)} projects in workspace",
         )
-        results: Sequence[m.Infra.Result] = []
-        processed_targets: Sequence[str] = []
+        results: MutableSequence[m.Infra.Result] = []
+        processed_targets: MutableSequence[str] = []
         stash_ref, stash_error = self._try_safety_stash(
             root,
             apply_safety=apply_safety,
@@ -619,7 +627,7 @@ class FlextInfraRefactorEngine:
         *,
         target_path: Path,
         stash_ref: str,
-        results: Sequence[m.Infra.Result],
+        results: MutableSequence[m.Infra.Result],
     ) -> None:
         validation_result = self.safety_manager.run_semantic_validation(target_path)
         if validation_result.is_failure:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
@@ -33,8 +33,8 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         self.modified_imports = False
         self.aliases_needed: set[str] = set()
         self.aliases_present: set[str] = set()
-        self.active_symbol_replacements: Mapping[str, str] = {}
-        self.changes: Sequence[str] = []
+        self.active_symbol_replacements: MutableMapping[str, str] = {}
+        self.changes: MutableSequence[str] = []
 
     @override
     def leave_ImportFrom(
@@ -64,8 +64,8 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
             imported_aliases = self._extract_import_aliases(original_node.names)
             if not imported_aliases:
                 return updated_node
-            mapped_aliases: Sequence[cst.ImportAlias] = []
-            unmapped_aliases: Sequence[cst.ImportAlias] = []
+            mapped_aliases: MutableSequence[cst.ImportAlias] = []
+            unmapped_aliases: MutableSequence[cst.ImportAlias] = []
             for imported_alias in imported_aliases:
                 if not isinstance(imported_alias.name, cst.Name):
                     unmapped_aliases.append(imported_alias)

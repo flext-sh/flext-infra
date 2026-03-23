@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -46,8 +46,8 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
             forbidden = [self.config]
         if not forbidden:
             return (tree, [])
-        imports_to_remove: Sequence[str] = []
-        symbols_to_replace: Mapping[str, str] = {}
+        imports_to_remove: MutableSequence[str] = []
+        symbols_to_replace: MutableMapping[str, str] = {}
         for rule_config in self._parse_forbidden_rules(forbidden):
             imports_to_remove.append(rule_config.module)
             symbols_to_replace.update(rule_config.symbol_mapping)

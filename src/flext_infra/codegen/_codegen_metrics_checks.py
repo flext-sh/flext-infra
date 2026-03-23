@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -28,7 +28,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         before_available: bool,
         before_load_error: str,
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
-        checks: Sequence[m.Infra.QualityGateCheck] = []
+        checks: MutableSequence[m.Infra.QualityGateCheck] = []
         violations_total = FlextInfraCodegenMetricsChecks.as_int(
             after_metrics.get("total_violations"),
         )
@@ -162,7 +162,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         workspace_root: Path,
         census_reports: Sequence[m.Infra.CensusReport],
     ) -> Sequence[m.Infra.DuplicateConstantGroup]:
-        all_definitions: Sequence[m.Infra.ConstantDefinition] = []
+        all_definitions: MutableSequence[m.Infra.ConstantDefinition] = []
         for report in census_reports:
             project_root = workspace_root / report.project
             constants_file = (
@@ -175,10 +175,12 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
                 report.project,
             )
             all_definitions.extend(definitions)
-        name_to_defs: Mapping[str, Sequence[m.Infra.ConstantDefinition]] = {}
+        name_to_defs: MutableMapping[
+            str, MutableSequence[m.Infra.ConstantDefinition]
+        ] = {}
         for definition in all_definitions:
             name_to_defs.setdefault(definition.name, []).append(definition)
-        groups: Sequence[m.Infra.DuplicateConstantGroup] = []
+        groups: MutableSequence[m.Infra.DuplicateConstantGroup] = []
         for name, definitions in sorted(name_to_defs.items()):
             projects = {item.project for item in definitions}
             if (
@@ -201,7 +203,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     def quality_gate_project_findings(
         census_reports: Sequence[m.Infra.CensusReport],
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
-        findings: Sequence[m.Infra.QualityGateProjectFinding] = [
+        findings: MutableSequence[m.Infra.QualityGateProjectFinding] = [
             m.Infra.QualityGateProjectFinding(
                 project=entry.project,
                 violations_total=len(tuple(entry.violations)),
@@ -213,8 +215,10 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
             )
             for entry in census_reports
         ]
-        findings.sort(key=lambda item: item.project)
-        return [item.model_dump() for item in findings]
+        return [
+            item.model_dump()
+            for item in sorted(findings, key=lambda item: item.project)
+        ]
 
 
 __all__ = ["FlextInfraCodegenMetricsChecks"]

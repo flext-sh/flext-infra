@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tomllib
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def dedupe_specs(specs: Sequence[str]) -> Sequence[str]:
         """Deduplicate dependency specifications by normalized name, sorted by full spec string."""
-        seen: Mapping[str, str] = {}
+        seen: MutableMapping[str, str] = {}
         for spec in specs:
             key = FlextInfraUtilitiesTomlParse.dep_name(spec)
             if key and key not in seen:
@@ -55,7 +55,7 @@ class FlextInfraUtilitiesTomlParse:
     def ensure_pyright_execution_envs(
         pyright: Table,
         expected: Sequence[Mapping[str, str]],
-        changes: Sequence[str],
+        changes: MutableSequence[str],
     ) -> None:
         """Ensure pyright executionEnvironments matches expected; append to changes if updated."""
         raw = FlextInfraUtilitiesToml.unwrap_item(
@@ -79,7 +79,7 @@ class FlextInfraUtilitiesTomlParse:
         src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return []
-        namespaces: Sequence[str] = []
+        namespaces: MutableSequence[str] = []
         for entry in sorted(src_dir.iterdir()):
             if not entry.is_dir() or entry.name == "__pycache__":
                 continue

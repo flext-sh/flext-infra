@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import sys
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -50,7 +50,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             "--summary=none",
         ]
         result = self._run(cmd, project_dir)
-        issues: Sequence[m.Infra.Issue] = []
+        issues: MutableSequence[m.Infra.Issue] = []
         if json_file.exists():
             try:
                 raw_text = json_file.read_text(encoding=c.Infra.Encoding.DEFAULT)

@@ -12,7 +12,7 @@ import re
 import token
 import tokenize
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from io import StringIO
 from pathlib import Path
 from typing import override
@@ -182,7 +182,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 parts = parts[:-1]
             return ".".join(parts)
 
-        source_target_names: Sequence[tuple[str, str, set[str]]] = []
+        source_target_names: MutableSequence[tuple[str, str, set[str]]] = []
         for source_file, target_file, moved_name_seq in protocol_moves:
             source_module = _module_path(source_file)
             target_module = _module_path(target_file)
@@ -242,9 +242,9 @@ class FlextInfraUtilitiesRefactorNamespace:
         if parsed is None:
             return None
         source, tree = parsed.source, parsed.tree
-        class_nodes: Sequence[ast.ClassDef] = []
-        remove_ranges: Sequence[tuple[int, int]] = []
-        blocks: Sequence[str] = []
+        class_nodes: MutableSequence[ast.ClassDef] = []
+        remove_ranges: MutableSequence[tuple[int, int]] = []
+        blocks: MutableSequence[str] = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.ClassDef):
                 continue
@@ -277,7 +277,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             blocks=blocks,
         )
         source_lines = source.splitlines()
-        filtered_lines: Sequence[str] = []
+        filtered_lines: MutableSequence[str] = []
         for line_number, line_content in enumerate(source_lines, start=1):
             should_skip = any(
                 start <= line_number <= end for start, end in remove_ranges
@@ -297,7 +297,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         project_root: Path,
         source_file: Path,
         alias_names: set[str],
-        parse_failures: Sequence[m.Infra.ParseFailureViolation],
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
         parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
             source_file,
@@ -307,8 +307,8 @@ class FlextInfraUtilitiesRefactorNamespace:
         if parsed is None:
             return
         source, tree = parsed.source, parsed.tree
-        remove_ranges: Sequence[tuple[int, int]] = []
-        blocks: Sequence[str] = []
+        remove_ranges: MutableSequence[tuple[int, int]] = []
+        blocks: MutableSequence[str] = []
         for stmt in tree.body:
             if isinstance(stmt, ast.TypeAlias):
                 alias_name = stmt.name.id
@@ -350,7 +350,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             blocks=blocks,
         )
         source_lines = source.splitlines()
-        filtered_lines: Sequence[str] = []
+        filtered_lines: MutableSequence[str] = []
         for line_number, line_content in enumerate(source_lines, start=1):
             should_skip = any(
                 start <= line_number <= end for start, end in remove_ranges
@@ -542,11 +542,11 @@ class FlextInfraUtilitiesRefactorNamespace:
     def namespace_rewrite_mro_completeness_violations(
         *,
         violations: Sequence[m.Infra.MROCompletenessViolation],
-        parse_failures: Sequence[m.Infra.ParseFailureViolation],
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
         """Rewrite facade class headers adding missing MRO bases and Ruff-format."""
         violations_by_file: Mapping[
-            Path, Sequence[m.Infra.MROCompletenessViolation]
+            Path, MutableSequence[m.Infra.MROCompletenessViolation]
         ] = defaultdict(
             list,
         )
@@ -713,7 +713,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         grouped_names: Mapping[Path, set[str]] = defaultdict(set)
         for violation in violations:
             grouped_names[Path(violation.file)].add(violation.name)
-        protocol_moves: Sequence[tuple[Path, Path, tuple[str, ...]]] = []
+        protocol_moves: MutableSequence[tuple[Path, Path, tuple[str, ...]]] = []
         for source_file, protocol_names in grouped_names.items():
             move_result = FlextInfraUtilitiesRefactorNamespace._namespace_move_protocol_classes_to_canonical_file(
                 project_root=project_root,
@@ -735,7 +735,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         *,
         project_root: Path,
         violations: Sequence[m.Infra.ManualTypingAliasViolation],
-        parse_failures: Sequence[m.Infra.ParseFailureViolation],
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
         """Move manual typing aliases to their canonical files."""
         grouped_names: Mapping[Path, set[str]] = defaultdict(set)
@@ -753,10 +753,10 @@ class FlextInfraUtilitiesRefactorNamespace:
     def namespace_rewrite_compatibility_alias_violations(
         *,
         violations: Sequence[m.Infra.CompatibilityAliasViolation],
-        parse_failures: Sequence[m.Infra.ParseFailureViolation],
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
         """Rewrite compatibility alias violations in source files."""
-        grouped: Mapping[Path, Mapping[str, str]] = defaultdict(dict)
+        grouped: Mapping[Path, MutableMapping[str, str]] = defaultdict(dict)
         for violation in violations:
             grouped[Path(violation.file)][violation.alias_name] = violation.target_name
         for file_path, alias_map in grouped.items():
@@ -790,10 +790,10 @@ class FlextInfraUtilitiesRefactorNamespace:
             ]
             kept_source = "".join(kept_lines)
             line_buffer = kept_source.splitlines(keepends=True)
-            replacements_by_line: Mapping[int, Sequence[tuple[int, int, str]]] = (
-                defaultdict(
-                    list,
-                )
+            replacements_by_line: Mapping[
+                int, MutableSequence[tuple[int, int, str]]
+            ] = defaultdict(
+                list,
             )
             token_generator = tokenize.generate_tokens(StringIO(kept_source).readline)
             for tok in token_generator:
@@ -833,7 +833,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         file_path: Path,
         *,
         stage: str = "scan",
-        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> m.Infra.ParsedPythonModule | None:
         """Load and parse a Python module while recording parse failures."""
         return FlextInfraUtilitiesRefactorLoader.load_python_module(
@@ -874,7 +874,7 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
         if isinstance(updated_node.names, cst.ImportStar):
             self.changed = True
             return cst.RemovalSentinel.REMOVE
-        remaining: Sequence[cst.ImportAlias] = []
+        remaining: MutableSequence[cst.ImportAlias] = []
         for alias in updated_node.names:
             name = self._alias_name(alias)
             if alias.asname is not None:
@@ -900,7 +900,7 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
         if isinstance(module, cst.Name):
             return module.value
         if isinstance(module, cst.Attribute):
-            parts: Sequence[str] = []
+            parts: MutableSequence[str] = []
             current: cst.BaseExpression = module
             while isinstance(current, cst.Attribute):
                 parts.append(current.attr.value)
@@ -922,7 +922,7 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
     def _normalize_commas(
         aliases: Sequence[cst.ImportAlias],
     ) -> Sequence[cst.ImportAlias]:
-        cleaned: Sequence[cst.ImportAlias] = []
+        cleaned: MutableSequence[cst.ImportAlias] = []
         for idx, alias in enumerate(aliases):
             if idx < len(aliases) - 1:
                 cleaned.append(

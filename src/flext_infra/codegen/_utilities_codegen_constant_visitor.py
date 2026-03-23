@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import operator
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Final, override
 
@@ -61,8 +61,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             self._render = FlextInfraUtilitiesCodegenConstantDetection.RenderContext(
                 Path(file_path).read_text("utf-8"),
             )
-            self._class_stack: Sequence[str] = []
-            self.definitions: Sequence[m.Infra.ConstantDefinition] = []
+            self._class_stack: MutableSequence[str] = []
+            self.definitions: MutableSequence[m.Infra.ConstantDefinition] = []
 
         @override
         def visit_ClassDef(self, node: cst.ClassDef) -> None:
@@ -111,8 +111,10 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                 Path(file_path).read_text("utf-8"),
             )
             self.used_constants: set[str] = set()
-            self.direct_refs: Sequence[m.Infra.DirectConstantRef] = []
-            self.all_constant_refs: Sequence[tuple[str, int]] = []  # (name, line)
+            self.direct_refs: MutableSequence[m.Infra.DirectConstantRef] = []
+            self.all_constant_refs: MutableSequence[
+                tuple[str, int]
+            ] = []  # (name, line)
 
         @override
         def visit_Attribute(self, node: cst.Attribute) -> None:
@@ -267,7 +269,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if exclude_packages is None:
             exclude_packages = frozenset()
 
-        all_defs: Mapping[str, Sequence[m.Infra.ConstantDefinition]] = {}
+        all_defs: MutableMapping[str, MutableSequence[m.Infra.ConstantDefinition]] = {}
 
         for py_file in root_path.rglob("*.py"):
             # Skip excluded packages
@@ -352,7 +354,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if exclude_packages is None:
             exclude_packages = frozenset()
 
-        usage_map: Mapping[str, Sequence[tuple[str, int]]] = {}
+        usage_map: MutableMapping[str, MutableSequence[tuple[str, int]]] = {}
 
         for py_file in root_path.rglob("*.py"):
             if any(excl in py_file.parts for excl in exclude_packages):
@@ -421,21 +423,21 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         - Same value (potential consolidation candidates)
         """
         # Group by name
-        by_name: Mapping[str, Sequence[m.Infra.ConstantDefinition]] = {}
+        by_name: MutableMapping[str, MutableSequence[m.Infra.ConstantDefinition]] = {}
         for defn in definitions:
             if defn.name not in by_name:
                 by_name[defn.name] = []
             by_name[defn.name].append(defn)
 
         # Group by value (for value duplicates)
-        by_value: Mapping[str, Sequence[m.Infra.ConstantDefinition]] = {}
+        by_value: MutableMapping[str, MutableSequence[m.Infra.ConstantDefinition]] = {}
         for defn in definitions:
             value_key = defn.value_repr
             if value_key not in by_value:
                 by_value[value_key] = []
             by_value[value_key].append(defn)
 
-        duplicates: Sequence[m.Infra.DuplicateConstantGroup] = []
+        duplicates: MutableSequence[m.Infra.DuplicateConstantGroup] = []
 
         # Name-based duplicates (at least 2 definitions)
         for name, defs in by_name.items():
@@ -516,7 +518,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         except (ImportError, AttributeError, ValueError):
             return {}
 
-        result: Mapping[str, m.Infra.ConstantDefinition] = {}
+        result: MutableMapping[str, m.Infra.ConstantDefinition] = {}
         seen_names: set[str] = set()
 
         # Walk MRO to get all attributes (constants, enums, classes, types)
@@ -569,7 +571,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
         """
         used_names: set[str] = set()
-        usage_map: Mapping[str, Sequence[tuple[str, int]]] = {}
+        usage_map: MutableMapping[str, MutableSequence[tuple[str, int]]] = {}
 
         # Fast lookup for class usages
         search_prefix = f"{class_name}."
@@ -662,7 +664,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if not attrs:
             return {}
 
-        by_type: Mapping[str, Mapping[str, int]] = {}
+        by_type: MutableMapping[str, MutableMapping[str, int]] = {}
         for attr_name, attr_def in attrs.items():
             attr_type = attr_def.type_annotation
             if attr_type not in by_type:
@@ -698,7 +700,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             return []
 
         # Group by value
-        by_value: Mapping[str, Sequence[Mapping[str, str | int]]] = {}
+        by_value: MutableMapping[str, MutableSequence[Mapping[str, str | int]]] = {}
         for name, defn in attrs.items():
             value_key = defn.value_repr[:100]
             if value_key not in by_value:
@@ -710,7 +712,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             })
 
         # Create fix proposals for duplicates
-        fixes: Sequence[
+        fixes: MutableSequence[
             Mapping[str, str | int | Sequence[Mapping[str, str | int]]]
         ] = []
         for value, names_list in by_value.items():
@@ -730,7 +732,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             })
 
         # Sort by impact (total usages × duplicates)
-        fixes.sort(
+        return sorted(
+            fixes,
             key=lambda x: (
                 (
                     x["canonical_usages"]
@@ -741,7 +744,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             ),
             reverse=True,
         )
-        return fixes
 
     @staticmethod
     def apply_deduplication_fix(
@@ -766,8 +768,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         )
 
         files_modified = 0
-        replaced_names: Sequence[str] = []
-        replaced_details: Sequence[
+        replaced_names: MutableSequence[str] = []
+        replaced_details: MutableSequence[
             Mapping[str, str | int]
         ] = []  # Track file, line, old_name for each replacement
 

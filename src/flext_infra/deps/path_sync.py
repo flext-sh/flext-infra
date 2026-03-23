@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -131,8 +131,8 @@ class FlextInfraDependencyPathSync:
         )
         if not deps:
             return []
-        changes: Sequence[str] = []
-        updated_deps: Sequence[str] = []
+        changes: MutableSequence[str] = []
+        updated_deps: MutableSequence[str] = []
         for item_raw in deps:
             item = item_raw
             marker = ""
@@ -185,7 +185,7 @@ class FlextInfraDependencyPathSync:
         if not isinstance(deps_raw, Table):
             return []
         deps: Table = deps_raw
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         for dep_key_raw in deps:
             dep_key = dep_key_raw
             value = deps[dep_key_raw]
@@ -224,13 +224,15 @@ class FlextInfraDependencyPathSync:
                 doc_result.error or "failed to read TOML document"
             )
         doc: TOMLDocument = doc_result.value
-        changes = self._rewrite_pep621(
-            doc,
-            is_root=is_root,
-            mode=mode,
-            internal_names=internal_names,
+        changes: MutableSequence[str] = list(
+            self._rewrite_pep621(
+                doc,
+                is_root=is_root,
+                mode=mode,
+                internal_names=internal_names,
+            )
         )
-        changes += self._rewrite_poetry(doc, is_root=is_root, mode=mode)
+        changes += list(self._rewrite_poetry(doc, is_root=is_root, mode=mode))
         if changes and (not dry_run):
             write_result = self._write_document(pyproject_path, doc)
             if write_result.is_failure:

@@ -12,7 +12,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from functools import lru_cache
 from pathlib import Path
 
@@ -81,7 +81,7 @@ class FlextInfraUtilitiesImportNormalizer:
         )
         if not isinstance(config, Mapping):
             return {}
-        tiers: Mapping[str, int] = {}
+        tiers: MutableMapping[str, int] = {}
         for alias_name, tier_value in config.items():
             if len(alias_name) != 1 or not alias_name.islower():
                 continue
@@ -150,7 +150,7 @@ class FlextInfraUtilitiesImportNormalizer:
             package_dir=package_dir,
             package_name=package_name,
         )
-        reachability: Mapping[str, frozenset[str]] = {}
+        reachability: MutableMapping[str, frozenset[str]] = {}
         for module_name in graph:
             visited: set[str] = set()
             queue: deque[str] = deque(graph.get(module_name, frozenset()))
@@ -184,7 +184,7 @@ class FlextInfraUtilitiesImportNormalizer:
         package_name: str,
     ) -> Mapping[str, frozenset[str]]:
         """Build direct intra-package import graph from source files."""
-        graph: Mapping[str, set[str]] = {}
+        graph: MutableMapping[str, set[str]] = {}
         for py_file in package_dir.rglob("*.py"):
             tree = FlextInfraUtilitiesParsing.parse_module_ast(py_file)
             if tree is None:
@@ -316,7 +316,7 @@ class FlextInfraUtilitiesImportNormalizer:
             facade_to_alias=facade_to_alias,
             alias_tiers=alias_tiers,
         )
-        reachability = (
+        reachability: Mapping[str, frozenset[str]] = (
             FlextInfraUtilitiesImportNormalizer.normalizer_build_reachability(
                 package_dir,
                 package_name,
@@ -342,10 +342,10 @@ class FlextInfraUtilitiesImportNormalizer:
             project_package=package_name,
             project_aliases=frozenset(project_aliases),
             declared_alias=declared_alias,
-            alias_to_defining_module=alias_to_module,
-            alias_tiers=dict(alias_tiers),
+            alias_to_defining_module={**alias_to_module},
+            alias_tiers=dict(alias_tiers.items()),
             file_tier=file_tier,
-            package_reachability=reachability,
+            package_reachability={**reachability},
             wrong_source_enabled=wrong_source_enabled,
             universal_aliases=universal_aliases,
             workspace_packages=workspace_packages,

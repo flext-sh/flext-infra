@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar, override
@@ -68,8 +68,10 @@ class FlextInfraTransformerTier0ImportFixer:
                     package_name="", file_path=self._file_path
                 )
 
-            alias_map = u.Infra.discover_project_aliases(
-                pkg_dir.parent if pkg_dir.name == "src" else pkg_dir
+            alias_map: MutableMapping[str, str] = dict(
+                u.Infra.discover_project_aliases(
+                    pkg_dir.parent if pkg_dir.name == "src" else pkg_dir
+                )
             )
             alias_map.update(u.Infra.extract_lazy_import_map(pkg_dir / "__init__.py"))
 
@@ -190,12 +192,12 @@ class FlextInfraTransformerTier0ImportFixer:
             )
             self._core_pending = set(analysis.category_b)
             self._type_checking_pending = set(analysis.category_c)
-            self._direct_pending: Mapping[str, set[str]] = {}
+            self._direct_pending: MutableMapping[str, set[str]] = {}
             for a in sorted(analysis.category_d):
                 sub = alias_to_submodule.get(a, analysis.alias_to_module.get(a, ""))
                 if sub:
                     self._direct_pending.setdefault(sub, set()).add(a)
-            self._changes: Sequence[str] = []
+            self._changes: MutableSequence[str] = []
             self._type_checking_import_present = False
             self._missing_classes: set[str] = set()
 
@@ -234,7 +236,7 @@ class FlextInfraTransformerTier0ImportFixer:
         def leave_Module(
             self, original_node: cst.Module, updated_node: cst.Module
         ) -> cst.Module:
-            stmts: Sequence[cst.BaseStatement] = list(updated_node.body)
+            stmts: MutableSequence[cst.BaseStatement] = list(updated_node.body)
             if not self._type_checking_import_present and self._type_checking_pending:
                 stmts.insert(
                     self._idx(stmts),
@@ -298,8 +300,8 @@ class FlextInfraTransformerTier0ImportFixer:
             existing = list(node.names)
             return node.with_changes(names=tuple(existing + add))
 
-        def _build_additions(self) -> Sequence[cst.BaseStatement]:
-            res: Sequence[cst.BaseStatement] = []
+        def _build_additions(self) -> MutableSequence[cst.BaseStatement]:
+            res: MutableSequence[cst.BaseStatement] = []
             if self._core_pending:
                 res.append(
                     u.Infra.cst_import_line(

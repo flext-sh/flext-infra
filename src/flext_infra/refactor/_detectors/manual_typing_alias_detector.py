@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -126,7 +126,7 @@ class ManualTypingAliasDetector(
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: Sequence[nem.ManualTypingAliasViolation] = []
+        violations: MutableSequence[nem.ManualTypingAliasViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.SimpleStatementLine):
                 continue

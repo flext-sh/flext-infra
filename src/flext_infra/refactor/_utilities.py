@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import ast
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesRefactor(
             except ValidationError as exc:
                 msg = "expected Sequence[str] value"
                 raise ValueError(msg) from exc
-            items: Sequence[str] = []
+            items: MutableSequence[str] = []
             for item in value_items:
                 if not isinstance(item, str):
                     msg = "expected Sequence[str] value"
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesRefactor(
             except ValidationError as exc:
                 msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
                 raise ValueError(msg) from exc
-            normalized: Sequence[Mapping[str, t.Infra.InfraValue]] = []
+            normalized: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
             for item in value_items:
                 if not isinstance(item, dict):
                     continue
@@ -387,7 +387,7 @@ class FlextInfraUtilitiesRefactor(
             ``{class_name: [(method_name, method_type, source_file), ...]}``.
 
         """
-        result: Mapping[str, Sequence[tuple[str, str, str]]] = {}
+        result: MutableMapping[str, Sequence[tuple[str, str, str]]] = {}
         for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
             if py_file.name == c.Infra.Files.INIT_PY:
                 continue
@@ -418,11 +418,11 @@ class FlextInfraUtilitiesRefactor(
         tree = FlextInfraUtilitiesParsing.parse_module_ast(py_file)
         if tree is None:
             return {}
-        result: Mapping[str, Sequence[tuple[str, str, str]]] = {}
+        result: MutableMapping[str, MutableSequence[tuple[str, str, str]]] = {}
         for node in ast.iter_child_nodes(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
-            methods: Sequence[tuple[str, str, str]] = []
+            methods: MutableSequence[tuple[str, str, str]] = []
             for item in ast.iter_child_nodes(node):
                 if isinstance(item, ast.FunctionDef) and not item.name.startswith("_"):
                     decs = [
@@ -471,7 +471,7 @@ class FlextInfraUtilitiesRefactor(
         if tree is None:
             return {}
 
-        alias_map: Mapping[str, tuple[str, str]] = {}
+        alias_map: MutableMapping[str, tuple[str, str]] = {}
         for node in ast.iter_child_nodes(tree):
             if not (isinstance(node, ast.ClassDef) and node.name == facade_class_name):
                 continue
@@ -518,7 +518,7 @@ class FlextInfraUtilitiesRefactor(
         if tree is None:
             return {}
 
-        name_map: Mapping[str, str] = {}
+        name_map: MutableMapping[str, str] = {}
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.ClassDef) and node.name == facade_class_name:
                 for item in ast.iter_child_nodes(node):
@@ -586,10 +586,10 @@ class FlextInfraUtilitiesRefactor(
             cnt[rec.class_name, rec.method_name, rec.access_mode] += 1
             pcnt[rec.project, rec.class_name, rec.method_name, rec.access_mode] += 1
 
-        cls_sums: Sequence[m.Infra.CensusClassSummary] = []
+        cls_sums: MutableSequence[m.Infra.CensusClassSummary] = []
         unused = 0
         for cls, items in sorted(methods.items()):
-            m_list: Sequence[m.Infra.CensusMethodSummary] = []
+            m_list: MutableSequence[m.Infra.CensusMethodSummary] = []
             for m_info in items:
                 af = cnt.get(
                     (cls, m_info.name, c.Infra.Census.MODE_ALIAS_FLAT),
@@ -621,9 +621,9 @@ class FlextInfraUtilitiesRefactor(
                 ),
             )
 
-        pj_sums: Mapping[str, Sequence[m.Infra.CensusProjectMethodUsage]] = defaultdict(
-            list
-        )
+        pj_sums: MutableMapping[
+            str, MutableSequence[m.Infra.CensusProjectMethodUsage]
+        ] = defaultdict(list)
         for (pj, cls, mx, mo), co in sorted(pcnt.items()):
             pj_sums[pj].append(
                 m.Infra.CensusProjectMethodUsage(

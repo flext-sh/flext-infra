@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -31,7 +31,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         self._current_function: str = ""
         self._current_function_is_typeguard: bool = False
         self._renderer = cst.Module(body=[])
-        self.violations: Sequence[Mapping[str, str | int]] = []
+        self.violations: MutableSequence[Mapping[str, str | int]] = []
 
     @override
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
@@ -237,7 +237,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
     def _get_subscript_values(
         self, node: cst.Subscript
     ) -> Sequence[cst.BaseExpression]:
-        values: Sequence[cst.BaseExpression] = []
+        values: MutableSequence[cst.BaseExpression] = []
         for element in node.slice:
             if isinstance(element.slice, cst.Index):
                 values.append(element.slice.value)

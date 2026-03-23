@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -132,12 +132,12 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             return []
-        violations: Sequence[nem.RuntimeAliasViolation] = []
+        violations: MutableSequence[nem.RuntimeAliasViolation] = []
         _ = project_name
         family = cls._family_for_file(file_name=file_path.name)
         if not family:
             return []
-        alias_assignments: Sequence[tuple[int, str, str]] = []
+        alias_assignments: MutableSequence[tuple[int, str, str]] = []
         for stmt in u.Infra.cst_iter_simple_statements(tree.body):
             if not isinstance(stmt, cst.Assign):
                 continue

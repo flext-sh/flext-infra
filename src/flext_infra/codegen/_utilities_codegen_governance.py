@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import ClassVar, Final
 
@@ -10,7 +10,7 @@ from flext_infra import m, t
 
 
 class FlextInfraUtilitiesCodegenGovernance:
-    _config_cache: ClassVar[Mapping[str, m.Infra.ConstantsGovernanceConfig]] = {}
+    _config_cache: ClassVar[MutableMapping[str, m.Infra.ConstantsGovernanceConfig]] = {}
     GOVERNANCE_FILE: Final[Path] = (
         Path(__file__).parent.parent / "rules" / "constants-governance.yml"
     )

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -141,7 +141,7 @@ class ClassPlacementDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: Sequence[nem.ClassPlacementViolation] = []
+        violations: MutableSequence[nem.ClassPlacementViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.ClassDef):
                 continue

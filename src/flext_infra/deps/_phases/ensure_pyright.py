@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -29,7 +29,7 @@ class EnsurePyrightConfigPhase:
         if workspace_root is None:
             return self._expected_envs_for_project(project_dir)
 
-        expected_envs: Sequence[Mapping[str, str]] = []
+        expected_envs: MutableSequence[Mapping[str, str]] = []
         root_src = workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR
         root_tests = workspace_root / c.Infra.Directories.TESTS
         root_examples = workspace_root / c.Infra.Directories.EXAMPLES
@@ -99,7 +99,7 @@ class EnsurePyrightConfigPhase:
                 {"root": c.Infra.Directories.TESTS, "reportPrivateUsage": "none"},
             ]
         discovered = u.Infra.discover_python_dirs(project_dir)
-        envs: Sequence[Mapping[str, str]] = []
+        envs: MutableSequence[Mapping[str, str]] = []
         for dir_name in discovered:
             if dir_name == c.Infra.Paths.DEFAULT_SRC_DIR:
                 envs.append({"root": dir_name, "reportPrivateUsage": "error"})
@@ -136,7 +136,7 @@ class EnsurePyrightConfigPhase:
         project_dir: Path | None = None,
         project_kind: str = "core",
     ) -> Sequence[str]:
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:
             raw_tool = doc[c.Infra.Toml.TOOL]
@@ -170,7 +170,7 @@ class EnsurePyrightConfigPhase:
                 changes.append(f"tool.pyright.{key} set to {value}")
         # Merge extended_settings with project_kind overrides BEFORE applying
         # to avoid double-change noise (set to X then immediately override to Y)
-        merged_settings: Mapping[str, str] = {
+        merged_settings: MutableMapping[str, str] = {
             **self._tool_config.tools.pyright.extended_settings,
         }
         override = self._override_for_kind(project_kind)

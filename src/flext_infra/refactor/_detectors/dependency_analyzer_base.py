@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -50,7 +50,7 @@ class DependencyAnalyzer:
             List of RefactorProjectInfo for each discovered project.
 
         """
-        projects: Sequence[m.Infra.RefactorProjectInfo] = []
+        projects: MutableSequence[m.Infra.RefactorProjectInfo] = []
         for candidate in sorted(self._workspace_root.iterdir()):
             if not candidate.is_dir() or candidate.name.startswith("."):
                 continue
@@ -104,7 +104,7 @@ class DependencyAnalyzer:
             Dict mapping package name to project name.
 
         """
-        idx: Mapping[str, str] = {}
+        idx: MutableMapping[str, str] = {}
         for proj in projects:
             for pkg in proj.package_roots:
                 _ = idx.setdefault(pkg, proj.name)
@@ -136,7 +136,7 @@ class DependencyAnalyzer:
             src_dirs=frozenset({"src"}),
         )
         return files_result.fold(
-            on_failure=lambda _: Sequence[Path](),
+            on_failure=lambda _: [],
             on_success=lambda v: v,
         )
 

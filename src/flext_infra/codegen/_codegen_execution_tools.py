@@ -12,7 +12,7 @@ from __future__ import annotations
 import ast
 import shutil
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -101,7 +101,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     def run_external_check(
         workspace_root: Path,
         cmd: Sequence[str],
-    ) -> Mapping[str, t.Infra.InfraValue]:
+    ) -> MutableMapping[str, t.Infra.InfraValue]:
         """Execute external check command and return result."""
         result = FlextInfraUtilitiesSubprocess().run_raw(cmd, cwd=workspace_root)
         if result.is_failure:
@@ -126,8 +126,8 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         modified_files: Sequence[str],
     ) -> Mapping[str, t.Infra.InfraValue]:
         """Scan import nodes in modified files for invalid patterns."""
-        invalid_import_from: Sequence[str] = []
-        parse_errors: Sequence[str] = []
+        invalid_import_from: MutableSequence[str] = []
+        parse_errors: MutableSequence[str] = []
         for rel_path in modified_files:
             file_path = (workspace_root / rel_path).resolve()
             if not file_path.is_file():

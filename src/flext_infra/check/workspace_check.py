@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import time
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
@@ -73,7 +73,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
     @staticmethod
     def resolve_gates(gates: Sequence[str]) -> r[Sequence[str]]:
         """Resolve and validate requested gate names."""
-        resolved: Sequence[str] = []
+        resolved: MutableSequence[str] = []
         for gate in gates:
             name = gate.strip()
             if not name:
@@ -240,7 +240,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         resolved_gates: Sequence[str] = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         report_base.mkdir(parents=True, exist_ok=True)
-        results: Sequence[m.Infra.ProjectResult] = []
+        results: MutableSequence[m.Infra.ProjectResult] = []
         total = len(projects)
         failed = 0
         skipped = 0

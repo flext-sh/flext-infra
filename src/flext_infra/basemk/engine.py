@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
@@ -73,7 +73,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         """Render all base.mk templates into a single output string."""
         active_config = config or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
-        sections: Sequence[str] = []
+        sections: MutableSequence[str] = []
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
                 template = self._environment.get_template(template_name)

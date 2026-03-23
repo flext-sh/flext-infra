@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -149,7 +149,7 @@ class ImportAliasDetector(p.Infra.Scanner):
             project_package=cls._discover_package(file_path),
             alias_map=None,
         )
-        violations: Sequence[nem.ImportAliasViolation] = []
+        violations: MutableSequence[nem.ImportAliasViolation] = []
         for raw in violations_raw:
             violation_type = getattr(raw, "violation_type", "")
             file_value = getattr(raw, "file", "")

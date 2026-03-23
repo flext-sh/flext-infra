@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -88,7 +88,7 @@ class FlextInfraGate(ABC):
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: Sequence[str]) -> Sequence[str]:
-        out: Sequence[str] = []
+        out: MutableSequence[str] = []
         for directory in dirs:
             path = project_dir / directory
             if not path.is_dir():
@@ -120,7 +120,7 @@ class FlextInfraGate(ABC):
         typed_items = TypeAdapter(Sequence[t_infra.Infra.InfraValue]).validate_python(
             value
         )
-        normalized: Sequence[Mapping[str, t_infra.Infra.InfraValue]] = []
+        normalized: MutableSequence[Mapping[str, t_infra.Infra.InfraValue]] = []
         for raw_item in typed_items:
             try:
                 typed_item = TypeAdapter(

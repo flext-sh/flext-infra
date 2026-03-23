@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from collections.abc import Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_infra import (
@@ -90,7 +90,7 @@ class FlextInfraRefactorCensus:
         files = [file_path for _, file_path in modules]
         roots = [project_root for project_root, _ in modules]
 
-        recs: Sequence[m.Infra.CensusUsageRecord] = []
+        recs: MutableSequence[m.Infra.CensusUsageRecord] = []
         errs = usage = 0
         for i, fp in enumerate(files, 1):
             if i % 500 == 0:

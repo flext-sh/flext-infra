@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -67,7 +67,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
         projects_result = u.Infra.discover_projects(self._workspace_root)
         if not projects_result.is_success:
             return []
-        results: Sequence[m.Infra.ScaffoldResult] = []
+        results: MutableSequence[m.Infra.ScaffoldResult] = []
         discovered: Sequence[m.Infra.ProjectInfo] = projects_result.unwrap()
         projects = discovered
         for project in projects:
@@ -96,8 +96,8 @@ class FlextInfraCodegenScaffolder(s[bool]):
                 files_created=[],
                 files_skipped=[],
             )
-        files_created: Sequence[str] = []
-        files_skipped: Sequence[str] = []
+        files_created: MutableSequence[str] = []
+        files_skipped: MutableSequence[str] = []
         pkg_dir = self._find_package_dir(project_path)
         if pkg_dir is not None:
             self._scaffold_dir(
@@ -131,8 +131,8 @@ class FlextInfraCodegenScaffolder(s[bool]):
         prefix: str,
         modules: tuple[tuple[str, str, str, str], ...],
         test_prefix: str,
-        files_created: Sequence[str],
-        files_skipped: Sequence[str],
+        files_created: MutableSequence[str],
+        files_skipped: MutableSequence[str],
     ) -> None:
         """Generate missing modules in a directory."""
         for filename, suffix, base_class, doc_suffix in modules:

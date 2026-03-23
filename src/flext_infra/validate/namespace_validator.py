@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -121,7 +121,7 @@ class FlextInfraNamespaceValidator:
         try:
             files = self._discover_files(project_root, scan_tests=scan_tests)
             prefix = self._derive_prefix(project_root)
-            violations: Sequence[str] = []
+            violations: MutableSequence[str] = []
             for filepath in files:
                 tree = self._parse_file(filepath)
                 if tree is None:
@@ -157,7 +157,7 @@ class FlextInfraNamespaceValidator:
         starts with the project prefix, and that all other top-level
         statements are on the allowlist.
         """
-        violations: Sequence[str] = []
+        violations: MutableSequence[str] = []
         seq = 0
         outer_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         class_count = len(outer_classes)
@@ -194,7 +194,7 @@ class FlextInfraNamespaceValidator:
         In other modules: no loose ``Final`` constants, no loose Enum classes,
         no loose collection constant assignments.
         """
-        violations: Sequence[str] = []
+        violations: MutableSequence[str] = []
         seq = 0
         is_constants = filepath.name == "constants.py"
         if is_constants:
@@ -259,7 +259,7 @@ class FlextInfraNamespaceValidator:
         In other modules: no TypeVar/ParamSpec/TypeVarTuple calls,
         no TypeAlias annotations, no PEP 695 TypeAlias statements.
         """
-        violations: Sequence[str] = []
+        violations: MutableSequence[str] = []
         seq = 0
         is_typings = filepath.name == "typings.py"
         if is_typings:
@@ -317,7 +317,7 @@ class FlextInfraNamespaceValidator:
         self, workspace_root: Path, *, scan_tests: bool
     ) -> Sequence[Path]:
         """Walk ``src/`` (and optionally ``tests/``) for non-exempt .py files."""
-        result: Sequence[Path] = []
+        result: MutableSequence[Path] = []
         dirs_to_scan = [workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR]
         if scan_tests:
             dirs_to_scan.append(workspace_root / c.Infra.Directories.TESTS)

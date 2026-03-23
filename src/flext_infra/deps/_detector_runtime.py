@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -55,7 +55,7 @@ class FlextInfraDependencyDetectorRuntime:
         apply_typings = bool(args.apply_typings)
         do_typings = bool(args.typings) or apply_typings
         limits_path = Path(args.limits) if args.limits else limits_default
-        projects_report: Mapping[str, Mapping[str, t.Infra.InfraValue]] = {}
+        projects_report: MutableMapping[str, t.Infra.InfraValue] = {}
         report_model = self._workspace_report_factory(
             workspace=str(root),
             projects=projects_report,

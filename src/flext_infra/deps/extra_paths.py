@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -60,7 +60,7 @@ class FlextInfraExtraPathsManager:
             return []
         deps_list = self._table_get(project_table, c.Infra.Toml.DEPENDENCIES)
         deps_items = self._as_string_list(deps_list)
-        paths: Sequence[str] = []
+        paths: MutableSequence[str] = []
         for item in deps_items:
             if " @ " not in item:
                 continue
@@ -87,7 +87,7 @@ class FlextInfraExtraPathsManager:
         )
         if deps_table is None:
             return []
-        paths: Sequence[str] = []
+        paths: MutableSequence[str] = []
         for dep_key in deps_table:
             dep_table = self._as_table(self._table_get(deps_table, dep_key))
             if dep_table is None:
@@ -104,7 +104,7 @@ class FlextInfraExtraPathsManager:
     def path_dep_paths(self, doc: TOMLDocument) -> Sequence[str]:
         """Combine PEP 621 and Poetry path dependencies."""
         return sorted(
-            set(self.path_dep_paths_pep621(doc) + self.path_dep_paths_poetry(doc)),
+            {*self.path_dep_paths_pep621(doc), *self.path_dep_paths_poetry(doc)},
         )
 
     def get_dep_paths(
@@ -116,7 +116,7 @@ class FlextInfraExtraPathsManager:
         (not just src/) and includes all of them in extraPaths.
         """
         raw_paths = self.path_dep_paths(doc)
-        resolved: Sequence[str] = []
+        resolved: MutableSequence[str] = []
         for path_value in raw_paths:
             if not path_value:
                 continue
@@ -176,18 +176,18 @@ class FlextInfraExtraPathsManager:
         local_dirs = self._discover_local_python_dirs(project_dir)
 
         if is_root:
-            pyright_base = sorted(set(local_dirs + ["typings", "typings/generated"]))
-            mypy_base = sorted(set(local_dirs + ["typings", "typings/generated"]))
+            pyright_base = sorted({*local_dirs, "typings", "typings/generated"})
+            mypy_base = sorted({*local_dirs, "typings", "typings/generated"})
         else:
             pyright_base = sorted(
-                set(["."] + local_dirs + ["../typings", "../typings/generated"]),
+                {".", *local_dirs, "../typings", "../typings/generated"},
             )
             mypy_base = sorted(
-                set(["."] + local_dirs + ["../typings", "../typings/generated"]),
+                {".", *local_dirs, "../typings", "../typings/generated"},
             )
 
-        pyright_extra = sorted(set(pyright_base + dep_paths))
-        mypy_path = sorted(set(mypy_base + dep_paths))
+        pyright_extra = sorted({*pyright_base, *dep_paths})
+        mypy_path = sorted({*mypy_base, *dep_paths})
         tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
         if tool_table is None:
             return r[bool].fail(f"no [tool] section in {pyproject_path}")
@@ -243,25 +243,25 @@ class FlextInfraExtraPathsManager:
             List of change descriptions.
 
         """
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         dep_paths = self.get_dep_paths(doc, is_root=is_root)
         local_dirs = self._discover_local_python_dirs(project_dir)
 
         if is_root:
-            pyright_base = sorted(set(local_dirs + ["typings", "typings/generated"]))
+            pyright_base = sorted({*local_dirs, "typings", "typings/generated"})
             mypy_base = sorted(
-                set(local_dirs + ["typings", "typings/generated"]),
+                {*local_dirs, "typings", "typings/generated"},
             )
         else:
             pyright_base = sorted(
-                set(["."] + local_dirs + ["../typings", "../typings/generated"]),
+                {".", *local_dirs, "../typings", "../typings/generated"},
             )
             mypy_base = sorted(
-                set(["."] + local_dirs + ["../typings", "../typings/generated"]),
+                {".", *local_dirs, "../typings", "../typings/generated"},
             )
 
-        pyright_extra = sorted(set(pyright_base + dep_paths))
-        mypy_path = sorted(set(mypy_base + dep_paths))
+        pyright_extra = sorted({*pyright_base, *dep_paths})
+        mypy_path = sorted({*mypy_base, *dep_paths})
         tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
         if tool_table is None:
             return changes

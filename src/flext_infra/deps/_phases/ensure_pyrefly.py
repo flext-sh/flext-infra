@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
@@ -24,7 +24,7 @@ class EnsurePyreflyConfigPhase:
         is_root: bool,
         project_dir: Path | None = None,
     ) -> Sequence[str]:
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:
             raw_tool = doc[c.Infra.Toml.TOOL]
@@ -61,11 +61,11 @@ class EnsurePyreflyConfigPhase:
             dep_paths = manager.get_dep_paths(doc, is_root=is_root)
             if is_root:
                 expected_search = sorted(
-                    set(local_dirs + ["typings"] + dep_paths),
+                    {*local_dirs, "typings", *dep_paths},
                 )
             else:
                 expected_search = sorted(
-                    set(["."] + local_dirs + dep_paths),
+                    {".", *local_dirs, *dep_paths},
                 )
         else:
             expected_search = ["."]

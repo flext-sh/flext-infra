@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -47,7 +47,7 @@ class NamespaceFacadeScanner:
             List of FacadeStatus objects for each family's facade class.
 
         """
-        results: Sequence[nem.FacadeStatus] = []
+        results: MutableSequence[nem.FacadeStatus] = []
         class_stem = cls.project_class_stem(project_name=project_name)
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_class = f"{class_stem}{suffix}"

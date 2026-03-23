@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 
 import tomlkit
 from tomlkit.items import Item, Table
@@ -22,7 +22,7 @@ class EnsureCoverageConfigPhase:
         *,
         project_kind: str = "core",
     ) -> Sequence[str]:
-        changes: Sequence[str] = []
+        changes: MutableSequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:
             raw_tool = doc[c.Infra.Toml.TOOL]

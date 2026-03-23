@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import re
 import tomllib
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t, u
@@ -38,7 +38,7 @@ class ProjectClassifier:
         )
         return m.Infra.ProjectClassification(
             project_kind=project_kind,
-            family_chains=family_chains,
+            family_chains={**family_chains},
         )
 
     def _read_project_metadata(self) -> tuple[str, Sequence[str]]:
@@ -49,7 +49,7 @@ class ProjectClassifier:
         )
         raw_project = self._as_mapping(parsed.get(c.Infra.Toml.PROJECT))
         project_name = self._normalized_name_from_mapping(raw_project)
-        dependencies: Sequence[str] = []
+        dependencies: MutableSequence[str] = []
         self._append_project_dependencies(
             raw_project=raw_project, dependencies=dependencies
         )
@@ -83,7 +83,7 @@ class ProjectClassifier:
         self,
         *,
         raw_project: Mapping[str, t.Infra.InfraValue],
-        dependencies: Sequence[str],
+        dependencies: MutableSequence[str],
     ) -> None:
         raw_dependencies = raw_project.get(c.Infra.Toml.DEPENDENCIES)
         if not isinstance(raw_dependencies, list):
@@ -101,7 +101,7 @@ class ProjectClassifier:
         self,
         *,
         raw_poetry: Mapping[str, t.Infra.InfraValue],
-        dependencies: Sequence[str],
+        dependencies: MutableSequence[str],
     ) -> None:
         self._append_poetry_dependency_mapping(
             raw_mapping=self._as_mapping(raw_poetry.get(c.Infra.Toml.DEPENDENCIES)),
@@ -118,7 +118,7 @@ class ProjectClassifier:
         self,
         *,
         raw_mapping: Mapping[str, t.Infra.InfraValue],
-        dependencies: Sequence[str],
+        dependencies: MutableSequence[str],
     ) -> None:
         dependency_keys = self._ordered_mapping_keys(raw_mapping)
         for dependency_key in dependency_keys:
@@ -149,7 +149,7 @@ class ProjectClassifier:
         self,
         *,
         dependency_name: str,
-        dependencies: Sequence[str],
+        dependencies: MutableSequence[str],
     ) -> None:
         if (not dependency_name) or (dependency_name in dependencies):
             return
@@ -161,7 +161,7 @@ class ProjectClassifier:
         dependencies: Sequence[str],
         project_name: str,
     ) -> Sequence[str]:
-        internal: Sequence[str] = []
+        internal: MutableSequence[str] = []
         for dependency in dependencies:
             if not dependency.startswith("flext-"):
                 continue
@@ -233,7 +233,7 @@ class ProjectClassifier:
         internal_dependencies: Sequence[str],
         family_bases: Mapping[str, set[str]],
     ) -> Mapping[str, Sequence[str]]:
-        family_chains: Mapping[str, Sequence[str]] = {}
+        family_chains: MutableMapping[str, Sequence[str]] = {}
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_parents = self._expected_parents_for_family(
                 family_suffix=suffix,
@@ -255,7 +255,7 @@ class ProjectClassifier:
         family_suffix: str,
         internal_dependencies: Sequence[str],
     ) -> Sequence[str]:
-        expected: Sequence[str] = []
+        expected: MutableSequence[str] = []
         for dependency in internal_dependencies:
             stem = self._dependency_to_class_stem(dependency)
             if not stem:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -32,7 +32,7 @@ class FlextInfraTransformerImportNormalizer:
             self._on_change = on_change
             self.modified_imports = False
             self.aliases_present: set[str] = set()
-            self.changes: Sequence[str] = []
+            self.changes: MutableSequence[str] = []
 
         @override
         def leave_ImportFrom(

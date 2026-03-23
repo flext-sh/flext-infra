@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -14,7 +14,7 @@ class ModelDefinitionCollector(cst.CSTVisitor):
         """Initialize collector state for model definitions in one file."""
         super().__init__()
         self._file_path = file_path
-        self.definitions: Sequence[Mapping[str, str | int]] = []
+        self.definitions: MutableSequence[Mapping[str, str | int]] = []
         self.exported_models: set[str] = set()
         self._all_export_names: set[str] = set()
 
@@ -60,7 +60,7 @@ class ModelDefinitionCollector(cst.CSTVisitor):
         return False
 
     def _attribute_parts(self, expression: cst.Attribute) -> Sequence[str]:
-        parts: Sequence[str] = [expression.attr.value]
+        parts: MutableSequence[str] = [expression.attr.value]
         current: cst.BaseExpression = expression.value
         while isinstance(current, cst.Attribute):
             parts.append(current.attr.value)

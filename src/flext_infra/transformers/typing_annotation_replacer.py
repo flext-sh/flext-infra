@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence
 from typing import override
 
 import libcst as cst
@@ -32,12 +32,12 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         """Initialize replacement state and change tracking."""
         self._on_change = on_change
         self.modified: bool = False
-        self.changes: Sequence[str] = []
+        self.changes: MutableSequence[str] = []
         self._t_import_present: bool = False
         self._needs_t_import: bool = False
         self._current_function: str = ""
-        self._function_stack: Sequence[str] = []
-        self._typeguard_stack: Sequence[bool] = []
+        self._function_stack: MutableSequence[str] = []
+        self._typeguard_stack: MutableSequence[bool] = []
         self._current_function_is_typeguard: bool = False
         self._param_depth: int = 0
 
@@ -223,7 +223,7 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
             return self._t_container_value()
 
         if isinstance(node, cst.Subscript) and self._is_supported_base(node.value):
-            updated_slices: Sequence[cst.SubscriptElement] = []
+            updated_slices: MutableSequence[cst.SubscriptElement] = []
             changed = False
             for element in node.slice:
                 if not isinstance(element.slice, cst.Index):
