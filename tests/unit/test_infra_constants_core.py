@@ -111,11 +111,11 @@ class TestFlextInfraConstantsExcludedNamespace:
 
     def test_common_excluded_dirs_contains_standard_dirs(self) -> None:
         excluded = infra_c.Infra.Excluded.COMMON_EXCLUDED_DIRS
-        tm.that(excluded, contains=".git")
-        tm.that(excluded, contains=".venv")
-        tm.that(excluded, contains="__pycache__")
-        tm.that(excluded, contains="dist")
-        tm.that(excluded, contains="build")
+        assert ".git" in excluded
+        assert ".venv" in excluded
+        assert "__pycache__" in excluded
+        assert "dist" in excluded
+        assert "build" in excluded
 
     def test_doc_excluded_dirs_includes_common(self) -> None:
         doc_excluded = infra_c.Infra.Excluded.DOC_EXCLUDED_DIRS
@@ -123,7 +123,7 @@ class TestFlextInfraConstantsExcludedNamespace:
         tm.that(doc_excluded.issuperset(common), eq=True)
 
     def test_doc_excluded_dirs_includes_site(self) -> None:
-        tm.that(infra_c.Infra.Excluded.DOC_EXCLUDED_DIRS, contains="site")
+        assert "site" in infra_c.Infra.Excluded.DOC_EXCLUDED_DIRS
 
     def test_pyproject_skip_dirs_includes_common(self) -> None:
         skip_dirs = infra_c.Infra.Excluded.PYPROJECT_SKIP_DIRS
@@ -132,8 +132,8 @@ class TestFlextInfraConstantsExcludedNamespace:
 
     def test_pyproject_skip_dirs_includes_flext_dirs(self) -> None:
         skip_dirs = infra_c.Infra.Excluded.PYPROJECT_SKIP_DIRS
-        tm.that(skip_dirs, contains=".flext-deps")
-        tm.that(skip_dirs, contains=".sisyphus")
+        assert ".flext-deps" in skip_dirs
+        assert ".sisyphus" in skip_dirs
 
     def test_check_excluded_dirs_includes_common(self) -> None:
         check_excluded = infra_c.Infra.Excluded.CHECK_EXCLUDED_DIRS
@@ -141,7 +141,7 @@ class TestFlextInfraConstantsExcludedNamespace:
         tm.that(check_excluded.issuperset(common), eq=True)
 
     def test_check_excluded_dirs_includes_flext_deps(self) -> None:
-        tm.that(infra_c.Infra.Excluded.CHECK_EXCLUDED_DIRS, contains=".flext-deps")
+        assert ".flext-deps" in infra_c.Infra.Excluded.CHECK_EXCLUDED_DIRS
 
     def test_excluded_dirs_are_strings(self) -> None:
         tm.that(infra_c.Infra.Excluded.DOC_EXCLUDED_DIRS, is_=frozenset)

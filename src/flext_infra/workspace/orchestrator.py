@@ -122,6 +122,22 @@ class FlextInfraOrchestratorService(s[bool]):
                     skipped = total - idx
             elapsed_total = time.monotonic() - started_total
             output.summary(verb, total, success, failed, skipped, elapsed_total)
+            if failed > 0:
+                failures: MutableSequence[tuple[str, int, Path]] = []
+                for proj_name, cmd_result in zip(
+                    projects,
+                    results,
+                    strict=False,
+                ):
+                    if cmd_result.exit_code != 0:
+                        log_file = (
+                            Path(cmd_result.stdout)
+                            if cmd_result.stdout
+                            else Path(f"{proj_name}.log")
+                        )
+                        err_count, _ = u.Infra.extract_errors(log_file)
+                        failures.append((proj_name, err_count, log_file))
+                output.failure_summary(verb, failures)
             return r[Sequence[m.Infra.CommandOutput]].ok(results)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             return r[Sequence[m.Infra.CommandOutput]].fail(
@@ -170,10 +186,21 @@ class FlextInfraOrchestratorService(s[bool]):
         return_code: int = proc_value if isinstance(proc_value, int) else 1
         stderr = "" if proc_result.is_success else proc_result.error or ""
         elapsed = time.monotonic() - started
-        status_symbol = "✓" if return_code == 0 else "✗"
-        output.info(
-            f"  {status_symbol} {project} completed in {int(elapsed)}s (log: {log_path.name})",
-        )
+        if return_code == 0:
+            output.info(
+                f"  ✓ {project} completed in {int(elapsed)}s  ({log_path})",
+            )
+        else:
+            error_count, error_lines = u.Infra.extract_errors(log_path)
+            output.project_failure(
+                project,
+                elapsed,
+                log_path,
+                error_count,
+                list(error_lines),
+            )
+            if error_lines:
+                stderr = "\n".join(error_lines)
         return r[m.Infra.CommandOutput].ok(
             m.Infra.CommandOutput(
                 stdout=str(log_path),

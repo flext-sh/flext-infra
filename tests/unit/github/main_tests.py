@@ -17,7 +17,7 @@ class TestRunWorkflows:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             u.Infra,
-            "github_sync_workspace_workflist",
+            "github_sync_workspace_workflows",
             staticmethod(lambda **kw: r[Sequence[m.Infra.SyncOperation]].ok([])),
         )
         cli = u.Infra.resolve(type("NS", (), {"workspace": tmp_path, "apply": False})())
@@ -26,7 +26,7 @@ class TestRunWorkflows:
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             u.Infra,
-            "github_sync_workspace_workflist",
+            "github_sync_workspace_workflows",
             staticmethod(
                 lambda **kw: r[Sequence[m.Infra.SyncOperation]].fail("sync failed"),
             ),

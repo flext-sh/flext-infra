@@ -110,23 +110,15 @@ class FlextInfraWorkspaceMakefileGenerator:
         for line in lines:
             # Replace first non-comment/non-empty block with @generated header
             if not header_done and line.startswith("#"):
-                out.append(
-                    f"# =============================================================================\n"
-                )
-                out.append(f"# FLEXT Workspace Makefile\n")
-                out.append(
-                    f"# =============================================================================\n"
-                )
-                out.append(f"{_GENERATED_MARKER}\n")
-                out.append(
-                    f"# Run 'make sync' from workspace root to regenerate this file.\n"
-                )
-                out.append(
-                    f"# DO NOT EDIT — put custom targets in workspace_custom.mk instead.\n"
-                )
-                out.append(
-                    f"# =============================================================================\n"
-                )
+                out.extend((
+                    "# =============================================================================\n",
+                    "# FLEXT Workspace Makefile\n",
+                    "# =============================================================================\n",
+                    f"{_GENERATED_MARKER}\n",
+                    "# Run 'make sync' from workspace root to regenerate this file.\n",
+                    "# DO NOT EDIT — put custom targets in workspace_custom.mk instead.\n",
+                    "# =============================================================================\n",
+                ))
                 # Skip original header lines
                 header_done = True
                 continue
@@ -134,7 +126,7 @@ class FlextInfraWorkspaceMakefileGenerator:
                 continue
             # Parameterise PR_BRANCH
             if line.startswith("PR_BRANCH ?="):
-                out.append(f"PR_BRANCH ?= {{{{ pr_branch }}}}\n")
+                out.append("PR_BRANCH ?= {{ pr_branch }}\n")
                 continue
             out.append(line)
 

@@ -222,7 +222,7 @@ class FlextInfraConfigFixer(s[bool]):
         if isinstance(search_raw, list):
             try:
                 current_paths = TypeAdapter(Sequence[JsonValue]).validate_python(
-                    search_raw
+                    list(search_raw)
                 )
             except ValidationError:
                 current_paths = []

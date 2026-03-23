@@ -9,7 +9,8 @@ from pathlib import Path
 import pytest
 from flext_core import r
 
-from flext_infra import __main__ as github_main, u
+from flext_infra import u
+from flext_infra.github import __main__ as github_main
 from tests import m
 
 main = github_main.main
@@ -141,7 +142,7 @@ class TestMain:
         original = sys.argv.copy()
         try:
             sys.argv = ["flext-infra", "unknown"]
-            assert main() == 2
+            assert main() == 1
         finally:
             sys.argv = original
 

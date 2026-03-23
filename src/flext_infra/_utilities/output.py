@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableSequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 from typing import Final, TextIO
@@ -117,6 +117,58 @@ class FlextInfraUtilitiesOutput:
             else ("[OK]" if passed else "[FAIL]")
         )
         cls._stream.write(f"    {sym} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n")
+
+    @classmethod
+    def project_failure(
+        cls,
+        project: str,
+        elapsed: float,
+        log_path: Path,
+        error_count: int,
+        errors: Sequence[str],
+        *,
+        max_show: int = 3,
+    ) -> None:
+        """Show failed project with error excerpt."""
+        clr = c.Infra.Style.RED if cls._use_color else ""
+        reset = c.Infra.Style.RESET if cls._use_color else ""
+        fail_sym = c.Infra.Style.FAIL if cls._use_unicode else "[FAIL]"
+        count_label = f"  [{error_count} errors]" if error_count > 0 else ""
+        cls._stream.write(
+            f"  {clr}{fail_sym}{reset} {project} completed in {int(elapsed)}s"
+            f"{count_label}  ({log_path})\n",
+        )
+        for line in errors[:max_show]:
+            cls._stream.write(f"      {line}\n")
+        remaining = error_count - max_show
+        if remaining > 0:
+            cls._stream.write(f"      ... and {remaining} more (see log)\n")
+        cls._stream.flush()
+
+    @classmethod
+    def failure_summary(
+        cls,
+        verb: str,
+        failures: Sequence[tuple[str, int, Path]],
+    ) -> None:
+        """Show end-of-run failure summary block."""
+        if not failures:
+            return
+        hdr = (
+            f"── {verb} failed projects ──"
+            if cls._use_unicode
+            else f"-- {verb} failed projects --"
+        )
+        clr = c.Infra.Style.RED if cls._use_color else ""
+        reset = c.Infra.Style.RESET if cls._use_color else ""
+        fail_sym = c.Infra.Style.FAIL if cls._use_unicode else "[FAIL]"
+        cls._stream.write(f"\n{hdr}\n")
+        for project, error_count, log_path in failures:
+            count_label = f"{error_count} errors" if error_count > 0 else "failed"
+            cls._stream.write(
+                f"{clr}{fail_sym}{reset} {project:<20} {count_label}  ({log_path})\n",
+            )
+        cls._stream.flush()
 
     @staticmethod
     def metrics(
@@ -475,6 +527,54 @@ class OutputBackend:
         self._stream.write(
             f"    {symbol} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n"
         )
+
+    def project_failure(
+        self,
+        project: str,
+        elapsed: float,
+        log_path: Path,
+        error_count: int,
+        errors: Sequence[str],
+        *,
+        max_show: int = 3,
+    ) -> None:
+        """Show failed project with error excerpt."""
+        clr = c.Infra.Style.RED if self._use_color else ""
+        reset = c.Infra.Style.RESET if self._use_color else ""
+        fail_sym = c.Infra.Style.FAIL if self._use_unicode else "[FAIL]"
+        count_label = f"  [{error_count} errors]" if error_count > 0 else ""
+        self._stream.write(
+            f"  {clr}{fail_sym}{reset} {project} completed in {int(elapsed)}s"
+            f"{count_label}  ({log_path})\n",
+        )
+        for line in errors[:max_show]:
+            self._stream.write(f"      {line}\n")
+        remaining = error_count - max_show
+        if remaining > 0:
+            self._stream.write(f"      ... and {remaining} more (see log)\n")
+
+    def failure_summary(
+        self,
+        verb: str,
+        failures: Sequence[tuple[str, int, Path]],
+    ) -> None:
+        """Show end-of-run failure summary block."""
+        if not failures:
+            return
+        hdr = (
+            f"── {verb} failed projects ──"
+            if self._use_unicode
+            else f"-- {verb} failed projects --"
+        )
+        clr = c.Infra.Style.RED if self._use_color else ""
+        reset = c.Infra.Style.RESET if self._use_color else ""
+        fail_sym = c.Infra.Style.FAIL if self._use_unicode else "[FAIL]"
+        self._stream.write(f"\n{hdr}\n")
+        for project, error_count, log_path in failures:
+            count_label = f"{error_count} errors" if error_count > 0 else "failed"
+            self._stream.write(
+                f"{clr}{fail_sym}{reset} {project:<20} {count_label}  ({log_path})\n",
+            )
 
 
 # Initialize default state

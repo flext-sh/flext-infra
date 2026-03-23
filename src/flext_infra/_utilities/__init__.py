@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.github import FlextInfraUtilitiesGithub
     from flext_infra._utilities.io import FlextInfraUtilitiesIo
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
+    from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.output import (
         FlextInfraUtilitiesOutput,
         OutputBackend,
@@ -71,6 +72,10 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "FlextInfraUtilitiesIteration": (
         "flext_infra._utilities.iteration",
         "FlextInfraUtilitiesIteration",
+    ),
+    "FlextInfraUtilitiesLogParser": (
+        "flext_infra._utilities.log_parser",
+        "FlextInfraUtilitiesLogParser",
     ),
     "FlextInfraUtilitiesOutput": (
         "flext_infra._utilities.output",
@@ -145,6 +150,7 @@ __all__ = [
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesIo",
     "FlextInfraUtilitiesIteration",
+    "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesOutput",
     "FlextInfraUtilitiesParsing",
     "FlextInfraUtilitiesPaths",
