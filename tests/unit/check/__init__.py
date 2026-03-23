@@ -86,7 +86,6 @@ if TYPE_CHECKING:
     )
     from tests.unit.check.extended_run_projects_tests import (
         CheckProjectStub,
-        ProjectResult,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
@@ -132,7 +131,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "CheckProjectStub",
     ),
     "GateClass": ("tests.unit.check.extended_runners_extra_tests", "GateClass"),
-    "ProjectResult": ("tests.unit.check.extended_run_projects_tests", "ProjectResult"),
     "RunCallable": ("tests.unit.check.extended_runners_go_tests", "RunCallable"),
     "TestCheckIssueFormatted": (
         "tests.unit.check.extended_models_tests",
@@ -428,7 +426,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 __all__ = [
     "CheckProjectStub",
     "GateClass",
-    "ProjectResult",
     "RunCallable",
     "TestCheckIssueFormatted",
     "TestCheckMainEntryPoint",

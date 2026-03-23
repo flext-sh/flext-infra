@@ -188,7 +188,6 @@ if TYPE_CHECKING:
     )
     from tests.unit.check.extended_run_projects_tests import (
         CheckProjectStub,
-        ProjectResult,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
@@ -599,7 +598,7 @@ if TYPE_CHECKING:
         StubWorkspaceManager,
     )
     from tests.unit.github.main_dispatch_tests import TestRunPrWorkspace
-    from tests.unit.github.main_integration_tests import SyncOperation, TestMain, main
+    from tests.unit.github.main_integration_tests import TestMain, main
     from tests.unit.github.main_tests import TestRunLint, TestRunPr, TestRunWorkflows
     from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
     from tests.unit.io.test_infra_output_edge_cases import (
@@ -1047,7 +1046,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "FlextInfraCodegenTestProjectFactory",
     ),
     "GateClass": ("tests.unit.check.extended_runners_extra_tests", "GateClass"),
-    "ProjectResult": ("tests.unit.check.extended_run_projects_tests", "ProjectResult"),
     "RunCallable": ("tests.unit.check.extended_runners_go_tests", "RunCallable"),
     "RunProjectsMock": ("tests.unit.check._shared_fixtures", "RunProjectsMock"),
     "SampleModel": ("tests.unit.io.test_infra_json_io", "SampleModel"),
@@ -1066,7 +1064,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "StubUtilities": ("tests.unit.github._stubs", "StubUtilities"),
     "StubVersioning": ("tests.unit.github._stubs", "StubVersioning"),
     "StubWorkspaceManager": ("tests.unit.github._stubs", "StubWorkspaceManager"),
-    "SyncOperation": ("tests.unit.github.main_integration_tests", "SyncOperation"),
     "TestAdrHelpers": ("tests.unit.docs.validator_internals_tests", "TestAdrHelpers"),
     "TestAllDirectoriesScanned": (
         "tests.unit.codegen.lazy_init_tests",
@@ -3524,7 +3521,6 @@ __all__ = [
     "FakeVersioning",
     "FlextInfraCodegenTestProjectFactory",
     "GateClass",
-    "ProjectResult",
     "RunCallable",
     "RunProjectsMock",
     "SampleModel",
@@ -3543,7 +3539,6 @@ __all__ = [
     "StubUtilities",
     "StubVersioning",
     "StubWorkspaceManager",
-    "SyncOperation",
     "TestAdrHelpers",
     "TestAllDirectoriesScanned",
     "TestAuditorBrokenLinks",

@@ -180,7 +180,9 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         ops = [
-            m.Infra.SyncOperation(project="p1", path="ci.yml", action="create", reason="new"),
+            m.Infra.SyncOperation(
+                project="p1", path="ci.yml", action="create", reason="new"
+            ),
             m.Infra.SyncOperation(
                 project="p2",
                 path="ci.yml",

@@ -36,7 +36,6 @@ class FlextInfraDepsCommand:
                 "modernize": "Modernize workspace pyproject files",
                 "path-sync": "Rewrite internal FLEXT dependency paths",
             },
-            include_apply=True,
             include_project=True,
         )
         args, remaining = parser.parse_known_args(argv)

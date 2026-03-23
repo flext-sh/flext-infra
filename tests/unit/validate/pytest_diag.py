@@ -10,8 +10,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.validate import pytest_diag
-from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+from flext_infra import FlextInfraPytestDiagExtractor
+from flext_infra.validate.pytest_diag import _DiagResult
 from tests.models import m
 
 
@@ -20,7 +20,7 @@ class TestPytestDiagExtractorCore:
 
     def test_diag_result_init(self) -> None:
         """_DiagResult initializes with empty lists."""
-        diag = pytest_diag._DiagResult()
+        diag = _DiagResult()
         for attr in (
             "failed_cases",
             "error_traces",
@@ -110,7 +110,7 @@ class TestPytestDiagParseXml:
 
     def test_parse_xml_missing_or_invalid(self, tmp_path: Path) -> None:
         """Missing/invalid file returns False."""
-        diag = pytest_diag._DiagResult()
+        diag = _DiagResult()
         parse = FlextInfraPytestDiagExtractor._parse_xml
         tm.that(parse(tmp_path / "missing.xml", diag), eq=False)
         (tmp_path / "bad.xml").write_text("not valid xml")
@@ -125,7 +125,7 @@ class TestPytestDiagParseXml:
             '<testcase name="b" classname="TC" time="0.5"/>'
             "</testsuite></testsuites>",
         )
-        diag = pytest_diag._DiagResult()
+        diag = _DiagResult()
         tm.that(FlextInfraPytestDiagExtractor._parse_xml(junit, diag), eq=True)
         tm.that(diag.slow_entries, length=2)
 
@@ -137,7 +137,7 @@ class TestPytestDiagParseXml:
             '<testcase name="a" classname="TC" time="invalid"/>'
             "</testsuite></testsuites>",
         )
-        diag = pytest_diag._DiagResult()
+        diag = _DiagResult()
         tm.that(FlextInfraPytestDiagExtractor._parse_xml(junit, diag), eq=True)
 
 
@@ -146,7 +146,7 @@ class TestPytestDiagLogParsing:
 
     def test_parse_log_failures_and_skips(self) -> None:
         """Failures and skips are extracted from log lines."""
-        diag = pytest_diag._DiagResult()
+        diag = _DiagResult()
         FlextInfraPytestDiagExtractor._parse_log_into_diag(
             ["FAILED test_case.py::test_foo", "SKIPPED test_case.py::test_skip"],
             diag,
@@ -162,13 +162,13 @@ class TestPytestDiagLogParsing:
             "AssertionError: expected True",
             "=== short test summary info ===",
         ]
-        diag = pytest_diag._DiagResult()
+        diag = _DiagResult()
         FlextInfraPytestDiagExtractor._parse_log_into_diag(lines, diag)
         tm.that(diag.error_traces, length_gt=0)
 
     def test_extract_warnings(self) -> None:
         """Warnings section and inline warnings are extracted."""
-        diag = pytest_diag._DiagResult()
+        diag = _DiagResult()
         warn_lines = [
             "=== warnings summary ===",
             "DeprecationWarning: test warning",
@@ -176,7 +176,7 @@ class TestPytestDiagLogParsing:
         ]
         FlextInfraPytestDiagExtractor._extract_warnings(warn_lines, diag)
         tm.that(diag.warning_lines, length_gt=0)
-        diag2 = pytest_diag._DiagResult()
+        diag2 = _DiagResult()
         FlextInfraPytestDiagExtractor._extract_warnings(
             ["test_case.py:10: DeprecationWarning: test"],
             diag2,
@@ -191,7 +191,7 @@ class TestPytestDiagLogParsing:
             "0.50s call     test_case.py::test_fast",
             "=== 2 passed in 6.00s ===",
         ]
-        diag = pytest_diag._DiagResult()
+        diag = _DiagResult()
         FlextInfraPytestDiagExtractor._extract_slow_from_log(lines, diag)
         tm.that(diag.slow_entries, length_gt=0)
 

@@ -215,7 +215,6 @@ if TYPE_CHECKING:
     )
     from tests.unit.check.extended_run_projects_tests import (
         CheckProjectStub,
-        ProjectResult,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
@@ -626,7 +625,7 @@ if TYPE_CHECKING:
         StubWorkspaceManager,
     )
     from tests.unit.github.main_dispatch_tests import TestRunPrWorkspace
-    from tests.unit.github.main_integration_tests import SyncOperation, TestMain, main
+    from tests.unit.github.main_integration_tests import TestMain, main
     from tests.unit.github.main_tests import TestRunLint, TestRunPr, TestRunWorkflows
     from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
     from tests.unit.io.test_infra_output_edge_cases import (
@@ -1096,7 +1095,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "GitScenario": ("tests.scenarios", "GitScenario"),
     "GitScenarios": ("tests.scenarios", "GitScenarios"),
     "MinimalScenario": ("tests.workspace_scenarios", "MinimalScenario"),
-    "ProjectResult": ("tests.unit.check.extended_run_projects_tests", "ProjectResult"),
     "RealGitService": ("tests.git_service", "RealGitService"),
     "RealSubprocessRunner": ("tests.runner_service", "RealSubprocessRunner"),
     "RunCallable": ("tests.unit.check.extended_runners_go_tests", "RunCallable"),
@@ -1119,7 +1117,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "StubWorkspaceManager": ("tests.unit.github._stubs", "StubWorkspaceManager"),
     "SubprocessScenario": ("tests.scenarios", "SubprocessScenario"),
     "SubprocessScenarios": ("tests.scenarios", "SubprocessScenarios"),
-    "SyncOperation": ("tests.unit.github.main_integration_tests", "SyncOperation"),
     "TestAdrHelpers": ("tests.unit.docs.validator_internals_tests", "TestAdrHelpers"),
     "TestAllDirectoriesScanned": (
         "tests.unit.codegen.lazy_init_tests",
@@ -3611,7 +3608,6 @@ __all__ = [
     "GitScenario",
     "GitScenarios",
     "MinimalScenario",
-    "ProjectResult",
     "RealGitService",
     "RealSubprocessRunner",
     "RunCallable",
@@ -3634,7 +3630,6 @@ __all__ = [
     "StubWorkspaceManager",
     "SubprocessScenario",
     "SubprocessScenarios",
-    "SyncOperation",
     "TestAdrHelpers",
     "TestAllDirectoriesScanned",
     "TestAuditorBrokenLinks",
