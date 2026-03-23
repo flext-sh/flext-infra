@@ -20,7 +20,8 @@ from flext_infra import (
     FlextInfraPyrightGate,
     FlextInfraWorkspaceChecker,
 )
-from tests import h, patch_python_dir_detection
+from tests import patch_python_dir_detection
+from tests.helpers import FlextInfraTestHelpers as h
 
 # Local alias for backward compatibility
 _patch_python_dir_detection = patch_python_dir_detection

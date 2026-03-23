@@ -157,6 +157,10 @@ class EnsurePyrightConfigPhase:
             ):
                 pyright["typeCheckingMode"] = c.Infra.Modes.STRICT
                 changes.append("tool.pyright.typeCheckingMode set to strict")
+            for key, value in self._tool_config.tools.pyright.extended_settings.items():
+                if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
+                    pyright[key] = value
+                    changes.append(f"tool.pyright.{key} set to {value}")
             u.Infra.ensure_pyright_execution_envs(pyright, expected_envs, changes)
             return changes
         for key, value in self._tool_config.tools.pyright.strict_settings.items():

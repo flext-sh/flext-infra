@@ -14,7 +14,8 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import _resolve_tag, _resolve_version, u
+from flext_infra import u
+from flext_infra.release.__main__ import _resolve_tag, _resolve_version
 
 
 def _args(

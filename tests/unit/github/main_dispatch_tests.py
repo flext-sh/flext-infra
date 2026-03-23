@@ -8,7 +8,8 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import m, run_pr_workspace, u
+from flext_infra import m, u
+from flext_infra.github.__main__ import run_pr_workspace
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:

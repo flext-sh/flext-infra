@@ -17,10 +17,9 @@ from flext_tests import tm
 from flext_infra import (
     FlextInfraDocAuditor,
     FlextInfraDocFixer,
-    _run_audit,
-    _run_fix,
     u,
 )
+from flext_infra.docs.__main__ import _run_audit, _run_fix
 
 from ...models import m
 

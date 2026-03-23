@@ -13,11 +13,9 @@ from flext_infra import (
     FlextInfraDocBuilder,
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
-    _run_build,
-    _run_generate,
-    _run_validate,
     u,
 )
+from flext_infra.docs.__main__ import _run_build, _run_generate, _run_validate
 
 from ...models import m
 
