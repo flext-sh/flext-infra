@@ -14,6 +14,8 @@ from .namespace_enforcer import FlextInfraNamespaceEnforcer
 
 
 class FlextInfraRefactorCommand:
+    """CLI entry point for refactoring and modernization tool commands."""
+
     @staticmethod
     def run(argv: Sequence[str] | None = None) -> int:
         """Dispatch CLI command handlers and return process exit code."""

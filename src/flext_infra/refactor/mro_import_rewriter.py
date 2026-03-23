@@ -17,6 +17,8 @@ from flext_infra import (
 
 
 class FlextInfraRefactorMROImportRewriter:
+    """Rewrite import statements across workspace after MRO class relocations."""
+
     @classmethod
     def rewrite_workspace(
         cls,

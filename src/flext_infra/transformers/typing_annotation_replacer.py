@@ -11,6 +11,8 @@ from flext_infra import u
 
 
 class TypingAnnotationReplacer(cst.CSTTransformer):
+    """Replace legacy typing annotations (Any, object, cast) with strict t.* contracts."""
+
     DUNDER_OBJECT_ALLOWLIST = frozenset(
         {
             "__eq__",

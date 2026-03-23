@@ -17,6 +17,8 @@ from flext_infra import (
 
 
 class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
+    """Enforce tier-0 import conventions via CST transformation."""
+
     @override
     def apply(
         self,

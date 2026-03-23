@@ -29,6 +29,8 @@ from flext_infra import (
 
 
 class FlextInfraDocsCommand:
+    """CLI entry point for documentation generation and management commands."""
+
     @staticmethod
     def run(argv: Sequence[str] | None = None) -> int:
         """Run documentation command dispatcher."""

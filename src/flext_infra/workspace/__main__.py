@@ -32,6 +32,8 @@ if TYPE_CHECKING:
 
 
 class FlextInfraWorkspaceCommand:
+    """CLI entry point for workspace detection, sync, and management commands."""
+
     @staticmethod
     def run_detect(cli: u.Infra.CliArgs) -> int:
         """Detect workspace or standalone mode."""

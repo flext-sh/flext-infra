@@ -12,6 +12,8 @@ from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, r, u
 
 
 class FlextInfraRefactorClassNestingAnalyzer:
+    """Detect class nesting violations and report MRO hierarchy issues."""
+
     @classmethod
     def analyze_files(cls, files: Sequence[Path]) -> m.Infra.ClassNestingReport:
         """Analyze files and return aggregated class-nesting violations."""

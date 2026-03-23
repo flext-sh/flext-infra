@@ -39,6 +39,8 @@ if TYPE_CHECKING:
 
 
 class FlextInfraValidateCommand:
+    """CLI entry point for workspace validation and inventory reporting."""
+
     @staticmethod
     def list_str(
         payload: m.Infra.InventoryReport | m.Infra.PytestDiagnostics,

@@ -12,6 +12,8 @@ _DICT_KEY_VALUE_ARITY = 2
 
 
 class ViolationCensusVisitor(cst.CSTVisitor):
+    """Detect governance violations (Any usage, bare object, type:ignore) via CST walk."""
+
     RUNTIME_ALIASES: frozenset[str] = frozenset({
         "c",
         "m",

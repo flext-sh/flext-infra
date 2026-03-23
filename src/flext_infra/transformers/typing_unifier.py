@@ -14,6 +14,8 @@ _PAIR_LENGTH = 2
 
 
 class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
+    """Unify inline type unions into canonical t.* alias references via CST rewrite."""
+
     def __init__(
         self,
         *,

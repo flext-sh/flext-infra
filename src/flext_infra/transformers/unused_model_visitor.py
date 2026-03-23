@@ -10,6 +10,8 @@ import libcst as cst
 
 
 class ModelDefinitionCollector(cst.CSTVisitor):
+    """Collect all model class definitions and their export status from a source file."""
+
     def __init__(self, *, file_path: Path) -> None:
         """Initialize collector state for model definitions in one file."""
         super().__init__()
@@ -87,6 +89,8 @@ class ModelDefinitionCollector(cst.CSTVisitor):
 
 
 class ModelReferenceCollector(cst.CSTVisitor):
+    """Collect references to known model classes across source files for dead-code analysis."""
+
     def __init__(self, *, known_models: frozenset[str], file_path: Path) -> None:
         """Initialize collector state for model references in one file."""
         super().__init__()

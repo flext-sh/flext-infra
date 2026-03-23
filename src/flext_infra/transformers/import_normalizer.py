@@ -15,6 +15,8 @@ class FlextInfraTransformerImportNormalizer:
     """Namespace for import normalization logic and classes."""
 
     class Transformer(cst.CSTTransformer):
+        """CST transformer that normalizes import statements to canonical form."""
+
         def __init__(
             self,
             *,

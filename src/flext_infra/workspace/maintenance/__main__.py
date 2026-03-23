@@ -22,6 +22,8 @@ from flext_infra import (
 
 
 class FlextInfraWorkspaceMaintenanceCommand:
+    """CLI entry point for workspace maintenance operations (Python version enforcement)."""
+
     @staticmethod
     def run(argv: Sequence[str] | None = None) -> int:
         """Execute maintenance CLI and return service exit code."""

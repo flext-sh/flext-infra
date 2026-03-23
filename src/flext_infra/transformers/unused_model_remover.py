@@ -9,6 +9,8 @@ import libcst as cst
 
 
 class UnusedModelRemover(cst.CSTTransformer):
+    """Remove class definitions identified as unused by the model reference collector."""
+
     def __init__(
         self,
         *,

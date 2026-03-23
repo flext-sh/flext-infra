@@ -12,6 +12,8 @@ from flext_infra import FlextInfraRefactorRule, TypingAnnotationReplacer, c
 
 
 class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
+    """Replace legacy typing annotations with canonical t.* contracts."""
+
     @override
     def apply(
         self,

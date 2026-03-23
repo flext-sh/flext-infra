@@ -12,6 +12,8 @@ _PAIR_LENGTH = 2
 
 
 class TypingAnnotationCensusVisitor(cst.CSTVisitor):
+    """Collect census of typing annotation usage for reporting and migration planning."""
+
     DUNDER_OBJECT_ALLOWLIST = frozenset({
         "__eq__",
         "__ne__",

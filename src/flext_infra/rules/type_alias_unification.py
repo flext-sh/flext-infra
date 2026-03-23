@@ -12,6 +12,8 @@ from flext_infra import FlextInfraRefactorRule, FlextInfraRefactorTypingUnifier,
 
 
 class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
+    """Unify duplicate type alias definitions into canonical t.* contracts."""
+
     @override
     def apply(
         self,
