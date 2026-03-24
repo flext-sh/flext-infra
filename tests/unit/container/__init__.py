@@ -20,18 +20,9 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "TestInfraContainerFunctions": [
-        "tests.unit.container.test_infra_container",
-        "TestInfraContainerFunctions",
-    ],
-    "TestInfraMroPattern": [
-        "tests.unit.container.test_infra_container",
-        "TestInfraMroPattern",
-    ],
-    "TestInfraServiceRetrieval": [
-        "tests.unit.container.test_infra_container",
-        "TestInfraServiceRetrieval",
-    ],
+    "TestInfraContainerFunctions": ["tests.unit.container.test_infra_container", "TestInfraContainerFunctions"],
+    "TestInfraMroPattern": ["tests.unit.container.test_infra_container", "TestInfraMroPattern"],
+    "TestInfraServiceRetrieval": ["tests.unit.container.test_infra_container", "TestInfraServiceRetrieval"],
 }
 
 __all__ = [

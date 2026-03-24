@@ -44,63 +44,21 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraNamespaceEnforcer": [
-        "flext_infra.refactor.namespace_enforcer",
-        "FlextInfraNamespaceEnforcer",
-    ],
-    "FlextInfraProjectClassifier": [
-        "flext_infra.refactor.project_classifier",
-        "FlextInfraProjectClassifier",
-    ],
-    "FlextInfraRefactorCensus": [
-        "flext_infra.refactor.census",
-        "FlextInfraRefactorCensus",
-    ],
-    "FlextInfraRefactorClassNestingAnalyzer": [
-        "flext_infra.refactor.class_nesting_analyzer",
-        "FlextInfraRefactorClassNestingAnalyzer",
-    ],
-    "FlextInfraRefactorEngine": [
-        "flext_infra.refactor.engine",
-        "FlextInfraRefactorEngine",
-    ],
-    "FlextInfraRefactorLooseClassScanner": [
-        "flext_infra.refactor.scanner",
-        "FlextInfraRefactorLooseClassScanner",
-    ],
-    "FlextInfraRefactorMROImportRewriter": [
-        "flext_infra.refactor.mro_import_rewriter",
-        "FlextInfraRefactorMROImportRewriter",
-    ],
-    "FlextInfraRefactorMROMigrationValidator": [
-        "flext_infra.refactor.mro_migration_validator",
-        "FlextInfraRefactorMROMigrationValidator",
-    ],
-    "FlextInfraRefactorMROResolver": [
-        "flext_infra.refactor.mro_resolver",
-        "FlextInfraRefactorMROResolver",
-    ],
-    "FlextInfraRefactorMigrateToClassMRO": [
-        "flext_infra.refactor.migrate_to_class_mro",
-        "FlextInfraRefactorMigrateToClassMRO",
-    ],
+    "FlextInfraNamespaceEnforcer": ["flext_infra.refactor.namespace_enforcer", "FlextInfraNamespaceEnforcer"],
+    "FlextInfraProjectClassifier": ["flext_infra.refactor.project_classifier", "FlextInfraProjectClassifier"],
+    "FlextInfraRefactorCensus": ["flext_infra.refactor.census", "FlextInfraRefactorCensus"],
+    "FlextInfraRefactorClassNestingAnalyzer": ["flext_infra.refactor.class_nesting_analyzer", "FlextInfraRefactorClassNestingAnalyzer"],
+    "FlextInfraRefactorEngine": ["flext_infra.refactor.engine", "FlextInfraRefactorEngine"],
+    "FlextInfraRefactorLooseClassScanner": ["flext_infra.refactor.scanner", "FlextInfraRefactorLooseClassScanner"],
+    "FlextInfraRefactorMROImportRewriter": ["flext_infra.refactor.mro_import_rewriter", "FlextInfraRefactorMROImportRewriter"],
+    "FlextInfraRefactorMROMigrationValidator": ["flext_infra.refactor.mro_migration_validator", "FlextInfraRefactorMROMigrationValidator"],
+    "FlextInfraRefactorMROResolver": ["flext_infra.refactor.mro_resolver", "FlextInfraRefactorMROResolver"],
+    "FlextInfraRefactorMigrateToClassMRO": ["flext_infra.refactor.migrate_to_class_mro", "FlextInfraRefactorMigrateToClassMRO"],
     "FlextInfraRefactorRule": ["flext_infra.refactor.rule", "FlextInfraRefactorRule"],
-    "FlextInfraRefactorRuleDefinitionValidator": [
-        "flext_infra.refactor.rule_definition_validator",
-        "FlextInfraRefactorRuleDefinitionValidator",
-    ],
-    "FlextInfraRefactorRuleLoader": [
-        "flext_infra.refactor.rule",
-        "FlextInfraRefactorRuleLoader",
-    ],
-    "FlextInfraRefactorSafetyManager": [
-        "flext_infra.refactor.safety",
-        "FlextInfraRefactorSafetyManager",
-    ],
-    "FlextInfraRefactorViolationAnalyzer": [
-        "flext_infra.refactor.violation_analyzer",
-        "FlextInfraRefactorViolationAnalyzer",
-    ],
+    "FlextInfraRefactorRuleDefinitionValidator": ["flext_infra.refactor.rule_definition_validator", "FlextInfraRefactorRuleDefinitionValidator"],
+    "FlextInfraRefactorRuleLoader": ["flext_infra.refactor.rule", "FlextInfraRefactorRuleLoader"],
+    "FlextInfraRefactorSafetyManager": ["flext_infra.refactor.safety", "FlextInfraRefactorSafetyManager"],
+    "FlextInfraRefactorViolationAnalyzer": ["flext_infra.refactor.violation_analyzer", "FlextInfraRefactorViolationAnalyzer"],
 }
 
 __all__ = [
