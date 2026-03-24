@@ -396,7 +396,7 @@ class FlextInfraUtilitiesCodegenTransforms:
             assignment = stmt
             exports = names
             break
-        if assignment is None or len(exports) == 0:
+        if assignment is None or not exports:
             return False
         available: set[str] = set()
         for stmt in tree.body:
@@ -429,7 +429,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         if filtered == exports:
             return False
         block = "__all__ = [\n" + "\n".join(f'    "{name}",' for name in filtered)
-        if len(filtered) == 0:
+        if not filtered:
             block = "__all__ = []"
         else:
             block += "\n]"

@@ -68,7 +68,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 retained_module_body.append(stmt)
                 continue
             moved_statements.append(moved)
-        if len(moved_statements) == 0:
+        if not moved_statements:
             return (
                 source,
                 m.Infra.MROFileMigration(
@@ -139,7 +139,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
             for part in parts:
                 current = cst.Attribute(value=current, attr=cst.Name(part))
             qualified_renames[symbol] = current
-        if len(qualified_renames) > 0:
+        if qualified_renames:
             qualified_transformer = FlextInfraRefactorMROQualifiedReferenceTransformer(
                 renames=qualified_renames,
             )
@@ -256,14 +256,14 @@ class FlextInfraUtilitiesRefactorMroTransform:
             statement
             for statement in retained_class_body
             if not (
-                len(moved_lines) > 0
+                moved_lines
                 and isinstance(statement, cst.SimpleStatementLine)
                 and (len(statement.body) == 1)
                 and isinstance(statement.body[0], cst.Pass)
             )
         ]
         final_nodes: MutableSequence[cst.CSTNode] = [*cleaned_body]
-        if len(moved_core_lines) > 0:
+        if moved_core_lines:
             has_existing_core = any(
                 isinstance(s, cst.ClassDef) and s.name.value == "Core"
                 for s in final_nodes
@@ -300,7 +300,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
             for statement in final_nodes
             if isinstance(statement, cst.BaseStatement)
         ]
-        if len(final_body) == 0:
+        if not final_body:
             final_body = [cst.SimpleStatementLine(body=[cst.Pass()])]
         return (
             class_def.with_changes(
@@ -346,7 +346,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
                     core_body.append(moved_node)
                 else:
                     class_body.append(moved_node)
-        if len(core_body) > 0:
+        if core_body:
             class_body.extend(
                 [
                     cst.ClassDef(

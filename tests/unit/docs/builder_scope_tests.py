@@ -97,7 +97,7 @@ class TestBuilderScope:
         )
         report = builder._run_mkdocs(scope)
         tm.that(report.scope, eq="test")
-        tm.that(len(report.result) > 0, eq=True)
+        tm.that(report.result, eq=True)
 
     def test_run_mkdocs_with_success_exit_code(
         self,

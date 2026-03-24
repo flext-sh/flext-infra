@@ -148,7 +148,7 @@ class FlextInfraNamespaceEnforcer:
                     parse_failures=parse_failures,
                 ),
             )
-        if apply and len(import_violations) > 0:
+        if apply and import_violations:
             package_name = NamespaceSourceDetector.discover_project_package_name(
                 project_root=project_root,
             )
@@ -176,7 +176,7 @@ class FlextInfraNamespaceEnforcer:
                     parse_failures=parse_failures,
                 ),
             )
-        if apply and len(namespace_source_violations) > 0:
+        if apply and namespace_source_violations:
             namespace_source_violations = []
             for py_file in py_files:
                 namespace_source_violations.extend(
@@ -210,7 +210,7 @@ class FlextInfraNamespaceEnforcer:
                     parse_failures=parse_failures,
                 ),
             )
-        if apply and len(runtime_alias_violations) > 0:
+        if apply and runtime_alias_violations:
             u.Infra.namespace_rewrite_runtime_alias_violations(
                 py_files=py_files,
             )
@@ -231,7 +231,7 @@ class FlextInfraNamespaceEnforcer:
                     parse_failures=parse_failures,
                 ),
             )
-        if apply and len(future_violations) > 0:
+        if apply and future_violations:
             u.Infra.namespace_rewrite_missing_future_annotations(
                 py_files=py_files,
             )
@@ -253,7 +253,7 @@ class FlextInfraNamespaceEnforcer:
                     parse_failures=parse_failures,
                 ),
             )
-        if apply and len(manual_protocol_violations) > 0:
+        if apply and manual_protocol_violations:
             u.Infra.namespace_rewrite_manual_protocol_violations(
                 project_root=project_root,
                 py_files=py_files,
@@ -277,7 +277,7 @@ class FlextInfraNamespaceEnforcer:
                     parse_failures=parse_failures,
                 ),
             )
-        if apply and len(manual_typing_violations) > 0:
+        if apply and manual_typing_violations:
             u.Infra.namespace_rewrite_manual_typing_alias_violations(
                 project_root=project_root,
                 violations=manual_typing_violations,
@@ -301,7 +301,7 @@ class FlextInfraNamespaceEnforcer:
                     parse_failures=parse_failures,
                 ),
             )
-        if apply and len(compatibility_alias_violations) > 0:
+        if apply and compatibility_alias_violations:
             u.Infra.namespace_rewrite_compatibility_alias_violations(
                 violations=compatibility_alias_violations,
                 parse_failures=parse_failures,
@@ -334,7 +334,7 @@ class FlextInfraNamespaceEnforcer:
                     parse_failures=parse_failures,
                 ),
             )
-        if apply and len(mro_completeness_violations) > 0:
+        if apply and mro_completeness_violations:
             u.Infra.namespace_rewrite_mro_completeness_violations(
                 violations=mro_completeness_violations,
                 parse_failures=parse_failures,

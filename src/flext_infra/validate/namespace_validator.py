@@ -130,7 +130,7 @@ class FlextInfraNamespaceValidator:
                 violations.extend(self._check_rule_0(tree, rel, prefix))
                 violations.extend(self._check_rule_1(tree, rel))
                 violations.extend(self._check_rule_2(tree, rel))
-            passed = len(violations) == 0
+            passed = not violations
             summary = (
                 f"namespace validation passed ({len(files)} files checked)"
                 if passed

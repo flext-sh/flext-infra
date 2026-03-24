@@ -104,7 +104,7 @@ class FlextInfraGoGate(FlextInfraGate):
                 )
         return self._build_gate_result(
             project=project_dir.name,
-            passed=len(issues) == 0,
+            passed=not issues,
             issues=issues,
             duration=time.monotonic() - started,
             raw_output=raw_output,

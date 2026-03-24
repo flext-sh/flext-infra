@@ -96,7 +96,7 @@ def test_basemk_engine_render_all_returns_string() -> None:
     engine = FlextInfraBaseMkTemplateEngine()
     result = engine.render_all()
     tm.ok(result)
-    assert isinstance(result.value, str) and len(result.value) > 0
+    assert isinstance(result.value, str) and result.value
 
 
 def test_basemk_engine_render_all_with_valid_config() -> None:
@@ -123,7 +123,7 @@ def test_basemk_engine_execute_calls_render_all() -> None:
     result = engine.execute()
     tm.ok(result)
     assert isinstance(result.value, str)
-    assert len(result.value) > 0
+    assert result.value
 
 
 def test_basemk_engine_render_all_handles_template_error(

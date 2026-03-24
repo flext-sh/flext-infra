@@ -74,7 +74,7 @@ class FlextInfraBaseMkValidator:
                 violations.append(
                     "root base.mk is stale (does not match generated template)",
                 )
-            passed = len(violations) == 0
+            passed = not violations
             summary = (
                 "root base.mk matches generated template"
                 if passed

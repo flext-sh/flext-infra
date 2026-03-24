@@ -47,7 +47,7 @@ class FlextInfraRefactorMigrateToClassMRO:
             except Exception as exc:
                 errors.append(f"{scan_result.file}: {exc}")
                 continue
-            if len(migration.moved_symbols) == 0:
+            if not migration.moved_symbols:
                 continue
             migrations.append(migration)
             moved_index[scan_result.module] = symbol_alias_map
@@ -101,10 +101,10 @@ class FlextInfraRefactorMigrateToClassMRO:
         ]
         if report.stash_ref:
             lines.append(f"Rollback stash: {report.stash_ref}")
-        if len(report.warnings) > 0:
+        if report.warnings:
             lines.append("Warnings:")
             lines.extend(f"- {warning}" for warning in report.warnings)
-        if len(report.errors) > 0:
+        if report.errors:
             lines.append("Errors:")
             lines.extend(f"- {error}" for error in report.errors)
         return "\n".join(lines) + "\n"

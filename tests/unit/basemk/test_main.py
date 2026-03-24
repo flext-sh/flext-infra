@@ -39,7 +39,7 @@ def test_basemk_main_with_output_file(tmp_path: Path) -> None:
     tm.that(result, eq=0)
     tm.that(output_file.exists(), eq=True)
     content = output_file.read_text(encoding="utf-8")
-    tm.that(len(content) > 0, eq=True)
+    tm.that(content, eq=True)
 
 
 def test_basemk_main_with_project_name(tmp_path: Path) -> None:

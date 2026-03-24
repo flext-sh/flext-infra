@@ -115,7 +115,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         _ = project_name
         _ = _parse_failures
         package_name = cls._discover_project_package_name(project_root=project_root)
-        if len(package_name) == 0:
+        if not package_name:
             return []
         transformers_module = __import__(
             "flext_infra.transformers",
@@ -181,7 +181,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
             for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
             if entry.is_dir() and (entry / "__init__.py").is_file()
         ]
-        if len(package_dirs) == 0:
+        if not package_dirs:
             return ""
         return package_dirs[0].name
 

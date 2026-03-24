@@ -55,7 +55,7 @@ class CyclicImportDetector:
             for directory_name in c.Infra.MRO_SCAN_DIRECTORIES
             if (project_root / directory_name).is_dir()
         ]
-        if len(scan_dirs) == 0:
+        if not scan_dirs:
             return []
         graph: MutableMapping[str, set[str]] = {}
         file_map: MutableMapping[str, str] = {}

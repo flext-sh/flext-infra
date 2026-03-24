@@ -205,7 +205,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
                 retained.append(alias)
                 continue
             self.changes.append(f"Removed unused typing import: {imported_name}")
-        if len(retained) == 0:
+        if not retained:
             self.changes.append("Removed empty typing import")
             return None
         updated_import = only.with_changes(names=tuple(retained))

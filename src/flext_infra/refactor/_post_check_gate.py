@@ -44,7 +44,7 @@ class PostCheckGate:
             errors.extend(self._validate_mro(file_path, source_symbol, expected_chain))
         if self._check_enabled("lsp_diagnostics_clean", quality_gates):
             errors.extend(self._validate_types(file_path))
-        return (len(errors) == 0, errors)
+        return (not errors, errors)
 
     def _check_enabled(self, check_name: str, checks: Sequence[str]) -> bool:
         return check_name in checks

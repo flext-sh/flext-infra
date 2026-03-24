@@ -50,7 +50,7 @@ class FlextInfraUtilitiesRefactorMroScan:
                         project_root=project_root,
                         target_spec=target_spec,
                     )
-                    if result is None or len(result.candidates) == 0:
+                    if result is None or not result.candidates:
                         continue
                     results.append(result)
         return (results, scanned)

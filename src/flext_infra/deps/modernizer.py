@@ -104,12 +104,12 @@ class FlextInfraPyprojectModernizer:
                         group_dep_item,
                         c.Infra.Toml.DEPENDENCIES,
                     )
-                    if deps_item is not None and len(deps_item) == 0:
+                    if deps_item is not None and not deps_item:
                         empty_groups.append(name)
                 for name in empty_groups:
                     del group_item[name]
                     changes.append(f"removed empty poetry group '{name}'")
-                if len(group_item) == 0:
+                if not group_item:
                     del poetry_item[c.Infra.Toml.GROUP]
                     changes.append("removed empty poetry group container")
         changes.extend(ConsolidateGroupsPhase().apply(doc, canonical_dev))

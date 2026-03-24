@@ -122,7 +122,7 @@ class FlextInfraRefactorCommand:
         service = FlextInfraRefactorMigrateToClassMRO(workspace_root=cli.workspace)
         report = service.run(target=target, apply=cli.apply)
         output.write(FlextInfraRefactorMigrateToClassMRO.render_text(report))
-        if len(report.errors) > 0:
+        if report.errors:
             for error in report.errors:
                 output.error(error)
             return 1
@@ -195,7 +195,7 @@ class FlextInfraRefactorCommand:
                 "namespace_files_scanned": namespace_report.total_files_scanned,
             },
         )
-        if len(mro_report.errors) > 0:
+        if mro_report.errors:
             for error in mro_report.errors:
                 output.error(error)
             return 1

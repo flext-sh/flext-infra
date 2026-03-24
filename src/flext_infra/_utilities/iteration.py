@@ -81,7 +81,7 @@ class FlextInfraUtilitiesIteration:
             ],
         )
         if (
-            len(roots) == 0
+            not roots
             and (workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir()
         ):
             return [workspace_root]

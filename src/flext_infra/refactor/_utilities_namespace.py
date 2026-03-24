@@ -121,7 +121,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         target_file: Path,
         blocks: Sequence[str],
     ) -> None:
-        if len(blocks) == 0:
+        if not blocks:
             return
         target_source = (
             target_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -191,7 +191,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             source_target_names.append(
                 (source_module, target_module, set(moved_name_seq)),
             )
-        if len(source_target_names) == 0:
+        if not source_target_names:
             return
         for py_file in py_files:
             parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
@@ -263,7 +263,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             class_nodes.append(stmt)
             remove_ranges.append((stmt.lineno, stmt.end_lineno))
             blocks.append(block.strip("\n"))
-        if len(class_nodes) == 0:
+        if not class_nodes:
             return None
         target_file = (
             FlextInfraUtilitiesRefactorNamespace._namespace_manual_protocol_target_file(
@@ -337,7 +337,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                     block = "\n".join(lines[stmt.lineno - 1 : stmt.end_lineno])
                 remove_ranges.append((stmt.lineno, stmt.end_lineno))
                 blocks.append(block.strip("\n"))
-        if len(blocks) == 0:
+        if not blocks:
             return
         target_file = (
             FlextInfraUtilitiesRefactorNamespace._namespace_manual_typings_target_file(
@@ -368,7 +368,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         target_file: Path,
         blocks: Sequence[str],
     ) -> None:
-        if len(blocks) == 0:
+        if not blocks:
             return
         project_name = project_root.name
         class_stem = NamespaceFacadeScanner.project_class_stem(
@@ -420,7 +420,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
             if entry.is_dir() and (entry / "__init__.py").is_file()
         ]
-        if len(package_dirs) == 0:
+        if not package_dirs:
             return
         primary_package = package_dirs[0]
         stem = NamespaceFacadeScanner.project_class_stem(
@@ -583,7 +583,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                         )
                         for base_expr in class_node.bases
                     )
-                    if len(base_name) > 0
+                    if base_name
                 ]
                 missing_bases = sorted(missing_by_facade[class_node.name])
                 proposed_bases = current_bases + [
@@ -668,7 +668,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             if "from __future__ import annotations" in source:
                 continue
             lines = source.splitlines()
-            if len(lines) == 0:
+            if not lines:
                 continue
             insert_idx = 0
             if lines[0].startswith("#!"):
@@ -723,7 +723,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             if move_result is None:
                 continue
             protocol_moves.append(move_result)
-        if len(protocol_moves) > 0:
+        if protocol_moves:
             FlextInfraUtilitiesRefactorNamespace._namespace_rewrite_moved_protocol_imports(
                 project_root=project_root,
                 py_files=py_files,
@@ -781,7 +781,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                     continue
                 if target.id in alias_map and stmt.value.id == alias_map[target.id]:
                     assignment_lines.add(stmt.lineno)
-            if len(assignment_lines) == 0:
+            if not assignment_lines:
                 continue
             kept_lines = [
                 line

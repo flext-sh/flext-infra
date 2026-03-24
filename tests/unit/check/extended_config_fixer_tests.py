@@ -110,7 +110,7 @@ class TestConfigFixerFixSearchPaths:
         pyrefly = tomlkit.document()
         pyrefly["search-path"] = ["../typings/generated", "../typings"]
         fixes = fixer._fix_search_paths_tk(pyrefly, tmp_path)
-        tm.that(len(fixes) > 0, eq=True)
+        tm.that(fixes, eq=True)
         tm.that("typings/generated" in str(pyrefly["search-path"]), eq=True)
 
     def test_fix_search_paths_removes_nonexistent(self, tmp_path: Path) -> None:
@@ -118,7 +118,7 @@ class TestConfigFixerFixSearchPaths:
         pyrefly = tomlkit.document()
         pyrefly["search-path"] = ["nonexistent"]
         fixes = fixer._fix_search_paths_tk(pyrefly, tmp_path)
-        tm.that(len(fixes) > 0, eq=True)
+        tm.that(fixes, eq=True)
 
     def test_fix_search_paths_skips_non_list(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
@@ -139,7 +139,7 @@ class TestConfigFixerRemoveIgnoreSubConfig:
             {"matches": "*.pyi", "ignore": False},
         ]
         fixes = fixer._remove_ignore_sub_config_tk(pyrefly)
-        tm.that(len(fixes) > 0, eq=True)
+        tm.that(fixes, eq=True)
         sub_config = pyrefly["sub-config"]
         tm.that(str(sub_config), contains="*.pyi")
 
@@ -159,9 +159,9 @@ class TestConfigFixerEnsureProjectExcludes:
         pyrefly = tomlkit.document()
         pyrefly["project-excludes"] = tomlkit.array()
         fixes = fixer._ensure_project_excludes_tk(pyrefly)
-        tm.that(len(fixes) > 0, eq=True)
+        tm.that(fixes, eq=True)
         project_excludes = pyrefly["project-excludes"]
-        tm.that(len(str(project_excludes)) > 0, eq=True)
+        tm.that(str(project_excludes), eq=True)
 
     def test_ensure_project_excludes_skips_existing(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)

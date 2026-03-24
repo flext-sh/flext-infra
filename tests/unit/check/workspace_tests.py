@@ -63,7 +63,7 @@ class TestFlextInfraWorkspaceChecker:
             reports_dir=tmp_path / "reports",
         )
         tm.ok(result)
-        assert len(result.value) == 0
+        assert not result.value
 
     def test_run_projects_creates_reports_dir(self, tmp_path: Path) -> None:
         """Test that run_projects creates reports directory if missing."""

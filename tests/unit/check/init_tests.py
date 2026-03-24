@@ -22,4 +22,4 @@ class TestFlextInfraCheck:
         """Test dir() returns all exported symbols."""
         exports = dir(check_module)
         assert isinstance(exports, list)
-        assert len(exports) > 0
+        assert exports

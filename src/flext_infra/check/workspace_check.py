@@ -306,7 +306,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 breakdown = ", ".join(
                     f"{gate}={len(project.gates[gate].issues)}"
                     for gate in resolved_gates
-                    if gate in project.gates and len(project.gates[gate].issues) > 0
+                    if gate in project.gates and project.gates[gate].issues
                 )
                 output.error(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",

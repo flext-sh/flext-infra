@@ -49,7 +49,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         star_forwarded: str | None,
         star_kw_forwarded: str | None,
     ) -> bool:
-        positional_by_name = len(positional_forwarded) == 0 and set(
+        positional_by_name = not positional_forwarded and set(
             keyword_forwarded.keys(),
         ) >= set(positional_expected)
         positional_by_position = positional_forwarded == positional_expected

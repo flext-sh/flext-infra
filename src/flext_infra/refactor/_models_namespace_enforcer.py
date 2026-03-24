@@ -223,7 +223,7 @@ class FlextInfraNamespaceEnforcerModels:
             name: str,
             suggestion: str = "",
         ) -> Self:
-            if len(suggestion) > 0:
+            if suggestion:
                 return cls(file=file, line=line, name=name, suggestion=suggestion)
             return cls(
                 file=file,

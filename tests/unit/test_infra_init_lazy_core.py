@@ -92,12 +92,12 @@ class TestFlextInfraInitLazyLoading:
     def test_lazy_import_version_string(self) -> None:
         """Test lazy loading of __version__."""
         assert isinstance(version, str)
-        assert len(version) > 0
+        assert version
 
     def test_lazy_import_version_info(self) -> None:
         """Test lazy loading of __version_info__."""
         assert isinstance(version_info, tuple)
-        assert len(version_info) > 0
+        assert version_info
 
     def test_lazy_import_runtime_alias_c(self) -> None:
         """Test lazy loading of runtime alias c."""

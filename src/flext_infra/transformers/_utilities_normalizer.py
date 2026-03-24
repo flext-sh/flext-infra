@@ -154,7 +154,7 @@ class FlextInfraUtilitiesImportNormalizer:
         for module_name in graph:
             visited: set[str] = set()
             queue: deque[str] = deque(graph.get(module_name, frozenset()))
-            while len(queue) > 0:
+            while queue:
                 imported_module = queue.popleft()
                 if imported_module in visited:
                     continue
@@ -227,7 +227,7 @@ class FlextInfraUtilitiesImportNormalizer:
         declared_alias = facade_to_alias.get(file_path.name, "")
         if declared_alias in alias_tiers:
             return alias_tiers[declared_alias]
-        if len(project_package) == 0:
+        if not project_package:
             return _UNKNOWN_TIER
         marker = f"/src/{project_package}/"
         file_str = str(file_path.resolve())
@@ -235,7 +235,7 @@ class FlextInfraUtilitiesImportNormalizer:
             return _UNKNOWN_TIER
         relative = file_str.split(marker, maxsplit=1)[1]
         parts = Path(relative).parts[:-1]
-        if len(parts) == 0:
+        if not parts:
             return _UNKNOWN_TIER
         first = parts[0]
         if first.startswith("_"):
@@ -260,7 +260,7 @@ class FlextInfraUtilitiesImportNormalizer:
         """Build normalized analysis context for a target file."""
         package_name = (
             project_package
-            if len(project_package) > 0
+            if project_package
             else FlextInfraUtilitiesDiscovery.discover_package_from_file(file_path)
         )
         project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
@@ -271,7 +271,7 @@ class FlextInfraUtilitiesImportNormalizer:
             candidate = project_root / "src" / package_name
             if candidate.is_dir() and (candidate / "__init__.py").is_file():
                 package_dir = candidate
-        if package_dir is None and len(package_name) > 0:
+        if package_dir is None and package_name:
             spec = importlib.util.find_spec(package_name)
             if spec and spec.submodule_search_locations:
                 locs = list(spec.submodule_search_locations)
@@ -287,11 +287,11 @@ class FlextInfraUtilitiesImportNormalizer:
                 project_root=project_root,
                 alias_map=alias_map,
             )
-            if package_dir is not None and len(package_name) > 0
+            if package_dir is not None and package_name
             else {}
         )
         file_module = ""
-        if package_dir is not None and len(package_name) > 0:
+        if package_dir is not None and package_name:
             try:
                 file_module = (
                     FlextInfraUtilitiesImportNormalizer.normalizer_file_to_module(
@@ -321,7 +321,7 @@ class FlextInfraUtilitiesImportNormalizer:
                 package_dir,
                 package_name,
             )
-            if package_dir is not None and len(package_name) > 0
+            if package_dir is not None and package_name
             else {}
         )
         workspace_root = FlextInfraUtilitiesDiscovery.discover_workspace_root_from_file(
@@ -334,7 +334,7 @@ class FlextInfraUtilitiesImportNormalizer:
             FlextInfraUtilitiesImportNormalizer.normalizer_wrong_source_config()
         )
         project_aliases = set(alias_to_module)
-        if alias_map is not None and len(package_name) > 0:
+        if alias_map is not None and package_name:
             project_aliases.update(alias_map.get(package_name, ()))
         return NormalizerContext(
             file_path=file_path,

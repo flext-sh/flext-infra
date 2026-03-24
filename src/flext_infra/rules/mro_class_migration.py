@@ -52,7 +52,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
                     line=stmt.lineno,
                 ),
             )
-        if len(candidates) == 0:
+        if not candidates:
             return (tree, [])
         constants_class = self._first_constants_class_name(module_ast)
         scan_result = m.Infra.MROScanReport(
@@ -64,7 +64,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
         updated_source, migration, _ = u.Infra.mro_migrate_file(
             scan_result=scan_result,
         )
-        if len(migration.moved_symbols) == 0 or updated_source == source:
+        if not migration.moved_symbols or updated_source == source:
             return (tree, [])
         updated_module = u.Infra.parse_cst_from_source(updated_source)
         if updated_module is None:

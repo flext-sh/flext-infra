@@ -188,7 +188,7 @@ class TestWorkspaceCheckerSARIFReportEdgeCases:
             ["lint"],
             "2025-01-01 00:00:00 UTC",
         )
-        tm.that("more errors" in report or len(issues) > 0, eq=True)
+        tm.that("more errors" in report or issues, eq=True)
 
 
 class TestMarkdownReportSkipsEmptyGates:
@@ -279,5 +279,5 @@ class TestWorkspaceCheckerMarkdownReportEdgeCases:
             result=gate_with_issues, issues=[issue], raw_output=""
         )
         exec2 = m.Infra.GateExecution(result=gate_no_issues, issues=[], raw_output="")
-        tm.that(len(exec1.issues) > 0, eq=True)
+        tm.that(exec1.issues, eq=True)
         tm.that(len(exec2.issues), eq=0)

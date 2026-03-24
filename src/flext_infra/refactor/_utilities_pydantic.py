@@ -67,12 +67,9 @@ class FlextInfraUtilitiesRefactorPydantic:
             return False
         parts = set(file_path.parts)
         return (
-            len(
-                parts.intersection(
-                    FlextInfraUtilitiesRefactorPydantic._PYDANTIC_SCOPE_DIRS,
-                ),
+            parts.intersection(
+                FlextInfraUtilitiesRefactorPydantic._PYDANTIC_SCOPE_DIRS,
             )
-            > 0
         )
 
     @staticmethod
@@ -221,7 +218,7 @@ class FlextInfraUtilitiesRefactorPydantic:
             if collected_moves is None:
                 continue
             class_moves, alias_moves = collected_moves
-            if len(class_moves) == 0 and len(alias_moves) == 0:
+            if not class_moves and not alias_moves:
                 continue
             apply_class_moves = class_moves
             apply_alias_moves = alias_moves
@@ -232,7 +229,7 @@ class FlextInfraUtilitiesRefactorPydantic:
                         alias_moves,
                     )
                 )
-                if len(apply_class_moves) == 0 and len(apply_alias_moves) == 0:
+                if not apply_class_moves and not apply_alias_moves:
                     skipped_non_necessary_apply += 1
                     continue
             dest_path = file_path.parent / "_models.py"

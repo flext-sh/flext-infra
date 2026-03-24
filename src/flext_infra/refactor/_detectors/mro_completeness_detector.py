@@ -148,7 +148,7 @@ class MROCompletenessDetector(
             for base_name in (
                 cls._extract_base_name(base) for base in facade_node.bases
             )
-            if len(base_name) > 0
+            if base_name
         }
         candidates = cls._collect_local_candidates(
             file_path=file_path,
@@ -204,7 +204,7 @@ class MROCompletenessDetector(
                     ):
                         return stmt.value.value
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
-        if len(suffix) == 0:
+        if not suffix:
             return None
         for stmt in tree.body:
             if isinstance(stmt, cst.ClassDef) and stmt.name.value.endswith(suffix):
@@ -301,7 +301,7 @@ class MROCompletenessDetector(
             ),
         )
         family_dir_name = cls.FAMILY_DIR_BY_ALIAS.get(family, "")
-        if len(family_dir_name) > 0:
+        if family_dir_name:
             family_dir = file_path.parent / family_dir_name
             if family_dir.is_dir():
                 for child in sorted(family_dir.glob("*.py")):

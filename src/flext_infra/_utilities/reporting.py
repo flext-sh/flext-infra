@@ -191,7 +191,7 @@ class FlextInfraUtilitiesReporting:
             lines.extend([f"## {project.project}", ""])
             for gate in gates:
                 gate_result = project.gates.get(gate)
-                if not gate_result or len(gate_result.issues) == 0:
+                if not gate_result or not gate_result.issues:
                     continue
                 lines.extend([
                     f"### {gate} ({len(gate_result.issues)} errors)",

@@ -113,7 +113,7 @@ class TestBuildScopes:
 
     def test_default_docs_output_dir_constant(self) -> None:
         """Test DEFAULT_DOCS_OUTPUT_DIR constant is defined."""
-        tm.that(len(_OUT) > 0, eq=True)
+        tm.that(_OUT, eq=True)
 
     def test_scope_structure(self, tmp_path: Path) -> None:
         """Test scopes returned have required structure."""

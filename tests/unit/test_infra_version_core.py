@@ -52,7 +52,7 @@ class TestFlextInfraVersionClass:
     def test_get_version_string_is_not_empty(self) -> None:
         """Test that get_version_string() returns non-empty string."""
         result = FlextInfraVersion.get_version_string()
-        assert len(result) > 0
+        assert result
 
     def test_get_version_string_matches_version_attribute(self) -> None:
         """Test that get_version_string() matches __version__ attribute."""
@@ -67,7 +67,7 @@ class TestFlextInfraVersionClass:
     def test_get_version_info_is_not_empty(self) -> None:
         """Test that get_version_info() returns non-empty tuple."""
         result = FlextInfraVersion.get_version_info()
-        assert len(result) > 0
+        assert result
 
     def test_get_version_info_matches_version_info_attribute(self) -> None:
         """Test that get_version_info() matches __version_info__ attribute."""

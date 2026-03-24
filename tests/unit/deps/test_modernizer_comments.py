@@ -30,7 +30,7 @@ class TestInjectCommentsPhase:
     def test_inject_comments_handles_optional_dependencies_dev(self) -> None:
         rendered = "[project.optional-dependencies]\ndev = ['pytest']"
         result, changes = InjectCommentsPhase().apply(rendered)
-        tm.that(("dev" in result) or (len(changes) > 0), eq=True)
+        tm.that(("dev" in result) or (changes), eq=True)
 
     def test_inject_comments_preserves_existing_markers(self) -> None:
         rendered = "# [MANAGED] build system\n[build-system]"
@@ -61,4 +61,4 @@ def test_inject_comments_phase_apply_broken_group_section() -> None:
 def test_inject_comments_phase_apply_with_optional_dependencies_dev() -> None:
     rendered = "[project.optional-dependencies]\noptional-dependencies.dev = ['pytest', 'coverage']\n"
     result, changes = InjectCommentsPhase().apply(rendered)
-    tm.that(("optional-dependencies.dev" in result) or (len(changes) > 0), eq=True)
+    tm.that(("optional-dependencies.dev" in result) or (changes), eq=True)

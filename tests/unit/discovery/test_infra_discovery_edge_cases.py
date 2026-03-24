@@ -24,7 +24,7 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         (non_git_dir / "pyproject.toml").touch()
         result = service.discover_projects(workspace_root)
         tm.ok(result)
-        assert len(result.value) == 0
+        assert not result.value
 
     def test_find_all_pyproject_files_with_nonexistent_path(self) -> None:
         service = FlextInfraUtilitiesDiscovery()
@@ -55,7 +55,7 @@ class TestFlextInfraDiscoveryServiceUncoveredLines:
         (proj / "Makefile").touch()
         result = service.discover_projects(workspace_root)
         tm.ok(result)
-        assert len(result.value) == 0
+        assert not result.value
 
     def test_find_all_pyproject_files_oserror_on_rglob(
         self,

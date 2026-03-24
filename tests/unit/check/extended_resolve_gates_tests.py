@@ -51,7 +51,7 @@ class TestWorkspaceCheckerResolveGates:
         ]
         result = FlextInfraWorkspaceChecker.resolve_gates(gates)
         tm.ok(result)
-        tm.that(len(result.value) > 0, eq=True)
+        tm.that(result.value, eq=True)
 
 
 class TestWorkspaceCheckerParseGateCSV:

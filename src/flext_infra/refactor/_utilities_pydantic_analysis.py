@@ -237,7 +237,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                 )
             else:
                 field_lines.append(f"    {key_value}: {annotation}")
-        if len(field_lines) == 0:
+        if not field_lines:
             field_lines.append("    pass")
         rendered_fields = "\n".join(field_lines)
         rendered_class = (
@@ -280,7 +280,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                     )
                 else:
                     fields.append(f"    {stmt.target.id}: {ann}")
-        if len(fields) == 0:
+        if not fields:
             fields.append("    pass")
         body = "\n".join(fields)
         return f'class {node.name}(BaseModel):\n    model_config = ConfigDict(extra="forbid")\n{body}\n'

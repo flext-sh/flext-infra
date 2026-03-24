@@ -149,7 +149,7 @@ class RuntimeAliasDetector(p.Infra.Scanner):
                     alias_assignments.append((0, target_expr.value, stmt.value.value))
         expected_alias = family
         matches = [a for a in alias_assignments if a[1] == expected_alias]
-        if len(matches) == 0:
+        if not matches:
             violations.append(
                 nem.RuntimeAliasViolation.create(
                     file=str(file_path),

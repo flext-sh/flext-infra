@@ -114,7 +114,7 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             return []
-        if len(tree.body) == 0:
+        if not tree.body:
             return []
         simple_statements = list(u.Infra.cst_iter_simple_statements(tree.body))
         if (

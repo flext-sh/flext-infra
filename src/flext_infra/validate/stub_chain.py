@@ -137,7 +137,7 @@ class FlextInfraStubSupplyChain:
                     violations.append(
                         f"{proj.name}: {len(unresolved)} unresolved imports",
                     )
-            passed = len(violations) == 0
+            passed = not violations
             summary = f"stub chain: {len(projects)} projects, {len(violations)} issues"
             return r[m.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(
