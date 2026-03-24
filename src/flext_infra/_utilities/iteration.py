@@ -126,22 +126,6 @@ class FlextInfraUtilitiesIteration:
     ) -> r[Sequence[Path]]:
         """Discover and iterate all Python files across workspace projects.
 
-        Unlike iter_directory_python_files() which scans a single directory,
-        this discovers all projects in workspace and iterates dynamically:
-          - Includes src/, tests/, examples/, scripts/ by default (with toggles)
-          - ALSO dynamically discovers ANY other directories with Python files
-          - Can exclude specific standard directories (e.g., skip tests)
-          - Handles discovery failure gracefully (returns Result type)
-          - Accepts pre-discovered project roots for caching
-
-        Algorithm:
-          1. Discover project roots (unless project_roots provided)
-          2. For each root, collect files from:
-             a. Explicitly specified directories (src, tests, examples, scripts)
-                if enabled via include_* flags
-             b. ANY other subdirectories containing Python files (dynamic)
-          3. Deduplicate (set) and sort results
-
         Args:
             workspace_root: Workspace root to discover from.
             project_roots: Pre-discovered project paths to skip discovery phase.

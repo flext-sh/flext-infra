@@ -17,10 +17,10 @@ import libcst as cst
 from flext_infra import (
     FlextInfraRefactorMROPrivateInlineTransformer,
     FlextInfraRefactorMROQualifiedReferenceTransformer,
-    FlextInfraUtilitiesParsing,
     c,
     m,
     t,
+    u,
 )
 
 
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
     ) -> tuple[str, m.Infra.MROFileMigration, t.StrMapping]:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
-        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
+        module = u.Infra.parse_cst_from_source(source)
         if module is None:
             return (
                 source,
