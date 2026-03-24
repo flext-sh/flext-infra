@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Callable, Mapping, MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 from typing import Final, TextIO
@@ -188,12 +188,31 @@ class FlextInfraUtilitiesOutput:
         sys.stdout.flush()
 
     @staticmethod
+    def _render_violation_section[V](
+        *,
+        lines: MutableSequence[str],
+        violations: Sequence[V],
+        label: str,
+        formatter: Callable[[V], str],
+        max_items: int,
+    ) -> None:
+        """Render a truncated violation section with count header."""
+        if not violations:
+            return
+        lines.append(f"  {label}: {len(violations)}")
+        lines.extend(formatter(v) for v in violations[:max_items])
+        if len(violations) > max_items:
+            lines.append(f"    ... and {len(violations) - max_items} more")
+
+    @staticmethod
     def render_namespace_enforcement_report(
         report: m.Infra.WorkspaceEnforcementReport,
     ) -> str:
         """Render a human-readable namespace enforcement report."""
         max_loose = c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS
         max_imports = c.Infra.NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS
+        no_limit = 10_000
+        render = FlextInfraUtilitiesOutput._render_violation_section
         lines: MutableSequence[str] = [
             f"Workspace: {report.workspace}",
             f"Projects scanned: {len(report.projects)}",
@@ -242,144 +261,103 @@ class FlextInfraUtilitiesOutput:
                         for s in missing
                     ),
                 )
-            if proj.loose_objects:
-                lines.append(f"  Loose objects: {len(proj.loose_objects)}")
-                lines.extend(
-                    f"    {obj.file}:{obj.line} {obj.kind} '{obj.name}' -> {obj.suggestion}"
-                    for obj in proj.loose_objects[:max_loose]
-                )
-                if len(proj.loose_objects) > max_loose:
-                    lines.append(
-                        f"    ... and {len(proj.loose_objects) - max_loose} more",
-                    )
-            if proj.import_violations:
-                lines.append(f"  Import violations: {len(proj.import_violations)}")
-                lines.extend(
-                    f"    {iv.file}:{iv.line} {iv.current_import}"
-                    for iv in proj.import_violations[:max_imports]
-                )
-                if len(proj.import_violations) > max_imports:
-                    lines.append(
-                        f"    ... and {len(proj.import_violations) - max_imports} more",
-                    )
-            if proj.internal_import_violations:
-                lines.append(
-                    f"  Internal imports: {len(proj.internal_import_violations)}",
-                )
-                lines.extend(
-                    f"    {iv.file}:{iv.line} {iv.current_import} ({iv.detail})"
-                    for iv in proj.internal_import_violations[:max_imports]
-                )
-                if len(proj.internal_import_violations) > max_imports:
-                    lines.append(
-                        f"    ... and {len(proj.internal_import_violations) - max_imports} more",
-                    )
-            if proj.cyclic_imports:
-                lines.append(f"  Cyclic imports: {len(proj.cyclic_imports)}")
-                lines.extend(
-                    f"    Cycle: {' -> '.join(ci.cycle)}" for ci in proj.cyclic_imports
-                )
-            if proj.runtime_alias_violations:
-                lines.append(
-                    f"  Runtime alias violations: {len(proj.runtime_alias_violations)}",
-                )
-                lines.extend(
-                    f"    {rv.file} [{rv.kind}] alias='{rv.alias}' {rv.detail}"
-                    for rv in proj.runtime_alias_violations
-                )
-            if proj.future_violations:
-                lines.append(
-                    f"  Missing __future__ annotations: {len(proj.future_violations)}",
-                )
-                lines.extend(
-                    f"    {fv.file}" for fv in proj.future_violations[:max_loose]
-                )
-                if len(proj.future_violations) > max_loose:
-                    lines.append(
-                        f"    ... and {len(proj.future_violations) - max_loose} more",
-                    )
-            if proj.manual_protocol_violations:
-                lines.append(
-                    f"  Manual protocols: {len(proj.manual_protocol_violations)}",
-                )
-                lines.extend(
-                    f"    {pv.file}:{pv.line} {pv.name}"
-                    for pv in proj.manual_protocol_violations[:max_loose]
-                )
-                if len(proj.manual_protocol_violations) > max_loose:
-                    lines.append(
-                        f"    ... and {len(proj.manual_protocol_violations) - max_loose} more",
-                    )
-            if proj.manual_typing_violations:
-                lines.append(
-                    f"  Manual typing aliases: {len(proj.manual_typing_violations)}",
-                )
-                lines.extend(
-                    f"    {tv.file}:{tv.line} {tv.name}"
-                    for tv in proj.manual_typing_violations[:max_loose]
-                )
-                if len(proj.manual_typing_violations) > max_loose:
-                    lines.append(
-                        f"    ... and {len(proj.manual_typing_violations) - max_loose} more",
-                    )
-            if proj.compatibility_alias_violations:
-                lines.append(
-                    f"  Compatibility aliases: {len(proj.compatibility_alias_violations)}",
-                )
-                lines.extend(
-                    f"    {cv.file}:{cv.line} {cv.alias_name}={cv.target_name}"
-                    for cv in proj.compatibility_alias_violations[:max_loose]
-                )
-                if len(proj.compatibility_alias_violations) > max_loose:
-                    lines.append(
-                        f"    ... and {len(proj.compatibility_alias_violations) - max_loose} more",
-                    )
-            if proj.class_placement_violations:
-                lines.append(
-                    f"  Class placement violations: {len(proj.class_placement_violations)}",
-                )
-                lines.extend(
-                    f"    {cpv.file}:{cpv.line} {cpv.name} -> {cpv.suggestion}"
-                    for cpv in proj.class_placement_violations[:max_loose]
-                )
-                if len(proj.class_placement_violations) > max_loose:
-                    lines.append(
-                        f"    ... and {len(proj.class_placement_violations) - max_loose} more",
-                    )
-            if proj.mro_completeness_violations:
-                lines.append(
-                    f"  MRO completeness violations: {len(proj.mro_completeness_violations)}",
-                )
-                lines.extend(
-                    f"    {mv.file}:{mv.line} '{mv.facade_class}' missing base '{mv.missing_base}' (family={mv.family})"
-                    for mv in proj.mro_completeness_violations[:max_loose]
-                )
-                if len(proj.mro_completeness_violations) > max_loose:
-                    lines.append(
-                        f"    ... and {len(proj.mro_completeness_violations) - max_loose} more",
-                    )
-            if proj.namespace_source_violations:
-                lines.append(
-                    f"  Namespace source violations: {len(proj.namespace_source_violations)}",
-                )
-                lines.extend(
-                    f"    {nsv.file}:{nsv.line} alias='{nsv.alias}' {nsv.current_source} -> {nsv.correct_source}"
-                    for nsv in proj.namespace_source_violations[:max_loose]
-                )
-                if len(proj.namespace_source_violations) > max_loose:
-                    lines.append(
-                        f"    ... and {len(proj.namespace_source_violations) - max_loose} more",
-                    )
-            if proj.parse_failures:
-                lines.append(f"  Parse failures: {len(proj.parse_failures)}")
-                lines.extend(
-                    f"    {pf.file} [{pf.stage}] {pf.error_type}: {pf.detail}"
-                    for pf in proj.parse_failures[:max_loose]
-                )
-                if len(proj.parse_failures) > max_loose:
-                    lines.append(
-                        f"    ... and {len(proj.parse_failures) - max_loose} more",
-                    )
+            render(
+                lines=lines,
+                violations=proj.loose_objects,
+                label="Loose objects",
+                formatter=lambda obj: f"    {obj.file}:{obj.line} {obj.kind} '{obj.name}' -> {obj.suggestion}",
+                max_items=max_loose,
+            )
+            render(
+                lines=lines,
+                violations=proj.import_violations,
+                label="Import violations",
+                formatter=lambda iv: f"    {iv.file}:{iv.line} {iv.current_import}",
+                max_items=max_imports,
+            )
+            render(
+                lines=lines,
+                violations=proj.internal_import_violations,
+                label="Internal imports",
+                formatter=lambda iv: f"    {iv.file}:{iv.line} {iv.current_import} ({iv.detail})",
+                max_items=max_imports,
+            )
+            render(
+                lines=lines,
+                violations=proj.cyclic_imports,
+                label="Cyclic imports",
+                formatter=lambda ci: f"    Cycle: {' -> '.join(ci.cycle)}",
+                max_items=no_limit,
+            )
+            render(
+                lines=lines,
+                violations=proj.runtime_alias_violations,
+                label="Runtime alias violations",
+                formatter=lambda rv: f"    {rv.file} [{rv.kind}] alias='{rv.alias}' {rv.detail}",
+                max_items=no_limit,
+            )
+            render(
+                lines=lines,
+                violations=proj.future_violations,
+                label="Missing __future__ annotations",
+                formatter=lambda fv: f"    {fv.file}",
+                max_items=max_loose,
+            )
+            render(
+                lines=lines,
+                violations=proj.manual_protocol_violations,
+                label="Manual protocols",
+                formatter=lambda pv: f"    {pv.file}:{pv.line} {pv.name}",
+                max_items=max_loose,
+            )
+            render(
+                lines=lines,
+                violations=proj.manual_typing_violations,
+                label="Manual typing aliases",
+                formatter=lambda tv: f"    {tv.file}:{tv.line} {tv.name}",
+                max_items=max_loose,
+            )
+            render(
+                lines=lines,
+                violations=proj.compatibility_alias_violations,
+                label="Compatibility aliases",
+                formatter=lambda cv: f"    {cv.file}:{cv.line} {cv.alias_name}={cv.target_name}",
+                max_items=max_loose,
+            )
+            render(
+                lines=lines,
+                violations=proj.class_placement_violations,
+                label="Class placement violations",
+                formatter=lambda cpv: f"    {cpv.file}:{cpv.line} {cpv.name} -> {cpv.suggestion}",
+                max_items=max_loose,
+            )
+            render(
+                lines=lines,
+                violations=proj.mro_completeness_violations,
+                label="MRO completeness violations",
+                formatter=lambda mv: (
+                    f"    {mv.file}:{mv.line} '{mv.facade_class}'"
+                    f" missing base '{mv.missing_base}' (family={mv.family})"
+                ),
+                max_items=max_loose,
+            )
+            render(
+                lines=lines,
+                violations=proj.namespace_source_violations,
+                label="Namespace source violations",
+                formatter=lambda nsv: (
+                    f"    {nsv.file}:{nsv.line} alias='{nsv.alias}'"
+                    f" {nsv.current_source} -> {nsv.correct_source}"
+                ),
+                max_items=max_loose,
+            )
+            render(
+                lines=lines,
+                violations=proj.parse_failures,
+                label="Parse failures",
+                formatter=lambda pf: f"    {pf.file} [{pf.stage}] {pf.error_type}: {pf.detail}",
+                max_items=max_loose,
+            )
             lines.append("")
         return "\n".join(lines) + "\n"
 
