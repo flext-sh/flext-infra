@@ -58,94 +58,34 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "TestBaseMkValidatorCore": (
-        "tests.unit.validate.basemk_validator_tests",
-        "TestBaseMkValidatorCore",
-    ),
-    "TestBaseMkValidatorEdgeCases": (
-        "tests.unit.validate.basemk_validator_tests",
-        "TestBaseMkValidatorEdgeCases",
-    ),
-    "TestBaseMkValidatorSha256": (
-        "tests.unit.validate.basemk_validator_tests",
-        "TestBaseMkValidatorSha256",
-    ),
+    "TestBaseMkValidatorCore": ("tests.unit.validate.basemk_validator_tests", "TestBaseMkValidatorCore"),
+    "TestBaseMkValidatorEdgeCases": ("tests.unit.validate.basemk_validator_tests", "TestBaseMkValidatorEdgeCases"),
+    "TestBaseMkValidatorSha256": ("tests.unit.validate.basemk_validator_tests", "TestBaseMkValidatorSha256"),
     "TestCoreModuleInit": ("tests.unit.validate.init_tests", "TestCoreModuleInit"),
-    "TestInventoryServiceCore": (
-        "tests.unit.validate.inventory_tests",
-        "TestInventoryServiceCore",
-    ),
-    "TestInventoryServiceReports": (
-        "tests.unit.validate.inventory_tests",
-        "TestInventoryServiceReports",
-    ),
-    "TestInventoryServiceScripts": (
-        "tests.unit.validate.inventory_tests",
-        "TestInventoryServiceScripts",
-    ),
-    "TestMainBaseMkValidate": (
-        "tests.unit.validate.main_tests",
-        "TestMainBaseMkValidate",
-    ),
+    "TestInventoryServiceCore": ("tests.unit.validate.inventory_tests", "TestInventoryServiceCore"),
+    "TestInventoryServiceReports": ("tests.unit.validate.inventory_tests", "TestInventoryServiceReports"),
+    "TestInventoryServiceScripts": ("tests.unit.validate.inventory_tests", "TestInventoryServiceScripts"),
+    "TestMainBaseMkValidate": ("tests.unit.validate.main_tests", "TestMainBaseMkValidate"),
     "TestMainCliRouting": ("tests.unit.validate.main_tests", "TestMainCliRouting"),
     "TestMainInventory": ("tests.unit.validate.main_tests", "TestMainInventory"),
     "TestMainScan": ("tests.unit.validate.main_tests", "TestMainScan"),
-    "TestPytestDiagExtractorCore": (
-        "tests.unit.validate.pytest_diag",
-        "TestPytestDiagExtractorCore",
-    ),
-    "TestPytestDiagLogParsing": (
-        "tests.unit.validate.pytest_diag",
-        "TestPytestDiagLogParsing",
-    ),
-    "TestPytestDiagParseXml": (
-        "tests.unit.validate.pytest_diag",
-        "TestPytestDiagParseXml",
-    ),
-    "TestSafeLoadYaml": (
-        "tests.unit.validate.skill_validator_tests",
-        "TestSafeLoadYaml",
-    ),
+    "TestPytestDiagExtractorCore": ("tests.unit.validate.pytest_diag", "TestPytestDiagExtractorCore"),
+    "TestPytestDiagLogParsing": ("tests.unit.validate.pytest_diag", "TestPytestDiagLogParsing"),
+    "TestPytestDiagParseXml": ("tests.unit.validate.pytest_diag", "TestPytestDiagParseXml"),
+    "TestSafeLoadYaml": ("tests.unit.validate.skill_validator_tests", "TestSafeLoadYaml"),
     "TestScannerCore": ("tests.unit.validate.scanner_tests", "TestScannerCore"),
     "TestScannerHelpers": ("tests.unit.validate.scanner_tests", "TestScannerHelpers"),
-    "TestScannerMultiFile": (
-        "tests.unit.validate.scanner_tests",
-        "TestScannerMultiFile",
-    ),
-    "TestSkillValidatorAstGrepCount": (
-        "tests.unit.validate.skill_validator_tests",
-        "TestSkillValidatorAstGrepCount",
-    ),
-    "TestSkillValidatorCore": (
-        "tests.unit.validate.skill_validator_tests",
-        "TestSkillValidatorCore",
-    ),
-    "TestSkillValidatorRenderTemplate": (
-        "tests.unit.validate.skill_validator_tests",
-        "TestSkillValidatorRenderTemplate",
-    ),
+    "TestScannerMultiFile": ("tests.unit.validate.scanner_tests", "TestScannerMultiFile"),
+    "TestSkillValidatorAstGrepCount": ("tests.unit.validate.skill_validator_tests", "TestSkillValidatorAstGrepCount"),
+    "TestSkillValidatorCore": ("tests.unit.validate.skill_validator_tests", "TestSkillValidatorCore"),
+    "TestSkillValidatorRenderTemplate": ("tests.unit.validate.skill_validator_tests", "TestSkillValidatorRenderTemplate"),
     "TestStringList": ("tests.unit.validate.skill_validator_tests", "TestStringList"),
-    "TestStubChainAnalyze": (
-        "tests.unit.validate.stub_chain_tests",
-        "TestStubChainAnalyze",
-    ),
+    "TestStubChainAnalyze": ("tests.unit.validate.stub_chain_tests", "TestStubChainAnalyze"),
     "TestStubChainCore": ("tests.unit.validate.stub_chain_tests", "TestStubChainCore"),
-    "TestStubChainDiscoverProjects": (
-        "tests.unit.validate.stub_chain_tests",
-        "TestStubChainDiscoverProjects",
-    ),
-    "TestStubChainIsInternal": (
-        "tests.unit.validate.stub_chain_tests",
-        "TestStubChainIsInternal",
-    ),
-    "TestStubChainStubExists": (
-        "tests.unit.validate.stub_chain_tests",
-        "TestStubChainStubExists",
-    ),
-    "TestStubChainValidate": (
-        "tests.unit.validate.stub_chain_tests",
-        "TestStubChainValidate",
-    ),
+    "TestStubChainDiscoverProjects": ("tests.unit.validate.stub_chain_tests", "TestStubChainDiscoverProjects"),
+    "TestStubChainIsInternal": ("tests.unit.validate.stub_chain_tests", "TestStubChainIsInternal"),
+    "TestStubChainStubExists": ("tests.unit.validate.stub_chain_tests", "TestStubChainStubExists"),
+    "TestStubChainValidate": ("tests.unit.validate.stub_chain_tests", "TestStubChainValidate"),
     "v": ("tests.unit.validate.basemk_validator_tests", "v"),
 }
 
