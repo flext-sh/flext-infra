@@ -44,7 +44,7 @@ def test_flexcore_excluded_from_run(tmp_path: Path) -> None:
     results = fixer.run()
     project_names = [res.project for res in results]
     tm.that("flexcore" not in project_names, eq=True)
-    tm.that("test-proj" in project_names, eq=True)
+    tm.that(project_names, has="test-proj")
 
 
 def test_project_without_src_returns_empty(tmp_path: Path) -> None:

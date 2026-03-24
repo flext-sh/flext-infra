@@ -117,7 +117,7 @@ class TestWorkspaceCheckerSARIFReport:
         project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_sarif_report([project], ["lint"])
         assert isinstance(report, dict)
-        tm.that("runs" in report, eq=True)
+        tm.that(report, has="runs")
 
     def test_sarif_report_with_issues(self) -> None:
         checker = FlextInfraWorkspaceChecker()
@@ -140,7 +140,7 @@ class TestWorkspaceCheckerSARIFReport:
         project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
         report = checker.generate_sarif_report([project], ["lint"])
         assert isinstance(report, dict)
-        tm.that("runs" in report, eq=True)
+        tm.that(report, has="runs")
 
 
 class TestWorkspaceCheckerSARIFReportEdgeCases:
@@ -159,7 +159,7 @@ class TestWorkspaceCheckerSARIFReportEdgeCases:
         project = m.Infra.ProjectResult(project="p", gates={"lint": exec1})
         report = checker.generate_sarif_report([project], ["format"])
         assert isinstance(report, dict)
-        tm.that("runs" in report, eq=True)
+        tm.that(report, has="runs")
 
     def test_markdown_report_with_max_display_issues(self) -> None:
         checker = FlextInfraWorkspaceChecker()

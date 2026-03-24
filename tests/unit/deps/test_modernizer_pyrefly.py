@@ -97,7 +97,7 @@ def test_ensure_pyrefly_config_phase_apply_search_path() -> None:
         return
     tool["pyrefly"] = tomlkit.table()
     changes = EnsurePyreflyConfigPhase(_test_tool_config()).apply(doc, is_root=True)
-    tm.that("search-path set to" in " ".join(changes), eq=True)
+    tm.that(" ".join(changes), has="search-path set to")
 
 
 def test_ensure_pyrefly_config_phase_apply_errors() -> None:

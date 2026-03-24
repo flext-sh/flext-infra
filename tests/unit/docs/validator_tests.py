@@ -34,7 +34,7 @@ class TestValidateReport:
             missing_adr_skills=["skill1", "skill2"],
         )
         tm.that(len(report.missing_adr_skills), eq=2)
-        tm.that("skill1" in report.missing_adr_skills, eq=True)
+        tm.that(report.missing_adr_skills, has="skill1")
 
     def test_todo_written_field(self) -> None:
         """Test DocsPhaseReport todo_written field."""
@@ -94,7 +94,7 @@ class TestValidateCore:
         """Test validate with valid scope returns success."""
         result = validator.validate(tmp_path)
         tm.ok(result)
-        tm.that(len(result.value) >= 0, eq=True)
+        tm.that(len(result.value), gte=0)
 
     def test_report_structure(
         self,
@@ -171,7 +171,7 @@ class TestValidateCore:
         """Test validate returns list for multiple scopes."""
         result = validator.validate(tmp_path, projects="proj1,proj2,proj3")
         if result.is_success:
-            tm.that(len(result.value) >= 0, eq=True)
+            tm.that(len(result.value), gte=0)
 
     def test_scope_failure_returns_failure(
         self,

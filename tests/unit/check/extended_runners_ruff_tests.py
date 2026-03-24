@@ -145,7 +145,7 @@ class TestRunRuffFormat:
             returncode=1,
         )
         result = checker._run_ruff_format(tmp_path)
-        tm.that(len(result.issues) >= 1, eq=True)
+        tm.that(len(result.issues), gte=1)
 
 
 class TestRunCommand:

@@ -18,7 +18,7 @@ from tests import c, m
 
 class TestExcludedProjects:
     def test_flexcore_in_excluded_set(self) -> None:
-        tm.that("flexcore" in c.Infra.EXCLUDED_PROJECTS, eq=True)
+        tm.that(c.Infra.EXCLUDED_PROJECTS, has="flexcore")
 
     def test_excluded_set_is_frozenset(self) -> None:
         tm.that(type(c.Infra.EXCLUDED_PROJECTS).__name__, eq="frozenset")
@@ -29,7 +29,7 @@ class TestViolationPattern:
         match = c.Infra.VIOLATION_PATTERN.match(
             "[NS-001-001] src/file.py:10 — msg",
         )
-        tm.that(match is not None, eq=True)
+        tm.that(match, none=False)
         assert match is not None
         assert set(match.groupdict().keys()) == {"rule", "module", "line", "message"}
 

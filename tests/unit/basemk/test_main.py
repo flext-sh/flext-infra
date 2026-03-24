@@ -74,19 +74,19 @@ def test_basemk_main_ensures_structlog_configured(
     )
     monkeypatch.setattr(sys, "stdout", StringIO())
     main(argv=["generate"])
-    tm.that(call_count >= 1, eq=True)
+    tm.that(call_count, gte=1)
 
 
 def test_basemk_build_config_with_none() -> None:
     """Test _build_config returns None when project_name is None."""
     result = _build_config(None)
-    tm.that(result is None, eq=True)
+    tm.that(result, none=True)
 
 
 def test_basemk_build_config_with_project_name() -> None:
     """Test _build_config returns config with project name."""
     result = _build_config("my-project")
-    tm.that(result is not None, eq=True)
+    tm.that(result, none=False)
     assert result is not None
     tm.that(result.project_name, eq="my-project")
 

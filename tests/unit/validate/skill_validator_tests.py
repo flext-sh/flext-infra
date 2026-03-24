@@ -139,8 +139,8 @@ class TestSkillValidatorRenderTemplate:
             ".reports/{skill}/report.json",
             "my-skill",
         )
-        tm.that("my-skill" in str(result), eq=True)
-        tm.that("report.json" in str(result), eq=True)
+        tm.that(str(result), has="my-skill")
+        tm.that(str(result), has="report.json")
 
 
 class TestSkillValidatorAstGrepCount:

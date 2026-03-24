@@ -17,7 +17,7 @@ class TestWorkspaceCheckerResolveGates:
     def test_resolve_gates_type_maps_to_pyrefly(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["type"])
         tm.ok(result)
-        tm.that("pyrefly" in result.value, eq=True)
+        tm.that(result.value, has="pyrefly")
 
     def test_resolve_gates_skips_empty_strings(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "", "format"])

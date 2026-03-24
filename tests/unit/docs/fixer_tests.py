@@ -42,7 +42,7 @@ class TestFixerCore:
         """Test fix with valid scope returns success."""
         result = fixer.fix(tmp_path)
         tm.ok(result)
-        tm.that(len(result.value) >= 0, eq=True)
+        tm.that(len(result.value), gte=0)
 
     def test_fix_report_structure(
         self,

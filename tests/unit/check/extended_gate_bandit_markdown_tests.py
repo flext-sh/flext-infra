@@ -160,7 +160,7 @@ class TestWorkspaceCheckerRunMarkdown:
 
         monkeypatch.setattr(FlextInfraMarkdownGate, "_run", _fake_run)
         checker._run_markdown(proj_dir)
-        tm.that("--config" in captured_args[0], eq=True)
+        tm.that(captured_args[0], has="--config")
 
     def test_run_markdown_fallback_error_message(
         self,

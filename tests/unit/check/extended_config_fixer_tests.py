@@ -52,7 +52,7 @@ class TestConfigFixerRun:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         result = fixer.run([])
         tm.ok(result)
-        tm.that(len(result.value) >= 0, eq=True)
+        tm.that(len(result.value), gte=0)
 
     def test_run_with_nonexistent_projects(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
@@ -74,13 +74,13 @@ class TestConfigFixerFindPyprojectFiles:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         result = fixer.find_pyproject_files()
         tm.ok(result)
-        tm.that(len(result.value) >= 0, eq=True)
+        tm.that(len(result.value), gte=0)
 
     def test_find_pyproject_files_with_specific_paths(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         result = fixer.find_pyproject_files(project_paths=[tmp_path / "p1"])
         tm.ok(result)
-        tm.that(len(result.value) >= 0, eq=True)
+        tm.that(len(result.value), gte=0)
 
     def test_find_pyproject_files_with_project_paths(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
@@ -111,7 +111,7 @@ class TestConfigFixerFixSearchPaths:
         pyrefly["search-path"] = ["../typings/generated", "../typings"]
         fixes = fixer._fix_search_paths_tk(pyrefly, tmp_path)
         tm.that(fixes, eq=True)
-        tm.that("typings/generated" in str(pyrefly["search-path"]), eq=True)
+        tm.that(str(pyrefly["search-path"]), has="typings/generated")
 
     def test_fix_search_paths_removes_nonexistent(self, tmp_path: Path) -> None:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
@@ -179,4 +179,4 @@ class TestConfigFixerToArray:
         items = ["a", "b", "c"]
         arr = fixer._to_array(items)
         tm.that(len(arr), eq=3)
-        tm.that("a" in arr, eq=True)
+        tm.that(arr, has="a")

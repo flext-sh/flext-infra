@@ -111,9 +111,9 @@ class TestRunPrWorkspace:
         pr = _pr_args(pr_action="merge", pr_base="main", pr_head="feature/test")
         assert run_pr_workspace(_cli(tmp_path), pr) == 0
         pr_args_val = captured.get("pr_args", {})
-        tm.that("action" in str(pr_args_val), eq=True)
-        tm.that("base" in str(pr_args_val), eq=True)
-        tm.that("head" in str(pr_args_val), eq=True)
+        tm.that(str(pr_args_val), has="action")
+        tm.that(str(pr_args_val), has="base")
+        tm.that(str(pr_args_val), has="head")
 
     def test_with_branch(
         self,

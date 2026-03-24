@@ -105,7 +105,7 @@ class TestFlextInfraJsonService:
         tm.that(json_file.read_text(encoding="utf-8"), has=expected)
         if sort_keys:
             content = json_file.read_text(encoding="utf-8")
-            tm.that(content.index('"a"') < content.index('"z"'), eq=True)
+            tm.that(content.index('"a"'), lt=content.index('"z"'))
 
     def test_write_permission_error(self, tmp_path: Path) -> None:
         """Test write failure on permission error."""

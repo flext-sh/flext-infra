@@ -49,7 +49,7 @@ class TestFixerProcessFile:
         md_file = tf.create_in("# Test\n\n[Link](target.md)\n", "test.md", tmp_path)
         _ = tf.create_in("# Target", "target.md", tmp_path)
         item = fixer._process_file(md_file, apply=False)
-        tm.that("test.md" in item.file, eq=True)
+        tm.that(item.file, has="test.md")
 
     def test_fix_markdown_with_link_fix(
         self,
@@ -139,17 +139,14 @@ class TestFixerToc:
         toc = fixer._build_toc(
             "# Main\n\n## Section 1\n\n### Subsection\n\n## Section 2\n",
         )
-        tm.that("<!-- TOC START -->" in toc, eq=True)
-        tm.that("<!-- TOC END -->" in toc, eq=True)
-        tm.that("Section 1" in toc, eq=True)
-        tm.that(
-            "No sections found" in fixer._build_toc("# Main\n\nNo sections here.\n"),
-            eq=True,
-        )
+        tm.that(toc, has="<!-- TOC START -->")
+        tm.that(toc, has="<!-- TOC END -->")
+        tm.that(toc, has="Section 1")
+        tm.that(fixer._build_toc("# Main\n\nNo sections here.\n"), has="No sections found")
 
     def test_build_toc_skips_empty_anchors(self, fixer: FlextInfraDocFixer) -> None:
         toc = fixer._build_toc("## !!!\n\n## Valid Section\n")
-        tm.that("Valid Section" in toc, eq=True)
+        tm.that(toc, has="Valid Section")
         tm.that("!!!" not in toc, eq=True)
 
     @pytest.mark.parametrize(
@@ -163,7 +160,7 @@ class TestFixerToc:
     def test_update_toc_paths(self, fixer: FlextInfraDocFixer, content: str) -> None:
         updated, changed = fixer._update_toc(content)
         tm.that(changed, eq=1)
-        tm.that("<!-- TOC START -->" in updated, eq=True)
+        tm.that(updated, has="<!-- TOC START -->")
 
 
 class TestFixerScope:
@@ -179,4 +176,4 @@ class TestFixerScope:
         )
         report = fixer._fix_scope(scope, apply=False)
         tm.that(report.scope, eq="test")
-        tm.that(len(report.items) >= 0, eq=True)
+        tm.that(len(report.items), gte=0)

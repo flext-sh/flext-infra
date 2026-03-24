@@ -55,8 +55,8 @@ class TestParseGitmodules:
             '[submodule "flext-core"]\n\tpath = flext-core\n\turl = git@github.com:flext-sh/flext-core.git\n[submodule "flext-api"]\n\tpath = flext-api\n\turl = git@github.com:flext-sh/flext-api.git\n',
         )
         result = FlextInfraInternalDependencySyncService().parse_gitmodules(gitmodules)
-        tm.that("flext-core" in result, eq=True)
-        tm.that("flext-api" in result, eq=True)
+        tm.that(result, has="flext-core")
+        tm.that(result, has="flext-api")
         tm.that(
             result["flext-core"].ssh_url,
             eq="git@github.com:flext-sh/flext-core.git",
@@ -95,7 +95,7 @@ class TestParseRepoMap:
         )
         result = service.parse_repo_map(Path("/fake/map.toml"))
         tm.ok(result)
-        tm.that("flext-core" in result.value, eq=True)
+        tm.that(result.value, has="flext-core")
 
     def test_parse_repo_map_read_failure(self) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -169,7 +169,7 @@ class TestCollectInternalDeps:
         (tmp_path / "pyproject.toml").write_text("")
         result = service.collect_internal_deps(tmp_path)
         tm.ok(result)
-        tm.that("flext-core" in result.value, eq=True)
+        tm.that(result.value, has="flext-core")
 
     def test_pep621_path_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
@@ -188,7 +188,7 @@ class TestCollectInternalDeps:
         (tmp_path / "pyproject.toml").write_text("")
         result = service.collect_internal_deps(tmp_path)
         tm.ok(result)
-        tm.that("flext-core" in result.value, eq=True)
+        tm.that(result.value, has="flext-core")
 
     def test_read_failure(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()

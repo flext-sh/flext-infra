@@ -24,7 +24,7 @@ class TestConstantsQualityGateCLIDispatch:
         """main() dispatches constants-quality-gate command to handler."""
         argv = ["constants-quality-gate", "--workspace", str(tmp_path)]
         result = codegen_main.main(argv)
-        tm.that(result, is_=int)
+        tm.that(isinstance(result, int), eq=True)
 
     def test_parses_before_report_flag(self, tmp_path: Path) -> None:
         """main() parses baseline comparison flags for quality gate."""
@@ -39,7 +39,7 @@ class TestConstantsQualityGateCLIDispatch:
             "json",
         ]
         result = codegen_main.main(argv)
-        tm.that(result, is_=int)
+        tm.that(isinstance(result, int), eq=True)
 
     def test_json_format_exits_with_int(self, tmp_path: Path) -> None:
         """JSON mode returns an integer exit code."""
@@ -51,7 +51,7 @@ class TestConstantsQualityGateCLIDispatch:
             "json",
         ]
         result = codegen_main.main(argv)
-        tm.that(result, is_=int)
+        tm.that(isinstance(result, int), eq=True)
 
     def test_text_format_exits_with_int(self, tmp_path: Path) -> None:
         """Text mode returns an integer exit code."""
@@ -63,7 +63,7 @@ class TestConstantsQualityGateCLIDispatch:
             "text",
         ]
         result = codegen_main.main(argv)
-        tm.that(result, is_=int)
+        tm.that(isinstance(result, int), eq=True)
 
 
 class TestConstantsQualityGateVerdict:

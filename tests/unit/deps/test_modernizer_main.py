@@ -19,7 +19,7 @@ class TestFlextInfraPyprojectModernizer:
 
     def test_modernizer_initialization(self) -> None:
         modernizer = FlextInfraPyprojectModernizer()
-        tm.that(str(modernizer.root) != "", eq=True)
+        tm.that(str(modernizer.root), ne="")
 
     def test_modernizer_with_custom_root(self, tmp_path: Path) -> None:
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
@@ -32,7 +32,7 @@ class TestFlextInfraPyprojectModernizer:
         files = FlextInfraPyprojectModernizer(
             workspace_root=tmp_path,
         ).find_pyproject_files()
-        tm.that(len(files) >= 2, eq=True)
+        tm.that(len(files), gte=2)
 
     def test_find_pyproject_files_skips_directories(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").touch()
@@ -53,7 +53,7 @@ class TestFlextInfraPyprojectModernizer:
             dry_run=True,
             skip_comments=False,
         )
-        tm.that(len(changes) >= 0, eq=True)
+        tm.that(len(changes), gte=0)
         pyproject.write_text("invalid [[[")
         invalid = modernizer.process_file(
             pyproject,
@@ -61,7 +61,7 @@ class TestFlextInfraPyprojectModernizer:
             dry_run=True,
             skip_comments=False,
         )
-        tm.that("invalid TOML" in invalid, eq=True)
+        tm.that(invalid, has="invalid TOML")
 
     def test_process_file_dry_run_and_skip_comments(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -126,10 +126,7 @@ class TestModernizerRunAndMain:
 
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
         monkeypatch.setattr(u.Infra, "read", _read_doc)
-        tm.that(
-            modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)) in {0, 1},
-            eq=True,
-        )
+        tm.that({0, 1}, has=modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)))
 
     def test_run_with_poetry_check(
         self,

@@ -150,18 +150,14 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
             _DepsStub(tmp_path / "proj-a", 0, 0),
             reporting_service=reporting,
         )
-        tm.that(
-            "failed to create report directory"
-            in tm.fail(
-                detector.run([
-                    "--no-pip-check",
-                    "--apply",
-                    "--workspace",
-                    str(tmp_path),
-                ])
-            ),
-            eq=True,
-        )
+        tm.that(tm.fail(
+            detector.run([
+                "--no-pip-check",
+                "--apply",
+                "--workspace",
+                str(tmp_path),
+            ])
+        ), has="failed to create report directory")
 
     def test_run_with_json_write_failure(
         self,

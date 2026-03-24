@@ -52,8 +52,8 @@ class TestFlextInfraDocs:
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""
         exports = dir(docs_module)
-        tm.that("FlextInfraDocBuilder" in exports, eq=True)
-        tm.that("FlextInfraDocFixer" in exports, eq=True)
-        tm.that("FlextInfraDocGenerator" in exports, eq=True)
-        tm.that("FlextInfraDocValidator" in exports, eq=True)
-        tm.that("FlextInfraDocAuditor" in exports, eq=True)
+        tm.that(exports, has="FlextInfraDocBuilder")
+        tm.that(exports, has="FlextInfraDocFixer")
+        tm.that(exports, has="FlextInfraDocGenerator")
+        tm.that(exports, has="FlextInfraDocValidator")
+        tm.that(exports, has="FlextInfraDocAuditor")

@@ -81,7 +81,7 @@ class TestBuilderScope:
         )
         report = builder._run_mkdocs(scope)
         tm.that(report.result, eq="SKIP")
-        tm.that("mkdocs.yml not found" in report.reason, eq=True)
+        tm.that(report.reason, has="mkdocs.yml not found")
 
     def test_run_mkdocs_with_command_failure(
         self,
@@ -122,7 +122,7 @@ class TestBuilderScope:
         monkeypatch.setattr(builder, "_runner", mock_runner)
         report = builder._run_mkdocs(scope)
         tm.that(report.result, eq="OK")
-        tm.that("build succeeded" in report.reason, eq=True)
+        tm.that(report.reason, has="build succeeded")
 
     def test_write_reports_creates_json_and_markdown(
         self,
@@ -174,4 +174,4 @@ class TestBuilderScope:
         """Test build returns multiple reports for multiple scopes."""
         result = builder.build(tmp_path, projects="proj1,proj2,proj3")
         if result.is_success:
-            tm.that(len(result.value) >= 0, eq=True)
+            tm.that(len(result.value), gte=0)

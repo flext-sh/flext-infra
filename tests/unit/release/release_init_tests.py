@@ -30,4 +30,4 @@ class TestReleaseInit:
     def test_dir_returns_all_exports(self) -> None:
         release_module = importlib.import_module("flext_infra.release")
         exports = dir(release_module)
-        tm.that("FlextInfraReleaseOrchestrator" in exports, eq=True)
+        tm.that(exports, has="FlextInfraReleaseOrchestrator")

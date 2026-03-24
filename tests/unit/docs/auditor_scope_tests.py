@@ -26,7 +26,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues), gte=0)
 
     def test_forbidden_term_issues_root_scope(self, tmp_path: Path) -> None:
         """Test forbidden_term_issues filters by docs/ for root scope."""
@@ -40,7 +40,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues), gte=0)
 
     def test_forbidden_term_issues_project_scope(self, tmp_path: Path) -> None:
         """Test forbidden_term_issues filters by project name."""
@@ -54,7 +54,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues), gte=0)
 
     def test_forbidden_term_issues_root_scope_non_docs_file(
         self,
@@ -69,7 +69,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues), gte=0)
 
     def test_forbidden_term_issues_non_flext_scope(self, tmp_path: Path) -> None:
         """Test forbidden_term_issues skips non-flext scopes."""
@@ -81,7 +81,7 @@ class TestAuditorForbiddenTerms:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.forbidden_term_issues(scope)
-        tm.that(len(issues) >= 0, eq=True)
+        tm.that(len(issues), gte=0)
 
 
 class TestAuditorScope:
@@ -103,7 +103,7 @@ class TestAuditorScope:
             max_issues_by_scope={},
         )
         tm.that(report.phase, eq="audit")
-        tm.that("links" in report.checks, eq=True)
+        tm.that(report.checks, has="links")
 
     def test_audit_scope_with_forbidden_terms_check(self, tmp_path: Path) -> None:
         """Test audit_scope runs forbidden-terms check."""
@@ -121,7 +121,7 @@ class TestAuditorScope:
             max_issues_by_scope={},
         )
         tm.that(report.phase, eq="audit")
-        tm.that("forbidden-terms" in report.checks, eq=True)
+        tm.that(report.checks, has="forbidden-terms")
 
     def test_audit_scope_strict_mode_passes(self, tmp_path: Path) -> None:
         """Test audit_scope passes in strict mode with no issues."""

@@ -24,7 +24,7 @@ def test_codegen_getattr_raises_attribute_error() -> None:
 def test_codegen_dir_returns_all_exports() -> None:
     """Test that dir() returns all exported attributes."""
     exports = dir(codegen_module)
-    tm.that("FlextInfraCodegenLazyInit" in exports, eq=True)
+    tm.that(exports, has="FlextInfraCodegenLazyInit")
 
 
 def test_codegen_lazy_imports_work() -> None:

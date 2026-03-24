@@ -78,7 +78,7 @@ class TestGetDepPaths:
         doc["tool"] = {
             "poetry": {"dependencies": {"flext-core": {"path": "../flext-core"}}},
         }
-        tm.that(len(_manager().get_dep_paths(doc, is_root=False)) >= 2, eq=True)
+        tm.that(len(_manager().get_dep_paths(doc, is_root=False)), gte=2)
 
     def test_get_dep_paths_with_is_root_true(self) -> None:
         doc = tomlkit.document()

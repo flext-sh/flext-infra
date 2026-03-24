@@ -88,7 +88,7 @@ class TestBuildScopes:
         """Test build_scopes with valid root returns success."""
         result = self._build(tmp_path)
         tm.ok(result)
-        tm.that(len(result.value) >= 0, eq=True)
+        tm.that(len(result.value), gte=0)
 
     def test_includes_root_scope(self, tmp_path: Path) -> None:
         """Test build_scopes includes root scope."""
@@ -147,7 +147,7 @@ class TestBuildScopes:
         (proj_dir / "pyproject.toml").write_text('[project]\nname = "test-proj"\n')
         result = self._build(tmp_path, projects="test-proj")
         tm.ok(result)
-        tm.that("test-proj" in [s.name for s in result.value], eq=True)
+        tm.that([s.name for s in result.value], has="test-proj")
 
     def test_report_dir_path_resolution(self, tmp_path: Path) -> None:
         """Test build_scopes resolves report_dir paths correctly."""

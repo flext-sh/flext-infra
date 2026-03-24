@@ -74,7 +74,7 @@ class TestFlextInfraDependencyDetectionService:
 
     def test_default_module_to_types_package_mapping(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        tm.that("yaml" in service.DEFAULT_MODULE_TO_TYPES_PACKAGE, eq=True)
+        tm.that(service.DEFAULT_MODULE_TO_TYPES_PACKAGE, has="yaml")
         tm.that(service.DEFAULT_MODULE_TO_TYPES_PACKAGE["yaml"], eq="types-pyyaml")
 
 

@@ -143,10 +143,10 @@ def test_ensure_table(mode: str) -> None:
     if mode == "replace-non-table":
         parent["key"] = "string_value"
         _ = u.Infra.ensure_table(parent, "key")
-        tm.that("key" in parent, eq=True)
+        tm.that(parent, has="key")
         return
     _ = u.Infra.ensure_table(parent, "key")
-    tm.that("key" in parent, eq=True)
+    tm.that(parent, has="key")
 
 
 def _doc_with_optional_deps(optional_deps: Mapping[str, Sequence[str]]) -> TOMLDocument:

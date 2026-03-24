@@ -50,28 +50,16 @@ class TestDetectMode:
 
 
 def test_detect_mode_with_nonexistent_path(tmp_path: Path) -> None:
-    tm.that(
-        FlextInfraDependencyPathSync.detect_mode(tmp_path)
-        in {"workspace", "standalone"},
-        eq=True,
-    )
+    tm.that({"workspace", "standalone"}, has=FlextInfraDependencyPathSync.detect_mode(tmp_path))
 
 
 def test_detect_mode_with_path_object() -> None:
-    tm.that(
-        FlextInfraDependencyPathSync.detect_mode(Path("/tmp"))
-        in {"workspace", "standalone"},
-        eq=True,
-    )
+    tm.that({"workspace", "standalone"}, has=FlextInfraDependencyPathSync.detect_mode(Path("/tmp")))
 
 
 class TestPathSyncEdgeCases:
     def test_detect_mode_with_nonexistent_path(self, tmp_path: Path) -> None:
-        tm.that(
-            FlextInfraDependencyPathSync.detect_mode(tmp_path)
-            in {"workspace", "standalone"},
-            eq=True,
-        )
+        tm.that({"workspace", "standalone"}, has=FlextInfraDependencyPathSync.detect_mode(tmp_path))
 
     def test_extract_dep_name_with_empty_string(self) -> None:
         tm.that(FlextInfraDependencyPathSync.extract_dep_name(""), eq="")

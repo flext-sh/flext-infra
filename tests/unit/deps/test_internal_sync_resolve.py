@@ -138,8 +138,8 @@ class TestSynthesizedRepoMap:
             "flext-sh",
             {"flext-core", "flext-api"},
         )
-        tm.that("flext-api" in result, eq=True)
-        tm.that("flext-core" in result, eq=True)
+        tm.that(result, has="flext-api")
+        tm.that(result, has="flext-core")
         tm.that(
             result["flext-core"].ssh_url,
             eq="git@github.com:flext-sh/flext-core.git",

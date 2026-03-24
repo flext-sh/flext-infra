@@ -131,7 +131,7 @@ class TestAdrHelpers:
         tmp_path: Path,
     ) -> None:
         code, _missing = validator._run_adr_skill_check(tmp_path)
-        tm.that(code >= 0, eq=True)
+        tm.that(code, gte=0)
 
     def test_adr_check_with_config(
         self,
@@ -144,7 +144,7 @@ class TestAdrHelpers:
             '{"docs_validation": {"required_skills": ["test-skill"]}}',
         )
         code, _missing = validator._run_adr_skill_check(tmp_path)
-        tm.that(code >= 0, eq=True)
+        tm.that(code, gte=0)
 
     def test_adr_check_with_missing_skills(
         self,
@@ -153,7 +153,7 @@ class TestAdrHelpers:
     ) -> None:
         (tmp_path / ".claude/skills").mkdir(parents=True, exist_ok=True)
         code, _missing = validator._run_adr_skill_check(tmp_path)
-        tm.that(code >= 0, eq=True)
+        tm.that(code, gte=0)
 
 
 class TestMaybeWriteTodo:

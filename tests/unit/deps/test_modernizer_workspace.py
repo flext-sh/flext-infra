@@ -66,7 +66,7 @@ class TestWorkspaceRoot:
         deep_path.mkdir(parents=True, exist_ok=True)
         result = u.Infra.workspace_root(deep_path)
         tm.ok(result)
-        tm.that(str(result.value) != "", eq=True)
+        tm.that(str(result.value), ne="")
 
 
 class TestParser:
@@ -100,7 +100,7 @@ class TestParser:
         tm.that(exit_code, eq=0)
         tm.that(run_mock.called, eq=True)
         call_args = run_mock.call_args
-        tm.that(call_args is not None, eq=True)
+        tm.that(call_args, none=False)
         if call_args is None:
             return
         args = call_args.args[0]
@@ -113,4 +113,4 @@ class TestParser:
 def test_workspace_root_doc_construction() -> None:
     doc = tomlkit.document()
     doc["project"] = {"name": "test"}
-    tm.that("project" in doc, eq=True)
+    tm.that(doc, has="project")

@@ -81,7 +81,7 @@ def test_workspace_migrator_makefile_not_found_dry_run(tmp_path: Path) -> None:
     migrator = _build_migrator(_project(tmp_path, name="test-proj"), "base")
     result = migrator._migrate_makefile(tmp_path, dry_run=True)
     value = tm.ok(result)
-    tm.that("not found" in str(value).lower(), eq=True)
+    tm.that(str(value).lower(), has="not found")
 
 
 def test_workspace_migrator_makefile_read_error(
@@ -99,7 +99,7 @@ def test_workspace_migrator_makefile_read_error(
     monkeypatch.setattr(Path, "read_text", _read_fail)
     result = migrator._migrate_makefile(tmp_path, dry_run=False)
     err = tm.fail(result)
-    tm.that("read failed" in err.lower(), eq=True)
+    tm.that(err.lower(), has="read failed")
 
 
 def test_workspace_migrator_pyproject_write_error(

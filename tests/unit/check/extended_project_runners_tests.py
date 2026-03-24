@@ -53,9 +53,9 @@ class TestCheckProjectRunners:
         tm.that(called["lint"], eq=True)
         tm.that(called["format"], eq=True)
         tm.that(called["pyrefly"], eq=True)
-        tm.that("lint" in result.gates, eq=True)
-        tm.that("format" in result.gates, eq=True)
-        tm.that("pyrefly" in result.gates, eq=True)
+        tm.that(result.gates, has="lint")
+        tm.that(result.gates, has="format")
+        tm.that(result.gates, has="pyrefly")
 
 
 class TestJsonWriteFailure:

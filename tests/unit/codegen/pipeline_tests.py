@@ -147,9 +147,9 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     scaffold_by_project_first = {
         result.project: result for result in scaffold_results_first
     }
-    tm.that("project-a" in scaffold_by_project_first, eq=True)
-    tm.that("project-b" in scaffold_by_project_first, eq=True)
-    tm.that("project-c" in scaffold_by_project_first, eq=True)
+    tm.that(scaffold_by_project_first, has="project-a")
+    tm.that(scaffold_by_project_first, has="project-b")
+    tm.that(scaffold_by_project_first, has="project-c")
     scaffold_results_second = scaffolder.run()
     scaffold_by_project_second = {
         result.project: result for result in scaffold_results_second
@@ -159,9 +159,9 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     tm.that(len(scaffold_by_project_second["project-c"].files_created), eq=0)
     fix_results = fixer.run()
     fix_by_project = {result.project: result for result in fix_results}
-    tm.that("project-a" in fix_by_project, eq=True)
-    tm.that("project-b" in fix_by_project, eq=True)
-    tm.that("project-c" in fix_by_project, eq=True)
+    tm.that(fix_by_project, has="project-a")
+    tm.that(fix_by_project, has="project-b")
+    tm.that(fix_by_project, has="project-c")
     project_b_fixed = fix_by_project["project-b"]
     tm.that(len(project_b_fixed.violations_fixed), gt=0)
     tm.that(

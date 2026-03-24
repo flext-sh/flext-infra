@@ -19,7 +19,7 @@ class TestIterMarkdownFiles:
     def test_empty_directory(self, tmp_path: Path) -> None:
         """Test iter_markdown_files with empty directory."""
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(len(files) >= 0, eq=True)
+        tm.that(len(files), gte=0)
 
     def test_finds_markdown(self, tmp_path: Path) -> None:
         """Test iter_markdown_files finds markdown files."""
@@ -54,14 +54,14 @@ class TestIterMarkdownFiles:
         (docs_dir / "z.md").write_text("# Z")
         (docs_dir / "a.md").write_text("# A")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(len(files) >= 2, eq=True)
+        tm.that(len(files), gte=2)
         str_files = [str(f) for f in files]
         tm.that(str_files, eq=sorted(str_files))
 
     def test_no_docs_dir(self, tmp_path: Path) -> None:
         """Test iter_markdown_files when docs dir doesn't exist."""
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(len(files) >= 0, eq=True)
+        tm.that(len(files), gte=0)
 
     def test_docs_at_root(self, tmp_path: Path) -> None:
         """Test iter_markdown_files finds docs at root."""
@@ -101,8 +101,8 @@ class TestSelectedProjectNames:
             None,
             "proj1,proj2,proj3",
         )
-        tm.that("proj1" in names, eq=True)
-        tm.that("proj2" in names, eq=True)
+        tm.that(names, has="proj1")
+        tm.that(names, has="proj2")
 
     def test_with_projects_space(self, tmp_path: Path) -> None:
         """Test _selected_project_names with space-separated projects."""
@@ -111,23 +111,23 @@ class TestSelectedProjectNames:
             None,
             "proj1 proj2 proj3",
         )
-        tm.that("proj1" in names, eq=True)
-        tm.that("proj2" in names, eq=True)
+        tm.that(names, has="proj1")
+        tm.that(names, has="proj2")
 
     def test_no_filter(self, tmp_path: Path) -> None:
         """Test _selected_project_names with no filter discovers projects."""
         names = u.Infra._selected_project_names(tmp_path, None, None)
-        tm.that(len(names) >= 0, eq=True)
+        tm.that(len(names), gte=0)
 
     def test_empty_string(self, tmp_path: Path) -> None:
         """Test _selected_project_names with empty string."""
         names = u.Infra._selected_project_names(tmp_path, None, "")
-        tm.that(len(names) >= 0, eq=True)
+        tm.that(len(names), gte=0)
 
     def test_whitespace_only(self, tmp_path: Path) -> None:
         """Test _selected_project_names with whitespace-only string."""
         names = u.Infra._selected_project_names(tmp_path, None, "   ")
-        tm.that(len(names) >= 0, eq=True)
+        tm.that(len(names), gte=0)
 
     def test_mixed_separators(self, tmp_path: Path) -> None:
         """Test _selected_project_names with mixed separators."""
@@ -136,5 +136,5 @@ class TestSelectedProjectNames:
             None,
             "proj1, proj2, proj3",
         )
-        tm.that("proj1" in names, eq=True)
-        tm.that("proj2" in names, eq=True)
+        tm.that(names, has="proj1")
+        tm.that(names, has="proj2")

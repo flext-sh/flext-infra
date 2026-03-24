@@ -41,7 +41,7 @@ class TestBuilderCore:
         """Test build with valid scope returns success."""
         result = builder.build(tmp_path)
         tm.ok(result)
-        tm.that(len(result.value) >= 0, eq=True)
+        tm.that(len(result.value), gte=0)
 
     def test_build_report_structure(
         self,
@@ -112,4 +112,4 @@ class TestBuilderCore:
         """Test build with multiple projects returns list of reports."""
         result = builder.build(tmp_path, projects="proj1,proj2")
         if result.is_success:
-            tm.that(len(result.value) >= 0, eq=True)
+            tm.that(len(result.value), gte=0)

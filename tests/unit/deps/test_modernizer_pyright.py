@@ -57,11 +57,7 @@ class TestEnsurePyrightConfigPhase:
                 {"root": "flext-core/tests", "reportPrivateUsage": "none"},
             ],
         )
-        tm.that(
-            "tool.pyright.executionEnvironments set with tests reportPrivateUsage=none"
-            in changes,
-            eq=True,
-        )
+        tm.that(changes, has="tool.pyright.executionEnvironments set with tests reportPrivateUsage=none")
 
     def test_apply_subproject_sets_execution_environments(self) -> None:
         doc = tomlkit.document()
@@ -86,8 +82,4 @@ class TestEnsurePyrightConfigPhase:
                 {"root": "tests", "reportPrivateUsage": "none"},
             ],
         )
-        tm.that(
-            "tool.pyright.executionEnvironments set with tests reportPrivateUsage=none"
-            in changes,
-            eq=True,
-        )
+        tm.that(changes, has="tool.pyright.executionEnvironments set with tests reportPrivateUsage=none")

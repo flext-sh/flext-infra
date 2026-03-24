@@ -26,11 +26,11 @@ class TestCoreModuleInit:
     def test_core_dir_returns_all_exports(self) -> None:
         """Test that dir() returns all exported attributes."""
         exports = dir(core_module)
-        tm.that("FlextInfraBaseMkValidator" in exports, eq=True)
-        tm.that("FlextInfraInventoryService" in exports, eq=True)
-        tm.that("FlextInfraSkillValidator" in exports, eq=True)
-        tm.that("FlextInfraStubSupplyChain" in exports, eq=True)
-        tm.that("FlextInfraTextPatternScanner" in exports, eq=True)
+        tm.that(exports, has="FlextInfraBaseMkValidator")
+        tm.that(exports, has="FlextInfraInventoryService")
+        tm.that(exports, has="FlextInfraSkillValidator")
+        tm.that(exports, has="FlextInfraStubSupplyChain")
+        tm.that(exports, has="FlextInfraTextPatternScanner")
 
     def test_core_lazy_imports_work(self) -> None:
         """Test that lazy imports resolve to real classes."""

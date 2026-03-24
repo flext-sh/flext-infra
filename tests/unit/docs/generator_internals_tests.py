@@ -95,7 +95,7 @@ class TestGeneratorScope:
             workspace_root=tmp_path,
             apply=False,
         )
-        tm.that(len(files) >= 0, eq=True)
+        tm.that(len(files), gte=0)
 
     def test_generate_project_mkdocs_creates_config(
         self,
@@ -136,7 +136,7 @@ class TestGeneratorHelpers:
             "my-project",
             "guide.md",
         )
-        tm.that("my-project - Original Title" in result, eq=True)
+        tm.that(result, has="my-project - Original Title")
 
     def test_project_guide_content_preserves_body(
         self,
@@ -147,7 +147,7 @@ class TestGeneratorHelpers:
             "proj",
             "guide.md",
         )
-        tm.that("Body content" in result, eq=True)
+        tm.that(result, has="Body content")
 
     def test_sanitize_internal_anchor_links_removes_local_links(
         self,
@@ -156,8 +156,8 @@ class TestGeneratorHelpers:
         result = gen._sanitize_internal_anchor_links(
             "[Link](local.md) and [External](http://example.com)",
         )
-        tm.that("Link" in result, eq=True)
-        tm.that("http://example.com" in result, eq=True)
+        tm.that(result, has="Link")
+        tm.that(result, has="http://example.com")
 
     def test_sanitize_internal_anchor_links_preserves_external(
         self,
@@ -166,7 +166,7 @@ class TestGeneratorHelpers:
         result = gen._sanitize_internal_anchor_links(
             "[Local](local.md) [External](https://example.com)",
         )
-        tm.that("https://example.com" in result, eq=True)
+        tm.that(result, has="https://example.com")
 
     def test_normalize_anchor_converts_to_slug(
         self,
@@ -180,14 +180,11 @@ class TestGeneratorHelpers:
 
     def test_build_toc_from_headings(self, gen: FlextInfraDocGenerator) -> None:
         toc = gen._build_toc("# Main\n\n## Section 1\n\n### Subsection\n")
-        tm.that("<!-- TOC START -->" in toc, eq=True)
-        tm.that("Section 1" in toc, eq=True)
+        tm.that(toc, has="<!-- TOC START -->")
+        tm.that(toc, has="Section 1")
 
     def test_build_toc_with_no_headings(self, gen: FlextInfraDocGenerator) -> None:
-        tm.that(
-            "No sections found" in gen._build_toc("# Main\n\nNo sections.\n"),
-            eq=True,
-        )
+        tm.that(gen._build_toc("# Main\n\nNo sections.\n"), has="No sections found")
 
     def test_update_toc_replaces_existing(self, gen: FlextInfraDocGenerator) -> None:
         result = gen._update_toc(
@@ -197,7 +194,7 @@ class TestGeneratorHelpers:
 
     def test_update_toc_inserts_new(self, gen: FlextInfraDocGenerator) -> None:
         result = gen._update_toc("# Main\n\n## Section\n")
-        tm.that("<!-- TOC START -->" in result, eq=True)
+        tm.that(result, has="<!-- TOC START -->")
 
     def test_write_if_needed_no_change(
         self,

@@ -13,7 +13,7 @@ class TestInjectCommentsPhase:
     def test_inject_comments_adds_banner(self) -> None:
         rendered = "[project]\nname = 'test'"
         result, changes = InjectCommentsPhase().apply(rendered)
-        tm.that("[MANAGED] FLEXT pyproject standardization" in result, eq=True)
+        tm.that(result, has="[MANAGED] FLEXT pyproject standardization")
         tm.that(any("banner" in change for change in changes), eq=True)
 
     def test_inject_comments_injects_markers(self) -> None:
@@ -35,27 +35,27 @@ class TestInjectCommentsPhase:
     def test_inject_comments_preserves_existing_markers(self) -> None:
         rendered = "# [MANAGED] build system\n[build-system]"
         result, _ = InjectCommentsPhase().apply(rendered)
-        tm.that("# [MANAGED] build system" in result, eq=True)
+        tm.that(result, has="# [MANAGED] build system")
 
 
 def test_inject_comments_phase_apply_banner() -> None:
     rendered = '[project]\nname = "test"\n'
     result, changes = InjectCommentsPhase().apply(rendered)
-    tm.that("[MANAGED] FLEXT pyproject standardization" in result, eq=True)
-    tm.that("managed banner injected" in changes, eq=True)
+    tm.that(result, has="[MANAGED] FLEXT pyproject standardization")
+    tm.that(changes, has="managed banner injected")
 
 
 def test_inject_comments_phase_apply_markers() -> None:
     rendered = '[project]\nname = "test"\n[tool.pytest]\n'
     result, _ = InjectCommentsPhase().apply(rendered)
-    tm.that("[MANAGED]" in result, eq=True)
+    tm.that(result, has="[MANAGED]")
 
 
 def test_inject_comments_phase_apply_broken_group_section() -> None:
     rendered = '[group.dev.dependencies]\nrequests = "*"\n[project]\n'
     result, changes = InjectCommentsPhase().apply(rendered)
     tm.that("[group.dev.dependencies]" not in result, eq=True)
-    tm.that("broken [group.dev.dependencies] section removed" in changes, eq=True)
+    tm.that(changes, has="broken [group.dev.dependencies] section removed")
 
 
 def test_inject_comments_phase_apply_with_optional_dependencies_dev() -> None:

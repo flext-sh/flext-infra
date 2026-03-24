@@ -47,10 +47,7 @@ class TestRewritePep621:
         )
         tm.that(changes, eq=True)
         unwrapped = doc.unwrap()
-        tm.that(
-            "flext-core @ file:./flext-core" in unwrapped["project"]["dependencies"][0],
-            eq=True,
-        )
+        tm.that(unwrapped["project"]["dependencies"][0], has="flext-core @ file:./flext-core")
 
     def test_rewrite_pep621_skip_external_dep(self) -> None:
         doc = TOMLDocument()
@@ -80,10 +77,7 @@ class TestRewritePep621:
         )
         tm.that(changes, eq=True)
         unwrapped = doc.unwrap()
-        tm.that(
-            'python_version >= "3.8"' in unwrapped["project"]["dependencies"][0],
-            eq=True,
-        )
+        tm.that(unwrapped["project"]["dependencies"][0], has='python_version >= "3.8"')
 
     def test_rewrite_pep621_non_string_item(self) -> None:
         doc = TOMLDocument()
@@ -111,7 +105,7 @@ class TestRewritePep621:
         )
         tm.that(changes, eq=True)
         unwrapped = doc.unwrap()
-        tm.that("../flext-core" in unwrapped["project"]["dependencies"][0], eq=True)
+        tm.that(unwrapped["project"]["dependencies"][0], has="../flext-core")
 
 
 def test_rewrite_pep621_non_string_item() -> None:

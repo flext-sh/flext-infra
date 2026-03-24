@@ -92,8 +92,8 @@ class TestCollectInternalDepsEdgeCases:
         four = four_result.value
         five = five_result.value
         six = six_result.value
-        tm.that("flext-core" in one, eq=True)
-        tm.that("flext-core" in two, eq=True)
+        tm.that(one, has="flext-core")
+        tm.that(two, has="flext-core")
         tm.that("external-lib" in three, eq=False)
         tm.that(len(four), eq=0)
         tm.that(len(five), eq=0)

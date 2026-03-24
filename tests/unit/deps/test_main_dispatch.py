@@ -99,13 +99,13 @@ class TestMainSysArgvModification:
     ) -> None:
         _patch_dispatch(monkeypatch, ["prog", "detect", "--arg1", "value1"])
         _main_impl()
-        tm.that("detect" in sys.argv[0], eq=True)
+        tm.that(sys.argv[0], has="detect")
 
     def test_passes_remaining_args(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_dispatch(monkeypatch, ["prog", "detect", "-q", "--no-fail"])
         _main_impl()
-        tm.that("-q" in sys.argv, eq=True)
-        tm.that("--no-fail" in sys.argv, eq=True)
+        tm.that(sys.argv, has="-q")
+        tm.that(sys.argv, has="--no-fail")
 
 
 class TestMainDelegation:

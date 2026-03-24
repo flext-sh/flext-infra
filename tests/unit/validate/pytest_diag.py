@@ -41,7 +41,7 @@ class TestPytestDiagExtractorCore:
         log = tmp_path / "log.txt"
         log.write_text("")
         report = tm.ok(ext.extract(junit, log))
-        tm.that(report, is_=m.Infra.PytestDiagnostics)
+        tm.that(isinstance(report, m.Infra.PytestDiagnostics), eq=True)
 
     def test_extract_fallback_to_log(self, tmp_path: Path) -> None:
         """Missing/invalid XML falls back to log parsing."""

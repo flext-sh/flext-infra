@@ -73,11 +73,8 @@ class TestParseViolationValid:
         expected_msg: str,
     ) -> None:
         result = FlextInfraCodegenCensus._parse_violation(violation_str)
-        tm.that(result is not None, eq=True)
-        tm.that(
-            isinstance(result, FlextInfraModels.Infra.CensusViolation),
-            eq=True,
-        )
+        tm.that(result, none=False)
+        tm.that(isinstance(result, FlextInfraModels.Infra.CensusViolation), eq=True)
         assert result is not None
         tm.that(result.rule, eq=expected_rule)
         tm.that(result.module, eq=expected_module)
@@ -108,10 +105,7 @@ class TestParseViolationInvalid:
         ],
     )
     def test_returns_none(self, violation_str: str) -> None:
-        tm.that(
-            FlextInfraCodegenCensus._parse_violation(violation_str) is None,
-            eq=True,
-        )
+        tm.that(FlextInfraCodegenCensus._parse_violation(violation_str), none=True)
 
 
 class TestFixabilityClassification:
@@ -119,7 +113,7 @@ class TestFixabilityClassification:
         result = FlextInfraCodegenCensus._parse_violation(
             "[NS-000-001] src/file.py:1 — Structure violation",
         )
-        tm.that(result is not None, eq=True)
+        tm.that(result, none=False)
         assert result is not None
         tm.that(result.fixable, eq=False)
 
@@ -127,7 +121,7 @@ class TestFixabilityClassification:
         result = FlextInfraCodegenCensus._parse_violation(
             "[NS-001-001] src/file.py:1 — Constant violation",
         )
-        tm.that(result is not None, eq=True)
+        tm.that(result, none=False)
         assert result is not None
         tm.that(result.fixable, eq=True)
 
@@ -135,7 +129,7 @@ class TestFixabilityClassification:
         result = FlextInfraCodegenCensus._parse_violation(
             "[NS-002-001] src/file.py:1 — TypeVar violation",
         )
-        tm.that(result is not None, eq=True)
+        tm.that(result, none=False)
         assert result is not None
         tm.that(result.fixable, eq=True)
 
@@ -144,7 +138,7 @@ class TestFixabilityClassification:
             result = FlextInfraCodegenCensus._parse_violation(
                 f"[NS-000-{sub}] src/x.py:1 — msg",
             )
-            tm.that(result is not None, eq=True)
+            tm.that(result, none=False)
             assert result is not None
             tm.that(result.fixable, eq=False)
 

@@ -42,14 +42,14 @@ class TestWorkspaceCheckerExistingCheckDirs:
         (tmp_path / "src").mkdir()
         (tmp_path / "tests").mkdir()
         dirs = FlextInfraRuffLintGate(tmp_path)._existing_check_dirs(tmp_path)
-        tm.that(len(dirs) >= 0, eq=True)
+        tm.that(len(dirs), gte=0)
 
     def test_existing_check_dirs_subproject(self, tmp_path: Path) -> None:
         subproj = tmp_path / "subproj"
         subproj.mkdir()
         (subproj / "src").mkdir()
         dirs = FlextInfraRuffLintGate(tmp_path)._existing_check_dirs(subproj)
-        tm.that(len(dirs) >= 0, eq=True)
+        tm.that(len(dirs), gte=0)
 
     def test_existing_check_dirs_filters_nonexistent(self, tmp_path: Path) -> None:
         (tmp_path / "src").mkdir()
@@ -65,14 +65,14 @@ class TestWorkspaceCheckerDirsWithPy:
         src.mkdir()
         (src / "main.py").write_text("# code")
         result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["src"])
-        tm.that("src" in result, eq=True)
+        tm.that(result, has="src")
 
     def test_dirs_with_py_finds_pyi_files(self, tmp_path: Path) -> None:
         src = tmp_path / "src"
         src.mkdir()
         (src / "main.pyi").write_text("# stub")
         result = FlextInfraRuffLintGate._dirs_with_py(tmp_path, ["src"])
-        tm.that("src" in result, eq=True)
+        tm.that(result, has="src")
 
     def test_dirs_with_py_skips_empty_dirs(self, tmp_path: Path) -> None:
         src = tmp_path / "src"

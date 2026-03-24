@@ -117,8 +117,8 @@ class TestWriteMarkdown:
         lines = ["# Title", "", "Paragraph 1", "", "Paragraph 2"]
         u.Infra.write_markdown(md_file, lines)
         content = md_file.read_text()
-        tm.that("# Title" in content, eq=True)
-        tm.that("Paragraph 1" in content, eq=True)
+        tm.that(content, has="# Title")
+        tm.that(content, has="Paragraph 1")
 
     def test_with_empty_lines(self, tmp_path: Path) -> None:
         """Test write_markdown preserves empty lines."""
@@ -127,14 +127,14 @@ class TestWriteMarkdown:
         result = u.Infra.write_markdown(md_file, lines)
         tm.ok(result)
         content = md_file.read_text()
-        tm.that(content.count("\n") >= 3, eq=True)
+        tm.that(content.count("\n"), gte=3)
 
     def test_with_single_line(self, tmp_path: Path) -> None:
         """Test write_markdown with single line."""
         md_file = tmp_path / "single.md"
         result = u.Infra.write_markdown(md_file, ["# Title"])
         tm.ok(result)
-        tm.that("# Title" in md_file.read_text(), eq=True)
+        tm.that(md_file.read_text(), has="# Title")
 
     def test_with_special_characters(self, tmp_path: Path) -> None:
         """Test write_markdown handles special characters."""
