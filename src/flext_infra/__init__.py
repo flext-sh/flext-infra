@@ -178,63 +178,65 @@ if TYPE_CHECKING:
     from flext_infra.refactor._base_rule import FlextInfraRefactorRule
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
     from flext_infra.refactor._detectors.class_placement_detector import (
-        ClassPlacementDetector,
+        FlextInfraClassPlacementDetector,
     )
     from flext_infra.refactor._detectors.compatibility_alias_detector import (
-        CompatibilityAliasDetector,
+        FlextInfraCompatibilityAliasDetector,
     )
     from flext_infra.refactor._detectors.cyclic_import_detector import (
-        CyclicImportDetector,
+        FlextInfraCyclicImportDetector,
     )
     from flext_infra.refactor._detectors.dependency_analyzer_base import (
-        DependencyAnalyzer,
+        FlextInfraDependencyAnalyzer,
     )
     from flext_infra.refactor._detectors.future_annotations_detector import (
-        FutureAnnotationsDetector,
+        FlextInfraFutureAnnotationsDetector,
     )
     from flext_infra.refactor._detectors.import_alias_detector import (
-        ImportAliasDetector,
+        FlextInfraImportAliasDetector,
     )
     from flext_infra.refactor._detectors.import_collector import (
         FlextInfraImportCollector,
     )
     from flext_infra.refactor._detectors.internal_import_detector import (
-        InternalImportDetector,
+        FlextInfraInternalImportDetector,
     )
     from flext_infra.refactor._detectors.loose_object_detector import (
-        LooseObjectDetector,
+        FlextInfraLooseObjectDetector,
     )
     from flext_infra.refactor._detectors.manual_protocol_detector import (
-        ManualProtocolDetector,
+        FlextInfraManualProtocolDetector,
     )
     from flext_infra.refactor._detectors.manual_typing_alias_detector import (
-        ManualTypingAliasDetector,
+        FlextInfraManualTypingAliasDetector,
     )
     from flext_infra.refactor._detectors.mro_completeness_detector import (
-        MROCompletenessDetector,
+        FlextInfraMROCompletenessDetector,
     )
     from flext_infra.refactor._detectors.namespace_facade_scanner import (
-        NamespaceFacadeScanner,
+        FlextInfraNamespaceFacadeScanner,
     )
     from flext_infra.refactor._detectors.namespace_source_detector import (
-        NamespaceSourceDetector,
+        FlextInfraNamespaceSourceDetector,
     )
     from flext_infra.refactor._detectors.runtime_alias_detector import (
-        RuntimeAliasDetector,
+        FlextInfraRuntimeAliasDetector,
     )
     from flext_infra.refactor._function_dependency_collector import (
-        FunctionDependencyCollector,
+        FlextInfraFunctionDependencyCollector,
     )
     from flext_infra.refactor._import_dependency_collector import (
-        ImportDependencyCollector,
+        FlextInfraImportDependencyCollector,
     )
     from flext_infra.refactor._models import FlextInfraRefactorModels
     from flext_infra.refactor._models_ast_grep import FlextInfraRefactorAstGrepModels
     from flext_infra.refactor._models_namespace_enforcer import (
         FlextInfraNamespaceEnforcerModels,
     )
-    from flext_infra.refactor._post_check_gate import PostCheckGate
-    from flext_infra.refactor._top_level_class_collector import TopLevelClassCollector
+    from flext_infra.refactor._post_check_gate import FlextInfraPostCheckGate
+    from flext_infra.refactor._top_level_class_collector import (
+        FlextInfraTopLevelClassCollector,
+    )
     from flext_infra.refactor._typings import FlextInfraRectorTypes
     from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
     from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
@@ -270,7 +272,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
     from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-    from flext_infra.refactor.project_classifier import ProjectClassifier
+    from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
     from flext_infra.refactor.rule import FlextInfraRefactorRuleLoader
     from flext_infra.refactor.rule_definition_validator import (
         FlextInfraRefactorRuleDefinitionValidator,
@@ -284,11 +286,11 @@ if TYPE_CHECKING:
     from flext_infra.release._models import FlextInfraReleaseModels
     from flext_infra.release._reporting import FlextInfraReleaseReporting
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-    from flext_infra.rules.class_nesting import ClassNestingRefactorRule
+    from flext_infra.rules.class_nesting import FlextInfraClassNestingRefactorRule
     from flext_infra.rules.class_reconstructor import (
+        FlextInfraPreCheckGate,
         FlextInfraRefactorClassNestingReconstructor,
         FlextInfraRefactorClassReconstructorRule,
-        PreCheckGate,
     )
     from flext_infra.rules.ensure_future_annotations import (
         FlextInfraRefactorEnsureFutureAnnotationsRule,
@@ -319,13 +321,13 @@ if TYPE_CHECKING:
         FlextInfraRefactorTypingAnnotationFixRule,
     )
     from flext_infra.transformers._utilities_normalizer import (
+        FlextInfraNormalizerContext,
         FlextInfraUtilitiesImportNormalizer,
-        NormalizerContext,
     )
     from flext_infra.transformers.alias_remover import FlextInfraRefactorAliasRemover
     from flext_infra.transformers.census_visitors import (
-        CensusImportDiscoveryVisitor,
-        CensusUsageCollector,
+        FlextInfraCensusImportDiscoveryVisitor,
+        FlextInfraCensusUsageCollector,
     )
     from flext_infra.transformers.class_nesting import (
         FlextInfraRefactorClassNestingTransformer,
@@ -337,7 +339,7 @@ if TYPE_CHECKING:
         FlextInfraRefactorDeprecatedRemover,
     )
     from flext_infra.transformers.helper_consolidation import (
-        HelperConsolidationTransformer,
+        FlextInfraHelperConsolidationTransformer,
     )
     from flext_infra.transformers.import_bypass_remover import (
         FlextInfraRefactorImportBypassRemover,
@@ -360,7 +362,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
     from flext_infra.transformers.nested_class_propagation import (
-        NestedClassPropagationTransformer,
+        FlextInfraNestedClassPropagationTransformer,
     )
     from flext_infra.transformers.policy import (
         FlextInfraRefactorTransformerPolicyUtilities,
@@ -372,18 +374,22 @@ if TYPE_CHECKING:
         FlextInfraTransformerTier0ImportFixer,
     )
     from flext_infra.transformers.typing_annotation_replacer import (
-        TypingAnnotationReplacer,
+        FlextInfraTypingAnnotationReplacer,
     )
     from flext_infra.transformers.typing_census_visitor import (
-        TypingAnnotationCensusVisitor,
+        FlextInfraTypingAnnotationCensusVisitor,
     )
     from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-    from flext_infra.transformers.unused_model_remover import UnusedModelRemover
-    from flext_infra.transformers.unused_model_visitor import (
-        ModelDefinitionCollector,
-        ModelReferenceCollector,
+    from flext_infra.transformers.unused_model_remover import (
+        FlextInfraUnusedModelRemover,
     )
-    from flext_infra.transformers.violation_census_visitor import ViolationCensusVisitor
+    from flext_infra.transformers.unused_model_visitor import (
+        FlextInfraModelDefinitionCollector,
+        FlextInfraModelReferenceCollector,
+    )
+    from flext_infra.transformers.violation_census_visitor import (
+        FlextInfraViolationCensusVisitor,
+    )
     from flext_infra.typings import FlextInfraTypes, FlextInfraTypes as t
     from flext_infra.utilities import FlextInfraUtilities, FlextInfraUtilities as u
     from flext_infra.validate._constants import (
@@ -1242,8 +1248,12 @@ __all__ = [
     "FlextInfraBaseMkValidator",
     "FlextInfraBasemkConstants",
     "FlextInfraBasemkModels",
+    "FlextInfraCensusImportDiscoveryVisitor",
+    "FlextInfraCensusUsageCollector",
     "FlextInfraCheckConstants",
     "FlextInfraCheckModels",
+    "FlextInfraClassNestingRefactorRule",
+    "FlextInfraClassPlacementDetector",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenCoercion",
     "FlextInfraCodegenConstants",
@@ -1258,10 +1268,13 @@ __all__ = [
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenSnapshot",
+    "FlextInfraCompatibilityAliasDetector",
     "FlextInfraConfigFixer",
     "FlextInfraConstants",
     "FlextInfraCoreConstants",
     "FlextInfraCoreModels",
+    "FlextInfraCyclicImportDetector",
+    "FlextInfraDependencyAnalyzer",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDependencyPathSync",
@@ -1276,22 +1289,41 @@ __all__ = [
     "FlextInfraDocsModels",
     "FlextInfraDocsShared",
     "FlextInfraExtraPathsManager",
+    "FlextInfraFunctionDependencyCollector",
+    "FlextInfraFutureAnnotationsDetector",
     "FlextInfraGate",
     "FlextInfraGateRegistry",
     "FlextInfraGatesModels",
     "FlextInfraGithubConstants",
     "FlextInfraGithubModels",
     "FlextInfraGoGate",
+    "FlextInfraHelperConsolidationTransformer",
+    "FlextInfraImportAliasDetector",
     "FlextInfraImportCollector",
+    "FlextInfraImportDependencyCollector",
     "FlextInfraInternalDependencySyncService",
+    "FlextInfraInternalImportDetector",
     "FlextInfraInventoryService",
+    "FlextInfraLooseObjectDetector",
+    "FlextInfraMROCompletenessDetector",
+    "FlextInfraManualProtocolDetector",
+    "FlextInfraManualTypingAliasDetector",
     "FlextInfraMarkdownGate",
+    "FlextInfraModelDefinitionCollector",
+    "FlextInfraModelReferenceCollector",
     "FlextInfraModels",
     "FlextInfraMypyGate",
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceEnforcerModels",
+    "FlextInfraNamespaceFacadeScanner",
+    "FlextInfraNamespaceSourceDetector",
     "FlextInfraNamespaceValidator",
+    "FlextInfraNestedClassPropagationTransformer",
+    "FlextInfraNormalizerContext",
     "FlextInfraOrchestratorService",
+    "FlextInfraPostCheckGate",
+    "FlextInfraPreCheckGate",
+    "FlextInfraProjectClassifier",
     "FlextInfraProjectMakefileUpdater",
     "FlextInfraProjectMigrator",
     "FlextInfraProtocols",
@@ -1351,15 +1383,20 @@ __all__ = [
     "FlextInfraReleaseReporting",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
+    "FlextInfraRuntimeAliasDetector",
     "FlextInfraRuntimeDevDependencyDetector",
     "FlextInfraSharedInfraConstants",
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
     "FlextInfraSyncService",
     "FlextInfraTextPatternScanner",
+    "FlextInfraTopLevelClassCollector",
     "FlextInfraTransformerImportNormalizer",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
+    "FlextInfraTypingAnnotationCensusVisitor",
+    "FlextInfraTypingAnnotationReplacer",
+    "FlextInfraUnusedModelRemover",
     "FlextInfraUtilities",
     "FlextInfraUtilitiesCli",
     "FlextInfraUtilitiesCodegen",
@@ -1402,6 +1439,7 @@ __all__ = [
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesYaml",
+    "FlextInfraViolationCensusVisitor",
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceConstants",
     "FlextInfraWorkspaceDetector",
