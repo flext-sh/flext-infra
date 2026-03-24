@@ -208,7 +208,7 @@ class FlextInfraConfigFixer(s[bool]):
                     list(search_raw),
                 )
             except ValidationError:
-                current_paths = []
+                pass
         current_search = [
             str(path_item) for path_item in current_paths if isinstance(path_item, str)
         ]
@@ -233,16 +233,15 @@ class FlextInfraConfigFixer(s[bool]):
             )
         for conf in configs:
             conf_out: t.Infra.InfraValue = conf
+            conf_map: Mapping[str, t.Infra.InfraValue] = {}
             if isinstance(conf, Mapping):
                 try:
-                    conf_map: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
+                    conf_map = TypeAdapter(
                         Mapping[str, t.Infra.InfraValue],
                     ).validate_python(conf)
                     conf_out = dict(conf_map.items())
                 except ValidationError:
-                    conf_map = {}
-            else:
-                conf_map = {}
+                    pass
             if conf_map.get(c.Infra.IGNORE) is True:
                 matches = conf_map.get("matches", c.Infra.Defaults.UNKNOWN)
                 fixes.append(f"removed ignore=true sub-config for '{matches}'")

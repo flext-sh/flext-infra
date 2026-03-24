@@ -34,10 +34,10 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             verb,
         ])
         if result.is_failure:
-            return r[tuple[int, str]].fail(result.error or "make execution failed")
+            return r[t.Infra.Pair[int, str]].fail(result.error or "make execution failed")
         output_model = result.value
         output = (output_model.stdout + "\n" + output_model.stderr).strip()
-        return r[tuple[int, str]].ok((output_model.exit_code, output))
+        return r[t.Infra.Pair[int, str]].ok((output_model.exit_code, output))
 
     @override
     def execute(self) -> r[bool]:

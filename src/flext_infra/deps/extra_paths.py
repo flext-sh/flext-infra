@@ -124,7 +124,7 @@ class FlextInfraExtraPathsManager:
         path deps too, with cycle detection.
         """
         if visited is None:
-            visited = set()
+            visited: t.Infra.StrSet = set()
         all_paths: t.Infra.StrSet = set(direct_paths)
         for path_value in direct_paths:
             name = FlextInfraDependencyPathSync.extract_dep_name(path_value)

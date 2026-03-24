@@ -193,8 +193,6 @@ class FlextInfraCodegenCommand:
                 replaced: t.StrSequence = []
                 if isinstance(replaced_val, list):
                     replaced = [item for item in replaced_val if isinstance(item, str)]
-                else:
-                    replaced = []
                 output.info(
                     f"✓ {canonical}: replaced {len(replaced)} in {files_mod} files",
                 )

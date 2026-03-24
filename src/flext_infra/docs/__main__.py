@@ -35,7 +35,7 @@ class FlextInfraDocsCommand:
     @staticmethod
     def run(argv: t.StrSequence | None = None) -> int:
         """Run documentation command dispatcher."""
-        parser_subs: tuple[ArgumentParser, Mapping[str, ArgumentParser]] = (
+        parser_subs: t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]] = (
             u.Infra.create_subcommand_parser(
                 "flext-infra docs",
                 "Documentation management services",

@@ -48,7 +48,7 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
                 and (stmt.body[0].module.value == "__future__")
             ):
                 import_from = stmt.body[0]
-                aliases: tuple[cst.ImportAlias, ...] = ()
+                aliases: t.Infra.VariadicTuple[cst.ImportAlias] = ()
                 if not isinstance(import_from.names, cst.ImportStar):
                     aliases = tuple(import_from.names)
                 contains_annotations = any(

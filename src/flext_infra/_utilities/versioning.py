@@ -137,8 +137,8 @@ class FlextInfraUtilitiesVersioning:
         """
         match = c.Infra.Versioning.SEMVER_RE.match(version)
         if not match:
-            return r[tuple[int, int, int]].fail(f"invalid semver: {version}")
-        return r[tuple[int, int, int]].ok((
+            return r[t.Infra.Triple[int, int, int]].fail(f"invalid semver: {version}")
+        return r[t.Infra.Triple[int, int, int]].ok((
             int(match.group(1)),
             int(match.group(2)),
             int(match.group(3)),

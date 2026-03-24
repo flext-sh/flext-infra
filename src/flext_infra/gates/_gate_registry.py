@@ -17,7 +17,7 @@ from flext_infra import (
     FlextInfraRuffLintGate,
 )
 
-_GATES: tuple[type[FlextInfraGate], ...] = (
+_GATES: t.Infra.VariadicTuple[type[FlextInfraGate]] = (
     FlextInfraRuffLintGate,
     FlextInfraRuffFormatGate,
     FlextInfraPyreflyGate,

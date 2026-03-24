@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_core import r
 
-from flext_infra import c
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesIteration:
@@ -253,9 +253,9 @@ class FlextInfraUtilitiesIteration:
                 result.extend(
                     (project_root, file_path) for file_path in files_result.value
                 )
-            return r[Sequence[tuple[Path, Path]]].ok(result)
+            return r[Sequence[t.Infra.Pair[Path, Path]]].ok(result)
         except OSError as exc:
-            return r[Sequence[tuple[Path, Path]]].fail(
+            return r[Sequence[t.Infra.Pair[Path, Path]]].fail(
                 f"workspace python module iteration failed: {exc}",
             )
 

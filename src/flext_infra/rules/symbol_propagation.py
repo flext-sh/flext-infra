@@ -42,7 +42,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
                 module_renames_raw,
             )
         except ValidationError:
-            module_renames = {}
+            module_renames: Mapping[str, str] = {}
         try:
             symbol_renames: Mapping[str, str] = TypeAdapter(
                 Mapping[str, str],
@@ -50,7 +50,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
                 symbol_renames_raw,
             )
         except ValidationError:
-            symbol_renames = {}
+            symbol_renames: Mapping[str, str] = {}
         if not target_modules and (not module_renames) and (not symbol_renames):
             return (tree, [])
         transformer = FlextInfraRefactorSymbolPropagator(

@@ -41,7 +41,7 @@ class FlextInfraEnsureFormattingToolingPhase:
                         Sequence[str],
                     ).validate_python([str(x) for x in current])
                 except ValidationError:
-                    current_values = []
+                    current_values: Sequence[str] = []
                 if sorted(str(i) for i in current_values) != sorted(
                     str(i) for i in value
                 ):

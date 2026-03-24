@@ -66,7 +66,7 @@ class FlextInfraUtilitiesTomlParse:
             try:
                 current = TypeAdapter(Sequence[t.StrMapping]).validate_python(raw)
             except ValidationError:
-                current = []
+                pass
         if list(current) != expected:
             pyright["executionEnvironments"] = expected
             changes.append(

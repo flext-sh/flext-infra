@@ -113,7 +113,7 @@ class FlextInfraDocValidator:
                         )
                         required = [str(item) for item in required_items if item]
                     except ValidationError:
-                        required = []
+                        required: t.StrSequence = []
         if not required:
             required = ["rules-docs", "scripts-maintenance", "readme-standardization"]
         missing: MutableSequence[str] = []

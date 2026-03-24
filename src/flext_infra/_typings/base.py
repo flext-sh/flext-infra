@@ -13,6 +13,28 @@ from pathlib import Path as _Path
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
+    type Pair[LeftT, RightT] = tuple[LeftT, RightT]
+    "Generic pair alias for two ordered values."
+    type Triple[FirstT, SecondT, ThirdT] = tuple[FirstT, SecondT, ThirdT]
+    "Generic triple alias for three ordered values."
+    type Quad[FirstT, SecondT, ThirdT, FourthT] = tuple[
+        FirstT,
+        SecondT,
+        ThirdT,
+        FourthT,
+    ]
+    "Generic 4-item tuple alias."
+    type Quint[FirstT, SecondT, ThirdT, FourthT, FifthT] = tuple[
+        FirstT,
+        SecondT,
+        ThirdT,
+        FourthT,
+        FifthT,
+    ]
+    "Generic 5-item tuple alias."
+    type VariadicTuple[ItemT] = tuple[ItemT, ...]
+    "Generic variadic tuple alias for homogeneous tuples."
+
     type InfraValue = (
         str
         | int
@@ -45,6 +67,8 @@ class FlextInfraTypesBase:
     "Ordered pair of strings."
     type StrIntPair = tuple[str, int]
     "Ordered pair of (str, int)."
+    type IntPair = tuple[int, int]
+    "Ordered pair of (int, int)."
     type StrPairSequence = Sequence[StrPair]
     "Read-only sequence of string pairs."
     type LazyImportMap = Mapping[str, StrPair]

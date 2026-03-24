@@ -71,7 +71,7 @@ class FlextInfraDocAuditor:
                     strict=True,
                 )
             except ValidationError:
-                by_scope_raw = {}
+                by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
         by_scope: MutableMapping[str, int] = {}
         for name, value in by_scope_raw.items():
             if isinstance(value, (int, float)):

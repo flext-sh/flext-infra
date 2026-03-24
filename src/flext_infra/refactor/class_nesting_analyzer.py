@@ -125,18 +125,18 @@ class FlextInfraRefactorClassNestingAnalyzer:
         try:
             typed_doc = u.Infra.safe_load_yaml(mapping_path)
         except (OSError, TypeError) as exc:
-            return r[Mapping[tuple[str, str], m.Infra.ClassNestingMapping]].fail(
+            return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),
             )
         raw_nesting = typed_doc.get(c.Infra.ReportKeys.CLASS_NESTING)
         if not isinstance(raw_nesting, list):
-            return r[Mapping[tuple[str, str], m.Infra.ClassNestingMapping]].ok({})
+            return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].ok({})
         try:
             entries = TypeAdapter(
                 Sequence[m.Infra.ClassNestingMapping],
             ).validate_python(raw_nesting)
         except ValidationError as exc:
-            return r[Mapping[tuple[str, str], m.Infra.ClassNestingMapping]].fail(
+            return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc),
             )
         index: MutableMapping[tuple[str, str], m.Infra.ClassNestingMapping] = {}
@@ -152,7 +152,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 target_name=entry.target_name,
                 reason=entry.reason,
             )
-        return r[Mapping[tuple[str, str], m.Infra.ClassNestingMapping]].ok(index)
+        return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].ok(index)
 
     @classmethod
     def _normalize_module_path(cls, raw_path: str) -> str:

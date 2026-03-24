@@ -311,7 +311,7 @@ class FlextInfraUtilitiesGithub(
                 if fail_fast:
                     break
         total = len(repos)
-        orchestration_results: tuple[m.Infra.PrExecutionResultModel, ...] = tuple(
+        orchestration_results: t.Infra.VariadicTuple[m.Infra.PrExecutionResultModel] = tuple(
             results,
         )
         return r[m.Infra.PrOrchestrationResult].ok(

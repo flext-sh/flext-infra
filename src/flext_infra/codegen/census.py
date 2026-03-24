@@ -244,13 +244,12 @@ class FlextInfraCodegenCensus(s[bool]):
             try:
                 class_name_str = str(class_analysis.get("class_name", "Unknown"))
                 census_data_obj_raw_val = class_analysis.get("census_data")
+                census_data_obj: Mapping[
+                    str,
+                    int | Mapping[str, int | Mapping[str, int]],
+                ] = {}
                 if isinstance(census_data_obj_raw_val, dict):
-                    census_data_obj: Mapping[
-                        str,
-                        int | Mapping[str, int | Mapping[str, int]],
-                    ] = census_data_obj_raw_val
-                else:
-                    census_data_obj = {}
+                    census_data_obj = census_data_obj_raw_val
 
                 total_objs_val = census_data_obj.get("total_objects", 0)
                 total_objs = (
