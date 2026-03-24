@@ -188,7 +188,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
                 "--no-pip-check",
                 "--workspace",
                 str(tmp_path),
-            ])
+            ]),
         )
 
     def test_run_with_apply_typings_poetry_add_failure_result(
@@ -209,7 +209,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunTypings:
                 "--no-pip-check",
                 "--workspace",
                 str(tmp_path),
-            ])
+            ]),
         )
 
 

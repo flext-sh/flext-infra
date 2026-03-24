@@ -51,14 +51,16 @@ class ProjectClassifier:
         project_name = self._normalized_name_from_mapping(raw_project)
         dependencies: MutableSequence[str] = []
         self._append_project_dependencies(
-            raw_project=raw_project, dependencies=dependencies
+            raw_project=raw_project,
+            dependencies=dependencies,
         )
         raw_tool = self._as_mapping(parsed.get(c.Infra.Toml.TOOL))
         raw_poetry = self._as_mapping(raw_tool.get(c.Infra.Toml.POETRY))
         if not project_name:
             project_name = self._normalized_name_from_mapping(raw_poetry)
         self._append_poetry_dependencies(
-            raw_poetry=raw_poetry, dependencies=dependencies
+            raw_poetry=raw_poetry,
+            dependencies=dependencies,
         )
         return (project_name, dependencies)
 

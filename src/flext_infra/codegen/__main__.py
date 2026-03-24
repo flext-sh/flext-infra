@@ -163,7 +163,7 @@ class FlextInfraCodegenCommand:
             output.info(
                 f"{i}. Value: {value_str}"
                 f" | Keep: {canonical} ({usages} uses)"
-                f" | Replace {len(duplicates)} others"
+                f" | Replace {len(duplicates)} others",
             )
             for dup in duplicates:
                 if isinstance(dup, dict):
@@ -196,7 +196,7 @@ class FlextInfraCodegenCommand:
                 else:
                     replaced = []
                 output.info(
-                    f"✓ {canonical}: replaced {len(replaced)} in {files_mod} files"
+                    f"✓ {canonical}: replaced {len(replaced)} in {files_mod} files",
                 )
 
         if not cli.dry_run:

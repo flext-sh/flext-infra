@@ -888,7 +888,8 @@ class FlextInfraCodegenFixer(s[bool]):
             if py_file.name == "constants.py":
                 continue
             _, direct_refs, _ = u.Infra.scan_constant_usages(
-                file_path=py_file, project=pkg_dir.name
+                file_path=py_file,
+                project=pkg_dir.name,
             )
             if not direct_refs:
                 continue

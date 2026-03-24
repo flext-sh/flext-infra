@@ -43,7 +43,9 @@ class _StubSelector:
         self._result = result
 
     def resolve_projects(
-        self, workspace_root: Path, names: t.StrSequence
+        self,
+        workspace_root: Path,
+        names: t.StrSequence,
     ) -> _FakeResult:
         _ = workspace_root
         _ = names

@@ -163,7 +163,7 @@ class TestRunCommand:
             _create_run_raw_result(
                 r[SimpleNamespace].ok(
                     SimpleNamespace(stdout="[]", stderr="", exit_code=0),
-                )
+                ),
             ),
         )
         gate = FlextInfraRuffLintGate(tmp_path)

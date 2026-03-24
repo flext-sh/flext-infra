@@ -81,7 +81,7 @@ class FlextInfraDependencyDetectionService:
             return converted
         try:
             mapping_value = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue]
+                Mapping[str, t.Infra.InfraValue],
             ).validate_python(
                 value,
             )
@@ -138,7 +138,7 @@ class FlextInfraDependencyDetectionService:
                 continue
             try:
                 error_data = TypeAdapter(
-                    Mapping[str, t.Infra.InfraValue]
+                    Mapping[str, t.Infra.InfraValue],
                 ).validate_python(
                     error_obj,
                 )

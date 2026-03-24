@@ -256,7 +256,8 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         return (new_tree, transformer.changes)
 
     def _remove_import_bypasses(
-        self, tree: cst.Module
+        self,
+        tree: cst.Module,
     ) -> tuple[cst.Module, t.StrSequence]:
         transformer = FlextInfraRefactorImportBypassRemover()
         new_tree = tree.visit(transformer)

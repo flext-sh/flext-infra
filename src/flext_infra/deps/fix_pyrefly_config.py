@@ -172,7 +172,7 @@ class FlextInfraConfigFixer(s[bool]):
             exclude_items: Sequence[JsonValue] = []
             with contextlib.suppress(ValidationError):
                 exclude_items = TypeAdapter(Sequence[JsonValue]).validate_python([
-                    *excludes
+                    *excludes,
                 ])
             current = [str(value) for value in exclude_items]
         stripped_to_add: MutableSequence[str] = []
@@ -200,7 +200,7 @@ class FlextInfraConfigFixer(s[bool]):
             search_items: Sequence[JsonValue] = []
             with contextlib.suppress(ValidationError):
                 search_items = TypeAdapter(Sequence[JsonValue]).validate_python([
-                    *search_path
+                    *search_path,
                 ])
             for path_item in search_items:
                 if not isinstance(path_item, str):
@@ -222,7 +222,7 @@ class FlextInfraConfigFixer(s[bool]):
         if isinstance(search_raw, list):
             try:
                 current_paths = TypeAdapter(Sequence[JsonValue]).validate_python(
-                    list(search_raw)
+                    list(search_raw),
                 )
             except ValidationError:
                 current_paths = []
@@ -253,7 +253,7 @@ class FlextInfraConfigFixer(s[bool]):
         configs: Sequence[t.Infra.InfraValue] = []
         with contextlib.suppress(ValidationError):
             configs = TypeAdapter(Sequence[t.Infra.InfraValue]).validate_python(
-                sub_configs
+                sub_configs,
             )
         for conf in configs:
             conf_out: t.Infra.InfraValue = conf

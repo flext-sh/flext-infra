@@ -81,11 +81,14 @@ class TestProjectResultProperties:
             severity="error",
         )
         exec1 = m.Infra.GateExecution(
-            result=gate1, issues=[issue1, issue2], raw_output=""
+            result=gate1,
+            issues=[issue1, issue2],
+            raw_output="",
         )
         exec2 = m.Infra.GateExecution(result=gate2, issues=[issue3], raw_output="")
         project = m.Infra.ProjectResult(
-            project="p", gates={"lint": exec1, "format": exec2}
+            project="p",
+            gates={"lint": exec1, "format": exec2},
         )
         tm.that(project.total_errors, eq=3)
 
@@ -107,7 +110,8 @@ class TestProjectResultProperties:
         exec1 = m.Infra.GateExecution(result=gate1, issues=[], raw_output="")
         exec2 = m.Infra.GateExecution(result=gate2, issues=[], raw_output="")
         project = m.Infra.ProjectResult(
-            project="p", gates={"lint": exec1, "format": exec2}
+            project="p",
+            gates={"lint": exec1, "format": exec2},
         )
         tm.that(project.passed, eq=True)
 
@@ -129,7 +133,8 @@ class TestProjectResultProperties:
         exec1 = m.Infra.GateExecution(result=gate1, issues=[], raw_output="")
         exec2 = m.Infra.GateExecution(result=gate2, issues=[], raw_output="")
         project = m.Infra.ProjectResult(
-            project="p", gates={"lint": exec1, "format": exec2}
+            project="p",
+            gates={"lint": exec1, "format": exec2},
         )
         tm.that(not project.passed, eq=True)
 
@@ -177,7 +182,9 @@ class TestWorkspaceCheckerErrorSummary:
             duration=0.0,
         )
         exec1 = m.Infra.GateExecution(
-            result=gate1, issues=[issue1, issue2], raw_output=""
+            result=gate1,
+            issues=[issue1, issue2],
+            raw_output="",
         )
         exec2 = m.Infra.GateExecution(result=gate2, issues=[issue3], raw_output="")
         proj1 = m.Infra.ProjectResult(project="proj1", gates={"lint": exec1})

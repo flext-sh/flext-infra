@@ -202,7 +202,8 @@ class TestPhaseBuild:
         monkeypatch: MonkeyPatch,
     ) -> None:
         def _fake_build_targets(
-            *a: t.Scalar, **kw: t.Scalar
+            *a: t.Scalar,
+            **kw: t.Scalar,
         ) -> Sequence[tuple[str, Path]]:
             del a, kw
             return [("root", workspace_root)]

@@ -165,7 +165,10 @@ class FlextInfraDependencyPathSync:
 
     @staticmethod
     def _rewrite_poetry(
-        doc: TOMLDocument, *, is_root: bool, mode: str
+        doc: TOMLDocument,
+        *,
+        is_root: bool,
+        mode: str,
     ) -> t.StrSequence:
         tool_raw = FlextInfraDependencyPathSync._table_get(doc, c.Infra.Toml.TOOL)
         if not isinstance(tool_raw, Table):
@@ -221,7 +224,7 @@ class FlextInfraDependencyPathSync:
         doc_result = self._read_document(pyproject_path)
         if doc_result.is_failure:
             return r[t.StrSequence].fail(
-                doc_result.error or "failed to read TOML document"
+                doc_result.error or "failed to read TOML document",
             )
         doc: TOMLDocument = doc_result.value
         changes: MutableSequence[str] = list(
@@ -230,14 +233,14 @@ class FlextInfraDependencyPathSync:
                 is_root=is_root,
                 mode=mode,
                 internal_names=internal_names,
-            )
+            ),
         )
         changes += list(self._rewrite_poetry(doc, is_root=is_root, mode=mode))
         if changes and (not dry_run):
             write_result = self._write_document(pyproject_path, doc)
             if write_result.is_failure:
                 return r[t.StrSequence].fail(
-                    write_result.error or "failed to write TOML"
+                    write_result.error or "failed to write TOML",
                 )
         return r[t.StrSequence].ok(changes)
 

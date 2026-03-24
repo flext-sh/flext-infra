@@ -165,7 +165,10 @@ class FlextInfraUtilitiesImportNormalizer:
 
     @staticmethod
     def normalizer_file_to_module(
-        *, file_path: Path, package_dir: Path, package_name: str
+        *,
+        file_path: Path,
+        package_dir: Path,
+        package_name: str,
     ) -> str:
         """Convert a file path to its absolute Python module path."""
         relative = file_path.resolve().relative_to(package_dir.parent.resolve())

@@ -48,7 +48,9 @@ class TestCheckProjectRunners:
 
         monkeypatch.setattr(checker._registry, "create", _fake_create)
         result = checker._check_project(
-            tmp_path, ["lint", "format", "pyrefly"], tmp_path
+            tmp_path,
+            ["lint", "format", "pyrefly"],
+            tmp_path,
         )
         tm.that(called["lint"], eq=True)
         tm.that(called["format"], eq=True)

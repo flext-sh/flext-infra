@@ -107,7 +107,7 @@ class FlextInfraGate(ABC):
         if not isinstance(value, Mapping):
             return {}
         return TypeAdapter(Mapping[str, t_infra.Infra.InfraValue]).validate_python(
-            value
+            value,
         )
 
     @classmethod
@@ -118,7 +118,7 @@ class FlextInfraGate(ABC):
         if not isinstance(value, list):
             return []
         typed_items = TypeAdapter(Sequence[t_infra.Infra.InfraValue]).validate_python(
-            value
+            value,
         )
         normalized: MutableSequence[Mapping[str, t_infra.Infra.InfraValue]] = []
         for raw_item in typed_items:
@@ -174,7 +174,7 @@ class FlextInfraGate(ABC):
         if not isinstance(current, Mapping):
             return {}
         return TypeAdapter(Mapping[str, t_infra.Infra.InfraValue]).validate_python(
-            current
+            current,
         )
 
     @classmethod

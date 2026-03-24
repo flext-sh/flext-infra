@@ -34,7 +34,7 @@ class FlextInfraRefactorRuleLoader:
             normalized: MutableMapping[str, t.Infra.InfraValue] = dict(
                 TypeAdapter(
                     Mapping[str, t.Infra.InfraValue],
-                ).validate_python(dict(loaded.items()))
+                ).validate_python(dict(loaded.items())),
             )
             scope_raw = normalized.get("refactor_engine")
             scope_map = self._normalize_str_object_mapping(scope_raw)
@@ -135,13 +135,15 @@ class FlextInfraRefactorRuleLoader:
                 ].fail(f"Unknown rule mapping for: {unknown}")
             return r[
                 tuple[
-                    Sequence[FlextInfraRefactorRule], Sequence[ClassNestingRefactorRule]
+                    Sequence[FlextInfraRefactorRule],
+                    Sequence[ClassNestingRefactorRule],
                 ]
             ].ok((loaded_rules, loaded_file_rules))
         except Exception as exc:
             return r[
                 tuple[
-                    Sequence[FlextInfraRefactorRule], Sequence[ClassNestingRefactorRule]
+                    Sequence[FlextInfraRefactorRule],
+                    Sequence[ClassNestingRefactorRule],
                 ]
             ].fail(f"Failed to load rules: {exc}")
 

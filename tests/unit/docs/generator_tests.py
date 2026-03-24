@@ -179,7 +179,8 @@ class TestGeneratorCore:
             eq=True,
         )
         tm.that(
-            not m.Infra.GeneratedFile(path="test2.md", written=False).written, eq=True
+            not m.Infra.GeneratedFile(path="test2.md", written=False).written,
+            eq=True,
         )
 
     def test_generate_with_scope_failure_returns_failure(

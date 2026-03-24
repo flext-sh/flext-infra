@@ -42,7 +42,9 @@ class TestErrorReporting:
         project = m.Infra.ProjectResult(project="p1", gates={"lint": gate_exec})
 
         monkeypatch.setattr(
-            checker, "_check_project", create_check_project_stub(project)
+            checker,
+            "_check_project",
+            create_check_project_stub(project),
         )
         h.mk_project(tmp_path, "p1")
 
@@ -95,7 +97,9 @@ class TestMarkdownReportEmptyGates:
             gates={"lint": exec_with, "format": exec_without},
         )
         monkeypatch.setattr(
-            checker, "_check_project", create_check_project_stub(project)
+            checker,
+            "_check_project",
+            create_check_project_stub(project),
         )
         h.mk_project(tmp_path, "p1")
         result = checker.run_projects(
@@ -146,17 +150,22 @@ class TestMypyEmptyLinesInOutput:
             return ["src"]
 
         def _fake_dirs_with_py(
-            _project_dir: Path, _dirs: t.StrSequence
+            _project_dir: Path,
+            _dirs: t.StrSequence,
         ) -> t.StrSequence:
             del _project_dir, _dirs
             return ["src"]
 
         monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
         monkeypatch.setattr(
-            FlextInfraMypyGate, "_existing_check_dirs", _fake_existing_dirs
+            FlextInfraMypyGate,
+            "_existing_check_dirs",
+            _fake_existing_dirs,
         )
         monkeypatch.setattr(
-            FlextInfraMypyGate, "_dirs_with_py", staticmethod(_fake_dirs_with_py)
+            FlextInfraMypyGate,
+            "_dirs_with_py",
+            staticmethod(_fake_dirs_with_py),
         )
         result = checker._run_mypy(proj_dir)
         tm.that(not result.result.passed, eq=True)

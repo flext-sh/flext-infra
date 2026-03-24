@@ -155,7 +155,9 @@ class FakeSelection:
     _resolve_result: r[Sequence[SimpleNamespace]] = r[Sequence[SimpleNamespace]].ok([])
 
     def resolve_projects(
-        self, *args: str, **kwargs: str
+        self,
+        *args: str,
+        **kwargs: str,
     ) -> r[Sequence[SimpleNamespace]]:
         return self._resolve_result
 

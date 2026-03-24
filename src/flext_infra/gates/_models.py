@@ -16,7 +16,8 @@ class FlextInfraGatesModels:
         """Quality gate execution context and configuration."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(
-            extra="forbid", arbitrary_types_allowed=True
+            extra="forbid",
+            arbitrary_types_allowed=True,
         )
         workspace_root: Annotated[Path, Field(description="Workspace root directory")]
         reports_dir: Annotated[Path, Field(description="Reports output directory")]

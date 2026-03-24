@@ -22,7 +22,8 @@ class FlextInfraGithubModels:
         ]
         status: Annotated[t.NonEmptyStr, Field(description="Execution status")]
         elapsed: Annotated[
-            t.NonNegativeInt, Field(description="Elapsed time in seconds")
+            t.NonNegativeInt,
+            Field(description="Elapsed time in seconds"),
         ]
         exit_code: Annotated[int, Field(description="Process exit code")]
         log_path: Annotated[
@@ -34,7 +35,8 @@ class FlextInfraGithubModels:
         """Aggregated result of workspace-wide PR orchestration."""
 
         total: Annotated[
-            t.NonNegativeInt, Field(description="Total repositories processed")
+            t.NonNegativeInt,
+            Field(description="Total repositories processed"),
         ]
         success: Annotated[t.NonNegativeInt, Field(description="Successful executions")]
         fail: Annotated[t.NonNegativeInt, Field(description="Failed executions")]

@@ -140,7 +140,7 @@ class LooseObjectDetector(p.Infra.Scanner):
         module, positions = u.Infra.cst_resolve_positions(tree)
         namespace_classes = cls._find_namespace_classes(tree=module)
         class_stem = NamespaceFacadeScanner.project_class_stem(
-            project_name=project_name
+            project_name=project_name,
         )
         violations: MutableSequence[nem.LooseObjectViolation] = []
         for stmt in module.body:

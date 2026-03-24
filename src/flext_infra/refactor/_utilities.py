@@ -622,7 +622,8 @@ class FlextInfraUtilitiesRefactor(
             )
 
         pj_sums: MutableMapping[
-            str, MutableSequence[m.Infra.CensusProjectMethodUsage]
+            str,
+            MutableSequence[m.Infra.CensusProjectMethodUsage],
         ] = defaultdict(list)
         for (pj, cls, mx, mo), co in sorted(pcnt.items()):
             pj_sums[pj].append(

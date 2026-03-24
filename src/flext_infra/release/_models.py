@@ -41,7 +41,8 @@ class FlextInfraReleaseModels:
 
         version: Annotated[t.NonEmptyStr, Field(description="Release version")]
         total: Annotated[
-            t.NonNegativeInt, Field(description="Total projects attempted")
+            t.NonNegativeInt,
+            Field(description="Total projects attempted"),
         ]
         failures: Annotated[
             t.NonNegativeInt,

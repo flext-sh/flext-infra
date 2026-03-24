@@ -186,7 +186,7 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
             isinstance(node, cst.Attribute)
             and isinstance(node.value, cst.Name)
             and node.value.value == "builtins"
-            and node.attr.value == "t.NormalizedValue"
+            and node.attr.value == "t.NormalizedValue",
         )
 
     def _has_typeguard_return(self, node: cst.FunctionDef) -> bool:
@@ -237,7 +237,8 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         )
 
     def _get_subscript_values(
-        self, node: cst.Subscript
+        self,
+        node: cst.Subscript,
     ) -> Sequence[cst.BaseExpression]:
         values: MutableSequence[cst.BaseExpression] = []
         for element in node.slice:

@@ -240,7 +240,7 @@ class FlextInfraDocGenerator:
                     scope=scope,
                     workspace_root=workspace_root,
                     apply=apply,
-                )
+                ),
             )
             files.extend(self._generate_project_mkdocs(scope=scope, apply=apply))
             source = "workspace-docs-guides"

@@ -228,7 +228,8 @@ class ViolationCensusVisitor(cst.CSTVisitor):
         return False
 
     def _subscript_value(
-        self, element: cst.SubscriptElement
+        self,
+        element: cst.SubscriptElement,
     ) -> cst.BaseExpression | None:
         if isinstance(element.slice, cst.Index):
             return element.slice.value
@@ -240,10 +241,11 @@ class ViolationCensusVisitor(cst.CSTVisitor):
         if self._is_object_name(expr):
             return True
         if isinstance(expr, cst.BinaryOperation) and isinstance(
-            expr.operator, cst.BitOr
+            expr.operator,
+            cst.BitOr,
         ):
             return self._is_container_or_object(
-                expr.left
+                expr.left,
             ) and self._is_container_or_object(expr.right)
         return False
 

@@ -150,7 +150,7 @@ class TestOrchestratorGateNormalization:
         orchestrator = FlextInfraOrchestratorService()
         python_project = tmp_path_factory.mktemp("python-project")
         (python_project / "pyproject.toml").write_text(
-            "[project]\nname='python-project'\n"
+            "[project]\nname='python-project'\n",
         )
 
         make_args = ["CHECK_GATES=pyrefly"]

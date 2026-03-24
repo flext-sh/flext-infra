@@ -106,7 +106,8 @@ def _toml_table_item() -> tomlkit.items.Item:
     ],
 )
 def test_as_string_list(
-    value: tomlkit.items.Item | None, expected: t.StrSequence
+    value: tomlkit.items.Item | None,
+    expected: t.StrSequence,
 ) -> None:
     tm.that(u.Infra.as_string_list(value), eq=expected)
 

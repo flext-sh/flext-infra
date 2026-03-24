@@ -46,7 +46,7 @@ class EnsurePyreflyConfigPhase:
         if "python-interpreter-path" in pyrefly:
             del pyrefly["python-interpreter-path"]
             changes.append(
-                "tool.pyrefly.python-interpreter-path removed (non-portable)"
+                "tool.pyrefly.python-interpreter-path removed (non-portable)",
             )
         if (
             u.Infra.unwrap_item(

@@ -121,7 +121,9 @@ class FlextInfraUtilitiesGithub(
                 all_operations.extend(ops_result.value)
         if report_path is not None:
             cls._github_write_report(
-                report_path, apply=apply, operations=all_operations
+                report_path,
+                apply=apply,
+                operations=all_operations,
             )
         return r[Sequence[m.Infra.SyncOperation]].ok(all_operations)
 
@@ -310,7 +312,7 @@ class FlextInfraUtilitiesGithub(
                     break
         total = len(repos)
         orchestration_results: tuple[m.Infra.PrExecutionResultModel, ...] = tuple(
-            results
+            results,
         )
         return r[m.Infra.PrOrchestrationResult].ok(
             m.Infra.PrOrchestrationResult(

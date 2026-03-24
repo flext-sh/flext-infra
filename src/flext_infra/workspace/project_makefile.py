@@ -91,11 +91,12 @@ class FlextInfraProjectMakefileUpdater:
                 return r[bool].fail(f"Makefile read failed: {exc}")
 
             migrate_result = self._migrate_custom_section(
-                existing, project_root / "custom.mk"
+                existing,
+                project_root / "custom.mk",
             )
             if migrate_result.is_failure:
                 return r[bool].fail(
-                    migrate_result.error or "custom.mk migration failed"
+                    migrate_result.error or "custom.mk migration failed",
                 )
 
             existing_hash = hashlib.sha256(existing.encode(_ENCODING)).hexdigest()

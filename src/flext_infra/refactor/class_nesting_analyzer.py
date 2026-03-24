@@ -93,7 +93,8 @@ class FlextInfraRefactorClassNestingAnalyzer:
 
     @classmethod
     def _group_targets_by_project_root(
-        cls, files: Sequence[Path]
+        cls,
+        files: Sequence[Path],
     ) -> Mapping[Path, set[str]]:
         grouped: MutableMapping[Path, set[str]] = {}
         for file_path in files:
@@ -139,7 +140,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             typed_doc = u.Infra.safe_load_yaml(mapping_path)
         except (OSError, TypeError) as exc:
             return r[Mapping[tuple[str, str], m.Infra.ClassNestingMapping]].fail(
-                str(exc)
+                str(exc),
             )
         raw_nesting = typed_doc.get(c.Infra.ReportKeys.CLASS_NESTING)
         if not isinstance(raw_nesting, list):
@@ -150,7 +151,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             ).validate_python(raw_nesting)
         except ValidationError as exc:
             return r[Mapping[tuple[str, str], m.Infra.ClassNestingMapping]].fail(
-                str(exc)
+                str(exc),
             )
         index: MutableMapping[tuple[str, str], m.Infra.ClassNestingMapping] = {}
         for entry in entries:

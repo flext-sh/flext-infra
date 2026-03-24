@@ -91,7 +91,7 @@ class TestDetectorReportFlags:
         detector = _setup(monkeypatch, tmp_path, _DepsStub(tmp_path / "proj-a", 5, 1))
         tm.that(
             tm.ok(
-                detector.run(["--no-fail", "--dry-run", "--workspace", str(tmp_path)])
+                detector.run(["--no-fail", "--dry-run", "--workspace", str(tmp_path)]),
             ),
             eq=0,
         )
@@ -110,7 +110,7 @@ class TestDetectorReportFlags:
                     "--no-pip-check",
                     "--workspace",
                     str(tmp_path),
-                ])
+                ]),
             ),
             eq=0,
         )

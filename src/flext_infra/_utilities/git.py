@@ -19,25 +19,29 @@ class FlextInfraUtilitiesGit:
     @staticmethod
     def git_run_checked(cmd: t.StrSequence, cwd: Path | None = None) -> r[bool]:
         return FlextInfraUtilitiesSubprocess.run_checked(
-            [c.Infra.Cli.GIT, *cmd], cwd=cwd
+            [c.Infra.Cli.GIT, *cmd],
+            cwd=cwd,
         )
 
     @staticmethod
     def git_is_repo(path: Path) -> bool:
         return FlextInfraUtilitiesSubprocess.run_checked(
-            [c.Infra.Cli.GIT, "rev-parse", "--is-inside-work-tree"], cwd=path
+            [c.Infra.Cli.GIT, "rev-parse", "--is-inside-work-tree"],
+            cwd=path,
         ).is_success
 
     @staticmethod
     def git_current_branch(root: Path) -> r[str]:
         return FlextInfraUtilitiesSubprocess.capture(
-            [c.Infra.Cli.GIT, "rev-parse", "--abbrev-ref", "HEAD"], cwd=root
+            [c.Infra.Cli.GIT, "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=root,
         )
 
     @staticmethod
     def git_has_changes(root: Path) -> r[bool]:
         return FlextInfraUtilitiesSubprocess.capture(
-            [c.Infra.Cli.GIT, "status", "--porcelain"], cwd=root
+            [c.Infra.Cli.GIT, "status", "--porcelain"],
+            cwd=root,
         ).map(lambda v: bool(v.strip()))
 
     @staticmethod
@@ -49,7 +53,11 @@ class FlextInfraUtilitiesGit:
 
     @staticmethod
     def git_checkout(
-        root: Path, branch: str, *, create: bool = False, track: str | None = None
+        root: Path,
+        branch: str,
+        *,
+        create: bool = False,
+        track: str | None = None,
     ) -> r[bool]:
         cmd = [c.Infra.Cli.GIT, "checkout"]
         if create:
@@ -71,18 +79,24 @@ class FlextInfraUtilitiesGit:
     @staticmethod
     def git_add(root: Path, *paths: str) -> r[bool]:
         return FlextInfraUtilitiesSubprocess.run_checked(
-            [c.Infra.Cli.GIT, "add", *(paths or ["-A"])], cwd=root
+            [c.Infra.Cli.GIT, "add", *(paths or ["-A"])],
+            cwd=root,
         )
 
     @staticmethod
     def git_commit(root: Path, msg: str) -> r[bool]:
         return FlextInfraUtilitiesSubprocess.run_checked(
-            [c.Infra.Cli.GIT, "commit", "-m", msg], cwd=root
+            [c.Infra.Cli.GIT, "commit", "-m", msg],
+            cwd=root,
         )
 
     @staticmethod
     def git_push(
-        root: Path, remote: str = "", branch: str = "", *, upstream: bool = False
+        root: Path,
+        remote: str = "",
+        branch: str = "",
+        *,
+        upstream: bool = False,
     ) -> r[bool]:
         cmd = [c.Infra.Cli.GIT, "push"]
         if upstream:
@@ -95,7 +109,11 @@ class FlextInfraUtilitiesGit:
 
     @staticmethod
     def git_pull(
-        root: Path, *, rebase: bool = False, remote: str = "", branch: str = ""
+        root: Path,
+        *,
+        rebase: bool = False,
+        remote: str = "",
+        branch: str = "",
     ) -> r[bool]:
         cmd = [c.Infra.Cli.GIT, "pull"]
         if rebase:
@@ -109,7 +127,8 @@ class FlextInfraUtilitiesGit:
     @staticmethod
     def git_tag_exists(root: Path, tag: str) -> r[bool]:
         return FlextInfraUtilitiesSubprocess.capture(
-            [c.Infra.Cli.GIT, "tag", "-l", tag], cwd=root
+            [c.Infra.Cli.GIT, "tag", "-l", tag],
+            cwd=root,
         ).map(lambda v: v.strip() == tag)
 
     @staticmethod

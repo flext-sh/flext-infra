@@ -225,7 +225,10 @@ class FlextInfraProtocols(FlextProtocols):
             """Service for reporting directory resolution."""
 
             def get_report_dir(
-                self, workspace_root: Path, scope: str, verb: str
+                self,
+                workspace_root: Path,
+                scope: str,
+                verb: str,
             ) -> Path:
                 """Resolve report output directory for given scope and verb."""
                 ...

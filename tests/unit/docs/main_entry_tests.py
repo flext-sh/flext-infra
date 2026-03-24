@@ -114,7 +114,9 @@ class TestMainWithFlags:
     def test_audit_custom_root(self, monkeypatch: pytest.MonkeyPatch) -> None:
         kw: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(
-            sys, "argv", ["prog", "audit", "--workspace", "/custom/path"]
+            sys,
+            "argv",
+            ["prog", "audit", "--workspace", "/custom/path"],
         )
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
         main()

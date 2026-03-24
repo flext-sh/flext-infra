@@ -149,7 +149,10 @@ class FlextInfraNamespaceValidator:
             )
 
     def _check_rule_0(
-        self, tree: ast.Module, filepath: Path, prefix: str
+        self,
+        tree: ast.Module,
+        filepath: Path,
+        prefix: str,
     ) -> t.StrSequence:
         """Rule 0 — One namespace class per module.
 
@@ -314,7 +317,10 @@ class FlextInfraNamespaceValidator:
         return violations
 
     def _discover_files(
-        self, workspace_root: Path, *, scan_tests: bool
+        self,
+        workspace_root: Path,
+        *,
+        scan_tests: bool,
     ) -> Sequence[Path]:
         """Walk ``src/`` (and optionally ``tests/``) for non-exempt .py files."""
         result: MutableSequence[Path] = []

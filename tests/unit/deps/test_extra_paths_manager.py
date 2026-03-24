@@ -100,7 +100,8 @@ class TestGetDepPaths:
 class TestSyncOne:
     def test_sync_one_missing_file(self, tmp_path: Path) -> None:
         tm.that(
-            not _manager().sync_one(tmp_path / "nonexistent.toml").is_success, eq=True
+            not _manager().sync_one(tmp_path / "nonexistent.toml").is_success,
+            eq=True,
         )
 
     def test_sync_one_no_tool_section(self, tmp_path: Path) -> None:

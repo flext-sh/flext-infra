@@ -53,13 +53,13 @@ class TestModuleAndTypingsFlow:
         tm.that(service.module_to_types_package("yaml", {}), eq="types-pyyaml")
         tm.that(service.module_to_types_package("flext_core", {}), eq=None)
         module_to_package: Mapping[str, t.Infra.InfraValue] = {
-            "yaml": "custom-types-yaml"
+            "yaml": "custom-types-yaml",
         }
         typing_libraries: Mapping[str, t.Infra.InfraValue] = {
             "module_to_package": module_to_package,
         }
         limits: Mapping[str, t.Infra.InfraValue] = {
-            "typing_libraries": typing_libraries
+            "typing_libraries": typing_libraries,
         }
         tm.that(service.module_to_types_package("yaml", limits), eq="custom-types-yaml")
         tm.that(service.module_to_types_package("unknown_module", {}), eq=None)

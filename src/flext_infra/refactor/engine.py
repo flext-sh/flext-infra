@@ -193,7 +193,7 @@ class FlextInfraRefactorEngine:
                     engine.collect_workspace_files(
                         args.workspace,
                         pattern=args.pattern,
-                    )
+                    ),
                 )
             elif args.file:
                 if not args.file.exists():
@@ -203,7 +203,7 @@ class FlextInfraRefactorEngine:
             elif args.files:
                 files_to_analyze = [item for item in args.files if item.exists()]
             analysis = FlextInfraRefactorViolationAnalyzer.analyze_files(
-                files_to_analyze
+                files_to_analyze,
             )
             u.Infra.print_violation_summary(analysis)
             if args.analysis_output is not None:
@@ -213,7 +213,7 @@ class FlextInfraRefactorEngine:
                     ensure_ascii=True,
                 )
                 u.Infra.refactor_info(
-                    f"Analysis report written: {args.analysis_output}"
+                    f"Analysis report written: {args.analysis_output}",
                 )
             return 0
         results: MutableSequence[m.Infra.Result] = []
@@ -223,7 +223,7 @@ class FlextInfraRefactorEngine:
                     args.project,
                     dry_run=args.dry_run,
                     pattern=args.pattern,
-                )
+                ),
             )
         elif args.workspace:
             results = list(
@@ -231,7 +231,7 @@ class FlextInfraRefactorEngine:
                     args.workspace,
                     dry_run=args.dry_run,
                     pattern=args.pattern,
-                )
+                ),
             )
         elif args.file:
             if not args.file.exists():

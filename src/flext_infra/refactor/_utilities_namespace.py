@@ -196,7 +196,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             return
         for py_file in py_files:
             parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
-                py_file
+                py_file,
             )
             if parsed is None:
                 continue
@@ -238,7 +238,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         protocol_names: set[str],
     ) -> tuple[Path, Path, tuple[str, ...]] | None:
         parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
-            source_file
+            source_file,
         )
         if parsed is None:
             return None
@@ -547,7 +547,8 @@ class FlextInfraUtilitiesRefactorNamespace:
     ) -> None:
         """Rewrite facade class headers adding missing MRO bases and Ruff-format."""
         violations_by_file: Mapping[
-            Path, MutableSequence[m.Infra.MROCompletenessViolation]
+            Path,
+            MutableSequence[m.Infra.MROCompletenessViolation],
         ] = defaultdict(
             list,
         )
@@ -615,7 +616,9 @@ class FlextInfraUtilitiesRefactorNamespace:
                 encoding=c.Infra.Encoding.DEFAULT,
             )
             FlextInfraUtilitiesFormatting.run_ruff_fix(
-                file_path, include_format=True, quiet=True
+                file_path,
+                include_format=True,
+                quiet=True,
             )
 
     @staticmethod
@@ -629,7 +632,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 continue
             alias_name, expected_suffix = expected
             parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
-                file_path
+                file_path,
             )
             if parsed is None:
                 continue
@@ -792,7 +795,8 @@ class FlextInfraUtilitiesRefactorNamespace:
             kept_source = "".join(kept_lines)
             line_buffer = kept_source.splitlines(keepends=True)
             replacements_by_line: Mapping[
-                int, MutableSequence[tuple[int, int, str]]
+                int,
+                MutableSequence[tuple[int, int, str]],
             ] = defaultdict(
                 list,
             )

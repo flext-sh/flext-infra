@@ -43,7 +43,8 @@ def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
 
 
 def _validate_class_names(
-    base_dir: Path, filename_to_expected_class: t.StrMapping
+    base_dir: Path,
+    filename_to_expected_class: t.StrMapping,
 ) -> None:
     """Validate expected class names exist in modules.
 
@@ -65,7 +66,8 @@ class TestGeneratedFilesAreValidPython:
         tmp_path: Path,
     ) -> None:
         project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
-            tmp_path=tmp_path, with_all_modules=False
+            tmp_path=tmp_path,
+            with_all_modules=False,
         )
         scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         scaffolder.scaffold_project(project)
@@ -77,7 +79,8 @@ class TestGeneratedFilesAreValidPython:
         tmp_path: Path,
     ) -> None:
         project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
-            tmp_path=tmp_path, with_all_modules=True
+            tmp_path=tmp_path,
+            with_all_modules=True,
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
@@ -89,7 +92,8 @@ class TestGeneratedFilesAreValidPython:
 class TestGeneratedClassNamingConvention:
     def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
         project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
-            tmp_path=tmp_path, with_all_modules=False
+            tmp_path=tmp_path,
+            with_all_modules=False,
         )
         scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         scaffolder.scaffold_project(project)
@@ -110,7 +114,8 @@ class TestGeneratedClassNamingConvention:
         tmp_path: Path,
     ) -> None:
         project = FlextInfraCodegenTestProjectFactory.create_scaffolder_test_project(
-            tmp_path=tmp_path, with_all_modules=True
+            tmp_path=tmp_path,
+            with_all_modules=True,
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()

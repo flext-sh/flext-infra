@@ -16,7 +16,7 @@ from tomlkit.toml_document import TOMLDocument
 from flext_infra import FlextInfraBaseMkGenerator, c, m, p, r, s, u
 
 _OBJECT_LIST_ADAPTER: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(
-    Sequence[JsonValue]
+    Sequence[JsonValue],
 )
 
 
@@ -52,7 +52,9 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
 
     @staticmethod
     def _append_result(
-        result: r[str], changes: MutableSequence[str], errors: MutableSequence[str]
+        result: r[str],
+        changes: MutableSequence[str],
+        errors: MutableSequence[str],
     ) -> None:
         if result.is_failure:
             errors.append(result.error or "migration action failed")
@@ -89,7 +91,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             )
             if isinstance(deps, list):
                 deps_list: Sequence[JsonValue] = _OBJECT_LIST_ADAPTER.validate_python([
-                    *deps
+                    *deps,
                 ])
                 for dep_raw in deps_list:
                     dep: str = str(dep_raw)

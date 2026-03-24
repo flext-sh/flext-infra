@@ -28,7 +28,9 @@ class FlextInfraCodegenCensus(s[bool]):
     """Read-only census service for namespace violation counting."""
 
     def __init__(
-        self, workspace_root: Path, class_to_analyze: str | None = None
+        self,
+        workspace_root: Path,
+        class_to_analyze: str | None = None,
     ) -> None:
         """Initialize census service with workspace root.
 
@@ -147,11 +149,11 @@ class FlextInfraCodegenCensus(s[bool]):
                                     f"{total_unused} unused{type_detail}"
                                 ),
                                 fixable=False,
-                            )
+                            ),
                         ],
                         total=1,
                         fixable=0,
-                    )
+                    ),
                 ]
             return []
 
@@ -172,7 +174,8 @@ class FlextInfraCodegenCensus(s[bool]):
         self,
         project: p.Infra.ProjectInfo,
         class_analysis: Mapping[
-            str, str | Mapping[str, int | Mapping[str, int | Mapping[str, int]]]
+            str,
+            str | Mapping[str, int | Mapping[str, int | Mapping[str, int]]],
         ]
         | None = None,
     ) -> m.Infra.CensusReport:
@@ -232,7 +235,7 @@ class FlextInfraCodegenCensus(s[bool]):
                         f"{len(duplicates)} duplicate groups"
                     ),
                     fixable=False,
-                )
+                ),
             )
 
         # Census class objects (generic - works for any class)
@@ -242,7 +245,8 @@ class FlextInfraCodegenCensus(s[bool]):
                 census_data_obj_raw_val = class_analysis.get("census_data")
                 if isinstance(census_data_obj_raw_val, dict):
                     census_data_obj: Mapping[
-                        str, int | Mapping[str, int | Mapping[str, int]]
+                        str,
+                        int | Mapping[str, int | Mapping[str, int]],
                     ] = census_data_obj_raw_val
                 else:
                     census_data_obj = {}
@@ -282,7 +286,7 @@ class FlextInfraCodegenCensus(s[bool]):
                             f"{total_used} used, {total_unused} unused{type_detail}"
                         ),
                         fixable=False,
-                    )
+                    ),
                 )
             except (ValueError, TypeError, AttributeError):
                 pass

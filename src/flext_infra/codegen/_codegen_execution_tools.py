@@ -144,7 +144,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
                 and (node.level == 0)
             )
         invalid_import_from_value: Sequence[t.Infra.InfraValue] = list(
-            invalid_import_from
+            invalid_import_from,
         )
         parse_errors_value: Sequence[t.Infra.InfraValue] = list(parse_errors)
         return {

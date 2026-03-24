@@ -61,7 +61,7 @@ def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import m\n"
+        "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import m\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(
@@ -82,7 +82,7 @@ def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import u\n"
+        "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import u\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(
@@ -103,7 +103,7 @@ def test_skips_r_alias_universal_exception(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import r\n"
+        "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import r\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(
@@ -231,7 +231,7 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
     )
     target = package_dir / "consumer.py"
     target.write_text(
-        "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import m\n"
+        "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import m\n",
     )
 
     violations = NamespaceSourceDetector.detect_file(

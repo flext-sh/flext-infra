@@ -19,7 +19,9 @@ class FlextInfraDocsModels:
         """Unified item payload for docs phase reports."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(
-            extra="forbid", frozen=True, strict=True
+            extra="forbid",
+            frozen=True,
+            strict=True,
         )
 
         phase: Annotated[

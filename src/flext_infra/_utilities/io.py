@@ -53,7 +53,7 @@ class FlextInfraUtilitiesIo:
             return r[Mapping[str, JsonValue]].fail(f"JSON read error: {exc}")
         if not isinstance(loaded_obj, dict):
             return r[Mapping[str, JsonValue]].fail(
-                "JSON root must be t.NormalizedValue"
+                "JSON root must be t.NormalizedValue",
             )
         try:
             parser: TypeAdapter[Mapping[str, JsonValue]] = TypeAdapter(
@@ -137,7 +137,7 @@ class FlextInfraUtilitiesIo:
             }
         if isinstance(data, list):
             list_parser: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(
-                Sequence[JsonValue]
+                Sequence[JsonValue],
             )
             items = list_parser.validate_python(data)
             return [FlextInfraUtilitiesIo._sort_json_keys(item) for item in items]

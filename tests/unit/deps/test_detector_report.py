@@ -157,7 +157,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
                     "--apply",
                     "--workspace",
                     str(tmp_path),
-                ])
+                ]),
             ),
             has="failed to create report directory",
         )
@@ -202,6 +202,6 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
             reporting_service=reporting,
         )
         error = tm.fail(
-            detector.run(["--no-pip-check", "--apply", "--workspace", str(tmp_path)])
+            detector.run(["--no-pip-check", "--apply", "--workspace", str(tmp_path)]),
         )
         tm.that("write failed" in error or "failed to write report" in error, eq=True)

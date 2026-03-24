@@ -108,7 +108,10 @@ class FlextInfraExtraPathsManager:
         )
 
     def get_dep_paths(
-        self, doc: TOMLDocument, *, is_root: bool = False
+        self,
+        doc: TOMLDocument,
+        *,
+        is_root: bool = False,
     ) -> t.StrSequence:
         """Resolve path dependencies to all Python directory paths dynamically.
 

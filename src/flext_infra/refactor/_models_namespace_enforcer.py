@@ -20,7 +20,8 @@ class FlextInfraNamespaceEnforcerModels:
         class_name: Annotated[str, Field(default="", description="Facade class name")]
         file: Annotated[str, Field(default="", description="Facade file path")]
         symbol_count: Annotated[
-            t.NonNegativeInt, Field(default=0, description="Symbol count")
+            t.NonNegativeInt,
+            Field(default=0, description="Symbol count"),
         ]
 
         @classmethod
@@ -71,7 +72,8 @@ class FlextInfraNamespaceEnforcerModels:
         line: Annotated[t.PositiveInt, Field(description="Line number")]
         current_import: Annotated[str, Field(description="Current import statement")]
         suggested_import: Annotated[
-            str, Field(description="Suggested import statement")
+            str,
+            Field(description="Suggested import statement"),
         ]
 
         @classmethod
@@ -95,14 +97,17 @@ class FlextInfraNamespaceEnforcerModels:
         line: Annotated[t.PositiveInt, Field(description="Line number")]
         alias: Annotated[t.NonEmptyStr, Field(description="Runtime alias letter")]
         current_source: Annotated[
-            t.NonEmptyStr, Field(description="Current import source")
+            t.NonEmptyStr,
+            Field(description="Current import source"),
         ]
         correct_source: Annotated[
-            t.NonEmptyStr, Field(description="Correct import source")
+            t.NonEmptyStr,
+            Field(description="Correct import source"),
         ]
         current_import: Annotated[str, Field(description="Current import statement")]
         suggested_import: Annotated[
-            str, Field(description="Suggested import statement")
+            str,
+            Field(description="Suggested import statement"),
         ]
 
         @classmethod
@@ -235,7 +240,8 @@ class FlextInfraNamespaceEnforcerModels:
     class CyclicImportViolation(FlextModels.FrozenStrictModel):
         cycle: Annotated[tuple[str, ...], Field(description="Import cycle chain")]
         files: Annotated[
-            tuple[str, ...], Field(default_factory=tuple, description="Files in cycle")
+            tuple[str, ...],
+            Field(default_factory=tuple, description="Files in cycle"),
         ]
 
         @classmethod
@@ -376,7 +382,8 @@ class FlextInfraNamespaceEnforcerModels:
             Field(default_factory=list, description="Parse failures"),
         ]
         files_scanned: Annotated[
-            t.NonNegativeInt, Field(default=0, description="Files scanned")
+            t.NonNegativeInt,
+            Field(default=0, description="Files scanned"),
         ]
 
         @classmethod
@@ -454,13 +461,16 @@ class FlextInfraNamespaceEnforcerModels:
             Field(default_factory=list, description="Project enforcement reports"),
         ]
         total_facades_missing: Annotated[
-            t.NonNegativeInt, Field(default=0, description="Total missing facades")
+            t.NonNegativeInt,
+            Field(default=0, description="Total missing facades"),
         ]
         total_loose_objects: Annotated[
-            t.NonNegativeInt, Field(default=0, description="Total loose objects")
+            t.NonNegativeInt,
+            Field(default=0, description="Total loose objects"),
         ]
         total_import_violations: Annotated[
-            t.NonNegativeInt, Field(default=0, description="Total import violations")
+            t.NonNegativeInt,
+            Field(default=0, description="Total import violations"),
         ]
         total_namespace_source_violations: Annotated[
             t.NonNegativeInt,
@@ -475,7 +485,8 @@ class FlextInfraNamespaceEnforcerModels:
             Field(default=0, description="Total manual protocol violations"),
         ]
         total_cyclic_imports: Annotated[
-            t.NonNegativeInt, Field(default=0, description="Total cyclic imports")
+            t.NonNegativeInt,
+            Field(default=0, description="Total cyclic imports"),
         ]
         total_runtime_alias_violations: Annotated[
             t.NonNegativeInt,
@@ -502,10 +513,12 @@ class FlextInfraNamespaceEnforcerModels:
             Field(default=0, description="Total MRO completeness violations"),
         ]
         total_parse_failures: Annotated[
-            t.NonNegativeInt, Field(default=0, description="Total parse failures")
+            t.NonNegativeInt,
+            Field(default=0, description="Total parse failures"),
         ]
         total_files_scanned: Annotated[
-            t.NonNegativeInt, Field(default=0, description="Total files scanned")
+            t.NonNegativeInt,
+            Field(default=0, description="Total files scanned"),
         ]
 
         @classmethod

@@ -269,7 +269,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     ) -> Sequence[tuple[str, Path]]:
         """Resolve unique build targets from project names."""
         targets: MutableSequence[tuple[str, Path]] = [
-            (c.Infra.ReportKeys.ROOT, workspace_root)
+            (c.Infra.ReportKeys.ROOT, workspace_root),
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:
@@ -420,7 +420,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     ) -> Sequence[Path]:
         """Discover pyproject.toml files that need version updates."""
         files: MutableSequence[Path] = [
-            workspace_root / c.Infra.Files.PYPROJECT_FILENAME
+            workspace_root / c.Infra.Files.PYPROJECT_FILENAME,
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:

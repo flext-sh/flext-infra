@@ -16,7 +16,9 @@ class ConsolidateGroupsPhase:
     """Consolidate optional-dependencies and Poetry groups into single dev group."""
 
     def apply(
-        self, doc: tomlkit.TOMLDocument, canonical_dev: t.StrSequence
+        self,
+        doc: tomlkit.TOMLDocument,
+        canonical_dev: t.StrSequence,
     ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         project: Item | Container | None = None

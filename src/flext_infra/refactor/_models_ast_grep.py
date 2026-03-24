@@ -17,7 +17,8 @@ class FlextInfraRefactorAstGrepModels:
         """Compact ast-grep envelope carrying file, symbol and location."""
 
         model_config: ClassVar[ConfigDict] = ConfigDict(
-            extra="ignore", populate_by_name=True
+            extra="ignore",
+            populate_by_name=True,
         )
 
         file: Annotated[t.NonEmptyStr, Field(description="Matched file path")]
@@ -178,7 +179,8 @@ class FlextInfraRefactorAstGrepModels:
             ),
         ]
         mro_failures: Annotated[
-            t.NonNegativeInt, Field(description="MRO validation failures")
+            t.NonNegativeInt,
+            Field(description="MRO validation failures"),
         ]
         stash_ref: Annotated[
             str,

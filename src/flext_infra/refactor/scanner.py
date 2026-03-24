@@ -162,7 +162,8 @@ class FlextInfraRefactorLooseClassScanner:
         return out2
 
     def _scan_with_ast_grep(
-        self, project_root: Path
+        self,
+        project_root: Path,
     ) -> r[Mapping[Path, Mapping[str, int]]]:
         cmd = [
             "sg",

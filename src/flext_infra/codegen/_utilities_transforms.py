@@ -55,7 +55,7 @@ class FlextInfraUtilitiesCodegenTransforms:
             if not isinstance(stmt, ast.AnnAssign):
                 continue
             if FlextInfraUtilitiesRefactor.is_final_annotation(
-                annotation=stmt.annotation
+                annotation=stmt.annotation,
             ):
                 matches.append(stmt)
         return matches
@@ -109,7 +109,7 @@ class FlextInfraUtilitiesCodegenTransforms:
     ) -> str:
         """Generate a minimal base module file with correct imports."""
         import_line = FlextInfraUtilitiesCodegenTransforms._resolve_base_class_import(
-            base_class
+            base_class,
         )
         return f'"""Module skeleton for {class_name}.\n\n{docstring}\n\nCopyright (c) 2025 FLEXT Team. All rights reserved.\nSPDX-License-Identifier: MIT\n"""\n\nfrom __future__ import annotations\n\n{import_line}\n\n\nclass {class_name}({base_class}):\n    """{docstring}"""\n'
 
@@ -162,7 +162,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         A name is available if it's imported or defined in the target module.
         """
         names_used = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
-            node
+            node,
         )
         node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
         type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(node)
@@ -200,7 +200,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         never written to disk via ast.unparse.
         """
         names_used = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
-            node
+            node,
         )
         node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
         type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(node)
@@ -271,7 +271,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         the target module, moving the node is unsafe.
         """
         names_used = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
-            node
+            node,
         )
         node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
         type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(node)
@@ -327,11 +327,11 @@ class FlextInfraUtilitiesCodegenTransforms:
         all_names: set[str] = set()
         for node in nodes:
             names = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
-                node
+                node,
             )
             node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
             type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(
-                node
+                node,
             )
             all_names.update(
                 n for n in names if n != node_name and n not in type_params

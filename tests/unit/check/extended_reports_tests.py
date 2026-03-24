@@ -213,7 +213,8 @@ class TestMarkdownReportSkipsEmptyGates:
         exec1 = m.Infra.GateExecution(result=gate1, issues=[], raw_output="")
         exec2 = m.Infra.GateExecution(result=gate2, issues=[], raw_output="")
         project = m.Infra.ProjectResult(
-            project="p", gates={"lint": exec1, "format": exec2}
+            project="p",
+            gates={"lint": exec1, "format": exec2},
         )
         report = checker.generate_markdown_report(
             [project],
@@ -276,7 +277,9 @@ class TestWorkspaceCheckerMarkdownReportEdgeCases:
             severity="error",
         )
         exec1 = m.Infra.GateExecution(
-            result=gate_with_issues, issues=[issue], raw_output=""
+            result=gate_with_issues,
+            issues=[issue],
+            raw_output="",
         )
         exec2 = m.Infra.GateExecution(result=gate_no_issues, issues=[], raw_output="")
         tm.that(exec1.issues, eq=True)

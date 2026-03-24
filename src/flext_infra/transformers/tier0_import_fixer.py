@@ -66,13 +66,14 @@ class FlextInfraTransformerTier0ImportFixer:
             pkg_dir, pkg_name = u.Infra.package_context(self._file_path)
             if not pkg_name:
                 return FlextInfraTransformerTier0ImportFixer.Analysis(
-                    package_name="", file_path=self._file_path
+                    package_name="",
+                    file_path=self._file_path,
                 )
 
             alias_map: MutableMapping[str, str] = dict(
                 u.Infra.discover_project_aliases(
-                    pkg_dir.parent if pkg_dir.name == "src" else pkg_dir
-                )
+                    pkg_dir.parent if pkg_dir.name == "src" else pkg_dir,
+                ),
             )
             alias_map.update(u.Infra.extract_lazy_import_map(pkg_dir / "__init__.py"))
 
@@ -217,11 +218,13 @@ class FlextInfraTransformerTier0ImportFixer:
 
         @override
         def leave_ImportFrom(
-            self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
+            self,
+            original_node: cst.ImportFrom,
+            updated_node: cst.ImportFrom,
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
             mod = u.Infra.cst_module_name(updated_node.module)
             if mod == "typing" and "TYPE_CHECKING" in u.Infra.cst_collect_bound_names(
-                updated_node
+                updated_node,
             ):
                 self._type_checking_import_present = True
             if mod == self._package_name:
@@ -235,7 +238,9 @@ class FlextInfraTransformerTier0ImportFixer:
 
         @override
         def leave_Module(
-            self, original_node: cst.Module, updated_node: cst.Module
+            self,
+            original_node: cst.Module,
+            updated_node: cst.Module,
         ) -> cst.Module:
             stmts: MutableSequence[cst.BaseStatement] = list(updated_node.body)
             if not self._type_checking_import_present and self._type_checking_pending:
@@ -260,18 +265,19 @@ class FlextInfraTransformerTier0ImportFixer:
                                 u.Infra.cst_import_line(
                                     self._package_name,
                                     list(self._type_checking_pending),
-                                )
-                            ]
+                                ),
+                            ],
                         ),
                     ),
                 )
                 self._changes.append(
-                    f"Added TYPE_CHECKING block for {self._package_name}"
+                    f"Added TYPE_CHECKING block for {self._package_name}",
                 )
             return updated_node.with_changes(body=tuple(stmts))
 
         def _rewrite_root_self_import(
-            self, node: cst.ImportFrom
+            self,
+            node: cst.ImportFrom,
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
             if isinstance(node.names, cst.ImportStar):
                 return node
@@ -289,7 +295,9 @@ class FlextInfraTransformerTier0ImportFixer:
             return node.with_changes(names=tuple(rem))
 
         def _merge_into_import(
-            self, node: cst.ImportFrom, pnd: set[str]
+            self,
+            node: cst.ImportFrom,
+            pnd: set[str],
         ) -> cst.ImportFrom:
             if isinstance(node.names, cst.ImportStar):
                 return node
@@ -306,13 +314,15 @@ class FlextInfraTransformerTier0ImportFixer:
             if self._core_pending:
                 res.append(
                     u.Infra.cst_import_line(
-                        self._core_package, sorted(self._core_pending)
-                    )
+                        self._core_package,
+                        sorted(self._core_pending),
+                    ),
                 )
                 self._core_pending.clear()
             res.extend(
                 u.Infra.cst_import_line(
-                    f"{self._package_name}.{sub}", sorted(self._direct_pending[sub])
+                    f"{self._package_name}.{sub}",
+                    sorted(self._direct_pending[sub]),
                 )
                 for sub in sorted(self._direct_pending)
                 if self._direct_pending[sub]

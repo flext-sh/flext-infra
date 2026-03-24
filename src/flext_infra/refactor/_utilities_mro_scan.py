@@ -150,7 +150,7 @@ class FlextInfraUtilitiesRefactorMroScan:
     @staticmethod
     def _mro_scan_project_roots(*, workspace_root: Path) -> Sequence[Path]:
         return FlextInfraUtilitiesIteration.discover_project_roots(
-            workspace_root=workspace_root
+            workspace_root=workspace_root,
         )
 
     @staticmethod
@@ -218,7 +218,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             if not root.is_dir():
                 continue
             for file_path in FlextInfraUtilitiesIteration.iter_directory_python_files(
-                root
+                root,
             ):
                 if file_path.name in target_spec.file_names:
                     candidates.add(file_path)

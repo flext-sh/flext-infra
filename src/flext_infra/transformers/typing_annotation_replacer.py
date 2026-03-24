@@ -55,7 +55,8 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
                 continue
             bound_name = import_alias.name.value
             if import_alias.asname is not None and isinstance(
-                import_alias.asname.name, cst.Name
+                import_alias.asname.name,
+                cst.Name,
             ):
                 bound_name = import_alias.asname.name.value
             if bound_name == "t":
@@ -84,7 +85,7 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
                     returns=updated_node.returns.with_changes(annotation=replacement),
                 )
                 self._mark_modified(
-                    "Replaced return annotation: t.NormalizedValue -> t.ContainerValue"
+                    "Replaced return annotation: t.NormalizedValue -> t.ContainerValue",
                 )
         self._current_function = (
             self._function_stack.pop() if self._function_stack else ""
@@ -116,11 +117,11 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
             if replacement is not None:
                 result_node = updated_node.with_changes(
                     annotation=updated_node.annotation.with_changes(
-                        annotation=replacement
+                        annotation=replacement,
                     ),
                 )
                 self._mark_modified(
-                    "Replaced parameter annotation: t.NormalizedValue -> t.ContainerValue"
+                    "Replaced parameter annotation: t.NormalizedValue -> t.ContainerValue",
                 )
         self._param_depth = max(0, self._param_depth - 1)
         return result_node
@@ -136,7 +137,7 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         if replacement is None:
             return updated_node
         self._mark_modified(
-            "Replaced assignment annotation: t.NormalizedValue -> t.ContainerValue"
+            "Replaced assignment annotation: t.NormalizedValue -> t.ContainerValue",
         )
         return updated_node.with_changes(
             annotation=updated_node.annotation.with_changes(annotation=replacement),
@@ -161,7 +162,7 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
         if replacement is None:
             return updated_node
         self._mark_modified(
-            "Replaced annotation: t.NormalizedValue -> t.ContainerValue"
+            "Replaced annotation: t.NormalizedValue -> t.ContainerValue",
         )
         return updated_node.with_changes(annotation=replacement)
 
@@ -215,11 +216,12 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
             isinstance(node, cst.Attribute)
             and isinstance(node.value, cst.Name)
             and node.value.value == "builtins"
-            and node.attr.value == "t.NormalizedValue"
+            and node.attr.value == "t.NormalizedValue",
         )
 
     def _replace_expression(
-        self, node: cst.BaseExpression
+        self,
+        node: cst.BaseExpression,
     ) -> cst.BaseExpression | None:
         if self._is_object_ref(node):
             return self._t_container_value()

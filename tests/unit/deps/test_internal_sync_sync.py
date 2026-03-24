@@ -37,7 +37,8 @@ class TestSync:
     def test_sync_no_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
-            service, [r[t.Infra.ContainerDict].ok({"tool": {}, "project": {}})]
+            service,
+            [r[t.Infra.ContainerDict].ok({"tool": {}, "project": {}})],
         )
         (tmp_path / "pyproject.toml").write_text("")
         tm.ok(service.sync(tmp_path), eq=0)

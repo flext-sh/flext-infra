@@ -176,7 +176,8 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
             )
             all_definitions.extend(definitions)
         name_to_defs: MutableMapping[
-            str, MutableSequence[m.Infra.ConstantDefinition]
+            str,
+            MutableSequence[m.Infra.ConstantDefinition],
         ] = {}
         for definition in all_definitions:
             name_to_defs.setdefault(definition.name, []).append(definition)

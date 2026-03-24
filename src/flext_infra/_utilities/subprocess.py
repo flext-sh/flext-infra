@@ -37,11 +37,11 @@ class FlextInfraUtilitiesSubprocess:
                     stdout=res.stdout or "",
                     stderr=res.stderr or "",
                     exit_code=res.returncode,
-                )
+                ),
             )
         except subprocess.TimeoutExpired as exc:
             return r[m.Infra.CommandOutput].fail(
-                f"timeout {exc.timeout}s: {shlex.join(list(cmd))}"
+                f"timeout {exc.timeout}s: {shlex.join(list(cmd))}",
             )
         except (OSError, ValueError) as exc:
             return r[m.Infra.CommandOutput].fail(f"execution error: {exc}")
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesSubprocess:
         out = res.value
         if out.exit_code != 0:
             return r[m.Infra.CommandOutput].fail(
-                f"failed ({out.exit_code}): {shlex.join(list(cmd))}: {(out.stderr or out.stdout).strip()}"
+                f"failed ({out.exit_code}): {shlex.join(list(cmd))}: {(out.stderr or out.stdout).strip()}",
             )
         return res
 
@@ -73,7 +73,7 @@ class FlextInfraUtilitiesSubprocess:
     ) -> r[bool]:
         """Run command and return status."""
         return FlextInfraUtilitiesSubprocess.run(cmd, cwd, timeout, env).map(
-            lambda _: True
+            lambda _: True,
         )
 
     @staticmethod
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesSubprocess:
     ) -> r[str]:
         """Capture stripped stdout."""
         return FlextInfraUtilitiesSubprocess.run(cmd, cwd, timeout, env).map(
-            lambda v: v.stdout.strip()
+            lambda v: v.stdout.strip(),
         )
 
     @staticmethod

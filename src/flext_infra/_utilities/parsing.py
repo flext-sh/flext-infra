@@ -190,7 +190,7 @@ class FlextInfraUtilitiesParsing:
             body=[
                 cst.ImportFrom(
                     module=FlextInfraUtilitiesParsing.module_expr_from_dotted(
-                        module_name
+                        module_name,
                     ),
                     names=tuple(
                         cst.ImportAlias(name=cst.Name(alias))

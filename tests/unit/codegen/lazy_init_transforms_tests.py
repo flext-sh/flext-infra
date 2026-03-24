@@ -15,7 +15,8 @@ from flext_tests import tm
 from flext_infra import FlextInfraCodegenLazyInit, t, u
 
 _scan_ast_public_defs: Callable[
-    [ast.Module, str, Mapping[str, tuple[str, str]]], None
+    [ast.Module, str, Mapping[str, tuple[str, str]]],
+    None,
 ] = getattr(FlextInfraCodegenLazyInit, "_scan_ast_public_defs")
 _should_bubble_up: Callable[[str], bool] = getattr(
     FlextInfraCodegenLazyInit,

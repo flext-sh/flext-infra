@@ -143,7 +143,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         ) -> cst.BaseExpression:
             del original_node
             chain = FlextInfraUtilitiesCodegenConstantDetection.attribute_chain(
-                updated_node
+                updated_node,
             )
             if (
                 len(chain)
@@ -416,7 +416,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
 
         package_name = pkg_dir.name
         parent_pkg = FlextInfraUtilitiesCodegenConstantDetection.resolve_parent_package(
-            pkg_dir
+            pkg_dir,
         )
         if parent_pkg.startswith(f"{package_name}.") or parent_pkg == package_name:
             return False, []

@@ -137,7 +137,8 @@ class ManualTypingAliasDetector(
                         nem.ManualTypingAliasViolation.create(
                             file=str(file_path),
                             line=u.Infra.cst_line_for(
-                                node=small_stmt, positions=positions
+                                node=small_stmt,
+                                positions=positions,
                             ),
                             name=alias_name,
                             detail=(
@@ -157,7 +158,8 @@ class ManualTypingAliasDetector(
                         nem.ManualTypingAliasViolation.create(
                             file=str(file_path),
                             line=u.Infra.cst_line_for(
-                                node=small_stmt, positions=positions
+                                node=small_stmt,
+                                positions=positions,
                             ),
                             name=small_stmt.target.value,
                             detail=(

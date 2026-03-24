@@ -121,7 +121,7 @@ class FlextInfraUtilitiesDiscovery:
             if not entry.is_dir() or entry.name.startswith("."):
                 continue
             name = FlextInfraUtilitiesDiscovery.discover_package_from_file(
-                entry / "src"
+                entry / "src",
             )
             if name:
                 packages.add(name)
@@ -165,7 +165,7 @@ class FlextInfraUtilitiesDiscovery:
     def discover_project_aliases(project_root: Path) -> t.StrMapping:
         """Discover all single-char aliases in a project."""
         src_package = FlextInfraUtilitiesDiscovery.discover_src_package_dir(
-            project_root
+            project_root,
         )
         if src_package is None:
             return {}
@@ -249,7 +249,7 @@ class FlextInfraUtilitiesDiscovery:
             ):
                 continue
             module_name = FlextInfraUtilitiesParsing.extract_string_literal(
-                element.value.elements[0].value
+                element.value.elements[0].value,
             )
             if module_name:
                 result[key] = module_name.split(".")[-1]

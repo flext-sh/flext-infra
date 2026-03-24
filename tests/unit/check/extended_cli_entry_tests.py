@@ -216,7 +216,9 @@ class TestRunCLIExtended:
 
         monkeypatch.setattr(FlextInfraWorkspaceChecker, "__init__", _fake_init)
         monkeypatch.setattr(
-            FlextInfraWorkspaceChecker, "run_projects", _fake_run_projects
+            FlextInfraWorkspaceChecker,
+            "run_projects",
+            _fake_run_projects,
         )
         monkeypatch.setattr("pathlib.Path.cwd", lambda: tmp_path)
         exit_code = FlextInfraWorkspaceChecker.run_cli([

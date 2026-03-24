@@ -59,7 +59,7 @@ class FlextInfraRefactorSafetyManager:
         """Fail if an emergency stop is active; succeed otherwise."""
         if self._emergency_stop_reason:
             out: r[bool] = r[bool].fail(
-                f"Emergency stop: {self._emergency_stop_reason}"
+                f"Emergency stop: {self._emergency_stop_reason}",
             )
             return out
         out2: r[bool] = r[bool].ok(True)

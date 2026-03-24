@@ -282,7 +282,7 @@ class ClassNestingRefactorRule:
                 u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
                 file_path,
                 confidence_threshold,
-            )
+            ),
         )
         helper_entries = self._entries_for_source_file(
             u.Infra.entry_list(
@@ -387,7 +387,7 @@ class ClassNestingRefactorRule:
             if not isinstance(current_file, str):
                 continue
             entry: MutableMapping[str, str] = {
-                c.Infra.ReportKeys.CURRENT_FILE: current_file
+                c.Infra.ReportKeys.CURRENT_FILE: current_file,
             }
             loose_name = typed.get(c.Infra.ReportKeys.LOOSE_NAME)
             if isinstance(loose_name, str):

@@ -171,7 +171,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if isinstance(expr, cst.Attribute):
             return [
                 *FlextInfraUtilitiesCodegenConstantDetection.attribute_chain(
-                    expr.value
+                    expr.value,
                 ),
                 expr.attr.value,
             ]
@@ -206,7 +206,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if not canonical_ref:
             return False
         semantic_names = FlextInfraUtilitiesCodegenGovernance.get_semantic_names(
-            canonical_ref
+            canonical_ref,
         )
         return name in semantic_names
 
@@ -279,7 +279,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
             project_name = (
                 FlextInfraUtilitiesCodegenConstantDetection._infer_project_name(
-                    py_file, root_path
+                    py_file,
+                    root_path,
                 )
             )
 
@@ -302,7 +303,9 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         target_class: str = "",
         collect_all_refs: bool = False,
     ) -> tuple[
-        set[str], Sequence[m.Infra.DirectConstantRef], Sequence[tuple[str, int]]
+        set[str],
+        Sequence[m.Infra.DirectConstantRef],
+        Sequence[tuple[str, int]],
     ]:
         """Scan constant usages in a file.
 
@@ -363,7 +366,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
             project_name = (
                 FlextInfraUtilitiesCodegenConstantDetection._infer_project_name(
-                    py_file, root_path
+                    py_file,
+                    root_path,
                 )
             )
 
@@ -450,7 +454,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                         definitions=defs,
                         is_value_identical=len(values) == 1,
                         canonical_ref="",
-                    )
+                    ),
                 )
 
         # Value-based duplicates (different names, same value)
@@ -465,7 +469,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                             definitions=defs,
                             is_value_identical=True,
                             canonical_ref="",
-                        )
+                        ),
                     )
 
         return duplicates
@@ -631,14 +635,17 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     ]:
         """Shared logic: extract attributes and usages for a class."""
         attrs = FlextInfraUtilitiesCodegenConstantDetection.extract_class_attributes_with_mro(
-            class_path
+            class_path,
         )
         if not attrs:
             return {}, set(), {}
         simple_class_name = class_path.rsplit(".", 1)[-1]
         used_attrs, usage_map = (
             FlextInfraUtilitiesCodegenConstantDetection.scan_class_attribute_usages(
-                root_path, simple_class_name, exclude_patterns, max_files
+                root_path,
+                simple_class_name,
+                exclude_patterns,
+                max_files,
             )
         )
         return attrs, used_attrs, usage_map
@@ -659,7 +666,10 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         """Comprehensive census of all objects in a class."""
         attrs, used_attrs, usage_map = (
             FlextInfraUtilitiesCodegenConstantDetection._analyze_class_internal(
-                class_path, root_path, exclude_patterns, max_files
+                class_path,
+                root_path,
+                exclude_patterns,
+                max_files,
             )
         )
         if not attrs:
@@ -694,7 +704,10 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         """Propose fixes to deduplicate constant values across a class."""
         attrs, _, usage_map = (
             FlextInfraUtilitiesCodegenConstantDetection._analyze_class_internal(
-                class_path, root_path, exclude_patterns, max_files
+                class_path,
+                root_path,
+                exclude_patterns,
+                max_files,
             )
         )
         if not attrs:

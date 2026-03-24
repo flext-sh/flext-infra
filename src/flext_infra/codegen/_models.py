@@ -110,7 +110,8 @@ class FlextInfraCodegenModels:
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         violations_total: Annotated[
-            t.NonNegativeInt, Field(description="Total violations")
+            t.NonNegativeInt,
+            Field(description="Total violations"),
         ]
         fixable_violations: Annotated[
             t.NonNegativeInt,
@@ -118,7 +119,8 @@ class FlextInfraCodegenModels:
         ]
         validator_passed: Annotated[bool, Field(description="Whether validator passed")]
         mro_failures: Annotated[
-            t.NonNegativeInt, Field(description="MRO failure count")
+            t.NonNegativeInt,
+            Field(description="MRO failure count"),
         ]
         layer_violations: Annotated[
             t.NonNegativeInt,
@@ -221,7 +223,7 @@ class FlextInfraCodegenModels:
         version: str = Field(...)
         rules: Sequence[FlextInfraCodegenModels.NsRule] = Field(...)
         canonical_values: Sequence[FlextInfraCodegenModels.CanonicalValueRule] = Field(
-            ...
+            ...,
         )
         constants_class_pattern: str = Field(...)
 

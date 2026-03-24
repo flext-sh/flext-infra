@@ -255,7 +255,7 @@ class RedundantCastRemover(cst.CSTTransformer):
             if unwrapped is None:
                 return updated_node
             self.changes.append(
-                "Removed redundant cast chain for type/t.NormalizedValue"
+                "Removed redundant cast chain for type/t.NormalizedValue",
             )
             return unwrapped
         self.changes.append(f"Removed redundant cast for {target}")

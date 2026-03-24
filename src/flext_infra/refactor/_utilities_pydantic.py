@@ -70,7 +70,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         return bool(
             parts.intersection(
                 FlextInfraUtilitiesRefactorPydantic._PYDANTIC_SCOPE_DIRS,
-            )
+            ),
         )
 
     @staticmethod

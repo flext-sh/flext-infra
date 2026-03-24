@@ -272,7 +272,7 @@ class FlextInfraUtilitiesIteration:
             return r[Sequence[tuple[Path, Path]]].ok(result)
         except OSError as exc:
             return r[Sequence[tuple[Path, Path]]].fail(
-                f"workspace python module iteration failed: {exc}"
+                f"workspace python module iteration failed: {exc}",
             )
 
 
