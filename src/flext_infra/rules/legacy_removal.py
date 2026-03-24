@@ -92,7 +92,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         """Apply configured legacy-removal transforms to module tree."""
         changes: MutableSequence[str] = []
         fix_action = (
@@ -128,7 +128,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     def _expected_forwarding_params(
         self,
         func: cst.FunctionDef,
-    ) -> tuple[t.StrSequence, t.StrSequence, str | None, str | None]:
+    ) -> t.Infra.Quad[t.StrSequence, t.StrSequence, str | None, str | None]:
         posonly_names = [param.name.value for param in func.params.posonly_params]
         positional_names = [param.name.value for param in func.params.params]
         positional_expected = posonly_names + positional_names
@@ -149,7 +149,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     def _extract_passthrough_call(
         self,
         func: cst.FunctionDef,
-    ) -> tuple[str, Sequence[cst.Arg]] | None:
+    ) -> t.Infra.Pair[str, Sequence[cst.Arg]] | None:
         if not isinstance(func.body, cst.IndentedBlock):
             return None
         if len(func.body.body) != 1:
@@ -198,7 +198,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     def _parse_forwarded_arguments(
         self,
         call_args: Sequence[cst.Arg],
-    ) -> tuple[t.StrSequence, t.StrMapping, str | None, str | None] | None:
+    ) -> t.Infra.Quad[t.StrSequence, t.StrMapping, str | None, str | None] | None:
         positional_forwarded: MutableSequence[str] = []
         keyword_forwarded: MutableMapping[str, str] = {}
         star_forwarded: str | None = None
@@ -235,7 +235,10 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
             star_kw_forwarded,
         )
 
-    def _remove_aliases(self, tree: cst.Module) -> tuple[cst.Module, t.StrSequence]:
+    def _remove_aliases(
+        self,
+        tree: cst.Module,
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         typed_config = self._typed_config()
         allow_aliases = set(
             self._normalize_string_items(typed_config.get("allow_aliases", [])),
@@ -251,16 +254,22 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
             tree,
         )
 
-    def _remove_deprecated(self, tree: cst.Module) -> tuple[cst.Module, t.StrSequence]:
+    def _remove_deprecated(
+        self,
+        tree: cst.Module,
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         return self._apply_transformer(FlextInfraRefactorDeprecatedRemover(), tree)
 
     def _remove_import_bypasses(
         self,
         tree: cst.Module,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         return self._apply_transformer(FlextInfraRefactorImportBypassRemover(), tree)
 
-    def _remove_wrappers(self, tree: cst.Module) -> tuple[cst.Module, t.StrSequence]:
+    def _remove_wrappers(
+        self,
+        tree: cst.Module,
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         changes: MutableSequence[str] = []
         new_body: MutableSequence[cst.BaseStatement] = []
         for stmt in tree.body:

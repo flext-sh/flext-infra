@@ -380,14 +380,14 @@ class FlextInfraUtilitiesRefactor(
     @staticmethod
     def extract_public_methods_from_dir(
         package_dir: Path,
-    ) -> Mapping[str, Sequence[tuple[str, str, str]]]:
+    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
         """Extract public methods from all .py files in a package directory.
 
         Returns:
             ``{class_name: [(method_name, method_type, source_file), ...]}``.
 
         """
-        result: MutableMapping[str, Sequence[tuple[str, str, str]]] = {}
+        result: MutableMapping[str, Sequence[t.Infra.Triple[str, str, str]]] = {}
         for py_file in sorted(package_dir.glob(c.Infra.Extensions.PYTHON_GLOB)):
             if py_file.name == c.Infra.Files.INIT_PY:
                 continue
@@ -399,7 +399,7 @@ class FlextInfraUtilitiesRefactor(
     @staticmethod
     def extract_public_methods_from_file(
         file_path: Path,
-    ) -> Mapping[str, Sequence[tuple[str, str, str]]]:
+    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
         """Extract public methods from a single .py file.
 
         Returns:
@@ -413,16 +413,19 @@ class FlextInfraUtilitiesRefactor(
     @staticmethod
     def _extract_classes_ast(
         py_file: Path,
-    ) -> Mapping[str, Sequence[tuple[str, str, str]]]:
+    ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
         """Internal: extract all public methods from classes using stdlib ast."""
         tree = FlextInfraUtilitiesParsing.parse_module_ast(py_file)
         if tree is None:
             return {}
-        result: MutableMapping[str, MutableSequence[tuple[str, str, str]]] = {}
+        result: MutableMapping[
+            str,
+            MutableSequence[t.Infra.Triple[str, str, str]],
+        ] = {}
         for node in ast.iter_child_nodes(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
-            methods: MutableSequence[tuple[str, str, str]] = []
+            methods: MutableSequence[t.Infra.Triple[str, str, str]] = []
             for item in ast.iter_child_nodes(node):
                 if isinstance(item, ast.FunctionDef) and not item.name.startswith("_"):
                     decs = [
@@ -462,7 +465,7 @@ class FlextInfraUtilitiesRefactor(
     def build_facade_alias_map(
         facade_path: Path,
         facade_class_name: str,
-    ) -> Mapping[str, tuple[str, str]]:
+    ) -> Mapping[str, t.Infra.StrPair]:
         """Parse a facade class to build flat alias → (class, method) map.
 
         Inspects ``staticmethod(...)`` assignments in the facade class.
@@ -471,7 +474,7 @@ class FlextInfraUtilitiesRefactor(
         if tree is None:
             return {}
 
-        alias_map: MutableMapping[str, tuple[str, str]] = {}
+        alias_map: MutableMapping[str, t.Infra.StrPair] = {}
         for node in ast.iter_child_nodes(tree):
             if not (isinstance(node, ast.ClassDef) and node.name == facade_class_name):
                 continue
@@ -579,8 +582,8 @@ class FlextInfraUtilitiesRefactor(
         parse_errors: int,
     ) -> m.Infra.UtilitiesCensusReport:
         """Pivot raw AST method visit occurrences into a structured usage report."""
-        cnt: Counter[tuple[str, str, str]] = Counter()
-        pcnt: Counter[tuple[str, str, str, str]] = Counter()
+        cnt: Counter[t.Infra.Triple[str, str, str]] = Counter()
+        pcnt: Counter[t.Infra.Quad[str, str, str, str]] = Counter()
 
         for rec in records:
             cnt[rec.class_name, rec.method_name, rec.access_mode] += 1
