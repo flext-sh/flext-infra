@@ -107,6 +107,42 @@ class FlextInfraExtraPathsManager:
             {*self.path_dep_paths_pep621(doc), *self.path_dep_paths_poetry(doc)},
         )
 
+    def _resolve_transitive_deps(
+        self,
+        direct_paths: t.StrSequence,
+        *,
+        visited: set[str] | None = None,
+    ) -> t.StrSequence:
+        """Recursively resolve transitive path dependencies.
+
+        For each direct dep, reads its pyproject.toml and collects its
+        path deps too, with cycle detection.
+        """
+        if visited is None:
+            visited = set()
+        all_paths: set[str] = set(direct_paths)
+        for path_value in direct_paths:
+            name = FlextInfraDependencyPathSync.extract_dep_name(path_value)
+            if name in visited:
+                continue
+            visited.add(name)
+            dep_pyproject = self.root / name / c.Infra.Files.PYPROJECT_FILENAME
+            if not dep_pyproject.exists():
+                continue
+            dep_doc_result = u.Infra.read_document(dep_pyproject)
+            if dep_doc_result.is_failure:
+                continue
+            dep_doc: TOMLDocument = dep_doc_result.value
+            transitive = self.path_dep_paths(dep_doc)
+            if transitive:
+                all_paths.update(transitive)
+                deeper = self._resolve_transitive_deps(
+                    transitive,
+                    visited=visited,
+                )
+                all_paths.update(deeper)
+        return sorted(all_paths)
+
     def get_dep_paths(
         self,
         doc: TOMLDocument,
@@ -117,8 +153,9 @@ class FlextInfraExtraPathsManager:
 
         Scans each dependency for directories containing Python files
         (not just src/) and includes all of them in extraPaths.
+        Resolves transitive dependencies automatically.
         """
-        raw_paths = self.path_dep_paths(doc)
+        raw_paths = self._resolve_transitive_deps(self.path_dep_paths(doc))
         resolved: MutableSequence[str] = []
         for path_value in raw_paths:
             if not path_value:
@@ -197,10 +234,20 @@ class FlextInfraExtraPathsManager:
             mypy_base = sorted({*local_dirs, "typings", "typings/generated"})
         else:
             pyright_base = sorted(
-                {".", *local_dirs, "../typings", "../typings/generated"},
+                {
+                    ".",
+                    *local_dirs,
+                    "../typings",
+                    "../typings/generated",
+                },
             )
             mypy_base = sorted(
-                {".", *local_dirs, "../typings", "../typings/generated"},
+                {
+                    ".",
+                    *local_dirs,
+                    "../typings",
+                    "../typings/generated",
+                },
             )
 
         pyright_extra = sorted({*pyright_base, *dep_paths})
@@ -277,10 +324,20 @@ class FlextInfraExtraPathsManager:
             )
         else:
             pyright_base = sorted(
-                {".", *local_dirs, "../typings", "../typings/generated"},
+                {
+                    ".",
+                    *local_dirs,
+                    "../typings",
+                    "../typings/generated",
+                },
             )
             mypy_base = sorted(
-                {".", *local_dirs, "../typings", "../typings/generated"},
+                {
+                    ".",
+                    *local_dirs,
+                    "../typings",
+                    "../typings/generated",
+                },
             )
 
         pyright_extra = sorted({*pyright_base, *dep_paths})

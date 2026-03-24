@@ -10,13 +10,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
+import orjson
 from flext_core import FlextRuntime, FlextTypes as t, r
+from pydantic import BaseModel
 
 from flext_infra import m, output
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 
 
 class FlextInfraUtilitiesCli:
@@ -366,6 +370,65 @@ class FlextInfraUtilitiesCli:
             return 0
         output.error(result.error or failure_msg)
         return 1
+
+    @staticmethod
+    def iter_projects(
+        cli: FlextInfraUtilitiesCli.CliArgs,
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        """Discover, filter, and sort workspace projects.
+
+        Centralizes the discover_projects -> filter -> sort pattern
+        that was previously duplicated across 13 call sites.
+
+        Args:
+            cli: Parsed CLI arguments with workspace and project filters.
+
+        Returns:
+            Sorted, filtered list of project info models.
+
+        """
+        result = FlextInfraUtilitiesDiscovery.discover_projects(cli.workspace)
+        if result.is_failure:
+            return r[Sequence[m.Infra.ProjectInfo]].fail(
+                result.error or "discovery failed",
+            )
+        projects = list(result.value)
+        filter_names = cli.project_names()
+        if filter_names is not None:
+            name_set = set(filter_names)
+            projects = [p for p in projects if p.name in name_set]
+        return r[Sequence[m.Infra.ProjectInfo]].ok(
+            sorted(projects, key=lambda p: p.name),
+        )
+
+    @staticmethod
+    def emit(
+        data: BaseModel | Mapping[str, t.Scalar],
+        *,
+        text_fn: Callable[[BaseModel | Mapping[str, t.Scalar]], str] | None = None,
+        cli: FlextInfraUtilitiesCli.CliArgs,
+    ) -> None:
+        """Emit structured data in the format requested by CLI flags.
+
+        Centralizes the JSON-vs-text output branching that was previously
+        duplicated across multiple CLI commands.
+
+        Args:
+            data: Pydantic model or scalar mapping to emit.
+            text_fn: Optional formatter for text mode. Receives data, returns string.
+            cli: Parsed CLI arguments with output_format.
+
+        """
+        if cli.output_format == "json":
+            if isinstance(data, BaseModel):
+                sys.stdout.write(data.model_dump_json())
+            else:
+                sys.stdout.write(orjson.dumps(dict(data)).decode())
+            sys.stdout.write("\n")
+        elif text_fn is not None:
+            output.write(text_fn(data))
+        else:
+            output.write(str(data))
 
 
 __all__ = ["FlextInfraUtilitiesCli"]

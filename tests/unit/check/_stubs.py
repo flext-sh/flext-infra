@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from types import SimpleNamespace
 
 from ...models import m
@@ -28,12 +28,12 @@ class Spy:
             tuple[tuple[t.Infra.InfraValue, ...], Mapping[str, t.Infra.InfraValue]]
             | None
         ) = None
-        self.call_args_list: Sequence[
+        self.call_args_list: MutableSequence[
             tuple[tuple[t.Infra.InfraValue, ...], Mapping[str, t.Infra.InfraValue]]
         ] = []
         self.called: bool = False
         self._return_value: t.Infra.InfraValue = return_value
-        self._side_effect: Sequence[t.Infra.InfraValue] | None = (
+        self._side_effect: MutableSequence[t.Infra.InfraValue] | None = (
             list(side_effect) if side_effect else None
         )
 
@@ -119,7 +119,7 @@ def make_issue(
 
 def make_project(
     name: str = "p",
-    gates: Mapping[str, m.Infra.GateExecution] | None = None,
+    gates: MutableMapping[str, m.Infra.GateExecution] | None = None,
 ) -> m.Infra.ProjectResult:
     """Create a _ProjectResult with defaults."""
     return m.Infra.ProjectResult(

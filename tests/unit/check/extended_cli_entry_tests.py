@@ -27,7 +27,12 @@ from ...models import m
 
 def _fake_checker_cls(
     parse_result: t.StrSequence,
-    run_result: r[Sequence[SimpleNamespace]] | r[Sequence[m.Infra.ProjectResult]],
+    run_result: (
+        r[Sequence[SimpleNamespace]]
+        | r[Sequence[m.Infra.ProjectResult]]
+        | r[list[SimpleNamespace]]
+        | r[list[m.Infra.ProjectResult]]
+    ),
 ) -> type:
     class _Fake:
         def __init__(self, **_kw: t.Scalar) -> None:
@@ -42,7 +47,12 @@ def _fake_checker_cls(
             projects: t.StrSequence | None = None,
             gates: t.StrSequence | None = None,
             **kw: t.Scalar,
-        ) -> r[Sequence[SimpleNamespace]] | r[Sequence[m.Infra.ProjectResult]]:
+        ) -> (
+            r[Sequence[SimpleNamespace]]
+            | r[Sequence[m.Infra.ProjectResult]]
+            | r[list[SimpleNamespace]]
+            | r[list[m.Infra.ProjectResult]]
+        ):
             _ = projects, gates, kw
             return run_result
 
@@ -79,7 +89,7 @@ class TestWorkspaceCheckCLI:
         tm.that(ws_mod.main([]), eq=1)
 
     def test_with_projects_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        ok_result = r[Sequence[SimpleNamespace]].ok([SimpleNamespace(passed=True)])
+        ok_result = r[list[SimpleNamespace]].ok([SimpleNamespace(passed=True)])
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraWorkspaceChecker",
@@ -88,7 +98,7 @@ class TestWorkspaceCheckCLI:
         tm.that(ws_mod.main(["p1", "--gates", "lint"]), eq=0)
 
     def test_with_projects_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        ok_result = r[Sequence[SimpleNamespace]].ok([SimpleNamespace(passed=False)])
+        ok_result = r[list[SimpleNamespace]].ok([SimpleNamespace(passed=False)])
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraWorkspaceChecker",
@@ -198,7 +208,7 @@ class TestRunCLIExtended:
         )
         gate_exec = m.Infra.GateExecution(result=gate, issues=[], raw_output="")
         project = m.Infra.ProjectResult(project="p", gates={"lint": gate_exec})
-        ok_result = r[Sequence[m.Infra.ProjectResult]].ok([project])
+        ok_result = r[list[m.Infra.ProjectResult]].ok([project])
 
         def _fake_init(
             _self: FlextInfraWorkspaceChecker,
@@ -211,7 +221,7 @@ class TestRunCLIExtended:
             projects: t.StrSequence | None = None,
             gates: t.StrSequence | None = None,
             **kw: t.Scalar,
-        ) -> r[Sequence[m.Infra.ProjectResult]]:
+        ) -> r[list[m.Infra.ProjectResult]]:
             _ = projects, gates, kw
             return ok_result
 
