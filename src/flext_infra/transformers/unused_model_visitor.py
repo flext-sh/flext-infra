@@ -10,7 +10,7 @@ import libcst as cst
 from flext_core import FlextTypes as t
 
 
-class ModelDefinitionCollector(cst.CSTVisitor):
+class FlextInfraModelDefinitionCollector(cst.CSTVisitor):
     """Collect all model class definitions and their export status from a source file."""
 
     def __init__(self, *, file_path: Path) -> None:
@@ -89,7 +89,7 @@ class ModelDefinitionCollector(cst.CSTVisitor):
         return names
 
 
-class ModelReferenceCollector(cst.CSTVisitor):
+class FlextInfraModelReferenceCollector(cst.CSTVisitor):
     """Collect references to known model classes across source files for dead-code analysis."""
 
     def __init__(self, *, known_models: frozenset[str], file_path: Path) -> None:
@@ -133,4 +133,4 @@ class ModelReferenceCollector(cst.CSTVisitor):
         return ""
 
 
-__all__ = ["ModelDefinitionCollector", "ModelReferenceCollector"]
+__all__ = ["FlextInfraModelDefinitionCollector", "FlextInfraModelReferenceCollector"]

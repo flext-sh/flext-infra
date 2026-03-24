@@ -8,7 +8,7 @@ import libcst as cst
 from flext_infra import u
 
 
-class ImportDependencyCollector(cst.CSTVisitor):
+class FlextInfraImportDependencyCollector(cst.CSTVisitor):
     def __init__(self) -> None:
         self.local_to_import: MutableMapping[str, str] = {}
 
@@ -45,4 +45,4 @@ class ImportDependencyCollector(cst.CSTVisitor):
             self.local_to_import[local_name] = f"{module_name}.{imported_name}"
 
 
-__all__ = ["ImportDependencyCollector"]
+__all__ = ["FlextInfraImportDependencyCollector"]

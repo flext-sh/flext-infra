@@ -8,7 +8,7 @@ from pathlib import Path
 from flext_infra import c, m, t, u
 
 
-class PostCheckGate:
+class FlextInfraPostCheckGate:
     def __init__(self) -> None:
         pass
 
@@ -95,4 +95,4 @@ class PostCheckGate:
         return u.Infra.ast_extract_base_name(base)
 
 
-__all__ = ["PostCheckGate"]
+__all__ = ["FlextInfraPostCheckGate"]

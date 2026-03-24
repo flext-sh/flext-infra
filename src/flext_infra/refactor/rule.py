@@ -9,7 +9,7 @@ from pathlib import Path
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import (
-    ClassNestingRefactorRule,
+    FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorRule,
     FlextInfraRefactorRuleDefinitionValidator,
     c,
@@ -65,8 +65,13 @@ class FlextInfraRefactorRuleLoader:
             [Mapping[str, t.Infra.InfraValue]],
             FlextInfraRefactorRule | None,
         ],
-        build_file_rules: Callable[[], Sequence[ClassNestingRefactorRule]],
-    ) -> r[tuple[Sequence[FlextInfraRefactorRule], Sequence[ClassNestingRefactorRule]]]:
+        build_file_rules: Callable[[], Sequence[FlextInfraClassNestingRefactorRule]],
+    ) -> r[
+        tuple[
+            Sequence[FlextInfraRefactorRule],
+            Sequence[FlextInfraClassNestingRefactorRule],
+        ]
+    ]:
         """Load rules from YAML files, validate, and build rule instances."""
         try:
             rules_dir = self.config_path.parent / c.Infra.ReportKeys.RULES
@@ -130,20 +135,20 @@ class FlextInfraRefactorRuleLoader:
                 return r[
                     tuple[
                         Sequence[FlextInfraRefactorRule],
-                        Sequence[ClassNestingRefactorRule],
+                        Sequence[FlextInfraClassNestingRefactorRule],
                     ]
                 ].fail(f"Unknown rule mapping for: {unknown}")
             return r[
                 tuple[
                     Sequence[FlextInfraRefactorRule],
-                    Sequence[ClassNestingRefactorRule],
+                    Sequence[FlextInfraClassNestingRefactorRule],
                 ]
             ].ok((loaded_rules, loaded_file_rules))
         except Exception as exc:
             return r[
                 tuple[
                     Sequence[FlextInfraRefactorRule],
-                    Sequence[ClassNestingRefactorRule],
+                    Sequence[FlextInfraClassNestingRefactorRule],
                 ]
             ].fail(f"Failed to load rules: {exc}")
 

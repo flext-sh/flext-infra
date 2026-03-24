@@ -18,14 +18,14 @@ from flext_infra import c, output, r, s, u
 
 
 @unique
-class WorkspaceMode(StrEnum):
+class FlextInfraWorkspaceMode(StrEnum):
     """Workspace execution mode enumeration."""
 
     WORKSPACE = c.Infra.ReportKeys.WORKSPACE
     STANDALONE = "standalone"
 
 
-class FlextInfraWorkspaceDetector(s[WorkspaceMode]):
+class FlextInfraWorkspaceDetector(s[FlextInfraWorkspaceMode]):
     """Infrastructure service for detecting workspace mode.
 
     Inspects parent repository origin URL to determine if a project
@@ -65,15 +65,15 @@ class FlextInfraWorkspaceDetector(s[WorkspaceMode]):
         name = path.rsplit("/", 1)[-1]
         return name.removesuffix(c.Infra.Git.DIR)
 
-    def detect(self, project_root: Path) -> r[WorkspaceMode]:
+    def detect(self, project_root: Path) -> r[FlextInfraWorkspaceMode]:
         """Detect workspace mode by inspecting parent repository origin URL.
 
         Args:
             project_root: Path to the project directory.
 
         Returns:
-            r with WorkspaceMode.WORKSPACE if parent repo is 'flext',
-            WorkspaceMode.STANDALONE otherwise.
+            r with FlextInfraWorkspaceMode.WORKSPACE if parent repo is 'flext',
+            FlextInfraWorkspaceMode.STANDALONE otherwise.
 
         """
         try:
@@ -81,35 +81,35 @@ class FlextInfraWorkspaceDetector(s[WorkspaceMode]):
             git_marker = parent / c.Infra.Git.DIR
             if not git_marker.exists():
                 output.info("Running in standalone mode (no parent workspace detected)")
-                return r[WorkspaceMode].ok(WorkspaceMode.STANDALONE)
+                return r[FlextInfraWorkspaceMode].ok(FlextInfraWorkspaceMode.STANDALONE)
             result = u.Infra.git_run(
                 ["config", "--get", "remote.origin.url"],
                 cwd=parent,
             )
             if result.is_failure:
                 output.info("Running in standalone mode (unable to detect workspace)")
-                return r[WorkspaceMode].ok(WorkspaceMode.STANDALONE)
+                return r[FlextInfraWorkspaceMode].ok(FlextInfraWorkspaceMode.STANDALONE)
             origin = result.value.strip()
             if not origin:
                 output.info("Running in standalone mode (no remote origin found)")
-                return r[WorkspaceMode].ok(WorkspaceMode.STANDALONE)
+                return r[FlextInfraWorkspaceMode].ok(FlextInfraWorkspaceMode.STANDALONE)
             repo_name = self._repo_name_from_url(origin)
             mode = (
-                WorkspaceMode.WORKSPACE
+                FlextInfraWorkspaceMode.WORKSPACE
                 if repo_name == c.Infra.Packages.ROOT
-                else WorkspaceMode.STANDALONE
+                else FlextInfraWorkspaceMode.STANDALONE
             )
-            if mode == WorkspaceMode.STANDALONE:
+            if mode == FlextInfraWorkspaceMode.STANDALONE:
                 output.info(f"Running in standalone mode (parent repo: {repo_name})")
-            return r[WorkspaceMode].ok(mode)
+            return r[FlextInfraWorkspaceMode].ok(mode)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             output.info(f"Running in standalone mode (detection error: {exc})")
-            return r[WorkspaceMode].fail(f"Detection failed: {exc}")
+            return r[FlextInfraWorkspaceMode].fail(f"Detection failed: {exc}")
 
     @override
-    def execute(self) -> r[WorkspaceMode]:
+    def execute(self) -> r[FlextInfraWorkspaceMode]:
         """Not used; call detect() directly instead."""
-        return r[WorkspaceMode].fail("Use detect() method directly")
+        return r[FlextInfraWorkspaceMode].fail("Use detect() method directly")
 
 
-__all__ = ["FlextInfraWorkspaceDetector", "WorkspaceMode"]
+__all__ = ["FlextInfraWorkspaceDetector", "FlextInfraWorkspaceMode"]

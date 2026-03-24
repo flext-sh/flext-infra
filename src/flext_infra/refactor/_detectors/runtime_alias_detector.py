@@ -24,7 +24,7 @@ from flext_infra import (
 )
 
 
-class RuntimeAliasDetector(p.Infra.Scanner):
+class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
     """Detector for missing or duplicate runtime alias assignments.
 
     Identifies namespace facade files that lack or have duplicate runtime alias
@@ -37,7 +37,7 @@ class RuntimeAliasDetector(p.Infra.Scanner):
         project_name: str,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the RuntimeAliasDetector scanner.
+        """Initialize the FlextInfraRuntimeAliasDetector scanner.
 
         Args:
             project_name: Name of the project being scanned.

@@ -11,7 +11,7 @@ from tomlkit.items import Item, Table
 from flext_infra import c, m, u
 
 
-class EnsureCoverageConfigPhase:
+class FlextInfraEnsureCoverageConfigPhase:
     """Ensure coverage report configuration with per-project-type thresholds."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:

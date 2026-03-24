@@ -15,7 +15,7 @@ from flext_infra import (
     FlextInfraSyncService,
     FlextInfraUtilitiesCli,
     FlextInfraWorkspaceDetector,
-    WorkspaceMode,
+    FlextInfraWorkspaceMode,
 )
 
 
@@ -36,21 +36,21 @@ class TestRunDetect:
     @pytest.mark.parametrize(
         ("result", "expected"),
         [
-            (r[WorkspaceMode].ok(WorkspaceMode.WORKSPACE), 0),
-            (r[WorkspaceMode].fail("Detection failed"), 1),
+            (r[FlextInfraWorkspaceMode].ok(FlextInfraWorkspaceMode.WORKSPACE), 0),
+            (r[FlextInfraWorkspaceMode].fail("Detection failed"), 1),
         ],
     )
     def test_detect(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        result: r[WorkspaceMode],
+        result: r[FlextInfraWorkspaceMode],
         expected: int,
     ) -> None:
         def _detect_stub(
             _self: FlextInfraWorkspaceDetector,
             project_root: Path,
-        ) -> r[WorkspaceMode]:
+        ) -> r[FlextInfraWorkspaceMode]:
             del _self, project_root
             return result
 

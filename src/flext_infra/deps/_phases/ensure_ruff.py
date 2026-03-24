@@ -13,7 +13,7 @@ from tomlkit.items import Item, Table
 from flext_infra import c, m, u
 
 
-class EnsureRuffConfigPhase:
+class FlextInfraEnsureRuffConfigPhase:
     """Ensure standard Ruff configuration inline with known-first-party overlay."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:

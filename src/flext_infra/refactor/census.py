@@ -13,8 +13,8 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_infra import (
-    CensusImportDiscoveryVisitor,
-    CensusUsageCollector,
+    FlextInfraCensusImportDiscoveryVisitor,
+    FlextInfraCensusUsageCollector,
     c,
     m,
     output,
@@ -97,11 +97,11 @@ class FlextInfraRefactorCensus:
                 output.info(f"  [{i}/{len(files)}] scanned...")
 
             project = u.Infra.identify_project_by_roots(fp, roots)
-            imp = CensusImportDiscoveryVisitor(
+            imp = FlextInfraCensusImportDiscoveryVisitor(
                 family_alias=target.family,
                 facade_class_prefix=target.facade_class_prefix,
             )
-            col = CensusUsageCollector(
+            col = FlextInfraCensusUsageCollector(
                 method_index=index,
                 flat_aliases=flat,
                 inner_class_map=inner,

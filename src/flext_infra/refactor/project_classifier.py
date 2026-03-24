@@ -11,7 +11,7 @@ from pathlib import Path
 from flext_infra import c, m, t, u
 
 
-class ProjectClassifier:
+class FlextInfraProjectClassifier:
     """Classify a project by kind and discover MRO family chains."""
 
     def __init__(self, project_root: Path) -> None:
@@ -321,4 +321,4 @@ class ProjectClassifier:
         return dependency_kind
 
 
-__all__ = ["ProjectClassifier"]
+__all__ = ["FlextInfraProjectClassifier"]

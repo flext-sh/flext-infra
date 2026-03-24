@@ -21,7 +21,7 @@ from flext_infra import (
 )
 
 
-class NamespaceFacadeScanner:
+class FlextInfraNamespaceFacadeScanner:
     """Scanner for namespace facade class patterns in projects.
 
     Identifies and reports the status of namespace facade classes used to

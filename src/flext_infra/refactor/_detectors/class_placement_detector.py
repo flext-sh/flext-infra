@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from flext_infra import m
 
 
-class ClassPlacementDetector(p.Infra.Scanner):
+class FlextInfraClassPlacementDetector(p.Infra.Scanner):
     """Detector for Pydantic model class placement violations.
 
     Scans Python files to identify BaseModel subclasses defined outside
@@ -54,7 +54,7 @@ class ClassPlacementDetector(p.Infra.Scanner):
         *,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the ClassPlacementDetector scanner.
+        """Initialize the FlextInfraClassPlacementDetector scanner.
 
         Args:
             parse_failures: Optional list of previous parse failures to track.
@@ -175,8 +175,8 @@ class ClassPlacementDetector(p.Infra.Scanner):
 
         """
         for arg in node.bases:
-            base_name = ClassPlacementDetector._base_expr_name(arg.value)
-            if base_name in ClassPlacementDetector.PYDANTIC_BASE_NAMES:
+            base_name = FlextInfraClassPlacementDetector._base_expr_name(arg.value)
+            if base_name in FlextInfraClassPlacementDetector.PYDANTIC_BASE_NAMES:
                 return (True, base_name)
         return (False, "")
 

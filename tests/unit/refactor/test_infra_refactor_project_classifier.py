@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import ProjectClassifier
+from flext_infra import FlextInfraProjectClassifier
 
 
 def _write_pyproject(project_root: Path, content: str) -> None:
@@ -26,7 +26,7 @@ def test_read_project_metadata_preserves_pep621_dependency_order(
         """,
     )
 
-    classifier = ProjectClassifier(tmp_path)
+    classifier = FlextInfraProjectClassifier(tmp_path)
     project_name, dependencies = classifier._read_project_metadata()
 
     assert project_name == "flext-example"
@@ -55,7 +55,7 @@ def test_read_project_metadata_preserves_poetry_dependency_order(
         """,
     )
 
-    classifier = ProjectClassifier(tmp_path)
+    classifier = FlextInfraProjectClassifier(tmp_path)
     project_name, dependencies = classifier._read_project_metadata()
 
     assert project_name == "flext-example"

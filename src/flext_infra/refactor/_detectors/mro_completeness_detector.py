@@ -27,7 +27,7 @@ from flext_infra import (
 )
 
 
-class MROCompletenessDetector(
+class FlextInfraMROCompletenessDetector(
     p.Infra.Scanner,
 ):
     """Detector for facade classes missing MRO composition bases.
@@ -49,7 +49,7 @@ class MROCompletenessDetector(
         *,
         parse_failures: MutableSequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the MROCompletenessDetector scanner.
+        """Initialize the FlextInfraMROCompletenessDetector scanner.
 
         Args:
             parse_failures: Optional list of previous parse failures to track.
@@ -250,7 +250,7 @@ class MROCompletenessDetector(
         if isinstance(value, cst.Attribute):
             return u.Infra.cst_module_to_str(value)
         if isinstance(value, cst.Subscript):
-            return MROCompletenessDetector._expr_to_base_name(value.value)
+            return FlextInfraMROCompletenessDetector._expr_to_base_name(value.value)
         return ""
 
     @staticmethod
@@ -334,7 +334,7 @@ class MROCompletenessDetector(
         facade_name: str,
         _parse_failures: MutableSequence[nem.ParseFailureViolation] | None,
     ) -> set[tuple[str, int]]:
-        tree = MROCompletenessDetector._parse_module(
+        tree = FlextInfraMROCompletenessDetector._parse_module(
             file_path=file_path,
             stage="mro-completeness-candidates",
             parse_failures=_parse_failures,
@@ -370,7 +370,7 @@ class MROCompletenessDetector(
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             return cst.parse_module(source)
         except UnicodeDecodeError as exc:
-            MROCompletenessDetector._append_parse_failure(
+            FlextInfraMROCompletenessDetector._append_parse_failure(
                 parse_failures=parse_failures,
                 file_path=file_path,
                 stage=stage,
@@ -379,7 +379,7 @@ class MROCompletenessDetector(
             )
             return None
         except OSError as exc:
-            MROCompletenessDetector._append_parse_failure(
+            FlextInfraMROCompletenessDetector._append_parse_failure(
                 parse_failures=parse_failures,
                 file_path=file_path,
                 stage=stage,
@@ -388,7 +388,7 @@ class MROCompletenessDetector(
             )
             return None
         except cst.ParserSyntaxError as exc:
-            MROCompletenessDetector._append_parse_failure(
+            FlextInfraMROCompletenessDetector._append_parse_failure(
                 parse_failures=parse_failures,
                 file_path=file_path,
                 stage=stage,

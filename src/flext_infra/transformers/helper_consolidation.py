@@ -11,7 +11,7 @@ import libcst as cst
 from flext_infra import m, t, u
 
 
-class HelperConsolidationTransformer(cst.CSTTransformer):
+class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
     """Move top-level helper functions into target namespace classes."""
 
     def __init__(
@@ -250,4 +250,4 @@ class HelperConsolidationTransformer(cst.CSTTransformer):
         )
 
 
-__all__ = ["HelperConsolidationTransformer"]
+__all__ = ["FlextInfraHelperConsolidationTransformer"]

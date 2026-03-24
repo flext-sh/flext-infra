@@ -20,10 +20,10 @@ from typing import override
 import libcst as cst
 
 from flext_infra import (
+    FlextInfraNamespaceFacadeScanner,
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesRefactorLoader,
-    NamespaceFacadeScanner,
     c,
     m,
     t,
@@ -372,7 +372,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         if not blocks:
             return
         project_name = project_root.name
-        class_stem = NamespaceFacadeScanner.project_class_stem(
+        class_stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )
         protocols_class = f"{class_stem}Protocols"
@@ -424,7 +424,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         if not package_dirs:
             return
         primary_package = package_dirs[0]
-        stem = NamespaceFacadeScanner.project_class_stem(
+        stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )
         for status in facade_statuses:

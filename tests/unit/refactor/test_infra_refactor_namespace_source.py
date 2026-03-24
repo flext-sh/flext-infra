@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra import NamespaceSourceDetector, u
+    from flext_infra import FlextInfraNamespaceSourceDetector, u
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -64,7 +64,7 @@ def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import m\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -85,7 +85,7 @@ def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import u\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -106,7 +106,7 @@ def test_skips_r_alias_universal_exception(tmp_path: Path) -> None:
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import r\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -131,7 +131,7 @@ def test_skips_facade_declaration_files(tmp_path: Path) -> None:
         "m = FlextXyzModels\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -150,7 +150,7 @@ def test_skips_init_file(tmp_path: Path) -> None:
     target = package_dir / "__init__.py"
     target.write_text("from flext_core import m\n")
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -171,7 +171,7 @@ def test_skips_import_as_rename(tmp_path: Path) -> None:
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import m as mm\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -192,7 +192,7 @@ def test_skips_non_alias_symbols(tmp_path: Path) -> None:
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import FlextLogger\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -213,7 +213,7 @@ def test_detects_only_wrong_alias_in_mixed_import(tmp_path: Path) -> None:
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import m, r\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -234,7 +234,7 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
         "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom flext_core import m\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -334,7 +334,7 @@ def test_detects_same_project_submodule_alias_import(tmp_path: Path) -> None:
         f"from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\nfrom {package_name}.constants import c\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -356,7 +356,7 @@ def test_skips_same_project_submodule_class_import(tmp_path: Path) -> None:
         f"from {package_name}.constants import FlextXyzConstants\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,
@@ -378,7 +378,7 @@ def test_skips_same_project_private_submodule(tmp_path: Path) -> None:
         f"from {package_name}._constants import c\n",
     )
 
-    violations = NamespaceSourceDetector.detect_file(
+    violations = FlextInfraNamespaceSourceDetector.detect_file(
         file_path=target,
         project_name=project_name,
         project_root=project_root,

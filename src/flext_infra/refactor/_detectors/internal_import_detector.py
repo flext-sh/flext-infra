@@ -24,7 +24,7 @@ from flext_infra import (
 )
 
 
-class InternalImportDetector(p.Infra.Scanner):
+class FlextInfraInternalImportDetector(p.Infra.Scanner):
     """Detector for private module and symbol import violations.
 
     Identifies imports that expose private implementation details by importing
@@ -36,7 +36,7 @@ class InternalImportDetector(p.Infra.Scanner):
         *,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the InternalImportDetector scanner.
+        """Initialize the FlextInfraInternalImportDetector scanner.
 
         Args:
             parse_failures: Optional list of previous parse failures to track.

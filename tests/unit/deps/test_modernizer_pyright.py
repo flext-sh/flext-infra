@@ -8,7 +8,7 @@ from pathlib import Path
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import EnsurePyrightConfigPhase, m, u
+from flext_infra import FlextInfraEnsurePyrightConfigPhase, m, u
 
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
@@ -34,7 +34,7 @@ class TestEnsurePyrightConfigPhase:
         (flext_core / "tests").mkdir(parents=True, exist_ok=True)
         (flext_api / "src").mkdir(parents=True, exist_ok=True)
         doc = tomlkit.document()
-        changes = EnsurePyrightConfigPhase(_test_tool_config()).apply(
+        changes = FlextInfraEnsurePyrightConfigPhase(_test_tool_config()).apply(
             doc,
             is_root=True,
             workspace_root=tmp_path,
@@ -64,7 +64,7 @@ class TestEnsurePyrightConfigPhase:
 
     def test_apply_subproject_sets_execution_environments(self) -> None:
         doc = tomlkit.document()
-        changes = EnsurePyrightConfigPhase(_test_tool_config()).apply(
+        changes = FlextInfraEnsurePyrightConfigPhase(_test_tool_config()).apply(
             doc,
             is_root=False,
         )

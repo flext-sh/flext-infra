@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from flext_infra import m
 
 
-class CompatibilityAliasDetector(p.Infra.Scanner):
+class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
     """Detector for compatibility alias assignment statements.
 
     Identifies simple name-to-name assignments that create compatibility aliases,
@@ -38,7 +38,7 @@ class CompatibilityAliasDetector(p.Infra.Scanner):
         *,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the CompatibilityAliasDetector scanner.
+        """Initialize the FlextInfraCompatibilityAliasDetector scanner.
 
         Args:
             parse_failures: Optional list of previous parse failures to track.

@@ -20,7 +20,7 @@ from flext_infra import (
 )
 
 
-class FutureAnnotationsDetector(p.Infra.Scanner):
+class FlextInfraFutureAnnotationsDetector(p.Infra.Scanner):
     """Detector for missing future annotations imports.
 
     Scans Python files to identify those missing the required
@@ -32,7 +32,7 @@ class FutureAnnotationsDetector(p.Infra.Scanner):
         *,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the FutureAnnotationsDetector scanner.
+        """Initialize the FlextInfraFutureAnnotationsDetector scanner.
 
         Args:
             parse_failures: Optional list of previous parse failures to track.

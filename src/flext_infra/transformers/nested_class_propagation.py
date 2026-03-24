@@ -11,7 +11,7 @@ from libcst.metadata import ParentNodeProvider
 from flext_infra import m, t, u
 
 
-class NestedClassPropagationTransformer(cst.CSTTransformer):
+class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
     """Propagate import and name references after classes are nested into namespaces."""
 
     METADATA_DEPENDENCIES = (ParentNodeProvider,)
@@ -186,4 +186,4 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
         )
 
 
-__all__ = ["NestedClassPropagationTransformer"]
+__all__ = ["FlextInfraNestedClassPropagationTransformer"]

@@ -9,7 +9,7 @@ from flext_core import FlextTypes as t
 from flext_infra import c
 
 
-class InjectCommentsPhase:
+class FlextInfraInjectCommentsPhase:
     """Inject managed/custom/auto markers into pyproject.toml."""
 
     def apply(self, rendered: str) -> tuple[str, t.StrSequence]:

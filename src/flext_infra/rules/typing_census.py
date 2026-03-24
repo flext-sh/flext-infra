@@ -7,7 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraRefactorRule, TypingAnnotationReplacer, c, t
+from flext_infra import FlextInfraRefactorRule, FlextInfraTypingAnnotationReplacer, c, t
 
 
 class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
@@ -23,7 +23,7 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
             str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
         )
         if fix_action == "replace_object_annotations":
-            replacer = TypingAnnotationReplacer()
+            replacer = FlextInfraTypingAnnotationReplacer()
             updated = tree.visit(replacer)
             return (updated, replacer.changes)
         return (tree, [])

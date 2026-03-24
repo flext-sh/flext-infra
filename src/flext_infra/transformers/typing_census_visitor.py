@@ -11,7 +11,7 @@ import libcst as cst
 _PAIR_LENGTH = 2
 
 
-class TypingAnnotationCensusVisitor(cst.CSTVisitor):
+class FlextInfraTypingAnnotationCensusVisitor(cst.CSTVisitor):
     """Collect census of typing annotation usage for reporting and migration planning."""
 
     DUNDER_OBJECT_ALLOWLIST = frozenset({
@@ -275,4 +275,4 @@ class TypingAnnotationCensusVisitor(cst.CSTVisitor):
         )
 
 
-__all__ = ["TypingAnnotationCensusVisitor"]
+__all__ = ["FlextInfraTypingAnnotationCensusVisitor"]

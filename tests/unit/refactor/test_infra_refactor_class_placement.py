@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra import ClassPlacementDetector, c
+    from flext_infra import FlextInfraClassPlacementDetector, c
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -17,7 +17,7 @@ def test_detects_basemodel_in_non_model_file(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    violations = ClassPlacementDetector.detect_file(file_path=target)
+    violations = FlextInfraClassPlacementDetector.detect_file(file_path=target)
 
     assert len(violations) == 1
     assert violations[0].name == "PublicModel"
@@ -33,7 +33,7 @@ def test_detects_attribute_base_class(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    violations = ClassPlacementDetector.detect_file(file_path=target)
+    violations = FlextInfraClassPlacementDetector.detect_file(file_path=target)
 
     assert len(violations) == 1
     assert violations[0].name == "PublicModel"
@@ -47,7 +47,7 @@ def test_skips_models_file(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    violations = ClassPlacementDetector.detect_file(file_path=target)
+    violations = FlextInfraClassPlacementDetector.detect_file(file_path=target)
 
     assert violations == []
 
@@ -61,7 +61,7 @@ def test_skips_models_directory(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    violations = ClassPlacementDetector.detect_file(file_path=target)
+    violations = FlextInfraClassPlacementDetector.detect_file(file_path=target)
 
     assert violations == []
 
@@ -74,7 +74,7 @@ def test_skips_settings_file(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    violations = ClassPlacementDetector.detect_file(file_path=target)
+    violations = FlextInfraClassPlacementDetector.detect_file(file_path=target)
 
     assert violations == []
 
@@ -87,7 +87,7 @@ def test_skips_protected_files(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    violations = ClassPlacementDetector.detect_file(file_path=target)
+    violations = FlextInfraClassPlacementDetector.detect_file(file_path=target)
 
     assert violations == []
 
@@ -99,7 +99,7 @@ def test_skips_private_class(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    violations = ClassPlacementDetector.detect_file(file_path=target)
+    violations = FlextInfraClassPlacementDetector.detect_file(file_path=target)
 
     assert violations == []
 
@@ -116,7 +116,7 @@ def test_detects_multiple_models(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    violations = ClassPlacementDetector.detect_file(file_path=target)
+    violations = FlextInfraClassPlacementDetector.detect_file(file_path=target)
 
     assert len(violations) == 2
     assert {violation.name for violation in violations} == {"FirstModel", "SecondModel"}
@@ -129,6 +129,6 @@ def test_non_pydantic_class_not_flagged(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    violations = ClassPlacementDetector.detect_file(file_path=target)
+    violations = FlextInfraClassPlacementDetector.detect_file(file_path=target)
 
     assert violations == []

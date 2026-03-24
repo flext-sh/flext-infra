@@ -8,7 +8,7 @@ import libcst as cst
 from flext_infra import m
 
 
-class TopLevelClassCollector(cst.CSTVisitor):
+class FlextInfraTopLevelClassCollector(cst.CSTVisitor):
     def __init__(self) -> None:
         self._depth = 0
         self.classes: MutableSequence[m.Infra.ClassOccurrence] = []
@@ -31,4 +31,4 @@ class TopLevelClassCollector(cst.CSTVisitor):
         self._depth -= 1
 
 
-__all__ = ["TopLevelClassCollector"]
+__all__ = ["FlextInfraTopLevelClassCollector"]

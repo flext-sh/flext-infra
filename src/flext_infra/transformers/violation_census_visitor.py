@@ -12,7 +12,7 @@ from flext_core import FlextTypes as t
 _DICT_KEY_VALUE_ARITY = 2
 
 
-class ViolationCensusVisitor(cst.CSTVisitor):
+class FlextInfraViolationCensusVisitor(cst.CSTVisitor):
     """Detect governance violations (Any usage, bare object, type:ignore) via CST walk."""
 
     RUNTIME_ALIASES: frozenset[str] = frozenset({
@@ -271,4 +271,4 @@ class ViolationCensusVisitor(cst.CSTVisitor):
         return ""
 
 
-__all__ = ["ViolationCensusVisitor"]
+__all__ = ["FlextInfraViolationCensusVisitor"]

@@ -12,7 +12,7 @@ from tomlkit.items import Item, Table
 from flext_infra import c, u
 
 
-class ConsolidateGroupsPhase:
+class FlextInfraConsolidateGroupsPhase:
     """Consolidate optional-dependencies and Poetry groups into single dev group."""
 
     def apply(

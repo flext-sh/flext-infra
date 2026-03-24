@@ -11,9 +11,9 @@ from libcst.metadata import MetadataWrapper
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import (
+    FlextInfraNestedClassPropagationTransformer,
     FlextInfraRefactorClassReconstructor,
     FlextInfraRefactorRule,
-    NestedClassPropagationTransformer,
     c,
     m,
     t,
@@ -21,7 +21,7 @@ from flext_infra import (
 )
 
 
-class PreCheckGate:
+class FlextInfraPreCheckGate:
     """Gate that validates class nesting entries against a YAML policy matrix."""
 
     def __init__(self, policy_path: Path | None = None) -> None:
@@ -186,7 +186,7 @@ class FlextInfraRefactorClassNestingReconstructor:
         class_families: t.StrMapping,
     ) -> cst.Module:
         """Apply nested class propagation transforms using the given rename mappings."""
-        transformer = NestedClassPropagationTransformer(
+        transformer = FlextInfraNestedClassPropagationTransformer(
             class_renames=mappings,
             policy_context=policy_context,
             class_families=class_families,
@@ -195,7 +195,7 @@ class FlextInfraRefactorClassNestingReconstructor:
         updated_tree = wrapped_tree.visit(transformer)
         if updated_tree.code != tree.code:
             changes.append(
-                f"Applied NestedClassPropagationTransformer ({len(mappings)} renames)",
+                f"Applied FlextInfraNestedClassPropagationTransformer ({len(mappings)} renames)",
             )
         return updated_tree
 
@@ -228,7 +228,7 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
 
 
 __all__ = [
+    "FlextInfraPreCheckGate",
     "FlextInfraRefactorClassNestingReconstructor",
     "FlextInfraRefactorClassReconstructorRule",
-    "PreCheckGate",
 ]

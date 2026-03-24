@@ -23,7 +23,7 @@ from flext_infra import (
 )
 
 
-class CyclicImportDetector:
+class FlextInfraCyclicImportDetector:
     """Detector for cyclic import dependencies at project level.
 
     Analyzes import dependencies across all Python files in a project's source
@@ -31,7 +31,7 @@ class CyclicImportDetector:
     Note: This detector operates at project level, not file level.
     """
 
-    # NOTE: CyclicImportDetector operates at project level, not file level — does not implement Scanner
+    # NOTE: FlextInfraCyclicImportDetector operates at project level, not file level — does not implement Scanner
 
     @classmethod
     def scan_project(

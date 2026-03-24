@@ -10,19 +10,19 @@ import tomlkit
 from tomlkit.items import Table
 
 from flext_infra import (
-    ConsolidateGroupsPhase,
-    EnsureCoverageConfigPhase,
-    EnsureExtraPathsPhase,
-    EnsureFormattingToolingPhase,
-    EnsureMypyConfigPhase,
-    EnsureNamespaceToolingPhase,
-    EnsurePydanticMypyConfigPhase,
-    EnsurePyreflyConfigPhase,
-    EnsurePyrightConfigPhase,
-    EnsurePytestConfigPhase,
-    EnsureRuffConfigPhase,
-    InjectCommentsPhase,
-    ProjectClassifier,
+    FlextInfraConsolidateGroupsPhase,
+    FlextInfraEnsureCoverageConfigPhase,
+    FlextInfraEnsureExtraPathsPhase,
+    FlextInfraEnsureFormattingToolingPhase,
+    FlextInfraEnsureMypyConfigPhase,
+    FlextInfraEnsureNamespaceToolingPhase,
+    FlextInfraEnsurePydanticMypyConfigPhase,
+    FlextInfraEnsurePyreflyConfigPhase,
+    FlextInfraEnsurePyrightConfigPhase,
+    FlextInfraEnsurePytestConfigPhase,
+    FlextInfraEnsureRuffConfigPhase,
+    FlextInfraInjectCommentsPhase,
+    FlextInfraProjectClassifier,
     c,
     r,
     t,
@@ -55,7 +55,7 @@ class FlextInfraPyprojectModernizer:
 
     def _classify_project(self, project_dir: Path) -> r[str]:
         """Classify project kind for pyright/coverage config selection."""
-        kind = ProjectClassifier(project_dir).classify().project_kind
+        kind = FlextInfraProjectClassifier(project_dir).classify().project_kind
         return r[str].ok(kind)
 
     def find_pyproject_files(self) -> Sequence[Path]:
@@ -113,27 +113,31 @@ class FlextInfraPyprojectModernizer:
                 if not group_item:
                     del poetry_item[c.Infra.Toml.GROUP]
                     changes.append("removed empty poetry group container")
-        changes.extend(ConsolidateGroupsPhase().apply(doc, canonical_dev))
-        changes.extend(EnsurePytestConfigPhase(self._tool_config).apply(doc))
+        changes.extend(FlextInfraConsolidateGroupsPhase().apply(doc, canonical_dev))
+        changes.extend(FlextInfraEnsurePytestConfigPhase(self._tool_config).apply(doc))
         changes.extend(
-            EnsurePyreflyConfigPhase(self._tool_config).apply(
+            FlextInfraEnsurePyreflyConfigPhase(self._tool_config).apply(
                 doc,
                 is_root=is_root,
                 project_dir=path.parent,
             ),
         )
-        changes.extend(EnsureMypyConfigPhase(self._tool_config).apply(doc))
-        changes.extend(EnsurePydanticMypyConfigPhase(self._tool_config).apply(doc))
-        changes.extend(EnsureFormattingToolingPhase(self._tool_config).apply(doc))
-        changes.extend(EnsureNamespaceToolingPhase().apply(doc, path=path))
+        changes.extend(FlextInfraEnsureMypyConfigPhase(self._tool_config).apply(doc))
         changes.extend(
-            EnsureRuffConfigPhase(self._tool_config).apply(
+            FlextInfraEnsurePydanticMypyConfigPhase(self._tool_config).apply(doc)
+        )
+        changes.extend(
+            FlextInfraEnsureFormattingToolingPhase(self._tool_config).apply(doc)
+        )
+        changes.extend(FlextInfraEnsureNamespaceToolingPhase().apply(doc, path=path))
+        changes.extend(
+            FlextInfraEnsureRuffConfigPhase(self._tool_config).apply(
                 doc,
                 path=path,
             ),
         )
         changes.extend(
-            EnsurePyrightConfigPhase(self._tool_config).apply(
+            FlextInfraEnsurePyrightConfigPhase(self._tool_config).apply(
                 doc,
                 is_root=is_root,
                 workspace_root=self.root,
@@ -142,13 +146,13 @@ class FlextInfraPyprojectModernizer:
             ),
         )
         changes.extend(
-            EnsureCoverageConfigPhase(self._tool_config).apply(
+            FlextInfraEnsureCoverageConfigPhase(self._tool_config).apply(
                 doc,
                 project_kind=project_kind,
             ),
         )
         changes.extend(
-            EnsureExtraPathsPhase().apply(
+            FlextInfraEnsureExtraPathsPhase().apply(
                 doc,
                 path=path,
                 is_root=is_root,
@@ -157,7 +161,7 @@ class FlextInfraPyprojectModernizer:
         )
         rendered = doc.as_string()
         if not skip_comments:
-            rendered, comment_changes = InjectCommentsPhase().apply(rendered)
+            rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
         if changes and (not dry_run):
             u.write_file(path, rendered, encoding=c.Infra.Encoding.DEFAULT)

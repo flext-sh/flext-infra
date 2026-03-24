@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra import ImportAliasDetector, u
+    from flext_infra import FlextInfraImportAliasDetector, u
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -20,7 +20,7 @@ def test_import_alias_detector_skips_private_and_class_imports(tmp_path: Path) -
         encoding="utf-8",
     )
 
-    violations = ImportAliasDetector.detect_file(file_path=sample_file)
+    violations = FlextInfraImportAliasDetector.detect_file(file_path=sample_file)
     assert violations == []
 
 
@@ -35,7 +35,7 @@ def test_import_alias_detector_skips_nested_private_and_as_renames(
         encoding="utf-8",
     )
 
-    violations = ImportAliasDetector.detect_file(file_path=sample_file)
+    violations = FlextInfraImportAliasDetector.detect_file(file_path=sample_file)
     assert violations == []
 
 
@@ -50,7 +50,7 @@ def test_import_alias_detector_skips_facade_and_subclass_files(tmp_path: Path) -
         encoding="utf-8",
     )
 
-    violations = ImportAliasDetector.detect_file(file_path=sample_file)
+    violations = FlextInfraImportAliasDetector.detect_file(file_path=sample_file)
     assert violations == []
 
 

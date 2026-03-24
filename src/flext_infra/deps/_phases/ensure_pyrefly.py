@@ -12,7 +12,7 @@ from tomlkit.items import Item, Table
 from flext_infra import FlextInfraExtraPathsManager, c, m, u
 
 
-class EnsurePyreflyConfigPhase:
+class FlextInfraEnsurePyreflyConfigPhase:
     """Ensure standard Pyrefly configuration for max-strict typing."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:

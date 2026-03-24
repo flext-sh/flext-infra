@@ -11,7 +11,7 @@ from tomlkit.items import Item, Table
 from flext_infra import c, m, t, u
 
 
-class EnsurePyrightConfigPhase:
+class FlextInfraEnsurePyrightConfigPhase:
     """Ensure standard Pyright configuration for strict type checking."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:

@@ -23,10 +23,10 @@ from flext_core import r, s
 from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenSnapshot,
+    FlextInfraNamespaceSourceDetector,
     FlextInfraNamespaceValidator,
     FlextInfraRefactorEngine,
     FlextInfraRefactorMigrateToClassMRO,
-    NamespaceSourceDetector,
     c,
     m,
     t,
@@ -329,7 +329,7 @@ class FlextInfraCodegenFixer(s[bool]):
         before_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_files(
             file_paths=src_files,
         )
-        package_name = NamespaceSourceDetector.discover_project_package_name(
+        package_name = FlextInfraNamespaceSourceDetector.discover_project_package_name(
             project_root=project_path,
         )
         u.Infra.namespace_rewrite_import_violations(

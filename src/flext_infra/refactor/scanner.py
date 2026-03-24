@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import TopLevelClassCollector, c, m, r, t, u
+from flext_infra import FlextInfraTopLevelClassCollector, c, m, r, t, u
 
 
 class FlextInfraRefactorLooseClassScanner:
@@ -152,7 +152,7 @@ class FlextInfraRefactorLooseClassScanner:
                 f"{file_path}: parse_failed",
             )
             return out
-        col = TopLevelClassCollector()
+        col = FlextInfraTopLevelClassCollector()
         tree.visit(col)
         out2: r[Sequence[m.Infra.ClassOccurrence]] = r[
             Sequence[m.Infra.ClassOccurrence]

@@ -28,7 +28,7 @@ from flext_infra import (
 _UNKNOWN_TIER = 99
 
 
-class NormalizerContext(m.ArbitraryTypesModel):
+class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
     """Analysis context for import normalization."""
 
     file_path: Path
@@ -259,7 +259,7 @@ class FlextInfraUtilitiesImportNormalizer:
         file_path: Path,
         project_package: str,
         alias_map: Mapping[str, tuple[str, ...]] | None,
-    ) -> NormalizerContext:
+    ) -> FlextInfraNormalizerContext:
         """Build normalized analysis context for a target file."""
         package_name = (
             project_package
@@ -338,7 +338,7 @@ class FlextInfraUtilitiesImportNormalizer:
         project_aliases = set(alias_to_module)
         if alias_map is not None and package_name:
             project_aliases.update(alias_map.get(package_name, ()))
-        return NormalizerContext(
+        return FlextInfraNormalizerContext(
             file_path=file_path,
             file_module=file_module,
             project_package=package_name,
@@ -354,4 +354,4 @@ class FlextInfraUtilitiesImportNormalizer:
         )
 
 
-__all__ = ["FlextInfraUtilitiesImportNormalizer", "NormalizerContext"]
+__all__ = ["FlextInfraNormalizerContext", "FlextInfraUtilitiesImportNormalizer"]

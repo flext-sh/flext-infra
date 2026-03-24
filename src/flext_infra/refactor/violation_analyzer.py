@@ -11,10 +11,10 @@ from pathlib import Path
 import libcst as cst
 
 from flext_infra import (
+    FlextInfraFunctionDependencyCollector,
+    FlextInfraImportDependencyCollector,
     FlextInfraRefactorClassNestingAnalyzer,
-    FunctionDependencyCollector,
-    ImportDependencyCollector,
-    ViolationCensusVisitor,
+    FlextInfraViolationCensusVisitor,
     c,
     m,
     t,
@@ -51,7 +51,7 @@ class FlextInfraRefactorViolationAnalyzer:
             tree = u.Infra.parse_cst_from_source(content)
             if tree is None:
                 continue
-            violation_visitor = ViolationCensusVisitor(file_path=file_path)
+            violation_visitor = FlextInfraViolationCensusVisitor(file_path=file_path)
             cst.metadata.MetadataWrapper(tree).visit(violation_visitor)
             for record in violation_visitor.records:
                 kind = str(record.get("kind", ""))
@@ -109,7 +109,7 @@ class FlextInfraRefactorViolationAnalyzer:
                 totals=dict(totals.items()),
                 manual_review=manual_review,
             )
-        import_collector = ImportDependencyCollector()
+        import_collector = FlextInfraImportDependencyCollector()
         _ = module.visit(import_collector)
         for stmt in module.body:
             if not isinstance(stmt, cst.FunctionDef):
@@ -138,7 +138,7 @@ class FlextInfraRefactorViolationAnalyzer:
         function: cst.FunctionDef,
         local_to_import: t.StrMapping,
     ) -> m.Infra.HelperClassification:
-        dependency_collector = FunctionDependencyCollector()
+        dependency_collector = FlextInfraFunctionDependencyCollector()
         function.visit(dependency_collector)
         dependencies: set[str] = set()
         for name in dependency_collector.names:

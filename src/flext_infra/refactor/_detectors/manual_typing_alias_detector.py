@@ -24,7 +24,7 @@ from flext_infra import (
 )
 
 
-class ManualTypingAliasDetector(
+class FlextInfraManualTypingAliasDetector(
     p.Infra.Scanner,
 ):
     """Detector for type aliases outside canonical typings locations.
@@ -38,7 +38,7 @@ class ManualTypingAliasDetector(
         *,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the ManualTypingAliasDetector scanner.
+        """Initialize the FlextInfraManualTypingAliasDetector scanner.
 
         Args:
             parse_failures: Optional list of previous parse failures to track.
@@ -197,7 +197,7 @@ class ManualTypingAliasDetector(
 
         """
         if isinstance(annotation, cst.Subscript):
-            return ManualTypingAliasDetector._annotation_contains_type_alias(
+            return FlextInfraManualTypingAliasDetector._annotation_contains_type_alias(
                 annotation=annotation.value,
             )
         return u.Infra.cst_module_to_str(annotation).endswith("TypeAlias")

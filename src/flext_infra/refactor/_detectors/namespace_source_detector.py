@@ -19,7 +19,7 @@ from flext_infra import (
 )
 
 
-class NamespaceSourceDetector(p.Infra.Scanner):
+class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
     """Detector for alias imports from wrong source packages.
 
     Identifies imports that source public aliases from internal or wrong packages
@@ -33,7 +33,7 @@ class NamespaceSourceDetector(p.Infra.Scanner):
         project_root: Path,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the NamespaceSourceDetector scanner.
+        """Initialize the FlextInfraNamespaceSourceDetector scanner.
 
         Args:
             project_name: Name of the project being scanned.

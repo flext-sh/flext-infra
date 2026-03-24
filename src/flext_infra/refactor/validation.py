@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from flext_infra import (
+    FlextInfraPostCheckGate,
     FlextInfraRefactorMROMigrationValidator,
     FlextInfraRefactorRuleDefinitionValidator,
-    PostCheckGate,
 )
 
 __all__ = [
+    "FlextInfraPostCheckGate",
     "FlextInfraRefactorMROMigrationValidator",
     "FlextInfraRefactorRuleDefinitionValidator",
-    "PostCheckGate",
 ]

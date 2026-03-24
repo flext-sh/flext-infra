@@ -9,7 +9,7 @@ import tomlkit
 from flext_infra import FlextInfraExtraPathsManager, t
 
 
-class EnsureExtraPathsPhase:
+class FlextInfraEnsureExtraPathsPhase:
     """Ensure pyright/mypy extra paths are synchronized.
 
     Modifies the in-memory doc directly (like all other phases) so the

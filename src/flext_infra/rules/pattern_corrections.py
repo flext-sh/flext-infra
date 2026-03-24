@@ -12,7 +12,7 @@ from pydantic import TypeAdapter
 from flext_infra import FlextInfraRefactorRule, c, t, u
 
 
-class DictToMappingTransformer(cst.CSTTransformer):
+class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
     def __init__(self, *, include_return_annotations: bool) -> None:
         self.changes: MutableSequence[str] = []
         self._has_mapping_import = False
@@ -225,7 +225,7 @@ class DictToMappingTransformer(cst.CSTTransformer):
         )
 
 
-class RedundantCastRemover(cst.CSTTransformer):
+class FlextInfraRedundantCastRemover(cst.CSTTransformer):
     def __init__(self, removable_types: set[str]) -> None:
         self.removable_types = removable_types
         self.changes: MutableSequence[str] = []
@@ -303,7 +303,7 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
         )
         if fix_action == "convert_dict_to_mapping_annotations":
             include_returns = bool(self.config.get("include_return_annotations", False))
-            dict_to_mapping_transformer = DictToMappingTransformer(
+            dict_to_mapping_transformer = FlextInfraDictToMappingTransformer(
                 include_return_annotations=include_returns,
             )
             updated = tree.visit(dict_to_mapping_transformer)
@@ -314,7 +314,9 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
             ).validate_python(self.config)
             raw_types = typed_cfg.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))
-            cast_remover = RedundantCastRemover(removable_types=removable_types)
+            cast_remover = FlextInfraRedundantCastRemover(
+                removable_types=removable_types
+            )
             updated = tree.visit(cast_remover)
             return (updated, cast_remover.changes)
         return (tree, [])

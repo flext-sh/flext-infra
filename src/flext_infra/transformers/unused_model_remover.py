@@ -8,7 +8,7 @@ from typing import override
 import libcst as cst
 
 
-class UnusedModelRemover(cst.CSTTransformer):
+class FlextInfraUnusedModelRemover(cst.CSTTransformer):
     """Remove class definitions identified as unused by the model reference collector."""
 
     def __init__(
@@ -43,4 +43,4 @@ class UnusedModelRemover(cst.CSTTransformer):
             self._on_change(msg)
 
 
-__all__ = ["UnusedModelRemover"]
+__all__ = ["FlextInfraUnusedModelRemover"]

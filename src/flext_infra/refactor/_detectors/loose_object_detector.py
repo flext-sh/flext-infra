@@ -24,10 +24,10 @@ from flext_infra import (
     u,
 )
 
-from .namespace_facade_scanner import NamespaceFacadeScanner
+from .namespace_facade_scanner import FlextInfraNamespaceFacadeScanner
 
 
-class LooseObjectDetector(p.Infra.Scanner):
+class FlextInfraLooseObjectDetector(p.Infra.Scanner):
     """Detector for loose top-level objects outside namespace classes.
 
     Identifies module-level functions, constants, and type aliases that should be
@@ -42,7 +42,7 @@ class LooseObjectDetector(p.Infra.Scanner):
         project_name: str,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the LooseObjectDetector scanner.
+        """Initialize the FlextInfraLooseObjectDetector scanner.
 
         Args:
             project_name: Name of the project being scanned.
@@ -139,7 +139,7 @@ class LooseObjectDetector(p.Infra.Scanner):
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
         namespace_classes = cls._find_namespace_classes(tree=module)
-        class_stem = NamespaceFacadeScanner.project_class_stem(
+        class_stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )
         violations: MutableSequence[nem.LooseObjectViolation] = []
@@ -317,7 +317,9 @@ class LooseObjectDetector(p.Infra.Scanner):
         """
         classes: set[str] = set()
         for stmt in tree.body:
-            LooseObjectDetector._collect_namespace_classes(node=stmt, classes=classes)
+            FlextInfraLooseObjectDetector._collect_namespace_classes(
+                node=stmt, classes=classes
+            )
         return classes
 
     @staticmethod
@@ -335,4 +337,6 @@ class LooseObjectDetector(p.Infra.Scanner):
                     classes.add(node.name.value)
                     break
         for child in node.children:
-            LooseObjectDetector._collect_namespace_classes(node=child, classes=classes)
+            FlextInfraLooseObjectDetector._collect_namespace_classes(
+                node=child, classes=classes
+            )

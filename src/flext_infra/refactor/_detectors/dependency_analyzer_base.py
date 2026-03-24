@@ -22,7 +22,7 @@ from flext_infra import c, m, u
 from .import_collector import ImportCollector
 
 
-class DependencyAnalyzer:
+class FlextInfraDependencyAnalyzer:
     """Analyzer for inter-project import dependency graphs in workspaces.
 
     Discovers projects within a workspace, indexes their packages, and builds
@@ -31,7 +31,7 @@ class DependencyAnalyzer:
     """
 
     def __init__(self, workspace_root: Path) -> None:
-        """Initialize the DependencyAnalyzer.
+        """Initialize the FlextInfraDependencyAnalyzer.
 
         Args:
             workspace_root: Root directory of the workspace containing projects.

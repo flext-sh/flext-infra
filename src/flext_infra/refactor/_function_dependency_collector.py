@@ -5,7 +5,7 @@ from typing import override
 import libcst as cst
 
 
-class FunctionDependencyCollector(cst.CSTVisitor):
+class FlextInfraFunctionDependencyCollector(cst.CSTVisitor):
     def __init__(self) -> None:
         self.names: set[str] = set()
 
@@ -14,4 +14,4 @@ class FunctionDependencyCollector(cst.CSTVisitor):
         self.names.add(node.value)
 
 
-__all__ = ["FunctionDependencyCollector"]
+__all__ = ["FlextInfraFunctionDependencyCollector"]

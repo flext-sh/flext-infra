@@ -9,11 +9,11 @@ import libcst as cst
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
+    FlextInfraHelperConsolidationTransformer,
+    FlextInfraPostCheckGate,
+    FlextInfraPreCheckGate,
     FlextInfraRefactorClassNestingReconstructor,
     FlextInfraRefactorClassNestingTransformer,
-    HelperConsolidationTransformer,
-    PostCheckGate,
-    PreCheckGate,
     c,
     m,
     t,
@@ -21,7 +21,7 @@ from flext_infra import (
 )
 
 
-class ClassNestingRefactorRule:
+class FlextInfraClassNestingRefactorRule:
     """Apply class-nesting transforms driven by YAML mapping files."""
 
     def __init__(self, config_path: Path | None = None) -> None:
@@ -30,8 +30,8 @@ class ClassNestingRefactorRule:
             "class-nesting-mappings.yml",
         )
         self._policy_path = Path(__file__).with_name("class-policy-v2.yml")
-        self._pre_check_gate = PreCheckGate()
-        self._post_check_gate = PostCheckGate()
+        self._pre_check_gate = FlextInfraPreCheckGate()
+        self._post_check_gate = FlextInfraPostCheckGate()
         self._cached_config: t.Infra.ContainerDict | None = None
         self._cached_policy_context: t.Infra.PolicyContext | None = None
 
@@ -491,13 +491,13 @@ class ClassNestingRefactorRule:
     ) -> cst.Module:
         return self._apply_transformer(
             tree=tree,
-            transformer=HelperConsolidationTransformer(
+            transformer=FlextInfraHelperConsolidationTransformer(
                 helper_mappings=mappings,
                 policy_context=policy_context,
                 helper_families=helper_families,
             ),
             changes=changes,
-            label="HelperConsolidationTransformer",
+            label="FlextInfraHelperConsolidationTransformer",
             mapping_count=len(mappings),
         )
 
@@ -546,4 +546,4 @@ class ClassNestingRefactorRule:
         return families
 
 
-__all__ = ["ClassNestingRefactorRule"]
+__all__ = ["FlextInfraClassNestingRefactorRule"]

@@ -232,7 +232,7 @@ class FlextInfraExtraPathsManager:
                 mypy_table["mypy_path"] = mypy_path
                 tool_table[c.Infra.Toml.MYPY] = mypy_table
                 changed = True
-        # NOTE: pyrefly search-path is handled by EnsurePyreflyConfigPhase (SSOT).
+        # NOTE: pyrefly search-path is handled by FlextInfraEnsurePyreflyConfigPhase (SSOT).
         if changed:
             tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
             doc[c.Infra.Toml.TOOL] = tool_table
@@ -253,7 +253,7 @@ class FlextInfraExtraPathsManager:
     ) -> t.StrSequence:
         """Synchronize extra paths on an in-memory TOMLDocument.
 
-        Used by EnsureExtraPathsPhase to modify the doc in-place
+        Used by FlextInfraEnsureExtraPathsPhase to modify the doc in-place
         without reading/writing to disk (avoiding overwrite by modernizer).
 
         Returns:
@@ -311,7 +311,7 @@ class FlextInfraExtraPathsManager:
                 mypy_table["mypy_path"] = mypy_path
                 tool_table[c.Infra.Toml.MYPY] = mypy_table
                 changes.append("synchronized mypy mypy_path")
-        # NOTE: pyrefly search-path is handled by EnsurePyreflyConfigPhase (SSOT).
+        # NOTE: pyrefly search-path is handled by FlextInfraEnsurePyreflyConfigPhase (SSOT).
         if changes:
             tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
             doc[c.Infra.Toml.TOOL] = tool_table

@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from flext_infra import m
 
 
-class ManualProtocolDetector(p.Infra.Scanner):
+class FlextInfraManualProtocolDetector(p.Infra.Scanner):
     """Detector for Protocol classes outside canonical locations.
 
     Scans for typing.Protocol subclasses that are defined outside the canonical
@@ -41,7 +41,7 @@ class ManualProtocolDetector(p.Infra.Scanner):
         *,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the ManualProtocolDetector scanner.
+        """Initialize the FlextInfraManualProtocolDetector scanner.
 
         Args:
             parse_failures: Optional list of previous parse failures to track.
@@ -152,7 +152,10 @@ class ManualProtocolDetector(p.Infra.Scanner):
 
         """
         for base_arg in node.bases:
-            if ManualProtocolDetector._base_expr_name(base_arg.value) == "Protocol":
+            if (
+                FlextInfraManualProtocolDetector._base_expr_name(base_arg.value)
+                == "Protocol"
+            ):
                 return True
         return False
 

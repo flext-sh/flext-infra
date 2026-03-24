@@ -16,7 +16,7 @@ from flext_core import FlextTypes as t
 from flext_infra import c, m, u
 
 
-class CensusImportDiscoveryVisitor(cst.CSTVisitor):
+class FlextInfraCensusImportDiscoveryVisitor(cst.CSTVisitor):
     """Discover family alias and direct class imports via LibCST.
 
     Parametrized by ``family_alias`` (e.g. ``"u"``) and
@@ -67,7 +67,7 @@ class CensusImportDiscoveryVisitor(cst.CSTVisitor):
                 self.direct_imports[local_name] = imported_name
 
 
-class CensusUsageCollector(cst.CSTVisitor):
+class FlextInfraCensusUsageCollector(cst.CSTVisitor):
     """Detect method accesses via LibCST attribute resolution.
 
     Detects three access modes:
@@ -144,4 +144,4 @@ class CensusUsageCollector(cst.CSTVisitor):
         )
 
 
-__all__ = ["CensusImportDiscoveryVisitor", "CensusUsageCollector"]
+__all__ = ["FlextInfraCensusImportDiscoveryVisitor", "FlextInfraCensusUsageCollector"]

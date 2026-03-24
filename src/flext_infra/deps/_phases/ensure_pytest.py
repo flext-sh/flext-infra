@@ -12,7 +12,7 @@ from tomlkit.items import Item, Table
 from flext_infra import c, m, u
 
 
-class EnsurePytestConfigPhase:
+class FlextInfraEnsurePytestConfigPhase:
     """Ensure standard pytest configuration without removing project-specific entries."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:

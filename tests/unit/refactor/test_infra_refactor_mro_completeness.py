@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra import MROCompletenessDetector, u
+    from flext_infra import FlextInfraMROCompletenessDetector, u
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -45,7 +45,7 @@ def test_detects_missing_local_composition_base(tmp_path: Path) -> None:
         candidate_class="FlextExampleModelsDomain",
     )
 
-    violations = MROCompletenessDetector.detect_file(file_path=facade_file)
+    violations = FlextInfraMROCompletenessDetector.detect_file(file_path=facade_file)
 
     assert len(violations) == 1
     assert violations[0].facade_class == "FlextExampleModels"
@@ -60,7 +60,7 @@ def test_skips_when_candidate_is_already_in_facade_bases(tmp_path: Path) -> None
         candidate_class="FlextExampleModelsDomain",
     )
 
-    violations = MROCompletenessDetector.detect_file(file_path=facade_file)
+    violations = FlextInfraMROCompletenessDetector.detect_file(file_path=facade_file)
 
     assert violations == []
 
@@ -69,7 +69,7 @@ def test_skips_non_facade_files(tmp_path: Path) -> None:
     target = tmp_path / "consumer.py"
     target.write_text("from __future__ import annotations\n", encoding="utf-8")
 
-    violations = MROCompletenessDetector.detect_file(file_path=target)
+    violations = FlextInfraMROCompletenessDetector.detect_file(file_path=target)
 
     assert violations == []
 
@@ -81,7 +81,7 @@ def test_skips_private_candidate_classes(tmp_path: Path) -> None:
         candidate_class="_FlextExampleModelsDomain",
     )
 
-    violations = MROCompletenessDetector.detect_file(file_path=facade_file)
+    violations = FlextInfraMROCompletenessDetector.detect_file(file_path=facade_file)
 
     assert violations == []
 
@@ -93,7 +93,7 @@ def test_rewriter_adds_missing_base_and_formats(tmp_path: Path) -> None:
         candidate_class="FlextExampleModelsDomain",
     )
 
-    violations = MROCompletenessDetector.detect_file(file_path=facade_file)
+    violations = FlextInfraMROCompletenessDetector.detect_file(file_path=facade_file)
     u.Infra.namespace_rewrite_mro_completeness_violations(
         violations=violations,
         parse_failures=[],

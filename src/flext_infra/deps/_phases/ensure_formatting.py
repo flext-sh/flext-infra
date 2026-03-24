@@ -12,7 +12,7 @@ from tomlkit.items import Item, Table
 from flext_infra import c, m, u
 
 
-class EnsureFormattingToolingPhase:
+class FlextInfraEnsureFormattingToolingPhase:
     """Ensure safe default config for TOML/YAML formatting tools."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:

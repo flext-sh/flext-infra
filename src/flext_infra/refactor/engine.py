@@ -10,7 +10,7 @@ from pathlib import Path
 from pydantic import JsonValue, TypeAdapter
 
 from flext_infra import (
-    ClassNestingRefactorRule,
+    FlextInfraClassNestingRefactorRule,
     FlextInfraRefactorClassReconstructorRule,
     FlextInfraRefactorEnsureFutureAnnotationsRule,
     FlextInfraRefactorImportModernizerRule,
@@ -45,7 +45,7 @@ class FlextInfraRefactorEngine:
         config_map: Mapping[str, t.Infra.InfraValue] = {}
         self.config: t.Infra.InfraValue = config_map
         self.rules: MutableSequence[FlextInfraRefactorRule] = []
-        self.file_rules: MutableSequence[ClassNestingRefactorRule] = []
+        self.file_rules: MutableSequence[FlextInfraClassNestingRefactorRule] = []
         self.rule_filters: MutableSequence[str] = []
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
         self.rule_validator = FlextInfraRefactorRuleDefinitionValidator()
@@ -669,8 +669,8 @@ class FlextInfraRefactorEngine:
         """Set active rule filters using normalized lowercase rule ids."""
         self.rule_filters = [item.lower() for item in filters]
 
-    def _build_file_rules(self) -> Sequence[ClassNestingRefactorRule]:
-        return [ClassNestingRefactorRule()]
+    def _build_file_rules(self) -> Sequence[FlextInfraClassNestingRefactorRule]:
+        return [FlextInfraClassNestingRefactorRule()]
 
     def _build_rule(
         self,

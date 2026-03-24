@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from flext_infra import m
 
 
-class ImportAliasDetector(p.Infra.Scanner):
+class FlextInfraImportAliasDetector(p.Infra.Scanner):
     """Detector for deep import paths that should use top-level aliases.
 
     Identifies deep imports (e.g., `from package.submodule.impl import Class`)
@@ -58,7 +58,7 @@ class ImportAliasDetector(p.Infra.Scanner):
         *,
         parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
     ) -> None:
-        """Initialize the ImportAliasDetector scanner.
+        """Initialize the FlextInfraImportAliasDetector scanner.
 
         Args:
             parse_failures: Optional list of previous parse failures to track.

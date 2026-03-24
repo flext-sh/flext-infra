@@ -10,7 +10,7 @@ import libcst as cst
 from flext_infra import u
 
 
-class TypingAnnotationReplacer(cst.CSTTransformer):
+class FlextInfraTypingAnnotationReplacer(cst.CSTTransformer):
     """Replace legacy typing annotations (Any, object, cast) with strict t.* contracts."""
 
     DUNDER_OBJECT_ALLOWLIST = frozenset(
@@ -283,4 +283,4 @@ class TypingAnnotationReplacer(cst.CSTTransformer):
             self._on_change(msg)
 
 
-__all__ = ["TypingAnnotationReplacer"]
+__all__ = ["FlextInfraTypingAnnotationReplacer"]
