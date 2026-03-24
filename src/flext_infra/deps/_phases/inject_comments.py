@@ -18,7 +18,7 @@ class FlextInfraInjectCommentsPhase:
         return stripped.startswith("[") and stripped.endswith("]")
 
     @staticmethod
-    def _managed_marker_lines() -> set[str]:
+    def _managed_marker_lines() -> t.Infra.StrSet:
         markers = {marker for _section_prefix, marker in c.Infra.COMMENT_MARKERS}
         markers.add(c.Infra.DEV_OPTIONAL_DEPS_MARKER)
         markers.add(c.Infra.LEGACY_AUTO_MARKER)
@@ -70,7 +70,7 @@ class FlextInfraInjectCommentsPhase:
     def _inject_dev_markers(
         out: MutableSequence[str],
         changes: MutableSequence[str],
-        emitted_markers: set[str],
+        emitted_markers: t.Infra.StrSet,
     ) -> None:
         managed_marker = c.Infra.DEV_OPTIONAL_DEPS_MARKER
         if managed_marker not in emitted_markers:
@@ -87,7 +87,7 @@ class FlextInfraInjectCommentsPhase:
         out: MutableSequence[str] = [*banner_lines]
         if lines[: len(banner_lines)] != banner_lines:
             changes.append("managed banner injected")
-        emitted_markers = set[str]()
+        emitted_markers = t.Infra.StrSet()
         for line in cleaned_lines:
             stripped = line.strip()
             marker = self._marker_for_section(stripped)

@@ -20,7 +20,7 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
     def __init__(
         self,
         *,
-        target_modules: set[str],
+        target_modules: t.Infra.StrSet,
         module_renames: t.StrMapping,
         import_symbol_renames: t.StrMapping,
         on_change: infra_t.Infra.ChangeCallback = None,

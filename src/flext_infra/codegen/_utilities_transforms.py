@@ -132,7 +132,7 @@ class FlextInfraUtilitiesCodegenTransforms:
     @staticmethod
     def get_top_level_names_in_node(node: ast.stmt) -> frozenset[str]:
         """Collect all Name references used in a node."""
-        names: set[str] = set()
+        names: t.Infra.StrSet = set()
         for child in ast.walk(node):
             if isinstance(child, ast.Name):
                 names.add(child.id)
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         """
         if not isinstance(node, ast.TypeAlias):
             return frozenset()
-        names: set[str] = set()
+        names: t.Infra.StrSet = set()
         for tp in node.type_params:
             if isinstance(tp, (ast.TypeVar, ast.TypeVarTuple, ast.ParamSpec)):
                 names.add(tp.name)
@@ -171,7 +171,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         )
         if not names_used:
             return True
-        available: set[str] = set(dir(_builtins_module))
+        available: t.Infra.StrSet = set(dir(_builtins_module))
         for stmt in target_tree.body:
             if isinstance(stmt, ast.Import):
                 for alias in stmt.names:
@@ -221,7 +221,7 @@ class FlextInfraUtilitiesCodegenTransforms:
                     imported_name = alias.asname or alias.name
                     if imported_name != "*":
                         source_imports[imported_name] = stmt
-        target_available: set[str] = set()
+        target_available: t.Infra.StrSet = set()
         for stmt in target_tree.body:
             if isinstance(stmt, ast.Import):
                 for alias in stmt.names:
@@ -232,7 +232,7 @@ class FlextInfraUtilitiesCodegenTransforms:
                     imported_name = alias.asname or alias.name
                     if imported_name != "*":
                         target_available.add(imported_name)
-        seen_modules: set[str] = set()
+        seen_modules: t.Infra.StrSet = set()
         imports_to_add: MutableSequence[ast.stmt] = []
         for name in sorted(names_used):
             if name in target_available:
@@ -280,7 +280,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         )
         if not names_used:
             return False
-        target_available: set[str] = set(dir(_builtins_module))
+        target_available: t.Infra.StrSet = set(dir(_builtins_module))
         for stmt in target_tree.body:
             if isinstance(stmt, ast.Import):
                 target_available.update(
@@ -324,7 +324,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         Returns import statement strings that should be added to the target
         file. Skips imports already present in the target text.
         """
-        all_names: set[str] = set()
+        all_names: t.Infra.StrSet = set()
         for node in nodes:
             names = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
                 node,
@@ -339,11 +339,11 @@ class FlextInfraUtilitiesCodegenTransforms:
         if not all_names:
             return []
         import_texts: MutableSequence[str] = []
-        seen: set[str] = set()
+        seen: t.Infra.StrSet = set()
         for stmt in source_tree.body:
             if not isinstance(stmt, (ast.Import, ast.ImportFrom)):
                 continue
-            provided: set[str] = set()
+            provided: t.Infra.StrSet = set()
             if isinstance(stmt, ast.Import):
                 provided.update(
                     (alias.asname or alias.name).split(".")[0] for alias in stmt.names
@@ -398,7 +398,7 @@ class FlextInfraUtilitiesCodegenTransforms:
             break
         if assignment is None or not exports:
             return False
-        available: set[str] = set()
+        available: t.Infra.StrSet = set()
         for stmt in tree.body:
             if isinstance(stmt, ast.ClassDef):
                 available.add(stmt.name)

@@ -101,7 +101,7 @@ class FlextInfraUtilitiesImportNormalizer:
         enabled_raw = config.get("enabled")
         enabled = isinstance(enabled_raw, bool) and enabled_raw
         universal_raw = config.get("universal_aliases")
-        universal_aliases: set[str] = set()
+        universal_aliases: t.Infra.StrSet = set()
         if isinstance(universal_raw, list):
             for item in universal_raw:
                 if isinstance(item, str) and len(item) == 1 and item.islower():
@@ -152,7 +152,7 @@ class FlextInfraUtilitiesImportNormalizer:
         )
         reachability: MutableMapping[str, frozenset[str]] = {}
         for module_name in graph:
-            visited: set[str] = set()
+            visited: t.Infra.StrSet = set()
             queue: deque[str] = deque(graph.get(module_name, frozenset()))
             while queue:
                 imported_module = queue.popleft()
@@ -187,7 +187,7 @@ class FlextInfraUtilitiesImportNormalizer:
         package_name: str,
     ) -> Mapping[str, frozenset[str]]:
         """Build direct intra-package import graph from source files."""
-        graph: MutableMapping[str, set[str]] = {}
+        graph: MutableMapping[str, t.Infra.StrSet] = {}
         for py_file in package_dir.rglob("*.py"):
             tree = FlextInfraUtilitiesParsing.parse_module_ast(py_file)
             if tree is None:
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesImportNormalizer:
                 )
             except ValueError:
                 continue
-            imports: set[str] = set()
+            imports: t.Infra.StrSet = set()
             for node in ast.walk(tree):
                 if isinstance(node, ast.ImportFrom) and node.module:
                     if node.module.startswith(f"{package_name}."):

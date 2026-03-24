@@ -68,7 +68,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             )
 
     class UnusedConstantRemover(cst.CSTTransformer):
-        def __init__(self, *, unused_names: set[str]) -> None:
+        def __init__(self, *, unused_names: t.Infra.StrSet) -> None:
             super().__init__()
             self._unused_names = unused_names
             self._class_stack: MutableSequence[str] = []
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             self._project_import = project_import
             self._target_class = target_class
             self._has_c_import = False
-            self._replaced_classes: set[str] = set()
+            self._replaced_classes: t.Infra.StrSet = set()
             self.changes: MutableSequence[str] = []
             self.replacements = 0
 
@@ -348,13 +348,13 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         def build_self_import_graph(
             package_name: str,
             lazy_map: t.StrMapping,
-        ) -> Mapping[str, set[str]]:
-            graph: MutableMapping[str, set[str]] = {}
+        ) -> Mapping[str, t.Infra.StrSet]:
+            graph: MutableMapping[str, t.Infra.StrSet] = {}
             for py_file in pkg_dir.glob("*.py"):
                 if py_file.name == "__init__.py":
                     continue
                 stem = py_file.stem
-                deps: set[str] = set()
+                deps: t.Infra.StrSet = set()
                 tree = FlextInfraUtilitiesParsing.parse_module_cst(py_file)
                 if tree is None:
                     continue
@@ -382,11 +382,11 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
                     graph[stem] = deps
             return graph
 
-        def find_cycles(graph: Mapping[str, set[str]]) -> Sequence[t.StrSequence]:
+        def find_cycles(graph: Mapping[str, t.Infra.StrSet]) -> Sequence[t.StrSequence]:
             cycles: MutableSequence[t.StrSequence] = []
-            visited: set[str] = set()
+            visited: t.Infra.StrSet = set()
             path: MutableSequence[str] = []
-            path_set: set[str] = set()
+            path_set: t.Infra.StrSet = set()
 
             def dfs(node: str) -> None:
                 if node in path_set:
@@ -421,7 +421,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         )
         if parent_pkg.startswith(f"{package_name}.") or parent_pkg == package_name:
             return False, []
-        cycle_edges: set[tuple[str, str]] = set()
+        cycle_edges: t.Infra.StrPairSet = set()
         for cycle in cycles:
             edges = [(cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1)]
             cycle_edges.update(edges)

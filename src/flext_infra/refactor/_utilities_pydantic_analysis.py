@@ -16,7 +16,7 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import c, m
+from flext_infra import c, m, t
 from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         moves = u.Infra.pydantic_collect_moves(path)
     """
 
-    _PYDANTIC_MODEL_BASES: tuple[str, ...] = (
+    _PYDANTIC_MODEL_BASES: t.StrSequence = (
         "BaseModel",
         "RootModel",
         "TypedDict",
@@ -42,8 +42,8 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     _PYDANTIC_TYPED_DICT_MIN_ARGS: int = 2
 
     @staticmethod
-    def _pydantic_class_base_names(node: ast.ClassDef) -> set[str]:
-        names: set[str] = set()
+    def _pydantic_class_base_names(node: ast.ClassDef) -> t.Infra.StrSet:
+        names: t.Infra.StrSet = set()
         for base in node.bases:
             if isinstance(base, ast.Name):
                 names.add(base.id)

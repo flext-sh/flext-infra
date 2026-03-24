@@ -18,8 +18,8 @@ class FlextInfraModelDefinitionCollector(cst.CSTVisitor):
         super().__init__()
         self._file_path = file_path
         self.definitions: MutableSequence[Mapping[str, str | int]] = []
-        self.exported_models: set[str] = set()
-        self._all_export_names: set[str] = set()
+        self.exported_models: t.Infra.StrSet = set()
+        self._all_export_names: t.Infra.StrSet = set()
 
     @override
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
@@ -78,8 +78,8 @@ class FlextInfraModelDefinitionCollector(cst.CSTVisitor):
                 return True
         return False
 
-    def _extract_all_names(self, expression: cst.BaseExpression) -> set[str]:
-        names: set[str] = set()
+    def _extract_all_names(self, expression: cst.BaseExpression) -> t.Infra.StrSet:
+        names: t.Infra.StrSet = set()
         if isinstance(expression, cst.List | cst.Tuple | cst.Set):
             for element in expression.elements:
                 if isinstance(element.value, cst.SimpleString):
@@ -97,7 +97,7 @@ class FlextInfraModelReferenceCollector(cst.CSTVisitor):
         super().__init__()
         self._known_models = known_models
         self._file_path = file_path
-        self.referenced_models: set[str] = set()
+        self.referenced_models: t.Infra.StrSet = set()
 
     @override
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:

@@ -15,7 +15,7 @@ class FlextInfraRefactorAliasRemover(cst.CSTTransformer):
 
     def __init__(
         self,
-        allow_aliases: set[str],
+        allow_aliases: t.Infra.StrSet,
         allow_target_suffixes: tuple[str, ...],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:

@@ -103,7 +103,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 symbol_map.update(class_symbol_map)
                 continue
             transformed_body.append(retained_stmt)
-        created_classes: tuple[str, ...] = ()
+        created_classes: t.StrSequence = ()
         if not class_found:
             new_class, class_symbol_map = (
                 FlextInfraUtilitiesRefactorMroTransform._mro_create_constants_class(
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
     def _mro_extract_moved_statement(
         *,
         statement: cst.CSTNode,
-        candidate_symbols: set[str],
+        candidate_symbols: t.Infra.StrSet,
     ) -> tuple[str, cst.CSTNode] | None:
         if isinstance(statement, cst.ClassDef):
             symbol = statement.name.value
@@ -222,7 +222,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 continue
             retained_class_body.append(statement)
         symbol_map: MutableMapping[str, str] = {}
-        added_targets: set[str] = set()
+        added_targets: t.Infra.StrSet = set()
         moved_lines: MutableSequence[cst.CSTNode] = []
         moved_core_lines: MutableSequence[cst.CSTNode] = []
         for symbol in ordered_symbols:

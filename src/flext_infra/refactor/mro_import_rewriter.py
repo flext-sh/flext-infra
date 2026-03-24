@@ -69,7 +69,7 @@ class FlextInfraRefactorMROImportRewriter:
         module_aliases: MutableMapping[str, str] = {}
         facade_aliases: MutableMapping[str, str] = {}
         module_facade_alias: MutableMapping[str, str] = {}
-        facade_imports_needed: set[str] = set()
+        facade_imports_needed: t.Infra.StrSet = set()
         facade_import_objects: MutableMapping[str, m.Infra.MROImportRewrite] = {}
         for stmt in ast_tree.body:
             if isinstance(stmt, ast.ImportFrom):

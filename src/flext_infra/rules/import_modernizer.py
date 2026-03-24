@@ -94,9 +94,9 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     def _collect_blocked_aliases(
         self,
         tree: cst.Module,
-        runtime_aliases: set[str],
-    ) -> set[str]:
-        blocked_aliases: set[str] = set()
+        runtime_aliases: t.Infra.StrSet,
+    ) -> t.Infra.StrSet:
+        blocked_aliases: t.Infra.StrSet = set()
         for stmt in tree.body:
             if isinstance(stmt, cst.ImportFrom):
                 continue
@@ -148,9 +148,9 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     def _collect_function_shadowed_aliases(
         self,
         tree: cst.Module,
-        runtime_aliases: set[str],
-    ) -> set[str]:
-        shadowed_aliases: set[str] = set()
+        runtime_aliases: t.Infra.StrSet,
+    ) -> t.Infra.StrSet:
+        shadowed_aliases: t.Infra.StrSet = set()
 
         class FunctionShadowCollector(cst.CSTVisitor):
             def __init__(self) -> None:

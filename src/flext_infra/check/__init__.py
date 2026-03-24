@@ -19,15 +19,15 @@ if TYPE_CHECKING:
     )
     from flext_infra.check.workspace_check import build_parser, main, run_cli
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraConfigFixer": ("flext_infra.check.services", "FlextInfraConfigFixer"),
-    "FlextInfraWorkspaceChecker": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraConfigFixer": ["flext_infra.check.services", "FlextInfraConfigFixer"],
+    "FlextInfraWorkspaceChecker": [
         "flext_infra.check.services",
         "FlextInfraWorkspaceChecker",
-    ),
-    "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
-    "main": ("flext_infra.check.workspace_check", "main"),
-    "run_cli": ("flext_infra.check.workspace_check", "run_cli"),
+    ],
+    "build_parser": ["flext_infra.check.workspace_check", "build_parser"],
+    "main": ["flext_infra.check.workspace_check", "main"],
+    "run_cli": ["flext_infra.check.workspace_check", "run_cli"],
 }
 
 __all__ = [

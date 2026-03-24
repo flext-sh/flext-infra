@@ -44,7 +44,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     @staticmethod
     def _test_like_dirs_set(
         rules: m.Infra.PyrightConfig.PathRulesConfig,
-    ) -> set[str]:
+    ) -> t.Infra.StrSet:
         return set(rules.test_like_dirs)
 
     def _extra_paths_for_env(
@@ -53,7 +53,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dir: str,
         source_path: str,
         project_root: str,
-        test_like_dirs: set[str],
+        test_like_dirs: t.Infra.StrSet,
     ) -> t.StrSequence:
         if env_dir in test_like_dirs and source_path != project_root:
             return [project_root, source_path]

@@ -181,12 +181,12 @@ class FlextInfraUtilitiesRefactor(
         return path.as_posix().lstrip("./")
 
     @staticmethod
-    def project_scope_tokens(path_value: Path) -> set[str]:
+    def project_scope_tokens(path_value: Path) -> t.Infra.StrSet:
         normalized = path_value.as_posix().replace("\\", "/")
         parts = Path(normalized).parts
         if not parts:
             return set()
-        tokens: set[str] = set()
+        tokens: t.Infra.StrSet = set()
         if c.Infra.Paths.DEFAULT_SRC_DIR in parts:
             src_index = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
             if src_index > 0:

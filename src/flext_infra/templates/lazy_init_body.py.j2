@@ -7,9 +7,9 @@
 {%- if inline_constants %}
 
 {% endif %}
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 {%- for name, mod, attr in lazy_entries %}
-    "{{ name }}": ("{{ mod }}", "{{ attr }}"),
+    "{{ name }}": ["{{ mod }}", "{{ attr }}"],
 {%- endfor %}
 }
 

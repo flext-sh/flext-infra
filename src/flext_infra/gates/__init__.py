@@ -22,18 +22,18 @@ if TYPE_CHECKING:
     from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraBanditGate": ("flext_infra.gates.bandit", "FlextInfraBanditGate"),
-    "FlextInfraGoGate": ("flext_infra.gates.go", "FlextInfraGoGate"),
-    "FlextInfraMarkdownGate": ("flext_infra.gates.markdown", "FlextInfraMarkdownGate"),
-    "FlextInfraMypyGate": ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
-    "FlextInfraPyreflyGate": ("flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"),
-    "FlextInfraPyrightGate": ("flext_infra.gates.pyright", "FlextInfraPyrightGate"),
-    "FlextInfraRuffFormatGate": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraBanditGate": ["flext_infra.gates.bandit", "FlextInfraBanditGate"],
+    "FlextInfraGoGate": ["flext_infra.gates.go", "FlextInfraGoGate"],
+    "FlextInfraMarkdownGate": ["flext_infra.gates.markdown", "FlextInfraMarkdownGate"],
+    "FlextInfraMypyGate": ["flext_infra.gates.mypy", "FlextInfraMypyGate"],
+    "FlextInfraPyreflyGate": ["flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"],
+    "FlextInfraPyrightGate": ["flext_infra.gates.pyright", "FlextInfraPyrightGate"],
+    "FlextInfraRuffFormatGate": [
         "flext_infra.gates.ruff_format",
         "FlextInfraRuffFormatGate",
-    ),
-    "FlextInfraRuffLintGate": ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
+    ],
+    "FlextInfraRuffLintGate": ["flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"],
 }
 
 __all__ = [

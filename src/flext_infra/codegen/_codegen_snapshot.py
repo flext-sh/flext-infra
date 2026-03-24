@@ -65,8 +65,8 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         *,
         before_snapshot: t.StrMapping,
         file_paths: Sequence[Path],
-    ) -> set[str]:
-        changed: set[str] = set()
+    ) -> t.Infra.StrSet:
+        changed: t.Infra.StrSet = set()
         for file_path in file_paths:
             path_key = str(file_path)
             previous = before_snapshot.get(path_key)
@@ -157,7 +157,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         *,
         before_snapshot: t.StrMapping,
         file_paths: Sequence[Path],
-    ) -> set[str]:
+    ) -> t.Infra.StrSet:
         return FlextInfraCodegenSnapshot._detect_changed_files(
             before_snapshot=before_snapshot,
             file_paths=file_paths,

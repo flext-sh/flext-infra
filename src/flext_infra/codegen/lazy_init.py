@@ -92,7 +92,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         pkg_dirs = self._find_package_dirs()
         total = ok = errors = 0
         # Bottom-up: child exports computed before parents consume them
-        dir_exports: MutableMapping[str, Mapping[str, tuple[str, str]]] = {}
+        dir_exports: MutableMapping[str, t.Infra.LazyImportMap] = {}
 
         for pkg_dir in pkg_dirs:
             total += 1
@@ -142,7 +142,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             Sorted by depth (deepest first) for bottom-up processing.
 
         """
-        pkg_dirs: set[Path] = set()
+        pkg_dirs: t.Infra.PathSet = set()
         files_result = u.Infra.iter_python_files(
             workspace_root=self._root,
         )
@@ -165,8 +165,8 @@ class FlextInfraCodegenLazyInit(s[int]):
         pkg_dir: Path,
         *,
         check_only: bool,
-        dir_exports: Mapping[str, Mapping[str, tuple[str, str]]],
-    ) -> tuple[int | None, Mapping[str, tuple[str, str]]]:
+        dir_exports: Mapping[str, t.Infra.LazyImportMap],
+    ) -> t.Infra.LazyInitProcessResult:
         """Process a single directory to generate its ``__init__.py``.
 
         Args:
@@ -246,11 +246,11 @@ class FlextInfraCodegenLazyInit(s[int]):
         init_path: Path,
         docstring: str,
         exports: t.StrSequence,
-        lazy_map: Mapping[str, tuple[str, str]],
+        lazy_map: t.Infra.LazyImportMap,
         inline_constants: t.StrMapping,
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
-    ) -> tuple[int, Mapping[str, tuple[str, str]]]:
+    ) -> t.Infra.LazyInitWriteResult:
         """Write the generated ``__init__.py`` and run ruff fix."""
         try:
             generated = self._generate_file(
@@ -329,7 +329,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _build_sibling_export_index(
         pkg_dir: Path,
         current_pkg: str,
-    ) -> MutableMapping[str, tuple[str, str]]:
+    ) -> t.Infra.MutableLazyImportMap:
         """Scan sibling ``.py`` files for exports (including nested submodules).
 
         For each non-private, non-dunder sibling ``.py`` file (at any depth):
@@ -341,7 +341,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         files in nested submodules (e.g., ``_context/_data.py``).
         Returns ``{export_name: (module_path, attr_name)}``.
         """
-        index: MutableMapping[str, tuple[str, str]] = {}
+        index: t.Infra.MutableLazyImportMap = {}
         for py_file in sorted(pkg_dir.rglob("*.py")):
             if py_file.name in {"__init__.py", "__main__.py", "__version__.py"}:
                 continue
@@ -383,7 +383,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _scan_ast_public_defs(
         tree: ast.Module,
         mod_path: str,
-        index: MutableMapping[str, tuple[str, str]],
+        index: t.Infra.MutableLazyImportMap,
     ) -> None:
         """Scan AST for public classes, functions, and assignments."""
         for node in ast.iter_child_nodes(tree):
@@ -401,7 +401,7 @@ class FlextInfraCodegenLazyInit(s[int]):
                     index[name] = (mod_path, name)
 
     @staticmethod
-    def _detect_eager_typevar_names(pkg_dir: Path) -> set[str]:
+    def _detect_eager_typevar_names(pkg_dir: Path) -> t.Infra.StrSet:
         """Detect module-level TypeVar/ParamSpec names in typings.py.
 
         These MUST be exported eagerly (not via lazy __getattr__) because
@@ -413,7 +413,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         tree = u.Infra.parse_module_ast(typings_file)
         if tree is None:
             return set()
-        names: set[str] = set()
+        names: t.Infra.StrSet = set()
         for node in tree.body:
             if not isinstance(node, ast.Assign):
                 continue
@@ -451,8 +451,8 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _merge_child_exports(
         pkg_dir: Path,
         current_pkg: str,
-        lazy_map: MutableMapping[str, tuple[str, str]],
-        dir_exports: Mapping[str, Mapping[str, tuple[str, str]]],
+        lazy_map: t.Infra.MutableLazyImportMap,
+        dir_exports: Mapping[str, t.Infra.LazyImportMap],
     ) -> None:
         """Merge child subdirectory exports into parent's lazy map.
 
@@ -490,7 +490,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _extract_version_exports(
         pkg_dir: Path,
         current_pkg: str,
-    ) -> tuple[t.StrMapping, Mapping[str, tuple[str, str]]]:
+    ) -> t.Infra.VersionExportsResult:
         """Extract version-related exports from ``__version__.py``.
 
         Returns:
@@ -510,7 +510,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         inline = u.Infra.extract_inline_constants(tree)
         ver_mod = f"{current_pkg}.__version__" if current_pkg else "__version__"
 
-        lazy: MutableMapping[str, tuple[str, str]] = {}
+        lazy: t.Infra.MutableLazyImportMap = {}
         for node in tree.body:
             if isinstance(node, ast.Assign) and len(node.targets) == 1:
                 target = node.targets[0]
@@ -526,7 +526,7 @@ class FlextInfraCodegenLazyInit(s[int]):
 
     @staticmethod
     def _resolve_aliases(
-        lazy_map: MutableMapping[str, tuple[str, str]],
+        lazy_map: t.Infra.MutableLazyImportMap,
         pkg_dir: Path | None = None,
     ) -> None:
         """Resolve single-letter aliases from ``ALIAS_TO_SUFFIX`` mapping.
@@ -609,7 +609,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _generate_file(
         docstring_source: str,
         exports: t.StrSequence,
-        filtered: Mapping[str, tuple[str, str]],
+        filtered: t.Infra.LazyImportMap,
         inline_constants: t.StrMapping,
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),

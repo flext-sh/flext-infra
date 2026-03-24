@@ -25,7 +25,7 @@ class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
         self._policy_context = policy_context
         self._helper_families = helper_families or {}
         self._scope_depth = 0
-        self._existing_namespaces: set[str] = set()
+        self._existing_namespaces: t.Infra.StrSet = set()
         self._collected_helpers: Mapping[str, MutableSequence[cst.FunctionDef]] = (
             defaultdict(list)
         )
@@ -216,7 +216,7 @@ class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
         allow_kwarg = policy.allow_kwarg
         allow_positional_only = policy.allow_positional_only_params
         allow_keyword_only = policy.allow_keyword_only_params
-        seen_parameters: set[str] = set()
+        seen_parameters: t.Infra.StrSet = set()
         parameters = function_node.params
         if isinstance(parameters.star_arg, cst.Param | cst.ParamStar) and (
             not allow_vararg

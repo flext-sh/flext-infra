@@ -11,7 +11,13 @@ import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesIteration, FlextInfraUtilitiesParsing, c, m
+from flext_infra import (
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesParsing,
+    c,
+    m,
+    t,
+)
 
 
 class FlextInfraUtilitiesRefactorMroScan:
@@ -212,7 +218,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
     ) -> Sequence[Path]:
-        candidates: set[Path] = set()
+        candidates: t.Infra.PathSet = set()
         for directory_name in c.Infra.MRO_SCAN_DIRECTORIES:
             root: Path = project_root / directory_name
             if not root.is_dir():

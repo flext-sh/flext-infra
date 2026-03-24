@@ -29,35 +29,35 @@ if TYPE_CHECKING:
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraBaseMkValidator": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraBaseMkValidator": [
         "flext_infra.validate.basemk_validator",
         "FlextInfraBaseMkValidator",
-    ),
-    "FlextInfraInventoryService": (
+    ],
+    "FlextInfraInventoryService": [
         "flext_infra.validate.inventory",
         "FlextInfraInventoryService",
-    ),
-    "FlextInfraNamespaceValidator": (
+    ],
+    "FlextInfraNamespaceValidator": [
         "flext_infra.validate.namespace_validator",
         "FlextInfraNamespaceValidator",
-    ),
-    "FlextInfraPytestDiagExtractor": (
+    ],
+    "FlextInfraPytestDiagExtractor": [
         "flext_infra.validate.pytest_diag",
         "FlextInfraPytestDiagExtractor",
-    ),
-    "FlextInfraSkillValidator": (
+    ],
+    "FlextInfraSkillValidator": [
         "flext_infra.validate.skill_validator",
         "FlextInfraSkillValidator",
-    ),
-    "FlextInfraStubSupplyChain": (
+    ],
+    "FlextInfraStubSupplyChain": [
         "flext_infra.validate.stub_chain",
         "FlextInfraStubSupplyChain",
-    ),
-    "FlextInfraTextPatternScanner": (
+    ],
+    "FlextInfraTextPatternScanner": [
         "flext_infra.validate.scanner",
         "FlextInfraTextPatternScanner",
-    ),
+    ],
 }
 
 __all__ = [

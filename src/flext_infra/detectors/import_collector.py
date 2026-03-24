@@ -14,6 +14,8 @@ from typing import override
 
 import libcst as cst
 
+from flext_infra import t
+
 
 class FlextInfraImportCollector(cst.CSTVisitor):
     """Visit and collect imported modules and symbols from code.
@@ -29,8 +31,8 @@ class FlextInfraImportCollector(cst.CSTVisitor):
         are encountered during AST traversal.
         """
         super().__init__()
-        self.imported_modules: set[str] = set()
-        self.imported_symbols: set[str] = set()
+        self.imported_modules: t.Infra.StrSet = set()
+        self.imported_symbols: t.Infra.StrSet = set()
 
     @override
     def visit_Import(self, node: cst.Import) -> None:

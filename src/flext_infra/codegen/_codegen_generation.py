@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import Protocol
 
@@ -58,7 +58,7 @@ class FlextInfraCodegenGeneration:
 
     @staticmethod
     def generate_type_checking(
-        groups: Mapping[str, Sequence[tuple[str, str]]],
+        groups: Mapping[str, t.Infra.StrPairSequence],
         *,
         include_flext_types: bool = True,
     ) -> t.StrSequence:
@@ -142,7 +142,7 @@ class FlextInfraCodegenGeneration:
     def generate_file(
         docstring_source: str,
         exports: t.StrSequence,
-        filtered: Mapping[str, tuple[str, str]],
+        filtered: t.Infra.LazyImportMap,
         inline_constants: t.StrMapping,
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
@@ -165,7 +165,7 @@ class FlextInfraCodegenGeneration:
 
         """
         tpl = c.Infra.Templates
-        lazy_filtered: Mapping[str, tuple[str, str]] = {
+        lazy_filtered: t.Infra.LazyImportMap = {
             name: val
             for name, val in filtered.items()
             if name not in eager_typevar_names
@@ -200,7 +200,7 @@ class FlextInfraCodegenGeneration:
         out.append("")
 
         # --- TYPE_CHECKING block ---
-        groups: Mapping[str, MutableSequence[tuple[str, str]]] = defaultdict(list)
+        groups: Mapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(list)
         for export_name in sorted(lazy_filtered):
             mod, attr = lazy_filtered[export_name]
             groups[mod].append((export_name, attr))

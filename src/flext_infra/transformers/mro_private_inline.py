@@ -7,6 +7,8 @@ from typing import override
 
 import libcst as cst
 
+from flext_infra import t
+
 
 class FlextInfraRefactorMROPrivateInlineTransformer(cst.CSTTransformer):
     """Inline configured private-name values after migration."""
@@ -36,7 +38,7 @@ class FlextInfraRefactorMROQualifiedReferenceTransformer(cst.CSTTransformer):
     def __init__(self, *, renames: Mapping[str, cst.BaseExpression]) -> None:
         """Initialize with symbol-to-qualified-expression rename mapping."""
         self._renames = renames
-        self._defining: set[str] = set()
+        self._defining: t.Infra.StrSet = set()
 
     @override
     def visit_TypeAlias(self, node: cst.TypeAlias) -> bool:

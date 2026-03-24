@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator, Mapping, MutableSequence, MutableSet, Sequence
+from collections.abc import Iterator, Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -172,11 +172,11 @@ class FlextInfraUtilitiesParsing:
         return isinstance(node, cst.Name) and node.value == "TYPE_CHECKING"
 
     @staticmethod
-    def cst_collect_bound_names(node: cst.ImportFrom) -> set[str]:
+    def cst_collect_bound_names(node: cst.ImportFrom) -> t.Infra.StrSet:
         """Collect all bound names from a CST ImportFrom node."""
         if isinstance(node.names, cst.ImportStar):
             return set()
-        names: MutableSet[str] = set()
+        names: t.Infra.StrSet = set()
         for item in node.names:
             bound = FlextInfraUtilitiesParsing.cst_asname_to_local(item.asname)
             if not bound and isinstance(item.name, cst.Name):

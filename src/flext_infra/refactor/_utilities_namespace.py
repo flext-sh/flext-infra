@@ -111,7 +111,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         Reads both PEP 621 (``project.dependencies``) and Poetry
         (``tool.poetry.dependencies``) path deps and returns project names.
         """
-        dep_names: set[str] = set()
+        dep_names: t.Infra.StrSet = set()
         # PEP 621: project.dependencies with " @ file:" path refs
         project_table = None
         if "project" in doc:
@@ -298,7 +298,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 parts = parts[:-1]
             return ".".join(parts)
 
-        source_target_names: MutableSequence[tuple[str, str, set[str]]] = []
+        source_target_names: MutableSequence[tuple[str, str, t.Infra.StrSet]] = []
         for source_file, target_file, moved_name_seq in protocol_moves:
             source_module = _module_path(source_file)
             target_module = _module_path(target_file)
@@ -370,7 +370,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         *,
         project_root: Path,
         source_file: Path,
-        protocol_names: set[str],
+        protocol_names: t.Infra.StrSet,
     ) -> tuple[Path, Path, tuple[str, ...]] | None:
         parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
             source_file,
@@ -426,7 +426,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         *,
         project_root: Path,
         source_file: Path,
-        alias_names: set[str],
+        alias_names: t.Infra.StrSet,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
         parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
@@ -691,7 +691,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             f"Flext{suffix}" for suffix in c.Infra.FAMILY_SUFFIXES.values()
         )
         for file_path, file_violations in violations_by_file.items():
-            missing_by_facade: Mapping[str, set[str]] = defaultdict(set)
+            missing_by_facade: Mapping[str, t.Infra.StrSet] = defaultdict(set)
             for violation in file_violations:
                 missing_by_facade[violation.facade_class].add(violation.missing_base)
             # CST parse for class header rewriting
@@ -714,7 +714,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 stage="mro-completeness-imports",
                 parse_failures=parse_failures,
             )
-            existing_imports: set[str] = set()
+            existing_imports: t.Infra.StrSet = set()
             insert_line = 0
             if parsed is not None:
                 for stmt in parsed.tree.body:
@@ -836,7 +836,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         violations: Sequence[m.Infra.ManualProtocolViolation],
     ) -> None:
         """Move manual protocol definitions to their canonical files."""
-        grouped_names: Mapping[Path, set[str]] = defaultdict(set)
+        grouped_names: Mapping[Path, t.Infra.StrSet] = defaultdict(set)
         for violation in violations:
             grouped_names[Path(violation.file)].add(violation.name)
         protocol_moves: MutableSequence[tuple[Path, Path, tuple[str, ...]]] = []
@@ -864,7 +864,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
         """Move manual typing aliases to their canonical files."""
-        grouped_names: Mapping[Path, set[str]] = defaultdict(set)
+        grouped_names: Mapping[Path, t.Infra.StrSet] = defaultdict(set)
         for violation in violations:
             grouped_names[Path(violation.file)].add(violation.name)
         for source_file, alias_names in grouped_names.items():
@@ -894,7 +894,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             if parsed is None:
                 continue
             source = parsed.source
-            assignment_lines: set[int] = set()
+            assignment_lines: t.Infra.IntSet = set()
             for stmt in parsed.tree.body:
                 if not isinstance(stmt, ast.Assign):
                     continue
@@ -962,13 +962,13 @@ class _MROBaseRewriter(cst.CSTTransformer):
     def __init__(
         self,
         *,
-        missing_by_facade: Mapping[str, set[str]],
+        missing_by_facade: Mapping[str, t.Infra.StrSet],
         core_bases: frozenset[str],
     ) -> None:
         self._missing_by_facade = missing_by_facade
         self._core_bases = core_bases
         self.changed = False
-        self.new_bases: set[str] = set()
+        self.new_bases: t.Infra.StrSet = set()
 
     @override
     def leave_ClassDef(

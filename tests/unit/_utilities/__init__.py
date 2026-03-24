@@ -31,45 +31,45 @@ if TYPE_CHECKING:
     )
     from tests.unit._utilities.test_scanning import TestScanModels
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "TestDiscoveryDiscoverProjects": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "TestDiscoveryDiscoverProjects": [
         "tests.unit._utilities.test_discovery_consolidated",
         "TestDiscoveryDiscoverProjects",
-    ),
-    "TestDiscoveryFindAllPyprojectFiles": (
+    ],
+    "TestDiscoveryFindAllPyprojectFiles": [
         "tests.unit._utilities.test_discovery_consolidated",
         "TestDiscoveryFindAllPyprojectFiles",
-    ),
-    "TestDiscoveryIterPythonFiles": (
+    ],
+    "TestDiscoveryIterPythonFiles": [
         "tests.unit._utilities.test_discovery_consolidated",
         "TestDiscoveryIterPythonFiles",
-    ),
-    "TestDiscoveryProjectRoots": (
+    ],
+    "TestDiscoveryProjectRoots": [
         "tests.unit._utilities.test_discovery_consolidated",
         "TestDiscoveryProjectRoots",
-    ),
-    "TestFormattingRunRuffFix": (
+    ],
+    "TestFormattingRunRuffFix": [
         "tests.unit._utilities.test_formatting",
         "TestFormattingRunRuffFix",
-    ),
-    "TestIterWorkspacePythonModules": (
+    ],
+    "TestIterWorkspacePythonModules": [
         "tests.unit._utilities.test_iteration",
         "TestIterWorkspacePythonModules",
-    ),
-    "TestParsingModuleAst": (
+    ],
+    "TestParsingModuleAst": [
         "tests.unit._utilities.test_parsing",
         "TestParsingModuleAst",
-    ),
-    "TestParsingModuleCst": (
+    ],
+    "TestParsingModuleCst": [
         "tests.unit._utilities.test_parsing",
         "TestParsingModuleCst",
-    ),
-    "TestSafetyCheckpoint": (
+    ],
+    "TestSafetyCheckpoint": [
         "tests.unit._utilities.test_safety",
         "TestSafetyCheckpoint",
-    ),
-    "TestSafetyRollback": ("tests.unit._utilities.test_safety", "TestSafetyRollback"),
-    "TestScanModels": ("tests.unit._utilities.test_scanning", "TestScanModels"),
+    ],
+    "TestSafetyRollback": ["tests.unit._utilities.test_safety", "TestSafetyRollback"],
+    "TestScanModels": ["tests.unit._utilities.test_scanning", "TestScanModels"],
 }
 
 __all__ = [

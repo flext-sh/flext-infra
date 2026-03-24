@@ -120,7 +120,7 @@ class FlextInfraDependencyPathSync:
         *,
         is_root: bool,
         mode: str,
-        internal_names: set[str],
+        internal_names: t.Infra.StrSet,
     ) -> t.StrSequence:
         project_raw = self._table_get(doc, c.Infra.PROJECT)
         if not isinstance(project_raw, Table):
@@ -216,7 +216,7 @@ class FlextInfraDependencyPathSync:
         pyproject_path: Path,
         *,
         mode: str,
-        internal_names: set[str],
+        internal_names: t.Infra.StrSet,
         is_root: bool = False,
         dry_run: bool = False,
     ) -> r[t.StrSequence]:
@@ -255,7 +255,7 @@ class FlextInfraDependencyPathSync:
             output.info(f"[sync-dep-paths] auto-detected mode: {mode}")
 
         total_changes = 0
-        internal_names: set[str] = set()
+        internal_names: t.Infra.StrSet = set()
         root_pyproject = self._root / c.Infra.Files.PYPROJECT_FILENAME
 
         if root_pyproject.exists():

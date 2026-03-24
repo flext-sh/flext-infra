@@ -246,7 +246,7 @@ class FlextInfraMROCompletenessDetector(
         facade_name: str,
         family: str,
         _parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None,
-    ) -> set[tuple[str, int]]:
+    ) -> t.Infra.IntPairSet:
         """Collect candidate base classes from the family module.
 
         Args:
@@ -259,7 +259,7 @@ class FlextInfraMROCompletenessDetector(
             Set of (class_name, line_number) tuples for candidate bases.
 
         """
-        candidates: set[tuple[str, int]] = set()
+        candidates: t.Infra.IntPairSet = set()
         facade_prefix = facade_name
         candidates.update(
             cls._collect_from_module(
@@ -301,7 +301,7 @@ class FlextInfraMROCompletenessDetector(
         facade_prefix: str,
         facade_name: str,
         _parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None,
-    ) -> set[tuple[str, int]]:
+    ) -> t.Infra.IntPairSet:
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             if _parse_failures is not None:
@@ -316,7 +316,7 @@ class FlextInfraMROCompletenessDetector(
             return set()
         wrapper = cst_metadata.MetadataWrapper(tree, unsafe_skip_copy=True)
         positions = wrapper.resolve(cst_metadata.PositionProvider)
-        result: set[tuple[str, int]] = set()
+        result: t.Infra.IntPairSet = set()
         for stmt in tree.body:
             if not isinstance(stmt, cst.ClassDef):
                 continue

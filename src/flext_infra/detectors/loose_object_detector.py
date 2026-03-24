@@ -22,6 +22,7 @@ from flext_infra import (
     c,
     m,
     p,
+    t,
     u,
 )
 
@@ -164,7 +165,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         cls,
         *,
         stmt: cst.BaseStatement,
-        namespace_classes: set[str],
+        namespace_classes: t.Infra.StrSet,
         file_path: Path,
         class_stem: str,
         positions: Mapping[cst.CSTNode, CodeRange],
@@ -310,7 +311,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         return ""
 
     @staticmethod
-    def _find_namespace_classes(*, tree: cst.Module) -> set[str]:
+    def _find_namespace_classes(*, tree: cst.Module) -> t.Infra.StrSet:
         """Find all namespace classes in a module.
 
         Args:
@@ -320,7 +321,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             Set of namespace class names found.
 
         """
-        classes: set[str] = set()
+        classes: t.Infra.StrSet = set()
         for stmt in tree.body:
             FlextInfraLooseObjectDetector._collect_namespace_classes(
                 node=stmt,
@@ -329,7 +330,9 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         return classes
 
     @staticmethod
-    def _collect_namespace_classes(*, node: cst.CSTNode, classes: set[str]) -> None:
+    def _collect_namespace_classes(
+        *, node: cst.CSTNode, classes: t.Infra.StrSet
+    ) -> None:
         """Recursively collect namespace class names from a node.
 
         Args:

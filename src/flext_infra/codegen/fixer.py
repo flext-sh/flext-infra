@@ -107,7 +107,7 @@ class FlextInfraCodegenFixer(s[bool]):
             )
         violations_fixed: MutableSequence[m.Infra.CensusViolation] = []
         violations_skipped: MutableSequence[m.Infra.CensusViolation] = []
-        files_modified: set[str] = set()
+        files_modified: t.Infra.StrSet = set()
         src_dir = project_path / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return m.Infra.AutoFixResult(
@@ -177,7 +177,7 @@ class FlextInfraCodegenFixer(s[bool]):
         pkg_dir: Path,
         violations_fixed: MutableSequence[m.Infra.CensusViolation],
         violations_skipped: MutableSequence[m.Infra.CensusViolation],
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
     ) -> None:
         """Apply NS-001 and NS-002 rules to all Python files in src_dir."""
         excluded = {"constants.py", "typings.py", "__init__.py"}
@@ -225,7 +225,7 @@ class FlextInfraCodegenFixer(s[bool]):
         self,
         *,
         project_path: Path,
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
     ) -> m.Infra.MROMigrationReport:
         service = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path)
         report: m.Infra.MROMigrationReport = service.run(
@@ -240,7 +240,7 @@ class FlextInfraCodegenFixer(s[bool]):
         self,
         *,
         project_path: Path,
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
         violations_skipped: MutableSequence[m.Infra.CensusViolation],
     ) -> None:
         engine = FlextInfraRefactorEngine()
@@ -311,7 +311,7 @@ class FlextInfraCodegenFixer(s[bool]):
         self,
         *,
         project_path: Path,
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
     ) -> None:
         py_files_result = u.Infra.iter_python_files(
             workspace_root=project_path,
@@ -342,7 +342,7 @@ class FlextInfraCodegenFixer(s[bool]):
         u.Infra.namespace_rewrite_missing_future_annotations(
             py_files=src_files,
         )
-        changed_paths: set[str] = FlextInfraCodegenSnapshot.detect_changed_files(
+        changed_paths: t.Infra.StrSet = FlextInfraCodegenSnapshot.detect_changed_files(
             before_snapshot=before_snapshot,
             file_paths=src_files,
         )
@@ -413,7 +413,7 @@ class FlextInfraCodegenFixer(s[bool]):
             for error in report.errors
         )
 
-    def _cleanup_stale_all_entries(self, *, files_modified: set[str]) -> None:
+    def _cleanup_stale_all_entries(self, *, files_modified: t.Infra.StrSet) -> None:
         for file_path in sorted(files_modified):
             path = Path(file_path)
             if not path.exists() or path.suffix != c.Infra.Extensions.PYTHON:
@@ -423,7 +423,9 @@ class FlextInfraCodegenFixer(s[bool]):
             if u.Infra.prune_stale_all_assignment(path=path):
                 files_modified.add(str(path))
 
-    def _normalize_rewritten_python_files(self, *, files_modified: set[str]) -> None:
+    def _normalize_rewritten_python_files(
+        self, *, files_modified: t.Infra.StrSet
+    ) -> None:
         for file_path in sorted(files_modified):
             path = Path(file_path)
             if not path.exists() or path.suffix != c.Infra.Extensions.PYTHON:
@@ -434,7 +436,7 @@ class FlextInfraCodegenFixer(s[bool]):
         self,
         *,
         project_path: Path,
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
     ) -> None:
         before_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_init_files(
             project_path=project_path,
@@ -481,7 +483,7 @@ class FlextInfraCodegenFixer(s[bool]):
         pkg_dir: Path,
         violations_fixed: MutableSequence[m.Infra.CensusViolation],
         violations_skipped: MutableSequence[m.Infra.CensusViolation],
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
     ) -> None:
         """Fix Rule 1 — move loose Final constants to constants.py."""
         tree = u.Infra.parse_module_ast(source_file)
@@ -583,7 +585,7 @@ class FlextInfraCodegenFixer(s[bool]):
         pkg_dir: Path,
         violations_fixed: MutableSequence[m.Infra.CensusViolation],
         violations_skipped: MutableSequence[m.Infra.CensusViolation],
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
     ) -> None:
         """Fix Rule 2 — move loose TypeVars/TypeAliases to typings.py."""
         tree = u.Infra.parse_module_ast(source_file)
@@ -737,7 +739,7 @@ class FlextInfraCodegenFixer(s[bool]):
         pkg_dir: Path,
         violations_fixed: MutableSequence[m.Infra.CensusViolation],
         violations_skipped: MutableSequence[m.Infra.CensusViolation],
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
     ) -> None:
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
@@ -804,7 +806,7 @@ class FlextInfraCodegenFixer(s[bool]):
         pkg_dir: Path,
         violations_fixed: MutableSequence[m.Infra.CensusViolation],
         violations_skipped: MutableSequence[m.Infra.CensusViolation],
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
     ) -> None:
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
@@ -816,7 +818,7 @@ class FlextInfraCodegenFixer(s[bool]):
         if not definitions:
             return
 
-        all_used_names: set[str] = set()
+        all_used_names: t.Infra.StrSet = set()
         projects_result = u.Infra.discover_projects(self._workspace_root)
         if projects_result.is_success:
             discovered_projects: Sequence[m.Infra.ProjectInfo] = (
@@ -881,7 +883,7 @@ class FlextInfraCodegenFixer(s[bool]):
         pkg_dir: Path,
         violations_fixed: MutableSequence[m.Infra.CensusViolation],
         violations_skipped: MutableSequence[m.Infra.CensusViolation],
-        files_modified: set[str],
+        files_modified: t.Infra.StrSet,
     ) -> None:
         project_import = f"from {pkg_dir.name} import c"
         for py_file in sorted(src_dir.rglob("*.py")):

@@ -35,8 +35,8 @@ class FlextInfraUtilitiesRefactorPydantic:
         )
     """
 
-    _PYDANTIC_SCOPE_DIRS: tuple[str, ...] = ("src", "tests", "scripts", "examples")
-    _PYDANTIC_SKIP_DIRS: tuple[str, ...] = (
+    _PYDANTIC_SCOPE_DIRS: t.StrSequence = ("src", "tests", "scripts", "examples")
+    _PYDANTIC_SKIP_DIRS: t.StrSequence = (
         ".git",
         ".venv",
         "__pycache__",
@@ -44,11 +44,11 @@ class FlextInfraUtilitiesRefactorPydantic:
         ".ruff_cache",
         ".pytest_cache",
     )
-    _PYDANTIC_PROTECTED_FILENAMES: tuple[str, ...] = (
+    _PYDANTIC_PROTECTED_FILENAMES: t.StrSequence = (
         "settings.py",
         "__init__.py",
     )
-    _PYDANTIC_AUTO_APPLY_CLASS_KINDS: tuple[str, ...] = (
+    _PYDANTIC_AUTO_APPLY_CLASS_KINDS: t.StrSequence = (
         "typed_dict",
         "typed_dict_factory",
     )

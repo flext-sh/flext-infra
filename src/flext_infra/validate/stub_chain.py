@@ -193,7 +193,7 @@ class FlextInfraStubSupplyChain:
         if result.is_success:
             cmd_output: p.Infra.CommandOutput = result.value
             output = cmd_output.stdout
-        seen: set[str] = set()
+        seen: t.Infra.StrSet = set()
         ordered: MutableSequence[str] = []
         for match in c.Infra.MISSING_IMPORT_RE.finditer(output):
             name = match.group(1).strip()

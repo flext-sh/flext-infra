@@ -10,6 +10,8 @@ import re
 from enum import StrEnum, unique
 from typing import Final
 
+from flext_infra import t
+
 
 class FlextInfraConstantsBase:
     """Base constants for flext-infra project."""
@@ -308,14 +310,14 @@ class FlextInfraConstantsBase:
         FUTURE_ANNOTATIONS: Final[str] = "from __future__ import annotations"
         "Standard future annotations import line."
 
-    DEFAULT_CHECK_DIRS: Final[tuple[str, ...]] = (
+    DEFAULT_CHECK_DIRS: Final[t.StrSequence] = (
         "src",
         "tests",
         "examples",
         "scripts",
     )
     "Default directories to check in a project (root only uses scripts)."
-    CHECK_DIRS_SUBPROJECT: Final[tuple[str, ...]] = ("src", "tests", "examples")
+    CHECK_DIRS_SUBPROJECT: Final[t.StrSequence] = ("src", "tests", "examples")
     "Subprojects: type-check src/tests/examples only (scripts are workspace copies, run from root)."
 
     GITHUB_REPO_URL: Final[str] = "https://github.com/flext-sh/flext"

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, r, u
+from flext_infra import FlextInfraRefactorLooseClassScanner, c, m, r, t, u
 
 
 class FlextInfraRefactorClassNestingAnalyzer:
@@ -95,8 +95,8 @@ class FlextInfraRefactorClassNestingAnalyzer:
     def _group_targets_by_project_root(
         cls,
         files: Sequence[Path],
-    ) -> Mapping[Path, set[str]]:
-        grouped: MutableMapping[Path, set[str]] = {}
+    ) -> Mapping[Path, t.Infra.StrSet]:
+        grouped: MutableMapping[Path, t.Infra.StrSet] = {}
         for file_path in files:
             project_root = u.Infra.resolve_project_root(file_path)
             if project_root is None:

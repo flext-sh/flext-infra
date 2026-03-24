@@ -48,71 +48,71 @@ if TYPE_CHECKING:
         FlextInfraRefactorTypingAnnotationFixRule,
     )
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraClassNestingRefactorRule": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraClassNestingRefactorRule": [
         "flext_infra.rules.class_nesting",
         "FlextInfraClassNestingRefactorRule",
-    ),
-    "FlextInfraPreCheckGate": (
+    ],
+    "FlextInfraPreCheckGate": [
         "flext_infra.rules.class_reconstructor",
         "FlextInfraPreCheckGate",
-    ),
-    "FlextInfraRefactorClassNestingReconstructor": (
+    ],
+    "FlextInfraRefactorClassNestingReconstructor": [
         "flext_infra.rules.class_reconstructor",
         "FlextInfraRefactorClassNestingReconstructor",
-    ),
-    "FlextInfraRefactorClassReconstructorRule": (
+    ],
+    "FlextInfraRefactorClassReconstructorRule": [
         "flext_infra.rules.class_reconstructor",
         "FlextInfraRefactorClassReconstructorRule",
-    ),
-    "FlextInfraRefactorEnsureFutureAnnotationsRule": (
+    ],
+    "FlextInfraRefactorEnsureFutureAnnotationsRule": [
         "flext_infra.rules.ensure_future_annotations",
         "FlextInfraRefactorEnsureFutureAnnotationsRule",
-    ),
-    "FlextInfraRefactorImportModernizerRule": (
+    ],
+    "FlextInfraRefactorImportModernizerRule": [
         "flext_infra.rules.import_modernizer",
         "FlextInfraRefactorImportModernizerRule",
-    ),
-    "FlextInfraRefactorLegacyRemovalRule": (
+    ],
+    "FlextInfraRefactorLegacyRemovalRule": [
         "flext_infra.rules.legacy_removal",
         "FlextInfraRefactorLegacyRemovalRule",
-    ),
-    "FlextInfraRefactorMROClassMigrationRule": (
+    ],
+    "FlextInfraRefactorMROClassMigrationRule": [
         "flext_infra.rules.mro_class_migration",
         "FlextInfraRefactorMROClassMigrationRule",
-    ),
-    "FlextInfraRefactorMRORedundancyChecker": (
+    ],
+    "FlextInfraRefactorMRORedundancyChecker": [
         "flext_infra.rules.mro_redundancy_checker",
         "FlextInfraRefactorMRORedundancyChecker",
-    ),
-    "FlextInfraRefactorPatternCorrectionsRule": (
+    ],
+    "FlextInfraRefactorPatternCorrectionsRule": [
         "flext_infra.rules.pattern_corrections",
         "FlextInfraRefactorPatternCorrectionsRule",
-    ),
-    "FlextInfraRefactorSignaturePropagationRule": (
+    ],
+    "FlextInfraRefactorSignaturePropagationRule": [
         "flext_infra.rules.symbol_propagation",
         "FlextInfraRefactorSignaturePropagationRule",
-    ),
-    "FlextInfraRefactorSignaturePropagator": (
+    ],
+    "FlextInfraRefactorSignaturePropagator": [
         "flext_infra.rules.symbol_propagation",
         "FlextInfraRefactorSignaturePropagator",
-    ),
-    "FlextInfraRefactorSymbolPropagationRule": (
+    ],
+    "FlextInfraRefactorSymbolPropagationRule": [
         "flext_infra.rules.symbol_propagation",
         "FlextInfraRefactorSymbolPropagationRule",
-    ),
-    "FlextInfraRefactorTier0ImportFixRule": (
+    ],
+    "FlextInfraRefactorTier0ImportFixRule": [
         "flext_infra.rules.tier0_import_fix",
         "FlextInfraRefactorTier0ImportFixRule",
-    ),
-    "FlextInfraRefactorTypingAnnotationFixRule": (
+    ],
+    "FlextInfraRefactorTypingAnnotationFixRule": [
         "flext_infra.rules.typing_census",
         "FlextInfraRefactorTypingAnnotationFixRule",
-    ),
-    "FlextInfraRefactorTypingUnificationRule": (
+    ],
+    "FlextInfraRefactorTypingUnificationRule": [
         "flext_infra.rules.type_alias_unification",
         "FlextInfraRefactorTypingUnificationRule",
-    ),
+    ],
 }
 
 __all__ = [

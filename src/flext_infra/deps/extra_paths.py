@@ -116,7 +116,7 @@ class FlextInfraExtraPathsManager:
         self,
         direct_paths: t.StrSequence,
         *,
-        visited: set[str] | None = None,
+        visited: t.Infra.StrSet | None = None,
     ) -> t.StrSequence:
         """Recursively resolve transitive path dependencies.
 
@@ -125,7 +125,7 @@ class FlextInfraExtraPathsManager:
         """
         if visited is None:
             visited = set()
-        all_paths: set[str] = set(direct_paths)
+        all_paths: t.Infra.StrSet = set(direct_paths)
         for path_value in direct_paths:
             name = FlextInfraDependencyPathSync.extract_dep_name(path_value)
             if name in visited:
@@ -284,7 +284,7 @@ class FlextInfraExtraPathsManager:
             rules.root_typings_paths if is_root else rules.project_typings_paths
         )
         typings_paths = self._existing_relative_paths(project_dir, configured_typings)
-        paths: set[str] = {source_root, *typings_paths}
+        paths: t.Infra.StrSet = {source_root, *typings_paths}
         if is_root:
             local_dirs = self._existing_relative_paths(
                 project_dir,
@@ -327,7 +327,7 @@ class FlextInfraExtraPathsManager:
         """Build pyrefly project-includes from YAML rules and discovered dirs."""
         rules = self._pyrefly_path_rules()
         env_dirs = set(rules.env_dirs)
-        includes: set[str] = set()
+        includes: t.Infra.StrSet = set()
         local_dirs = set(u.Infra.discover_python_dirs(project_dir))
         includes.update(
             f"{directory}/**/*.py*" for directory in sorted(local_dirs & env_dirs)

@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 from typing import ClassVar, TypeIs
 
+from flext_infra import t
+
 
 class FlextInfraUtilitiesPatterns:
     """Centralized regex patterns for infrastructure operations.
@@ -37,7 +39,7 @@ class FlextInfraUtilitiesPatterns:
     )
     """Match mypy missing stub messages, capturing the library name."""
 
-    INTERNAL_PREFIXES: ClassVar[tuple[str, ...]] = ("flext_",)
+    INTERNAL_PREFIXES: ClassVar[t.StrSequence] = ("flext_",)
     """Prefixes identifying internal FLEXT packages."""
 
     MARKDOWN_LINK_RE: ClassVar[re.Pattern[str]] = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")

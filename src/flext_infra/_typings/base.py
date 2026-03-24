@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
+from pathlib import Path as _Path
 
 
 class FlextInfraTypesBase:
@@ -30,7 +31,7 @@ class FlextInfraTypesBase:
     "Expected MRO base: a class or its qualified name."
     type PolicyContext = Mapping[str, ContainerDict]
     "Class-nesting policy matrix keyed by module family."
-    type MetricValue = FlextTypes.Scalar | Path | None
+    type MetricValue = FlextTypes.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
     type MetricRecord = BaseModel | Mapping[str, MetricValue]
     "A single metric record: a Pydantic model or a string-keyed mapping of metric values."
@@ -40,3 +41,37 @@ class FlextInfraTypesBase:
     "String-keyed integer index (counters, metrics)."
     type MutableStrIndex = MutableMapping[str, int]
     "Mutable string-keyed integer index."
+    type StrPair = tuple[str, str]
+    "Ordered pair of strings."
+    type StrIntPair = tuple[str, int]
+    "Ordered pair of (str, int)."
+    type StrPairSequence = Sequence[StrPair]
+    "Read-only sequence of string pairs."
+    type LazyImportMap = Mapping[str, StrPair]
+    "Lazy import table: export -> (module, attr)."
+    type MutableLazyImportMap = MutableMapping[str, StrPair]
+    "Mutable lazy import table."
+    type LazyInitProcessResult = tuple[int | None, LazyImportMap]
+    "Result for per-directory lazy init processing."
+    type LazyInitWriteResult = tuple[int, LazyImportMap]
+    "Result for writing generated __init__.py."
+    type VersionExportsResult = tuple[FlextTypes.StrMapping, LazyImportMap]
+    "Result for __version__.py export extraction (inline constants, lazy map)."
+    type StrSet = set[str]
+    "Mutable string set (supports .update/.intersection/etc)."
+    type PathSet = set[_Path]
+    "Mutable path set."
+    type IntSet = set[int]
+    "Mutable integer set."
+    type StrPairSet = set[StrPair]
+    "Mutable set of (str, str) tuples."
+    type IntPairSet = set[StrIntPair]
+    "Mutable set of (str, int) tuples."
+    type InfraMapping = Mapping[str, InfraValue]
+    "Read-only string-keyed infra value mapping."
+    type MutableInfraMapping = MutableMapping[str, InfraValue]
+    "Mutable string-keyed infra value mapping."
+    type InfraSequence = Sequence[InfraValue]
+    "Read-only infra value sequence."
+    type MutableInfraSequence = MutableSequence[InfraValue]
+    "Mutable infra value sequence."

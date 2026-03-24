@@ -138,7 +138,6 @@ tools:
           - S107
         '**/*models*':
           - ANN401
-          - F821
           - FBT001
           - PLC2701
           - PLR0206

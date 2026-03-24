@@ -57,96 +57,96 @@ if TYPE_CHECKING:
         TestStubChainValidate,
     )
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "TestBaseMkValidatorCore": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "TestBaseMkValidatorCore": [
         "tests.unit.validate.basemk_validator_tests",
         "TestBaseMkValidatorCore",
-    ),
-    "TestBaseMkValidatorEdgeCases": (
+    ],
+    "TestBaseMkValidatorEdgeCases": [
         "tests.unit.validate.basemk_validator_tests",
         "TestBaseMkValidatorEdgeCases",
-    ),
-    "TestBaseMkValidatorSha256": (
+    ],
+    "TestBaseMkValidatorSha256": [
         "tests.unit.validate.basemk_validator_tests",
         "TestBaseMkValidatorSha256",
-    ),
-    "TestCoreModuleInit": ("tests.unit.validate.init_tests", "TestCoreModuleInit"),
-    "TestInventoryServiceCore": (
+    ],
+    "TestCoreModuleInit": ["tests.unit.validate.init_tests", "TestCoreModuleInit"],
+    "TestInventoryServiceCore": [
         "tests.unit.validate.inventory_tests",
         "TestInventoryServiceCore",
-    ),
-    "TestInventoryServiceReports": (
+    ],
+    "TestInventoryServiceReports": [
         "tests.unit.validate.inventory_tests",
         "TestInventoryServiceReports",
-    ),
-    "TestInventoryServiceScripts": (
+    ],
+    "TestInventoryServiceScripts": [
         "tests.unit.validate.inventory_tests",
         "TestInventoryServiceScripts",
-    ),
-    "TestMainBaseMkValidate": (
+    ],
+    "TestMainBaseMkValidate": [
         "tests.unit.validate.main_tests",
         "TestMainBaseMkValidate",
-    ),
-    "TestMainCliRouting": ("tests.unit.validate.main_tests", "TestMainCliRouting"),
-    "TestMainInventory": ("tests.unit.validate.main_tests", "TestMainInventory"),
-    "TestMainScan": ("tests.unit.validate.main_tests", "TestMainScan"),
-    "TestPytestDiagExtractorCore": (
+    ],
+    "TestMainCliRouting": ["tests.unit.validate.main_tests", "TestMainCliRouting"],
+    "TestMainInventory": ["tests.unit.validate.main_tests", "TestMainInventory"],
+    "TestMainScan": ["tests.unit.validate.main_tests", "TestMainScan"],
+    "TestPytestDiagExtractorCore": [
         "tests.unit.validate.pytest_diag",
         "TestPytestDiagExtractorCore",
-    ),
-    "TestPytestDiagLogParsing": (
+    ],
+    "TestPytestDiagLogParsing": [
         "tests.unit.validate.pytest_diag",
         "TestPytestDiagLogParsing",
-    ),
-    "TestPytestDiagParseXml": (
+    ],
+    "TestPytestDiagParseXml": [
         "tests.unit.validate.pytest_diag",
         "TestPytestDiagParseXml",
-    ),
-    "TestSafeLoadYaml": (
+    ],
+    "TestSafeLoadYaml": [
         "tests.unit.validate.skill_validator_tests",
         "TestSafeLoadYaml",
-    ),
-    "TestScannerCore": ("tests.unit.validate.scanner_tests", "TestScannerCore"),
-    "TestScannerHelpers": ("tests.unit.validate.scanner_tests", "TestScannerHelpers"),
-    "TestScannerMultiFile": (
+    ],
+    "TestScannerCore": ["tests.unit.validate.scanner_tests", "TestScannerCore"],
+    "TestScannerHelpers": ["tests.unit.validate.scanner_tests", "TestScannerHelpers"],
+    "TestScannerMultiFile": [
         "tests.unit.validate.scanner_tests",
         "TestScannerMultiFile",
-    ),
-    "TestSkillValidatorAstGrepCount": (
+    ],
+    "TestSkillValidatorAstGrepCount": [
         "tests.unit.validate.skill_validator_tests",
         "TestSkillValidatorAstGrepCount",
-    ),
-    "TestSkillValidatorCore": (
+    ],
+    "TestSkillValidatorCore": [
         "tests.unit.validate.skill_validator_tests",
         "TestSkillValidatorCore",
-    ),
-    "TestSkillValidatorRenderTemplate": (
+    ],
+    "TestSkillValidatorRenderTemplate": [
         "tests.unit.validate.skill_validator_tests",
         "TestSkillValidatorRenderTemplate",
-    ),
-    "TestStringList": ("tests.unit.validate.skill_validator_tests", "TestStringList"),
-    "TestStubChainAnalyze": (
+    ],
+    "TestStringList": ["tests.unit.validate.skill_validator_tests", "TestStringList"],
+    "TestStubChainAnalyze": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainAnalyze",
-    ),
-    "TestStubChainCore": ("tests.unit.validate.stub_chain_tests", "TestStubChainCore"),
-    "TestStubChainDiscoverProjects": (
+    ],
+    "TestStubChainCore": ["tests.unit.validate.stub_chain_tests", "TestStubChainCore"],
+    "TestStubChainDiscoverProjects": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainDiscoverProjects",
-    ),
-    "TestStubChainIsInternal": (
+    ],
+    "TestStubChainIsInternal": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainIsInternal",
-    ),
-    "TestStubChainStubExists": (
+    ],
+    "TestStubChainStubExists": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainStubExists",
-    ),
-    "TestStubChainValidate": (
+    ],
+    "TestStubChainValidate": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainValidate",
-    ),
-    "v": ("tests.unit.validate.basemk_validator_tests", "v"),
+    ],
+    "v": ["tests.unit.validate.basemk_validator_tests", "v"],
 }
 
 __all__ = [

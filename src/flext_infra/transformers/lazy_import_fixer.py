@@ -56,7 +56,7 @@ class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
         del original_node
         if not self.hoisted_imports:
             return updated_node
-        existing_import_codes: set[str] = set()
+        existing_import_codes: t.Infra.StrSet = set()
         for stmt in updated_node.body:
             if not isinstance(stmt, cst.SimpleStatementLine):
                 continue

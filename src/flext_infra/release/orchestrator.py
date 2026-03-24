@@ -274,7 +274,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:
             targets.extend((p.name, p.path) for p in projects_result.value)
-        seen: set[str] = set()
+        seen: t.Infra.StrSet = set()
         unique: MutableSequence[tuple[str, Path]] = []
         for name, path in targets:
             if name in seen or not path.exists():

@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
     from flext_infra._typings.base import FlextInfraTypesBase
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraTypesBase": ("flext_infra._typings.base", "FlextInfraTypesBase"),
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraTypesBase": ["flext_infra._typings.base", "FlextInfraTypesBase"],
 }
 
 __all__ = [

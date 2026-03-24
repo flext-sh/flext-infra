@@ -33,7 +33,7 @@ class FlextInfraTransformerImportNormalizer:
             )
             self._on_change = on_change
             self.modified_imports = False
-            self.aliases_present: set[str] = set()
+            self.aliases_present: t.Infra.StrSet = set()
             self.changes: MutableSequence[str] = []
 
         @override

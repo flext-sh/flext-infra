@@ -245,7 +245,7 @@ class FlextInfraDependencyDetectionService:
         data = self._to_toml_config(read_result.value)
         if not data:
             return []
-        names: set[str] = set()
+        names: t.Infra.StrSet = set()
         tool = self._mapping_from_value(data.get(c.Infra.TOOL))
         poetry = self._mapping_from_value(tool.get(c.Infra.POETRY))
         group = self._mapping_from_value(poetry.get(c.Infra.GROUP))
@@ -293,7 +293,7 @@ class FlextInfraDependencyDetectionService:
     ) -> r[m.Infra.TypingsReport]:
         """Analyze project and generate typing stubs requirements report."""
         limits = self.load_dependency_limits(limits_path)
-        exclude_set: set[str] = set()
+        exclude_set: t.Infra.StrSet = set()
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
         if typing_libraries is not None and isinstance(typing_libraries, Mapping):
             excluded = typing_libraries.get(c.Infra.EXCLUDE)
@@ -315,7 +315,7 @@ class FlextInfraDependencyDetectionService:
                 )
             typed_hints: tuple[t.StrSequence, t.StrSequence] = hints_result.value
             hinted, missing_modules = typed_hints
-        required_set: set[str] = set(hinted)
+        required_set: t.Infra.StrSet = set(hinted)
         for module_name in missing_modules:
             package = self.module_to_types_package(module_name, limits)
             if package:

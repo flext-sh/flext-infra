@@ -107,7 +107,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
             add_keywords = self._add_keywords(migration)
             next_args: MutableSequence[cst.Arg] = []
             changed = False
-            seen_keyword_names: set[str] = set()
+            seen_keyword_names: t.Infra.StrSet = set()
             for arg in list(result_call.args):
                 keyword_name = self._keyword_name(arg)
                 if keyword_name is not None and keyword_name in remove_keywords:
@@ -182,7 +182,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
         self,
         migration: m.Infra.SignatureMigration,
         *,
-        qualified_names: set[str],
+        qualified_names: t.Infra.StrSet,
         simple_name: str | None,
     ) -> bool:
         target_qualified = set(migration.target_qualified_names)
@@ -203,7 +203,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
     def _remove_keywords(
         self,
         migration: m.Infra.SignatureMigration,
-    ) -> set[str]:
+    ) -> t.Infra.StrSet:
         return set(migration.remove_keywords)
 
     def _simple_callable_name(self, expr: cst.BaseExpression) -> str | None:

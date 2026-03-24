@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import Final
 
+from flext_infra import t
+
 
 class FlextInfraBasemkConstants:
     """Basemk infrastructure constants."""
 
-    TEMPLATE_ORDER: Final[tuple[str, ...]] = (
+    TEMPLATE_ORDER: Final[t.StrSequence] = (
         "base_header.mk.j2",
         "base_detection.mk.j2",
         "base_venv.mk.j2",

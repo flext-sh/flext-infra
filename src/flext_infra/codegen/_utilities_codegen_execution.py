@@ -128,7 +128,7 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
     @staticmethod
     def quality_gate_modified_python_files(workspace_root: Path) -> t.StrSequence:
         """Detect modified Python files in workspace."""
-        normalized: set[str] = set()
+        normalized: t.Infra.StrSet = set()
         for rel in FlextInfraCodegenExecutionTools.git_lines(
             workspace_root,
             ["diff", "--name-only", "--", "*.py"],
@@ -190,7 +190,7 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
                 return []
             modified = raw.get("modified_files")
             if isinstance(modified, list):
-                filtered: set[str] = set()
+                filtered: t.Infra.StrSet = set()
                 for entry in modified:
                     if not isinstance(entry, str):
                         continue

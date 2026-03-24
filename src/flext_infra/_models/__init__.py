@@ -16,9 +16,9 @@ if TYPE_CHECKING:
     from flext_infra._models.base import FlextInfraModelsBase
     from flext_infra._models.scan import FlextInfraModelsScan
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraModelsBase": ("flext_infra._models.base", "FlextInfraModelsBase"),
-    "FlextInfraModelsScan": ("flext_infra._models.scan", "FlextInfraModelsScan"),
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraModelsBase": ["flext_infra._models.base", "FlextInfraModelsBase"],
+    "FlextInfraModelsScan": ["flext_infra._models.scan", "FlextInfraModelsScan"],
 }
 
 __all__ = [

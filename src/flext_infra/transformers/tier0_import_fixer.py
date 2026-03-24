@@ -32,10 +32,10 @@ class FlextInfraTransformerTier0ImportFixer:
         alias_to_module: MutableMapping[str, str] = field(
             default_factory=dict,
         )
-        category_a: set[str] = field(default_factory=set)
-        category_b: set[str] = field(default_factory=set)
-        category_c: set[str] = field(default_factory=set)
-        category_d: set[str] = field(default_factory=set)
+        category_a: t.Infra.StrSet = field(default_factory=set)
+        category_b: t.Infra.StrSet = field(default_factory=set)
+        category_c: t.Infra.StrSet = field(default_factory=set)
+        category_d: t.Infra.StrSet = field(default_factory=set)
 
         @property
         def has_violations(self) -> bool:
@@ -60,8 +60,8 @@ class FlextInfraTransformerTier0ImportFixer:
             self._annotation_depth = 0
             self._type_alias_depth = 0
             self._type_checking_depth = 0
-            self._self_import_aliases: set[str] = set()
-            self._runtime_aliases: set[str] = set()
+            self._self_import_aliases: t.Infra.StrSet = set()
+            self._runtime_aliases: t.Infra.StrSet = set()
 
         def build_analysis(self) -> FlextInfraTransformerTier0ImportFixer.Analysis:
             """Process visited nodes and build violation analysis."""
@@ -196,14 +196,14 @@ class FlextInfraTransformerTier0ImportFixer:
             )
             self._core_pending = set(analysis.category_b)
             self._type_checking_pending = set(analysis.category_c)
-            self._direct_pending: MutableMapping[str, set[str]] = {}
+            self._direct_pending: MutableMapping[str, t.Infra.StrSet] = {}
             for a in sorted(analysis.category_d):
                 sub = alias_to_submodule.get(a, analysis.alias_to_module.get(a, ""))
                 if sub:
                     self._direct_pending.setdefault(sub, set()).add(a)
             self._changes: MutableSequence[str] = []
             self._type_checking_import_present = False
-            self._missing_classes: set[str] = set()
+            self._missing_classes: t.Infra.StrSet = set()
 
         @property
         def changes(self) -> t.StrSequence:
@@ -299,7 +299,7 @@ class FlextInfraTransformerTier0ImportFixer:
         def _merge_into_import(
             self,
             node: cst.ImportFrom,
-            pnd: set[str],
+            pnd: t.Infra.StrSet,
         ) -> cst.ImportFrom:
             if isinstance(node.names, cst.ImportStar):
                 return node

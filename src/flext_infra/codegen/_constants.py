@@ -13,6 +13,8 @@ import re
 from collections.abc import Mapping
 from typing import Final
 
+from flext_infra import t
+
 
 class FlextInfraCodegenConstants:
     """Namespace for all codegen-related constants."""
@@ -67,7 +69,7 @@ class FlextInfraCodegenConstants:
         "#"
     )
     "Header prepended to every auto-generated ``__init__.py`` file."
-    ALL_SCAN_PATTERNS: Final[tuple[str, ...]] = (
+    ALL_SCAN_PATTERNS: Final[t.StrSequence] = (
         "src/**/__init__.py",
         "tests/**/__init__.py",
         "examples/**/__init__.py",
@@ -102,8 +104,8 @@ class FlextInfraCodegenConstants:
         """Constants used by constants quality gate analysis/reporting."""
 
         REPORT_DIR: Final[str] = ".reports/codegen/constants-quality-gate"
-        PASS_VERDICTS: Final[tuple[str, ...]] = ("PASS", "CONDITIONAL_PASS")
-        RULE_KEYS: Final[tuple[str, ...]] = (
+        PASS_VERDICTS: Final[t.StrSequence] = ("PASS", "CONDITIONAL_PASS")
+        RULE_KEYS: Final[t.StrSequence] = (
             "NS-000",
             "NS-001",
             "NS-002",

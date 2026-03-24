@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import MutableMapping, MutableSequence, MutableSet, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -52,7 +52,7 @@ class FlextInfraUtilitiesDiscovery:
             return r[Sequence[m.Infra.ProjectInfo]].fail(f"discovery failed: {exc}")
 
     @staticmethod
-    def _submodule_names(workspace_root: Path) -> set[str]:
+    def _submodule_names(workspace_root: Path) -> t.Infra.StrSet:
         gitmodules = workspace_root / ".gitmodules"
         if not gitmodules.exists():
             return set()
@@ -114,7 +114,7 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def discover_workspace_packages(workspace_root: Path) -> frozenset[str]:
         """Discover all project package names in the workspace."""
-        packages: MutableSet[str] = set()
+        packages: t.Infra.StrSet = set()
         if not workspace_root.is_dir():
             return frozenset()
         for entry in workspace_root.iterdir():

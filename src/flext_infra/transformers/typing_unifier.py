@@ -8,7 +8,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import c, u
+from flext_infra import c, t, u
 
 _PAIR_LENGTH = 2
 
@@ -24,9 +24,9 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
     ) -> None:
         """Initialize unifier context and accumulated import/type state."""
         self._scope_depth = 0
-        self._typing_import_names: set[str] = set()
+        self._typing_import_names: t.Infra.StrSet = set()
         self._typing_import_aliases: MutableSequence[cst.ImportAlias] = []
-        self._all_name_usages: set[str] = set()
+        self._all_name_usages: t.Infra.StrSet = set()
         self._has_t_import = False
         self._needs_t_import = False
         self._typealias_unconverted = 0
@@ -281,7 +281,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         leaves = self._union_leaves(expr)
         if leaves is None:
             return None
-        normalized: set[str] = set()
+        normalized: t.Infra.StrSet = set()
         for leaf in leaves:
             leaf_name = self._leaf_name(leaf)
             if leaf_name is None:

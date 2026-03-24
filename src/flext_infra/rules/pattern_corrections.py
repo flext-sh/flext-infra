@@ -19,8 +19,8 @@ class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
         self._include_return_annotations = include_return_annotations
 
     @staticmethod
-    def _collect_mutated_params(function_node: cst.FunctionDef) -> set[str]:
-        param_names: set[str] = set()
+    def _collect_mutated_params(function_node: cst.FunctionDef) -> t.Infra.StrSet:
+        param_names: t.Infra.StrSet = set()
         parameters = function_node.params
         param_names.update(param.name.value for param in parameters.posonly_params)
         param_names.update(param.name.value for param in parameters.params)
@@ -33,7 +33,7 @@ class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
 
         class MutableParamVisitor(cst.CSTVisitor):
             def __init__(self) -> None:
-                self.mutated: set[str] = set()
+                self.mutated: t.Infra.StrSet = set()
 
             @override
             def visit_AssignTarget(self, node: cst.AssignTarget) -> None:
@@ -210,7 +210,7 @@ class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
     def _rewrite_param_if_safe(
         self,
         param: cst.Param,
-        mutated_names: set[str],
+        mutated_names: t.Infra.StrSet,
     ) -> cst.Param:
         if param.name.value in mutated_names:
             return param
@@ -226,7 +226,7 @@ class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
 
 
 class FlextInfraRedundantCastRemover(cst.CSTTransformer):
-    def __init__(self, removable_types: set[str]) -> None:
+    def __init__(self, removable_types: t.Infra.StrSet) -> None:
         self.removable_types = removable_types
         self.changes: MutableSequence[str] = []
 

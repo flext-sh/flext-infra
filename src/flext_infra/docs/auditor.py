@@ -293,7 +293,7 @@ class FlextInfraDocAuditor:
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect forbidden-term issues for markdown files in scope."""
         issues: MutableSequence[m.Infra.AuditIssue] = []
-        terms: tuple[str, ...] = ()
+        terms: t.StrSequence = ()
         for md_file in u.Infra.iter_markdown_files(scope.path):
             rel = md_file.relative_to(scope.path).as_posix()
             rel_lower = rel.lower()

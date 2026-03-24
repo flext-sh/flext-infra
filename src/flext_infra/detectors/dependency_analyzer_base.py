@@ -65,7 +65,7 @@ class FlextInfraDependencyAnalyzer:
             )
         return projects
 
-    def _discover_package_roots(self, src_path: Path) -> set[str]:
+    def _discover_package_roots(self, src_path: Path) -> t.Infra.StrSet:
         """Discover package root names in a source directory.
 
         Args:
@@ -75,7 +75,7 @@ class FlextInfraDependencyAnalyzer:
             Set of package root names found.
 
         """
-        roots: set[str] = set()
+        roots: t.Infra.StrSet = set()
         for pkg_dir in src_path.iterdir():
             if pkg_dir.name.startswith("."):
                 continue
@@ -123,7 +123,7 @@ class FlextInfraDependencyAnalyzer:
         """
         grep_files = self._scan_import_files_with_ast_grep(project.src_path)
         if grep_files.is_success and grep_files.value:
-            path_set: set[Path] = grep_files.value
+            path_set: t.Infra.PathSet = grep_files.value
             return sorted(path_set)
         files_result = u.Infra.iter_python_files(
             workspace_root=self._workspace_root,
@@ -138,7 +138,7 @@ class FlextInfraDependencyAnalyzer:
             on_success=lambda v: v,
         )
 
-    def _scan_import_files_with_ast_grep(self, src_path: Path) -> r[set[Path]]:
+    def _scan_import_files_with_ast_grep(self, src_path: Path) -> r[t.Infra.PathSet]:
         """Scan source directory for files with import statements using ast-grep.
 
         Args:
@@ -148,11 +148,11 @@ class FlextInfraDependencyAnalyzer:
             Result containing set of file paths with import statements.
 
         """
-        files: set[Path] = set()
+        files: t.Infra.PathSet = set()
         for pattern in ("import $MODULE", "from $MODULE import $$$"):
             result = self._run_ast_grep(src_path, pattern)
             if result.is_failure:
-                return r[set[Path]].fail(result.error or "ast-grep failed")
+                return r[t.Infra.PathSet].fail(result.error or "ast-grep failed")
             entries: Sequence[m.Infra.AstGrepMatchEnvelope] = result.value
             for entry in entries:
                 fp = Path(entry.file)
@@ -160,7 +160,7 @@ class FlextInfraDependencyAnalyzer:
                     fp = (src_path / fp).resolve()
                 if fp.suffix == c.Infra.Extensions.PYTHON:
                     files.add(fp)
-        return r[set[Path]].ok(files)
+        return r[t.Infra.PathSet].ok(files)
 
     def _run_ast_grep(
         self,

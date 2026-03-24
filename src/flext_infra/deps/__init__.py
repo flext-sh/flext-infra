@@ -61,87 +61,87 @@ if TYPE_CHECKING:
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraConfigFixer": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraConfigFixer": [
         "flext_infra.deps.fix_pyrefly_config",
         "FlextInfraConfigFixer",
-    ),
-    "FlextInfraConsolidateGroupsPhase": (
+    ],
+    "FlextInfraConsolidateGroupsPhase": [
         "flext_infra.deps._phases.consolidate_groups",
         "FlextInfraConsolidateGroupsPhase",
-    ),
-    "FlextInfraDependencyDetectionService": (
+    ],
+    "FlextInfraDependencyDetectionService": [
         "flext_infra.deps.detection",
         "FlextInfraDependencyDetectionService",
-    ),
-    "FlextInfraDependencyPathSync": (
+    ],
+    "FlextInfraDependencyPathSync": [
         "flext_infra.deps.path_sync",
         "FlextInfraDependencyPathSync",
-    ),
-    "FlextInfraEnsureCoverageConfigPhase": (
+    ],
+    "FlextInfraEnsureCoverageConfigPhase": [
         "flext_infra.deps._phases.ensure_coverage",
         "FlextInfraEnsureCoverageConfigPhase",
-    ),
-    "FlextInfraEnsureExtraPathsPhase": (
+    ],
+    "FlextInfraEnsureExtraPathsPhase": [
         "flext_infra.deps._phases.ensure_extra_paths",
         "FlextInfraEnsureExtraPathsPhase",
-    ),
-    "FlextInfraEnsureFormattingToolingPhase": (
+    ],
+    "FlextInfraEnsureFormattingToolingPhase": [
         "flext_infra.deps._phases.ensure_formatting",
         "FlextInfraEnsureFormattingToolingPhase",
-    ),
-    "FlextInfraEnsureMypyConfigPhase": (
+    ],
+    "FlextInfraEnsureMypyConfigPhase": [
         "flext_infra.deps._phases.ensure_mypy",
         "FlextInfraEnsureMypyConfigPhase",
-    ),
-    "FlextInfraEnsureNamespaceToolingPhase": (
+    ],
+    "FlextInfraEnsureNamespaceToolingPhase": [
         "flext_infra.deps._phases.ensure_namespace",
         "FlextInfraEnsureNamespaceToolingPhase",
-    ),
-    "FlextInfraEnsurePydanticMypyConfigPhase": (
+    ],
+    "FlextInfraEnsurePydanticMypyConfigPhase": [
         "flext_infra.deps._phases.ensure_pydantic_mypy",
         "FlextInfraEnsurePydanticMypyConfigPhase",
-    ),
-    "FlextInfraEnsurePyreflyConfigPhase": (
+    ],
+    "FlextInfraEnsurePyreflyConfigPhase": [
         "flext_infra.deps._phases.ensure_pyrefly",
         "FlextInfraEnsurePyreflyConfigPhase",
-    ),
-    "FlextInfraEnsurePyrightConfigPhase": (
+    ],
+    "FlextInfraEnsurePyrightConfigPhase": [
         "flext_infra.deps._phases.ensure_pyright",
         "FlextInfraEnsurePyrightConfigPhase",
-    ),
-    "FlextInfraEnsurePytestConfigPhase": (
+    ],
+    "FlextInfraEnsurePytestConfigPhase": [
         "flext_infra.deps._phases.ensure_pytest",
         "FlextInfraEnsurePytestConfigPhase",
-    ),
-    "FlextInfraEnsureRuffConfigPhase": (
+    ],
+    "FlextInfraEnsureRuffConfigPhase": [
         "flext_infra.deps._phases.ensure_ruff",
         "FlextInfraEnsureRuffConfigPhase",
-    ),
-    "FlextInfraExtraPathsManager": (
+    ],
+    "FlextInfraExtraPathsManager": [
         "flext_infra.deps.extra_paths",
         "FlextInfraExtraPathsManager",
-    ),
-    "FlextInfraInjectCommentsPhase": (
+    ],
+    "FlextInfraInjectCommentsPhase": [
         "flext_infra.deps._phases.inject_comments",
         "FlextInfraInjectCommentsPhase",
-    ),
-    "FlextInfraInternalDependencySyncService": (
+    ],
+    "FlextInfraInternalDependencySyncService": [
         "flext_infra.deps.internal_sync",
         "FlextInfraInternalDependencySyncService",
-    ),
-    "FlextInfraPyprojectModernizer": (
+    ],
+    "FlextInfraPyprojectModernizer": [
         "flext_infra.deps.modernizer",
         "FlextInfraPyprojectModernizer",
-    ),
-    "FlextInfraRuntimeDevDependencyDetector": (
+    ],
+    "FlextInfraRuntimeDevDependencyDetector": [
         "flext_infra.deps.detector",
         "FlextInfraRuntimeDevDependencyDetector",
-    ),
-    "_phases": ("flext_infra.deps._phases", ""),
-    "main": ("flext_infra.deps.detector", "main"),
-    "shutil": ("flext_infra.deps.internal_sync", "shutil"),
-    "u": ("flext_infra.deps.internal_sync", "u"),
+    ],
+    "_phases": ["flext_infra.deps._phases", ""],
+    "main": ["flext_infra.deps.detector", "main"],
+    "shutil": ["flext_infra.deps.internal_sync", "shutil"],
+    "u": ["flext_infra.deps.internal_sync", "u"],
 }
 
 __all__ = [

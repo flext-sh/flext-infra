@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 from typing import Final
 
+from flext_infra import t
+
 
 class FlextInfraCoreConstants:
     """Core infrastructure constants."""
@@ -56,7 +58,7 @@ class FlextInfraCoreConstants:
     MYPY_STUB_RE: Final[re.Pattern[str]] = re.compile(
         r"Library stubs not installed for ['\"](\S+?)['\"]",
     )
-    INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
+    INTERNAL_PREFIXES: Final[t.StrSequence] = ("flext_", "flext-")
 
 
 class FlextInfraSharedInfraConstants:

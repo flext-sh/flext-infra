@@ -21,8 +21,8 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         self,
         imports_to_remove: Sequence[str],
         symbols_to_replace: t.StrMapping,
-        runtime_aliases: set[str],
-        blocked_aliases: set[str],
+        runtime_aliases: t.Infra.StrSet,
+        blocked_aliases: t.Infra.StrSet,
         on_change: infra_t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize import rewrite configuration and result tracking."""
@@ -32,8 +32,8 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         self._blocked_aliases = blocked_aliases
         self._on_change = on_change
         self.modified_imports = False
-        self.aliases_needed: set[str] = set()
-        self.aliases_present: set[str] = set()
+        self.aliases_needed: t.Infra.StrSet = set()
+        self.aliases_present: t.Infra.StrSet = set()
         self.active_symbol_replacements: MutableMapping[str, str] = {}
         self.changes: MutableSequence[str] = []
 

@@ -18,15 +18,15 @@ if TYPE_CHECKING:
         TestFlextInfraDiscoveryServiceUncoveredLines,
     )
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "TestFlextInfraDiscoveryService": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "TestFlextInfraDiscoveryService": [
         "tests.unit.discovery.test_infra_discovery",
         "TestFlextInfraDiscoveryService",
-    ),
-    "TestFlextInfraDiscoveryServiceUncoveredLines": (
+    ],
+    "TestFlextInfraDiscoveryServiceUncoveredLines": [
         "tests.unit.discovery.test_infra_discovery_edge_cases",
         "TestFlextInfraDiscoveryServiceUncoveredLines",
-    ),
+    ],
 }
 
 __all__ = [

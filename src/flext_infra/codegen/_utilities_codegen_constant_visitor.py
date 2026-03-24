@@ -112,7 +112,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             self._render = FlextInfraUtilitiesCodegenConstantDetection.RenderContext(
                 Path(file_path).read_text(c.Infra.Encoding.DEFAULT),
             )
-            self.used_constants: set[str] = set()
+            self.used_constants: t.Infra.StrSet = set()
             self.direct_refs: MutableSequence[m.Infra.DirectConstantRef] = []
             self.all_constant_refs: MutableSequence[
                 tuple[str, int]
@@ -304,7 +304,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         target_class: str = "",
         collect_all_refs: bool = False,
     ) -> tuple[
-        set[str],
+        t.Infra.StrSet,
         Sequence[m.Infra.DirectConstantRef],
         Sequence[tuple[str, int]],
     ]:
@@ -403,7 +403,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     @staticmethod
     def detect_unused_constants(
         definitions: Sequence[m.Infra.ConstantDefinition],
-        all_used_names: set[str],
+        all_used_names: t.Infra.StrSet,
     ) -> Sequence[m.Infra.UnusedConstant]:
         return [
             m.Infra.UnusedConstant(
@@ -525,7 +525,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             return {}
 
         result: MutableMapping[str, m.Infra.ConstantDefinition] = {}
-        seen_names: set[str] = set()
+        seen_names: t.Infra.StrSet = set()
 
         # Walk MRO to get all attributes (constants, enums, classes, types)
         for base_cls in cls.__mro__[:-1]:  # Exclude t.NormalizedValue
@@ -561,9 +561,12 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     def scan_class_attribute_usages(
         root_path: Path,
         class_name: str,
-        exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
+        exclude_patterns: frozenset[str] = frozenset({
+            ".mypy_cache",
+            "__pycache__",
+        }),
         max_files: int = c.Infra.MAX_SCAN_FILES,
-    ) -> tuple[set[str], Mapping[str, Sequence[tuple[str, int]]]]:
+    ) -> tuple[t.Infra.StrSet, Mapping[str, Sequence[tuple[str, int]]]]:
         """Scan workspace for usages of a specific class's attributes.
 
         Args:
@@ -576,7 +579,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             Tuple of (used_attribute_names, usage_map with file+line)
 
         """
-        used_names: set[str] = set()
+        used_names: t.Infra.StrSet = set()
         usage_map: MutableMapping[str, MutableSequence[tuple[str, int]]] = {}
 
         # Fast lookup for class usages
@@ -631,7 +634,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         max_files: int,
     ) -> tuple[
         Mapping[str, m.Infra.ConstantDefinition],
-        set[str],
+        t.Infra.StrSet,
         Mapping[str, Sequence[tuple[str, int]]],
     ]:
         """Shared logic: extract attributes and usages for a class."""
@@ -655,14 +658,17 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     def analyze_class_object_census(
         class_path: str,
         root_path: Path,
-        exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
+        exclude_patterns: frozenset[str] = frozenset({
+            ".mypy_cache",
+            "__pycache__",
+        }),
         max_files: int = 5000,
     ) -> Mapping[
         str,
         int
         | Mapping[str, int | Mapping[str, int]]
         | Mapping[str, Mapping[str, int]]
-        | Mapping[str, Sequence[tuple[str, int]]],
+        | Mapping[str, Sequence[t.Infra.StrIntPair]],
     ]:
         """Comprehensive census of all objects in a class."""
         attrs, used_attrs, usage_map = (
@@ -699,7 +705,10 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     def propose_deduplication_fixes(
         class_path: str,
         root_path: Path,
-        exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
+        exclude_patterns: frozenset[str] = frozenset({
+            ".mypy_cache",
+            "__pycache__",
+        }),
         max_files: int = 2000,
     ) -> Sequence[Mapping[str, str | int | Sequence[Mapping[str, str | int]]]]:
         """Propose fixes to deduplicate constant values across a class."""

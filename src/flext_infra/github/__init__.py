@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from flext_infra.github._models import FlextInfraGithubModels
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraGithubModels": (
         "flext_infra.github._models",
         "FlextInfraGithubModels",

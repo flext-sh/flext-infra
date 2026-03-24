@@ -8,7 +8,7 @@ from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraGate, c, m
+from flext_infra import FlextInfraGate, c, m, t
 
 
 class FlextInfraRuffFormatGate(FlextInfraGate):
@@ -44,7 +44,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         )
         issues: MutableSequence[m.Infra.Issue] = []
         if self._result_exit_code(result) != 0 and result.stdout.strip():
-            seen: set[str] = set()
+            seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
                 path = line.strip()
                 if not path:

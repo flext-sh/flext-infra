@@ -63,7 +63,7 @@ class FlextInfraRefactorModels(
         path: Annotated[Path, Field(description="Absolute project path")]
         src_path: Annotated[Path, Field(description="Absolute src/ path")]
         package_roots: Annotated[
-            set[str],
+            t.Infra.StrSet,
             Field(
                 default_factory=set,
                 description="Top-level Python package roots in src/",
@@ -72,14 +72,14 @@ class FlextInfraRefactorModels(
 
     class FileImportData(m.ArbitraryTypesModel):
         imported_modules: Annotated[
-            set[str],
+            t.Infra.StrSet,
             Field(
                 default_factory=set,
                 description="Imported module roots",
             ),
         ]
         imported_symbols: Annotated[
-            set[str],
+            t.Infra.StrSet,
             Field(
                 default_factory=set,
                 description="Imported symbol names",

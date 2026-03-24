@@ -387,7 +387,7 @@ class FlextInfraInternalDependencySyncService:
     def synthesized_repo_map(
         self,
         owner: str,
-        repo_names: set[str],
+        repo_names: t.Infra.StrSet,
     ) -> Mapping[str, m.Infra.RepoUrls]:
         """Build default repository URL mapping from owner and repo set."""
         result: MutableMapping[str, m.Infra.RepoUrls] = {}

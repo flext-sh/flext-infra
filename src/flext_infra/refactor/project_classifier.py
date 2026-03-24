@@ -189,11 +189,13 @@ class FlextInfraProjectClassifier:
         normalized = raw_name.strip().lower().replace("_", "-")
         return normalized.strip("./")
 
-    def _discover_facade_inheritance(self) -> tuple[Mapping[str, set[str]], set[str]]:
-        family_bases: Mapping[str, set[str]] = {
+    def _discover_facade_inheritance(
+        self,
+    ) -> tuple[Mapping[str, t.Infra.StrSet], t.Infra.StrSet]:
+        family_bases: Mapping[str, t.Infra.StrSet] = {
             family: set() for family in c.Infra.FAMILY_SUFFIXES
         }
-        local_facade_classes: set[str] = set()
+        local_facade_classes: t.Infra.StrSet = set()
         if not self._src_path.is_dir():
             return (family_bases, local_facade_classes)
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
@@ -208,12 +210,12 @@ class FlextInfraProjectClassifier:
         self,
         file_path: Path,
         suffix: str,
-    ) -> tuple[set[str], set[str]]:
+    ) -> tuple[t.Infra.StrSet, t.Infra.StrSet]:
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
             return (set(), set())
-        base_names: set[str] = set()
-        class_names: set[str] = set()
+        base_names: t.Infra.StrSet = set()
+        class_names: t.Infra.StrSet = set()
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
@@ -233,7 +235,7 @@ class FlextInfraProjectClassifier:
         self,
         *,
         internal_dependencies: t.StrSequence,
-        family_bases: Mapping[str, set[str]],
+        family_bases: Mapping[str, t.Infra.StrSet],
     ) -> Mapping[str, t.StrSequence]:
         family_chains: MutableMapping[str, t.StrSequence] = {}
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
@@ -286,7 +288,7 @@ class FlextInfraProjectClassifier:
         self,
         *,
         internal_dependencies: t.StrSequence,
-        local_facade_classes: set[str],
+        local_facade_classes: t.Infra.StrSet,
     ) -> str:
         if not internal_dependencies:
             return "core"

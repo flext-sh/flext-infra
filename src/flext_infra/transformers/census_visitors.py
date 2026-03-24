@@ -33,7 +33,7 @@ class FlextInfraCensusImportDiscoveryVisitor(cst.CSTVisitor):
         super().__init__()
         self.family_alias = family_alias
         self.facade_class_prefix = facade_class_prefix
-        self.alias_locals: set[str] = set()
+        self.alias_locals: t.Infra.StrSet = set()
         self.direct_imports: MutableMapping[str, str] = {}
 
     @override
@@ -79,10 +79,10 @@ class FlextInfraCensusUsageCollector(cst.CSTVisitor):
     def __init__(
         self,
         *,
-        method_index: Mapping[str, set[str]],
+        method_index: Mapping[str, t.Infra.StrSet],
         flat_aliases: Mapping[str, tuple[str, str]],
         inner_class_map: t.StrMapping,
-        alias_locals: set[str],
+        alias_locals: t.Infra.StrSet,
         direct_imports: t.StrMapping,
         file_path: Path,
         project_name: str,

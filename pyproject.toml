@@ -26,8 +26,8 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "flext-cli",
-  "flext-core",
+  "flext-cli @ file:../flext-cli",
+  "flext-core @ file:../flext-core",
   "libcst (>=1.5.1,<2)",
   "rope (>=1.14.0,<2.0.0)",
 ]

@@ -1059,2549 +1059,2549 @@ if TYPE_CHECKING:
         MinimalScenario,
     )
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "ANSI_RE": ("tests.unit.io.test_infra_output_formatting", "ANSI_RE"),
-    "BrokenScenario": ("tests.workspace_scenarios", "BrokenScenario"),
-    "CheckProjectStub": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "ANSI_RE": ["tests.unit.io.test_infra_output_formatting", "ANSI_RE"],
+    "BrokenScenario": ["tests.workspace_scenarios", "BrokenScenario"],
+    "CheckProjectStub": [
         "tests.unit.check.extended_run_projects_tests",
         "CheckProjectStub",
-    ),
-    "DependencyScenario": ("tests.scenarios", "DependencyScenario"),
-    "DependencyScenarios": ("tests.scenarios", "DependencyScenarios"),
-    "EmptyScenario": ("tests.workspace_scenarios", "EmptyScenario"),
-    "EngineSafetyStub": (
+    ],
+    "DependencyScenario": ["tests.scenarios", "DependencyScenario"],
+    "DependencyScenarios": ["tests.scenarios", "DependencyScenarios"],
+    "EmptyScenario": ["tests.workspace_scenarios", "EmptyScenario"],
+    "EngineSafetyStub": [
         "tests.unit.refactor.test_infra_refactor_safety",
         "EngineSafetyStub",
-    ),
-    "FAMILY_FILE_MAP": (
+    ],
+    "FAMILY_FILE_MAP": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "FAMILY_FILE_MAP",
-    ),
-    "FAMILY_SUFFIX_MAP": (
+    ],
+    "FAMILY_SUFFIX_MAP": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "FAMILY_SUFFIX_MAP",
-    ),
-    "FakeReporting": ("tests.unit.release._stubs", "FakeReporting"),
-    "FakeSelection": ("tests.unit.release._stubs", "FakeSelection"),
-    "FakeSubprocess": ("tests.unit.release._stubs", "FakeSubprocess"),
-    "FakeUtilsNamespace": ("tests.unit.release._stubs", "FakeUtilsNamespace"),
-    "FakeVersioning": ("tests.unit.release._stubs", "FakeVersioning"),
-    "FlextInfraCodegenTestProjectFactory": (
+    ],
+    "FakeReporting": ["tests.unit.release._stubs", "FakeReporting"],
+    "FakeSelection": ["tests.unit.release._stubs", "FakeSelection"],
+    "FakeSubprocess": ["tests.unit.release._stubs", "FakeSubprocess"],
+    "FakeUtilsNamespace": ["tests.unit.release._stubs", "FakeUtilsNamespace"],
+    "FakeVersioning": ["tests.unit.release._stubs", "FakeVersioning"],
+    "FlextInfraCodegenTestProjectFactory": [
         "tests.unit.codegen._project_factory",
         "FlextInfraCodegenTestProjectFactory",
-    ),
-    "FlextInfraTestConstants": ("tests.constants", "FlextInfraTestConstants"),
-    "FlextInfraTestHelpers": ("tests.helpers", "FlextInfraTestHelpers"),
-    "FlextInfraTestModels": ("tests.models", "FlextInfraTestModels"),
-    "FlextInfraTestProtocols": ("tests.protocols", "FlextInfraTestProtocols"),
-    "FlextInfraTestTypes": ("tests.typings", "FlextInfraTestTypes"),
-    "FlextInfraTestUtilities": ("tests.utilities", "FlextInfraTestUtilities"),
-    "FullScenario": ("tests.workspace_scenarios", "FullScenario"),
-    "GateClass": ("tests.unit.check.extended_runners_extra_tests", "GateClass"),
-    "GitScenario": ("tests.scenarios", "GitScenario"),
-    "GitScenarios": ("tests.scenarios", "GitScenarios"),
-    "MinimalScenario": ("tests.workspace_scenarios", "MinimalScenario"),
-    "OutputBackend": ("tests.unit.io.test_infra_output_formatting", "OutputBackend"),
-    "RealGitService": ("tests.git_service", "RealGitService"),
-    "RealSubprocessRunner": ("tests.runner_service", "RealSubprocessRunner"),
-    "RunCallable": ("tests.unit.check.extended_runners_go_tests", "RunCallable"),
-    "RunProjectsMock": ("tests.unit.check._shared_fixtures", "RunProjectsMock"),
-    "SampleModel": ("tests.unit.io.test_infra_json_io", "SampleModel"),
-    "SetupFn": ("tests.unit.test_infra_workspace_sync", "SetupFn"),
-    "Spy": ("tests.unit.check._stubs", "Spy"),
-    "StubCommandOutput": ("tests.unit.github._stubs", "StubCommandOutput"),
-    "StubJsonIo": ("tests.unit.github._stubs", "StubJsonIo"),
-    "StubLinter": ("tests.unit.github._stubs", "StubLinter"),
-    "StubPrManager": ("tests.unit.github._stubs", "StubPrManager"),
-    "StubProjectInfo": ("tests.unit.github._stubs", "StubProjectInfo"),
-    "StubReporting": ("tests.unit.github._stubs", "StubReporting"),
-    "StubRunner": ("tests.unit.github._stubs", "StubRunner"),
-    "StubSelector": ("tests.unit.github._stubs", "StubSelector"),
-    "StubSyncer": ("tests.unit.github._stubs", "StubSyncer"),
-    "StubTemplates": ("tests.unit.github._stubs", "StubTemplates"),
-    "StubUtilities": ("tests.unit.github._stubs", "StubUtilities"),
-    "StubVersioning": ("tests.unit.github._stubs", "StubVersioning"),
-    "StubWorkspaceManager": ("tests.unit.github._stubs", "StubWorkspaceManager"),
-    "SubprocessScenario": ("tests.scenarios", "SubprocessScenario"),
-    "SubprocessScenarios": ("tests.scenarios", "SubprocessScenarios"),
-    "TestAdrHelpers": ("tests.unit.docs.validator_internals_tests", "TestAdrHelpers"),
-    "TestAllDirectoriesScanned": (
+    ],
+    "FlextInfraTestConstants": ["tests.constants", "FlextInfraTestConstants"],
+    "FlextInfraTestHelpers": ["tests.helpers", "FlextInfraTestHelpers"],
+    "FlextInfraTestModels": ["tests.models", "FlextInfraTestModels"],
+    "FlextInfraTestProtocols": ["tests.protocols", "FlextInfraTestProtocols"],
+    "FlextInfraTestTypes": ["tests.typings", "FlextInfraTestTypes"],
+    "FlextInfraTestUtilities": ["tests.utilities", "FlextInfraTestUtilities"],
+    "FullScenario": ["tests.workspace_scenarios", "FullScenario"],
+    "GateClass": ["tests.unit.check.extended_runners_extra_tests", "GateClass"],
+    "GitScenario": ["tests.scenarios", "GitScenario"],
+    "GitScenarios": ["tests.scenarios", "GitScenarios"],
+    "MinimalScenario": ["tests.workspace_scenarios", "MinimalScenario"],
+    "OutputBackend": ["tests.unit.io.test_infra_output_formatting", "OutputBackend"],
+    "RealGitService": ["tests.git_service", "RealGitService"],
+    "RealSubprocessRunner": ["tests.runner_service", "RealSubprocessRunner"],
+    "RunCallable": ["tests.unit.check.extended_runners_go_tests", "RunCallable"],
+    "RunProjectsMock": ["tests.unit.check._shared_fixtures", "RunProjectsMock"],
+    "SampleModel": ["tests.unit.io.test_infra_json_io", "SampleModel"],
+    "SetupFn": ["tests.unit.test_infra_workspace_sync", "SetupFn"],
+    "Spy": ["tests.unit.check._stubs", "Spy"],
+    "StubCommandOutput": ["tests.unit.github._stubs", "StubCommandOutput"],
+    "StubJsonIo": ["tests.unit.github._stubs", "StubJsonIo"],
+    "StubLinter": ["tests.unit.github._stubs", "StubLinter"],
+    "StubPrManager": ["tests.unit.github._stubs", "StubPrManager"],
+    "StubProjectInfo": ["tests.unit.github._stubs", "StubProjectInfo"],
+    "StubReporting": ["tests.unit.github._stubs", "StubReporting"],
+    "StubRunner": ["tests.unit.github._stubs", "StubRunner"],
+    "StubSelector": ["tests.unit.github._stubs", "StubSelector"],
+    "StubSyncer": ["tests.unit.github._stubs", "StubSyncer"],
+    "StubTemplates": ["tests.unit.github._stubs", "StubTemplates"],
+    "StubUtilities": ["tests.unit.github._stubs", "StubUtilities"],
+    "StubVersioning": ["tests.unit.github._stubs", "StubVersioning"],
+    "StubWorkspaceManager": ["tests.unit.github._stubs", "StubWorkspaceManager"],
+    "SubprocessScenario": ["tests.scenarios", "SubprocessScenario"],
+    "SubprocessScenarios": ["tests.scenarios", "SubprocessScenarios"],
+    "TestAdrHelpers": ["tests.unit.docs.validator_internals_tests", "TestAdrHelpers"],
+    "TestAllDirectoriesScanned": [
         "tests.unit.codegen.lazy_init_tests",
         "TestAllDirectoriesScanned",
-    ),
-    "TestAuditorBrokenLinks": (
+    ],
+    "TestAuditorBrokenLinks": [
         "tests.unit.docs.auditor_links_tests",
         "TestAuditorBrokenLinks",
-    ),
-    "TestAuditorCore": ("tests.unit.docs.auditor_tests", "TestAuditorCore"),
-    "TestAuditorForbiddenTerms": (
+    ],
+    "TestAuditorCore": ["tests.unit.docs.auditor_tests", "TestAuditorCore"],
+    "TestAuditorForbiddenTerms": [
         "tests.unit.docs.auditor_scope_tests",
         "TestAuditorForbiddenTerms",
-    ),
-    "TestAuditorMainCli": ("tests.unit.docs.auditor_cli_tests", "TestAuditorMainCli"),
-    "TestAuditorNormalize": ("tests.unit.docs.auditor_tests", "TestAuditorNormalize"),
-    "TestAuditorScope": ("tests.unit.docs.auditor_scope_tests", "TestAuditorScope"),
-    "TestAuditorScopeFailure": (
+    ],
+    "TestAuditorMainCli": ["tests.unit.docs.auditor_cli_tests", "TestAuditorMainCli"],
+    "TestAuditorNormalize": ["tests.unit.docs.auditor_tests", "TestAuditorNormalize"],
+    "TestAuditorScope": ["tests.unit.docs.auditor_scope_tests", "TestAuditorScope"],
+    "TestAuditorScopeFailure": [
         "tests.unit.docs.auditor_cli_tests",
         "TestAuditorScopeFailure",
-    ),
-    "TestAuditorToMarkdown": (
+    ],
+    "TestAuditorToMarkdown": [
         "tests.unit.docs.auditor_links_tests",
         "TestAuditorToMarkdown",
-    ),
-    "TestBaseMkValidatorCore": (
+    ],
+    "TestBaseMkValidatorCore": [
         "tests.unit.validate.basemk_validator_tests",
         "TestBaseMkValidatorCore",
-    ),
-    "TestBaseMkValidatorEdgeCases": (
+    ],
+    "TestBaseMkValidatorEdgeCases": [
         "tests.unit.validate.basemk_validator_tests",
         "TestBaseMkValidatorEdgeCases",
-    ),
-    "TestBaseMkValidatorSha256": (
+    ],
+    "TestBaseMkValidatorSha256": [
         "tests.unit.validate.basemk_validator_tests",
         "TestBaseMkValidatorSha256",
-    ),
-    "TestBuildProjectReport": (
+    ],
+    "TestBuildProjectReport": [
         "tests.unit.deps.test_detection_classify",
         "TestBuildProjectReport",
-    ),
-    "TestBuildScopes": ("tests.unit.docs.shared_tests", "TestBuildScopes"),
-    "TestBuildSiblingExportIndex": (
+    ],
+    "TestBuildScopes": ["tests.unit.docs.shared_tests", "TestBuildScopes"],
+    "TestBuildSiblingExportIndex": [
         "tests.unit.codegen.lazy_init_helpers_tests",
         "TestBuildSiblingExportIndex",
-    ),
-    "TestBuildTargets": (
+    ],
+    "TestBuildTargets": [
         "tests.unit.release.orchestrator_helpers_tests",
         "TestBuildTargets",
-    ),
-    "TestBuilderCore": ("tests.unit.docs.builder_tests", "TestBuilderCore"),
-    "TestBuilderScope": ("tests.unit.docs.builder_scope_tests", "TestBuilderScope"),
-    "TestBumpNextDev": (
+    ],
+    "TestBuilderCore": ["tests.unit.docs.builder_tests", "TestBuilderCore"],
+    "TestBuilderScope": ["tests.unit.docs.builder_scope_tests", "TestBuilderScope"],
+    "TestBumpNextDev": [
         "tests.unit.release.orchestrator_helpers_tests",
         "TestBumpNextDev",
-    ),
-    "TestCensusReportModel": (
+    ],
+    "TestCensusReportModel": [
         "tests.unit.codegen.census_models_tests",
         "TestCensusReportModel",
-    ),
-    "TestCensusViolationModel": (
+    ],
+    "TestCensusViolationModel": [
         "tests.unit.codegen.census_models_tests",
         "TestCensusViolationModel",
-    ),
-    "TestCheckIssueFormatted": (
+    ],
+    "TestCheckIssueFormatted": [
         "tests.unit.check.extended_models_tests",
         "TestCheckIssueFormatted",
-    ),
-    "TestCheckMainEntryPoint": (
+    ],
+    "TestCheckMainEntryPoint": [
         "tests.unit.check.extended_cli_entry_tests",
         "TestCheckMainEntryPoint",
-    ),
-    "TestCheckOnlyMode": ("tests.unit.codegen.lazy_init_tests", "TestCheckOnlyMode"),
-    "TestCheckProjectRunners": (
+    ],
+    "TestCheckOnlyMode": ["tests.unit.codegen.lazy_init_tests", "TestCheckOnlyMode"],
+    "TestCheckProjectRunners": [
         "tests.unit.check.extended_projects_tests",
         "TestCheckProjectRunners",
-    ),
-    "TestClassifyIssues": (
+    ],
+    "TestClassifyIssues": [
         "tests.unit.deps.test_detection_classify",
         "TestClassifyIssues",
-    ),
-    "TestCollectChanges": (
+    ],
+    "TestCollectChanges": [
         "tests.unit.release.orchestrator_git_tests",
         "TestCollectChanges",
-    ),
-    "TestCollectInternalDeps": (
+    ],
+    "TestCollectInternalDeps": [
         "tests.unit.deps.test_internal_sync_discovery",
         "TestCollectInternalDeps",
-    ),
-    "TestCollectInternalDepsEdgeCases": (
+    ],
+    "TestCollectInternalDepsEdgeCases": [
         "tests.unit.deps.test_internal_sync_discovery_edge",
         "TestCollectInternalDepsEdgeCases",
-    ),
-    "TestCollectMarkdownFiles": (
+    ],
+    "TestCollectMarkdownFiles": [
         "tests.unit.check.extended_runners_ruff_tests",
         "TestCollectMarkdownFiles",
-    ),
-    "TestConfigFixerEnsureProjectExcludes": (
+    ],
+    "TestConfigFixerEnsureProjectExcludes": [
         "tests.unit.check.extended_config_fixer_tests",
         "TestConfigFixerEnsureProjectExcludes",
-    ),
-    "TestConfigFixerExecute": (
+    ],
+    "TestConfigFixerExecute": [
         "tests.unit.check.extended_config_fixer_tests",
         "TestConfigFixerExecute",
-    ),
-    "TestConfigFixerFindPyprojectFiles": (
+    ],
+    "TestConfigFixerFindPyprojectFiles": [
         "tests.unit.check.extended_config_fixer_tests",
         "TestConfigFixerFindPyprojectFiles",
-    ),
-    "TestConfigFixerFixSearchPaths": (
+    ],
+    "TestConfigFixerFixSearchPaths": [
         "tests.unit.check.extended_config_fixer_tests",
         "TestConfigFixerFixSearchPaths",
-    ),
-    "TestConfigFixerPathResolution": (
+    ],
+    "TestConfigFixerPathResolution": [
         "tests.unit.check.extended_config_fixer_errors_tests",
         "TestConfigFixerPathResolution",
-    ),
-    "TestConfigFixerProcessFile": (
+    ],
+    "TestConfigFixerProcessFile": [
         "tests.unit.check.extended_config_fixer_tests",
         "TestConfigFixerProcessFile",
-    ),
-    "TestConfigFixerRemoveIgnoreSubConfig": (
+    ],
+    "TestConfigFixerRemoveIgnoreSubConfig": [
         "tests.unit.check.extended_config_fixer_tests",
         "TestConfigFixerRemoveIgnoreSubConfig",
-    ),
-    "TestConfigFixerRun": (
+    ],
+    "TestConfigFixerRun": [
         "tests.unit.check.extended_config_fixer_tests",
         "TestConfigFixerRun",
-    ),
-    "TestConfigFixerRunMethods": (
+    ],
+    "TestConfigFixerRunMethods": [
         "tests.unit.check.extended_config_fixer_errors_tests",
         "TestConfigFixerRunMethods",
-    ),
-    "TestConfigFixerRunWithVerbose": (
+    ],
+    "TestConfigFixerRunWithVerbose": [
         "tests.unit.check.extended_config_fixer_errors_tests",
         "TestConfigFixerRunWithVerbose",
-    ),
-    "TestConfigFixerToArray": (
+    ],
+    "TestConfigFixerToArray": [
         "tests.unit.check.extended_config_fixer_tests",
         "TestConfigFixerToArray",
-    ),
-    "TestConsolidateGroupsPhase": (
+    ],
+    "TestConsolidateGroupsPhase": [
         "tests.unit.deps.test_modernizer_consolidate",
         "TestConsolidateGroupsPhase",
-    ),
-    "TestConstants": ("tests.unit.deps.test_extra_paths_manager", "TestConstants"),
-    "TestConstantsQualityGateCLIDispatch": (
+    ],
+    "TestConstants": ["tests.unit.deps.test_extra_paths_manager", "TestConstants"],
+    "TestConstantsQualityGateCLIDispatch": [
         "tests.unit.codegen.constants_quality_gate_tests",
         "TestConstantsQualityGateCLIDispatch",
-    ),
-    "TestConstantsQualityGateVerdict": (
+    ],
+    "TestConstantsQualityGateVerdict": [
         "tests.unit.codegen.constants_quality_gate_tests",
         "TestConstantsQualityGateVerdict",
-    ),
-    "TestCoreModuleInit": ("tests.unit.validate.init_tests", "TestCoreModuleInit"),
-    "TestCreateBranches": (
+    ],
+    "TestCoreModuleInit": ["tests.unit.validate.init_tests", "TestCoreModuleInit"],
+    "TestCreateBranches": [
         "tests.unit.release.orchestrator_git_tests",
         "TestCreateBranches",
-    ),
-    "TestCreateTag": ("tests.unit.release.orchestrator_git_tests", "TestCreateTag"),
-    "TestDetectMode": ("tests.unit.deps.test_path_sync_init", "TestDetectMode"),
-    "TestDetectionUncoveredLines": (
+    ],
+    "TestCreateTag": ["tests.unit.release.orchestrator_git_tests", "TestCreateTag"],
+    "TestDetectMode": ["tests.unit.deps.test_path_sync_init", "TestDetectMode"],
+    "TestDetectionUncoveredLines": [
         "tests.unit.deps.test_detection_uncovered",
         "TestDetectionUncoveredLines",
-    ),
-    "TestDetectorBasicDetection": (
+    ],
+    "TestDetectorBasicDetection": [
         "tests.unit.test_infra_workspace_detector",
         "TestDetectorBasicDetection",
-    ),
-    "TestDetectorGitRunScenarios": (
+    ],
+    "TestDetectorGitRunScenarios": [
         "tests.unit.test_infra_workspace_detector",
         "TestDetectorGitRunScenarios",
-    ),
-    "TestDetectorRepoNameExtraction": (
+    ],
+    "TestDetectorRepoNameExtraction": [
         "tests.unit.test_infra_workspace_detector",
         "TestDetectorRepoNameExtraction",
-    ),
-    "TestDetectorReportFlags": (
+    ],
+    "TestDetectorReportFlags": [
         "tests.unit.deps.test_detector_report_flags",
         "TestDetectorReportFlags",
-    ),
-    "TestDetectorRunFailures": (
+    ],
+    "TestDetectorRunFailures": [
         "tests.unit.deps.test_detector_detect_failures",
         "TestDetectorRunFailures",
-    ),
-    "TestDiscoverProjects": (
+    ],
+    "TestDiscoverProjects": [
         "tests.unit.test_infra_maintenance_python_version",
         "TestDiscoverProjects",
-    ),
-    "TestDiscoveryDiscoverProjects": (
+    ],
+    "TestDiscoveryDiscoverProjects": [
         "tests.unit._utilities.test_discovery_consolidated",
         "TestDiscoveryDiscoverProjects",
-    ),
-    "TestDiscoveryFindAllPyprojectFiles": (
+    ],
+    "TestDiscoveryFindAllPyprojectFiles": [
         "tests.unit._utilities.test_discovery_consolidated",
         "TestDiscoveryFindAllPyprojectFiles",
-    ),
-    "TestDiscoveryIterPythonFiles": (
+    ],
+    "TestDiscoveryIterPythonFiles": [
         "tests.unit._utilities.test_discovery_consolidated",
         "TestDiscoveryIterPythonFiles",
-    ),
-    "TestDiscoveryProjectRoots": (
+    ],
+    "TestDiscoveryProjectRoots": [
         "tests.unit._utilities.test_discovery_consolidated",
         "TestDiscoveryProjectRoots",
-    ),
-    "TestDispatchPhase": (
+    ],
+    "TestDispatchPhase": [
         "tests.unit.release.orchestrator_helpers_tests",
         "TestDispatchPhase",
-    ),
-    "TestEdgeCases": ("tests.unit.codegen.lazy_init_tests", "TestEdgeCases"),
-    "TestEnforcerExecute": (
+    ],
+    "TestEdgeCases": ["tests.unit.codegen.lazy_init_tests", "TestEdgeCases"],
+    "TestEnforcerExecute": [
         "tests.unit.test_infra_maintenance_python_version",
         "TestEnforcerExecute",
-    ),
-    "TestEnsureCheckout": (
+    ],
+    "TestEnsureCheckout": [
         "tests.unit.deps.test_internal_sync_update",
         "TestEnsureCheckout",
-    ),
-    "TestEnsureCheckoutEdgeCases": (
+    ],
+    "TestEnsureCheckoutEdgeCases": [
         "tests.unit.deps.test_internal_sync_update_checkout_edge",
         "TestEnsureCheckoutEdgeCases",
-    ),
-    "TestEnsurePyreflyConfigPhase": (
+    ],
+    "TestEnsurePyreflyConfigPhase": [
         "tests.unit.deps.test_modernizer_pyrefly",
         "TestEnsurePyreflyConfigPhase",
-    ),
-    "TestEnsurePyrightConfigPhase": (
+    ],
+    "TestEnsurePyrightConfigPhase": [
         "tests.unit.deps.test_modernizer_pyright",
         "TestEnsurePyrightConfigPhase",
-    ),
-    "TestEnsurePytestConfigPhase": (
+    ],
+    "TestEnsurePytestConfigPhase": [
         "tests.unit.deps.test_modernizer_pytest",
         "TestEnsurePytestConfigPhase",
-    ),
-    "TestEnsurePythonVersionFile": (
+    ],
+    "TestEnsurePythonVersionFile": [
         "tests.unit.test_infra_maintenance_python_version",
         "TestEnsurePythonVersionFile",
-    ),
-    "TestEnsureSymlink": (
+    ],
+    "TestEnsureSymlink": [
         "tests.unit.deps.test_internal_sync_update",
         "TestEnsureSymlink",
-    ),
-    "TestEnsureSymlinkEdgeCases": (
+    ],
+    "TestEnsureSymlinkEdgeCases": [
         "tests.unit.deps.test_internal_sync_update",
         "TestEnsureSymlinkEdgeCases",
-    ),
-    "TestErrorReporting": (
+    ],
+    "TestErrorReporting": [
         "tests.unit.check.extended_error_reporting_tests",
         "TestErrorReporting",
-    ),
-    "TestExcludedDirectories": (
+    ],
+    "TestExcludedDirectories": [
         "tests.unit.codegen.lazy_init_tests",
         "TestExcludedDirectories",
-    ),
-    "TestExcludedProjects": (
+    ],
+    "TestExcludedProjects": [
         "tests.unit.codegen.census_models_tests",
         "TestExcludedProjects",
-    ),
-    "TestExtractExports": (
+    ],
+    "TestExtractExports": [
         "tests.unit.codegen.lazy_init_helpers_tests",
         "TestExtractExports",
-    ),
-    "TestExtractInlineConstants": (
+    ],
+    "TestExtractInlineConstants": [
         "tests.unit.codegen.lazy_init_transforms_tests",
         "TestExtractInlineConstants",
-    ),
-    "TestExtractVersionExports": (
+    ],
+    "TestExtractVersionExports": [
         "tests.unit.codegen.lazy_init_transforms_tests",
         "TestExtractVersionExports",
-    ),
-    "TestFixPyrelfyCLI": (
+    ],
+    "TestFixPyrelfyCLI": [
         "tests.unit.check.extended_cli_entry_tests",
         "TestFixPyrelfyCLI",
-    ),
-    "TestFixabilityClassification": (
+    ],
+    "TestFixabilityClassification": [
         "tests.unit.codegen.census_tests",
         "TestFixabilityClassification",
-    ),
-    "TestFixerCore": ("tests.unit.docs.fixer_tests", "TestFixerCore"),
-    "TestFixerMaybeFixLink": (
+    ],
+    "TestFixerCore": ["tests.unit.docs.fixer_tests", "TestFixerCore"],
+    "TestFixerMaybeFixLink": [
         "tests.unit.docs.fixer_internals_tests",
         "TestFixerMaybeFixLink",
-    ),
-    "TestFixerProcessFile": (
+    ],
+    "TestFixerProcessFile": [
         "tests.unit.docs.fixer_internals_tests",
         "TestFixerProcessFile",
-    ),
-    "TestFixerScope": ("tests.unit.docs.fixer_internals_tests", "TestFixerScope"),
-    "TestFixerToc": ("tests.unit.docs.fixer_internals_tests", "TestFixerToc"),
-    "TestFlextInfraBaseMk": ("tests.unit.basemk.test_init", "TestFlextInfraBaseMk"),
-    "TestFlextInfraCheck": ("tests.unit.check.init_tests", "TestFlextInfraCheck"),
-    "TestFlextInfraCodegenLazyInit": (
+    ],
+    "TestFixerScope": ["tests.unit.docs.fixer_internals_tests", "TestFixerScope"],
+    "TestFixerToc": ["tests.unit.docs.fixer_internals_tests", "TestFixerToc"],
+    "TestFlextInfraBaseMk": ["tests.unit.basemk.test_init", "TestFlextInfraBaseMk"],
+    "TestFlextInfraCheck": ["tests.unit.check.init_tests", "TestFlextInfraCheck"],
+    "TestFlextInfraCodegenLazyInit": [
         "tests.unit.codegen.lazy_init_service_tests",
         "TestFlextInfraCodegenLazyInit",
-    ),
-    "TestFlextInfraCommandRunnerExtra": (
+    ],
+    "TestFlextInfraCommandRunnerExtra": [
         "tests.unit.test_infra_subprocess_extra",
         "TestFlextInfraCommandRunnerExtra",
-    ),
-    "TestFlextInfraConfigFixer": (
+    ],
+    "TestFlextInfraConfigFixer": [
         "tests.unit.check.pyrefly_tests",
         "TestFlextInfraConfigFixer",
-    ),
-    "TestFlextInfraConstantsAlias": (
+    ],
+    "TestFlextInfraConstantsAlias": [
         "tests.unit.test_infra_constants_extra",
         "TestFlextInfraConstantsAlias",
-    ),
-    "TestFlextInfraConstantsCheckNamespace": (
+    ],
+    "TestFlextInfraConstantsCheckNamespace": [
         "tests.unit.test_infra_constants_extra",
         "TestFlextInfraConstantsCheckNamespace",
-    ),
-    "TestFlextInfraConstantsConsistency": (
+    ],
+    "TestFlextInfraConstantsConsistency": [
         "tests.unit.test_infra_constants_extra",
         "TestFlextInfraConstantsConsistency",
-    ),
-    "TestFlextInfraConstantsEncodingNamespace": (
+    ],
+    "TestFlextInfraConstantsEncodingNamespace": [
         "tests.unit.test_infra_constants_extra",
         "TestFlextInfraConstantsEncodingNamespace",
-    ),
-    "TestFlextInfraConstantsExcludedNamespace": (
+    ],
+    "TestFlextInfraConstantsExcludedNamespace": [
         "tests.unit.test_infra_constants_core",
         "TestFlextInfraConstantsExcludedNamespace",
-    ),
-    "TestFlextInfraConstantsFilesNamespace": (
+    ],
+    "TestFlextInfraConstantsFilesNamespace": [
         "tests.unit.test_infra_constants_core",
         "TestFlextInfraConstantsFilesNamespace",
-    ),
-    "TestFlextInfraConstantsGatesNamespace": (
+    ],
+    "TestFlextInfraConstantsGatesNamespace": [
         "tests.unit.test_infra_constants_core",
         "TestFlextInfraConstantsGatesNamespace",
-    ),
-    "TestFlextInfraConstantsGithubNamespace": (
+    ],
+    "TestFlextInfraConstantsGithubNamespace": [
         "tests.unit.test_infra_constants_extra",
         "TestFlextInfraConstantsGithubNamespace",
-    ),
-    "TestFlextInfraConstantsImmutability": (
+    ],
+    "TestFlextInfraConstantsImmutability": [
         "tests.unit.test_infra_constants_extra",
         "TestFlextInfraConstantsImmutability",
-    ),
-    "TestFlextInfraConstantsPathsNamespace": (
+    ],
+    "TestFlextInfraConstantsPathsNamespace": [
         "tests.unit.test_infra_constants_core",
         "TestFlextInfraConstantsPathsNamespace",
-    ),
-    "TestFlextInfraConstantsStatusNamespace": (
+    ],
+    "TestFlextInfraConstantsStatusNamespace": [
         "tests.unit.test_infra_constants_core",
         "TestFlextInfraConstantsStatusNamespace",
-    ),
-    "TestFlextInfraDependencyDetectionModels": (
+    ],
+    "TestFlextInfraDependencyDetectionModels": [
         "tests.unit.deps.test_detection_models",
         "TestFlextInfraDependencyDetectionModels",
-    ),
-    "TestFlextInfraDependencyDetectionService": (
+    ],
+    "TestFlextInfraDependencyDetectionService": [
         "tests.unit.deps.test_detection_models",
         "TestFlextInfraDependencyDetectionService",
-    ),
-    "TestFlextInfraDependencyDetectorModels": (
+    ],
+    "TestFlextInfraDependencyDetectorModels": [
         "tests.unit.deps.test_detector_models",
         "TestFlextInfraDependencyDetectorModels",
-    ),
-    "TestFlextInfraDependencyPathSync": (
+    ],
+    "TestFlextInfraDependencyPathSync": [
         "tests.unit.deps.test_path_sync_init",
         "TestFlextInfraDependencyPathSync",
-    ),
-    "TestFlextInfraDeps": ("tests.unit.deps.test_init", "TestFlextInfraDeps"),
-    "TestFlextInfraDiscoveryService": (
+    ],
+    "TestFlextInfraDeps": ["tests.unit.deps.test_init", "TestFlextInfraDeps"],
+    "TestFlextInfraDiscoveryService": [
         "tests.unit.discovery.test_infra_discovery",
         "TestFlextInfraDiscoveryService",
-    ),
-    "TestFlextInfraDiscoveryServiceUncoveredLines": (
+    ],
+    "TestFlextInfraDiscoveryServiceUncoveredLines": [
         "tests.unit.discovery.test_infra_discovery_edge_cases",
         "TestFlextInfraDiscoveryServiceUncoveredLines",
-    ),
-    "TestFlextInfraDocScope": (
+    ],
+    "TestFlextInfraDocScope": [
         "tests.unit.docs.shared_tests",
         "TestFlextInfraDocScope",
-    ),
-    "TestFlextInfraDocs": ("tests.unit.docs.init_tests", "TestFlextInfraDocs"),
-    "TestFlextInfraExtraPathsManager": (
+    ],
+    "TestFlextInfraDocs": ["tests.unit.docs.init_tests", "TestFlextInfraDocs"],
+    "TestFlextInfraExtraPathsManager": [
         "tests.unit.deps.test_extra_paths_manager",
         "TestFlextInfraExtraPathsManager",
-    ),
-    "TestFlextInfraGitService": (
+    ],
+    "TestFlextInfraGitService": [
         "tests.unit.test_infra_git",
         "TestFlextInfraGitService",
-    ),
-    "TestFlextInfraInitLazyLoading": (
+    ],
+    "TestFlextInfraInitLazyLoading": [
         "tests.unit.test_infra_init_lazy_core",
         "TestFlextInfraInitLazyLoading",
-    ),
-    "TestFlextInfraInternalDependencySyncService": (
+    ],
+    "TestFlextInfraInternalDependencySyncService": [
         "tests.unit.deps.test_internal_sync_validation",
         "TestFlextInfraInternalDependencySyncService",
-    ),
-    "TestFlextInfraJsonService": (
+    ],
+    "TestFlextInfraJsonService": [
         "tests.unit.io.test_infra_json_io",
         "TestFlextInfraJsonService",
-    ),
-    "TestFlextInfraMaintenance": (
+    ],
+    "TestFlextInfraMaintenance": [
         "tests.unit.test_infra_maintenance_init",
         "TestFlextInfraMaintenance",
-    ),
-    "TestFlextInfraPathResolver": (
+    ],
+    "TestFlextInfraPathResolver": [
         "tests.unit.test_infra_paths",
         "TestFlextInfraPathResolver",
-    ),
-    "TestFlextInfraPatternsEdgeCases": (
+    ],
+    "TestFlextInfraPatternsEdgeCases": [
         "tests.unit.test_infra_patterns_extra",
         "TestFlextInfraPatternsEdgeCases",
-    ),
-    "TestFlextInfraPatternsMarkdown": (
+    ],
+    "TestFlextInfraPatternsMarkdown": [
         "tests.unit.test_infra_patterns_core",
         "TestFlextInfraPatternsMarkdown",
-    ),
-    "TestFlextInfraPatternsPatternTypes": (
+    ],
+    "TestFlextInfraPatternsPatternTypes": [
         "tests.unit.test_infra_patterns_extra",
         "TestFlextInfraPatternsPatternTypes",
-    ),
-    "TestFlextInfraPatternsTooling": (
+    ],
+    "TestFlextInfraPatternsTooling": [
         "tests.unit.test_infra_patterns_core",
         "TestFlextInfraPatternsTooling",
-    ),
-    "TestFlextInfraProtocolsImport": (
+    ],
+    "TestFlextInfraProtocolsImport": [
         "tests.unit.test_infra_protocols",
         "TestFlextInfraProtocolsImport",
-    ),
-    "TestFlextInfraPyprojectModernizer": (
+    ],
+    "TestFlextInfraPyprojectModernizer": [
         "tests.unit.deps.test_modernizer_main",
         "TestFlextInfraPyprojectModernizer",
-    ),
-    "TestFlextInfraReportingServiceCore": (
+    ],
+    "TestFlextInfraReportingServiceCore": [
         "tests.unit.test_infra_reporting_core",
         "TestFlextInfraReportingServiceCore",
-    ),
-    "TestFlextInfraReportingServiceExtra": (
+    ],
+    "TestFlextInfraReportingServiceExtra": [
         "tests.unit.test_infra_reporting_extra",
         "TestFlextInfraReportingServiceExtra",
-    ),
-    "TestFlextInfraRuntimeDevDependencyDetectorInit": (
+    ],
+    "TestFlextInfraRuntimeDevDependencyDetectorInit": [
         "tests.unit.deps.test_detector_init",
         "TestFlextInfraRuntimeDevDependencyDetectorInit",
-    ),
-    "TestFlextInfraRuntimeDevDependencyDetectorRunDetect": (
+    ],
+    "TestFlextInfraRuntimeDevDependencyDetectorRunDetect": [
         "tests.unit.deps.test_detector_detect",
         "TestFlextInfraRuntimeDevDependencyDetectorRunDetect",
-    ),
-    "TestFlextInfraRuntimeDevDependencyDetectorRunReport": (
+    ],
+    "TestFlextInfraRuntimeDevDependencyDetectorRunReport": [
         "tests.unit.deps.test_detector_report",
         "TestFlextInfraRuntimeDevDependencyDetectorRunReport",
-    ),
-    "TestFlextInfraRuntimeDevDependencyDetectorRunTypings": (
+    ],
+    "TestFlextInfraRuntimeDevDependencyDetectorRunTypings": [
         "tests.unit.deps.test_detector_main",
         "TestFlextInfraRuntimeDevDependencyDetectorRunTypings",
-    ),
-    "TestFlextInfraSubmoduleInitLazyLoading": (
+    ],
+    "TestFlextInfraSubmoduleInitLazyLoading": [
         "tests.unit.test_infra_init_lazy_submodules",
         "TestFlextInfraSubmoduleInitLazyLoading",
-    ),
-    "TestFlextInfraTomlDocument": (
+    ],
+    "TestFlextInfraTomlDocument": [
         "tests.unit.test_infra_toml_io",
         "TestFlextInfraTomlDocument",
-    ),
-    "TestFlextInfraTomlHelpers": (
+    ],
+    "TestFlextInfraTomlHelpers": [
         "tests.unit.test_infra_toml_io",
         "TestFlextInfraTomlHelpers",
-    ),
-    "TestFlextInfraTomlRead": (
+    ],
+    "TestFlextInfraTomlRead": [
         "tests.unit.test_infra_toml_io",
         "TestFlextInfraTomlRead",
-    ),
-    "TestFlextInfraTypesImport": (
+    ],
+    "TestFlextInfraTypesImport": [
         "tests.unit.test_infra_typings",
         "TestFlextInfraTypesImport",
-    ),
-    "TestFlextInfraUtilitiesImport": (
+    ],
+    "TestFlextInfraUtilitiesImport": [
         "tests.unit.test_infra_utilities",
         "TestFlextInfraUtilitiesImport",
-    ),
-    "TestFlextInfraUtilitiesSelection": (
+    ],
+    "TestFlextInfraUtilitiesSelection": [
         "tests.unit.test_infra_selection",
         "TestFlextInfraUtilitiesSelection",
-    ),
-    "TestFlextInfraVersionClass": (
+    ],
+    "TestFlextInfraVersionClass": [
         "tests.unit.test_infra_version_core",
         "TestFlextInfraVersionClass",
-    ),
-    "TestFlextInfraVersionModuleLevel": (
+    ],
+    "TestFlextInfraVersionModuleLevel": [
         "tests.unit.test_infra_version_extra",
         "TestFlextInfraVersionModuleLevel",
-    ),
-    "TestFlextInfraVersionPackageInfo": (
+    ],
+    "TestFlextInfraVersionPackageInfo": [
         "tests.unit.test_infra_version_extra",
         "TestFlextInfraVersionPackageInfo",
-    ),
-    "TestFlextInfraWorkspace": (
+    ],
+    "TestFlextInfraWorkspace": [
         "tests.unit.test_infra_workspace_init",
         "TestFlextInfraWorkspace",
-    ),
-    "TestFlextInfraWorkspaceChecker": (
+    ],
+    "TestFlextInfraWorkspaceChecker": [
         "tests.unit.check.workspace_tests",
         "TestFlextInfraWorkspaceChecker",
-    ),
-    "TestFormattingRunRuffFix": (
+    ],
+    "TestFormattingRunRuffFix": [
         "tests.unit._utilities.test_formatting",
         "TestFormattingRunRuffFix",
-    ),
-    "TestGenerateFile": (
+    ],
+    "TestGenerateFile": [
         "tests.unit.codegen.lazy_init_generation_tests",
         "TestGenerateFile",
-    ),
-    "TestGenerateNotes": (
+    ],
+    "TestGenerateNotes": [
         "tests.unit.release.orchestrator_helpers_tests",
         "TestGenerateNotes",
-    ),
-    "TestGenerateTypeChecking": (
+    ],
+    "TestGenerateTypeChecking": [
         "tests.unit.codegen.lazy_init_generation_tests",
         "TestGenerateTypeChecking",
-    ),
-    "TestGeneratedClassNamingConvention": (
+    ],
+    "TestGeneratedClassNamingConvention": [
         "tests.unit.codegen.scaffolder_naming_tests",
         "TestGeneratedClassNamingConvention",
-    ),
-    "TestGeneratedFilesAreValidPython": (
+    ],
+    "TestGeneratedFilesAreValidPython": [
         "tests.unit.codegen.scaffolder_naming_tests",
         "TestGeneratedFilesAreValidPython",
-    ),
-    "TestGeneratorCore": ("tests.unit.docs.generator_tests", "TestGeneratorCore"),
-    "TestGeneratorHelpers": (
+    ],
+    "TestGeneratorCore": ["tests.unit.docs.generator_tests", "TestGeneratorCore"],
+    "TestGeneratorHelpers": [
         "tests.unit.docs.generator_internals_tests",
         "TestGeneratorHelpers",
-    ),
-    "TestGeneratorScope": (
+    ],
+    "TestGeneratorScope": [
         "tests.unit.docs.generator_internals_tests",
         "TestGeneratorScope",
-    ),
-    "TestGetDepPaths": ("tests.unit.deps.test_extra_paths_manager", "TestGetDepPaths"),
-    "TestGitPush": ("tests.unit.test_infra_git", "TestGitPush"),
-    "TestGitTagOperations": ("tests.unit.test_infra_git", "TestGitTagOperations"),
-    "TestGoFmtEmptyLinesInOutput": (
+    ],
+    "TestGetDepPaths": ["tests.unit.deps.test_extra_paths_manager", "TestGetDepPaths"],
+    "TestGitPush": ["tests.unit.test_infra_git", "TestGitPush"],
+    "TestGitTagOperations": ["tests.unit.test_infra_git", "TestGitTagOperations"],
+    "TestGoFmtEmptyLinesInOutput": [
         "tests.unit.check.extended_error_reporting_tests",
         "TestGoFmtEmptyLinesInOutput",
-    ),
-    "TestHandleLazyInit": ("tests.unit.codegen.main_tests", "TestHandleLazyInit"),
-    "TestInferOwnerFromOrigin": (
+    ],
+    "TestHandleLazyInit": ["tests.unit.codegen.main_tests", "TestHandleLazyInit"],
+    "TestInferOwnerFromOrigin": [
         "tests.unit.deps.test_internal_sync_resolve",
         "TestInferOwnerFromOrigin",
-    ),
-    "TestInferPackage": (
+    ],
+    "TestInferPackage": [
         "tests.unit.codegen.lazy_init_helpers_tests",
         "TestInferPackage",
-    ),
-    "TestInfraContainerFunctions": (
+    ],
+    "TestInfraContainerFunctions": [
         "tests.unit.container.test_infra_container",
         "TestInfraContainerFunctions",
-    ),
-    "TestInfraMroPattern": (
+    ],
+    "TestInfraMroPattern": [
         "tests.unit.container.test_infra_container",
         "TestInfraMroPattern",
-    ),
-    "TestInfraOutputEdgeCases": (
+    ],
+    "TestInfraOutputEdgeCases": [
         "tests.unit.io.test_infra_output_edge_cases",
         "TestInfraOutputEdgeCases",
-    ),
-    "TestInfraOutputHeader": (
+    ],
+    "TestInfraOutputHeader": [
         "tests.unit.io.test_infra_output_formatting",
         "TestInfraOutputHeader",
-    ),
-    "TestInfraOutputMessages": (
+    ],
+    "TestInfraOutputMessages": [
         "tests.unit.io.test_infra_output_formatting",
         "TestInfraOutputMessages",
-    ),
-    "TestInfraOutputNoColor": (
+    ],
+    "TestInfraOutputNoColor": [
         "tests.unit.io.test_infra_output_edge_cases",
         "TestInfraOutputNoColor",
-    ),
-    "TestInfraOutputProgress": (
+    ],
+    "TestInfraOutputProgress": [
         "tests.unit.io.test_infra_output_formatting",
         "TestInfraOutputProgress",
-    ),
-    "TestInfraOutputStatus": (
+    ],
+    "TestInfraOutputStatus": [
         "tests.unit.io.test_infra_output_formatting",
         "TestInfraOutputStatus",
-    ),
-    "TestInfraOutputSummary": (
+    ],
+    "TestInfraOutputSummary": [
         "tests.unit.io.test_infra_output_formatting",
         "TestInfraOutputSummary",
-    ),
-    "TestInfraServiceRetrieval": (
+    ],
+    "TestInfraServiceRetrieval": [
         "tests.unit.container.test_infra_container",
         "TestInfraServiceRetrieval",
-    ),
-    "TestInjectCommentsPhase": (
+    ],
+    "TestInjectCommentsPhase": [
         "tests.unit.deps.test_modernizer_comments",
         "TestInjectCommentsPhase",
-    ),
-    "TestInventoryServiceCore": (
+    ],
+    "TestInventoryServiceCore": [
         "tests.unit.validate.inventory_tests",
         "TestInventoryServiceCore",
-    ),
-    "TestInventoryServiceReports": (
+    ],
+    "TestInventoryServiceReports": [
         "tests.unit.validate.inventory_tests",
         "TestInventoryServiceReports",
-    ),
-    "TestInventoryServiceScripts": (
+    ],
+    "TestInventoryServiceScripts": [
         "tests.unit.validate.inventory_tests",
         "TestInventoryServiceScripts",
-    ),
-    "TestIsInternalPathDep": (
+    ],
+    "TestIsInternalPathDep": [
         "tests.unit.deps.test_internal_sync_validation",
         "TestIsInternalPathDep",
-    ),
-    "TestIsRelativeTo": (
+    ],
+    "TestIsRelativeTo": [
         "tests.unit.deps.test_internal_sync_validation",
         "TestIsRelativeTo",
-    ),
-    "TestIsWorkspaceMode": (
+    ],
+    "TestIsWorkspaceMode": [
         "tests.unit.deps.test_internal_sync_workspace",
         "TestIsWorkspaceMode",
-    ),
-    "TestIterMarkdownFiles": (
+    ],
+    "TestIterMarkdownFiles": [
         "tests.unit.docs.shared_iter_tests",
         "TestIterMarkdownFiles",
-    ),
-    "TestIterWorkspacePythonModules": (
+    ],
+    "TestIterWorkspacePythonModules": [
         "tests.unit._utilities.test_iteration",
         "TestIterWorkspacePythonModules",
-    ),
-    "TestJsonWriteFailure": (
+    ],
+    "TestJsonWriteFailure": [
         "tests.unit.check.extended_project_runners_tests",
         "TestJsonWriteFailure",
-    ),
-    "TestLintAndFormatPublicMethods": (
+    ],
+    "TestLintAndFormatPublicMethods": [
         "tests.unit.check.extended_projects_tests",
         "TestLintAndFormatPublicMethods",
-    ),
-    "TestLoadAuditBudgets": (
+    ],
+    "TestLoadAuditBudgets": [
         "tests.unit.docs.auditor_budgets_tests",
         "TestLoadAuditBudgets",
-    ),
-    "TestLoadDependencyLimits": (
+    ],
+    "TestLoadDependencyLimits": [
         "tests.unit.deps.test_detection_typings",
         "TestLoadDependencyLimits",
-    ),
-    "TestMain": ("tests.unit.github.main_integration_tests", "TestMain"),
-    "TestMainBaseMkValidate": (
+    ],
+    "TestMain": ["tests.unit.github.main_integration_tests", "TestMain"],
+    "TestMainBaseMkValidate": [
         "tests.unit.validate.main_tests",
         "TestMainBaseMkValidate",
-    ),
-    "TestMainCli": ("tests.unit.test_infra_workspace_main", "TestMainCli"),
-    "TestMainCliRouting": ("tests.unit.validate.main_tests", "TestMainCliRouting"),
-    "TestMainCommandDispatch": (
+    ],
+    "TestMainCli": ["tests.unit.test_infra_workspace_main", "TestMainCli"],
+    "TestMainCliRouting": ["tests.unit.validate.main_tests", "TestMainCliRouting"],
+    "TestMainCommandDispatch": [
         "tests.unit.codegen.main_tests",
         "TestMainCommandDispatch",
-    ),
-    "TestMainDelegation": ("tests.unit.deps.test_main_dispatch", "TestMainDelegation"),
-    "TestMainEdgeCases": (
+    ],
+    "TestMainDelegation": ["tests.unit.deps.test_main_dispatch", "TestMainDelegation"],
+    "TestMainEdgeCases": [
         "tests.unit.deps.test_path_sync_main_edges",
         "TestMainEdgeCases",
-    ),
-    "TestMainEntryPoint": ("tests.unit.codegen.main_tests", "TestMainEntryPoint"),
-    "TestMainExceptionHandling": (
+    ],
+    "TestMainEntryPoint": ["tests.unit.codegen.main_tests", "TestMainEntryPoint"],
+    "TestMainExceptionHandling": [
         "tests.unit.deps.test_main_dispatch",
         "TestMainExceptionHandling",
-    ),
-    "TestMainFunction": ("tests.unit.deps.test_detector_main", "TestMainFunction"),
-    "TestMainHelpAndErrors": ("tests.unit.deps.test_main", "TestMainHelpAndErrors"),
-    "TestMainInventory": ("tests.unit.validate.main_tests", "TestMainInventory"),
-    "TestMainModuleImport": (
+    ],
+    "TestMainFunction": ["tests.unit.deps.test_detector_main", "TestMainFunction"],
+    "TestMainHelpAndErrors": ["tests.unit.deps.test_main", "TestMainHelpAndErrors"],
+    "TestMainInventory": ["tests.unit.validate.main_tests", "TestMainInventory"],
+    "TestMainModuleImport": [
         "tests.unit.deps.test_main_dispatch",
         "TestMainModuleImport",
-    ),
-    "TestMainReturnValues": ("tests.unit.deps.test_main", "TestMainReturnValues"),
-    "TestMainRouting": ("tests.unit.docs.main_entry_tests", "TestMainRouting"),
-    "TestMainScan": ("tests.unit.validate.main_tests", "TestMainScan"),
-    "TestMainSubcommandDispatch": (
+    ],
+    "TestMainReturnValues": ["tests.unit.deps.test_main", "TestMainReturnValues"],
+    "TestMainRouting": ["tests.unit.docs.main_entry_tests", "TestMainRouting"],
+    "TestMainScan": ["tests.unit.validate.main_tests", "TestMainScan"],
+    "TestMainSubcommandDispatch": [
         "tests.unit.deps.test_main_dispatch",
         "TestMainSubcommandDispatch",
-    ),
-    "TestMainSysArgvModification": (
+    ],
+    "TestMainSysArgvModification": [
         "tests.unit.deps.test_main_dispatch",
         "TestMainSysArgvModification",
-    ),
-    "TestMainWithFlags": ("tests.unit.docs.main_entry_tests", "TestMainWithFlags"),
-    "TestMaintenanceMainEnforcer": (
+    ],
+    "TestMainWithFlags": ["tests.unit.docs.main_entry_tests", "TestMainWithFlags"],
+    "TestMaintenanceMainEnforcer": [
         "tests.unit.test_infra_maintenance_main",
         "TestMaintenanceMainEnforcer",
-    ),
-    "TestMaintenanceMainSuccess": (
+    ],
+    "TestMaintenanceMainSuccess": [
         "tests.unit.test_infra_maintenance_main",
         "TestMaintenanceMainSuccess",
-    ),
-    "TestMarkdownReportEmptyGates": (
+    ],
+    "TestMarkdownReportEmptyGates": [
         "tests.unit.check.extended_error_reporting_tests",
         "TestMarkdownReportEmptyGates",
-    ),
-    "TestMarkdownReportSkipsEmptyGates": (
+    ],
+    "TestMarkdownReportSkipsEmptyGates": [
         "tests.unit.check.extended_reports_tests",
         "TestMarkdownReportSkipsEmptyGates",
-    ),
-    "TestMarkdownReportWithErrors": (
+    ],
+    "TestMarkdownReportWithErrors": [
         "tests.unit.check.extended_reports_tests",
         "TestMarkdownReportWithErrors",
-    ),
-    "TestMaybeWriteTodo": (
+    ],
+    "TestMaybeWriteTodo": [
         "tests.unit.docs.validator_internals_tests",
         "TestMaybeWriteTodo",
-    ),
-    "TestMergeChildExports": (
+    ],
+    "TestMergeChildExports": [
         "tests.unit.codegen.lazy_init_transforms_tests",
         "TestMergeChildExports",
-    ),
-    "TestMigratorDryRun": (
+    ],
+    "TestMigratorDryRun": [
         "tests.unit.test_infra_workspace_migrator_pyproject",
         "TestMigratorDryRun",
-    ),
-    "TestMigratorEdgeCases": (
+    ],
+    "TestMigratorEdgeCases": [
         "tests.unit.test_infra_workspace_migrator_internal",
         "TestMigratorEdgeCases",
-    ),
-    "TestMigratorFlextCore": (
+    ],
+    "TestMigratorFlextCore": [
         "tests.unit.test_infra_workspace_migrator_pyproject",
         "TestMigratorFlextCore",
-    ),
-    "TestMigratorInternalMakefile": (
+    ],
+    "TestMigratorInternalMakefile": [
         "tests.unit.test_infra_workspace_migrator_internal",
         "TestMigratorInternalMakefile",
-    ),
-    "TestMigratorInternalPyproject": (
+    ],
+    "TestMigratorInternalPyproject": [
         "tests.unit.test_infra_workspace_migrator_internal",
         "TestMigratorInternalPyproject",
-    ),
-    "TestMigratorPoetryDeps": (
+    ],
+    "TestMigratorPoetryDeps": [
         "tests.unit.test_infra_workspace_migrator_pyproject",
         "TestMigratorPoetryDeps",
-    ),
-    "TestMigratorReadFailures": (
+    ],
+    "TestMigratorReadFailures": [
         "tests.unit.test_infra_workspace_migrator_errors",
         "TestMigratorReadFailures",
-    ),
-    "TestMigratorWriteFailures": (
+    ],
+    "TestMigratorWriteFailures": [
         "tests.unit.test_infra_workspace_migrator_errors",
         "TestMigratorWriteFailures",
-    ),
-    "TestModernizerEdgeCases": (
+    ],
+    "TestModernizerEdgeCases": [
         "tests.unit.deps.test_modernizer_main_extra",
         "TestModernizerEdgeCases",
-    ),
-    "TestModernizerRunAndMain": (
+    ],
+    "TestModernizerRunAndMain": [
         "tests.unit.deps.test_modernizer_main",
         "TestModernizerRunAndMain",
-    ),
-    "TestModernizerUncoveredLines": (
+    ],
+    "TestModernizerUncoveredLines": [
         "tests.unit.deps.test_modernizer_main_extra",
         "TestModernizerUncoveredLines",
-    ),
-    "TestModuleAndTypingsFlow": (
+    ],
+    "TestModuleAndTypingsFlow": [
         "tests.unit.deps.test_detection_typings_flow",
         "TestModuleAndTypingsFlow",
-    ),
-    "TestMroFacadeMethods": (
+    ],
+    "TestMroFacadeMethods": [
         "tests.unit.io.test_infra_output_edge_cases",
         "TestMroFacadeMethods",
-    ),
-    "TestMypyEmptyLinesInOutput": (
+    ],
+    "TestMypyEmptyLinesInOutput": [
         "tests.unit.check.extended_error_reporting_tests",
         "TestMypyEmptyLinesInOutput",
-    ),
-    "TestOrchestratorBasic": (
+    ],
+    "TestOrchestratorBasic": [
         "tests.unit.test_infra_workspace_orchestrator",
         "TestOrchestratorBasic",
-    ),
-    "TestOrchestratorFailures": (
+    ],
+    "TestOrchestratorFailures": [
         "tests.unit.test_infra_workspace_orchestrator",
         "TestOrchestratorFailures",
-    ),
-    "TestOrchestratorGateNormalization": (
+    ],
+    "TestOrchestratorGateNormalization": [
         "tests.unit.test_infra_workspace_orchestrator",
         "TestOrchestratorGateNormalization",
-    ),
-    "TestOwnerFromRemoteUrl": (
+    ],
+    "TestOwnerFromRemoteUrl": [
         "tests.unit.deps.test_internal_sync_validation",
         "TestOwnerFromRemoteUrl",
-    ),
-    "TestParseGitmodules": (
+    ],
+    "TestParseGitmodules": [
         "tests.unit.deps.test_internal_sync_discovery",
         "TestParseGitmodules",
-    ),
-    "TestParseRepoMap": (
+    ],
+    "TestParseRepoMap": [
         "tests.unit.deps.test_internal_sync_discovery",
         "TestParseRepoMap",
-    ),
-    "TestParseViolationInvalid": (
+    ],
+    "TestParseViolationInvalid": [
         "tests.unit.codegen.census_tests",
         "TestParseViolationInvalid",
-    ),
-    "TestParseViolationValid": (
+    ],
+    "TestParseViolationValid": [
         "tests.unit.codegen.census_tests",
         "TestParseViolationValid",
-    ),
-    "TestParser": ("tests.unit.deps.test_modernizer_workspace", "TestParser"),
-    "TestParsingModuleAst": (
+    ],
+    "TestParser": ["tests.unit.deps.test_modernizer_workspace", "TestParser"],
+    "TestParsingModuleAst": [
         "tests.unit._utilities.test_parsing",
         "TestParsingModuleAst",
-    ),
-    "TestParsingModuleCst": (
+    ],
+    "TestParsingModuleCst": [
         "tests.unit._utilities.test_parsing",
         "TestParsingModuleCst",
-    ),
-    "TestPathDepPathsPep621": (
+    ],
+    "TestPathDepPathsPep621": [
         "tests.unit.deps.test_extra_paths_pep621",
         "TestPathDepPathsPep621",
-    ),
-    "TestPathDepPathsPoetry": (
+    ],
+    "TestPathDepPathsPoetry": [
         "tests.unit.deps.test_extra_paths_pep621",
         "TestPathDepPathsPoetry",
-    ),
-    "TestPathSyncEdgeCases": (
+    ],
+    "TestPathSyncEdgeCases": [
         "tests.unit.deps.test_path_sync_init",
         "TestPathSyncEdgeCases",
-    ),
-    "TestPhaseBuild": (
+    ],
+    "TestPhaseBuild": [
         "tests.unit.release.orchestrator_phases_tests",
         "TestPhaseBuild",
-    ),
-    "TestPhasePublish": (
+    ],
+    "TestPhasePublish": [
         "tests.unit.release.orchestrator_publish_tests",
         "TestPhasePublish",
-    ),
-    "TestPhaseValidate": (
+    ],
+    "TestPhaseValidate": [
         "tests.unit.release.orchestrator_phases_tests",
         "TestPhaseValidate",
-    ),
-    "TestPhaseVersion": (
+    ],
+    "TestPhaseVersion": [
         "tests.unit.release.orchestrator_phases_tests",
         "TestPhaseVersion",
-    ),
-    "TestPreviousTag": ("tests.unit.release.orchestrator_git_tests", "TestPreviousTag"),
-    "TestProcessDirectory": (
+    ],
+    "TestPreviousTag": ["tests.unit.release.orchestrator_git_tests", "TestPreviousTag"],
+    "TestProcessDirectory": [
         "tests.unit.codegen.lazy_init_process_tests",
         "TestProcessDirectory",
-    ),
-    "TestProcessFileReadError": (
+    ],
+    "TestProcessFileReadError": [
         "tests.unit.check.extended_config_fixer_errors_tests",
         "TestProcessFileReadError",
-    ),
-    "TestProjectResultProperties": (
+    ],
+    "TestProjectResultProperties": [
         "tests.unit.check.extended_models_tests",
         "TestProjectResultProperties",
-    ),
-    "TestPushRelease": ("tests.unit.release.orchestrator_git_tests", "TestPushRelease"),
-    "TestPytestDiagExtractorCore": (
+    ],
+    "TestPushRelease": ["tests.unit.release.orchestrator_git_tests", "TestPushRelease"],
+    "TestPytestDiagExtractorCore": [
         "tests.unit.validate.pytest_diag",
         "TestPytestDiagExtractorCore",
-    ),
-    "TestPytestDiagLogParsing": (
+    ],
+    "TestPytestDiagLogParsing": [
         "tests.unit.validate.pytest_diag",
         "TestPytestDiagLogParsing",
-    ),
-    "TestPytestDiagParseXml": (
+    ],
+    "TestPytestDiagParseXml": [
         "tests.unit.validate.pytest_diag",
         "TestPytestDiagParseXml",
-    ),
-    "TestReadDoc": ("tests.unit.deps.test_modernizer_workspace", "TestReadDoc"),
-    "TestReadExistingDocstring": (
+    ],
+    "TestReadDoc": ["tests.unit.deps.test_modernizer_workspace", "TestReadDoc"],
+    "TestReadExistingDocstring": [
         "tests.unit.codegen.lazy_init_helpers_tests",
         "TestReadExistingDocstring",
-    ),
-    "TestReadRequiredMinor": (
+    ],
+    "TestReadRequiredMinor": [
         "tests.unit.test_infra_maintenance_python_version",
         "TestReadRequiredMinor",
-    ),
-    "TestReleaseInit": ("tests.unit.release.release_init_tests", "TestReleaseInit"),
-    "TestReleaseMainFlow": ("tests.unit.release.flow_tests", "TestReleaseMainFlow"),
-    "TestReleaseMainParsing": (
+    ],
+    "TestReleaseInit": ["tests.unit.release.release_init_tests", "TestReleaseInit"],
+    "TestReleaseMainFlow": ["tests.unit.release.flow_tests", "TestReleaseMainFlow"],
+    "TestReleaseMainParsing": [
         "tests.unit.release.main_tests",
         "TestReleaseMainParsing",
-    ),
-    "TestReleaseMainTagResolution": (
+    ],
+    "TestReleaseMainTagResolution": [
         "tests.unit.release.version_resolution_tests",
         "TestReleaseMainTagResolution",
-    ),
-    "TestReleaseMainVersionResolution": (
+    ],
+    "TestReleaseMainVersionResolution": [
         "tests.unit.release.version_resolution_tests",
         "TestReleaseMainVersionResolution",
-    ),
-    "TestReleaseOrchestratorExecute": (
+    ],
+    "TestReleaseOrchestratorExecute": [
         "tests.unit.release.orchestrator_tests",
         "TestReleaseOrchestratorExecute",
-    ),
-    "TestRemovedCompatibilityMethods": (
+    ],
+    "TestRemovedCompatibilityMethods": [
         "tests.unit.test_infra_git",
         "TestRemovedCompatibilityMethods",
-    ),
-    "TestResolveAliases": (
+    ],
+    "TestResolveAliases": [
         "tests.unit.codegen.lazy_init_generation_tests",
         "TestResolveAliases",
-    ),
-    "TestResolveRef": ("tests.unit.deps.test_internal_sync_resolve", "TestResolveRef"),
-    "TestResolveVersionInteractive": (
+    ],
+    "TestResolveRef": ["tests.unit.deps.test_internal_sync_resolve", "TestResolveRef"],
+    "TestResolveVersionInteractive": [
         "tests.unit.release.version_resolution_tests",
         "TestResolveVersionInteractive",
-    ),
-    "TestRewriteDepPaths": (
+    ],
+    "TestRewriteDepPaths": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
         "TestRewriteDepPaths",
-    ),
-    "TestRewritePep621": (
+    ],
+    "TestRewritePep621": [
         "tests.unit.deps.test_path_sync_rewrite_pep621",
         "TestRewritePep621",
-    ),
-    "TestRewritePoetry": (
+    ],
+    "TestRewritePoetry": [
         "tests.unit.deps.test_path_sync_rewrite_poetry",
         "TestRewritePoetry",
-    ),
-    "TestRuffFormatDuplicateFiles": (
+    ],
+    "TestRuffFormatDuplicateFiles": [
         "tests.unit.check.extended_error_reporting_tests",
         "TestRuffFormatDuplicateFiles",
-    ),
-    "TestRunAudit": ("tests.unit.docs.main_tests", "TestRunAudit"),
-    "TestRunBandit": ("tests.unit.check.extended_runners_extra_tests", "TestRunBandit"),
-    "TestRunBuild": ("tests.unit.docs.main_commands_tests", "TestRunBuild"),
-    "TestRunCLIExtended": (
+    ],
+    "TestRunAudit": ["tests.unit.docs.main_tests", "TestRunAudit"],
+    "TestRunBandit": ["tests.unit.check.extended_runners_extra_tests", "TestRunBandit"],
+    "TestRunBuild": ["tests.unit.docs.main_commands_tests", "TestRunBuild"],
+    "TestRunCLIExtended": [
         "tests.unit.check.extended_cli_entry_tests",
         "TestRunCLIExtended",
-    ),
-    "TestRunCommand": (
+    ],
+    "TestRunCommand": [
         "tests.unit.check.extended_runners_ruff_tests",
         "TestRunCommand",
-    ),
-    "TestRunDeptry": ("tests.unit.deps.test_detection_deptry", "TestRunDeptry"),
-    "TestRunDetect": ("tests.unit.test_infra_workspace_main", "TestRunDetect"),
-    "TestRunFix": ("tests.unit.docs.main_tests", "TestRunFix"),
-    "TestRunGenerate": ("tests.unit.docs.main_commands_tests", "TestRunGenerate"),
-    "TestRunGo": ("tests.unit.check.extended_runners_go_tests", "TestRunGo"),
-    "TestRunLint": ("tests.unit.github.main_tests", "TestRunLint"),
-    "TestRunMake": ("tests.unit.release.orchestrator_helpers_tests", "TestRunMake"),
-    "TestRunMarkdown": (
+    ],
+    "TestRunDeptry": ["tests.unit.deps.test_detection_deptry", "TestRunDeptry"],
+    "TestRunDetect": ["tests.unit.test_infra_workspace_main", "TestRunDetect"],
+    "TestRunFix": ["tests.unit.docs.main_tests", "TestRunFix"],
+    "TestRunGenerate": ["tests.unit.docs.main_commands_tests", "TestRunGenerate"],
+    "TestRunGo": ["tests.unit.check.extended_runners_go_tests", "TestRunGo"],
+    "TestRunLint": ["tests.unit.github.main_tests", "TestRunLint"],
+    "TestRunMake": ["tests.unit.release.orchestrator_helpers_tests", "TestRunMake"],
+    "TestRunMarkdown": [
         "tests.unit.check.extended_runners_extra_tests",
         "TestRunMarkdown",
-    ),
-    "TestRunMigrate": ("tests.unit.test_infra_workspace_main", "TestRunMigrate"),
-    "TestRunMypy": ("tests.unit.check.extended_runners_tests", "TestRunMypy"),
-    "TestRunMypyStubHints": (
+    ],
+    "TestRunMigrate": ["tests.unit.test_infra_workspace_main", "TestRunMigrate"],
+    "TestRunMypy": ["tests.unit.check.extended_runners_tests", "TestRunMypy"],
+    "TestRunMypyStubHints": [
         "tests.unit.deps.test_detection_typings",
         "TestRunMypyStubHints",
-    ),
-    "TestRunOrchestrate": (
+    ],
+    "TestRunOrchestrate": [
         "tests.unit.test_infra_workspace_main",
         "TestRunOrchestrate",
-    ),
-    "TestRunPipCheck": ("tests.unit.deps.test_detection_pip_check", "TestRunPipCheck"),
-    "TestRunPr": ("tests.unit.github.main_tests", "TestRunPr"),
-    "TestRunPrWorkspace": (
+    ],
+    "TestRunPipCheck": ["tests.unit.deps.test_detection_pip_check", "TestRunPipCheck"],
+    "TestRunPr": ["tests.unit.github.main_tests", "TestRunPr"],
+    "TestRunPrWorkspace": [
         "tests.unit.github.main_dispatch_tests",
         "TestRunPrWorkspace",
-    ),
-    "TestRunProjectsBehavior": (
+    ],
+    "TestRunProjectsBehavior": [
         "tests.unit.check.extended_run_projects_tests",
         "TestRunProjectsBehavior",
-    ),
-    "TestRunProjectsReports": (
+    ],
+    "TestRunProjectsReports": [
         "tests.unit.check.extended_run_projects_tests",
         "TestRunProjectsReports",
-    ),
-    "TestRunProjectsValidation": (
+    ],
+    "TestRunProjectsValidation": [
         "tests.unit.check.extended_run_projects_tests",
         "TestRunProjectsValidation",
-    ),
-    "TestRunPyrefly": ("tests.unit.check.extended_runners_tests", "TestRunPyrefly"),
-    "TestRunPyright": (
+    ],
+    "TestRunPyrefly": ["tests.unit.check.extended_runners_tests", "TestRunPyrefly"],
+    "TestRunPyright": [
         "tests.unit.check.extended_runners_extra_tests",
         "TestRunPyright",
-    ),
-    "TestRunRuffFix": (
+    ],
+    "TestRunRuffFix": [
         "tests.unit.codegen.lazy_init_generation_tests",
         "TestRunRuffFix",
-    ),
-    "TestRunRuffFormat": (
+    ],
+    "TestRunRuffFormat": [
         "tests.unit.check.extended_runners_ruff_tests",
         "TestRunRuffFormat",
-    ),
-    "TestRunRuffLint": (
+    ],
+    "TestRunRuffLint": [
         "tests.unit.check.extended_runners_ruff_tests",
         "TestRunRuffLint",
-    ),
-    "TestRunSingleProject": (
+    ],
+    "TestRunSingleProject": [
         "tests.unit.check.extended_run_projects_tests",
         "TestRunSingleProject",
-    ),
-    "TestRunSync": ("tests.unit.test_infra_workspace_main", "TestRunSync"),
-    "TestRunValidate": ("tests.unit.docs.main_commands_tests", "TestRunValidate"),
-    "TestRunWorkflows": ("tests.unit.github.main_tests", "TestRunWorkflows"),
-    "TestSafeLoadYaml": (
+    ],
+    "TestRunSync": ["tests.unit.test_infra_workspace_main", "TestRunSync"],
+    "TestRunValidate": ["tests.unit.docs.main_commands_tests", "TestRunValidate"],
+    "TestRunWorkflows": ["tests.unit.github.main_tests", "TestRunWorkflows"],
+    "TestSafeLoadYaml": [
         "tests.unit.validate.skill_validator_tests",
         "TestSafeLoadYaml",
-    ),
-    "TestSafetyCheckpoint": (
+    ],
+    "TestSafetyCheckpoint": [
         "tests.unit._utilities.test_safety",
         "TestSafetyCheckpoint",
-    ),
-    "TestSafetyRollback": ("tests.unit._utilities.test_safety", "TestSafetyRollback"),
-    "TestScaffoldProjectCreatesSrcModules": (
+    ],
+    "TestSafetyRollback": ["tests.unit._utilities.test_safety", "TestSafetyRollback"],
+    "TestScaffoldProjectCreatesSrcModules": [
         "tests.unit.codegen.scaffolder_tests",
         "TestScaffoldProjectCreatesSrcModules",
-    ),
-    "TestScaffoldProjectCreatesTestsModules": (
+    ],
+    "TestScaffoldProjectCreatesTestsModules": [
         "tests.unit.codegen.scaffolder_tests",
         "TestScaffoldProjectCreatesTestsModules",
-    ),
-    "TestScaffoldProjectIdempotency": (
+    ],
+    "TestScaffoldProjectIdempotency": [
         "tests.unit.codegen.scaffolder_tests",
         "TestScaffoldProjectIdempotency",
-    ),
-    "TestScaffoldProjectNoop": (
+    ],
+    "TestScaffoldProjectNoop": [
         "tests.unit.codegen.scaffolder_tests",
         "TestScaffoldProjectNoop",
-    ),
-    "TestScanAstPublicDefs": (
+    ],
+    "TestScanAstPublicDefs": [
         "tests.unit.codegen.lazy_init_transforms_tests",
         "TestScanAstPublicDefs",
-    ),
-    "TestScanModels": ("tests.unit._utilities.test_scanning", "TestScanModels"),
-    "TestScannerCore": ("tests.unit.validate.scanner_tests", "TestScannerCore"),
-    "TestScannerHelpers": ("tests.unit.validate.scanner_tests", "TestScannerHelpers"),
-    "TestScannerMultiFile": (
+    ],
+    "TestScanModels": ["tests.unit._utilities.test_scanning", "TestScanModels"],
+    "TestScannerCore": ["tests.unit.validate.scanner_tests", "TestScannerCore"],
+    "TestScannerHelpers": ["tests.unit.validate.scanner_tests", "TestScannerHelpers"],
+    "TestScannerMultiFile": [
         "tests.unit.validate.scanner_tests",
         "TestScannerMultiFile",
-    ),
-    "TestSelectedProjectNames": (
+    ],
+    "TestSelectedProjectNames": [
         "tests.unit.docs.shared_iter_tests",
         "TestSelectedProjectNames",
-    ),
-    "TestShouldBubbleUp": (
+    ],
+    "TestShouldBubbleUp": [
         "tests.unit.codegen.lazy_init_transforms_tests",
         "TestShouldBubbleUp",
-    ),
-    "TestShouldUseColor": (
+    ],
+    "TestShouldUseColor": [
         "tests.unit.io.test_infra_terminal_detection",
         "TestShouldUseColor",
-    ),
-    "TestShouldUseUnicode": (
+    ],
+    "TestShouldUseUnicode": [
         "tests.unit.io.test_infra_terminal_detection",
         "TestShouldUseUnicode",
-    ),
-    "TestSkillValidatorAstGrepCount": (
+    ],
+    "TestSkillValidatorAstGrepCount": [
         "tests.unit.validate.skill_validator_tests",
         "TestSkillValidatorAstGrepCount",
-    ),
-    "TestSkillValidatorCore": (
+    ],
+    "TestSkillValidatorCore": [
         "tests.unit.validate.skill_validator_tests",
         "TestSkillValidatorCore",
-    ),
-    "TestSkillValidatorRenderTemplate": (
+    ],
+    "TestSkillValidatorRenderTemplate": [
         "tests.unit.validate.skill_validator_tests",
         "TestSkillValidatorRenderTemplate",
-    ),
-    "TestStringList": ("tests.unit.validate.skill_validator_tests", "TestStringList"),
-    "TestStubChainAnalyze": (
+    ],
+    "TestStringList": ["tests.unit.validate.skill_validator_tests", "TestStringList"],
+    "TestStubChainAnalyze": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainAnalyze",
-    ),
-    "TestStubChainCore": ("tests.unit.validate.stub_chain_tests", "TestStubChainCore"),
-    "TestStubChainDiscoverProjects": (
+    ],
+    "TestStubChainCore": ["tests.unit.validate.stub_chain_tests", "TestStubChainCore"],
+    "TestStubChainDiscoverProjects": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainDiscoverProjects",
-    ),
-    "TestStubChainIsInternal": (
+    ],
+    "TestStubChainIsInternal": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainIsInternal",
-    ),
-    "TestStubChainStubExists": (
+    ],
+    "TestStubChainStubExists": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainStubExists",
-    ),
-    "TestStubChainValidate": (
+    ],
+    "TestStubChainValidate": [
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainValidate",
-    ),
-    "TestSubcommandMapping": ("tests.unit.deps.test_main", "TestSubcommandMapping"),
-    "TestSync": ("tests.unit.deps.test_internal_sync_sync", "TestSync"),
-    "TestSyncMethodEdgeCases": (
+    ],
+    "TestSubcommandMapping": ["tests.unit.deps.test_main", "TestSubcommandMapping"],
+    "TestSync": ["tests.unit.deps.test_internal_sync_sync", "TestSync"],
+    "TestSyncMethodEdgeCases": [
         "tests.unit.deps.test_internal_sync_sync_edge",
         "TestSyncMethodEdgeCases",
-    ),
-    "TestSyncMethodEdgeCasesMore": (
+    ],
+    "TestSyncMethodEdgeCasesMore": [
         "tests.unit.deps.test_internal_sync_sync_edge_more",
         "TestSyncMethodEdgeCasesMore",
-    ),
-    "TestSyncOne": ("tests.unit.deps.test_extra_paths_manager", "TestSyncOne"),
-    "TestSynthesizedRepoMap": (
+    ],
+    "TestSyncOne": ["tests.unit.deps.test_extra_paths_manager", "TestSyncOne"],
+    "TestSynthesizedRepoMap": [
         "tests.unit.deps.test_internal_sync_resolve",
         "TestSynthesizedRepoMap",
-    ),
-    "TestToInfraValue": ("tests.unit.deps.test_detection_models", "TestToInfraValue"),
-    "TestUpdateChangelog": (
+    ],
+    "TestToInfraValue": ["tests.unit.deps.test_detection_models", "TestToInfraValue"],
+    "TestUpdateChangelog": [
         "tests.unit.release.orchestrator_helpers_tests",
         "TestUpdateChangelog",
-    ),
-    "TestValidateCore": ("tests.unit.docs.validator_tests", "TestValidateCore"),
-    "TestValidateGitRefEdgeCases": (
+    ],
+    "TestValidateCore": ["tests.unit.docs.validator_tests", "TestValidateCore"],
+    "TestValidateGitRefEdgeCases": [
         "tests.unit.deps.test_internal_sync_validation",
         "TestValidateGitRefEdgeCases",
-    ),
-    "TestValidateReport": ("tests.unit.docs.validator_tests", "TestValidateReport"),
-    "TestValidateScope": (
+    ],
+    "TestValidateReport": ["tests.unit.docs.validator_tests", "TestValidateReport"],
+    "TestValidateScope": [
         "tests.unit.docs.validator_internals_tests",
         "TestValidateScope",
-    ),
-    "TestVersionFiles": (
+    ],
+    "TestVersionFiles": [
         "tests.unit.release.orchestrator_helpers_tests",
         "TestVersionFiles",
-    ),
-    "TestViolationPattern": (
+    ],
+    "TestViolationPattern": [
         "tests.unit.codegen.census_models_tests",
         "TestViolationPattern",
-    ),
-    "TestWorkspaceCheckCLI": (
+    ],
+    "TestWorkspaceCheckCLI": [
         "tests.unit.check.extended_cli_entry_tests",
         "TestWorkspaceCheckCLI",
-    ),
-    "TestWorkspaceCheckerBuildGateResult": (
+    ],
+    "TestWorkspaceCheckerBuildGateResult": [
         "tests.unit.check.extended_workspace_init_tests",
         "TestWorkspaceCheckerBuildGateResult",
-    ),
-    "TestWorkspaceCheckerCollectMarkdownFiles": (
+    ],
+    "TestWorkspaceCheckerCollectMarkdownFiles": [
         "tests.unit.check.extended_gate_go_cmd_tests",
         "TestWorkspaceCheckerCollectMarkdownFiles",
-    ),
-    "TestWorkspaceCheckerDirsWithPy": (
+    ],
+    "TestWorkspaceCheckerDirsWithPy": [
         "tests.unit.check.extended_workspace_init_tests",
         "TestWorkspaceCheckerDirsWithPy",
-    ),
-    "TestWorkspaceCheckerErrorSummary": (
+    ],
+    "TestWorkspaceCheckerErrorSummary": [
         "tests.unit.check.extended_models_tests",
         "TestWorkspaceCheckerErrorSummary",
-    ),
-    "TestWorkspaceCheckerExecute": (
+    ],
+    "TestWorkspaceCheckerExecute": [
         "tests.unit.check.extended_workspace_init_tests",
         "TestWorkspaceCheckerExecute",
-    ),
-    "TestWorkspaceCheckerExistingCheckDirs": (
+    ],
+    "TestWorkspaceCheckerExistingCheckDirs": [
         "tests.unit.check.extended_workspace_init_tests",
         "TestWorkspaceCheckerExistingCheckDirs",
-    ),
-    "TestWorkspaceCheckerInitOSError": (
+    ],
+    "TestWorkspaceCheckerInitOSError": [
         "tests.unit.check.extended_workspace_init_tests",
         "TestWorkspaceCheckerInitOSError",
-    ),
-    "TestWorkspaceCheckerInitialization": (
+    ],
+    "TestWorkspaceCheckerInitialization": [
         "tests.unit.check.extended_workspace_init_tests",
         "TestWorkspaceCheckerInitialization",
-    ),
-    "TestWorkspaceCheckerMarkdownReport": (
+    ],
+    "TestWorkspaceCheckerMarkdownReport": [
         "tests.unit.check.extended_reports_tests",
         "TestWorkspaceCheckerMarkdownReport",
-    ),
-    "TestWorkspaceCheckerMarkdownReportEdgeCases": (
+    ],
+    "TestWorkspaceCheckerMarkdownReportEdgeCases": [
         "tests.unit.check.extended_reports_tests",
         "TestWorkspaceCheckerMarkdownReportEdgeCases",
-    ),
-    "TestWorkspaceCheckerParseGateCSV": (
+    ],
+    "TestWorkspaceCheckerParseGateCSV": [
         "tests.unit.check.extended_resolve_gates_tests",
         "TestWorkspaceCheckerParseGateCSV",
-    ),
-    "TestWorkspaceCheckerResolveGates": (
+    ],
+    "TestWorkspaceCheckerResolveGates": [
         "tests.unit.check.extended_resolve_gates_tests",
         "TestWorkspaceCheckerResolveGates",
-    ),
-    "TestWorkspaceCheckerResolveWorkspaceRootFallback": (
+    ],
+    "TestWorkspaceCheckerResolveWorkspaceRootFallback": [
         "tests.unit.check.extended_workspace_init_tests",
         "TestWorkspaceCheckerResolveWorkspaceRootFallback",
-    ),
-    "TestWorkspaceCheckerRunBandit": (
+    ],
+    "TestWorkspaceCheckerRunBandit": [
         "tests.unit.check.extended_gate_bandit_markdown_tests",
         "TestWorkspaceCheckerRunBandit",
-    ),
-    "TestWorkspaceCheckerRunCommand": (
+    ],
+    "TestWorkspaceCheckerRunCommand": [
         "tests.unit.check.extended_gate_go_cmd_tests",
         "TestWorkspaceCheckerRunCommand",
-    ),
-    "TestWorkspaceCheckerRunGo": (
+    ],
+    "TestWorkspaceCheckerRunGo": [
         "tests.unit.check.extended_gate_go_cmd_tests",
         "TestWorkspaceCheckerRunGo",
-    ),
-    "TestWorkspaceCheckerRunMarkdown": (
+    ],
+    "TestWorkspaceCheckerRunMarkdown": [
         "tests.unit.check.extended_gate_bandit_markdown_tests",
         "TestWorkspaceCheckerRunMarkdown",
-    ),
-    "TestWorkspaceCheckerRunMypy": (
+    ],
+    "TestWorkspaceCheckerRunMypy": [
         "tests.unit.check.extended_gate_mypy_pyright_tests",
         "TestWorkspaceCheckerRunMypy",
-    ),
-    "TestWorkspaceCheckerRunPyright": (
+    ],
+    "TestWorkspaceCheckerRunPyright": [
         "tests.unit.check.extended_gate_mypy_pyright_tests",
         "TestWorkspaceCheckerRunPyright",
-    ),
-    "TestWorkspaceCheckerSARIFReport": (
+    ],
+    "TestWorkspaceCheckerSARIFReport": [
         "tests.unit.check.extended_reports_tests",
         "TestWorkspaceCheckerSARIFReport",
-    ),
-    "TestWorkspaceCheckerSARIFReportEdgeCases": (
+    ],
+    "TestWorkspaceCheckerSARIFReportEdgeCases": [
         "tests.unit.check.extended_reports_tests",
         "TestWorkspaceCheckerSARIFReportEdgeCases",
-    ),
-    "TestWorkspaceRoot": (
+    ],
+    "TestWorkspaceRoot": [
         "tests.unit.test_infra_maintenance_python_version",
         "TestWorkspaceRoot",
-    ),
-    "TestWorkspaceRootFromEnv": (
+    ],
+    "TestWorkspaceRootFromEnv": [
         "tests.unit.deps.test_internal_sync_workspace",
         "TestWorkspaceRootFromEnv",
-    ),
-    "TestWorkspaceRootFromParents": (
+    ],
+    "TestWorkspaceRootFromParents": [
         "tests.unit.deps.test_internal_sync_workspace",
         "TestWorkspaceRootFromParents",
-    ),
-    "TestWriteJson": ("tests.unit.docs.shared_write_tests", "TestWriteJson"),
-    "TestWriteMarkdown": ("tests.unit.docs.shared_write_tests", "TestWriteMarkdown"),
-    "WorkspaceFactory": ("tests.workspace_factory", "WorkspaceFactory"),
-    "WorkspaceScenario": ("tests.scenarios", "WorkspaceScenario"),
-    "WorkspaceScenarios": ("tests.scenarios", "WorkspaceScenarios"),
-    "auditor": ("tests.unit.docs.auditor_tests", "auditor"),
-    "basemk": ("tests.unit.basemk", ""),
-    "builder": ("tests.unit.docs.builder_tests", "builder"),
-    "c": ("tests.constants", "FlextInfraTestConstants"),
-    "census": ("tests.unit.codegen.census_tests", "census"),
-    "check": ("tests.unit.check", ""),
-    "codegen": ("tests.unit.codegen", ""),
-    "container": ("tests.unit.container", ""),
-    "create_check_project_iter_stub": (
+    ],
+    "TestWriteJson": ["tests.unit.docs.shared_write_tests", "TestWriteJson"],
+    "TestWriteMarkdown": ["tests.unit.docs.shared_write_tests", "TestWriteMarkdown"],
+    "WorkspaceFactory": ["tests.workspace_factory", "WorkspaceFactory"],
+    "WorkspaceScenario": ["tests.scenarios", "WorkspaceScenario"],
+    "WorkspaceScenarios": ["tests.scenarios", "WorkspaceScenarios"],
+    "auditor": ["tests.unit.docs.auditor_tests", "auditor"],
+    "basemk": ["tests.unit.basemk", ""],
+    "builder": ["tests.unit.docs.builder_tests", "builder"],
+    "c": ["tests.constants", "FlextInfraTestConstants"],
+    "census": ["tests.unit.codegen.census_tests", "census"],
+    "check": ["tests.unit.check", ""],
+    "codegen": ["tests.unit.codegen", ""],
+    "container": ["tests.unit.container", ""],
+    "create_check_project_iter_stub": [
         "tests.unit.check._shared_fixtures",
         "create_check_project_iter_stub",
-    ),
-    "create_check_project_stub": (
+    ],
+    "create_check_project_stub": [
         "tests.unit.check._shared_fixtures",
         "create_check_project_stub",
-    ),
-    "create_checker_project": (
+    ],
+    "create_checker_project": [
         "tests.unit.check._shared_fixtures",
         "create_checker_project",
-    ),
-    "create_fake_run_projects": (
+    ],
+    "create_fake_run_projects": [
         "tests.unit.check._shared_fixtures",
         "create_fake_run_projects",
-    ),
-    "create_fake_run_raw": ("tests.unit.check._shared_fixtures", "create_fake_run_raw"),
-    "create_gate_execution": (
+    ],
+    "create_fake_run_raw": ["tests.unit.check._shared_fixtures", "create_fake_run_raw"],
+    "create_gate_execution": [
         "tests.unit.check._shared_fixtures",
         "create_gate_execution",
-    ),
-    "d": ("flext_tests", "d"),
-    "deps": ("tests.unit.deps", ""),
-    "detector": ("tests.unit.test_infra_workspace_detector", "detector"),
-    "discovery": ("tests.unit.discovery", ""),
-    "doc": ("tests.unit.deps.test_modernizer_helpers", "doc"),
-    "docs": ("tests.unit.docs", ""),
-    "e": ("flext_tests", "e"),
-    "extract_dep_name": ("tests.unit.deps.test_path_sync_helpers", "extract_dep_name"),
-    "fixer": ("tests.unit.docs.fixer_internals_tests", "fixer"),
-    "gen": ("tests.unit.docs.generator_internals_tests", "gen"),
-    "git_repo": ("tests.unit.test_infra_git", "git_repo"),
-    "github": ("tests.unit.github", ""),
-    "h": ("flext_tests", "h"),
-    "io": ("tests.unit.io", ""),
-    "is_external": ("tests.unit.docs.auditor_tests", "is_external"),
-    "m": ("tests.models", "FlextInfraTestModels"),
-    "main": ("tests.unit.github.main_integration_tests", "main"),
-    "make_cmd_result": ("tests.unit.check._stubs", "make_cmd_result"),
-    "make_gate_exec": ("tests.unit.check._stubs", "make_gate_exec"),
-    "make_issue": ("tests.unit.check._stubs", "make_issue"),
-    "make_project": ("tests.unit.check._stubs", "make_project"),
-    "normalize_link": ("tests.unit.docs.auditor_tests", "normalize_link"),
-    "orchestrator": ("tests.unit.test_infra_workspace_orchestrator", "orchestrator"),
-    "p": ("tests.protocols", "FlextInfraTestProtocols"),
-    "patch_gate_run": ("tests.unit.check._shared_fixtures", "patch_gate_run"),
-    "patch_python_dir_detection": (
+    ],
+    "d": ["flext_tests", "d"],
+    "deps": ["tests.unit.deps", ""],
+    "detector": ["tests.unit.test_infra_workspace_detector", "detector"],
+    "discovery": ["tests.unit.discovery", ""],
+    "doc": ["tests.unit.deps.test_modernizer_helpers", "doc"],
+    "docs": ["tests.unit.docs", ""],
+    "e": ["flext_tests", "e"],
+    "extract_dep_name": ["tests.unit.deps.test_path_sync_helpers", "extract_dep_name"],
+    "fixer": ["tests.unit.docs.fixer_internals_tests", "fixer"],
+    "gen": ["tests.unit.docs.generator_internals_tests", "gen"],
+    "git_repo": ["tests.unit.test_infra_git", "git_repo"],
+    "github": ["tests.unit.github", ""],
+    "h": ["flext_tests", "h"],
+    "io": ["tests.unit.io", ""],
+    "is_external": ["tests.unit.docs.auditor_tests", "is_external"],
+    "m": ["tests.models", "FlextInfraTestModels"],
+    "main": ["tests.unit.github.main_integration_tests", "main"],
+    "make_cmd_result": ["tests.unit.check._stubs", "make_cmd_result"],
+    "make_gate_exec": ["tests.unit.check._stubs", "make_gate_exec"],
+    "make_issue": ["tests.unit.check._stubs", "make_issue"],
+    "make_project": ["tests.unit.check._stubs", "make_project"],
+    "normalize_link": ["tests.unit.docs.auditor_tests", "normalize_link"],
+    "orchestrator": ["tests.unit.test_infra_workspace_orchestrator", "orchestrator"],
+    "p": ["tests.protocols", "FlextInfraTestProtocols"],
+    "patch_gate_run": ["tests.unit.check._shared_fixtures", "patch_gate_run"],
+    "patch_python_dir_detection": [
         "tests.unit.check._shared_fixtures",
         "patch_python_dir_detection",
-    ),
-    "pyright_content": ("tests.unit.deps.test_extra_paths_sync", "pyright_content"),
-    "r": ("flext_tests", "r"),
-    "real_docs_project": ("tests.fixtures", "real_docs_project"),
-    "real_git_repo": ("tests.fixtures_git", "real_git_repo"),
-    "real_makefile_project": ("tests.fixtures", "real_makefile_project"),
-    "real_python_package": ("tests.fixtures", "real_python_package"),
-    "real_toml_project": ("tests.fixtures", "real_toml_project"),
-    "real_workspace": ("tests.fixtures", "real_workspace"),
-    "refactor": ("tests.unit.refactor", ""),
-    "release": ("tests.unit.release", ""),
-    "rewrite_dep_paths": (
+    ],
+    "pyright_content": ["tests.unit.deps.test_extra_paths_sync", "pyright_content"],
+    "r": ["flext_tests", "r"],
+    "real_docs_project": ["tests.fixtures", "real_docs_project"],
+    "real_git_repo": ["tests.fixtures_git", "real_git_repo"],
+    "real_makefile_project": ["tests.fixtures", "real_makefile_project"],
+    "real_python_package": ["tests.fixtures", "real_python_package"],
+    "real_toml_project": ["tests.fixtures", "real_toml_project"],
+    "real_workspace": ["tests.fixtures", "real_workspace"],
+    "refactor": ["tests.unit.refactor", ""],
+    "release": ["tests.unit.release", ""],
+    "rewrite_dep_paths": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
         "rewrite_dep_paths",
-    ),
-    "run_command_failure_check": (
+    ],
+    "run_command_failure_check": [
         "tests.unit.check.extended_gate_go_cmd_tests",
         "run_command_failure_check",
-    ),
-    "runner": ("tests.unit.test_infra_subprocess_core", "runner"),
-    "s": ("flext_tests", "s"),
-    "service": ("tests.unit.test_infra_versioning", "service"),
-    "should_skip_target": ("tests.unit.docs.auditor_tests", "should_skip_target"),
-    "svc": ("tests.unit.test_infra_workspace_sync", "svc"),
-    "t": ("tests.typings", "FlextInfraTestTypes"),
-    "test_all_three_capabilities_in_one_pass": (
+    ],
+    "runner": ["tests.unit.test_infra_subprocess_core", "runner"],
+    "s": ["flext_tests", "s"],
+    "service": ["tests.unit.test_infra_versioning", "service"],
+    "should_skip_target": ["tests.unit.docs.auditor_tests", "should_skip_target"],
+    "svc": ["tests.unit.test_infra_workspace_sync", "svc"],
+    "t": ["tests.typings", "FlextInfraTestTypes"],
+    "test_all_three_capabilities_in_one_pass": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_all_three_capabilities_in_one_pass",
-    ),
-    "test_array": ("tests.unit.deps.test_modernizer_helpers", "test_array"),
-    "test_as_string_list": (
+    ],
+    "test_array": ["tests.unit.deps.test_modernizer_helpers", "test_array"],
+    "test_as_string_list": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_as_string_list",
-    ),
-    "test_as_string_list_toml_item": (
+    ],
+    "test_as_string_list_toml_item": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_as_string_list_toml_item",
-    ),
-    "test_atomic_write_fail": (
+    ],
+    "test_atomic_write_fail": [
         "tests.unit.test_infra_workspace_sync",
         "test_atomic_write_fail",
-    ),
-    "test_atomic_write_ok": (
+    ],
+    "test_atomic_write_ok": [
         "tests.unit.test_infra_workspace_sync",
         "test_atomic_write_ok",
-    ),
-    "test_basemk_build_config_with_none": (
+    ],
+    "test_basemk_build_config_with_none": [
         "tests.unit.basemk.test_main",
         "test_basemk_build_config_with_none",
-    ),
-    "test_basemk_build_config_with_project_name": (
+    ],
+    "test_basemk_build_config_with_project_name": [
         "tests.unit.basemk.test_main",
         "test_basemk_build_config_with_project_name",
-    ),
-    "test_basemk_cli_generate_to_file": (
+    ],
+    "test_basemk_cli_generate_to_file": [
         "tests.unit.basemk.test_engine",
         "test_basemk_cli_generate_to_file",
-    ),
-    "test_basemk_cli_generate_to_stdout": (
+    ],
+    "test_basemk_cli_generate_to_stdout": [
         "tests.unit.basemk.test_engine",
         "test_basemk_cli_generate_to_stdout",
-    ),
-    "test_basemk_engine_execute_calls_render_all": (
+    ],
+    "test_basemk_engine_execute_calls_render_all": [
         "tests.unit.basemk.test_engine",
         "test_basemk_engine_execute_calls_render_all",
-    ),
-    "test_basemk_engine_render_all_handles_template_error": (
+    ],
+    "test_basemk_engine_render_all_handles_template_error": [
         "tests.unit.basemk.test_engine",
         "test_basemk_engine_render_all_handles_template_error",
-    ),
-    "test_basemk_engine_render_all_returns_string": (
+    ],
+    "test_basemk_engine_render_all_returns_string": [
         "tests.unit.basemk.test_engine",
         "test_basemk_engine_render_all_returns_string",
-    ),
-    "test_basemk_engine_render_all_with_valid_config": (
+    ],
+    "test_basemk_engine_render_all_with_valid_config": [
         "tests.unit.basemk.test_engine",
         "test_basemk_engine_render_all_with_valid_config",
-    ),
-    "test_basemk_main_ensures_structlog_configured": (
+    ],
+    "test_basemk_main_ensures_structlog_configured": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_ensures_structlog_configured",
-    ),
-    "test_basemk_main_output_to_stdout": (
+    ],
+    "test_basemk_main_output_to_stdout": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_output_to_stdout",
-    ),
-    "test_basemk_main_with_generate_command": (
+    ],
+    "test_basemk_main_with_generate_command": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_generate_command",
-    ),
-    "test_basemk_main_with_generation_failure": (
+    ],
+    "test_basemk_main_with_generation_failure": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_generation_failure",
-    ),
-    "test_basemk_main_with_help": (
+    ],
+    "test_basemk_main_with_help": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_help",
-    ),
-    "test_basemk_main_with_invalid_command": (
+    ],
+    "test_basemk_main_with_invalid_command": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_invalid_command",
-    ),
-    "test_basemk_main_with_no_command": (
+    ],
+    "test_basemk_main_with_no_command": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_no_command",
-    ),
-    "test_basemk_main_with_none_argv": (
+    ],
+    "test_basemk_main_with_none_argv": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_none_argv",
-    ),
-    "test_basemk_main_with_output_file": (
+    ],
+    "test_basemk_main_with_output_file": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_output_file",
-    ),
-    "test_basemk_main_with_project_name": (
+    ],
+    "test_basemk_main_with_project_name": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_project_name",
-    ),
-    "test_basemk_main_with_write_failure": (
+    ],
+    "test_basemk_main_with_write_failure": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_write_failure",
-    ),
-    "test_build_impact_map_extracts_rename_entries": (
+    ],
+    "test_build_impact_map_extracts_rename_entries": [
         "tests.unit.refactor.test_infra_refactor_analysis",
         "test_build_impact_map_extracts_rename_entries",
-    ),
-    "test_build_impact_map_extracts_signature_entries": (
+    ],
+    "test_build_impact_map_extracts_signature_entries": [
         "tests.unit.refactor.test_infra_refactor_analysis",
         "test_build_impact_map_extracts_signature_entries",
-    ),
-    "test_bump_version_invalid": (
+    ],
+    "test_bump_version_invalid": [
         "tests.unit.test_infra_versioning",
         "test_bump_version_invalid",
-    ),
-    "test_bump_version_result_type": (
+    ],
+    "test_bump_version_result_type": [
         "tests.unit.test_infra_versioning",
         "test_bump_version_result_type",
-    ),
-    "test_bump_version_valid": (
+    ],
+    "test_bump_version_valid": [
         "tests.unit.test_infra_versioning",
         "test_bump_version_valid",
-    ),
-    "test_canonical_dev_dependencies": (
+    ],
+    "test_canonical_dev_dependencies": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_canonical_dev_dependencies",
-    ),
-    "test_capture_cases": (
+    ],
+    "test_capture_cases": [
         "tests.unit.test_infra_subprocess_core",
         "test_capture_cases",
-    ),
-    "test_check_main_executes_real_cli": (
+    ],
+    "test_check_main_executes_real_cli": [
         "tests.unit.check.main_tests",
         "test_check_main_executes_real_cli",
-    ),
-    "test_class_reconstructor_reorders_each_contiguous_method_block": (
+    ],
+    "test_class_reconstructor_reorders_each_contiguous_method_block": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_class_reconstructor_reorders_each_contiguous_method_block",
-    ),
-    "test_class_reconstructor_reorders_methods_by_config": (
+    ],
+    "test_class_reconstructor_reorders_methods_by_config": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_class_reconstructor_reorders_methods_by_config",
-    ),
-    "test_class_reconstructor_skips_interleaved_non_method_members": (
+    ],
+    "test_class_reconstructor_skips_interleaved_non_method_members": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_class_reconstructor_skips_interleaved_non_method_members",
-    ),
-    "test_cli_result_by_project_root": (
+    ],
+    "test_cli_result_by_project_root": [
         "tests.unit.test_infra_workspace_sync",
         "test_cli_result_by_project_root",
-    ),
-    "test_codegen_dir_returns_all_exports": (
+    ],
+    "test_codegen_dir_returns_all_exports": [
         "tests.unit.codegen.init_tests",
         "test_codegen_dir_returns_all_exports",
-    ),
-    "test_codegen_getattr_raises_attribute_error": (
+    ],
+    "test_codegen_getattr_raises_attribute_error": [
         "tests.unit.codegen.init_tests",
         "test_codegen_getattr_raises_attribute_error",
-    ),
-    "test_codegen_init_getattr_raises_attribute_error": (
+    ],
+    "test_codegen_init_getattr_raises_attribute_error": [
         "tests.unit.codegen.lazy_init_generation_tests",
         "test_codegen_init_getattr_raises_attribute_error",
-    ),
-    "test_codegen_lazy_imports_work": (
+    ],
+    "test_codegen_lazy_imports_work": [
         "tests.unit.codegen.init_tests",
         "test_codegen_lazy_imports_work",
-    ),
-    "test_codegen_pipeline_end_to_end": (
+    ],
+    "test_codegen_pipeline_end_to_end": [
         "tests.unit.codegen.pipeline_tests",
         "test_codegen_pipeline_end_to_end",
-    ),
-    "test_consolidate_groups_phase_apply_removes_old_groups": (
+    ],
+    "test_consolidate_groups_phase_apply_removes_old_groups": [
         "tests.unit.deps.test_modernizer_consolidate",
         "test_consolidate_groups_phase_apply_removes_old_groups",
-    ),
-    "test_consolidate_groups_phase_apply_with_empty_poetry_group": (
+    ],
+    "test_consolidate_groups_phase_apply_with_empty_poetry_group": [
         "tests.unit.deps.test_modernizer_consolidate",
         "test_consolidate_groups_phase_apply_with_empty_poetry_group",
-    ),
-    "test_converts_multiple_aliases": (
+    ],
+    "test_converts_multiple_aliases": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_converts_multiple_aliases",
-    ),
-    "test_converts_typealias_to_pep695": (
+    ],
+    "test_converts_typealias_to_pep695": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_converts_typealias_to_pep695",
-    ),
-    "test_current_workspace_version": (
+    ],
+    "test_current_workspace_version": [
         "tests.unit.test_infra_versioning",
         "test_current_workspace_version",
-    ),
-    "test_dedupe_specs": (
+    ],
+    "test_dedupe_specs": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_dedupe_specs",
-    ),
-    "test_dep_name": ("tests.unit.deps.test_modernizer_helpers", "test_dep_name"),
-    "test_detect_mode_with_nonexistent_path": (
+    ],
+    "test_dep_name": ["tests.unit.deps.test_modernizer_helpers", "test_dep_name"],
+    "test_detect_mode_with_nonexistent_path": [
         "tests.unit.deps.test_path_sync_init",
         "test_detect_mode_with_nonexistent_path",
-    ),
-    "test_detect_mode_with_path_object": (
+    ],
+    "test_detect_mode_with_path_object": [
         "tests.unit.deps.test_path_sync_init",
         "test_detect_mode_with_path_object",
-    ),
-    "test_detects_attribute_base_class": (
+    ],
+    "test_detects_attribute_base_class": [
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_detects_attribute_base_class",
-    ),
-    "test_detects_basemodel_in_non_model_file": (
+    ],
+    "test_detects_basemodel_in_non_model_file": [
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_detects_basemodel_in_non_model_file",
-    ),
-    "test_detects_missing_local_composition_base": (
+    ],
+    "test_detects_missing_local_composition_base": [
         "tests.unit.refactor.test_infra_refactor_mro_completeness",
         "test_detects_missing_local_composition_base",
-    ),
-    "test_detects_multiple_models": (
+    ],
+    "test_detects_multiple_models": [
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_detects_multiple_models",
-    ),
-    "test_detects_only_wrong_alias_in_mixed_import": (
+    ],
+    "test_detects_only_wrong_alias_in_mixed_import": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_detects_only_wrong_alias_in_mixed_import",
-    ),
-    "test_detects_same_project_submodule_alias_import": (
+    ],
+    "test_detects_same_project_submodule_alias_import": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_detects_same_project_submodule_alias_import",
-    ),
-    "test_detects_wrong_source_m_import": (
+    ],
+    "test_detects_wrong_source_m_import": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_detects_wrong_source_m_import",
-    ),
-    "test_detects_wrong_source_u_import": (
+    ],
+    "test_detects_wrong_source_u_import": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_detects_wrong_source_u_import",
-    ),
-    "test_engine_always_enables_class_nesting_file_rule": (
+    ],
+    "test_engine_always_enables_class_nesting_file_rule": [
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_engine_always_enables_class_nesting_file_rule",
-    ),
-    "test_ensure_future_annotations_after_docstring": (
+    ],
+    "test_ensure_future_annotations_after_docstring": [
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_ensure_future_annotations_after_docstring",
-    ),
-    "test_ensure_future_annotations_moves_existing_import_to_top": (
+    ],
+    "test_ensure_future_annotations_moves_existing_import_to_top": [
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_ensure_future_annotations_moves_existing_import_to_top",
-    ),
-    "test_ensure_pyrefly_config_phase_apply_errors": (
+    ],
+    "test_ensure_pyrefly_config_phase_apply_errors": [
         "tests.unit.deps.test_modernizer_pyrefly",
         "test_ensure_pyrefly_config_phase_apply_errors",
-    ),
-    "test_ensure_pyrefly_config_phase_apply_ignore_errors": (
+    ],
+    "test_ensure_pyrefly_config_phase_apply_ignore_errors": [
         "tests.unit.deps.test_modernizer_pyrefly",
         "test_ensure_pyrefly_config_phase_apply_ignore_errors",
-    ),
-    "test_ensure_pyrefly_config_phase_apply_python_version": (
+    ],
+    "test_ensure_pyrefly_config_phase_apply_python_version": [
         "tests.unit.deps.test_modernizer_pyrefly",
         "test_ensure_pyrefly_config_phase_apply_python_version",
-    ),
-    "test_ensure_pyrefly_config_phase_apply_search_path": (
+    ],
+    "test_ensure_pyrefly_config_phase_apply_search_path": [
         "tests.unit.deps.test_modernizer_pyrefly",
         "test_ensure_pyrefly_config_phase_apply_search_path",
-    ),
-    "test_ensure_pytest_config_phase_apply_markers": (
+    ],
+    "test_ensure_pytest_config_phase_apply_markers": [
         "tests.unit.deps.test_modernizer_pytest",
         "test_ensure_pytest_config_phase_apply_markers",
-    ),
-    "test_ensure_pytest_config_phase_apply_minversion": (
+    ],
+    "test_ensure_pytest_config_phase_apply_minversion": [
         "tests.unit.deps.test_modernizer_pytest",
         "test_ensure_pytest_config_phase_apply_minversion",
-    ),
-    "test_ensure_pytest_config_phase_apply_python_classes": (
+    ],
+    "test_ensure_pytest_config_phase_apply_python_classes": [
         "tests.unit.deps.test_modernizer_pytest",
         "test_ensure_pytest_config_phase_apply_python_classes",
-    ),
-    "test_ensure_table": (
+    ],
+    "test_ensure_table": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_ensure_table",
-    ),
-    "test_extract_dep_name": (
+    ],
+    "test_extract_dep_name": [
         "tests.unit.deps.test_path_sync_helpers",
         "test_extract_dep_name",
-    ),
-    "test_extract_requirement_name": (
+    ],
+    "test_extract_requirement_name": [
         "tests.unit.deps.test_path_sync_helpers",
         "test_extract_requirement_name",
-    ),
-    "test_files_modified_tracks_affected_files": (
+    ],
+    "test_files_modified_tracks_affected_files": [
         "tests.unit.codegen.autofix_workspace_tests",
         "test_files_modified_tracks_affected_files",
-    ),
-    "test_fix_pyrefly_config_main_executes_real_cli_help": (
+    ],
+    "test_fix_pyrefly_config_main_executes_real_cli_help": [
         "tests.unit.check.fix_pyrefly_config_tests",
         "test_fix_pyrefly_config_main_executes_real_cli_help",
-    ),
-    "test_flexcore_excluded_from_run": (
+    ],
+    "test_flexcore_excluded_from_run": [
         "tests.unit.codegen.autofix_workspace_tests",
         "test_flexcore_excluded_from_run",
-    ),
-    "test_flext_infra_pyproject_modernizer_find_pyproject_files": (
+    ],
+    "test_flext_infra_pyproject_modernizer_find_pyproject_files": [
         "tests.unit.deps.test_modernizer_main_extra",
         "test_flext_infra_pyproject_modernizer_find_pyproject_files",
-    ),
-    "test_flext_infra_pyproject_modernizer_process_file_invalid_toml": (
+    ],
+    "test_flext_infra_pyproject_modernizer_process_file_invalid_toml": [
         "tests.unit.deps.test_modernizer_main_extra",
         "test_flext_infra_pyproject_modernizer_process_file_invalid_toml",
-    ),
-    "test_generator_execute_returns_generated_content": (
+    ],
+    "test_generator_execute_returns_generated_content": [
         "tests.unit.basemk.test_generator",
         "test_generator_execute_returns_generated_content",
-    ),
-    "test_generator_fails_for_invalid_make_syntax": (
+    ],
+    "test_generator_fails_for_invalid_make_syntax": [
         "tests.unit.basemk.test_engine",
         "test_generator_fails_for_invalid_make_syntax",
-    ),
-    "test_generator_generate_propagates_render_failure": (
+    ],
+    "test_generator_generate_propagates_render_failure": [
         "tests.unit.basemk.test_generator",
         "test_generator_generate_propagates_render_failure",
-    ),
-    "test_generator_generate_with_basemk_config_object": (
+    ],
+    "test_generator_generate_with_basemk_config_object": [
         "tests.unit.basemk.test_generator",
         "test_generator_generate_with_basemk_config_object",
-    ),
-    "test_generator_generate_with_dict_config": (
+    ],
+    "test_generator_generate_with_dict_config": [
         "tests.unit.basemk.test_generator",
         "test_generator_generate_with_dict_config",
-    ),
-    "test_generator_generate_with_invalid_dict_config": (
+    ],
+    "test_generator_generate_with_invalid_dict_config": [
         "tests.unit.basemk.test_generator",
         "test_generator_generate_with_invalid_dict_config",
-    ),
-    "test_generator_generate_with_none_config_uses_default": (
+    ],
+    "test_generator_generate_with_none_config_uses_default": [
         "tests.unit.basemk.test_generator",
         "test_generator_generate_with_none_config_uses_default",
-    ),
-    "test_generator_initializes_with_custom_engine": (
+    ],
+    "test_generator_initializes_with_custom_engine": [
         "tests.unit.basemk.test_generator",
         "test_generator_initializes_with_custom_engine",
-    ),
-    "test_generator_initializes_with_default_engine": (
+    ],
+    "test_generator_initializes_with_default_engine": [
         "tests.unit.basemk.test_generator",
         "test_generator_initializes_with_default_engine",
-    ),
-    "test_generator_normalize_config_with_basemk_config": (
+    ],
+    "test_generator_normalize_config_with_basemk_config": [
         "tests.unit.basemk.test_generator_edge_cases",
         "test_generator_normalize_config_with_basemk_config",
-    ),
-    "test_generator_normalize_config_with_dict": (
+    ],
+    "test_generator_normalize_config_with_dict": [
         "tests.unit.basemk.test_generator_edge_cases",
         "test_generator_normalize_config_with_dict",
-    ),
-    "test_generator_normalize_config_with_invalid_dict": (
+    ],
+    "test_generator_normalize_config_with_invalid_dict": [
         "tests.unit.basemk.test_generator_edge_cases",
         "test_generator_normalize_config_with_invalid_dict",
-    ),
-    "test_generator_normalize_config_with_none": (
+    ],
+    "test_generator_normalize_config_with_none": [
         "tests.unit.basemk.test_generator_edge_cases",
         "test_generator_normalize_config_with_none",
-    ),
-    "test_generator_renders_with_config_override": (
+    ],
+    "test_generator_renders_with_config_override": [
         "tests.unit.basemk.test_engine",
         "test_generator_renders_with_config_override",
-    ),
-    "test_generator_validate_generated_output_handles_oserror": (
+    ],
+    "test_generator_validate_generated_output_handles_oserror": [
         "tests.unit.basemk.test_generator_edge_cases",
         "test_generator_validate_generated_output_handles_oserror",
-    ),
-    "test_generator_write_creates_parent_directories": (
+    ],
+    "test_generator_write_creates_parent_directories": [
         "tests.unit.basemk.test_generator",
         "test_generator_write_creates_parent_directories",
-    ),
-    "test_generator_write_fails_without_output_or_stream": (
+    ],
+    "test_generator_write_fails_without_output_or_stream": [
         "tests.unit.basemk.test_generator",
         "test_generator_write_fails_without_output_or_stream",
-    ),
-    "test_generator_write_handles_file_permission_error": (
+    ],
+    "test_generator_write_handles_file_permission_error": [
         "tests.unit.basemk.test_generator_edge_cases",
         "test_generator_write_handles_file_permission_error",
-    ),
-    "test_generator_write_saves_output_file": (
+    ],
+    "test_generator_write_saves_output_file": [
         "tests.unit.basemk.test_engine",
         "test_generator_write_saves_output_file",
-    ),
-    "test_generator_write_to_file": (
+    ],
+    "test_generator_write_to_file": [
         "tests.unit.basemk.test_generator",
         "test_generator_write_to_file",
-    ),
-    "test_generator_write_to_stream": (
+    ],
+    "test_generator_write_to_stream": [
         "tests.unit.basemk.test_generator",
         "test_generator_write_to_stream",
-    ),
-    "test_generator_write_to_stream_handles_oserror": (
+    ],
+    "test_generator_write_to_stream_handles_oserror": [
         "tests.unit.basemk.test_generator_edge_cases",
         "test_generator_write_to_stream_handles_oserror",
-    ),
-    "test_gitignore_entry_scenarios": (
+    ],
+    "test_gitignore_entry_scenarios": [
         "tests.unit.test_infra_workspace_sync",
         "test_gitignore_entry_scenarios",
-    ),
-    "test_gitignore_sync_failure": (
+    ],
+    "test_gitignore_sync_failure": [
         "tests.unit.test_infra_workspace_sync",
         "test_gitignore_sync_failure",
-    ),
-    "test_gitignore_write_failure": (
+    ],
+    "test_gitignore_write_failure": [
         "tests.unit.test_infra_workspace_sync",
         "test_gitignore_write_failure",
-    ),
-    "test_helpers_alias_is_reachable_helpers": (
+    ],
+    "test_helpers_alias_is_reachable_helpers": [
         "tests.unit.deps.test_path_sync_helpers",
         "test_helpers_alias_is_reachable_helpers",
-    ),
-    "test_helpers_alias_is_reachable_project_obj": (
+    ],
+    "test_helpers_alias_is_reachable_project_obj": [
         "tests.unit.deps.test_path_sync_main_project_obj",
         "test_helpers_alias_is_reachable_project_obj",
-    ),
-    "test_import_alias_detector_skips_facade_and_subclass_files": (
+    ],
+    "test_import_alias_detector_skips_facade_and_subclass_files": [
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_import_alias_detector_skips_facade_and_subclass_files",
-    ),
-    "test_import_alias_detector_skips_nested_private_and_as_renames": (
+    ],
+    "test_import_alias_detector_skips_nested_private_and_as_renames": [
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_import_alias_detector_skips_nested_private_and_as_renames",
-    ),
-    "test_import_alias_detector_skips_private_and_class_imports": (
+    ],
+    "test_import_alias_detector_skips_private_and_class_imports": [
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_import_alias_detector_skips_private_and_class_imports",
-    ),
-    "test_import_modernizer_adds_c_when_existing_c_is_aliased": (
+    ],
+    "test_import_modernizer_adds_c_when_existing_c_is_aliased": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_adds_c_when_existing_c_is_aliased",
-    ),
-    "test_import_modernizer_does_not_rewrite_function_parameter_shadow": (
+    ],
+    "test_import_modernizer_does_not_rewrite_function_parameter_shadow": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_does_not_rewrite_function_parameter_shadow",
-    ),
-    "test_import_modernizer_does_not_rewrite_rebound_local_name_usage": (
+    ],
+    "test_import_modernizer_does_not_rewrite_rebound_local_name_usage": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_does_not_rewrite_rebound_local_name_usage",
-    ),
-    "test_import_modernizer_partial_import_keeps_unmapped_symbols": (
+    ],
+    "test_import_modernizer_partial_import_keeps_unmapped_symbols": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_partial_import_keeps_unmapped_symbols",
-    ),
-    "test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias": (
+    ],
+    "test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias",
-    ),
-    "test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function": (
+    ],
+    "test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function",
-    ),
-    "test_import_modernizer_skips_when_runtime_alias_name_is_blocked": (
+    ],
+    "test_import_modernizer_skips_when_runtime_alias_name_is_blocked": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_skips_when_runtime_alias_name_is_blocked",
-    ),
-    "test_import_modernizer_updates_aliased_symbol_usage": (
+    ],
+    "test_import_modernizer_updates_aliased_symbol_usage": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_updates_aliased_symbol_usage",
-    ),
-    "test_in_context_typevar_not_flagged": (
+    ],
+    "test_in_context_typevar_not_flagged": [
         "tests.unit.codegen.autofix_tests",
         "test_in_context_typevar_not_flagged",
-    ),
-    "test_inject_comments_phase_apply_banner": (
+    ],
+    "test_inject_comments_phase_apply_banner": [
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_apply_banner",
-    ),
-    "test_inject_comments_phase_apply_broken_group_section": (
+    ],
+    "test_inject_comments_phase_apply_broken_group_section": [
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_apply_broken_group_section",
-    ),
-    "test_inject_comments_phase_apply_markers": (
+    ],
+    "test_inject_comments_phase_apply_markers": [
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_apply_markers",
-    ),
-    "test_inject_comments_phase_apply_with_optional_dependencies_dev": (
+    ],
+    "test_inject_comments_phase_apply_with_optional_dependencies_dev": [
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_apply_with_optional_dependencies_dev",
-    ),
-    "test_inject_comments_phase_deduplicates_family_markers": (
+    ],
+    "test_inject_comments_phase_deduplicates_family_markers": [
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_deduplicates_family_markers",
-    ),
-    "test_inject_comments_phase_marks_pytest_and_coverage_subtables": (
+    ],
+    "test_inject_comments_phase_marks_pytest_and_coverage_subtables": [
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_marks_pytest_and_coverage_subtables",
-    ),
-    "test_inject_comments_phase_removes_auto_banner_and_auto_marker": (
+    ],
+    "test_inject_comments_phase_removes_auto_banner_and_auto_marker": [
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_removes_auto_banner_and_auto_marker",
-    ),
-    "test_inject_comments_phase_repositions_marker_before_section": (
+    ],
+    "test_inject_comments_phase_repositions_marker_before_section": [
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_repositions_marker_before_section",
-    ),
-    "test_injects_t_import_when_needed": (
+    ],
+    "test_injects_t_import_when_needed": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_injects_t_import_when_needed",
-    ),
-    "test_lazy_import_rule_hoists_import_to_module_level": (
+    ],
+    "test_lazy_import_rule_hoists_import_to_module_level": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_lazy_import_rule_hoists_import_to_module_level",
-    ),
-    "test_lazy_import_rule_uses_fix_action_for_hoist": (
+    ],
+    "test_lazy_import_rule_uses_fix_action_for_hoist": [
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_lazy_import_rule_uses_fix_action_for_hoist",
-    ),
-    "test_legacy_import_bypass_collapses_to_primary_import": (
+    ],
+    "test_legacy_import_bypass_collapses_to_primary_import": [
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_legacy_import_bypass_collapses_to_primary_import",
-    ),
-    "test_legacy_rule_uses_fix_action_remove_for_aliases": (
+    ],
+    "test_legacy_rule_uses_fix_action_remove_for_aliases": [
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_legacy_rule_uses_fix_action_remove_for_aliases",
-    ),
-    "test_legacy_wrapper_forwarding_keywords_is_inlined_as_alias": (
+    ],
+    "test_legacy_wrapper_forwarding_keywords_is_inlined_as_alias": [
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_legacy_wrapper_forwarding_keywords_is_inlined_as_alias",
-    ),
-    "test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias": (
+    ],
+    "test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias": [
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias",
-    ),
-    "test_legacy_wrapper_function_is_inlined_as_alias": (
+    ],
+    "test_legacy_wrapper_function_is_inlined_as_alias": [
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_legacy_wrapper_function_is_inlined_as_alias",
-    ),
-    "test_legacy_wrapper_non_passthrough_is_not_inlined": (
+    ],
+    "test_legacy_wrapper_non_passthrough_is_not_inlined": [
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_legacy_wrapper_non_passthrough_is_not_inlined",
-    ),
-    "test_main_all_groups_defined": (
+    ],
+    "test_main_all_groups_defined": [
         "tests.unit.test_infra_main",
         "test_main_all_groups_defined",
-    ),
-    "test_main_analyze_violations_is_read_only": (
+    ],
+    "test_main_analyze_violations_is_read_only": [
         "tests.unit.refactor.test_infra_refactor_analysis",
         "test_main_analyze_violations_is_read_only",
-    ),
-    "test_main_analyze_violations_writes_json_report": (
+    ],
+    "test_main_analyze_violations_writes_json_report": [
         "tests.unit.refactor.test_infra_refactor_analysis",
         "test_main_analyze_violations_writes_json_report",
-    ),
-    "test_main_discovery_failure": (
+    ],
+    "test_main_discovery_failure": [
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_discovery_failure",
-    ),
-    "test_main_group_modules_are_valid": (
+    ],
+    "test_main_group_modules_are_valid": [
         "tests.unit.test_infra_main",
         "test_main_group_modules_are_valid",
-    ),
-    "test_main_help_flag_returns_zero": (
+    ],
+    "test_main_help_flag_returns_zero": [
         "tests.unit.test_infra_main",
         "test_main_help_flag_returns_zero",
-    ),
-    "test_main_no_changes_needed": (
+    ],
+    "test_main_no_changes_needed": [
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_no_changes_needed",
-    ),
-    "test_main_project_invalid_toml": (
+    ],
+    "test_main_project_invalid_toml": [
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_project_invalid_toml",
-    ),
-    "test_main_project_no_name": (
+    ],
+    "test_main_project_no_name": [
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_project_no_name",
-    ),
-    "test_main_project_non_string_name": (
+    ],
+    "test_main_project_non_string_name": [
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_project_non_string_name",
-    ),
-    "test_main_project_obj_not_dict_first_loop": (
+    ],
+    "test_main_project_obj_not_dict_first_loop": [
         "tests.unit.deps.test_path_sync_main_project_obj",
         "test_main_project_obj_not_dict_first_loop",
-    ),
-    "test_main_project_obj_not_dict_second_loop": (
+    ],
+    "test_main_project_obj_not_dict_second_loop": [
         "tests.unit.deps.test_path_sync_main_project_obj",
         "test_main_project_obj_not_dict_second_loop",
-    ),
-    "test_main_returns_error_when_no_args": (
+    ],
+    "test_main_returns_error_when_no_args": [
         "tests.unit.test_infra_main",
         "test_main_returns_error_when_no_args",
-    ),
-    "test_main_success_modes": (
+    ],
+    "test_main_success_modes": [
         "tests.unit.deps.test_extra_paths_sync",
         "test_main_success_modes",
-    ),
-    "test_main_sync_failure": (
+    ],
+    "test_main_sync_failure": [
         "tests.unit.deps.test_extra_paths_sync",
         "test_main_sync_failure",
-    ),
-    "test_main_unknown_group_returns_error": (
+    ],
+    "test_main_unknown_group_returns_error": [
         "tests.unit.test_infra_main",
         "test_main_unknown_group_returns_error",
-    ),
-    "test_main_with_changes_and_dry_run": (
+    ],
+    "test_main_with_changes_and_dry_run": [
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_with_changes_and_dry_run",
-    ),
-    "test_main_with_changes_no_dry_run": (
+    ],
+    "test_main_with_changes_no_dry_run": [
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_with_changes_no_dry_run",
-    ),
-    "test_migrate_makefile_not_found_non_dry_run": (
+    ],
+    "test_migrate_makefile_not_found_non_dry_run": [
         "tests.unit.test_infra_workspace_migrator_deps",
         "test_migrate_makefile_not_found_non_dry_run",
-    ),
-    "test_migrate_pyproject_flext_core_non_dry_run": (
+    ],
+    "test_migrate_pyproject_flext_core_non_dry_run": [
         "tests.unit.test_infra_workspace_migrator_deps",
         "test_migrate_pyproject_flext_core_non_dry_run",
-    ),
-    "test_migrator_apply_updates_project_files": (
+    ],
+    "test_migrator_apply_updates_project_files": [
         "tests.unit.test_infra_workspace_migrator",
         "test_migrator_apply_updates_project_files",
-    ),
-    "test_migrator_discovery_failure": (
+    ],
+    "test_migrator_discovery_failure": [
         "tests.unit.test_infra_workspace_migrator",
         "test_migrator_discovery_failure",
-    ),
-    "test_migrator_dry_run_reports_changes_without_writes": (
+    ],
+    "test_migrator_dry_run_reports_changes_without_writes": [
         "tests.unit.test_infra_workspace_migrator",
         "test_migrator_dry_run_reports_changes_without_writes",
-    ),
-    "test_migrator_execute_returns_failure": (
+    ],
+    "test_migrator_execute_returns_failure": [
         "tests.unit.test_infra_workspace_migrator",
         "test_migrator_execute_returns_failure",
-    ),
-    "test_migrator_flext_core_dry_run": (
+    ],
+    "test_migrator_flext_core_dry_run": [
         "tests.unit.test_infra_workspace_migrator_dryrun",
         "test_migrator_flext_core_dry_run",
-    ),
-    "test_migrator_flext_core_project_skipped": (
+    ],
+    "test_migrator_flext_core_project_skipped": [
         "tests.unit.test_infra_workspace_migrator_dryrun",
         "test_migrator_flext_core_project_skipped",
-    ),
-    "test_migrator_gitignore_already_normalized_dry_run": (
+    ],
+    "test_migrator_gitignore_already_normalized_dry_run": [
         "tests.unit.test_infra_workspace_migrator_dryrun",
         "test_migrator_gitignore_already_normalized_dry_run",
-    ),
-    "test_migrator_handles_missing_pyproject_gracefully": (
+    ],
+    "test_migrator_handles_missing_pyproject_gracefully": [
         "tests.unit.test_infra_workspace_migrator",
         "test_migrator_handles_missing_pyproject_gracefully",
-    ),
-    "test_migrator_has_flext_core_dependency_in_poetry": (
+    ],
+    "test_migrator_has_flext_core_dependency_in_poetry": [
         "tests.unit.test_infra_workspace_migrator_deps",
         "test_migrator_has_flext_core_dependency_in_poetry",
-    ),
-    "test_migrator_has_flext_core_dependency_poetry_deps_not_table": (
+    ],
+    "test_migrator_has_flext_core_dependency_poetry_deps_not_table": [
         "tests.unit.test_infra_workspace_migrator_deps",
         "test_migrator_has_flext_core_dependency_poetry_deps_not_table",
-    ),
-    "test_migrator_has_flext_core_dependency_poetry_table_missing": (
+    ],
+    "test_migrator_has_flext_core_dependency_poetry_table_missing": [
         "tests.unit.test_infra_workspace_migrator_deps",
         "test_migrator_has_flext_core_dependency_poetry_table_missing",
-    ),
-    "test_migrator_makefile_not_found_dry_run": (
+    ],
+    "test_migrator_makefile_not_found_dry_run": [
         "tests.unit.test_infra_workspace_migrator_dryrun",
         "test_migrator_makefile_not_found_dry_run",
-    ),
-    "test_migrator_makefile_read_failure": (
+    ],
+    "test_migrator_makefile_read_failure": [
         "tests.unit.test_infra_workspace_migrator_dryrun",
         "test_migrator_makefile_read_failure",
-    ),
-    "test_migrator_no_changes_needed": (
+    ],
+    "test_migrator_no_changes_needed": [
         "tests.unit.test_infra_workspace_migrator",
         "test_migrator_no_changes_needed",
-    ),
-    "test_migrator_preserves_custom_makefile_content": (
+    ],
+    "test_migrator_preserves_custom_makefile_content": [
         "tests.unit.test_infra_workspace_migrator",
         "test_migrator_preserves_custom_makefile_content",
-    ),
-    "test_migrator_pyproject_not_found_dry_run": (
+    ],
+    "test_migrator_pyproject_not_found_dry_run": [
         "tests.unit.test_infra_workspace_migrator_dryrun",
         "test_migrator_pyproject_not_found_dry_run",
-    ),
-    "test_migrator_workspace_root_not_exists": (
+    ],
+    "test_migrator_workspace_root_not_exists": [
         "tests.unit.test_infra_workspace_migrator",
         "test_migrator_workspace_root_not_exists",
-    ),
-    "test_migrator_workspace_root_project_detection": (
+    ],
+    "test_migrator_workspace_root_project_detection": [
         "tests.unit.test_infra_workspace_migrator",
         "test_migrator_workspace_root_project_detection",
-    ),
-    "test_mro_checker_keeps_external_attribute_base": (
+    ],
+    "test_mro_checker_keeps_external_attribute_base": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_mro_checker_keeps_external_attribute_base",
-    ),
-    "test_mro_redundancy_checker_removes_nested_attribute_inheritance": (
+    ],
+    "test_mro_redundancy_checker_removes_nested_attribute_inheritance": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_mro_redundancy_checker_removes_nested_attribute_inheritance",
-    ),
-    "test_namespace_rewriter_keeps_contextual_alias_subset": (
+    ],
+    "test_namespace_rewriter_keeps_contextual_alias_subset": [
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_namespace_rewriter_keeps_contextual_alias_subset",
-    ),
-    "test_namespace_rewriter_only_rewrites_runtime_alias_imports": (
+    ],
+    "test_namespace_rewriter_only_rewrites_runtime_alias_imports": [
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_namespace_rewriter_only_rewrites_runtime_alias_imports",
-    ),
-    "test_namespace_rewriter_skips_facade_and_subclass_files": (
+    ],
+    "test_namespace_rewriter_skips_facade_and_subclass_files": [
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_namespace_rewriter_skips_facade_and_subclass_files",
-    ),
-    "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates": (
+    ],
+    "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates": [
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates",
-    ),
-    "test_no_duplicate_t_import_when_t_from_project_package": (
+    ],
+    "test_no_duplicate_t_import_when_t_from_project_package": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_no_duplicate_t_import_when_t_from_project_package",
-    ),
-    "test_non_pydantic_class_not_flagged": (
+    ],
+    "test_non_pydantic_class_not_flagged": [
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_non_pydantic_class_not_flagged",
-    ),
-    "test_noop_clean_module": (
+    ],
+    "test_noop_clean_module": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_noop_clean_module",
-    ),
-    "test_parse_semver_invalid": (
+    ],
+    "test_parse_semver_invalid": [
         "tests.unit.test_infra_versioning",
         "test_parse_semver_invalid",
-    ),
-    "test_parse_semver_result_type": (
+    ],
+    "test_parse_semver_result_type": [
         "tests.unit.test_infra_versioning",
         "test_parse_semver_result_type",
-    ),
-    "test_parse_semver_valid": (
+    ],
+    "test_parse_semver_valid": [
         "tests.unit.test_infra_versioning",
         "test_parse_semver_valid",
-    ),
-    "test_pattern_rule_converts_dict_annotations_to_mapping": (
+    ],
+    "test_pattern_rule_converts_dict_annotations_to_mapping": [
         "tests.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_converts_dict_annotations_to_mapping",
-    ),
-    "test_pattern_rule_keeps_dict_param_when_copy_used": (
+    ],
+    "test_pattern_rule_keeps_dict_param_when_copy_used": [
         "tests.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_keeps_dict_param_when_copy_used",
-    ),
-    "test_pattern_rule_keeps_dict_param_when_subscript_mutated": (
+    ],
+    "test_pattern_rule_keeps_dict_param_when_subscript_mutated": [
         "tests.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_keeps_dict_param_when_subscript_mutated",
-    ),
-    "test_pattern_rule_keeps_type_cast_when_not_nested_object_cast": (
+    ],
+    "test_pattern_rule_keeps_type_cast_when_not_nested_object_cast": [
         "tests.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_keeps_type_cast_when_not_nested_object_cast",
-    ),
-    "test_pattern_rule_optionally_converts_return_annotations_to_mapping": (
+    ],
+    "test_pattern_rule_optionally_converts_return_annotations_to_mapping": [
         "tests.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_optionally_converts_return_annotations_to_mapping",
-    ),
-    "test_pattern_rule_removes_configured_redundant_casts": (
+    ],
+    "test_pattern_rule_removes_configured_redundant_casts": [
         "tests.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_removes_configured_redundant_casts",
-    ),
-    "test_pattern_rule_removes_nested_type_object_cast_chain": (
+    ],
+    "test_pattern_rule_removes_nested_type_object_cast_chain": [
         "tests.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_removes_nested_type_object_cast_chain",
-    ),
-    "test_pattern_rule_skips_overload_signatures": (
+    ],
+    "test_pattern_rule_skips_overload_signatures": [
         "tests.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_skips_overload_signatures",
-    ),
-    "test_preserves_annotated_in_function_params": (
+    ],
+    "test_preserves_annotated_in_function_params": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_annotated_in_function_params",
-    ),
-    "test_preserves_non_matching_unions": (
+    ],
+    "test_preserves_non_matching_unions": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_non_matching_unions",
-    ),
-    "test_preserves_override_in_method": (
+    ],
+    "test_preserves_override_in_method": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_override_in_method",
-    ),
-    "test_preserves_protocol_and_runtime_checkable": (
+    ],
+    "test_preserves_protocol_and_runtime_checkable": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_protocol_and_runtime_checkable",
-    ),
-    "test_preserves_type_checking_import": (
+    ],
+    "test_preserves_type_checking_import": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_type_checking_import",
-    ),
-    "test_preserves_typealias_import_when_class_level_usage_exists": (
+    ],
+    "test_preserves_typealias_import_when_class_level_usage_exists": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_typealias_import_when_class_level_usage_exists",
-    ),
-    "test_preserves_used_imports_when_import_precedes_usage": (
+    ],
+    "test_preserves_used_imports_when_import_precedes_usage": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_used_imports_when_import_precedes_usage",
-    ),
-    "test_preserves_used_typing_imports": (
+    ],
+    "test_preserves_used_typing_imports": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_used_typing_imports",
-    ),
-    "test_project_dev_groups": (
+    ],
+    "test_project_dev_groups": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_project_dev_groups",
-    ),
-    "test_project_dev_groups_missing_sections": (
+    ],
+    "test_project_dev_groups_missing_sections": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_project_dev_groups_missing_sections",
-    ),
-    "test_project_without_alias_facade_has_no_violation": (
+    ],
+    "test_project_without_alias_facade_has_no_violation": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_project_without_alias_facade_has_no_violation",
-    ),
-    "test_project_without_src_returns_empty": (
+    ],
+    "test_project_without_src_returns_empty": [
         "tests.unit.codegen.autofix_workspace_tests",
         "test_project_without_src_returns_empty",
-    ),
-    "test_read_project_metadata_preserves_pep621_dependency_order": (
+    ],
+    "test_read_project_metadata_preserves_pep621_dependency_order": [
         "tests.unit.refactor.test_infra_refactor_project_classifier",
         "test_read_project_metadata_preserves_pep621_dependency_order",
-    ),
-    "test_read_project_metadata_preserves_poetry_dependency_order": (
+    ],
+    "test_read_project_metadata_preserves_poetry_dependency_order": [
         "tests.unit.refactor.test_infra_refactor_project_classifier",
         "test_read_project_metadata_preserves_poetry_dependency_order",
-    ),
-    "test_refactor_files_skips_non_python_inputs": (
+    ],
+    "test_refactor_files_skips_non_python_inputs": [
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_refactor_files_skips_non_python_inputs",
-    ),
-    "test_refactor_project_integrates_safety_manager": (
+    ],
+    "test_refactor_project_integrates_safety_manager": [
         "tests.unit.refactor.test_infra_refactor_safety",
         "test_refactor_project_integrates_safety_manager",
-    ),
-    "test_refactor_project_scans_tests_and_scripts_dirs": (
+    ],
+    "test_refactor_project_scans_tests_and_scripts_dirs": [
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_refactor_project_scans_tests_and_scripts_dirs",
-    ),
-    "test_removes_all_imports_when_none_used_import_first": (
+    ],
+    "test_removes_all_imports_when_none_used_import_first": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_removes_all_imports_when_none_used_import_first",
-    ),
-    "test_removes_all_unused_typing_imports": (
+    ],
+    "test_removes_all_unused_typing_imports": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_removes_all_unused_typing_imports",
-    ),
-    "test_removes_dead_typealias_import": (
+    ],
+    "test_removes_dead_typealias_import": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_removes_dead_typealias_import",
-    ),
-    "test_removes_typealias_import_only_when_all_usages_converted": (
+    ],
+    "test_removes_typealias_import_only_when_all_usages_converted": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_removes_typealias_import_only_when_all_usages_converted",
-    ),
-    "test_removes_unused_preserves_used_when_import_precedes_usage": (
+    ],
+    "test_removes_unused_preserves_used_when_import_precedes_usage": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_removes_unused_preserves_used_when_import_precedes_usage",
-    ),
-    "test_render_all_generates_large_makefile": (
+    ],
+    "test_render_all_generates_large_makefile": [
         "tests.unit.basemk.test_engine",
         "test_render_all_generates_large_makefile",
-    ),
-    "test_render_all_has_no_scripts_path_references": (
+    ],
+    "test_render_all_has_no_scripts_path_references": [
         "tests.unit.basemk.test_engine",
         "test_render_all_has_no_scripts_path_references",
-    ),
-    "test_replace_project_version": (
+    ],
+    "test_replace_project_version": [
         "tests.unit.test_infra_versioning",
         "test_replace_project_version",
-    ),
-    "test_replaces_container_union": (
+    ],
+    "test_replaces_container_union": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_replaces_container_union",
-    ),
-    "test_replaces_numeric_union": (
+    ],
+    "test_replaces_numeric_union": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_replaces_numeric_union",
-    ),
-    "test_replaces_primitives_union": (
+    ],
+    "test_replaces_primitives_union": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_replaces_primitives_union",
-    ),
-    "test_replaces_scalar_union": (
+    ],
+    "test_replaces_scalar_union": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_replaces_scalar_union",
-    ),
-    "test_resolve_gates_maps_type_alias": (
+    ],
+    "test_resolve_gates_maps_type_alias": [
         "tests.unit.check.cli_tests",
         "test_resolve_gates_maps_type_alias",
-    ),
-    "test_rewrite_dep_paths_dry_run": (
+    ],
+    "test_rewrite_dep_paths_dry_run": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
         "test_rewrite_dep_paths_dry_run",
-    ),
-    "test_rewrite_dep_paths_read_failure": (
+    ],
+    "test_rewrite_dep_paths_read_failure": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
         "test_rewrite_dep_paths_read_failure",
-    ),
-    "test_rewrite_dep_paths_with_internal_names": (
+    ],
+    "test_rewrite_dep_paths_with_internal_names": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
         "test_rewrite_dep_paths_with_internal_names",
-    ),
-    "test_rewrite_dep_paths_with_no_deps": (
+    ],
+    "test_rewrite_dep_paths_with_no_deps": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
         "test_rewrite_dep_paths_with_no_deps",
-    ),
-    "test_rewrite_pep621_invalid_path_dep_regex": (
+    ],
+    "test_rewrite_pep621_invalid_path_dep_regex": [
         "tests.unit.deps.test_path_sync_rewrite_pep621",
         "test_rewrite_pep621_invalid_path_dep_regex",
-    ),
-    "test_rewrite_pep621_no_project_table": (
+    ],
+    "test_rewrite_pep621_no_project_table": [
         "tests.unit.deps.test_path_sync_rewrite_pep621",
         "test_rewrite_pep621_no_project_table",
-    ),
-    "test_rewrite_pep621_non_string_item": (
+    ],
+    "test_rewrite_pep621_non_string_item": [
         "tests.unit.deps.test_path_sync_rewrite_pep621",
         "test_rewrite_pep621_non_string_item",
-    ),
-    "test_rewrite_poetry_no_poetry_table": (
+    ],
+    "test_rewrite_poetry_no_poetry_table": [
         "tests.unit.deps.test_path_sync_rewrite_poetry",
         "test_rewrite_poetry_no_poetry_table",
-    ),
-    "test_rewrite_poetry_no_tool_table": (
+    ],
+    "test_rewrite_poetry_no_tool_table": [
         "tests.unit.deps.test_path_sync_rewrite_poetry",
         "test_rewrite_poetry_no_tool_table",
-    ),
-    "test_rewrite_poetry_with_non_dict_value": (
+    ],
+    "test_rewrite_poetry_with_non_dict_value": [
         "tests.unit.deps.test_path_sync_rewrite_poetry",
         "test_rewrite_poetry_with_non_dict_value",
-    ),
-    "test_rewriter_adds_missing_base_and_formats": (
+    ],
+    "test_rewriter_adds_missing_base_and_formats": [
         "tests.unit.refactor.test_infra_refactor_mro_completeness",
         "test_rewriter_adds_missing_base_and_formats",
-    ),
-    "test_rewriter_namespace_source_is_idempotent_with_ruff": (
+    ],
+    "test_rewriter_namespace_source_is_idempotent_with_ruff": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_rewriter_namespace_source_is_idempotent_with_ruff",
-    ),
-    "test_rewriter_preserves_non_alias_symbols": (
+    ],
+    "test_rewriter_preserves_non_alias_symbols": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_rewriter_preserves_non_alias_symbols",
-    ),
-    "test_rewriter_splits_mixed_imports_correctly": (
+    ],
+    "test_rewriter_splits_mixed_imports_correctly": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_rewriter_splits_mixed_imports_correctly",
-    ),
-    "test_rule_dispatch_fails_on_invalid_pattern_rule_config": (
+    ],
+    "test_rule_dispatch_fails_on_invalid_pattern_rule_config": [
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_rule_dispatch_fails_on_invalid_pattern_rule_config",
-    ),
-    "test_rule_dispatch_fails_on_unknown_rule_mapping": (
+    ],
+    "test_rule_dispatch_fails_on_unknown_rule_mapping": [
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_rule_dispatch_fails_on_unknown_rule_mapping",
-    ),
-    "test_rule_dispatch_keeps_legacy_id_fallback_mapping": (
+    ],
+    "test_rule_dispatch_keeps_legacy_id_fallback_mapping": [
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_rule_dispatch_keeps_legacy_id_fallback_mapping",
-    ),
-    "test_rule_dispatch_prefers_fix_action_metadata": (
+    ],
+    "test_rule_dispatch_prefers_fix_action_metadata": [
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_rule_dispatch_prefers_fix_action_metadata",
-    ),
-    "test_run_cases": ("tests.unit.test_infra_subprocess_core", "test_run_cases"),
-    "test_run_cli_run_returns_one_for_fail": (
+    ],
+    "test_run_cases": ["tests.unit.test_infra_subprocess_core", "test_run_cases"],
+    "test_run_cli_run_returns_one_for_fail": [
         "tests.unit.check.cli_tests",
         "test_run_cli_run_returns_one_for_fail",
-    ),
-    "test_run_cli_run_returns_two_for_error": (
+    ],
+    "test_run_cli_run_returns_two_for_error": [
         "tests.unit.check.cli_tests",
         "test_run_cli_run_returns_two_for_error",
-    ),
-    "test_run_cli_run_returns_zero_for_pass": (
+    ],
+    "test_run_cli_run_returns_zero_for_pass": [
         "tests.unit.check.cli_tests",
         "test_run_cli_run_returns_zero_for_pass",
-    ),
-    "test_run_cli_with_fail_fast_flag": (
+    ],
+    "test_run_cli_with_fail_fast_flag": [
         "tests.unit.check.cli_tests",
         "test_run_cli_with_fail_fast_flag",
-    ),
-    "test_run_cli_with_multiple_projects": (
+    ],
+    "test_run_cli_with_multiple_projects": [
         "tests.unit.check.cli_tests",
         "test_run_cli_with_multiple_projects",
-    ),
-    "test_run_raw_cases": (
+    ],
+    "test_run_raw_cases": [
         "tests.unit.test_infra_subprocess_core",
         "test_run_raw_cases",
-    ),
-    "test_signature_propagation_removes_and_adds_keywords": (
+    ],
+    "test_signature_propagation_removes_and_adds_keywords": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_signature_propagation_removes_and_adds_keywords",
-    ),
-    "test_signature_propagation_renames_call_keyword": (
+    ],
+    "test_signature_propagation_renames_call_keyword": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_signature_propagation_renames_call_keyword",
-    ),
-    "test_skips_definition_files": (
+    ],
+    "test_skips_definition_files": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_skips_definition_files",
-    ),
-    "test_skips_facade_declaration_files": (
+    ],
+    "test_skips_facade_declaration_files": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_skips_facade_declaration_files",
-    ),
-    "test_skips_import_as_rename": (
+    ],
+    "test_skips_import_as_rename": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_skips_import_as_rename",
-    ),
-    "test_skips_init_file": (
+    ],
+    "test_skips_init_file": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_skips_init_file",
-    ),
-    "test_skips_models_directory": (
+    ],
+    "test_skips_models_directory": [
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_models_directory",
-    ),
-    "test_skips_models_file": (
+    ],
+    "test_skips_models_file": [
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_models_file",
-    ),
-    "test_skips_non_alias_symbols": (
+    ],
+    "test_skips_non_alias_symbols": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_skips_non_alias_symbols",
-    ),
-    "test_skips_non_facade_files": (
+    ],
+    "test_skips_non_facade_files": [
         "tests.unit.refactor.test_infra_refactor_mro_completeness",
         "test_skips_non_facade_files",
-    ),
-    "test_skips_private_candidate_classes": (
+    ],
+    "test_skips_private_candidate_classes": [
         "tests.unit.refactor.test_infra_refactor_mro_completeness",
         "test_skips_private_candidate_classes",
-    ),
-    "test_skips_private_class": (
+    ],
+    "test_skips_private_class": [
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_private_class",
-    ),
-    "test_skips_protected_files": (
+    ],
+    "test_skips_protected_files": [
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_protected_files",
-    ),
-    "test_skips_r_alias_universal_exception": (
+    ],
+    "test_skips_r_alias_universal_exception": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_skips_r_alias_universal_exception",
-    ),
-    "test_skips_same_project_private_submodule": (
+    ],
+    "test_skips_same_project_private_submodule": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_skips_same_project_private_submodule",
-    ),
-    "test_skips_same_project_submodule_class_import": (
+    ],
+    "test_skips_same_project_submodule_class_import": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_skips_same_project_submodule_class_import",
-    ),
-    "test_skips_settings_file": (
+    ],
+    "test_skips_settings_file": [
         "tests.unit.refactor.test_infra_refactor_class_placement",
         "test_skips_settings_file",
-    ),
-    "test_skips_union_with_none": (
+    ],
+    "test_skips_union_with_none": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_skips_union_with_none",
-    ),
-    "test_skips_when_candidate_is_already_in_facade_bases": (
+    ],
+    "test_skips_when_candidate_is_already_in_facade_bases": [
         "tests.unit.refactor.test_infra_refactor_mro_completeness",
         "test_skips_when_candidate_is_already_in_facade_bases",
-    ),
-    "test_standalone_final_detected_as_fixable": (
+    ],
+    "test_standalone_final_detected_as_fixable": [
         "tests.unit.codegen.autofix_tests",
         "test_standalone_final_detected_as_fixable",
-    ),
-    "test_standalone_typealias_detected_as_fixable": (
+    ],
+    "test_standalone_typealias_detected_as_fixable": [
         "tests.unit.codegen.autofix_tests",
         "test_standalone_typealias_detected_as_fixable",
-    ),
-    "test_standalone_typevar_detected_as_fixable": (
+    ],
+    "test_standalone_typevar_detected_as_fixable": [
         "tests.unit.codegen.autofix_tests",
         "test_standalone_typevar_detected_as_fixable",
-    ),
-    "test_string_zero_return_value": (
+    ],
+    "test_string_zero_return_value": [
         "tests.unit.deps.test_main_dispatch",
         "test_string_zero_return_value",
-    ),
-    "test_symbol_propagation_keeps_alias_reference_when_asname_used": (
+    ],
+    "test_symbol_propagation_keeps_alias_reference_when_asname_used": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_symbol_propagation_keeps_alias_reference_when_asname_used",
-    ),
-    "test_symbol_propagation_renames_import_and_local_references": (
+    ],
+    "test_symbol_propagation_renames_import_and_local_references": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_symbol_propagation_renames_import_and_local_references",
-    ),
-    "test_symbol_propagation_updates_mro_base_references": (
+    ],
+    "test_symbol_propagation_updates_mro_base_references": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_symbol_propagation_updates_mro_base_references",
-    ),
-    "test_sync_basemk_scenarios": (
+    ],
+    "test_sync_basemk_scenarios": [
         "tests.unit.test_infra_workspace_sync",
         "test_sync_basemk_scenarios",
-    ),
-    "test_sync_error_scenarios": (
+    ],
+    "test_sync_error_scenarios": [
         "tests.unit.test_infra_workspace_sync",
         "test_sync_error_scenarios",
-    ),
-    "test_sync_extra_paths_missing_root_pyproject": (
+    ],
+    "test_sync_extra_paths_missing_root_pyproject": [
         "tests.unit.deps.test_extra_paths_sync",
         "test_sync_extra_paths_missing_root_pyproject",
-    ),
-    "test_sync_extra_paths_success_modes": (
+    ],
+    "test_sync_extra_paths_success_modes": [
         "tests.unit.deps.test_extra_paths_sync",
         "test_sync_extra_paths_success_modes",
-    ),
-    "test_sync_extra_paths_sync_failure": (
+    ],
+    "test_sync_extra_paths_sync_failure": [
         "tests.unit.deps.test_extra_paths_sync",
         "test_sync_extra_paths_sync_failure",
-    ),
-    "test_sync_one_edge_cases": (
+    ],
+    "test_sync_one_edge_cases": [
         "tests.unit.deps.test_extra_paths_sync",
         "test_sync_one_edge_cases",
-    ),
-    "test_sync_root_validation": (
+    ],
+    "test_sync_root_validation": [
         "tests.unit.test_infra_workspace_sync",
         "test_sync_root_validation",
-    ),
-    "test_sync_success_scenarios": (
+    ],
+    "test_sync_success_scenarios": [
         "tests.unit.test_infra_workspace_sync",
         "test_sync_success_scenarios",
-    ),
-    "test_syntax_error_files_skipped": (
+    ],
+    "test_syntax_error_files_skipped": [
         "tests.unit.codegen.autofix_tests",
         "test_syntax_error_files_skipped",
-    ),
-    "test_target_path": ("tests.unit.deps.test_path_sync_helpers", "test_target_path"),
-    "test_typealias_conversion_preserves_used_typing_siblings": (
+    ],
+    "test_target_path": ["tests.unit.deps.test_path_sync_helpers", "test_target_path"],
+    "test_typealias_conversion_preserves_used_typing_siblings": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_typealias_conversion_preserves_used_typing_siblings",
-    ),
-    "test_unwrap_item": ("tests.unit.deps.test_modernizer_helpers", "test_unwrap_item"),
-    "test_unwrap_item_toml_item": (
+    ],
+    "test_unwrap_item": ["tests.unit.deps.test_modernizer_helpers", "test_unwrap_item"],
+    "test_unwrap_item_toml_item": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_unwrap_item_toml_item",
-    ),
-    "test_violation_analysis_counts_massive_patterns": (
+    ],
+    "test_violation_analysis_counts_massive_patterns": [
         "tests.unit.refactor.test_infra_refactor_analysis",
         "test_violation_analysis_counts_massive_patterns",
-    ),
-    "test_violation_analyzer_skips_non_utf8_files": (
+    ],
+    "test_violation_analyzer_skips_non_utf8_files": [
         "tests.unit.refactor.test_infra_refactor_analysis",
         "test_violation_analyzer_skips_non_utf8_files",
-    ),
-    "test_workspace_check_main_returns_error_without_projects": (
+    ],
+    "test_workspace_check_main_returns_error_without_projects": [
         "tests.unit.check.workspace_check_tests",
         "test_workspace_check_main_returns_error_without_projects",
-    ),
-    "test_workspace_cli_migrate_command": (
+    ],
+    "test_workspace_cli_migrate_command": [
         "tests.unit.test_infra_workspace_cli",
         "test_workspace_cli_migrate_command",
-    ),
-    "test_workspace_cli_migrate_output_contains_summary": (
+    ],
+    "test_workspace_cli_migrate_output_contains_summary": [
         "tests.unit.test_infra_workspace_cli",
         "test_workspace_cli_migrate_output_contains_summary",
-    ),
-    "test_workspace_migrator_error_handling_on_invalid_workspace": (
+    ],
+    "test_workspace_migrator_error_handling_on_invalid_workspace": [
         "tests.unit.test_infra_workspace_migrator_deps",
         "test_workspace_migrator_error_handling_on_invalid_workspace",
-    ),
-    "test_workspace_migrator_makefile_not_found_dry_run": (
+    ],
+    "test_workspace_migrator_makefile_not_found_dry_run": [
         "tests.unit.test_infra_workspace_migrator_deps",
         "test_workspace_migrator_makefile_not_found_dry_run",
-    ),
-    "test_workspace_migrator_makefile_read_error": (
+    ],
+    "test_workspace_migrator_makefile_read_error": [
         "tests.unit.test_infra_workspace_migrator_deps",
         "test_workspace_migrator_makefile_read_error",
-    ),
-    "test_workspace_migrator_pyproject_write_error": (
+    ],
+    "test_workspace_migrator_pyproject_write_error": [
         "tests.unit.test_infra_workspace_migrator_deps",
         "test_workspace_migrator_pyproject_write_error",
-    ),
-    "test_workspace_root_doc_construction": (
+    ],
+    "test_workspace_root_doc_construction": [
         "tests.unit.deps.test_modernizer_workspace",
         "test_workspace_root_doc_construction",
-    ),
-    "test_workspace_root_fallback": (
+    ],
+    "test_workspace_root_fallback": [
         "tests.unit.deps.test_path_sync_main_more",
         "test_workspace_root_fallback",
-    ),
-    "u": ("tests.utilities", "FlextInfraTestUtilities"),
-    "unit": ("tests.unit", ""),
-    "v": ("tests.unit.validate.basemk_validator_tests", "v"),
-    "validate": ("tests.unit.validate", ""),
-    "validator": ("tests.unit.docs.validator_internals_tests", "validator"),
-    "workspace_root": ("tests.unit.release.orchestrator_tests", "workspace_root"),
-    "x": ("flext_tests", "x"),
+    ],
+    "u": ["tests.utilities", "FlextInfraTestUtilities"],
+    "unit": ["tests.unit", ""],
+    "v": ["tests.unit.validate.basemk_validator_tests", "v"],
+    "validate": ["tests.unit.validate", ""],
+    "validator": ["tests.unit.docs.validator_internals_tests", "validator"],
+    "workspace_root": ["tests.unit.release.orchestrator_tests", "workspace_root"],
+    "x": ["flext_tests", "x"],
 }
 
 __all__ = [

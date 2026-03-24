@@ -97,7 +97,7 @@ class FlextInfraRefactorConstants:
         "all",
     })
     "Accepted target arguments for MRO migration runs."
-    MRO_SCAN_DIRECTORIES: ClassVar[tuple[str, ...]] = (
+    MRO_SCAN_DIRECTORIES: ClassVar[t.StrSequence] = (
         "src",
         "examples",
         "scripts",
@@ -213,7 +213,7 @@ class FlextInfraRefactorConstants:
         "flext-grpc",
     })
     "Known platform-layer packages."
-    INTEGRATION_CLASS_PREFIXES: ClassVar[tuple[str, ...]] = (
+    INTEGRATION_CLASS_PREFIXES: ClassVar[t.StrSequence] = (
         "FlextTap",
         "FlextTarget",
         "FlextDbt",
@@ -227,7 +227,7 @@ class FlextInfraRefactorConstants:
     "Confidence level → numeric score mapping for violations."
     CONFIDENCE_RANKS: ClassVar[Mapping[str, int]] = {"low": 0, "medium": 1, "high": 2}
     "Confidence level → priority rank mapping."
-    REQUIRED_CLASS_TARGETS: ClassVar[tuple[str, ...]] = (
+    REQUIRED_CLASS_TARGETS: ClassVar[t.StrSequence] = (
         "TimeoutEnforcer",
         "CircuitBreakerManager",
     )
@@ -238,7 +238,7 @@ class FlextInfraRefactorConstants:
         Path("rules") / "class-nesting-mappings.yml"
     )
     "Relative path from the refactor package to the nesting mappings YAML."
-    MODEL_TOKENS: ClassVar[tuple[str, ...]] = (
+    MODEL_TOKENS: ClassVar[t.StrSequence] = (
         "model",
         "schema",
         "entity",
@@ -246,9 +246,9 @@ class FlextInfraRefactorConstants:
         "dataclass",
     )
     "Tokens indicating model-related code."
-    DECORATOR_TOKENS: ClassVar[tuple[str, ...]] = ("decorator", "inject", "provide")
+    DECORATOR_TOKENS: ClassVar[t.StrSequence] = ("decorator", "inject", "provide")
     "Tokens indicating decorator-related code."
-    DISPATCHER_TOKENS: ClassVar[tuple[str, ...]] = (
+    DISPATCHER_TOKENS: ClassVar[t.StrSequence] = (
         "dispatcher",
         "dispatch",
         "command",
@@ -263,7 +263,7 @@ class FlextInfraRefactorConstants:
         "dispatcher": "FlextDispatcher",
     }
     "Namespace → class prefix mapping for violation classification."
-    CLASSIFICATION_PRIORITY: ClassVar[tuple[str, ...]] = (
+    CLASSIFICATION_PRIORITY: ClassVar[t.StrSequence] = (
         "dispatcher",
         "decorators",
         "models",

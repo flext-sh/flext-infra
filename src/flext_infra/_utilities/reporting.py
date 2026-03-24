@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, MutableSet, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import JsonValue
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesReporting:
                 (gate, ""),
             )
             sarif_results: MutableSequence[m.Infra.SarifResult] = []
-            rules_seen: MutableSet[str] = set()
+            rules_seen: t.Infra.StrSet = set()
             rules: MutableSequence[m.Infra.SarifRule] = []
             for project in results:
                 gate_result = project.gates.get(gate)

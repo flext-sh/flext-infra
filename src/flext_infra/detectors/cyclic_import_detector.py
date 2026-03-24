@@ -19,6 +19,7 @@ import libcst as cst
 from flext_infra import (
     c,
     m,
+    t,
     u,
 )
 
@@ -57,7 +58,7 @@ class FlextInfraCyclicImportDetector:
         ]
         if not scan_dirs:
             return []
-        graph: MutableMapping[str, set[str]] = {}
+        graph: MutableMapping[str, t.Infra.StrSet] = {}
         file_map: MutableMapping[str, str] = {}
         package_roots = cls._discover_package_roots(scan_dirs=scan_dirs)
         for scan_dir in scan_dirs:
@@ -130,7 +131,7 @@ class FlextInfraCyclicImportDetector:
         return violations
 
     @staticmethod
-    def _discover_package_roots(*, scan_dirs: Sequence[Path]) -> set[str]:
+    def _discover_package_roots(*, scan_dirs: Sequence[Path]) -> t.Infra.StrSet:
         """Discover Python package names from scan directories.
 
         Args:
@@ -140,7 +141,7 @@ class FlextInfraCyclicImportDetector:
             Set of package root names found.
 
         """
-        roots: set[str] = set()
+        roots: t.Infra.StrSet = set()
         for scan_dir in scan_dirs:
             if (scan_dir / "__init__.py").is_file():
                 roots.add(scan_dir.name)

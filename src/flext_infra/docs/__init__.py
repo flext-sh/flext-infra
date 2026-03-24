@@ -27,14 +27,14 @@ if TYPE_CHECKING:
     from flext_infra.docs.shared import FlextInfraDocsShared
     from flext_infra.docs.validator import FlextInfraDocValidator
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraDocAuditor": ("flext_infra.docs.auditor", "FlextInfraDocAuditor"),
-    "FlextInfraDocBuilder": ("flext_infra.docs.builder", "FlextInfraDocBuilder"),
-    "FlextInfraDocFixer": ("flext_infra.docs.fixer", "FlextInfraDocFixer"),
-    "FlextInfraDocGenerator": ("flext_infra.docs.generator", "FlextInfraDocGenerator"),
-    "FlextInfraDocValidator": ("flext_infra.docs.validator", "FlextInfraDocValidator"),
-    "FlextInfraDocsShared": ("flext_infra.docs.shared", "FlextInfraDocsShared"),
-    "main": ("flext_infra.docs.auditor", "main"),
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraDocAuditor": ["flext_infra.docs.auditor", "FlextInfraDocAuditor"],
+    "FlextInfraDocBuilder": ["flext_infra.docs.builder", "FlextInfraDocBuilder"],
+    "FlextInfraDocFixer": ["flext_infra.docs.fixer", "FlextInfraDocFixer"],
+    "FlextInfraDocGenerator": ["flext_infra.docs.generator", "FlextInfraDocGenerator"],
+    "FlextInfraDocValidator": ["flext_infra.docs.validator", "FlextInfraDocValidator"],
+    "FlextInfraDocsShared": ["flext_infra.docs.shared", "FlextInfraDocsShared"],
+    "main": ["flext_infra.docs.auditor", "main"],
 }
 
 __all__ = [

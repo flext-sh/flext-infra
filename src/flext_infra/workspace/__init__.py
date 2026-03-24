@@ -37,39 +37,39 @@ if TYPE_CHECKING:
         FlextInfraWorkspaceMakefileGenerator,
     )
 
-_LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraOrchestratorService": (
+_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraOrchestratorService": [
         "flext_infra.workspace.orchestrator",
         "FlextInfraOrchestratorService",
-    ),
-    "FlextInfraProjectMakefileUpdater": (
+    ],
+    "FlextInfraProjectMakefileUpdater": [
         "flext_infra.workspace.project_makefile",
         "FlextInfraProjectMakefileUpdater",
-    ),
-    "FlextInfraProjectMigrator": (
+    ],
+    "FlextInfraProjectMigrator": [
         "flext_infra.workspace.migrator",
         "FlextInfraProjectMigrator",
-    ),
-    "FlextInfraPythonVersionEnforcer": (
+    ],
+    "FlextInfraPythonVersionEnforcer": [
         "flext_infra.workspace.maintenance.python_version",
         "FlextInfraPythonVersionEnforcer",
-    ),
-    "FlextInfraSyncService": ("flext_infra.workspace.sync", "FlextInfraSyncService"),
-    "FlextInfraWorkspaceDetector": (
+    ],
+    "FlextInfraSyncService": ["flext_infra.workspace.sync", "FlextInfraSyncService"],
+    "FlextInfraWorkspaceDetector": [
         "flext_infra.workspace.detector",
         "FlextInfraWorkspaceDetector",
-    ),
-    "FlextInfraWorkspaceMakefileGenerator": (
+    ],
+    "FlextInfraWorkspaceMakefileGenerator": [
         "flext_infra.workspace.workspace_makefile",
         "FlextInfraWorkspaceMakefileGenerator",
-    ),
-    "FlextInfraWorkspaceMode": (
+    ],
+    "FlextInfraWorkspaceMode": [
         "flext_infra.workspace.detector",
         "FlextInfraWorkspaceMode",
-    ),
-    "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
-    "main": ("flext_infra.workspace.sync", "main"),
-    "maintenance": ("flext_infra.workspace.maintenance", ""),
+    ],
+    "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
+    "main": ["flext_infra.workspace.sync", "main"],
+    "maintenance": ["flext_infra.workspace.maintenance", ""],
 }
 
 __all__ = [

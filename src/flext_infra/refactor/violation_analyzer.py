@@ -141,12 +141,12 @@ class FlextInfraRefactorViolationAnalyzer:
     ) -> m.Infra.HelperClassification:
         dependency_collector = FlextInfraFunctionDependencyCollector()
         function.visit(dependency_collector)
-        dependencies: set[str] = set()
+        dependencies: t.Infra.StrSet = set()
         for name in dependency_collector.names:
             imported = local_to_import.get(name)
             if imported is not None:
                 dependencies.add(imported)
-        decorator_dependencies: set[str] = set()
+        decorator_dependencies: t.Infra.StrSet = set()
         for decorator in function.decorators:
             decorator_root = u.Infra.cst_root_name(decorator.decorator)
             if not decorator_root:
@@ -178,10 +178,10 @@ class FlextInfraRefactorViolationAnalyzer:
     def _match_categories(
         cls,
         *,
-        dependencies: set[str],
+        dependencies: t.Infra.StrSet,
         has_decorators: bool,
-    ) -> set[str]:
-        matched: set[str] = set()
+    ) -> t.Infra.StrSet:
+        matched: t.Infra.StrSet = set()
         for dependency in dependencies:
             lowered = dependency.lower()
             if any(token in lowered for token in c.Infra.MODEL_TOKENS):
@@ -198,8 +198,8 @@ class FlextInfraRefactorViolationAnalyzer:
     def _resolve_category(
         cls,
         *,
-        dependencies: set[str],
-        matched_categories: set[str],
+        dependencies: t.Infra.StrSet,
+        matched_categories: t.Infra.StrSet,
     ) -> tuple[str, bool, str]:
         if len(matched_categories) > 1:
             ordered = [
@@ -221,7 +221,7 @@ class FlextInfraRefactorViolationAnalyzer:
         )
 
     @classmethod
-    def _is_pure_utility_dependencies(cls, dependencies: set[str]) -> bool:
+    def _is_pure_utility_dependencies(cls, dependencies: t.Infra.StrSet) -> bool:
         if not dependencies:
             return True
         for dependency in dependencies:

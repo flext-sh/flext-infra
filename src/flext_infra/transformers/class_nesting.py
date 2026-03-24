@@ -25,7 +25,7 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
         self._policy_context = policy_context
         self._class_families = class_families
         self._class_depth = 0
-        self._existing_namespaces: set[str] = set()
+        self._existing_namespaces: t.Infra.StrSet = set()
         self._collected_nested: Mapping[str, MutableSequence[cst.ClassDef]] = (
             defaultdict(list)
         )
