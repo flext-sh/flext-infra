@@ -293,6 +293,8 @@ class FlextInfraRefactorConstants:
     NAMESPACE_MIN_ALIAS_LENGTH: ClassVar[int] = 2
     NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS: ClassVar[int] = 10
     NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS: ClassVar[int] = 5
+    NAMESPACE_NO_RENDER_LIMIT: ClassVar[int] = 10_000
+    MAX_SCAN_FILES: ClassVar[int] = 10_000
     NAMESPACE_FILE_TO_FAMILY: ClassVar[t.StrMapping] = {
         f"{suffix.lower()}.py": alias for alias, suffix in FAMILY_SUFFIXES.items()
     }

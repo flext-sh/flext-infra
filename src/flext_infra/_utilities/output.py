@@ -207,7 +207,7 @@ class FlextInfraUtilitiesOutput:
         """Render a human-readable namespace enforcement report."""
         max_loose = c.Infra.NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS
         max_imports = c.Infra.NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS
-        no_limit = 10_000
+        no_limit = c.Infra.NAMESPACE_NO_RENDER_LIMIT
         render = FlextInfraUtilitiesOutput._render_violation_section
         lines: MutableSequence[str] = [
             f"Workspace: {report.workspace}",

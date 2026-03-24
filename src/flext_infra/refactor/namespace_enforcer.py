@@ -365,37 +365,39 @@ class FlextInfraNamespaceEnforcer:
                 snapshots[py_file] = py_file.read_text(
                     encoding=c.Infra.Encoding.DEFAULT,
                 )
-        self.enforce(apply=True, project_names=project_names)
-        diff_lines: MutableSequence[str] = []
-        for py_file, original in snapshots.items():
-            if not py_file.is_file():
-                continue
-            modified = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            if modified != original:
-                rel = py_file.relative_to(self._workspace_root)
-                diff_lines.extend(
-                    difflib.unified_diff(
-                        original.splitlines(keepends=True),
-                        modified.splitlines(keepends=True),
-                        fromfile=f"a/{rel}",
-                        tofile=f"b/{rel}",
-                    ),
-                )
-            _ = py_file.write_text(original, encoding=c.Infra.Encoding.DEFAULT)
-        for project_root in project_roots:
-            for py_file in self._collect_py_files(project_root=project_root):
-                if py_file not in snapshots and py_file.is_file():
+        try:
+            self.enforce(apply=True, project_names=project_names)
+        finally:
+            diff_lines: MutableSequence[str] = []
+            for py_file, original in snapshots.items():
+                if not py_file.is_file():
+                    continue
+                modified = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                if modified != original:
                     rel = py_file.relative_to(self._workspace_root)
-                    content = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
                     diff_lines.extend(
                         difflib.unified_diff(
-                            [],
-                            content.splitlines(keepends=True),
-                            fromfile="/dev/null",
+                            original.splitlines(keepends=True),
+                            modified.splitlines(keepends=True),
+                            fromfile=f"a/{rel}",
                             tofile=f"b/{rel}",
                         ),
                     )
-                    py_file.unlink()
+                _ = py_file.write_text(original, encoding=c.Infra.Encoding.DEFAULT)
+            for project_root in project_roots:
+                for py_file in self._collect_py_files(project_root=project_root):
+                    if py_file not in snapshots and py_file.is_file():
+                        rel = py_file.relative_to(self._workspace_root)
+                        content = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                        diff_lines.extend(
+                            difflib.unified_diff(
+                                [],
+                                content.splitlines(keepends=True),
+                                fromfile="/dev/null",
+                                tofile=f"b/{rel}",
+                            ),
+                        )
+                        py_file.unlink()
         return "".join(diff_lines)
 
     @staticmethod

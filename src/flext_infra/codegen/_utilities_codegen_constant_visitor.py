@@ -562,7 +562,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         root_path: Path,
         class_name: str,
         exclude_patterns: frozenset[str] = frozenset({".mypy_cache", "__pycache__"}),
-        max_files: int = 10000,
+        max_files: int = c.Infra.MAX_SCAN_FILES,
     ) -> tuple[set[str], Mapping[str, Sequence[tuple[str, int]]]]:
         """Scan workspace for usages of a specific class's attributes.
 
