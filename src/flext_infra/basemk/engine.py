@@ -77,7 +77,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
                 template = self._environment.get_template(template_name)
-                rendered = template.render(
+                rendered: str = template.render(
                     config=active_config,
                     lint_gates_csv=lint_gates_csv,
                 )

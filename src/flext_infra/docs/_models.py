@@ -150,7 +150,7 @@ class FlextInfraDocsModels:
                 description="Whether TODOS.md was written",
             ),
         ] = False
-        items: Sequence[FlextInfraDocsModels.DocsPhaseItemModel] = Field(
+        items: list[FlextInfraDocsModels.DocsPhaseItemModel] = Field(
             default_factory=list,
             description="Phase-specific item payloads",
         )
