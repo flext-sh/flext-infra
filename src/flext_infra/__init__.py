@@ -409,7 +409,7 @@ if TYPE_CHECKING:
     from flext_infra.workspace._models import FlextInfraWorkspaceModels
     from flext_infra.workspace.detector import (
         FlextInfraWorkspaceDetector,
-        WorkspaceMode,
+        FlextInfraWorkspaceMode,
     )
     from flext_infra.workspace.maintenance.python_version import (
         FlextInfraPythonVersionEnforcer,
@@ -1444,6 +1444,7 @@ __all__ = [
     "FlextInfraWorkspaceConstants",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceMakefileGenerator",
+    "FlextInfraWorkspaceMode",
     "FlextInfraWorkspaceModels",
     "FunctionDependencyCollector",
     "FutureAnnotationsDetector",
