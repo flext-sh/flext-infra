@@ -12,6 +12,7 @@ from tomlkit.items import Item, Table
 
 from flext_infra import c, m, u
 
+
 class FlextInfraEnsureRuffConfigPhase:
     """Ensure standard Ruff configuration inline with known-first-party overlay."""
 
@@ -122,6 +123,7 @@ class FlextInfraEnsureRuffConfigPhase:
             del doc[c.Infra.Toml.LINT_SECTION]
             changes.append("removed stale top-level [lint] section")
         return changes
+
 
 EnsureRuffConfigPhase = FlextInfraEnsureRuffConfigPhase
 

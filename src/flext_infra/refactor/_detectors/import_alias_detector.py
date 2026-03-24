@@ -23,6 +23,7 @@ from flext_infra import (
 if TYPE_CHECKING:
     from flext_infra import m
 
+
 class FlextInfraImportAliasDetector(p.Infra.Scanner):
     """Detector for deep import paths that should use top-level aliases.
 
@@ -175,6 +176,7 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
             )
         return violations
 
+
 ImportAliasDetector = FlextInfraImportAliasDetector
 
-__all__ = ["ImportAliasDetector", "FlextInfraImportAliasDetector"]
+__all__ = ["FlextInfraImportAliasDetector", "ImportAliasDetector"]

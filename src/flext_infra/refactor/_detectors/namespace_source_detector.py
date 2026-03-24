@@ -18,6 +18,7 @@ from flext_infra import (
     u,
 )
 
+
 class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
     """Detector for alias imports from wrong source packages.
 
@@ -188,6 +189,7 @@ class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
     def discover_project_package_name(cls, *, project_root: Path) -> str:
         return cls._discover_project_package_name(project_root=project_root)
 
+
 NamespaceSourceDetector = FlextInfraNamespaceSourceDetector
 
-__all__ = ["NamespaceSourceDetector", "FlextInfraNamespaceSourceDetector"]
+__all__ = ["FlextInfraNamespaceSourceDetector", "NamespaceSourceDetector"]

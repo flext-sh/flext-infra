@@ -8,6 +8,7 @@ from flext_core import FlextTypes as t
 
 from flext_infra import c
 
+
 class FlextInfraInjectCommentsPhase:
     """Inject managed/custom/auto markers into pyproject.toml."""
 
@@ -60,6 +61,7 @@ class FlextInfraInjectCommentsPhase:
             out.append(line)
         return ("\n".join(out).rstrip() + "\n", changes)
 
+
 InjectCommentsPhase = FlextInfraInjectCommentsPhase
 
-__all__ = ["InjectCommentsPhase", "FlextInfraInjectCommentsPhase"]
+__all__ = ["FlextInfraInjectCommentsPhase", "InjectCommentsPhase"]

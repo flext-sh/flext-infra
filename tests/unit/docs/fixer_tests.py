@@ -11,11 +11,10 @@ from pathlib import Path
 
 import pytest
 from flext_core import r
-from tests import t
 from flext_tests import tf, tm
 
 from flext_infra import FlextInfraDocFixer, FlextInfraUtilitiesDocs
-from tests import m
+from tests import m, t
 
 
 class TestFixerCore:

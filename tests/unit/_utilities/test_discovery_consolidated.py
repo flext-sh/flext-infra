@@ -4,9 +4,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from tests import t
 
 from flext_infra import FlextInfraUtilitiesIteration, c, m, u
+from tests import t
 
 
 class TestDiscoveryProjectRoots:

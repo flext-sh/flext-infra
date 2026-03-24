@@ -26,6 +26,7 @@ from flext_infra import (
 
 from .namespace_facade_scanner import FlextInfraNamespaceFacadeScanner
 
+
 class FlextInfraLooseObjectDetector(p.Infra.Scanner):
     """Detector for loose top-level objects outside namespace classes.
 
@@ -340,6 +341,7 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
                 node=child, classes=classes
             )
 
+
 LooseObjectDetector = FlextInfraLooseObjectDetector
 
-__all__ = ["LooseObjectDetector", "FlextInfraLooseObjectDetector"]
+__all__ = ["FlextInfraLooseObjectDetector", "LooseObjectDetector"]

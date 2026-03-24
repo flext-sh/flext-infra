@@ -12,11 +12,10 @@ from types import SimpleNamespace
 
 import pytest
 from flext_core import r
-from tests import t
 from flext_tests import tm
 
 from flext_infra import FlextInfraDocBuilder, FlextInfraUtilitiesDocs
-from tests import m
+from tests import m, t
 
 
 class _RunnerStub:

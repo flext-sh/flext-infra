@@ -19,6 +19,7 @@ from flext_infra import (
     u,
 )
 
+
 class FlextInfraFutureAnnotationsDetector(p.Infra.Scanner):
     """Detector for missing future annotations imports.
 
@@ -153,6 +154,7 @@ class FlextInfraFutureAnnotationsDetector(p.Infra.Scanner):
             ),
         ]
 
+
 FutureAnnotationsDetector = FlextInfraFutureAnnotationsDetector
 
-__all__ = ["FutureAnnotationsDetector", "FlextInfraFutureAnnotationsDetector"]
+__all__ = ["FlextInfraFutureAnnotationsDetector", "FutureAnnotationsDetector"]

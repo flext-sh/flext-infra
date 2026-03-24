@@ -12,11 +12,10 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from tests import t
 from flext_tests import tm
 
 from flext_infra import u
-from tests import m
+from tests import m, t
 
 
 class TestWriteJson:

@@ -21,6 +21,7 @@ from flext_infra import c, m, u
 
 from .import_collector import FlextInfraImportCollector
 
+
 class FlextInfraDependencyAnalyzer:
     """Analyzer for inter-project import dependency graphs in workspaces.
 
@@ -226,6 +227,7 @@ class FlextInfraDependencyAnalyzer:
                 imported_symbols=col.imported_symbols,
             ),
         )
+
 
 DependencyAnalyzer = FlextInfraDependencyAnalyzer
 

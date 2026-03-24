@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_core import r
-from tests import t
 from flext_tests import tm
 
 import flext_infra.release.orchestrator as _orch_mod
@@ -17,6 +16,7 @@ from flext_infra import (
     m as infra_models,
     u,
 )
+from tests import t
 
 from ...models import m as _m
 from ._stubs import (

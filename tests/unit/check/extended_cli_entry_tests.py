@@ -14,13 +14,13 @@ from types import SimpleNamespace
 
 import pytest
 from flext_core import r
-from tests import t
 from flext_tests import tm
 
 import flext_infra.check.__main__ as check_main_mod
 import flext_infra.check.workspace_check as ws_mod
 import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
 from flext_infra import FlextInfraWorkspaceChecker
+from tests import t
 
 from ...models import m
 

@@ -11,6 +11,7 @@ from tomlkit.items import Item, Table
 
 from flext_infra import c, m, u
 
+
 class FlextInfraEnsurePytestConfigPhase:
     """Ensure standard pytest configuration without removing project-specific entries."""
 
@@ -70,6 +71,7 @@ class FlextInfraEnsurePytestConfigPhase:
             names = ", ".join(m.split(":")[0].strip() for m in added)
             changes.append(f"tool.pytest.ini_options.markers: added {names}")
         return changes
+
 
 EnsurePytestConfigPhase = FlextInfraEnsurePytestConfigPhase
 

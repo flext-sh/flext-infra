@@ -7,7 +7,6 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 
 import pytest
 from flext_core import r
-from tests import t
 from flext_tests import tm
 
 from flext_infra import (
@@ -17,6 +16,7 @@ from flext_infra import (
     u,
 )
 from flext_infra.docs.__main__ import _run_build, _run_generate, _run_validate
+from tests import t
 
 from ...models import m
 

@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_core import r
-from tests import t
 from flext_tests import tm
 
 from flext_infra import FlextInfraModels, FlextInfraReleaseOrchestrator, u
+from tests import t
 
 if TYPE_CHECKING:
     from pathlib import Path

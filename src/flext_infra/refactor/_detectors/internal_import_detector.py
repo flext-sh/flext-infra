@@ -23,6 +23,7 @@ from flext_infra import (
     u,
 )
 
+
 class FlextInfraInternalImportDetector(p.Infra.Scanner):
     """Detector for private module and symbol import violations.
 
@@ -158,6 +159,7 @@ class FlextInfraInternalImportDetector(p.Infra.Scanner):
             )
         return violations
 
+
 InternalImportDetector = FlextInfraInternalImportDetector
 
-__all__ = ["InternalImportDetector", "FlextInfraInternalImportDetector"]
+__all__ = ["FlextInfraInternalImportDetector", "InternalImportDetector"]

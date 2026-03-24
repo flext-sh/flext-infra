@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 from flext_core import r
-from tests import t
 from flext_tests import tm
 
 import flext_infra.workspace.__main__ as workspace_main
@@ -18,6 +17,7 @@ from flext_infra import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceMode,
 )
+from tests import t
 
 
 def _cli(workspace: Path) -> FlextInfraUtilitiesCli.CliArgs:
