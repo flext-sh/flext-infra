@@ -16,10 +16,10 @@ from flext_core import FlextModels
 from pydantic import Field
 
 
-class FlextInfraUtilitiesModels:
+class FlextInfraModelsScan:
     """Shared utility domain models for scanning and analysis."""
 
-    class _ScanViolation(FlextModels.FrozenStrictModel):
+    class ScanViolation(FlextModels.FrozenStrictModel):
         """A single violation found during file scanning."""
 
         line: Annotated[int, Field(description="Line number of the violation")]
@@ -33,14 +33,12 @@ class FlextInfraUtilitiesModels:
             Field(default=None, description="Optional rule identifier"),
         ]
 
-    ScanViolation = _ScanViolation
-
     class ScanResult(FlextModels.ArbitraryTypesModel):
         """Result of scanning a single file."""
 
         file_path: Annotated[Path, Field(description="Path to the scanned file")]
         violations: Annotated[
-            Sequence[FlextInfraUtilitiesModels._ScanViolation],
+            Sequence[FlextInfraModelsScan.ScanViolation],
             Field(
                 default_factory=list,
                 description="Violations found in the file",
@@ -52,4 +50,4 @@ class FlextInfraUtilitiesModels:
         ]
 
 
-__all__ = ["FlextInfraUtilitiesModels"]
+__all__ = ["FlextInfraModelsScan"]

@@ -48,7 +48,12 @@ class FlextInfraDepsConstants:
     PEP621_NAME_RE: Final[re.Pattern[str]] = re.compile(
         r"^\s*(?P<name>[A-Za-z0-9_.-]+)",
     )
-    BANNER: str = "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Sections with [CUSTOM] are project-specific extension points.\n# Sections with [AUTO] are derived from workspace layout and dependencies.\n"
+    BANNER: str = "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Run `make mod` to regenerate all managed pyproject sections.\n# Sections with [CUSTOM] are project-specific extension points.\n"
+    DEV_OPTIONAL_DEPS_MARKER: str = "# [MANAGED] consolidated development dependencies"
+    LEGACY_AUTO_MARKER: str = "# [AUTO] merged from dev/docs/security/test/typings"
+    LEGACY_AUTO_BANNER_LINE: str = (
+        "# Sections with [AUTO] are derived from workspace layout and dependencies."
+    )
     COMMENT_MARKERS: tuple[tuple[str, str], ...] = (
         ("[build-system]", "# [MANAGED] build system"),
         ("[project]", "# [CUSTOM] project metadata"),
@@ -58,8 +63,8 @@ class FlextInfraDepsConstants:
         ("[tool.codespell]", "# [MANAGED] codespell"),
         ("[tool.tomlsort]", "# [MANAGED] tomlsort"),
         ("[tool.yamlfix]", "# [MANAGED] yamlfix"),
-        ("[tool.pytest]", "# [MANAGED] pytest"),
-        ("[tool.coverage]", "# [MANAGED] coverage"),
+        ("[tool.pytest", "# [MANAGED] pytest"),
+        ("[tool.coverage", "# [MANAGED] coverage"),
         ("[tool.mypy]", "# [MANAGED] mypy"),
         ("[tool.pydantic-mypy]", "# [MANAGED] pydantic-mypy"),
         ("[tool.pyrefly]", "# [MANAGED] pyrefly"),

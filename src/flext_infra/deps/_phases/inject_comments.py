@@ -1,4 +1,4 @@
-"""Phase: Inject managed/custom/auto markers into pyproject.toml."""
+"""Phase: Inject managed/custom markers into pyproject.toml."""
 
 from __future__ import annotations
 
@@ -10,54 +10,95 @@ from flext_infra import c
 
 
 class FlextInfraInjectCommentsPhase:
-    """Inject managed/custom/auto markers into pyproject.toml."""
+    """Inject managed/custom markers into pyproject.toml."""
+
+    @staticmethod
+    def _is_section_header(line: str) -> bool:
+        stripped = line.strip()
+        return stripped.startswith("[") and stripped.endswith("]")
+
+    @staticmethod
+    def _managed_marker_lines() -> set[str]:
+        markers = {marker for _section_prefix, marker in c.Infra.COMMENT_MARKERS}
+        markers.add(c.Infra.DEV_OPTIONAL_DEPS_MARKER)
+        markers.add(c.Infra.LEGACY_AUTO_MARKER)
+        markers.add(c.Infra.LEGACY_AUTO_BANNER_LINE)
+        markers.update(c.Infra.BANNER.splitlines())
+        return markers
+
+    @staticmethod
+    def _marker_for_section(section_header: str) -> str | None:
+        for section_prefix, marker in c.Infra.COMMENT_MARKERS:
+            if section_header.startswith(section_prefix):
+                return marker
+        return None
+
+    @classmethod
+    def _strip_managed_lines(
+        cls,
+        lines: t.StrSequence,
+    ) -> tuple[t.StrSequence, t.StrSequence]:
+        changes: MutableSequence[str] = []
+        managed_lines = cls._managed_marker_lines()
+        cleaned: MutableSequence[str] = []
+        skip_broken_group_section = False
+        broken_removed = False
+        for line in lines:
+            stripped = line.strip()
+            if skip_broken_group_section:
+                if cls._is_section_header(line):
+                    skip_broken_group_section = False
+                else:
+                    continue
+            # Remove legacy banner variants so canonical banner can be re-injected.
+            if stripped.startswith("# Sections with [MANAGED] are enforced"):
+                continue
+            if stripped == c.Infra.LEGACY_AUTO_BANNER_LINE:
+                continue
+            if stripped == "[group.dev.dependencies]":
+                skip_broken_group_section = True
+                broken_removed = True
+                continue
+            if stripped in managed_lines:
+                continue
+            cleaned.append(line)
+        if broken_removed:
+            changes.append("broken [group.dev.dependencies] section removed")
+        return cleaned, changes
+
+    @staticmethod
+    def _inject_dev_markers(
+        out: MutableSequence[str],
+        changes: MutableSequence[str],
+        emitted_markers: set[str],
+    ) -> None:
+        managed_marker = c.Infra.DEV_OPTIONAL_DEPS_MARKER
+        if managed_marker not in emitted_markers:
+            out.append(managed_marker)
+            changes.append("marker injected for optional-dependencies.dev")
+            emitted_markers.add(managed_marker)
 
     def apply(self, rendered: str) -> tuple[str, t.StrSequence]:
         changes: MutableSequence[str] = []
         lines = rendered.splitlines()
-        existing_text = rendered
-        out: MutableSequence[str] = []
-        has_banner = bool(
-            lines and "[MANAGED] FLEXT pyproject standardization" in lines[0],
-        )
-        if not has_banner:
-            out.extend(c.Infra.BANNER.splitlines())
+        cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)
+        changes.extend(cleanup_changes)
+        banner_lines = c.Infra.BANNER.splitlines()
+        out: MutableSequence[str] = [*banner_lines]
+        if lines[: len(banner_lines)] != banner_lines:
             changes.append("managed banner injected")
-        marker_map = dict(c.Infra.COMMENT_MARKERS)
-        skip_broken_group_section = False
-        for line in lines:
-            if line.strip() == "[group.dev.dependencies]":
-                skip_broken_group_section = True
-                changes.append("broken [group.dev.dependencies] section removed")
-                continue
-            if skip_broken_group_section and (not line.strip()):
-                continue
-            if skip_broken_group_section and line.strip():
-                skip_broken_group_section = False
-            marker = marker_map.get(line.strip())
-            if marker:
-                recent = (
-                    out[-c.Infra.RECENT_LINES_FOR_MARKER :]
-                    if len(out) >= c.Infra.RECENT_LINES_FOR_MARKER
-                    else out
-                )
-                if marker not in recent and marker not in existing_text:
-                    out.append(marker)
-                    changes.append(f"marker injected for {line.strip()}")
-            if line.strip().startswith("optional-dependencies.dev"):
-                recent = (
-                    out[-c.Infra.RECENT_LINES_FOR_DEV_DEP :]
-                    if len(out) >= c.Infra.RECENT_LINES_FOR_DEV_DEP
-                    else out
-                )
-                marker = "# [MANAGED] consolidated development dependencies"
-                auto = "# [AUTO] merged from dev/docs/security/test/typings"
-                if marker not in recent and marker not in existing_text:
-                    out.append(marker)
-                    changes.append("marker injected for optional-dependencies.dev")
-                if auto not in recent and auto not in existing_text:
-                    out.append(auto)
-                    changes.append("auto marker injected for optional-dependencies.dev")
+        emitted_markers = set[str]()
+        for line in cleaned_lines:
+            stripped = line.strip()
+            marker = self._marker_for_section(stripped)
+            if marker and marker not in emitted_markers:
+                out.append(marker)
+                changes.append(f"marker injected for {stripped}")
+                emitted_markers.add(marker)
+            if stripped == "[project.optional-dependencies]" or stripped.startswith(
+                "optional-dependencies.dev"
+            ):
+                self._inject_dev_markers(out, changes, emitted_markers)
             out.append(line)
         return ("\n".join(out).rstrip() + "\n", changes)
 

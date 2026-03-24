@@ -8,7 +8,7 @@ from pathlib import Path
 import tomlkit
 from tomlkit.items import Item, Table
 
-from flext_infra import c, m, t, u
+from flext_infra import FlextInfraExtraPathsManager, c, m, t, u
 
 
 class FlextInfraEnsurePyrightConfigPhase:
@@ -17,43 +17,68 @@ class FlextInfraEnsurePyrightConfigPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         self._tool_config = tool_config
 
+    @staticmethod
+    def _env_entry(
+        *,
+        root: str,
+        report_private_usage: str,
+        extra_paths: Sequence[str],
+    ) -> t.Infra.ContainerDict:
+        return {
+            "root": root,
+            "reportPrivateUsage": report_private_usage,
+            "extraPaths": [*extra_paths],
+        }
+
+    def _path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
+        return self._tool_config.tools.pyright.path_rules
+
+    def _project_source_path(
+        self,
+        project_dir: Path,
+        *,
+        prefix: str = "",
+    ) -> str:
+        rules = self._path_rules()
+        src_dir = project_dir / rules.source_dir
+        if src_dir.is_dir():
+            if prefix:
+                return f"{prefix}/{rules.source_dir}"
+            return rules.source_dir
+        return prefix or rules.project_root
+
     def _expected_envs(
         self,
         *,
         is_root: bool,
         workspace_root: Path | None,
         project_dir: Path | None = None,
-    ) -> Sequence[t.StrMapping]:
+    ) -> Sequence[t.Infra.ContainerDict]:
         if not is_root:
             return self._expected_envs_for_project(project_dir)
         if workspace_root is None:
             return self._expected_envs_for_project(project_dir)
 
-        expected_envs: MutableSequence[t.StrMapping] = []
-        root_src = workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR
-        root_tests = workspace_root / c.Infra.Directories.TESTS
-        root_examples = workspace_root / c.Infra.Directories.EXAMPLES
-        root_scripts = workspace_root / c.Infra.Directories.SCRIPTS
-        if root_src.exists():
-            expected_envs.append({
-                "root": c.Infra.Paths.DEFAULT_SRC_DIR,
-                "reportPrivateUsage": "error",
-            })
-        if root_tests.exists():
-            expected_envs.append({
-                "root": c.Infra.Directories.TESTS,
-                "reportPrivateUsage": "none",
-            })
-        if root_examples.exists():
-            expected_envs.append({
-                "root": c.Infra.Directories.EXAMPLES,
-                "reportPrivateUsage": "none",
-            })
-        if root_scripts.exists():
-            expected_envs.append({
-                "root": c.Infra.Directories.SCRIPTS,
-                "reportPrivateUsage": "none",
-            })
+        rules = self._path_rules()
+        expected_envs: MutableSequence[t.Infra.ContainerDict] = []
+        root_source_path = self._project_source_path(workspace_root)
+        for env_dir in rules.env_dirs:
+            if not (workspace_root / env_dir).is_dir():
+                continue
+            report_private_usage = "error" if env_dir == rules.source_dir else "none"
+            extra_paths = [root_source_path]
+            if (
+                env_dir in set(rules.test_like_dirs)
+                and root_source_path != rules.project_root
+            ):
+                extra_paths = [rules.project_root, root_source_path]
+            expected_envs.append(
+                self._env_entry(
+                    root=env_dir,
+                    report_private_usage=report_private_usage,
+                    extra_paths=extra_paths,
+                ),
+            )
 
         child_projects = sorted(
             child
@@ -62,53 +87,88 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         for child_project in child_projects:
             relative_root = child_project.relative_to(workspace_root)
-            child_src = child_project / c.Infra.Paths.DEFAULT_SRC_DIR
-            child_tests = child_project / c.Infra.Directories.TESTS
-            child_examples = child_project / c.Infra.Directories.EXAMPLES
-            child_scripts = child_project / c.Infra.Directories.SCRIPTS
-            if child_src.exists():
-                expected_envs.append({
-                    "root": (relative_root / c.Infra.Paths.DEFAULT_SRC_DIR).as_posix(),
-                    "reportPrivateUsage": "error",
-                })
-            if child_tests.exists():
-                expected_envs.append({
-                    "root": (relative_root / c.Infra.Directories.TESTS).as_posix(),
-                    "reportPrivateUsage": "none",
-                })
-            if child_examples.exists():
-                expected_envs.append({
-                    "root": (relative_root / c.Infra.Directories.EXAMPLES).as_posix(),
-                    "reportPrivateUsage": "none",
-                })
-            if child_scripts.exists():
-                expected_envs.append({
-                    "root": (relative_root / c.Infra.Directories.SCRIPTS).as_posix(),
-                    "reportPrivateUsage": "none",
-                })
+            relative_project_root = relative_root.as_posix()
+            child_source_path = self._project_source_path(
+                child_project,
+                prefix=relative_project_root,
+            )
+            child_test_like_extra = (
+                [relative_project_root, child_source_path]
+                if child_source_path != relative_project_root
+                else [relative_project_root]
+            )
+            for env_dir in rules.env_dirs:
+                if not (child_project / env_dir).is_dir():
+                    continue
+                report_private_usage = (
+                    "error" if env_dir == rules.source_dir else "none"
+                )
+                extra_paths = (
+                    child_test_like_extra
+                    if env_dir in set(rules.test_like_dirs)
+                    else [child_source_path]
+                )
+                expected_envs.append(
+                    self._env_entry(
+                        root=(relative_root / env_dir).as_posix(),
+                        report_private_usage=report_private_usage,
+                        extra_paths=extra_paths,
+                    ),
+                )
         return expected_envs
 
-    @staticmethod
     def _expected_envs_for_project(
+        self,
         project_dir: Path | None,
-    ) -> Sequence[t.StrMapping]:
-        """Build executionEnvironments dynamically from discovered dirs."""
+    ) -> Sequence[t.Infra.ContainerDict]:
+        """Build executionEnvironments from YAML-configured directories."""
+        rules = self._path_rules()
         if project_dir is None:
             return [
-                {"root": c.Infra.Paths.DEFAULT_SRC_DIR, "reportPrivateUsage": "error"},
-                {"root": c.Infra.Directories.TESTS, "reportPrivateUsage": "none"},
+                {
+                    "root": rules.source_dir,
+                    "reportPrivateUsage": "error",
+                    "extraPaths": [rules.source_dir],
+                },
+                {
+                    "root": c.Infra.Directories.TESTS,
+                    "reportPrivateUsage": "none",
+                    "extraPaths": [rules.project_root, rules.source_dir],
+                },
             ]
-        discovered = u.Infra.discover_python_dirs(project_dir)
-        envs: MutableSequence[t.StrMapping] = []
-        for dir_name in discovered:
-            if dir_name == c.Infra.Paths.DEFAULT_SRC_DIR:
-                envs.append({"root": dir_name, "reportPrivateUsage": "error"})
-            else:
-                envs.append({"root": dir_name, "reportPrivateUsage": "none"})
+        source_path = self._project_source_path(project_dir)
+        test_like_extra = (
+            [rules.project_root, source_path]
+            if source_path != rules.project_root
+            else [rules.project_root]
+        )
+        envs: MutableSequence[t.Infra.ContainerDict] = []
+        for env_dir in rules.env_dirs:
+            if not (project_dir / env_dir).is_dir():
+                continue
+            report_private_usage = "error" if env_dir == rules.source_dir else "none"
+            extra_paths = (
+                test_like_extra
+                if env_dir in set(rules.test_like_dirs)
+                else [source_path]
+            )
+            envs.append({
+                "root": env_dir,
+                "reportPrivateUsage": report_private_usage,
+                "extraPaths": extra_paths,
+            })
         if not envs:
             return [
-                {"root": c.Infra.Paths.DEFAULT_SRC_DIR, "reportPrivateUsage": "error"},
-                {"root": c.Infra.Directories.TESTS, "reportPrivateUsage": "none"},
+                {
+                    "root": rules.source_dir,
+                    "reportPrivateUsage": "error",
+                    "extraPaths": [source_path],
+                },
+                {
+                    "root": c.Infra.Directories.TESTS,
+                    "reportPrivateUsage": "none",
+                    "extraPaths": test_like_extra,
+                },
             ]
         return envs
 
@@ -126,6 +186,46 @@ class FlextInfraEnsurePyrightConfigPhase:
             "app": overrides.app,
         }
         return kind_map.get(project_kind)
+
+    def _expected_excludes(self, project_root: Path | None) -> t.StrSequence:
+        """Build pyright exclude list from discovered workspace/project dirs."""
+        rules = self._path_rules()
+        default_excludes = set(rules.default_excludes)
+        if project_root is None or not project_root.is_dir():
+            return sorted(default_excludes)
+        dynamic_excludes = {
+            directory
+            for directory in sorted(rules.dynamic_exclude_dirs)
+            if (project_root / directory).is_dir()
+        }
+        return sorted(default_excludes | dynamic_excludes)
+
+    def _existing_paths(
+        self,
+        base_dir: Path | None,
+        configured_paths: t.StrSequence,
+    ) -> t.StrSequence:
+        if base_dir is None:
+            return []
+        existing: MutableSequence[str] = []
+        for relative_path in configured_paths:
+            if (base_dir / relative_path).is_dir():
+                existing.append(relative_path)
+        return existing
+
+    def _expected_ignores(
+        self,
+        *,
+        is_root: bool,
+        workspace_root: Path | None,
+        project_dir: Path | None,
+    ) -> t.StrSequence:
+        """Ignore typings diagnostics while still keeping typings available in extraPaths."""
+        rules = self._path_rules()
+        if is_root:
+            root_dir = workspace_root or project_dir
+            return sorted(self._existing_paths(root_dir, rules.root_typings_paths))
+        return sorted(self._existing_paths(project_dir, rules.project_typings_paths))
 
     def apply(
         self,
@@ -146,6 +246,47 @@ class FlextInfraEnsurePyrightConfigPhase:
             tool = tomlkit.table()
             doc[c.Infra.Toml.TOOL] = tool
         pyright = u.Infra.ensure_table(tool, c.Infra.Toml.PYRIGHT)
+        project_root = workspace_root if is_root else project_dir
+        expected_excludes = self._expected_excludes(project_root)
+        current_excludes = u.Infra.as_string_list(
+            u.Infra.get(pyright, c.Infra.Toml.EXCLUDE),
+        )
+        if expected_excludes:
+            if current_excludes != expected_excludes:
+                pyright[c.Infra.Toml.EXCLUDE] = u.Infra.array(expected_excludes)
+                changes.append("tool.pyright.exclude synchronized from discovered dirs")
+        elif c.Infra.Toml.EXCLUDE in pyright:
+            del pyright[c.Infra.Toml.EXCLUDE]
+            changes.append("tool.pyright.exclude removed (no discovered excludes)")
+        expected_ignores = self._expected_ignores(
+            is_root=is_root,
+            workspace_root=workspace_root,
+            project_dir=project_dir,
+        )
+        current_ignores = u.Infra.as_string_list(
+            u.Infra.get(pyright, c.Infra.Toml.IGNORE),
+        )
+        if expected_ignores:
+            if current_ignores != expected_ignores:
+                pyright[c.Infra.Toml.IGNORE] = u.Infra.array(expected_ignores)
+                changes.append(
+                    "tool.pyright.ignore synchronized for typings diagnostics",
+                )
+        elif c.Infra.Toml.IGNORE in pyright:
+            del pyright[c.Infra.Toml.IGNORE]
+            changes.append("tool.pyright.ignore removed (no discovered ignores)")
+        if "stubPath" in pyright:
+            del pyright["stubPath"]
+            changes.append("tool.pyright.stubPath removed (managed by extraPaths)")
+        if project_root is not None:
+            expected_extra = FlextInfraExtraPathsManager().pyright_extra_paths(
+                project_dir=project_root,
+                is_root=is_root,
+            )
+            current_extra = u.Infra.as_string_list(u.Infra.get(pyright, "extraPaths"))
+            if current_extra != expected_extra:
+                pyright["extraPaths"] = u.Infra.array(expected_extra)
+                changes.append("tool.pyright.extraPaths synchronized")
         expected_envs = self._expected_envs(
             is_root=is_root,
             workspace_root=workspace_root,

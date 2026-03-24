@@ -62,3 +62,35 @@ def test_inject_comments_phase_apply_with_optional_dependencies_dev() -> None:
     rendered = "[project.optional-dependencies]\noptional-dependencies.dev = ['pytest', 'coverage']\n"
     result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
     tm.that(("optional-dependencies.dev" in result) or (changes), eq=True)
+
+
+def test_inject_comments_phase_repositions_marker_before_section() -> None:
+    rendered = '[tool.coverage.report]\nfail_under = 45\n# [MANAGED] pyrefly\n[tool.pyrefly]\npython-version = "3.13"'
+    result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
+    lines = result.splitlines()
+    pyrefly_idx = lines.index("[tool.pyrefly]")
+    tm.that(lines[pyrefly_idx - 1], eq="# [MANAGED] pyrefly")
+
+
+def test_inject_comments_phase_removes_auto_banner_and_auto_marker() -> None:
+    rendered = "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Sections with [AUTO] are derived from workspace layout and dependencies.\n# [AUTO] merged from dev/docs/security/test/typings\n[project.optional-dependencies]\ndev = ['pytest']"
+    result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
+    tm.that(
+        result, has="# Run `make mod` to regenerate all managed pyproject sections."
+    )
+    tm.that("[AUTO]" in result, eq=False)
+
+
+def test_inject_comments_phase_marks_pytest_and_coverage_subtables() -> None:
+    rendered = '[tool.pytest.ini_options]\nminversion = "8.0"\n[tool.coverage.report]\nfail_under = 45'
+    result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
+    tm.that(result, has="# [MANAGED] pytest")
+    tm.that(result, has="# [MANAGED] coverage")
+
+
+def test_inject_comments_phase_deduplicates_family_markers() -> None:
+    rendered = (
+        "[tool.coverage.run]\nbranch = true\n[tool.coverage.report]\nfail_under = 45"
+    )
+    result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
+    tm.that(result.count("# [MANAGED] coverage"), eq=1)

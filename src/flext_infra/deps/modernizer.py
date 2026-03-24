@@ -7,7 +7,7 @@ from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
-from tomlkit.items import Table
+from tomlkit.items import AoT, Item, Table
 
 from flext_infra import (
     FlextInfraConsolidateGroupsPhase,
@@ -57,6 +57,83 @@ class FlextInfraPyprojectModernizer:
         """Classify project kind for pyright/coverage config selection."""
         kind = FlextInfraProjectClassifier(project_dir).classify().project_kind
         return r[str].ok(kind)
+
+    @staticmethod
+    def _ordered_keys(
+        keys: Sequence[str],
+        *,
+        preferred_first: Sequence[str] | None = None,
+    ) -> t.StrSequence:
+        """Return keys with optional preferred-first order then alphabetical."""
+        preferred = list(preferred_first or [])
+        key_set = set(keys)
+        ordered: MutableSequence[str] = [key for key in preferred if key in key_set]
+        remaining = sorted(key for key in keys if key not in set(ordered))
+        ordered.extend(remaining)
+        return ordered
+
+    @classmethod
+    def _reorder_table_inplace(
+        cls,
+        table: Table,
+        *,
+        preferred_first: Sequence[str] | None = None,
+    ) -> None:
+        """Reorder table keys in-place recursively (tables/AoT items)."""
+        original_keys = [str(key) for key in table]
+        ordered_keys = cls._ordered_keys(
+            original_keys,
+            preferred_first=preferred_first,
+        )
+        if ordered_keys == original_keys:
+            for key in ordered_keys:
+                value = table[key]
+                if isinstance(value, Table):
+                    cls._reorder_table_inplace(value)
+                elif isinstance(value, AoT):
+                    for entry in value:
+                        if isinstance(entry, Table):
+                            cls._reorder_table_inplace(entry)
+            return
+        items: MutableMapping[str, Item] = {key: table[key] for key in original_keys}
+        for key in original_keys:
+            del table[key]
+        for key in ordered_keys:
+            value = items[key]
+            if isinstance(value, Table):
+                cls._reorder_table_inplace(value)
+            elif isinstance(value, AoT):
+                for entry in value:
+                    if isinstance(entry, Table):
+                        cls._reorder_table_inplace(entry)
+            table[key] = value
+
+    @classmethod
+    def _reorder_document_inplace(cls, doc: tomlkit.TOMLDocument) -> None:
+        """Apply deterministic ordering for top-level groups and nested tables."""
+        root_keys = [str(key) for key in doc]
+        ordered_root = cls._ordered_keys(
+            root_keys,
+            preferred_first=("build-system", "dependency-groups", "project", "tool"),
+        )
+        if ordered_root != root_keys:
+            root_items: MutableMapping[str, Item] = {key: doc[key] for key in root_keys}
+            for key in root_keys:
+                del doc[key]
+            for key in ordered_root:
+                doc[key] = root_items[key]
+        if "tool" in doc and isinstance(doc["tool"], Table):
+            cls._reorder_table_inplace(doc["tool"])
+        for key in ordered_root:
+            if key == "tool":
+                continue
+            value = doc[key]
+            if isinstance(value, Table):
+                cls._reorder_table_inplace(value)
+            elif isinstance(value, AoT):
+                for entry in value:
+                    if isinstance(entry, Table):
+                        cls._reorder_table_inplace(entry)
 
     def find_pyproject_files(self) -> Sequence[Path]:
         """Find all workspace pyproject.toml files."""
@@ -159,6 +236,7 @@ class FlextInfraPyprojectModernizer:
                 dry_run=dry_run,
             ),
         )
+        self._reorder_document_inplace(doc)
         rendered = doc.as_string()
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)

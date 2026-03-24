@@ -36,13 +36,6 @@ class FlextInfraEnsureNamespaceToolingPhase:
         if current_deptry != detected:
             deptry[c.Infra.Toml.KNOWN_FIRST_PARTY_UNDERSCORE] = u.Infra.array(detected)
             changes.append(f"tool.deptry.known_first_party set to {detected}")
-        pyright = u.Infra.ensure_table(tool, c.Infra.Toml.PYRIGHT)
-        extra_paths = u.Infra.as_string_list(u.Infra.get(pyright, "extraPaths"))
-        if c.Infra.Paths.DEFAULT_SRC_DIR not in extra_paths:
-            pyright["extraPaths"] = u.Infra.array(
-                sorted({*extra_paths, c.Infra.Paths.DEFAULT_SRC_DIR}),
-            )
-            changes.append("tool.pyright.extraPaths includes src")
         return changes
 
 

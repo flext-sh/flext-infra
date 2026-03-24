@@ -32,15 +32,12 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         started = time.monotonic()
-        check_dirs = self._existing_check_dirs(project_dir)
-        targets = check_dirs or [c.Infra.Paths.DEFAULT_SRC_DIR]
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
         cmd = [
             sys.executable,
             "-m",
             c.Infra.Cli.PYREFLY,
             c.Infra.Cli.RuffCmd.CHECK,
-            *targets,
             "--config",
             c.Infra.Files.PYPROJECT_FILENAME,
             "--output-format",

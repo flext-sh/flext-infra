@@ -10,7 +10,7 @@ from pydantic import TypeAdapter, ValidationError
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraDependencyPathSync, c, r, t, u
+from flext_infra import FlextInfraDependencyPathSync, c, m, r, t, u
 
 
 class FlextInfraExtraPathsManager:
@@ -23,6 +23,11 @@ class FlextInfraExtraPathsManager:
         """Initialize the extra paths manager with path resolver and TOML service."""
         super().__init__()
         self.root = workspace_root or self.ROOT
+        tool_config_result = u.Infra.load_tool_config()
+        if tool_config_result.is_failure:
+            msg = tool_config_result.error or "failed to load deps tool config"
+            raise ValueError(msg)
+        self._tool_config: m.Infra.ToolConfigDocument = tool_config_result.value
 
     @staticmethod
     def _table_get(container: TOMLDocument | Table, key: str) -> Item | None:
@@ -196,6 +201,88 @@ class FlextInfraExtraPathsManager:
         """
         return u.Infra.discover_python_dirs(project_dir)
 
+    @staticmethod
+    def _existing_relative_paths(
+        project_dir: Path,
+        configured_paths: t.StrSequence,
+    ) -> t.StrSequence:
+        existing: MutableSequence[str] = []
+        for relative_path in configured_paths:
+            if (project_dir / relative_path).is_dir():
+                existing.append(relative_path)
+        return existing
+
+    @staticmethod
+    def _source_root(
+        project_dir: Path,
+        *,
+        source_dir: str,
+        project_root: str,
+    ) -> str:
+        if (project_dir / source_dir).is_dir():
+            return source_dir
+        return project_root
+
+    def _pyright_path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
+        return self._tool_config.tools.pyright.path_rules
+
+    def _pyrefly_path_rules(self) -> m.Infra.PyreflyConfig.PathRulesConfig:
+        return self._tool_config.tools.pyrefly.path_rules
+
+    def pyright_extra_paths(
+        self,
+        *,
+        project_dir: Path,
+        is_root: bool,
+    ) -> t.StrSequence:
+        rules = self._pyright_path_rules()
+        source_root = self._source_root(
+            project_dir,
+            source_dir=rules.source_dir,
+            project_root=rules.project_root,
+        )
+        configured_typings = (
+            rules.root_typings_paths if is_root else rules.project_typings_paths
+        )
+        typings_paths = self._existing_relative_paths(project_dir, configured_typings)
+        return sorted({rules.project_root, source_root, *typings_paths})
+
+    def mypy_paths(
+        self,
+        *,
+        project_dir: Path,
+        is_root: bool,
+    ) -> t.StrSequence:
+        rules = self._pyright_path_rules()
+        source_root = self._source_root(
+            project_dir,
+            source_dir=rules.source_dir,
+            project_root=rules.project_root,
+        )
+        configured_typings = (
+            rules.root_typings_paths if is_root else rules.project_typings_paths
+        )
+        typings_paths = self._existing_relative_paths(project_dir, configured_typings)
+        return sorted({rules.project_root, source_root, *typings_paths})
+
+    def pyrefly_search_paths(
+        self,
+        *,
+        project_dir: Path,
+        is_root: bool,
+    ) -> t.StrSequence:
+        rules = self._pyrefly_path_rules()
+        source_root = self._source_root(
+            project_dir,
+            source_dir=rules.source_dir,
+            project_root=rules.project_root,
+        )
+        configured_typings = (
+            rules.root_typings_paths if is_root else rules.project_typings_paths
+        )
+        typings_paths = self._existing_relative_paths(project_dir, configured_typings)
+        return sorted({rules.project_root, source_root, *typings_paths})
+
     def sync_one(
         self,
         pyproject_path: Path,
@@ -210,48 +297,15 @@ class FlextInfraExtraPathsManager:
         if doc_result.is_failure:
             return r[bool].fail(doc_result.error or f"failed to read {pyproject_path}")
         doc: TOMLDocument = doc_result.value
-        dep_paths = self.get_dep_paths(doc, is_root=is_root)
-
-        # Dynamically build base paths from actual directory contents
         project_dir = pyproject_path.parent
-        local_dirs = self._discover_local_python_dirs(project_dir)
-
-        if is_root:
-            # Exclude ALL subproject root dirs (any dir with its own
-            # pyproject.toml).  Dependency projects already contribute
-            # their src/ subdirs via dep_paths.  Non-dependency projects
-            # should not be in extraPaths at all.  Including project root
-            # dirs leaks each project's tests/ package into the workspace
-            # namespace, causing pyright to resolve `from tests import m`
-            # ambiguously.
-            subproject_names = {
-                d
-                for d in local_dirs
-                if (project_dir / d / c.Infra.Files.PYPROJECT_FILENAME).is_file()
-            }
-            local_dirs = sorted(d for d in local_dirs if d not in subproject_names)
-            pyright_base = sorted({*local_dirs, "typings", "typings/generated"})
-            mypy_base = sorted({*local_dirs, "typings", "typings/generated"})
-        else:
-            pyright_base = sorted(
-                {
-                    ".",
-                    *local_dirs,
-                    "../typings",
-                    "../typings/generated",
-                },
-            )
-            mypy_base = sorted(
-                {
-                    ".",
-                    *local_dirs,
-                    "../typings",
-                    "../typings/generated",
-                },
-            )
-
-        pyright_extra = sorted({*pyright_base, *dep_paths})
-        mypy_path = sorted({*mypy_base, *dep_paths})
+        pyright_extra = self.pyright_extra_paths(
+            project_dir=project_dir,
+            is_root=is_root,
+        )
+        mypy_path = self.mypy_paths(
+            project_dir=project_dir,
+            is_root=is_root,
+        )
         tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
         if tool_table is None:
             return r[bool].fail(f"no [tool] section in {pyproject_path}")
@@ -308,40 +362,14 @@ class FlextInfraExtraPathsManager:
 
         """
         changes: MutableSequence[str] = []
-        dep_paths = self.get_dep_paths(doc, is_root=is_root)
-        local_dirs = self._discover_local_python_dirs(project_dir)
-
-        if is_root:
-            subproject_names = {
-                d
-                for d in local_dirs
-                if (project_dir / d / c.Infra.Files.PYPROJECT_FILENAME).is_file()
-            }
-            local_dirs = sorted(d for d in local_dirs if d not in subproject_names)
-            pyright_base = sorted({*local_dirs, "typings", "typings/generated"})
-            mypy_base = sorted(
-                {*local_dirs, "typings", "typings/generated"},
-            )
-        else:
-            pyright_base = sorted(
-                {
-                    ".",
-                    *local_dirs,
-                    "../typings",
-                    "../typings/generated",
-                },
-            )
-            mypy_base = sorted(
-                {
-                    ".",
-                    *local_dirs,
-                    "../typings",
-                    "../typings/generated",
-                },
-            )
-
-        pyright_extra = sorted({*pyright_base, *dep_paths})
-        mypy_path = sorted({*mypy_base, *dep_paths})
+        pyright_extra = self.pyright_extra_paths(
+            project_dir=project_dir,
+            is_root=is_root,
+        )
+        mypy_path = self.mypy_paths(
+            project_dir=project_dir,
+            is_root=is_root,
+        )
         tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
         if tool_table is None:
             return changes

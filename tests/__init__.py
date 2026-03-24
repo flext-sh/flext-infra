@@ -449,6 +449,10 @@ if TYPE_CHECKING:
         test_inject_comments_phase_apply_broken_group_section,
         test_inject_comments_phase_apply_markers,
         test_inject_comments_phase_apply_with_optional_dependencies_dev,
+        test_inject_comments_phase_deduplicates_family_markers,
+        test_inject_comments_phase_marks_pytest_and_coverage_subtables,
+        test_inject_comments_phase_removes_auto_banner_and_auto_marker,
+        test_inject_comments_phase_repositions_marker_before_section,
     )
     from tests.unit.deps.test_modernizer_consolidate import (
         TestConsolidateGroupsPhase,
@@ -636,6 +640,7 @@ if TYPE_CHECKING:
     )
     from tests.unit.io.test_infra_output_formatting import (
         ANSI_RE,
+        OutputBackend,
         TestInfraOutputHeader,
         TestInfraOutputMessages,
         TestInfraOutputProgress,
@@ -1096,6 +1101,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "GitScenario": ("tests.scenarios", "GitScenario"),
     "GitScenarios": ("tests.scenarios", "GitScenarios"),
     "MinimalScenario": ("tests.workspace_scenarios", "MinimalScenario"),
+    "OutputBackend": ("tests.unit.io.test_infra_output_formatting", "OutputBackend"),
     "RealGitService": ("tests.git_service", "RealGitService"),
     "RealSubprocessRunner": ("tests.runner_service", "RealSubprocessRunner"),
     "RunCallable": ("tests.unit.check.extended_runners_go_tests", "RunCallable"),
@@ -2894,6 +2900,22 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_apply_with_optional_dependencies_dev",
     ),
+    "test_inject_comments_phase_deduplicates_family_markers": (
+        "tests.unit.deps.test_modernizer_comments",
+        "test_inject_comments_phase_deduplicates_family_markers",
+    ),
+    "test_inject_comments_phase_marks_pytest_and_coverage_subtables": (
+        "tests.unit.deps.test_modernizer_comments",
+        "test_inject_comments_phase_marks_pytest_and_coverage_subtables",
+    ),
+    "test_inject_comments_phase_removes_auto_banner_and_auto_marker": (
+        "tests.unit.deps.test_modernizer_comments",
+        "test_inject_comments_phase_removes_auto_banner_and_auto_marker",
+    ),
+    "test_inject_comments_phase_repositions_marker_before_section": (
+        "tests.unit.deps.test_modernizer_comments",
+        "test_inject_comments_phase_repositions_marker_before_section",
+    ),
     "test_injects_t_import_when_needed": (
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_injects_t_import_when_needed",
@@ -3609,6 +3631,7 @@ __all__ = [
     "GitScenario",
     "GitScenarios",
     "MinimalScenario",
+    "OutputBackend",
     "RealGitService",
     "RealSubprocessRunner",
     "RunCallable",
@@ -4174,6 +4197,10 @@ __all__ = [
     "test_inject_comments_phase_apply_broken_group_section",
     "test_inject_comments_phase_apply_markers",
     "test_inject_comments_phase_apply_with_optional_dependencies_dev",
+    "test_inject_comments_phase_deduplicates_family_markers",
+    "test_inject_comments_phase_marks_pytest_and_coverage_subtables",
+    "test_inject_comments_phase_removes_auto_banner_and_auto_marker",
+    "test_inject_comments_phase_repositions_marker_before_section",
     "test_injects_t_import_when_needed",
     "test_lazy_import_rule_hoists_import_to_module_level",
     "test_lazy_import_rule_uses_fix_action_for_hoist",

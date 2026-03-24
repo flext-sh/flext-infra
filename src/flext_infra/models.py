@@ -20,9 +20,9 @@ from flext_infra import (
     FlextInfraDocsModels,
     FlextInfraGatesModels,
     FlextInfraGithubModels,
+    FlextInfraModelsScan,
     FlextInfraRefactorModels,
     FlextInfraReleaseModels,
-    FlextInfraUtilitiesModels,
     FlextInfraWorkspaceModels,
 )
 
@@ -31,7 +31,6 @@ class FlextInfraModels(FlextModels):
     """Merged model namespace for flext-infra domain objects."""
 
     class Infra(
-        FlextInfraUtilitiesModels,
         FlextInfraBasemkModels,
         FlextInfraCheckModels,
         FlextInfraCodegenModels,
@@ -43,6 +42,7 @@ class FlextInfraModels(FlextModels):
         FlextInfraReleaseModels,
         FlextInfraCoreModels,
         FlextInfraWorkspaceModels,
+        FlextInfraModelsScan,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 

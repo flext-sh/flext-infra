@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     )
     from tests.unit.io.test_infra_output_formatting import (
         ANSI_RE,
+        OutputBackend,
         TestInfraOutputHeader,
         TestInfraOutputMessages,
         TestInfraOutputProgress,
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "ANSI_RE": ("tests.unit.io.test_infra_output_formatting", "ANSI_RE"),
+    "OutputBackend": ("tests.unit.io.test_infra_output_formatting", "OutputBackend"),
     "SampleModel": ("tests.unit.io.test_infra_json_io", "SampleModel"),
     "TestFlextInfraJsonService": (
         "tests.unit.io.test_infra_json_io",
@@ -83,6 +85,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
 
 __all__ = [
     "ANSI_RE",
+    "OutputBackend",
     "SampleModel",
     "TestFlextInfraJsonService",
     "TestInfraOutputEdgeCases",

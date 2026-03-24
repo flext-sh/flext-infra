@@ -30,6 +30,7 @@ class FlextInfraRefactorCommand:
                 "census": "Run AST/CST census of MRO family method usage",
             },
             include_apply=True,
+            include_project=True,
         )
         _ = subs["centralize-pydantic"].add_argument(
             "--normalize-remaining",
@@ -131,7 +132,10 @@ class FlextInfraRefactorCommand:
     def run_namespace_enforce(cli: u.Infra.CliArgs) -> int:
         """Run namespace enforcement checks and optionally apply fixes."""
         enforcer = FlextInfraNamespaceEnforcer(workspace_root=cli.workspace)
-        report = enforcer.enforce(apply=cli.apply)
+        report = enforcer.enforce(
+            apply=cli.apply,
+            project_names=cli.project_names(),
+        )
         sys.stdout.write(FlextInfraNamespaceEnforcer.render_text(report))
         sys.stdout.flush()
         if report.has_violations:
@@ -142,7 +146,10 @@ class FlextInfraRefactorCommand:
     def run_imports(cli: u.Infra.CliArgs) -> int:
         """Detect and optionally fix import violations across workspace (CST-based)."""
         enforcer = FlextInfraNamespaceEnforcer(workspace_root=cli.workspace)
-        report = enforcer.enforce(apply=cli.apply)
+        report = enforcer.enforce(
+            apply=cli.apply,
+            project_names=cli.project_names(),
+        )
         sys.stdout.write(FlextInfraNamespaceEnforcer.render_text(report))
         sys.stdout.flush()
         if report.has_violations:

@@ -19,6 +19,7 @@ from libcst import metadata as cst_metadata
 
 from flext_infra import (
     FlextInfraNamespaceEnforcerModels as nem,
+    FlextInfraUtilitiesRefactorNamespace,
     c,
     m,
     p,
@@ -113,11 +114,11 @@ class FlextInfraMROCompletenessDetector(
         file_path: Path,
         _parse_failures: MutableSequence[nem.ParseFailureViolation] | None = None,
     ) -> Sequence[nem.MROCompletenessViolation]:
-        """Scan a facade file for missing local composition bases.
+        """Scan a facade file for missing local and dep-graph composition bases.
 
         Args:
             file_path: Path to the Python file to scan.
-            _parse_failures: Unused parameter for interface compatibility.
+            _parse_failures: Optional list to track parse failures.
 
         Returns:
             List of MROCompletenessViolation for each missing base found.
@@ -157,6 +158,20 @@ class FlextInfraMROCompletenessDetector(
             family=family,
             _parse_failures=_parse_failures,
         )
+        # Add dep-graph-based expected parents
+        project_root = cls._resolve_project_root(file_path)
+        if project_root is not None:
+            dep_chains = (
+                FlextInfraUtilitiesRefactorNamespace.build_expected_base_chains(
+                    project_root=project_root,
+                )
+            )
+            dep_bases = dep_chains.get(family, [])
+            for dep_base in dep_bases:
+                if dep_base not in declared_bases and not any(
+                    name == dep_base for name, _line in candidates
+                ):
+                    candidates.add((dep_base, 1))
         violations: MutableSequence[nem.MROCompletenessViolation] = []
         for candidate_name, candidate_line in sorted(
             candidates,
@@ -177,6 +192,19 @@ class FlextInfraMROCompletenessDetector(
                 ),
             )
         return violations
+
+    @staticmethod
+    def _resolve_project_root(file_path: Path) -> Path | None:
+        """Walk up from file_path to find the project root (contains pyproject.toml)."""
+        current = file_path.parent
+        for _ in range(10):
+            if (current / c.Infra.Files.PYPROJECT_FILENAME).is_file():
+                return current
+            parent = current.parent
+            if parent == current:
+                break
+            current = parent
+        return None
 
     @staticmethod
     def _resolve_facade_class_name(*, tree: cst.Module, family: str) -> str | None:

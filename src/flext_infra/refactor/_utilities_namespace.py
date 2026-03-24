@@ -18,6 +18,8 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
+import tomlkit
+from tomlkit.exceptions import TOMLKitError
 
 from flext_infra import (
     FlextInfraNamespaceFacadeScanner,
@@ -34,6 +36,97 @@ class FlextInfraUtilitiesRefactorNamespace:
     """Namespace enforcement rewriting utilities as static methods for MRO chain."""
 
     @staticmethod
+    def build_expected_base_chains(
+        *,
+        project_root: Path,
+    ) -> Mapping[str, Sequence[str]]:
+        """Build expected MRO base chains from the project's path dependencies.
+
+        Connects the dep graph SSOT (ExtraPathsManager) with the class name SSOT
+        (FacadeScanner) to compute the expected base classes for each family.
+
+        Returns:
+            Mapping from family alias to sequence of expected base class names.
+            E.g. ``{"m": ["FlextMeltanoModels", "FlextDbOracleModels"]}``.
+
+        """
+        pyproject_path = project_root / c.Infra.Files.PYPROJECT_FILENAME
+        if not pyproject_path.exists():
+            return {}
+        try:
+            doc = tomlkit.parse(
+                pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT),
+            )
+        except (OSError, TOMLKitError):
+            return {}
+        direct_dep_names = (
+            FlextInfraUtilitiesRefactorNamespace._extract_dep_names_from_doc(
+                doc=doc,
+            )
+        )
+        if not direct_dep_names:
+            return {}
+        chains: MutableMapping[str, MutableSequence[str]] = defaultdict(list)
+        for dep_name in direct_dep_names:
+            if not dep_name:
+                continue
+            # Skip flext-core (already the default base) and non-flext deps
+            if dep_name == "flext-core" or not dep_name.startswith("flext-"):
+                continue
+            stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
+                project_name=dep_name,
+            )
+            if not stem:
+                continue
+            for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
+                chains[family].append(f"{stem}{suffix}")
+        return chains
+
+    @staticmethod
+    def _extract_dep_names_from_doc(
+        *,
+        doc: tomlkit.TOMLDocument,
+    ) -> Sequence[str]:
+        """Extract direct dependency project names from a pyproject.toml document.
+
+        Reads both PEP 621 (``project.dependencies``) and Poetry
+        (``tool.poetry.dependencies``) path deps and returns project names.
+        """
+        dep_names: set[str] = set()
+        # PEP 621: project.dependencies with " @ file:" path refs
+        project_table = None
+        if "project" in doc:
+            project_table = doc["project"]
+        if isinstance(project_table, dict):
+            for item in project_table.get("dependencies", []):
+                if not isinstance(item, str) or " @ " not in item:
+                    continue
+                _name, path_part = item.split(" @ ", 1)
+                path_part = path_part.strip().removeprefix("file:").strip()
+                path_part = path_part.removeprefix("./").strip()
+                if path_part:
+                    # path_part like "flext-meltano" or "../flext-meltano"
+                    dep_names.add(Path(path_part).name)
+        # Poetry: tool.poetry.dependencies with path = "..."
+        tool_table = None
+        if "tool" in doc:
+            tool_table = doc["tool"]
+        if isinstance(tool_table, dict):
+            poetry_table = tool_table.get("poetry")
+            if isinstance(poetry_table, dict):
+                deps_table = poetry_table.get("dependencies")
+                if isinstance(deps_table, dict):
+                    for dep_value in deps_table.values():
+                        if not isinstance(dep_value, dict):
+                            continue
+                        dep_path = dep_value.get("path")
+                        if isinstance(dep_path, str) and dep_path:
+                            dep_path = dep_path.strip().removeprefix("./").strip()
+                            if dep_path:
+                                dep_names.add(Path(dep_path).name)
+        return sorted(dep_names)
+
+    @staticmethod
     def _namespace_preferred_file_name(*, family: str) -> str:
         pattern = c.Infra.FAMILY_FILES.get(
             family,
@@ -42,12 +135,66 @@ class FlextInfraUtilitiesRefactorNamespace:
         return pattern.lstrip("*")
 
     @staticmethod
-    def _namespace_base_import_for_family(*, family: str) -> str:
+    def _namespace_base_import_for_family(
+        *,
+        family: str,
+        base_chains: Mapping[str, Sequence[str]] | None = None,
+    ) -> str:
+        """Generate import statements for the base classes of a family.
+
+        When ``base_chains`` is provided, imports are derived from dep graph
+        dependencies instead of hardcoding ``flext_core``.
+        """
+        if base_chains:
+            chain = base_chains.get(family, [])
+            if chain:
+                lines: MutableSequence[str] = []
+                for base_class_name in chain:
+                    module = FlextInfraUtilitiesRefactorNamespace._class_name_to_module(
+                        base_class_name,
+                    )
+                    lines.append(f"from {module} import {base_class_name}")
+                return "\n".join(lines)
         class_name = f"Flext{c.Infra.FAMILY_SUFFIXES.get(family, 'Utilities')}"
         return f"from flext_core import {class_name}"
 
     @staticmethod
-    def _namespace_base_class_for_family(*, family: str) -> str:
+    def _class_name_to_module(class_name: str) -> str:
+        """Convert a facade class name like ``FlextMeltanoModels`` to its module.
+
+        E.g. ``FlextMeltanoModels`` → ``flext_meltano``,
+        ``FlextDbOracleModels`` → ``flext_db_oracle``.
+        """
+        # Strip suffix (Models, Constants, etc.) to get the stem
+        for suffix in c.Infra.FAMILY_SUFFIXES.values():
+            if class_name.endswith(suffix):
+                stem = class_name[: -len(suffix)]
+                break
+        else:
+            stem = class_name
+        # Flext → flext_core, FlextXyz → flext_xyz
+        if stem == "Flext":
+            return "flext_core"
+        # Convert PascalCase stem to snake_case module
+        # FlextMeltano → flext_meltano, FlextDbOracle → flext_db_oracle
+        chars: MutableSequence[str] = []
+        for i, ch in enumerate(stem):
+            if ch.isupper() and i > 0:
+                chars.append("_")
+            chars.append(ch.lower())
+        return "".join(chars)
+
+    @staticmethod
+    def _namespace_base_class_for_family(
+        *,
+        family: str,
+        base_chains: Mapping[str, Sequence[str]] | None = None,
+    ) -> str:
+        """Return comma-separated base class names for a family."""
+        if base_chains:
+            chain = base_chains.get(family, [])
+            if chain:
+                return ", ".join(chain)
         return f"Flext{c.Infra.FAMILY_SUFFIXES.get(family, 'Utilities')}"
 
     @staticmethod
@@ -56,16 +203,19 @@ class FlextInfraUtilitiesRefactorNamespace:
         file_path: Path,
         family: str,
         class_name: str,
+        base_chains: Mapping[str, Sequence[str]] | None = None,
     ) -> None:
         alias = family
         import_stmt = (
             FlextInfraUtilitiesRefactorNamespace._namespace_base_import_for_family(
                 family=family,
+                base_chains=base_chains,
             )
         )
         base_class = (
             FlextInfraUtilitiesRefactorNamespace._namespace_base_class_for_family(
                 family=family,
+                base_chains=base_chains,
             )
         )
         content = (
@@ -411,6 +561,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         project_root: Path,
         project_name: str,
         facade_statuses: Sequence[m.Infra.FacadeStatus],
+        workspace_root: Path | None = None,
     ) -> None:
         """Create missing facade module files for the project."""
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
@@ -427,6 +578,13 @@ class FlextInfraUtilitiesRefactorNamespace:
         stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )
+        base_chains: Mapping[str, Sequence[str]] | None = None
+        if workspace_root is not None:
+            chains = FlextInfraUtilitiesRefactorNamespace.build_expected_base_chains(
+                project_root=project_root,
+            )
+            if chains:
+                base_chains = chains
         for status in facade_statuses:
             if status.exists:
                 continue
@@ -448,6 +606,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 ):
                     base_class = FlextInfraUtilitiesRefactorNamespace._namespace_base_class_for_family(
                         family=status.family,
+                        base_chains=base_chains,
                     )
                     snippet = f"\n\nclass {class_name}({base_class}):\n    pass\n"
                     content = content.rstrip() + snippet
@@ -466,6 +625,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 file_path=target_path,
                 family=status.family,
                 class_name=class_name,
+                base_chains=base_chains,
             )
 
     @staticmethod
@@ -529,8 +689,6 @@ class FlextInfraUtilitiesRefactorNamespace:
                 if not isinstance(item, cst.Assign):
                     continue
                 for target in item.targets:
-                    if not isinstance(target, cst.AssignTarget):
-                        continue
                     if (
                         isinstance(target.target, cst.Name)
                         and len(target.target.value) <= max_alias_len
@@ -919,9 +1077,7 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
     def _alias_name(alias: cst.ImportAlias) -> str:
         if isinstance(alias.name, cst.Name):
             return alias.name.value
-        if isinstance(alias.name, cst.Attribute):
-            return alias.name.attr.value
-        return ""
+        return alias.name.attr.value
 
     @staticmethod
     def _normalize_commas(

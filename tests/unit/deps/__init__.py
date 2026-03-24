@@ -126,6 +126,10 @@ if TYPE_CHECKING:
         test_inject_comments_phase_apply_broken_group_section,
         test_inject_comments_phase_apply_markers,
         test_inject_comments_phase_apply_with_optional_dependencies_dev,
+        test_inject_comments_phase_deduplicates_family_markers,
+        test_inject_comments_phase_marks_pytest_and_coverage_subtables,
+        test_inject_comments_phase_removes_auto_banner_and_auto_marker,
+        test_inject_comments_phase_repositions_marker_before_section,
     )
     from tests.unit.deps.test_modernizer_consolidate import (
         TestConsolidateGroupsPhase,
@@ -596,6 +600,22 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "tests.unit.deps.test_modernizer_comments",
         "test_inject_comments_phase_apply_with_optional_dependencies_dev",
     ),
+    "test_inject_comments_phase_deduplicates_family_markers": (
+        "tests.unit.deps.test_modernizer_comments",
+        "test_inject_comments_phase_deduplicates_family_markers",
+    ),
+    "test_inject_comments_phase_marks_pytest_and_coverage_subtables": (
+        "tests.unit.deps.test_modernizer_comments",
+        "test_inject_comments_phase_marks_pytest_and_coverage_subtables",
+    ),
+    "test_inject_comments_phase_removes_auto_banner_and_auto_marker": (
+        "tests.unit.deps.test_modernizer_comments",
+        "test_inject_comments_phase_removes_auto_banner_and_auto_marker",
+    ),
+    "test_inject_comments_phase_repositions_marker_before_section": (
+        "tests.unit.deps.test_modernizer_comments",
+        "test_inject_comments_phase_repositions_marker_before_section",
+    ),
     "test_main_discovery_failure": (
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_discovery_failure",
@@ -834,6 +854,10 @@ __all__ = [
     "test_inject_comments_phase_apply_broken_group_section",
     "test_inject_comments_phase_apply_markers",
     "test_inject_comments_phase_apply_with_optional_dependencies_dev",
+    "test_inject_comments_phase_deduplicates_family_markers",
+    "test_inject_comments_phase_marks_pytest_and_coverage_subtables",
+    "test_inject_comments_phase_removes_auto_banner_and_auto_marker",
+    "test_inject_comments_phase_repositions_marker_before_section",
     "test_main_discovery_failure",
     "test_main_no_changes_needed",
     "test_main_project_invalid_toml",

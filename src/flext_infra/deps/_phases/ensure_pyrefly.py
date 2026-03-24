@@ -57,19 +57,13 @@ class FlextInfraEnsurePyreflyConfigPhase:
             pyrefly[c.Infra.Toml.IGNORE_ERRORS_IN_GENERATED] = True
             changes.append("tool.pyrefly.ignore-errors-in-generated-code enabled")
         if project_dir is not None:
-            local_dirs = u.Infra.discover_python_dirs(project_dir)
             manager = FlextInfraExtraPathsManager()
-            dep_paths = manager.get_dep_paths(doc, is_root=is_root)
-            if is_root:
-                expected_search = sorted(
-                    {".", *local_dirs, "typings", *dep_paths},
-                )
-            else:
-                expected_search = sorted(
-                    {".", *local_dirs, *dep_paths},
-                )
+            expected_search = manager.pyrefly_search_paths(
+                project_dir=project_dir,
+                is_root=is_root,
+            )
         else:
-            expected_search = ["."]
+            expected_search = [c.Infra.Paths.DEFAULT_SRC_DIR]
         current_search = u.Infra.as_string_list(
             u.Infra.get(pyrefly, c.Infra.Toml.SEARCH_PATH),
         )
@@ -88,13 +82,11 @@ class FlextInfraEnsurePyreflyConfigPhase:
         current_excludes = u.Infra.as_string_list(
             u.Infra.get(pyrefly, c.Infra.Toml.PROJECT_EXCLUDES),
         )
-        pb2_globs = ["**/*_pb2*.py", "**/*_pb2_grpc*.py"]
-        needed = set(pb2_globs) - set(current_excludes)
-        if needed and (
-            is_root or any(glob in current_excludes for glob in pb2_globs) or True
-        ):
+        configured_excludes = self._tool_config.tools.pyrefly.project_exclude_globs
+        needed = set(configured_excludes) - set(current_excludes)
+        if needed:
             pyrefly[c.Infra.Toml.PROJECT_EXCLUDES] = u.Infra.array(
-                sorted(set(current_excludes) | set(pb2_globs)),
+                sorted(set(current_excludes) | set(configured_excludes)),
             )
             changes.append(f"tool.pyrefly.project-excludes added {', '.join(needed)}")
         return changes

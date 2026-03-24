@@ -192,6 +192,66 @@ class FlextInfraDepsModels:
     class PyrightConfig(m.ArbitraryTypesModel):
         """Pyright strict settings loaded from YAML."""
 
+        class PathRulesConfig(m.ArbitraryTypesModel):
+            """Path resolution rules loaded from YAML."""
+
+            source_dir: Annotated[
+                str,
+                Field(
+                    alias="source-dir",
+                    description="Primary source directory name.",
+                ),
+            ]
+            project_root: Annotated[
+                str,
+                Field(
+                    alias="project-root",
+                    description="Project root path entry used in path resolution.",
+                ),
+            ]
+            env_dirs: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="env-dirs",
+                    description="Canonical execution environment directories in order.",
+                ),
+            ]
+            test_like_dirs: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="test-like-dirs",
+                    description="Env dirs that should include project root in extraPaths.",
+                ),
+            ]
+            default_excludes: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="default-excludes",
+                    description="Always-applied pyright exclude globs.",
+                ),
+            ]
+            dynamic_exclude_dirs: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="dynamic-exclude-dirs",
+                    description="Directory names excluded only when present in project.",
+                ),
+            ]
+            root_typings_paths: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="root-typings-paths",
+                    description="Typings paths used in workspace-root config.",
+                ),
+            ]
+            project_typings_paths: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="project-typings-paths",
+                    description="Typings paths used in subproject configs.",
+                ),
+            ]
+
         strict_settings: Annotated[
             t.StrMapping,
             Field(
@@ -207,9 +267,48 @@ class FlextInfraDepsModels:
                 description="Pyright extended settings options.",
             ),
         ]
+        path_rules: Annotated[
+            PathRulesConfig,
+            Field(
+                alias="path-rules",
+                description="Pyright path resolution and execution-env rules.",
+            ),
+        ]
 
     class PyreflyConfig(m.ArbitraryTypesModel):
         """Pyrefly strict settings loaded from YAML."""
+
+        class PathRulesConfig(m.ArbitraryTypesModel):
+            """Path resolution rules loaded from YAML."""
+
+            source_dir: Annotated[
+                str,
+                Field(
+                    alias="source-dir",
+                    description="Primary source directory name.",
+                ),
+            ]
+            project_root: Annotated[
+                str,
+                Field(
+                    alias="project-root",
+                    description="Project root path entry used in search-path.",
+                ),
+            ]
+            root_typings_paths: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="root-typings-paths",
+                    description="Typings paths used in workspace-root config.",
+                ),
+            ]
+            project_typings_paths: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="project-typings-paths",
+                    description="Typings paths used in subproject configs.",
+                ),
+            ]
 
         strict_errors: Annotated[
             t.StrSequence,
@@ -223,6 +322,20 @@ class FlextInfraDepsModels:
             Field(
                 alias="disabled-errors",
                 description="Pyrefly errors disabled by default.",
+            ),
+        ]
+        project_exclude_globs: Annotated[
+            t.StrSequence,
+            Field(
+                alias="project-exclude-globs",
+                description="Globs excluded from pyrefly project checking.",
+            ),
+        ]
+        path_rules: Annotated[
+            PathRulesConfig,
+            Field(
+                alias="path-rules",
+                description="Pyrefly search-path rules.",
             ),
         ]
 

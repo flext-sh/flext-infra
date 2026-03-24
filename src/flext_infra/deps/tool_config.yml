@@ -378,6 +378,36 @@ tools:
       reportUnnecessaryComparison: warning
       reportPrivateUsage: warning
       reportCallIssue: none
+    path-rules:
+      source-dir: src
+      project-root: .
+      env-dirs:
+        - src
+        - tests
+        - examples
+        - scripts
+      test-like-dirs:
+        - tests
+        - examples
+        - scripts
+      default-excludes:
+        - '**/node_modules'
+        - '**/__pycache__'
+        - '**/.*'
+        - .venv
+      dynamic-exclude-dirs:
+        - .git
+        - .mypy_cache
+        - .pytest_cache
+        - .ruff_cache
+        - .sisyphus
+        - vendor
+      root-typings-paths:
+        - typings
+        - typings/generated
+      project-typings-paths:
+        - ../typings
+        - ../typings/generated
   coverage:
     fail-under:
       core: 45
@@ -405,6 +435,21 @@ tools:
       - unannotated-return
     disabled-errors:
       - bad-override
+    project-exclude-globs:
+      - '**/.venv/**'
+      - '**/*_pb2*.py'
+      - '**/*_pb2_grpc*.py'
+      - '**/typings/**'
+      - '**/vendor/**'
+      - '.venv/**'
+      - 'typings/**'
+      - '../typings/**'
+      - 'vendor/**'
+    path-rules:
+      source-dir: src
+      project-root: .
+      root-typings-paths: []
+      project-typings-paths: []
   pytest:
     standard-markers:
       - 'unit: unit tests'

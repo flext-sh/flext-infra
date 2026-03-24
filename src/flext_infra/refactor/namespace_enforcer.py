@@ -37,11 +37,21 @@ class FlextInfraNamespaceEnforcer:
         self,
         *,
         apply: bool = False,
+        project_names: Sequence[str] | None = None,
     ) -> m.Infra.WorkspaceEnforcementReport:
-        """Run namespace enforcement across all projects in the workspace."""
+        """Run namespace enforcement across projects in the workspace.
+
+        Args:
+            apply: If True, auto-fix detected violations.
+            project_names: If provided, only enforce these projects.
+
+        """
         project_roots = u.Infra.discover_project_roots(
             workspace_root=self._workspace_root,
         )
+        if project_names:
+            name_set = set(project_names)
+            project_roots = [r for r in project_roots if r.name in name_set]
         project_reports: MutableSequence[m.Infra.ProjectEnforcementReport] = []
         total_missing = 0
         total_loose = 0
@@ -119,6 +129,7 @@ class FlextInfraNamespaceEnforcer:
                 project_root=project_root,
                 project_name=project_name,
                 facade_statuses=facade_statuses,
+                workspace_root=self._workspace_root,
             )
             facade_statuses = FlextInfraNamespaceFacadeScanner.scan_project(
                 project_root=project_root,

@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes, d, e, h, r, s, x
 
     from flext_infra import (
+        _models,
         _utilities,
         basemk,
         check,
@@ -46,7 +47,7 @@ if TYPE_CHECKING:
         __version__,
         __version_info__,
     )
-    from flext_infra._utilities._models import FlextInfraUtilitiesModels
+    from flext_infra._models.scan import FlextInfraModelsScan
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -699,6 +700,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraModelReferenceCollector",
     ),
     "FlextInfraModels": ("flext_infra.models", "FlextInfraModels"),
+    "FlextInfraModelsScan": ("flext_infra._models.scan", "FlextInfraModelsScan"),
     "FlextInfraMypyGate": ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
     "FlextInfraNamespaceEnforcer": (
         "flext_infra.refactor.namespace_enforcer",
@@ -1075,10 +1077,6 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra._utilities.log_parser",
         "FlextInfraUtilitiesLogParser",
     ),
-    "FlextInfraUtilitiesModels": (
-        "flext_infra._utilities._models",
-        "FlextInfraUtilitiesModels",
-    ),
     "FlextInfraUtilitiesOutput": (
         "flext_infra._utilities.output",
         "FlextInfraUtilitiesOutput",
@@ -1208,6 +1206,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "__url__": ("flext_infra.__version__", "__url__"),
     "__version__": ("flext_infra.__version__", "__version__"),
     "__version_info__": ("flext_infra.__version__", "__version_info__"),
+    "_models": ("flext_infra._models", ""),
     "_utilities": ("flext_infra._utilities", ""),
     "basemk": ("flext_infra.basemk", ""),
     "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
@@ -1324,6 +1323,7 @@ __all__ = [
     "FlextInfraModelDefinitionCollector",
     "FlextInfraModelReferenceCollector",
     "FlextInfraModels",
+    "FlextInfraModelsScan",
     "FlextInfraMypyGate",
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceEnforcerModels",
@@ -1427,7 +1427,6 @@ __all__ = [
     "FlextInfraUtilitiesIo",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesLogParser",
-    "FlextInfraUtilitiesModels",
     "FlextInfraUtilitiesOutput",
     "FlextInfraUtilitiesParsing",
     "FlextInfraUtilitiesPaths",
@@ -1467,6 +1466,7 @@ __all__ = [
     "__url__",
     "__version__",
     "__version_info__",
+    "_models",
     "_utilities",
     "basemk",
     "build_parser",
