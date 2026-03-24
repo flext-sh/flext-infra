@@ -13,11 +13,11 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.rules.class_nesting import ClassNestingRefactorRule
+    from flext_infra.rules.class_nesting import FlextInfraClassNestingRefactorRule
     from flext_infra.rules.class_reconstructor import (
+        FlextInfraPreCheckGate,
         FlextInfraRefactorClassNestingReconstructor,
         FlextInfraRefactorClassReconstructorRule,
-        PreCheckGate,
     )
     from flext_infra.rules.ensure_future_annotations import (
         FlextInfraRefactorEnsureFutureAnnotationsRule,
@@ -49,9 +49,13 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "ClassNestingRefactorRule": (
+    "FlextInfraClassNestingRefactorRule": (
         "flext_infra.rules.class_nesting",
-        "ClassNestingRefactorRule",
+        "FlextInfraClassNestingRefactorRule",
+    ),
+    "FlextInfraPreCheckGate": (
+        "flext_infra.rules.class_reconstructor",
+        "FlextInfraPreCheckGate",
     ),
     "FlextInfraRefactorClassNestingReconstructor": (
         "flext_infra.rules.class_reconstructor",
@@ -109,11 +113,11 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.rules.type_alias_unification",
         "FlextInfraRefactorTypingUnificationRule",
     ),
-    "PreCheckGate": ("flext_infra.rules.class_reconstructor", "PreCheckGate"),
 }
 
 __all__ = [
-    "ClassNestingRefactorRule",
+    "FlextInfraClassNestingRefactorRule",
+    "FlextInfraPreCheckGate",
     "FlextInfraRefactorClassNestingReconstructor",
     "FlextInfraRefactorClassReconstructorRule",
     "FlextInfraRefactorEnsureFutureAnnotationsRule",
@@ -128,7 +132,6 @@ __all__ = [
     "FlextInfraRefactorTier0ImportFixRule",
     "FlextInfraRefactorTypingAnnotationFixRule",
     "FlextInfraRefactorTypingUnificationRule",
-    "PreCheckGate",
 ]
 
 

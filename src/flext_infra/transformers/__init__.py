@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
     from flext_infra.transformers.alias_remover import FlextInfraRefactorAliasRemover
     from flext_infra.transformers.census_visitors import (
-        CensusImportDiscoveryVisitor,
-        CensusUsageCollector,
+        FlextInfraCensusImportDiscoveryVisitor,
+        FlextInfraCensusUsageCollector,
     )
     from flext_infra.transformers.class_nesting import (
         FlextInfraRefactorClassNestingTransformer,
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
         FlextInfraRefactorDeprecatedRemover,
     )
     from flext_infra.transformers.helper_consolidation import (
-        HelperConsolidationTransformer,
+        FlextInfraHelperConsolidationTransformer,
     )
     from flext_infra.transformers.import_bypass_remover import (
         FlextInfraRefactorImportBypassRemover,
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
     from flext_infra.transformers.nested_class_propagation import (
-        NestedClassPropagationTransformer,
+        FlextInfraNestedClassPropagationTransformer,
     )
     from flext_infra.transformers.policy import (
         FlextInfraRefactorTransformerPolicyUtilities,
@@ -63,27 +63,47 @@ if TYPE_CHECKING:
         FlextInfraTransformerTier0ImportFixer,
     )
     from flext_infra.transformers.typing_annotation_replacer import (
-        TypingAnnotationReplacer,
+        FlextInfraTypingAnnotationReplacer,
     )
     from flext_infra.transformers.typing_census_visitor import (
-        TypingAnnotationCensusVisitor,
+        FlextInfraTypingAnnotationCensusVisitor,
     )
     from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-    from flext_infra.transformers.unused_model_remover import UnusedModelRemover
-    from flext_infra.transformers.unused_model_visitor import (
-        ModelDefinitionCollector,
-        ModelReferenceCollector,
+    from flext_infra.transformers.unused_model_remover import (
+        FlextInfraUnusedModelRemover,
     )
-    from flext_infra.transformers.violation_census_visitor import ViolationCensusVisitor
+    from flext_infra.transformers.unused_model_visitor import (
+        FlextInfraModelDefinitionCollector,
+        FlextInfraModelReferenceCollector,
+    )
+    from flext_infra.transformers.violation_census_visitor import (
+        FlextInfraViolationCensusVisitor,
+    )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "CensusImportDiscoveryVisitor": (
+    "FlextInfraCensusImportDiscoveryVisitor": (
         "flext_infra.transformers.census_visitors",
-        "CensusImportDiscoveryVisitor",
+        "FlextInfraCensusImportDiscoveryVisitor",
     ),
-    "CensusUsageCollector": (
+    "FlextInfraCensusUsageCollector": (
         "flext_infra.transformers.census_visitors",
-        "CensusUsageCollector",
+        "FlextInfraCensusUsageCollector",
+    ),
+    "FlextInfraHelperConsolidationTransformer": (
+        "flext_infra.transformers.helper_consolidation",
+        "FlextInfraHelperConsolidationTransformer",
+    ),
+    "FlextInfraModelDefinitionCollector": (
+        "flext_infra.transformers.unused_model_visitor",
+        "FlextInfraModelDefinitionCollector",
+    ),
+    "FlextInfraModelReferenceCollector": (
+        "flext_infra.transformers.unused_model_visitor",
+        "FlextInfraModelReferenceCollector",
+    ),
+    "FlextInfraNestedClassPropagationTransformer": (
+        "flext_infra.transformers.nested_class_propagation",
+        "FlextInfraNestedClassPropagationTransformer",
     ),
     "FlextInfraRefactorAliasRemover": (
         "flext_infra.transformers.alias_remover",
@@ -149,43 +169,31 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.transformers.tier0_import_fixer",
         "FlextInfraTransformerTier0ImportFixer",
     ),
-    "HelperConsolidationTransformer": (
-        "flext_infra.transformers.helper_consolidation",
-        "HelperConsolidationTransformer",
-    ),
-    "ModelDefinitionCollector": (
-        "flext_infra.transformers.unused_model_visitor",
-        "ModelDefinitionCollector",
-    ),
-    "ModelReferenceCollector": (
-        "flext_infra.transformers.unused_model_visitor",
-        "ModelReferenceCollector",
-    ),
-    "NestedClassPropagationTransformer": (
-        "flext_infra.transformers.nested_class_propagation",
-        "NestedClassPropagationTransformer",
-    ),
-    "TypingAnnotationCensusVisitor": (
+    "FlextInfraTypingAnnotationCensusVisitor": (
         "flext_infra.transformers.typing_census_visitor",
-        "TypingAnnotationCensusVisitor",
+        "FlextInfraTypingAnnotationCensusVisitor",
     ),
-    "TypingAnnotationReplacer": (
+    "FlextInfraTypingAnnotationReplacer": (
         "flext_infra.transformers.typing_annotation_replacer",
-        "TypingAnnotationReplacer",
+        "FlextInfraTypingAnnotationReplacer",
     ),
-    "UnusedModelRemover": (
+    "FlextInfraUnusedModelRemover": (
         "flext_infra.transformers.unused_model_remover",
-        "UnusedModelRemover",
+        "FlextInfraUnusedModelRemover",
     ),
-    "ViolationCensusVisitor": (
+    "FlextInfraViolationCensusVisitor": (
         "flext_infra.transformers.violation_census_visitor",
-        "ViolationCensusVisitor",
+        "FlextInfraViolationCensusVisitor",
     ),
 }
 
 __all__ = [
-    "CensusImportDiscoveryVisitor",
-    "CensusUsageCollector",
+    "FlextInfraCensusImportDiscoveryVisitor",
+    "FlextInfraCensusUsageCollector",
+    "FlextInfraHelperConsolidationTransformer",
+    "FlextInfraModelDefinitionCollector",
+    "FlextInfraModelReferenceCollector",
+    "FlextInfraNestedClassPropagationTransformer",
     "FlextInfraRefactorAliasRemover",
     "FlextInfraRefactorClassNestingTransformer",
     "FlextInfraRefactorClassReconstructor",
@@ -202,14 +210,10 @@ __all__ = [
     "FlextInfraRefactorTypingUnifier",
     "FlextInfraTransformerImportNormalizer",
     "FlextInfraTransformerTier0ImportFixer",
-    "HelperConsolidationTransformer",
-    "ModelDefinitionCollector",
-    "ModelReferenceCollector",
-    "NestedClassPropagationTransformer",
-    "TypingAnnotationCensusVisitor",
-    "TypingAnnotationReplacer",
-    "UnusedModelRemover",
-    "ViolationCensusVisitor",
+    "FlextInfraTypingAnnotationCensusVisitor",
+    "FlextInfraTypingAnnotationReplacer",
+    "FlextInfraUnusedModelRemover",
+    "FlextInfraViolationCensusVisitor",
 ]
 
 

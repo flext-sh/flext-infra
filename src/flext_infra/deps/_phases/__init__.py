@@ -13,20 +13,54 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.deps._phases.consolidate_groups import ConsolidateGroupsPhase
-    from flext_infra.deps._phases.ensure_coverage import EnsureCoverageConfigPhase
-    from flext_infra.deps._phases.ensure_extra_paths import EnsureExtraPathsPhase
-    from flext_infra.deps._phases.ensure_formatting import EnsureFormattingToolingPhase
-    from flext_infra.deps._phases.ensure_mypy import EnsureMypyConfigPhase
-    from flext_infra.deps._phases.ensure_namespace import EnsureNamespaceToolingPhase
+    from flext_infra.deps._phases.consolidate_groups import (
+        ConsolidateGroupsPhase,
+        FlextInfraConsolidateGroupsPhase,
+    )
+    from flext_infra.deps._phases.ensure_coverage import (
+        EnsureCoverageConfigPhase,
+        FlextInfraEnsureCoverageConfigPhase,
+    )
+    from flext_infra.deps._phases.ensure_extra_paths import (
+        EnsureExtraPathsPhase,
+        FlextInfraEnsureExtraPathsPhase,
+    )
+    from flext_infra.deps._phases.ensure_formatting import (
+        EnsureFormattingToolingPhase,
+        FlextInfraEnsureFormattingToolingPhase,
+    )
+    from flext_infra.deps._phases.ensure_mypy import (
+        EnsureMypyConfigPhase,
+        FlextInfraEnsureMypyConfigPhase,
+    )
+    from flext_infra.deps._phases.ensure_namespace import (
+        EnsureNamespaceToolingPhase,
+        FlextInfraEnsureNamespaceToolingPhase,
+    )
     from flext_infra.deps._phases.ensure_pydantic_mypy import (
         EnsurePydanticMypyConfigPhase,
+        FlextInfraEnsurePydanticMypyConfigPhase,
     )
-    from flext_infra.deps._phases.ensure_pyrefly import EnsurePyreflyConfigPhase
-    from flext_infra.deps._phases.ensure_pyright import EnsurePyrightConfigPhase
-    from flext_infra.deps._phases.ensure_pytest import EnsurePytestConfigPhase
-    from flext_infra.deps._phases.ensure_ruff import EnsureRuffConfigPhase
-    from flext_infra.deps._phases.inject_comments import InjectCommentsPhase
+    from flext_infra.deps._phases.ensure_pyrefly import (
+        EnsurePyreflyConfigPhase,
+        FlextInfraEnsurePyreflyConfigPhase,
+    )
+    from flext_infra.deps._phases.ensure_pyright import (
+        EnsurePyrightConfigPhase,
+        FlextInfraEnsurePyrightConfigPhase,
+    )
+    from flext_infra.deps._phases.ensure_pytest import (
+        EnsurePytestConfigPhase,
+        FlextInfraEnsurePytestConfigPhase,
+    )
+    from flext_infra.deps._phases.ensure_ruff import (
+        EnsureRuffConfigPhase,
+        FlextInfraEnsureRuffConfigPhase,
+    )
+    from flext_infra.deps._phases.inject_comments import (
+        FlextInfraInjectCommentsPhase,
+        InjectCommentsPhase,
+    )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "ConsolidateGroupsPhase": (
@@ -73,6 +107,54 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.deps._phases.ensure_ruff",
         "EnsureRuffConfigPhase",
     ),
+    "FlextInfraConsolidateGroupsPhase": (
+        "flext_infra.deps._phases.consolidate_groups",
+        "FlextInfraConsolidateGroupsPhase",
+    ),
+    "FlextInfraEnsureCoverageConfigPhase": (
+        "flext_infra.deps._phases.ensure_coverage",
+        "FlextInfraEnsureCoverageConfigPhase",
+    ),
+    "FlextInfraEnsureExtraPathsPhase": (
+        "flext_infra.deps._phases.ensure_extra_paths",
+        "FlextInfraEnsureExtraPathsPhase",
+    ),
+    "FlextInfraEnsureFormattingToolingPhase": (
+        "flext_infra.deps._phases.ensure_formatting",
+        "FlextInfraEnsureFormattingToolingPhase",
+    ),
+    "FlextInfraEnsureMypyConfigPhase": (
+        "flext_infra.deps._phases.ensure_mypy",
+        "FlextInfraEnsureMypyConfigPhase",
+    ),
+    "FlextInfraEnsureNamespaceToolingPhase": (
+        "flext_infra.deps._phases.ensure_namespace",
+        "FlextInfraEnsureNamespaceToolingPhase",
+    ),
+    "FlextInfraEnsurePydanticMypyConfigPhase": (
+        "flext_infra.deps._phases.ensure_pydantic_mypy",
+        "FlextInfraEnsurePydanticMypyConfigPhase",
+    ),
+    "FlextInfraEnsurePyreflyConfigPhase": (
+        "flext_infra.deps._phases.ensure_pyrefly",
+        "FlextInfraEnsurePyreflyConfigPhase",
+    ),
+    "FlextInfraEnsurePyrightConfigPhase": (
+        "flext_infra.deps._phases.ensure_pyright",
+        "FlextInfraEnsurePyrightConfigPhase",
+    ),
+    "FlextInfraEnsurePytestConfigPhase": (
+        "flext_infra.deps._phases.ensure_pytest",
+        "FlextInfraEnsurePytestConfigPhase",
+    ),
+    "FlextInfraEnsureRuffConfigPhase": (
+        "flext_infra.deps._phases.ensure_ruff",
+        "FlextInfraEnsureRuffConfigPhase",
+    ),
+    "FlextInfraInjectCommentsPhase": (
+        "flext_infra.deps._phases.inject_comments",
+        "FlextInfraInjectCommentsPhase",
+    ),
     "InjectCommentsPhase": (
         "flext_infra.deps._phases.inject_comments",
         "InjectCommentsPhase",
@@ -91,6 +173,18 @@ __all__ = [
     "EnsurePyrightConfigPhase",
     "EnsurePytestConfigPhase",
     "EnsureRuffConfigPhase",
+    "FlextInfraConsolidateGroupsPhase",
+    "FlextInfraEnsureCoverageConfigPhase",
+    "FlextInfraEnsureExtraPathsPhase",
+    "FlextInfraEnsureFormattingToolingPhase",
+    "FlextInfraEnsureMypyConfigPhase",
+    "FlextInfraEnsureNamespaceToolingPhase",
+    "FlextInfraEnsurePydanticMypyConfigPhase",
+    "FlextInfraEnsurePyreflyConfigPhase",
+    "FlextInfraEnsurePyrightConfigPhase",
+    "FlextInfraEnsurePytestConfigPhase",
+    "FlextInfraEnsureRuffConfigPhase",
+    "FlextInfraInjectCommentsPhase",
     "InjectCommentsPhase",
 ]
 
