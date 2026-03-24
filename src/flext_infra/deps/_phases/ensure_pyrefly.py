@@ -31,14 +31,16 @@ class FlextInfraEnsurePyreflyConfigPhase:
             root_dirs = set(u.Infra.discover_python_dirs(project_dir))
             for directory in sorted(root_dirs & env_dirs):
                 includes.append(f"{directory}/**/*.py*")
-            for child in sorted(project_dir.iterdir()):
-                if not child.is_dir():
-                    continue
-                if not (child / c.Infra.Files.PYPROJECT_FILENAME).exists():
-                    continue
-                child_dirs = set(u.Infra.discover_python_dirs(child))
-                for directory in sorted(child_dirs & env_dirs):
-                    includes.append(f"{child.name}/{directory}/**/*.py*")
+            if pyrefly_rules.workspace_include_children:
+                child_env_dirs = set(pyrefly_rules.workspace_include_child_env_dirs)
+                for child in sorted(project_dir.iterdir()):
+                    if not child.is_dir():
+                        continue
+                    if not (child / c.Infra.Files.PYPROJECT_FILENAME).exists():
+                        continue
+                    child_dirs = set(u.Infra.discover_python_dirs(child))
+                    for directory in sorted(child_dirs & child_env_dirs):
+                        includes.append(f"{child.name}/{directory}/**/*.py*")
         else:
             project_dirs = set(u.Infra.discover_python_dirs(project_dir))
             for directory in sorted(project_dirs & env_dirs):
@@ -109,7 +111,9 @@ class FlextInfraEnsurePyreflyConfigPhase:
         if current_search != expected_search:
             pyrefly[c.Infra.Toml.SEARCH_PATH] = u.Infra.array(expected_search)
             changes.append(f"tool.pyrefly.search-path set to {expected_search}")
-        current_includes = u.Infra.as_string_list(u.Infra.get(pyrefly, "project-includes"))
+        current_includes = u.Infra.as_string_list(
+            u.Infra.get(pyrefly, "project-includes")
+        )
         if current_includes != expected_includes:
             pyrefly["project-includes"] = u.Infra.array(expected_includes)
             changes.append("tool.pyrefly.project-includes synchronized from YAML rules")

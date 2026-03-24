@@ -20,6 +20,7 @@ class FlextInfraUtilitiesSubprocess:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
+        input_data: bytes | None = None,
     ) -> r[m.Infra.CommandOutput]:
         """Run command without enforcing exit code."""
         try:
@@ -27,15 +28,18 @@ class FlextInfraUtilitiesSubprocess:
                 list(cmd),
                 cwd=cwd,
                 capture_output=True,
-                text=True,
+                text=input_data is None,
                 check=False,
                 timeout=timeout,
                 env=env,
+                input=input_data,
             )
+            stdout_raw = res.stdout or (b"" if input_data else "")
+            stderr_raw = res.stderr or (b"" if input_data else "")
             return r[m.Infra.CommandOutput].ok(
                 m.Infra.CommandOutput(
-                    stdout=res.stdout or "",
-                    stderr=res.stderr or "",
+                    stdout=stdout_raw.decode() if isinstance(stdout_raw, bytes) else stdout_raw,
+                    stderr=stderr_raw.decode() if isinstance(stderr_raw, bytes) else stderr_raw,
                     exit_code=res.returncode,
                 ),
             )

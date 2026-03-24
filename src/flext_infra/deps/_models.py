@@ -251,6 +251,28 @@ class FlextInfraDepsModels:
                     description="Typings paths used in subproject configs.",
                 ),
             ]
+            source_report_private_usage: Annotated[
+                str,
+                Field(
+                    alias="source-report-private-usage",
+                    description="reportPrivateUsage value for source-dir execution envs.",
+                ),
+            ]
+            test_like_report_private_usage: Annotated[
+                str,
+                Field(
+                    alias="test-like-report-private-usage",
+                    description="reportPrivateUsage value for test-like execution envs.",
+                ),
+            ]
+            other_report_private_usage: Annotated[
+                str,
+                Field(
+                    alias="other-report-private-usage",
+                    description="reportPrivateUsage value for non-source/non-test-like envs.",
+                ),
+            ]
+
         strict_settings: Annotated[
             t.StrMapping,
             Field(
@@ -313,6 +335,20 @@ class FlextInfraDepsModels:
                 Field(
                     alias="env-dirs",
                     description="Canonical directories used to build project-includes.",
+                ),
+            ]
+            workspace_include_children: Annotated[
+                bool,
+                Field(
+                    alias="workspace-include-children",
+                    description="Whether root pyrefly should include child projects.",
+                ),
+            ]
+            workspace_include_child_env_dirs: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="workspace-include-child-env-dirs",
+                    description="Child env dirs included by root pyrefly when enabled.",
                 ),
             ]
 

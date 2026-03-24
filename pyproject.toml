@@ -12,9 +12,6 @@ requires = [ "poetry-core>=2" ]
 
 # [CUSTOM] poetry
 
-
-
-
 authors = [ {email = "team@flext.sh", name = "FLEXT Team"} ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -108,17 +105,11 @@ dev = [
   "vulture>=2.13",
 ]
 
-
-
-
 [tool.bandit]
 exclude_dirs = [ "tests" ]
 severity = "MEDIUM"
 skips = [ "B101" ]
 targets = [ "src" ]
-
-
-
 
 # [MANAGED] codespell
 [tool.codespell]
@@ -126,18 +117,12 @@ check-filenames = true
 ignore-words-list = "crate,nd"
 skip = ".git,poetry.lock,.mypy_cache,.pytest_cache,.ruff_cache"
 
-
-
-
 # [MANAGED] coverage
 [tool.coverage.report]
 fail_under = 25
 precision = 2
 show_missing = true
 skip_covered = false
-
-
-
 
 # [MANAGED] deptry
 [tool.deptry]
@@ -155,9 +140,6 @@ ignore-magic = true
 ignore-module = false
 ignore-private = true
 ignore-property-decorators = true
-
-
-
 
 # [MANAGED] mypy
 [tool.mypy]
@@ -179,17 +161,11 @@ packages = [
   {include = "flext_infra", from = "src"},
 ]
 
-
-
-
 # [MANAGED] pydantic-mypy
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
-
-
-
 
 # [MANAGED] pyrefly
 [tool.pyrefly]
@@ -210,8 +186,8 @@ project-excludes = [
   "vendor/**",
 ]
 project-includes = [
-    "src/**/*.py*",
-    "tests/**/*.py*",
+  "src/**/*.py*",
+  "tests/**/*.py*",
 ]
 python-version = "3.13"
 search-path = [
@@ -235,9 +211,6 @@ redundant-cast = true
 unannotated-attribute = true
 unannotated-parameter = true
 unannotated-return = true
-
-
-
 
 # [MANAGED] pyright
 [tool.pyright]
@@ -282,12 +255,12 @@ reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 
 [[tool.pyright.executionEnvironments]]
-extraPaths = ["src"]
+extraPaths = [ "src" ]
 reportPrivateUsage = "error"
 root = "src"
 
 [[tool.pyright.executionEnvironments]]
-extraPaths = [".", "src"]
+extraPaths = [ ".", "src" ]
 reportPrivateUsage = "none"
 root = "tests"
 
@@ -314,16 +287,10 @@ minversion = "8.0"
 python_classes = [ "Test*" ]
 python_files = [ "*_test.py", "*_tests.py", "test_*.py" ]
 
-
-
-
 [tool.radon]
 cc_min = "B"
 exclude = "tests/*,examples/*"
 mi_min = "B"
-
-
-
 
 # [MANAGED] ruff
 [tool.ruff]
@@ -431,7 +398,9 @@ split-on-trailing-comma = true
 
 [tool.ruff.lint.per-file-ignores]
 
-
+"**/.vulture_whitelist.py" = [
+  "ALL",
+]
 "**/*_pb2*.py" = [
   "ALL",
 ]
@@ -609,9 +578,6 @@ split-on-trailing-comma = true
   "S404",
   "S603",
 ]
-"**/.vulture_whitelist.py" = [
-  "ALL",
-]
 "**/__init__.py" = [
   "ANN401",
   "D107",
@@ -694,7 +660,7 @@ split-on-trailing-comma = true
   "S404",
   "S603",
 ]
-"**/tools/**/*.py" = [
+"**/tools/*.py" = [
   "FBT001",
   "FBT002",
   "N802",
@@ -703,7 +669,7 @@ split-on-trailing-comma = true
   "S607",
   "T201",
 ]
-"**/tools/*.py" = [
+"**/tools/**/*.py" = [
   "FBT001",
   "FBT002",
   "N802",
@@ -722,8 +688,6 @@ split-on-trailing-comma = true
   "S607",
 ]
 
-
-
 # [MANAGED] tomlsort
 [tool.tomlsort]
 all = true
@@ -734,9 +698,6 @@ sort_first = [
   "project",
   "tool",
 ]
-
-
-
 
 # [MANAGED] yamlfix
 [tool.yamlfix]

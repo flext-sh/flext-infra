@@ -408,6 +408,9 @@ tools:
       project-typings-paths:
         - ../typings
         - ../typings/generated
+      source-report-private-usage: error
+      test-like-report-private-usage: none
+      other-report-private-usage: none
   coverage:
     fail-under:
       core: 45
@@ -461,6 +464,9 @@ tools:
       project-root: .
       root-typings-paths: []
       project-typings-paths: []
+      workspace-include-children: false
+      workspace-include-child-env-dirs:
+        - src
   pytest:
     standard-markers:
       - 'unit: unit tests'

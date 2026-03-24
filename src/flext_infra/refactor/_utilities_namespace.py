@@ -757,6 +757,13 @@ class FlextInfraUtilitiesRefactorNamespace:
                     for base_name in missing_bases
                     if base_name not in current_bases
                 ]
+                # Remove core bases now transitively inherited via dep-graph bases
+                # e.g. FlextModels is redundant when FlextDbOracleModels is added
+                core_bases = {
+                    f"Flext{suffix}" for suffix in c.Infra.FAMILY_SUFFIXES.values()
+                }
+                if any(b in core_bases for b in missing_bases):
+                    proposed_bases = [b for b in proposed_bases if b not in core_bases]
                 if len(proposed_bases) == len(current_bases):
                     continue
                 indent = " " * class_node.col_offset

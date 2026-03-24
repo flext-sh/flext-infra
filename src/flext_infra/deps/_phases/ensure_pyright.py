@@ -33,6 +33,14 @@ class FlextInfraEnsurePyrightConfigPhase:
     def _path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
         return self._tool_config.tools.pyright.path_rules
 
+    def _report_private_usage_for_env(self, env_dir: str) -> str:
+        rules = self._path_rules()
+        if env_dir == rules.source_dir:
+            return rules.source_report_private_usage
+        if env_dir in set(rules.test_like_dirs):
+            return rules.test_like_report_private_usage
+        return rules.other_report_private_usage
+
     def _project_source_path(
         self,
         project_dir: Path,
@@ -65,7 +73,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         for env_dir in rules.env_dirs:
             if not (workspace_root / env_dir).is_dir():
                 continue
-            report_private_usage = "error" if env_dir == rules.source_dir else "none"
+            report_private_usage = self._report_private_usage_for_env(env_dir)
             extra_paths = [root_source_path]
             if (
                 env_dir in set(rules.test_like_dirs)
@@ -100,9 +108,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             for env_dir in rules.env_dirs:
                 if not (child_project / env_dir).is_dir():
                     continue
-                report_private_usage = (
-                    "error" if env_dir == rules.source_dir else "none"
-                )
+                report_private_usage = self._report_private_usage_for_env(env_dir)
                 extra_paths = (
                     child_test_like_extra
                     if env_dir in set(rules.test_like_dirs)
@@ -124,15 +130,24 @@ class FlextInfraEnsurePyrightConfigPhase:
         """Build executionEnvironments from YAML-configured directories."""
         rules = self._path_rules()
         if project_dir is None:
+            default_test_root = (
+                rules.test_like_dirs[0]
+                if rules.test_like_dirs
+                else c.Infra.Directories.TESTS
+            )
             return [
                 {
                     "root": rules.source_dir,
-                    "reportPrivateUsage": "error",
+                    "reportPrivateUsage": self._report_private_usage_for_env(
+                        rules.source_dir,
+                    ),
                     "extraPaths": [rules.source_dir],
                 },
                 {
-                    "root": c.Infra.Directories.TESTS,
-                    "reportPrivateUsage": "none",
+                    "root": default_test_root,
+                    "reportPrivateUsage": self._report_private_usage_for_env(
+                        default_test_root,
+                    ),
                     "extraPaths": [rules.project_root, rules.source_dir],
                 },
             ]
@@ -146,7 +161,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         for env_dir in rules.env_dirs:
             if not (project_dir / env_dir).is_dir():
                 continue
-            report_private_usage = "error" if env_dir == rules.source_dir else "none"
+            report_private_usage = self._report_private_usage_for_env(env_dir)
             extra_paths = (
                 test_like_extra
                 if env_dir in set(rules.test_like_dirs)
@@ -158,15 +173,24 @@ class FlextInfraEnsurePyrightConfigPhase:
                 "extraPaths": extra_paths,
             })
         if not envs:
+            default_test_root = (
+                rules.test_like_dirs[0]
+                if rules.test_like_dirs
+                else c.Infra.Directories.TESTS
+            )
             return [
                 {
                     "root": rules.source_dir,
-                    "reportPrivateUsage": "error",
+                    "reportPrivateUsage": self._report_private_usage_for_env(
+                        rules.source_dir,
+                    ),
                     "extraPaths": [source_path],
                 },
                 {
-                    "root": c.Infra.Directories.TESTS,
-                    "reportPrivateUsage": "none",
+                    "root": default_test_root,
+                    "reportPrivateUsage": self._report_private_usage_for_env(
+                        default_test_root,
+                    ),
                     "extraPaths": test_like_extra,
                 },
             ]
