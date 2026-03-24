@@ -8,7 +8,6 @@ import tomlkit
 
 from flext_infra import FlextInfraExtraPathsManager, t
 
-
 class FlextInfraEnsureExtraPathsPhase:
     """Ensure pyright/mypy extra paths are synchronized.
 
@@ -31,7 +30,6 @@ class FlextInfraEnsureExtraPathsPhase:
             project_dir=path.parent,
             is_root=is_root,
         )
-
 
 EnsureExtraPathsPhase = FlextInfraEnsureExtraPathsPhase
 

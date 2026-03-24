@@ -9,7 +9,6 @@ import operator
 from collections import defaultdict
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-
 from typing import Protocol
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape

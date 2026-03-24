@@ -23,7 +23,6 @@ from flext_infra import (
     u,
 )
 
-
 class FlextInfraManualTypingAliasDetector(
     p.Infra.Scanner,
 ):
@@ -202,7 +201,6 @@ class FlextInfraManualTypingAliasDetector(
             )
         return u.Infra.cst_module_to_str(annotation).endswith("TypeAlias")
 
-
 ManualTypingAliasDetector = FlextInfraManualTypingAliasDetector
 
-__all__ = ["FlextInfraManualTypingAliasDetector", "ManualTypingAliasDetector"]
+__all__ = ["ManualTypingAliasDetector", "FlextInfraManualTypingAliasDetector"]

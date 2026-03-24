@@ -13,7 +13,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_core import r, t
+from flext_core import r
+from tests import t
 from flext_tests import tm
 
 import flext_infra.check.__main__ as check_main_mod

@@ -25,7 +25,6 @@ from flext_infra import (
 if TYPE_CHECKING:
     from flext_infra import m
 
-
 class FlextInfraClassPlacementDetector(p.Infra.Scanner):
     """Detector for Pydantic model class placement violations.
 
@@ -184,7 +183,6 @@ class FlextInfraClassPlacementDetector(p.Infra.Scanner):
     def _base_expr_name(base_expr: cst.BaseExpression) -> str:
         """Extract the base class name from a class base expression."""
         return u.Infra.cst_extract_base_name(base_expr)
-
 
 ClassPlacementDetector = FlextInfraClassPlacementDetector
 

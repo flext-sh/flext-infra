@@ -23,7 +23,6 @@ from flext_infra import (
     u,
 )
 
-
 class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
     """Detector for missing or duplicate runtime alias assignments.
 
@@ -183,7 +182,6 @@ class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
         """
         return c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_name, "")
 
-
 RuntimeAliasDetector = FlextInfraRuntimeAliasDetector
 
-__all__ = ["FlextInfraRuntimeAliasDetector", "RuntimeAliasDetector"]
+__all__ = ["RuntimeAliasDetector", "FlextInfraRuntimeAliasDetector"]

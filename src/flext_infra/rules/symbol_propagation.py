@@ -36,13 +36,17 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         symbol_renames_raw = typed_cfg.get("import_symbol_renames", {})
         target_modules = set(u.Infra.string_list(target_modules_raw))
         try:
-            module_renames: t.StrMapping = TypeAdapter(t.StrMapping).validate_python(
+            module_renames: Mapping[str, str] = TypeAdapter(
+                Mapping[str, str]
+            ).validate_python(
                 module_renames_raw,
             )
         except ValidationError:
             module_renames = {}
         try:
-            symbol_renames: t.StrMapping = TypeAdapter(t.StrMapping).validate_python(
+            symbol_renames: Mapping[str, str] = TypeAdapter(
+                Mapping[str, str]
+            ).validate_python(
                 symbol_renames_raw,
             )
         except ValidationError:

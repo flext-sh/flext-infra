@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence
 from pathlib import Path
-from typing import override
-
-from typing import Protocol
+from typing import Protocol, override
 
 from jinja2 import (
     Environment,

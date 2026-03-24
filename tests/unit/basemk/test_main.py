@@ -11,7 +11,8 @@ from io import StringIO
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
-from flext_core import r, t
+from flext_core import r
+from tests import t
 from flext_tests import tm
 
 from flext_infra import FlextInfraBaseMkGenerator

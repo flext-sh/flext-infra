@@ -11,7 +11,6 @@ from tomlkit.items import Item, Table
 
 from flext_infra import FlextInfraExtraPathsManager, c, m, u
 
-
 class FlextInfraEnsurePyreflyConfigPhase:
     """Ensure standard Pyrefly configuration for max-strict typing."""
 
@@ -98,7 +97,6 @@ class FlextInfraEnsurePyreflyConfigPhase:
             )
             changes.append(f"tool.pyrefly.project-excludes added {', '.join(needed)}")
         return changes
-
 
 EnsurePyreflyConfigPhase = FlextInfraEnsurePyreflyConfigPhase
 

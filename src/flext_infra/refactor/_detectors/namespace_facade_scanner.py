@@ -20,7 +20,6 @@ from flext_infra import (
     c,
 )
 
-
 class FlextInfraNamespaceFacadeScanner:
     """Scanner for namespace facade class patterns in projects.
 
@@ -172,7 +171,6 @@ class FlextInfraNamespaceFacadeScanner:
         parts = [p for p in normalized.split("-") if p]
         return "".join(p.capitalize() for p in parts) if parts else ""
 
-
 NamespaceFacadeScanner = FlextInfraNamespaceFacadeScanner
 
-__all__ = ["FlextInfraNamespaceFacadeScanner", "NamespaceFacadeScanner"]
+__all__ = ["NamespaceFacadeScanner", "FlextInfraNamespaceFacadeScanner"]

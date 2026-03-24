@@ -26,7 +26,6 @@ from flext_infra import (
     u,
 )
 
-
 class FlextInfraMROCompletenessDetector(
     p.Infra.Scanner,
 ):
@@ -417,7 +416,6 @@ class FlextInfraMROCompletenessDetector(
             ),
         )
 
-
 MROCompletenessDetector = FlextInfraMROCompletenessDetector
 
-__all__ = ["FlextInfraMROCompletenessDetector", "MROCompletenessDetector"]
+__all__ = ["MROCompletenessDetector", "FlextInfraMROCompletenessDetector"]

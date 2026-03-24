@@ -10,7 +10,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from flext_core import r, t
+from flext_core import r
+from tests import t
 from flext_tests import tf, tm
 
 from flext_infra import FlextInfraDocFixer, FlextInfraUtilitiesDocs

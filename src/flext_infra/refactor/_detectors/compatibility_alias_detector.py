@@ -25,7 +25,6 @@ from flext_infra import (
 if TYPE_CHECKING:
     from flext_infra import m
 
-
 class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
     """Detector for compatibility alias assignment statements.
 
@@ -149,7 +148,6 @@ class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
                     ),
                 )
         return violations
-
 
 CompatibilityAliasDetector = FlextInfraCompatibilityAliasDetector
 

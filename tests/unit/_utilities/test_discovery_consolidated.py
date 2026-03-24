@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from flext_core import t
+from tests import t
 
 from flext_infra import FlextInfraUtilitiesIteration, c, m, u
 

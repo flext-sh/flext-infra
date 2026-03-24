@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 from _pytest.capture import CaptureFixture
-from flext_core import r, t
+from flext_core import r
+from tests import t
 from flext_tests import tm
 from jinja2 import TemplateError
 

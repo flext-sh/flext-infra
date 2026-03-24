@@ -13,7 +13,7 @@ import io
 from pathlib import Path
 
 import pytest
-from flext_core import t
+from tests import t
 from flext_tests import tm
 
 from flext_infra import FlextInfraBaseMkGenerator

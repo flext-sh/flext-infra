@@ -29,11 +29,13 @@ class FlextInfraTransformerTier0ImportFixer:
 
         package_name: str
         file_path: Path
-        alias_to_module: dict[str, str] = field(default_factory=dict)
-        category_a: set[str] = field(default_factory=set)
-        category_b: set[str] = field(default_factory=set)
-        category_c: set[str] = field(default_factory=set)
-        category_d: set[str] = field(default_factory=set)
+        alias_to_module: dict[str, str] = field(
+            default_factory=lambda: dict[str, str]()
+        )
+        category_a: set[str] = field(default_factory=lambda: set[str]())
+        category_b: set[str] = field(default_factory=lambda: set[str]())
+        category_c: set[str] = field(default_factory=lambda: set[str]())
+        category_d: set[str] = field(default_factory=lambda: set[str]())
 
         @property
         def has_violations(self) -> bool:

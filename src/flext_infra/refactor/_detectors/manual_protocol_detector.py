@@ -25,7 +25,6 @@ from flext_infra import (
 if TYPE_CHECKING:
     from flext_infra import m
 
-
 class FlextInfraManualProtocolDetector(p.Infra.Scanner):
     """Detector for Protocol classes outside canonical locations.
 
@@ -164,7 +163,6 @@ class FlextInfraManualProtocolDetector(p.Infra.Scanner):
         """Extract the base class name from a class base expression."""
         return u.Infra.cst_extract_base_name(base_expr)
 
-
 ManualProtocolDetector = FlextInfraManualProtocolDetector
 
-__all__ = ["FlextInfraManualProtocolDetector", "ManualProtocolDetector"]
+__all__ = ["ManualProtocolDetector", "FlextInfraManualProtocolDetector"]

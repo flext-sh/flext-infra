@@ -11,7 +11,6 @@ from tomlkit.items import Item, Table
 
 from flext_infra import c, m, u
 
-
 class FlextInfraEnsurePydanticMypyConfigPhase:
     """Ensure standard pydantic-mypy configuration for strict model typing."""
 
@@ -36,7 +35,6 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
                 pydantic_mypy[key] = value
                 changes.append(f"tool.pydantic-mypy.{key} set to {value}")
         return changes
-
 
 EnsurePydanticMypyConfigPhase = FlextInfraEnsurePydanticMypyConfigPhase
 

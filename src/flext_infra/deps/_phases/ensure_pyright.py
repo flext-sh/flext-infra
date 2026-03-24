@@ -10,7 +10,6 @@ from tomlkit.items import Item, Table
 
 from flext_infra import c, m, t, u
 
-
 class FlextInfraEnsurePyrightConfigPhase:
     """Ensure standard Pyright configuration for strict type checking."""
 
@@ -182,7 +181,6 @@ class FlextInfraEnsurePyrightConfigPhase:
                 changes.append(f"tool.pyright.{key} set to {value}")
         u.Infra.ensure_pyright_execution_envs(pyright, expected_envs, changes)
         return changes
-
 
 EnsurePyrightConfigPhase = FlextInfraEnsurePyrightConfigPhase
 
