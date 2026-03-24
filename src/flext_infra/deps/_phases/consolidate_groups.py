@@ -105,3 +105,6 @@ class FlextInfraConsolidateGroupsPhase:
             deptry["pep621_dev_dependency_groups"] = u.Infra.array([c.Infra.Toml.DEV])
             changes.append("tool.deptry.pep621_dev_dependency_groups set to ['dev']")
         return changes
+
+
+ConsolidateGroupsPhase = FlextInfraConsolidateGroupsPhase

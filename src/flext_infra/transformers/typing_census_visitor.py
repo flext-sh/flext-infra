@@ -276,3 +276,6 @@ class FlextInfraTypingAnnotationCensusVisitor(cst.CSTVisitor):
 
 
 __all__ = ["FlextInfraTypingAnnotationCensusVisitor"]
+
+
+TypingAnnotationCensusVisitor = FlextInfraTypingAnnotationCensusVisitor

@@ -73,3 +73,6 @@ class FlextInfraEnsureCoverageConfigPhase:
             )
 
         return changes
+
+
+EnsureCoverageConfigPhase = FlextInfraEnsureCoverageConfigPhase

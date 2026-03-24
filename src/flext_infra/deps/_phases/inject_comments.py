@@ -60,3 +60,6 @@ class FlextInfraInjectCommentsPhase:
                     changes.append("auto marker injected for optional-dependencies.dev")
             out.append(line)
         return ("\n".join(out).rstrip() + "\n", changes)
+
+
+InjectCommentsPhase = FlextInfraInjectCommentsPhase

@@ -153,3 +153,6 @@ class FlextInfraFutureAnnotationsDetector(p.Infra.Scanner):
                 file=str(file_path),
             ),
         ]
+
+
+FutureAnnotationsDetector = FlextInfraFutureAnnotationsDetector

@@ -158,3 +158,6 @@ class FlextInfraInternalImportDetector(p.Infra.Scanner):
                 ),
             )
         return violations
+
+
+InternalImportDetector = FlextInfraInternalImportDetector

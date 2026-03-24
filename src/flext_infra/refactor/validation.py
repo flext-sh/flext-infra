@@ -12,4 +12,7 @@ __all__ = [
     "FlextInfraPostCheckGate",
     "FlextInfraRefactorMROMigrationValidator",
     "FlextInfraRefactorRuleDefinitionValidator",
+    "PostCheckGate",
 ]
+
+PostCheckGate = FlextInfraPostCheckGate

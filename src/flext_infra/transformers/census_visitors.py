@@ -145,3 +145,7 @@ class FlextInfraCensusUsageCollector(cst.CSTVisitor):
 
 
 __all__ = ["FlextInfraCensusImportDiscoveryVisitor", "FlextInfraCensusUsageCollector"]
+
+
+CensusImportDiscoveryVisitor = FlextInfraCensusImportDiscoveryVisitor
+CensusUsageCollector = FlextInfraCensusUsageCollector

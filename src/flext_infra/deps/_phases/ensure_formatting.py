@@ -65,3 +65,6 @@ class FlextInfraEnsureFormattingToolingPhase:
                 yamlfix[key] = value
                 changes.append(f"tool.yamlfix.{key} set to {value}")
         return changes
+
+
+EnsureFormattingToolingPhase = FlextInfraEnsureFormattingToolingPhase

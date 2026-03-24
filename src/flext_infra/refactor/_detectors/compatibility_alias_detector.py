@@ -149,3 +149,6 @@ class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
                     ),
                 )
         return violations
+
+
+CompatibilityAliasDetector = FlextInfraCompatibilityAliasDetector

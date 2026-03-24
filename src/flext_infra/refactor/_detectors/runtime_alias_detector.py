@@ -182,3 +182,6 @@ class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
 
         """
         return c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_name, "")
+
+
+RuntimeAliasDetector = FlextInfraRuntimeAliasDetector

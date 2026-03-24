@@ -113,3 +113,6 @@ class FlextInfraWorkspaceDetector(s[FlextInfraWorkspaceMode]):
 
 
 __all__ = ["FlextInfraWorkspaceDetector", "FlextInfraWorkspaceMode"]
+
+
+WorkspaceMode = FlextInfraWorkspaceMode

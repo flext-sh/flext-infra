@@ -197,3 +197,6 @@ class FlextInfraCyclicImportDetector:
         if parts and parts[-1] == "__init__":
             parts = parts[:-1]
         return ".".join(parts) if parts else ""
+
+
+CyclicImportDetector = FlextInfraCyclicImportDetector

@@ -227,3 +227,6 @@ class FlextInfraDependencyAnalyzer:
                 imported_symbols=col.imported_symbols,
             ),
         )
+
+
+DependencyAnalyzer = FlextInfraDependencyAnalyzer

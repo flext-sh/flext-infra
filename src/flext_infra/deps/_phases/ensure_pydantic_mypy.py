@@ -36,3 +36,6 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
                 pydantic_mypy[key] = value
                 changes.append(f"tool.pydantic-mypy.{key} set to {value}")
         return changes
+
+
+EnsurePydanticMypyConfigPhase = FlextInfraEnsurePydanticMypyConfigPhase

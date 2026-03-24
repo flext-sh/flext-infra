@@ -188,3 +188,6 @@ class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
     @classmethod
     def discover_project_package_name(cls, *, project_root: Path) -> str:
         return cls._discover_project_package_name(project_root=project_root)
+
+
+NamespaceSourceDetector = FlextInfraNamespaceSourceDetector

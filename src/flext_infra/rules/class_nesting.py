@@ -547,3 +547,6 @@ class FlextInfraClassNestingRefactorRule:
 
 
 __all__ = ["FlextInfraClassNestingRefactorRule"]
+
+
+ClassNestingRefactorRule = FlextInfraClassNestingRefactorRule

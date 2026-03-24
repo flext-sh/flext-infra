@@ -182,3 +182,6 @@ class FlextInfraEnsurePyrightConfigPhase:
                 changes.append(f"tool.pyright.{key} set to {value}")
         u.Infra.ensure_pyright_execution_envs(pyright, expected_envs, changes)
         return changes
+
+
+EnsurePyrightConfigPhase = FlextInfraEnsurePyrightConfigPhase

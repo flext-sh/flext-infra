@@ -44,3 +44,6 @@ class FlextInfraEnsureNamespaceToolingPhase:
             )
             changes.append("tool.pyright.extraPaths includes src")
         return changes
+
+
+EnsureNamespaceToolingPhase = FlextInfraEnsureNamespaceToolingPhase

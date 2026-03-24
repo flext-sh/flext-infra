@@ -98,3 +98,6 @@ class FlextInfraEnsurePyreflyConfigPhase:
             )
             changes.append(f"tool.pyrefly.project-excludes added {', '.join(needed)}")
         return changes
+
+
+EnsurePyreflyConfigPhase = FlextInfraEnsurePyreflyConfigPhase

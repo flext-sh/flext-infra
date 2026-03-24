@@ -175,3 +175,6 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
                 ),
             )
         return violations
+
+
+ImportAliasDetector = FlextInfraImportAliasDetector

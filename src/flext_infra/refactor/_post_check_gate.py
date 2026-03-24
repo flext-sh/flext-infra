@@ -96,3 +96,6 @@ class FlextInfraPostCheckGate:
 
 
 __all__ = ["FlextInfraPostCheckGate"]
+
+
+PostCheckGate = FlextInfraPostCheckGate

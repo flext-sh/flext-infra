@@ -355,3 +355,6 @@ class FlextInfraUtilitiesImportNormalizer:
 
 
 __all__ = ["FlextInfraNormalizerContext", "FlextInfraUtilitiesImportNormalizer"]
+
+
+NormalizerContext = FlextInfraNormalizerContext

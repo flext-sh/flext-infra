@@ -73,3 +73,6 @@ class FlextInfraEnsureMypyConfigPhase:
                 mypy[key] = value
                 changes.append(f"tool.mypy.{key} set to {value}")
         return changes
+
+
+EnsureMypyConfigPhase = FlextInfraEnsureMypyConfigPhase

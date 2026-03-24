@@ -123,3 +123,6 @@ class FlextInfraEnsureRuffConfigPhase:
             del doc[c.Infra.Toml.LINT_SECTION]
             changes.append("removed stale top-level [lint] section")
         return changes
+
+
+EnsureRuffConfigPhase = FlextInfraEnsureRuffConfigPhase

@@ -416,3 +416,6 @@ class FlextInfraMROCompletenessDetector(
                 detail=detail,
             ),
         )
+
+
+MROCompletenessDetector = FlextInfraMROCompletenessDetector

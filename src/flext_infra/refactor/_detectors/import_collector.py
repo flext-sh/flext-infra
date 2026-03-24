@@ -15,7 +15,7 @@ from typing import override
 import libcst as cst
 
 
-class ImportCollector(cst.CSTVisitor):
+class FlextInfraImportCollector(cst.CSTVisitor):
     """Visit and collect imported modules and symbols from code.
 
     Tracks top-level module roots and imported symbol names by visiting

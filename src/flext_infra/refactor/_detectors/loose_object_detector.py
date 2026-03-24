@@ -340,3 +340,6 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
             FlextInfraLooseObjectDetector._collect_namespace_classes(
                 node=child, classes=classes
             )
+
+
+LooseObjectDetector = FlextInfraLooseObjectDetector

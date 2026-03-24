@@ -31,3 +31,6 @@ class FlextInfraEnsureExtraPathsPhase:
             project_dir=path.parent,
             is_root=is_root,
         )
+
+
+EnsureExtraPathsPhase = FlextInfraEnsureExtraPathsPhase

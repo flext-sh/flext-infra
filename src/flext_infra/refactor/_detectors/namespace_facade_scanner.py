@@ -171,3 +171,6 @@ class FlextInfraNamespaceFacadeScanner:
             return "Flext" + "".join(p.capitalize() for p in parts)
         parts = [p for p in normalized.split("-") if p]
         return "".join(p.capitalize() for p in parts) if parts else ""
+
+
+NamespaceFacadeScanner = FlextInfraNamespaceFacadeScanner
