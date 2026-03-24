@@ -18,35 +18,6 @@ class FlextInfraEnsurePyreflyConfigPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         self._tool_config = tool_config
 
-    def _expected_project_includes(
-        self,
-        *,
-        project_dir: Path,
-        is_root: bool,
-    ) -> t.StrSequence:
-        pyrefly_rules = self._tool_config.tools.pyrefly.path_rules
-        env_dirs = set(pyrefly_rules.env_dirs)
-        includes: MutableSequence[str] = []
-        if is_root:
-            root_dirs = set(u.Infra.discover_python_dirs(project_dir))
-            for directory in sorted(root_dirs & env_dirs):
-                includes.append(f"{directory}/**/*.py*")
-            if pyrefly_rules.workspace_include_children:
-                child_env_dirs = set(pyrefly_rules.workspace_include_child_env_dirs)
-                for child in sorted(project_dir.iterdir()):
-                    if not child.is_dir():
-                        continue
-                    if not (child / c.Infra.Files.PYPROJECT_FILENAME).exists():
-                        continue
-                    child_dirs = set(u.Infra.discover_python_dirs(child))
-                    for directory in sorted(child_dirs & child_env_dirs):
-                        includes.append(f"{child.name}/{directory}/**/*.py*")
-        else:
-            project_dirs = set(u.Infra.discover_python_dirs(project_dir))
-            for directory in sorted(project_dirs & env_dirs):
-                includes.append(f"{directory}/**/*.py*")
-        return sorted(set(includes))
-
     def apply(
         self,
         doc: tomlkit.TOMLDocument,
@@ -98,7 +69,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 project_dir=project_dir,
                 is_root=is_root,
             )
-            expected_includes = self._expected_project_includes(
+            expected_includes = manager.pyrefly_project_includes(
                 project_dir=project_dir,
                 is_root=is_root,
             )

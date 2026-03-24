@@ -315,6 +315,32 @@ class FlextInfraExtraPathsManager:
         paths.add(rules.project_root)
         return sorted(paths)
 
+    def pyrefly_project_includes(
+        self,
+        *,
+        project_dir: Path,
+        is_root: bool,
+    ) -> t.StrSequence:
+        """Build pyrefly project-includes from YAML rules and discovered dirs."""
+        rules = self._pyrefly_path_rules()
+        env_dirs = set(rules.env_dirs)
+        includes: set[str] = set()
+        local_dirs = set(u.Infra.discover_python_dirs(project_dir))
+        for directory in sorted(local_dirs & env_dirs):
+            includes.add(f"{directory}/**/*.py*")
+        if not is_root or (not rules.workspace_include_children):
+            return sorted(includes)
+        child_env_dirs = set(rules.workspace_include_child_env_dirs)
+        for child in sorted(project_dir.iterdir()):
+            if not child.is_dir():
+                continue
+            if not (child / c.Infra.Files.PYPROJECT_FILENAME).exists():
+                continue
+            child_dirs = set(u.Infra.discover_python_dirs(child))
+            for directory in sorted(child_dirs & child_env_dirs):
+                includes.add(f"{child.name}/{directory}/**/*.py*")
+        return sorted(includes)
+
     def sync_one(
         self,
         pyproject_path: Path,

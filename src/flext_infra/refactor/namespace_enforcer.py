@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import difflib
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -47,70 +47,90 @@ class FlextInfraNamespaceEnforcer:
             project_names: If provided, only enforce these projects.
 
         """
+        project_roots = self._resolve_project_roots(project_names=project_names)
+        project_reports: MutableSequence[m.Infra.ProjectEnforcementReport] = []
+        for project_root in project_roots:
+            report = self._enforce_project(
+                project_root=project_root,
+                project_name=project_root.name,
+                apply=apply,
+            )
+            project_reports.append(report)
+        return m.Infra.WorkspaceEnforcementReport.create(
+            workspace=str(self._workspace_root),
+            projects=project_reports,
+            total_facades_missing=sum(
+                sum(1 for s in r.facade_statuses if not s.exists)
+                for r in project_reports
+            ),
+            total_loose_objects=sum(len(r.loose_objects) for r in project_reports),
+            total_import_violations=sum(
+                len(r.import_violations) for r in project_reports
+            ),
+            total_namespace_source_violations=sum(
+                len(r.namespace_source_violations) for r in project_reports
+            ),
+            total_internal_import_violations=sum(
+                len(r.internal_import_violations) for r in project_reports
+            ),
+            total_cyclic_imports=sum(len(r.cyclic_imports) for r in project_reports),
+            total_runtime_alias_violations=sum(
+                len(r.runtime_alias_violations) for r in project_reports
+            ),
+            total_future_violations=sum(
+                len(r.future_violations) for r in project_reports
+            ),
+            total_manual_protocol_violations=sum(
+                len(r.manual_protocol_violations) for r in project_reports
+            ),
+            total_manual_typing_violations=sum(
+                len(r.manual_typing_violations) for r in project_reports
+            ),
+            total_compatibility_alias_violations=sum(
+                len(r.compatibility_alias_violations) for r in project_reports
+            ),
+            total_class_placement_violations=sum(
+                len(r.class_placement_violations) for r in project_reports
+            ),
+            total_mro_completeness_violations=sum(
+                len(r.mro_completeness_violations) for r in project_reports
+            ),
+            total_parse_failures=sum(len(r.parse_failures) for r in project_reports),
+            total_files_scanned=sum(r.files_scanned for r in project_reports),
+        )
+
+    def _resolve_project_roots(
+        self,
+        *,
+        project_names: Sequence[str] | None = None,
+    ) -> Sequence[Path]:
+        """Discover and optionally filter project roots."""
         project_roots = u.Infra.discover_project_roots(
             workspace_root=self._workspace_root,
         )
         if project_names:
             name_set = set(project_names)
             project_roots = [r for r in project_roots if r.name in name_set]
-        project_reports: MutableSequence[m.Infra.ProjectEnforcementReport] = []
-        total_missing = 0
-        total_loose = 0
-        total_import_v = 0
-        total_internal_import_v = 0
-        total_cyclic = 0
-        total_alias_v = 0
-        total_future_v = 0
-        total_manual_protocol_v = 0
-        total_manual_typing_v = 0
-        total_compat_alias_v = 0
-        total_class_placement_v = 0
-        total_mro_completeness_v = 0
-        total_namespace_source_v = 0
-        total_parse_failures = 0
-        total_files = 0
-        for project_root in project_roots:
-            project_name = project_root.name
-            report = self._enforce_project(
-                project_root=project_root,
-                project_name=project_name,
-                apply=apply,
-            )
-            project_reports.append(report)
-            total_missing += sum(1 for s in report.facade_statuses if not s.exists)
-            total_loose += len(report.loose_objects)
-            total_import_v += len(report.import_violations)
-            total_internal_import_v += len(report.internal_import_violations)
-            total_cyclic += len(report.cyclic_imports)
-            total_alias_v += len(report.runtime_alias_violations)
-            total_future_v += len(report.future_violations)
-            total_manual_protocol_v += len(report.manual_protocol_violations)
-            total_manual_typing_v += len(report.manual_typing_violations)
-            total_compat_alias_v += len(report.compatibility_alias_violations)
-            total_class_placement_v += len(report.class_placement_violations)
-            total_mro_completeness_v += len(report.mro_completeness_violations)
-            total_namespace_source_v += len(report.namespace_source_violations)
-            total_parse_failures += len(report.parse_failures)
-            total_files += report.files_scanned
-        return m.Infra.WorkspaceEnforcementReport.create(
-            workspace=str(self._workspace_root),
-            projects=project_reports,
-            total_facades_missing=total_missing,
-            total_loose_objects=total_loose,
-            total_import_violations=total_import_v,
-            total_namespace_source_violations=total_namespace_source_v,
-            total_internal_import_violations=total_internal_import_v,
-            total_cyclic_imports=total_cyclic,
-            total_runtime_alias_violations=total_alias_v,
-            total_future_violations=total_future_v,
-            total_manual_protocol_violations=total_manual_protocol_v,
-            total_manual_typing_violations=total_manual_typing_v,
-            total_compatibility_alias_violations=total_compat_alias_v,
-            total_class_placement_violations=total_class_placement_v,
-            total_mro_completeness_violations=total_mro_completeness_v,
-            total_parse_failures=total_parse_failures,
-            total_files_scanned=total_files,
-        )
+        return project_roots
+
+    @staticmethod
+    def _detect_and_apply[V](
+        *,
+        py_files: Sequence[Path],
+        detect_fn: Callable[[Path], Sequence[V]],
+        rewrite_fn: Callable[[MutableSequence[V]], None] | None,
+        apply: bool,
+    ) -> MutableSequence[V]:
+        """Run detect → optional apply → re-detect cycle for a violation type."""
+        violations: MutableSequence[V] = []
+        for py_file in py_files:
+            violations.extend(detect_fn(py_file))
+        if apply and violations and rewrite_fn is not None:
+            rewrite_fn(violations)
+            violations = []
+            for py_file in py_files:
+                violations.extend(detect_fn(py_file))
+        return violations
 
     def _enforce_project(
         self,
@@ -120,249 +140,130 @@ class FlextInfraNamespaceEnforcer:
         apply: bool,
     ) -> m.Infra.ProjectEnforcementReport:
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] = []
-        facade_statuses = FlextInfraNamespaceFacadeScanner.scan_project(
+        facade_statuses = self._scan_facades(
             project_root=project_root,
             project_name=project_name,
             parse_failures=parse_failures,
+            apply=apply,
+            workspace_root=self._workspace_root,
         )
-        if apply:
-            u.Infra.namespace_ensure_missing_facades(
+        py_files = self._collect_py_files(project_root=project_root)
+        package_name = (
+            FlextInfraNamespaceSourceDetector.discover_project_package_name(
                 project_root=project_root,
-                project_name=project_name,
-                facade_statuses=facade_statuses,
-                workspace_root=self._workspace_root,
             )
-            facade_statuses = FlextInfraNamespaceFacadeScanner.scan_project(
-                project_root=project_root,
+        )
+        loose_objects = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraLooseObjectDetector.detect_file(
+                file_path=f, project_name=project_name, parse_failures=parse_failures,
+            ),
+            rewrite_fn=None,
+            apply=apply,
+        )
+        import_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraImportAliasDetector.detect_file(
+                file_path=f, parse_failures=parse_failures,
+            ),
+            rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_import_violations(
+                py_files=py_files, project_package=package_name,
+            ),
+            apply=apply,
+        )
+        namespace_source_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraNamespaceSourceDetector.detect_file(
+                file_path=f,
                 project_name=project_name,
+                project_root=project_root,
                 parse_failures=parse_failures,
-            )
-        py_files_result = u.Infra.iter_python_files(
-            workspace_root=project_root,
-            project_roots=[project_root],
-            src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
+            ),
+            rewrite_fn=lambda _vs: None,
+            apply=apply,
         )
-        py_files: Sequence[Path] = (
-            [] if py_files_result.is_failure else py_files_result.value
-        )
-        loose_objects: MutableSequence[m.Infra.LooseObjectViolation] = []
-        for py_file in py_files:
-            loose_objects.extend(
-                FlextInfraLooseObjectDetector.detect_file(
-                    file_path=py_file,
-                    project_name=project_name,
-                    parse_failures=parse_failures,
-                ),
-            )
-        import_violations: MutableSequence[m.Infra.ImportAliasViolation] = []
-        for py_file in py_files:
-            import_violations.extend(
-                FlextInfraImportAliasDetector.detect_file(
-                    file_path=py_file,
-                    parse_failures=parse_failures,
-                ),
-            )
-        if apply and import_violations:
-            package_name = (
-                FlextInfraNamespaceSourceDetector.discover_project_package_name(
-                    project_root=project_root,
-                )
-            )
-            u.Infra.namespace_rewrite_import_violations(
-                py_files=py_files,
-                project_package=package_name,
-            )
-            import_violations = []
-            for py_file in py_files:
-                import_violations.extend(
-                    FlextInfraImportAliasDetector.detect_file(
-                        file_path=py_file,
-                        parse_failures=parse_failures,
-                    ),
-                )
-        namespace_source_violations: MutableSequence[
-            m.Infra.NamespaceSourceViolation
-        ] = []
-        for py_file in py_files:
-            namespace_source_violations.extend(
-                FlextInfraNamespaceSourceDetector.detect_file(
-                    file_path=py_file,
-                    project_name=project_name,
-                    project_root=project_root,
-                    parse_failures=parse_failures,
-                ),
-            )
-        if apply and namespace_source_violations:
-            namespace_source_violations = []
-            for py_file in py_files:
-                namespace_source_violations.extend(
-                    FlextInfraNamespaceSourceDetector.detect_file(
-                        file_path=py_file,
-                        project_name=project_name,
-                        project_root=project_root,
-                        parse_failures=parse_failures,
-                    ),
-                )
         cyclic_imports = FlextInfraCyclicImportDetector.scan_project(
             project_root=project_root,
             _parse_failures=parse_failures,
         )
-        internal_import_violations: MutableSequence[
-            m.Infra.InternalImportViolation
-        ] = []
-        for py_file in py_files:
-            internal_import_violations.extend(
-                FlextInfraInternalImportDetector.detect_file(
-                    file_path=py_file,
-                    parse_failures=parse_failures,
-                ),
-            )
-        runtime_alias_violations: MutableSequence[m.Infra.RuntimeAliasViolation] = []
-        for py_file in py_files:
-            runtime_alias_violations.extend(
-                FlextInfraRuntimeAliasDetector.detect_file(
-                    file_path=py_file,
-                    project_name=project_name,
-                    parse_failures=parse_failures,
-                ),
-            )
-        if apply and runtime_alias_violations:
-            u.Infra.namespace_rewrite_runtime_alias_violations(
+        internal_import_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraInternalImportDetector.detect_file(
+                file_path=f, parse_failures=parse_failures,
+            ),
+            rewrite_fn=None,
+            apply=apply,
+        )
+        runtime_alias_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraRuntimeAliasDetector.detect_file(
+                file_path=f, project_name=project_name, parse_failures=parse_failures,
+            ),
+            rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_runtime_alias_violations(
                 py_files=py_files,
-            )
-            runtime_alias_violations = []
-            for py_file in py_files:
-                runtime_alias_violations.extend(
-                    FlextInfraRuntimeAliasDetector.detect_file(
-                        file_path=py_file,
-                        project_name=project_name,
-                        parse_failures=parse_failures,
-                    ),
-                )
-        future_violations: MutableSequence[m.Infra.FutureAnnotationsViolation] = []
-        for py_file in py_files:
-            future_violations.extend(
-                FlextInfraFutureAnnotationsDetector.detect_file(
-                    file_path=py_file,
-                    parse_failures=parse_failures,
-                ),
-            )
-        if apply and future_violations:
-            u.Infra.namespace_rewrite_missing_future_annotations(
+            ),
+            apply=apply,
+        )
+        future_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraFutureAnnotationsDetector.detect_file(
+                file_path=f, parse_failures=parse_failures,
+            ),
+            rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_missing_future_annotations(
                 py_files=py_files,
-            )
-            future_violations = []
-            for py_file in py_files:
-                future_violations.extend(
-                    FlextInfraFutureAnnotationsDetector.detect_file(
-                        file_path=py_file,
-                        parse_failures=parse_failures,
-                    ),
-                )
-        manual_protocol_violations: MutableSequence[
-            m.Infra.ManualProtocolViolation
-        ] = []
-        for py_file in py_files:
-            manual_protocol_violations.extend(
-                FlextInfraManualProtocolDetector.detect_file(
-                    file_path=py_file,
-                    parse_failures=parse_failures,
-                ),
-            )
-        if apply and manual_protocol_violations:
-            u.Infra.namespace_rewrite_manual_protocol_violations(
+            ),
+            apply=apply,
+        )
+        manual_protocol_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraManualProtocolDetector.detect_file(
+                file_path=f, parse_failures=parse_failures,
+            ),
+            rewrite_fn=lambda vs: u.Infra.namespace_rewrite_manual_protocol_violations(
+                project_root=project_root, py_files=py_files, violations=vs,
+            ),
+            apply=apply,
+        )
+        manual_typing_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraManualTypingAliasDetector.detect_file(
+                file_path=f, parse_failures=parse_failures,
+            ),
+            rewrite_fn=lambda vs: u.Infra.namespace_rewrite_manual_typing_alias_violations(
                 project_root=project_root,
-                py_files=py_files,
-                violations=manual_protocol_violations,
-            )
-            manual_protocol_violations = []
-            for py_file in py_files:
-                manual_protocol_violations.extend(
-                    FlextInfraManualProtocolDetector.detect_file(
-                        file_path=py_file,
-                        parse_failures=parse_failures,
-                    ),
-                )
-        manual_typing_violations: MutableSequence[
-            m.Infra.ManualTypingAliasViolation
-        ] = []
-        for py_file in py_files:
-            manual_typing_violations.extend(
-                FlextInfraManualTypingAliasDetector.detect_file(
-                    file_path=py_file,
-                    parse_failures=parse_failures,
-                ),
-            )
-        if apply and manual_typing_violations:
-            u.Infra.namespace_rewrite_manual_typing_alias_violations(
-                project_root=project_root,
-                violations=manual_typing_violations,
+                violations=vs,
                 parse_failures=parse_failures,
-            )
-            manual_typing_violations = []
-            for py_file in py_files:
-                manual_typing_violations.extend(
-                    FlextInfraManualTypingAliasDetector.detect_file(
-                        file_path=py_file,
-                        parse_failures=parse_failures,
-                    ),
-                )
-        compatibility_alias_violations: MutableSequence[
-            m.Infra.CompatibilityAliasViolation
-        ] = []
-        for py_file in py_files:
-            compatibility_alias_violations.extend(
-                FlextInfraCompatibilityAliasDetector.detect_file(
-                    file_path=py_file,
-                    parse_failures=parse_failures,
-                ),
-            )
-        if apply and compatibility_alias_violations:
-            u.Infra.namespace_rewrite_compatibility_alias_violations(
-                violations=compatibility_alias_violations,
-                parse_failures=parse_failures,
-            )
-            compatibility_alias_violations = []
-            for py_file in py_files:
-                compatibility_alias_violations.extend(
-                    FlextInfraCompatibilityAliasDetector.detect_file(
-                        file_path=py_file,
-                        parse_failures=parse_failures,
-                    ),
-                )
-        class_placement_violations: MutableSequence[
-            m.Infra.ClassPlacementViolation
-        ] = []
-        for py_file in py_files:
-            class_placement_violations.extend(
-                FlextInfraClassPlacementDetector.detect_file(
-                    file_path=py_file,
-                    parse_failures=parse_failures,
-                ),
-            )
-        mro_completeness_violations: MutableSequence[
-            m.Infra.MROCompletenessViolation
-        ] = []
-        for py_file in py_files:
-            mro_completeness_violations.extend(
-                FlextInfraMROCompletenessDetector.detect_file(
-                    file_path=py_file,
-                    parse_failures=parse_failures,
-                ),
-            )
-        if apply and mro_completeness_violations:
-            u.Infra.namespace_rewrite_mro_completeness_violations(
-                violations=mro_completeness_violations,
-                parse_failures=parse_failures,
-            )
-            mro_completeness_violations = []
-            for py_file in py_files:
-                mro_completeness_violations.extend(
-                    FlextInfraMROCompletenessDetector.detect_file(
-                        file_path=py_file,
-                        parse_failures=parse_failures,
-                    ),
-                )
+            ),
+            apply=apply,
+        )
+        compatibility_alias_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraCompatibilityAliasDetector.detect_file(
+                file_path=f, parse_failures=parse_failures,
+            ),
+            rewrite_fn=lambda vs: u.Infra.namespace_rewrite_compatibility_alias_violations(
+                violations=vs, parse_failures=parse_failures,
+            ),
+            apply=apply,
+        )
+        class_placement_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraClassPlacementDetector.detect_file(
+                file_path=f, parse_failures=parse_failures,
+            ),
+            rewrite_fn=None,
+            apply=apply,
+        )
+        mro_completeness_violations = self._detect_and_apply(
+            py_files=py_files,
+            detect_fn=lambda f: FlextInfraMROCompletenessDetector.detect_file(
+                file_path=f, parse_failures=parse_failures,
+            ),
+            rewrite_fn=lambda vs: u.Infra.namespace_rewrite_mro_completeness_violations(
+                violations=vs, parse_failures=parse_failures,
+            ),
+            apply=apply,
+        )
         return m.Infra.ProjectEnforcementReport.create(
             project=project_name,
             project_root=str(project_root),
@@ -383,6 +284,47 @@ class FlextInfraNamespaceEnforcer:
             files_scanned=len(py_files),
         )
 
+    @staticmethod
+    def _scan_facades(
+        *,
+        project_root: Path,
+        project_name: str,
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
+        apply: bool,
+        workspace_root: Path,
+    ) -> Sequence[m.Infra.FacadeStatus]:
+        """Scan facades and optionally create missing ones."""
+        facade_statuses = FlextInfraNamespaceFacadeScanner.scan_project(
+            project_root=project_root,
+            project_name=project_name,
+            parse_failures=parse_failures,
+        )
+        if not apply:
+            return facade_statuses
+        u.Infra.namespace_ensure_missing_facades(
+            project_root=project_root,
+            project_name=project_name,
+            facade_statuses=facade_statuses,
+            workspace_root=workspace_root,
+        )
+        return FlextInfraNamespaceFacadeScanner.scan_project(
+            project_root=project_root,
+            project_name=project_name,
+            parse_failures=parse_failures,
+        )
+
+    @staticmethod
+    def _collect_py_files(*, project_root: Path) -> Sequence[Path]:
+        """Collect Python files for scanning."""
+        py_files_result = u.Infra.iter_python_files(
+            workspace_root=project_root,
+            project_roots=[project_root],
+            src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
+        )
+        if py_files_result.is_failure:
+            return []
+        return py_files_result.value
+
     def diff(
         self,
         *,
@@ -394,32 +336,17 @@ class FlextInfraNamespaceEnforcer:
             Unified diff string showing all changes that --apply would make.
 
         """
-        project_roots = u.Infra.discover_project_roots(
-            workspace_root=self._workspace_root,
-        )
-        if project_names:
-            name_set = set(project_names)
-            project_roots = [r for r in project_roots if r.name in name_set]
-        # Collect all Python files across selected projects
+        project_roots = self._resolve_project_roots(project_names=project_names)
         all_py_files: MutableSequence[Path] = []
         for project_root in project_roots:
-            py_files_result = u.Infra.iter_python_files(
-                workspace_root=project_root,
-                project_roots=[project_root],
-                src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
-            )
-            if not py_files_result.is_failure:
-                all_py_files.extend(py_files_result.value)
-        # Snapshot before
+            all_py_files.extend(self._collect_py_files(project_root=project_root))
         snapshots: dict[Path, str] = {}
         for py_file in all_py_files:
             if py_file.is_file():
                 snapshots[py_file] = py_file.read_text(
                     encoding=c.Infra.Encoding.DEFAULT,
                 )
-        # Run apply
         self.enforce(apply=True, project_names=project_names)
-        # Collect diffs and restore
         diff_lines: MutableSequence[str] = []
         for py_file, original in snapshots.items():
             if not py_file.is_file():
@@ -435,18 +362,9 @@ class FlextInfraNamespaceEnforcer:
                         tofile=f"b/{rel}",
                     ),
                 )
-            # Restore original
             _ = py_file.write_text(original, encoding=c.Infra.Encoding.DEFAULT)
-        # Check for new files created by apply (facades that didn't exist before)
         for project_root in project_roots:
-            py_files_result = u.Infra.iter_python_files(
-                workspace_root=project_root,
-                project_roots=[project_root],
-                src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
-            )
-            if py_files_result.is_failure:
-                continue
-            for py_file in py_files_result.value:
+            for py_file in self._collect_py_files(project_root=project_root):
                 if py_file not in snapshots and py_file.is_file():
                     rel = py_file.relative_to(self._workspace_root)
                     content = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -458,7 +376,6 @@ class FlextInfraNamespaceEnforcer:
                             tofile=f"b/{rel}",
                         ),
                     )
-                    # Remove the newly created file to restore state
                     py_file.unlink()
         return "".join(diff_lines)
 
