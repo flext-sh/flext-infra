@@ -177,6 +177,4 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
         return violations
 
 
-ImportAliasDetector = FlextInfraImportAliasDetector
-
-__all__ = ["FlextInfraImportAliasDetector", "ImportAliasDetector"]
+__all__ = ["FlextInfraImportAliasDetector"]

@@ -33,6 +33,4 @@ class FlextInfraEnsureExtraPathsPhase:
         )
 
 
-EnsureExtraPathsPhase = FlextInfraEnsureExtraPathsPhase
-
-__all__ = ["EnsureExtraPathsPhase", "FlextInfraEnsureExtraPathsPhase"]
+__all__ = ["FlextInfraEnsureExtraPathsPhase"]

@@ -107,6 +107,4 @@ class FlextInfraConsolidateGroupsPhase:
         return changes
 
 
-ConsolidateGroupsPhase = FlextInfraConsolidateGroupsPhase
-
-__all__ = ["ConsolidateGroupsPhase", "FlextInfraConsolidateGroupsPhase"]
+__all__ = ["FlextInfraConsolidateGroupsPhase"]

@@ -100,6 +100,4 @@ class FlextInfraEnsurePyreflyConfigPhase:
         return changes
 
 
-EnsurePyreflyConfigPhase = FlextInfraEnsurePyreflyConfigPhase
-
-__all__ = ["EnsurePyreflyConfigPhase", "FlextInfraEnsurePyreflyConfigPhase"]
+__all__ = ["FlextInfraEnsurePyreflyConfigPhase"]

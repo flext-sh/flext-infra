@@ -602,7 +602,4 @@ class FlextInfraUtilitiesOutput:
 # Initialize default state
 FlextInfraUtilitiesOutput.setup()
 output: Final[type[FlextInfraUtilitiesOutput]] = FlextInfraUtilitiesOutput
-# Module-level re-export for lazy loader compatibility
-OutputBackend = FlextInfraUtilitiesOutput.OutputBackend
-
-__all__ = ["FlextInfraUtilitiesOutput", "OutputBackend", "output"]
+__all__ = ["FlextInfraUtilitiesOutput", "output"]

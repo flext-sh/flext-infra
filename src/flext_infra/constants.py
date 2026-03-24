@@ -58,10 +58,6 @@ class FlextInfraConstants(FlextConstants):
     ):
         """Merged infra-domain constants from all sub-packages."""
 
-        Check = FlextInfraCheckConstants
-        "Sub-namespace alias for check-domain constants."
-        Github = FlextInfraGithubConstants
-        "Sub-namespace alias for github-domain constants."
         KNOWN_VERBS: Final[frozenset[str]] = frozenset({
             "build",
             "check",

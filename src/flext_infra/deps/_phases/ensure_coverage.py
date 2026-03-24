@@ -75,6 +75,4 @@ class FlextInfraEnsureCoverageConfigPhase:
         return changes
 
 
-EnsureCoverageConfigPhase = FlextInfraEnsureCoverageConfigPhase
-
-__all__ = ["EnsureCoverageConfigPhase", "FlextInfraEnsureCoverageConfigPhase"]
+__all__ = ["FlextInfraEnsureCoverageConfigPhase"]

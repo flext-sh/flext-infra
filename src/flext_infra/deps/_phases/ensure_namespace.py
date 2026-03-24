@@ -46,6 +46,4 @@ class FlextInfraEnsureNamespaceToolingPhase:
         return changes
 
 
-EnsureNamespaceToolingPhase = FlextInfraEnsureNamespaceToolingPhase
-
-__all__ = ["EnsureNamespaceToolingPhase", "FlextInfraEnsureNamespaceToolingPhase"]
+__all__ = ["FlextInfraEnsureNamespaceToolingPhase"]

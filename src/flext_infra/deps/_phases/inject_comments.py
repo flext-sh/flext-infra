@@ -62,6 +62,4 @@ class FlextInfraInjectCommentsPhase:
         return ("\n".join(out).rstrip() + "\n", changes)
 
 
-InjectCommentsPhase = FlextInfraInjectCommentsPhase
-
-__all__ = ["FlextInfraInjectCommentsPhase", "InjectCommentsPhase"]
+__all__ = ["FlextInfraInjectCommentsPhase"]

@@ -165,6 +165,4 @@ class FlextInfraManualProtocolDetector(p.Infra.Scanner):
         return u.Infra.cst_extract_base_name(base_expr)
 
 
-ManualProtocolDetector = FlextInfraManualProtocolDetector
-
-__all__ = ["FlextInfraManualProtocolDetector", "ManualProtocolDetector"]
+__all__ = ["FlextInfraManualProtocolDetector"]

@@ -75,6 +75,4 @@ class FlextInfraEnsureMypyConfigPhase:
         return changes
 
 
-EnsureMypyConfigPhase = FlextInfraEnsureMypyConfigPhase
-
-__all__ = ["EnsureMypyConfigPhase", "FlextInfraEnsureMypyConfigPhase"]
+__all__ = ["FlextInfraEnsureMypyConfigPhase"]

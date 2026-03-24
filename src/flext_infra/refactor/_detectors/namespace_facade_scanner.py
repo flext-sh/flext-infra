@@ -173,6 +173,4 @@ class FlextInfraNamespaceFacadeScanner:
         return "".join(p.capitalize() for p in parts) if parts else ""
 
 
-NamespaceFacadeScanner = FlextInfraNamespaceFacadeScanner
-
-__all__ = ["FlextInfraNamespaceFacadeScanner", "NamespaceFacadeScanner"]
+__all__ = ["FlextInfraNamespaceFacadeScanner"]

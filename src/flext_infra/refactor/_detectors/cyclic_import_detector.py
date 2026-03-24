@@ -199,6 +199,4 @@ class FlextInfraCyclicImportDetector:
         return ".".join(parts) if parts else ""
 
 
-CyclicImportDetector = FlextInfraCyclicImportDetector
-
-__all__ = ["CyclicImportDetector", "FlextInfraCyclicImportDetector"]
+__all__ = ["FlextInfraCyclicImportDetector"]

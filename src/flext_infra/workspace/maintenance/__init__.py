@@ -25,7 +25,10 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraPythonVersionEnforcer": ("flext_infra.workspace.maintenance.python_version", "FlextInfraPythonVersionEnforcer"),
+    "FlextInfraPythonVersionEnforcer": (
+        "flext_infra.workspace.maintenance.python_version",
+        "FlextInfraPythonVersionEnforcer",
+    ),
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
 }
 

@@ -7,13 +7,9 @@ from flext_infra import (
     FlextInfraRefactorMROMigrationValidator,
     FlextInfraRefactorRuleDefinitionValidator,
 )
-from flext_infra.refactor._post_check_gate import (
-    FlextInfraPostCheckGate as PostCheckGate,
-)
 
 __all__ = [
     "FlextInfraPostCheckGate",
     "FlextInfraRefactorMROMigrationValidator",
     "FlextInfraRefactorRuleDefinitionValidator",
-    "PostCheckGate",
 ]

@@ -160,6 +160,4 @@ class FlextInfraInternalImportDetector(p.Infra.Scanner):
         return violations
 
 
-InternalImportDetector = FlextInfraInternalImportDetector
-
-__all__ = ["FlextInfraInternalImportDetector", "InternalImportDetector"]
+__all__ = ["FlextInfraInternalImportDetector"]

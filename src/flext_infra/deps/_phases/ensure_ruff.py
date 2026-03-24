@@ -125,6 +125,4 @@ class FlextInfraEnsureRuffConfigPhase:
         return changes
 
 
-EnsureRuffConfigPhase = FlextInfraEnsureRuffConfigPhase
-
-__all__ = ["EnsureRuffConfigPhase", "FlextInfraEnsureRuffConfigPhase"]
+__all__ = ["FlextInfraEnsureRuffConfigPhase"]

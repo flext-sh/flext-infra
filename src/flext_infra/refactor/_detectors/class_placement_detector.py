@@ -186,6 +186,4 @@ class FlextInfraClassPlacementDetector(p.Infra.Scanner):
         return u.Infra.cst_extract_base_name(base_expr)
 
 
-ClassPlacementDetector = FlextInfraClassPlacementDetector
-
-__all__ = ["ClassPlacementDetector", "FlextInfraClassPlacementDetector"]
+__all__ = ["FlextInfraClassPlacementDetector"]

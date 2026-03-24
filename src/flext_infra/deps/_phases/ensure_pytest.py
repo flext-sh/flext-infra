@@ -73,6 +73,4 @@ class FlextInfraEnsurePytestConfigPhase:
         return changes
 
 
-EnsurePytestConfigPhase = FlextInfraEnsurePytestConfigPhase
-
-__all__ = ["EnsurePytestConfigPhase", "FlextInfraEnsurePytestConfigPhase"]
+__all__ = ["FlextInfraEnsurePytestConfigPhase"]

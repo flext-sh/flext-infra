@@ -184,6 +184,4 @@ class FlextInfraEnsurePyrightConfigPhase:
         return changes
 
 
-EnsurePyrightConfigPhase = FlextInfraEnsurePyrightConfigPhase
-
-__all__ = ["EnsurePyrightConfigPhase", "FlextInfraEnsurePyrightConfigPhase"]
+__all__ = ["FlextInfraEnsurePyrightConfigPhase"]

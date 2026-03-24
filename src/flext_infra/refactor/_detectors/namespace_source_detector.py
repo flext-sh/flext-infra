@@ -190,6 +190,4 @@ class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
         return cls._discover_project_package_name(project_root=project_root)
 
 
-NamespaceSourceDetector = FlextInfraNamespaceSourceDetector
-
-__all__ = ["FlextInfraNamespaceSourceDetector", "NamespaceSourceDetector"]
+__all__ = ["FlextInfraNamespaceSourceDetector"]
