@@ -11,6 +11,7 @@ from flext_infra import (
     FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraUtilitiesParsing,
     m,
+    t,
 )
 
 
@@ -238,7 +239,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         file_path: Path,
         parent_class: str,
         definitions: Sequence[m.Infra.ConstantDefinition],
-    ) -> tuple[bool, Sequence[str]]:
+    ) -> tuple[bool, t.StrSequence]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
         tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if tree is None:
@@ -256,7 +257,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
     def remove_unused_constants(
         file_path: Path,
         unused: Sequence[m.Infra.UnusedConstant],
-    ) -> tuple[bool, Sequence[str]]:
+    ) -> tuple[bool, t.StrSequence]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
         tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if tree is None:
@@ -274,7 +275,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         file_path: Path,
         project_import: str,
         pkg_dir: Path | None = None,
-    ) -> tuple[bool, Sequence[str]]:
+    ) -> tuple[bool, t.StrSequence]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
         parts = project_import.replace("from ", "").split(" import ")
         package_name = parts[0].strip() if parts else ""
@@ -329,8 +330,8 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         return index
 
     @staticmethod
-    def break_import_cycles(pkg_dir: Path) -> tuple[bool, Sequence[str]]:
-        def parse_lazy_imports(init_file: Path) -> Mapping[str, str]:
+    def break_import_cycles(pkg_dir: Path) -> tuple[bool, t.StrSequence]:
+        def parse_lazy_imports(init_file: Path) -> t.StrMapping:
             if not init_file.is_file():
                 return {}
             source = init_file.read_text("utf-8")
@@ -345,7 +346,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
 
         def build_self_import_graph(
             package_name: str,
-            lazy_map: Mapping[str, str],
+            lazy_map: t.StrMapping,
         ) -> Mapping[str, set[str]]:
             graph: MutableMapping[str, set[str]] = {}
             for py_file in pkg_dir.glob("*.py"):
@@ -380,8 +381,8 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
                     graph[stem] = deps
             return graph
 
-        def find_cycles(graph: Mapping[str, set[str]]) -> Sequence[Sequence[str]]:
-            cycles: MutableSequence[Sequence[str]] = []
+        def find_cycles(graph: Mapping[str, set[str]]) -> Sequence[t.StrSequence]:
+            cycles: MutableSequence[t.StrSequence] = []
             visited: set[str] = set()
             path: MutableSequence[str] = []
             path_set: set[str] = set()

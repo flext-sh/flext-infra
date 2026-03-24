@@ -30,8 +30,8 @@ class _StubRunner:
 
     def run_raw(
         self,
-        *args: t.Infra.TomlValue,
-        **kwargs: t.Infra.TomlValue,
+        *args: t.Infra.InfraValue,
+        **kwargs: t.Infra.InfraValue,
     ) -> _FakeResult:
         _ = args
         _ = kwargs
@@ -43,7 +43,7 @@ class _StubSelector:
         self._result = result
 
     def resolve_projects(
-        self, workspace_root: Path, names: Sequence[str]
+        self, workspace_root: Path, names: t.StrSequence
     ) -> _FakeResult:
         _ = workspace_root
         _ = names

@@ -2,23 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_core import r
 
-from flext_infra import FlextInfraUtilitiesSubprocess, c
+from flext_infra import FlextInfraUtilitiesSubprocess, c, t
 
 
 class FlextInfraUtilitiesGit:
     """Static Git operations utilities."""
 
     @staticmethod
-    def git_run(cmd: Sequence[str], cwd: Path | None = None) -> r[str]:
+    def git_run(cmd: t.StrSequence, cwd: Path | None = None) -> r[str]:
         return FlextInfraUtilitiesSubprocess.capture([c.Infra.Cli.GIT, *cmd], cwd=cwd)
 
     @staticmethod
-    def git_run_checked(cmd: Sequence[str], cwd: Path | None = None) -> r[bool]:
+    def git_run_checked(cmd: t.StrSequence, cwd: Path | None = None) -> r[bool]:
         return FlextInfraUtilitiesSubprocess.run_checked(
             [c.Infra.Cli.GIT, *cmd], cwd=cwd
         )

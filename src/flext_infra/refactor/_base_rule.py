@@ -8,13 +8,13 @@ This module has no dependencies on any rules/ submodule.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from pathlib import Path
 
 import libcst as cst
 from pydantic import JsonValue
 
-from flext_infra import c
+from flext_infra import c, t
 
 
 class FlextInfraRefactorRule:
@@ -38,7 +38,7 @@ class FlextInfraRefactorRule:
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, Sequence[str]]:
+    ) -> tuple[cst.Module, t.StrSequence]:
         """Apply the rule to a CST module and return transformed tree plus changes."""
         return (tree, [])
 

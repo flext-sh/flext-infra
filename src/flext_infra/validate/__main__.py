@@ -45,7 +45,7 @@ class FlextInfraValidateCommand:
     def list_str(
         payload: m.Infra.InventoryReport | m.Infra.PytestDiagnostics,
         key: str,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Extract string list from payload attribute."""
         return [item for item in getattr(payload, key, []) if isinstance(item, str)]
 
@@ -138,8 +138,8 @@ class FlextInfraValidateCommand:
     def run_scan(
         cli: u.Infra.CliArgs,
         pattern: str,
-        include: Sequence[str],
-        exclude: Sequence[str],
+        include: t.StrSequence,
+        exclude: t.StrSequence,
         match: str,
     ) -> int:
         """Scan text files for patterns."""
@@ -173,7 +173,7 @@ class FlextInfraValidateCommand:
         return 1
 
     @staticmethod
-    def run_stub_validate(cli: u.Infra.CliArgs, project: Sequence[str] | None) -> int:
+    def run_stub_validate(cli: u.Infra.CliArgs, project: t.StrSequence | None) -> int:
         """Validate stub supply chain."""
         chain = FlextInfraStubSupplyChain()
         project_dirs: Sequence[Path] | None = (
@@ -192,7 +192,7 @@ class FlextInfraValidateCommand:
         return 1
 
     @staticmethod
-    def run(argv: Sequence[str] | None = None) -> int:
+    def run(argv: t.StrSequence | None = None) -> int:
         """Run validation command dispatcher."""
         parser, subs = u.Infra.create_subcommand_parser(
             prog="flext_infra validate",
@@ -344,8 +344,8 @@ def _run_pytest_diag(
 def _run_scan(
     cli: u.Infra.CliArgs,
     pattern: str,
-    include: Sequence[str],
-    exclude: Sequence[str],
+    include: t.StrSequence,
+    exclude: t.StrSequence,
     match: str,
 ) -> int:
     return FlextInfraValidateCommand.run_scan(
@@ -361,11 +361,11 @@ def _run_skill_validate(cli: u.Infra.CliArgs, skill: str, mode: str) -> int:
     return FlextInfraValidateCommand.run_skill_validate(cli, skill, mode)
 
 
-def _run_stub_validate(cli: u.Infra.CliArgs, project: Sequence[str] | None) -> int:
+def _run_stub_validate(cli: u.Infra.CliArgs, project: t.StrSequence | None) -> int:
     return FlextInfraValidateCommand.run_stub_validate(cli, project)
 
 
-def _main_inner(argv: Sequence[str] | None = None) -> int:
+def _main_inner(argv: t.StrSequence | None = None) -> int:
     return FlextInfraValidateCommand.run(argv)
 
 

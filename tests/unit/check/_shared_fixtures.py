@@ -109,17 +109,17 @@ def patch_gate_run(
     def _stub_run(
         result: m.Infra.CommandOutput | SimpleNamespace,
     ) -> Callable[
-        [t.NormalizedValue, Sequence[str], Path, int, Mapping[str, str] | None],
+        [t.NormalizedValue, t.StrSequence, Path, int, t.StrMapping | None],
         m.Infra.CommandOutput,
     ]:
         """Create stub returning fixed result or SimpleNamespace."""
 
         def _run(
             _self: t.NormalizedValue,
-            _cmd: Sequence[str],
+            _cmd: t.StrSequence,
             _cwd: Path,
             _timeout: int = 120,
-            _env: Mapping[str, str] | None = None,
+            _env: t.StrMapping | None = None,
         ) -> m.Infra.CommandOutput:
             del _self, _cmd, _cwd, _timeout, _env
             return _as_command_output(result)
@@ -135,7 +135,7 @@ def patch_gate_run(
 
 def create_fake_run_raw(
     result: r[m.Infra.CommandOutput] | str,
-) -> Callable[[Sequence[str]], r[m.Infra.CommandOutput]]:
+) -> Callable[[t.StrSequence], r[m.Infra.CommandOutput]]:
     """Factory for _fake_run_raw that handles both success and failure.
 
     Single Responsibility: Encapsulate subprocess.run_raw mock creation.
@@ -147,7 +147,7 @@ def create_fake_run_raw(
     """
 
     def _fake_run_raw(
-        _cmd: Sequence[str],
+        _cmd: t.StrSequence,
         **_kw: t.Scalar,
     ) -> r[m.Infra.CommandOutput]:
         if isinstance(result, str):
@@ -170,13 +170,13 @@ class RunProjectsMock:
     ) -> None:
         self.passed = True if passed is None else passed
         self.error_msg = error_msg
-        self.captured_projects: Sequence[str] = []
+        self.captured_projects: t.StrSequence = []
         self.captured_fail_fast: bool = False
 
     def __call__(
         self,
-        projects: Sequence[str],
-        gates: Sequence[str],
+        projects: t.StrSequence,
+        gates: t.StrSequence,
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
@@ -228,7 +228,7 @@ def create_fake_run_projects(
 
 def create_check_project_stub(
     project: m.Infra.ProjectResult,
-) -> Callable[[Path, Sequence[str], Path], m.Infra.ProjectResult]:
+) -> Callable[[Path, t.StrSequence, Path], m.Infra.ProjectResult]:
     """Factory for _check_project stub that returns fixed project result.
 
     Single Responsibility: Create consistent project checking mocks.
@@ -237,7 +237,7 @@ def create_check_project_stub(
 
     def _fake_check(
         _project_dir: Path,
-        _gates: Sequence[str],
+        _gates: t.StrSequence,
         _reports_dir: Path,
     ) -> m.Infra.ProjectResult:
         del _project_dir, _gates, _reports_dir
@@ -248,7 +248,7 @@ def create_check_project_stub(
 
 def create_check_project_iter_stub(
     projects: Sequence[m.Infra.ProjectResult],
-) -> Callable[[Path, Sequence[str], Path], m.Infra.ProjectResult]:
+) -> Callable[[Path, t.StrSequence, Path], m.Infra.ProjectResult]:
     """Factory for _check_project stub that iterates through project results.
 
     Single Responsibility: Create consistent project checking mocks with state.
@@ -258,7 +258,7 @@ def create_check_project_iter_stub(
 
     def _fake_check(
         _project_dir: Path,
-        _gates: Sequence[str],
+        _gates: t.StrSequence,
         _reports_dir: Path,
     ) -> m.Infra.ProjectResult:
         del _project_dir, _gates, _reports_dir
@@ -278,15 +278,15 @@ def patch_python_dir_detection(
     Single Responsibility: Mock python directory discovery for gate tests.
     """
 
-    def _existing_dirs(_self: t.NormalizedValue, _project_dir: Path) -> Sequence[str]:
+    def _existing_dirs(_self: t.NormalizedValue, _project_dir: Path) -> t.StrSequence:
         del _self, _project_dir
         return ["src"]
 
-    def _no_python_dirs(_project_dir: Path, _dirs: Sequence[str]) -> Sequence[str]:
+    def _no_python_dirs(_project_dir: Path, _dirs: t.StrSequence) -> t.StrSequence:
         del _project_dir, _dirs
         return []
 
-    def _src_python_dirs(_project_dir: Path, _dirs: Sequence[str]) -> Sequence[str]:
+    def _src_python_dirs(_project_dir: Path, _dirs: t.StrSequence) -> t.StrSequence:
         del _project_dir, _dirs
         return ["src"]
 

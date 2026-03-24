@@ -7,16 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, MutableMapping, Sequence
 from pathlib import Path
 
 import pytest
-from flext_core import r, t
+from flext_core import r
 from flext_tests import tm
 
 from flext_infra import (
     FlextInfraDocAuditor,
     FlextInfraDocFixer,
+    t,
     u,
 )
 from flext_infra.docs.__main__ import _run_audit, _run_fix
@@ -153,7 +154,7 @@ class TestRunAudit:
     def test_run_audit_forwards_arguments(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        kwargs: Mapping[str, t.Scalar],
+        kwargs: t.ScalarMapping,
         field: str,
         expected: t.Scalar,
     ) -> None:

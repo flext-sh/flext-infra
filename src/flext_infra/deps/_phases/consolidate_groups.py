@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 
 import tomlkit
+from flext_core import FlextTypes as t
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
@@ -15,8 +16,8 @@ class ConsolidateGroupsPhase:
     """Consolidate optional-dependencies and Poetry groups into single dev group."""
 
     def apply(
-        self, doc: tomlkit.TOMLDocument, canonical_dev: Sequence[str]
-    ) -> Sequence[str]:
+        self, doc: tomlkit.TOMLDocument, canonical_dev: t.StrSequence
+    ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         project: Item | Container | None = None
         if c.Infra.Toml.PROJECT in doc:

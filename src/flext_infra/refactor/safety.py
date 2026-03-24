@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import overload
 
-from flext_infra import c, m, p, r, u
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraRefactorSafetyManager:
@@ -16,7 +16,7 @@ class FlextInfraRefactorSafetyManager:
         self,
         runner: p.Infra.SafetyRunner | None = None,
         checkpoint_path: Path | None = None,
-        test_command: Sequence[str] | None = None,
+        test_command: t.StrSequence | None = None,
     ) -> None:
         """Initialize safety manager with runner, checkpoint path, and test command."""
         self._runner: p.Infra.SafetyRunner | None = runner
@@ -32,7 +32,7 @@ class FlextInfraRefactorSafetyManager:
         self._emergency_stop_reason = ""
         self._last_workspace_root: Path | None = None
 
-    def _run_checked(self, cmd: Sequence[str], cwd: Path) -> r[bool]:
+    def _run_checked(self, cmd: t.StrSequence, cwd: Path) -> r[bool]:
         if self._runner is not None:
             return self._runner.run_checked(cmd, cwd=cwd)
         return u.Infra.run_checked(cmd, cwd=cwd)
@@ -148,7 +148,7 @@ class FlextInfraRefactorSafetyManager:
         *,
         status: str,
         stash_ref: str,
-        processed_targets: Sequence[str],
+        processed_targets: t.StrSequence,
     ) -> r[bool]:
         """Build and persist a checkpoint from individual state components."""
         out: r[bool] = self.save_checkpoint(

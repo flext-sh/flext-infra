@@ -18,11 +18,11 @@ from tests import m, t
 class _StubReadPlain:
     """Stub for read_plain returning predefined values in sequence."""
 
-    def __init__(self, values: Sequence[r[Mapping[str, t.Infra.TomlValue]]]) -> None:
+    def __init__(self, values: Sequence[r[Mapping[str, t.Infra.InfraValue]]]) -> None:
         self._values = values
         self._idx = 0
 
-    def __call__(self, path: Path) -> r[Mapping[str, t.Infra.TomlValue]]:
+    def __call__(self, path: Path) -> r[Mapping[str, t.Infra.InfraValue]]:
         _ = path
         value = self._values[self._idx]
         if self._idx < len(self._values) - 1:
@@ -38,10 +38,10 @@ class _StubRunRaw:
 
     def __call__(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[m.Infra.CommandOutput]:
         _ = cmd, cwd, timeout, env
         return self._result
@@ -58,7 +58,7 @@ class TestModuleAndTypingsFlow:
         typing_libraries: Mapping[str, t.Infra.InfraValue] = {
             "module_to_package": module_to_package,
         }
-        limits: Mapping[str, t.Infra.TomlValue] = {"typing_libraries": typing_libraries}
+        limits: Mapping[str, t.Infra.InfraValue] = {"typing_libraries": typing_libraries}
         tm.that(service.module_to_types_package("yaml", limits), eq="custom-types-yaml")
         tm.that(service.module_to_types_package("unknown_module", {}), eq=None)
         tm.that(service.module_to_types_package("yaml.parser", {}), eq="types-pyyaml")
@@ -68,7 +68,7 @@ class TestModuleAndTypingsFlow:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         service = FlextInfraDependencyDetectionService()
-        payload: Mapping[str, t.Infra.TomlValue] = {
+        payload: Mapping[str, t.Infra.InfraValue] = {
             "tool": {
                 "poetry": {
                     "group": {
@@ -85,7 +85,7 @@ class TestModuleAndTypingsFlow:
         monkeypatch.setattr(
             FlextInfraUtilitiesTomlParse,
             "read_plain",
-            _StubReadPlain([r[Mapping[str, t.Infra.TomlValue]].ok(payload)]),
+            _StubReadPlain([r[Mapping[str, t.Infra.InfraValue]].ok(payload)]),
         )
         got = service.get_current_typings_from_pyproject(Path("/dummy"))
         tm.that(got, eq=[])
@@ -99,7 +99,7 @@ class TestModuleAndTypingsFlow:
             FlextInfraUtilitiesTomlParse,
             "read_plain",
             _StubReadPlain([
-                r[Mapping[str, t.Infra.TomlValue]].ok({
+                r[Mapping[str, t.Infra.InfraValue]].ok({
                     "project": {
                         "optional-dependencies": {
                             "typings": [
@@ -109,15 +109,15 @@ class TestModuleAndTypingsFlow:
                         },
                     },
                 }),
-                r[Mapping[str, t.Infra.TomlValue]].ok({
+                r[Mapping[str, t.Infra.InfraValue]].ok({
                     "project": {
                         "optional-dependencies": {
                             "typings": {"types-pyyaml": ">=6.0"},
                         },
                     },
                 }),
-                r[Mapping[str, t.Infra.TomlValue]].fail("not found"),
-                r[Mapping[str, t.Infra.TomlValue]].ok({}),
+                r[Mapping[str, t.Infra.InfraValue]].fail("not found"),
+                r[Mapping[str, t.Infra.InfraValue]].ok({}),
             ]),
         )
         path = Path("/dummy")
@@ -145,8 +145,8 @@ class TestModuleAndTypingsFlow:
             FlextInfraUtilitiesTomlParse,
             "read_plain",
             _StubReadPlain([
-                r[Mapping[str, t.Infra.TomlValue]].ok({}),
-                r[Mapping[str, t.Infra.TomlValue]].ok({
+                r[Mapping[str, t.Infra.InfraValue]].ok({}),
+                r[Mapping[str, t.Infra.InfraValue]].ok({
                     "project": {"optional-dependencies": {"typings": []}},
                 }),
             ]),
@@ -156,8 +156,8 @@ class TestModuleAndTypingsFlow:
             FlextInfraUtilitiesTomlParse,
             "read_plain",
             _StubReadPlain([
-                r[Mapping[str, t.Infra.TomlValue]].ok({}),
-                r[Mapping[str, t.Infra.TomlValue]].ok({}),
+                r[Mapping[str, t.Infra.InfraValue]].ok({}),
+                r[Mapping[str, t.Infra.InfraValue]].ok({}),
             ]),
         )
         tm.ok(service.get_required_typings(tmp_path, venv_bin, include_mypy=False))
@@ -169,6 +169,6 @@ class TestModuleAndTypingsFlow:
         monkeypatch.setattr(
             FlextInfraUtilitiesTomlParse,
             "read_plain",
-            _StubReadPlain([r[Mapping[str, t.Infra.TomlValue]].ok({})]),
+            _StubReadPlain([r[Mapping[str, t.Infra.InfraValue]].ok({})]),
         )
         tm.fail(service.get_required_typings(tmp_path, venv_bin))

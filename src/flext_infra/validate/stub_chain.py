@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, r, u
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraStubSupplyChain:
@@ -151,7 +151,7 @@ class FlextInfraStubSupplyChain:
                 f"stub validation failed: {exc}",
             )
 
-    def _run_mypy_hints(self, project_dir: Path) -> Sequence[str]:
+    def _run_mypy_hints(self, project_dir: Path) -> t.StrSequence:
         """Run mypy and extract types-package hints."""
         result = self._runner.run(
             [
@@ -175,7 +175,7 @@ class FlextInfraStubSupplyChain:
             if m.group(1).strip()
         })
 
-    def _run_pyrefly_missing(self, project_dir: Path) -> Sequence[str]:
+    def _run_pyrefly_missing(self, project_dir: Path) -> t.StrSequence:
         """Run pyrefly check and extract missing imports."""
         result = self._runner.run(
             [

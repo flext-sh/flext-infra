@@ -10,11 +10,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import ClassVar
 
 from defusedxml import ElementTree as DefusedET
+from flext_core import FlextTypes as t
 
 from flext_infra import c, m, r
 
@@ -48,7 +49,7 @@ class FlextInfraPytestDiagExtractor:
     _ENCODING: ClassVar[str] = c.Infra.Encoding.DEFAULT
 
     @staticmethod
-    def _extract_slow_from_log(lines: Sequence[str], diag: _DiagResult) -> None:
+    def _extract_slow_from_log(lines: t.StrSequence, diag: _DiagResult) -> None:
         """Extract slow test durations from log when XML unavailable."""
         capture_slow = False
         for line in lines:
@@ -61,7 +62,7 @@ class FlextInfraPytestDiagExtractor:
                 diag.slow_entries.append(line)
 
     @staticmethod
-    def _extract_warnings(lines: Sequence[str], diag: _DiagResult) -> None:
+    def _extract_warnings(lines: t.StrSequence, diag: _DiagResult) -> None:
         """Extract warning lines from pytest log."""
         capture_warn = False
         for line in lines:
@@ -82,7 +83,7 @@ class FlextInfraPytestDiagExtractor:
             ]
 
     @staticmethod
-    def _parse_log_into_diag(lines: Sequence[str], diag: _DiagResult) -> None:
+    def _parse_log_into_diag(lines: t.StrSequence, diag: _DiagResult) -> None:
         """Parse pytest log output for failures/skips when XML unavailable."""
         diag.failed_cases = [
             line for line in lines if re.search(r"(^FAILED |::.* FAILED( |$))", line)

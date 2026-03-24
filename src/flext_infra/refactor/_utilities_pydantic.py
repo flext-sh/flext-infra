@@ -16,6 +16,7 @@ from flext_infra import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorPydanticAnalysis,
     m,
+    t,
 )
 
 
@@ -76,7 +77,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         return posix.endswith(("/models.py", "/_models.py")) or "/models/" in posix
 
     @staticmethod
-    def _pydantic_dest_import_statement(file_path: Path, names: Sequence[str]) -> str:
+    def _pydantic_dest_import_statement(file_path: Path, names: t.StrSequence) -> str:
         joined = ", ".join(sorted(set(names)))
         if (file_path.parent / "__init__.py").exists():
             return f"from ._models import {joined}"
@@ -106,8 +107,8 @@ class FlextInfraUtilitiesRefactorPydantic:
     @staticmethod
     def _pydantic_append_unique_blocks(
         existing: str,
-        blocks: Sequence[str],
-        names: Sequence[str],
+        blocks: t.StrSequence,
+        names: t.StrSequence,
     ) -> str:
         updated = existing
         for name, block in zip(names, blocks, strict=True):

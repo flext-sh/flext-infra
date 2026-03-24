@@ -95,10 +95,10 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: Mapping[str, Mapping[str, str]] = {}
+        captured: Mapping[str, t.StrMapping] = {}
 
         def _fake_orchestrate(
-            **kw: Mapping[str, str],
+            **kw: t.StrMapping,
         ) -> r[m.Infra.PrOrchestrationResult]:
             captured.update(kw)
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
@@ -120,7 +120,7 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: Mapping[str, str] = {}
+        captured: t.StrMapping = {}
 
         def _fake_orchestrate(**kw: str) -> r[m.Infra.PrOrchestrationResult]:
             captured.update(kw)

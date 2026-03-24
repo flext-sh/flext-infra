@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
 
-from flext_infra import run_cli, u
+from flext_infra import run_cli, t, u
 
 
 class FlextInfraCheckCommand:
     """CLI entry point for workspace check operations."""
 
     @staticmethod
-    def run(argv: Sequence[str] | None = None) -> int:
+    def run(argv: t.StrSequence | None = None) -> int:
         """Execute check CLI."""
         _ = argv
         return run_cli()

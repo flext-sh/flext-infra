@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import output, u
+from flext_infra import output, t, u
 
 from .census import FlextInfraRefactorCensus
 from .migrate_to_class_mro import FlextInfraRefactorMigrateToClassMRO
@@ -17,7 +16,7 @@ class FlextInfraRefactorCommand:
     """CLI entry point for refactoring and modernization tool commands."""
 
     @staticmethod
-    def run(argv: Sequence[str] | None = None) -> int:
+    def run(argv: t.StrSequence | None = None) -> int:
         """Dispatch CLI command handlers and return process exit code."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext_infra refactor",
@@ -230,7 +229,7 @@ class FlextInfraRefactorCommand:
         return 0
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: t.StrSequence | None = None) -> int:
     """Wrapped CLI entry point with centralized error handling."""
     return u.Infra.run_cli(FlextInfraRefactorCommand.run, argv)
 

@@ -12,10 +12,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraReleaseOrchestrator, c, m, output, u
+from flext_infra import FlextInfraReleaseOrchestrator, c, m, output, t, u
 
 
 def _resolve_version(
@@ -61,7 +60,7 @@ def _resolve_tag(tag_arg: str, version: str) -> str:
     return f"v{version}"
 
 
-def run(argv: Sequence[str] | None = None) -> int:
+def run(argv: t.StrSequence | None = None) -> int:
     """Run release orchestration CLI flow."""
     parser = u.Infra.create_parser(
         prog="release",

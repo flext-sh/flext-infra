@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 
 import tomlkit
+from flext_core import FlextTypes as t
 from pydantic import TypeAdapter, ValidationError
 from tomlkit.items import Item, Table
 
@@ -17,7 +18,7 @@ class EnsureFormattingToolingPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         self._tool_config = tool_config
 
-    def apply(self, doc: tomlkit.TOMLDocument) -> Sequence[str]:
+    def apply(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:
@@ -36,11 +37,11 @@ class EnsureFormattingToolingPhase:
             current = u.Infra.unwrap_item(u.Infra.get(tomlsort, key))
             if isinstance(value, list) and isinstance(current, list):
                 try:
-                    current_values = TypeAdapter(Sequence[str]).validate_python([
+                    current_values = TypeAdapter(t.StrSequence).validate_python([
                         str(x) for x in current
                     ])
                 except ValidationError:
-                    current_values: Sequence[str] = []
+                    current_values: t.StrSequence = []
                 if sorted(str(i) for i in current_values) != sorted(
                     str(i) for i in value
                 ):

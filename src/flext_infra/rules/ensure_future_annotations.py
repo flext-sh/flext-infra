@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 
 from flext_infra import FlextInfraRefactorRule
 
@@ -19,7 +20,7 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, Sequence[str]]:
+    ) -> tuple[cst.Module, t.StrSequence]:
         """Ensure future annotations import exists after docstring/header."""
         changes: MutableSequence[str] = []
         body = list(tree.body)

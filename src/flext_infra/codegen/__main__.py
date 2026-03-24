@@ -42,7 +42,7 @@ class FlextInfraCodegenCommand:
     """CLI entry point for code generation operations."""
 
     @staticmethod
-    def run(argv: Sequence[str] | None) -> int:
+    def run(argv: t.StrSequence | None) -> int:
         """Run codegen command dispatcher."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext-infra codegen",
@@ -190,7 +190,7 @@ class FlextInfraCodegenCommand:
                 total_files_modified += files_mod
                 canonical = str(result.get("canonical", ""))
                 replaced_val = result.get("replaced", [])
-                replaced: Sequence[str] = []
+                replaced: t.StrSequence = []
                 if isinstance(replaced_val, list):
                     replaced = [item for item in replaced_val if isinstance(item, str)]
                 else:
@@ -359,7 +359,7 @@ class FlextInfraCodegenCommand:
         )
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: t.StrSequence | None = None) -> int:
     """Run codegen service CLI with centralized bootstrap."""
     return u.Infra.run_cli(FlextInfraCodegenCommand.run, argv)
 

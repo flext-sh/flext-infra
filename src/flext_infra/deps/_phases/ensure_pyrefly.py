@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 
 import tomlkit
+from flext_core import FlextTypes as t
 from tomlkit.items import Item, Table
 
 from flext_infra import FlextInfraExtraPathsManager, c, m, u
@@ -23,7 +24,7 @@ class EnsurePyreflyConfigPhase:
         *,
         is_root: bool,
         project_dir: Path | None = None,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:

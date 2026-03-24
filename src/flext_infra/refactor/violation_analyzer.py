@@ -17,6 +17,7 @@ from flext_infra import (
     ViolationCensusVisitor,
     c,
     m,
+    t,
     u,
 )
 
@@ -135,7 +136,7 @@ class FlextInfraRefactorViolationAnalyzer:
         *,
         file_path: Path,
         function: cst.FunctionDef,
-        local_to_import: Mapping[str, str],
+        local_to_import: t.StrMapping,
     ) -> m.Infra.HelperClassification:
         dependency_collector = FunctionDependencyCollector()
         function.visit(dependency_collector)

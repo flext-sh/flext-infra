@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 
 import tomlkit
+from flext_core import FlextTypes as t
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
@@ -23,7 +24,7 @@ class EnsureRuffConfigPhase:
         doc: tomlkit.TOMLDocument,
         *,
         path: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | Container | None = None
         if c.Infra.Toml.TOOL in doc:

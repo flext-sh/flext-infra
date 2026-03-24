@@ -10,14 +10,14 @@ from pydantic import TypeAdapter, ValidationError
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraDependencyPathSync, c, r, u
+from flext_infra import FlextInfraDependencyPathSync, c, r, t, u
 
 
 class FlextInfraExtraPathsManager:
     """Manager for synchronizing pyright and mypy extraPaths from path dependencies."""
 
     ROOT = u.Infra.resolve_workspace_root(__file__)
-    _STRING_LIST_ADAPTER: TypeAdapter[Sequence[str]] = TypeAdapter(Sequence[str])
+    _STRING_LIST_ADAPTER: TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize the extra paths manager with path resolver and TOML service."""
@@ -40,7 +40,7 @@ class FlextInfraExtraPathsManager:
         return value
 
     @staticmethod
-    def _as_string_list(value: Item | None) -> Sequence[str]:
+    def _as_string_list(value: Item | None) -> t.StrSequence:
         """Normalize sequence-like values to a list of strings."""
         if value is None or isinstance(value, str):
             return []
@@ -53,7 +53,7 @@ class FlextInfraExtraPathsManager:
         except ValidationError:
             return []
 
-    def path_dep_paths_pep621(self, doc: TOMLDocument) -> Sequence[str]:
+    def path_dep_paths_pep621(self, doc: TOMLDocument) -> t.StrSequence:
         """Extract path dependency paths from PEP 621 project.dependencies."""
         project_table = self._as_table(self._table_get(doc, c.Infra.Toml.PROJECT))
         if project_table is None:
@@ -74,7 +74,7 @@ class FlextInfraExtraPathsManager:
                 paths.append(path_part)
         return sorted(set(paths))
 
-    def path_dep_paths_poetry(self, doc: TOMLDocument) -> Sequence[str]:
+    def path_dep_paths_poetry(self, doc: TOMLDocument) -> t.StrSequence:
         """Extract path dependency paths from Poetry tool.poetry.dependencies."""
         tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
         if tool_table is None:
@@ -101,7 +101,7 @@ class FlextInfraExtraPathsManager:
                     paths.append(dep_path)
         return sorted(set(paths))
 
-    def path_dep_paths(self, doc: TOMLDocument) -> Sequence[str]:
+    def path_dep_paths(self, doc: TOMLDocument) -> t.StrSequence:
         """Combine PEP 621 and Poetry path dependencies."""
         return sorted(
             {*self.path_dep_paths_pep621(doc), *self.path_dep_paths_poetry(doc)},
@@ -109,7 +109,7 @@ class FlextInfraExtraPathsManager:
 
     def get_dep_paths(
         self, doc: TOMLDocument, *, is_root: bool = False
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Resolve path dependencies to all Python directory paths dynamically.
 
         Scans each dependency for directories containing Python files
@@ -148,7 +148,7 @@ class FlextInfraExtraPathsManager:
         return resolved
 
     @staticmethod
-    def _discover_local_python_dirs(project_dir: Path) -> Sequence[str]:
+    def _discover_local_python_dirs(project_dir: Path) -> t.StrSequence:
         """Dynamically discover directories with Python files in a project.
 
         Delegates to the SSOT discovery in u.Infra.
@@ -233,7 +233,7 @@ class FlextInfraExtraPathsManager:
         *,
         project_dir: Path,
         is_root: bool = False,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Synchronize extra paths on an in-memory TOMLDocument.
 
         Used by EnsureExtraPathsPhase to modify the doc in-place
@@ -331,7 +331,7 @@ class FlextInfraExtraPathsManager:
         return cli.project_dirs()
 
     @staticmethod
-    def main(argv: Sequence[str] | None = None) -> int:
+    def main(argv: t.StrSequence | None = None) -> int:
         """Execute extra paths synchronization from command line."""
         parser = u.Infra.create_parser(
             "flext-infra deps extra-paths",

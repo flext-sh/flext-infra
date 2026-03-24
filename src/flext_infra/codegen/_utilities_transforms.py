@@ -14,7 +14,7 @@ import builtins as _builtins_module
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesParsing, FlextInfraUtilitiesRefactor, c
+from flext_infra import FlextInfraUtilitiesParsing, FlextInfraUtilitiesRefactor, c, t
 
 
 class FlextInfraUtilitiesCodegenTransforms:
@@ -315,10 +315,10 @@ class FlextInfraUtilitiesCodegenTransforms:
     @staticmethod
     def collect_import_texts_for_nodes(
         nodes: Sequence[ast.stmt],
-        source_lines: Sequence[str],
+        source_lines: t.StrSequence,
         source_tree: ast.Module,
         target_text: str,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Collect import text lines from source needed by moved nodes.
 
         Returns import statement strings that should be added to the target
@@ -374,7 +374,7 @@ class FlextInfraUtilitiesCodegenTransforms:
         if tree is None:
             return False
         assignment: ast.Assign | None = None
-        exports: Sequence[str] = []
+        exports: t.StrSequence = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1:
                 continue

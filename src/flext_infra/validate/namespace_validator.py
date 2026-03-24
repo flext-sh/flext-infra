@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_core import r
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 __all__ = ["FlextInfraNamespaceValidator"]
 
@@ -150,7 +150,7 @@ class FlextInfraNamespaceValidator:
 
     def _check_rule_0(
         self, tree: ast.Module, filepath: Path, prefix: str
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Rule 0 — One namespace class per module.
 
         Checks that each module has exactly one top-level class whose name
@@ -185,7 +185,7 @@ class FlextInfraNamespaceValidator:
                 )
         return violations
 
-    def _check_rule_1(self, tree: ast.Module, filepath: Path) -> Sequence[str]:
+    def _check_rule_1(self, tree: ast.Module, filepath: Path) -> t.StrSequence:
         """Rule 1 — Constants centralization.
 
         In ``constants.py``: outer class must inherit from a Constants base,
@@ -250,7 +250,7 @@ class FlextInfraNamespaceValidator:
                         )
         return violations
 
-    def _check_rule_2(self, tree: ast.Module, filepath: Path) -> Sequence[str]:
+    def _check_rule_2(self, tree: ast.Module, filepath: Path) -> t.StrSequence:
         """Rule 2 — Types centralization.
 
         In ``typings.py``: outer class must inherit from a Types base,

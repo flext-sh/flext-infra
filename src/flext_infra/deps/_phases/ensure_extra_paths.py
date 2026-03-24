@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 import tomlkit
 
-from flext_infra import FlextInfraExtraPathsManager
+from flext_infra import FlextInfraExtraPathsManager, t
 
 
 class EnsureExtraPathsPhase:
@@ -24,7 +23,7 @@ class EnsureExtraPathsPhase:
         path: Path,
         is_root: bool,
         dry_run: bool = False,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         _ = dry_run
         manager = FlextInfraExtraPathsManager()
         return manager.sync_doc(

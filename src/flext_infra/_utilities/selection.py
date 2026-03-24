@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flext_core import r
 
-from flext_infra import FlextInfraUtilitiesDiscovery, m
+from flext_infra import FlextInfraUtilitiesDiscovery, m, t
 
 
 class FlextInfraUtilitiesSelection:
@@ -26,7 +26,7 @@ class FlextInfraUtilitiesSelection:
     @staticmethod
     def resolve_projects(
         workspace_root: Path,
-        names: Sequence[str],
+        names: t.StrSequence,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         """Resolve project names into ProjectInfo structures.
 

@@ -17,11 +17,11 @@ class TestFormattingRunRuffFix:
     ) -> None:
         target = tmp_path / "sample.py"
         target.write_text("x=1\n", encoding="utf-8")
-        calls: Sequence[Sequence[str]] = []
+        calls: Sequence[t.StrSequence] = []
 
         def _fake_run_checked(
             _self: FlextInfraUtilitiesSubprocess,
-            cmd: Sequence[str],
+            cmd: t.StrSequence,
         ) -> r[bool]:
             calls.append(cmd)
             return r[bool].ok(True)
@@ -52,11 +52,11 @@ class TestFormattingRunRuffFix:
     ) -> None:
         target = tmp_path / "sample.py"
         target.write_text("x=1\n", encoding="utf-8")
-        calls: Sequence[Sequence[str]] = []
+        calls: Sequence[t.StrSequence] = []
 
         def _raise_missing(
             _self: FlextInfraUtilitiesSubprocess,
-            cmd: Sequence[str],
+            cmd: t.StrSequence,
         ) -> None:
             calls.append(cmd)
             msg = "ruff not found"

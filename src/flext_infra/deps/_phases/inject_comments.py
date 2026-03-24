@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
+
+from flext_core import FlextTypes as t
 
 from flext_infra import c
 
@@ -10,7 +12,7 @@ from flext_infra import c
 class InjectCommentsPhase:
     """Inject managed/custom/auto markers into pyproject.toml."""
 
-    def apply(self, rendered: str) -> tuple[str, Sequence[str]]:
+    def apply(self, rendered: str) -> tuple[str, t.StrSequence]:
         changes: MutableSequence[str] = []
         lines = rendered.splitlines()
         existing_text = rendered

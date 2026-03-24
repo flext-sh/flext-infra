@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flext_core import r
 
-from flext_infra import FlextInfraUtilitiesDiscovery, c, m
+from flext_infra import FlextInfraUtilitiesDiscovery, c, m, t
 
 
 class FlextInfraUtilitiesDocs:
@@ -18,7 +18,7 @@ class FlextInfraUtilitiesDocs:
         workspace_root: Path,
         project: str | None,
         projects: str | None,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Resolve CLI project flags to a concrete name list."""
         if project:
             return [project]
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesDocs:
         )
 
     @staticmethod
-    def write_markdown(path: Path, lines: Sequence[str]) -> r[bool]:
+    def write_markdown(path: Path, lines: t.StrSequence) -> r[bool]:
         """Write markdown lines to path, creating parent dirs as needed."""
         try:
             path.parent.mkdir(parents=True, exist_ok=True)

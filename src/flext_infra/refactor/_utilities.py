@@ -98,18 +98,18 @@ class FlextInfraUtilitiesRefactor(
         return "other_private"
 
     @staticmethod
-    def entry_list(value: t.Infra.InfraValue | None) -> Sequence[Mapping[str, str]]:
+    def entry_list(value: t.Infra.InfraValue | None) -> Sequence[t.StrMapping]:
         """Normalize class-nesting config entries to a strict list."""
         if value is None:
             return []
         try:
-            return TypeAdapter(Sequence[Mapping[str, str]]).validate_python(value)
+            return TypeAdapter(Sequence[t.StrMapping]).validate_python(value)
         except ValidationError:
             msg = "class nesting entries must be a list"
             raise ValueError(msg) from None
 
     @staticmethod
-    def string_list(value: t.Infra.InfraValue | None) -> Sequence[str]:
+    def string_list(value: t.Infra.InfraValue | None) -> t.StrSequence:
         """Normalize policy fields that should contain string collections."""
         if value is None:
             return []
@@ -162,7 +162,7 @@ class FlextInfraUtilitiesRefactor(
     @staticmethod
     def has_required_fields(
         entry: t.Infra.InfraValue,
-        required_fields: Sequence[str],
+        required_fields: t.StrSequence,
     ) -> bool:
         if not isinstance(entry, dict):
             return False
@@ -196,7 +196,7 @@ class FlextInfraUtilitiesRefactor(
         return tokens
 
     @staticmethod
-    def rewrite_scope(entry: Mapping[str, str]) -> str:
+    def rewrite_scope(entry: t.StrMapping) -> str:
         raw_scope = entry.get(c.Infra.ReportKeys.REWRITE_SCOPE, c.Infra.ReportKeys.FILE)
         scope = raw_scope.strip().lower()
         if scope in {
@@ -210,7 +210,7 @@ class FlextInfraUtilitiesRefactor(
 
     @staticmethod
     def scope_applies_to_file(
-        entry: Mapping[str, str],
+        entry: t.StrMapping,
         current_file: Path,
         candidate_file: Path,
     ) -> bool:
@@ -509,7 +509,7 @@ class FlextInfraUtilitiesRefactor(
     def build_facade_inner_class_map(
         facade_path: Path,
         facade_class_name: str,
-    ) -> Mapping[str, str]:
+    ) -> t.StrMapping:
         """Map inner class names → base class names in a facade.
 
         E.g. ``{"Conversion": "FlextUtilitiesConversion", ...}``.

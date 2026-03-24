@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 
 from flext_infra import (
     FlextInfraRefactorMROResolver,
@@ -26,7 +27,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, Sequence[str]]:
+    ) -> tuple[cst.Module, t.StrSequence]:
         if _file_path is None:
             return (tree, [])
         if _file_path.name != c.Infra.CONSTANTS_FILE_GLOB:

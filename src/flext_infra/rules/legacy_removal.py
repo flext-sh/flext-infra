@@ -40,12 +40,12 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     @staticmethod
     def _is_forwarding_compatible(
         *,
-        positional_expected: Sequence[str],
-        kwonly_expected: Sequence[str],
+        positional_expected: t.StrSequence,
+        kwonly_expected: t.StrSequence,
         expected_star_arg: str | None,
         expected_star_kwarg: str | None,
-        positional_forwarded: Sequence[str],
-        keyword_forwarded: Mapping[str, str],
+        positional_forwarded: t.StrSequence,
+        keyword_forwarded: t.StrMapping,
         star_forwarded: str | None,
         star_kw_forwarded: str | None,
     ) -> bool:
@@ -92,7 +92,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, Sequence[str]]:
+    ) -> tuple[cst.Module, t.StrSequence]:
         """Apply configured legacy-removal transforms to module tree."""
         changes: MutableSequence[str] = []
         fix_action = (
@@ -113,7 +113,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         return (tree, changes)
 
     @staticmethod
-    def _normalize_string_items(value: t.Infra.InfraValue) -> Sequence[str]:
+    def _normalize_string_items(value: t.Infra.InfraValue) -> t.StrSequence:
         if not isinstance(value, (list, tuple, set)):
             return []
         try:
@@ -122,13 +122,13 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
             ).validate_python(value)
         except ValidationError:
             return []
-        output: Sequence[str] = [item for item in items if isinstance(item, str)]
+        output: t.StrSequence = [item for item in items if isinstance(item, str)]
         return output
 
     def _expected_forwarding_params(
         self,
         func: cst.FunctionDef,
-    ) -> tuple[Sequence[str], Sequence[str], str | None, str | None]:
+    ) -> tuple[t.StrSequence, t.StrSequence, str | None, str | None]:
         posonly_names = [param.name.value for param in func.params.posonly_params]
         positional_names = [param.name.value for param in func.params.params]
         positional_expected = posonly_names + positional_names
@@ -198,7 +198,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     def _parse_forwarded_arguments(
         self,
         call_args: Sequence[cst.Arg],
-    ) -> tuple[Sequence[str], Mapping[str, str], str | None, str | None] | None:
+    ) -> tuple[t.StrSequence, t.StrMapping, str | None, str | None] | None:
         positional_forwarded: MutableSequence[str] = []
         keyword_forwarded: MutableMapping[str, str] = {}
         star_forwarded: str | None = None
@@ -235,7 +235,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
             star_kw_forwarded,
         )
 
-    def _remove_aliases(self, tree: cst.Module) -> tuple[cst.Module, Sequence[str]]:
+    def _remove_aliases(self, tree: cst.Module) -> tuple[cst.Module, t.StrSequence]:
         typed_config = self._typed_config()
         allow_aliases = set(
             self._normalize_string_items(typed_config.get("allow_aliases", [])),
@@ -250,19 +250,19 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         new_tree = tree.visit(transformer)
         return (new_tree, transformer.changes)
 
-    def _remove_deprecated(self, tree: cst.Module) -> tuple[cst.Module, Sequence[str]]:
+    def _remove_deprecated(self, tree: cst.Module) -> tuple[cst.Module, t.StrSequence]:
         transformer = FlextInfraRefactorDeprecatedRemover()
         new_tree = tree.visit(transformer)
         return (new_tree, transformer.changes)
 
     def _remove_import_bypasses(
         self, tree: cst.Module
-    ) -> tuple[cst.Module, Sequence[str]]:
+    ) -> tuple[cst.Module, t.StrSequence]:
         transformer = FlextInfraRefactorImportBypassRemover()
         new_tree = tree.visit(transformer)
         return (new_tree, transformer.changes)
 
-    def _remove_wrappers(self, tree: cst.Module) -> tuple[cst.Module, Sequence[str]]:
+    def _remove_wrappers(self, tree: cst.Module) -> tuple[cst.Module, t.StrSequence]:
         changes: MutableSequence[str] = []
         new_body: MutableSequence[cst.BaseStatement] = []
         for stmt in tree.body:

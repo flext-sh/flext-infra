@@ -86,7 +86,7 @@ class FlextInfraRefactorEngine:
     @staticmethod
     def build_impact_map(
         results: Sequence[m.Infra.Result],
-    ) -> Sequence[Mapping[str, str]]:
+    ) -> Sequence[t.StrMapping]:
         """Build a normalized impact-map payload from refactor results."""
         return u.Infra.build_impact_map(results)
 
@@ -665,7 +665,7 @@ class FlextInfraRefactorEngine:
             return r[str].fail(error_msg)
         return r[str].ok(stash_result.value)
 
-    def set_rule_filters(self, filters: Sequence[str]) -> None:
+    def set_rule_filters(self, filters: t.StrSequence) -> None:
         """Set active rule filters using normalized lowercase rule ids."""
         self.rule_filters = [item.lower() for item in filters]
 

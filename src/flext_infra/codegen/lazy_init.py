@@ -29,6 +29,7 @@ from flext_infra import (
     FlextInfraCodegenGeneration,
     c,
     output,
+    t,
     u,
 )
 
@@ -244,9 +245,9 @@ class FlextInfraCodegenLazyInit(s[int]):
         self,
         init_path: Path,
         docstring: str,
-        exports: Sequence[str],
+        exports: t.StrSequence,
         lazy_map: Mapping[str, tuple[str, str]],
-        inline_constants: Mapping[str, str],
+        inline_constants: t.StrMapping,
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
     ) -> tuple[int, Mapping[str, tuple[str, str]]]:
@@ -489,7 +490,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _extract_version_exports(
         pkg_dir: Path,
         current_pkg: str,
-    ) -> tuple[Mapping[str, str], Mapping[str, tuple[str, str]]]:
+    ) -> tuple[t.StrMapping, Mapping[str, tuple[str, str]]]:
         """Extract version-related exports from ``__version__.py``.
 
         Returns:
@@ -607,9 +608,9 @@ class FlextInfraCodegenLazyInit(s[int]):
     @staticmethod
     def _generate_file(
         docstring_source: str,
-        exports: Sequence[str],
+        exports: t.StrSequence,
         filtered: Mapping[str, tuple[str, str]],
-        inline_constants: Mapping[str, str],
+        inline_constants: t.StrMapping,
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
     ) -> str:

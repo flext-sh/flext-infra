@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence, Callable
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -34,8 +34,8 @@ from tests import (
 
 def _create_run_raw_result(
     result: r[SimpleNamespace] | str,
-) -> Callable[[Sequence[str]], r[SimpleNamespace]]:
-    def _fake_run_raw(_cmd: Sequence[str], **_kw: str) -> r[SimpleNamespace]:
+) -> Callable[[t.StrSequence], r[SimpleNamespace]]:
+    def _fake_run_raw(_cmd: t.StrSequence, **_kw: str) -> r[SimpleNamespace]:
         del _cmd, _kw
         if isinstance(result, str):
             return r[SimpleNamespace].fail(result)

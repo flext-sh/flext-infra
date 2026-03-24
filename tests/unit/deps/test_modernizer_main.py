@@ -175,28 +175,28 @@ class TestModernizerRunAndMain:
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
 
         def _run_ok(
-            _cmd: Sequence[str],
+            _cmd: t.StrSequence,
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: Mapping[str, str] | None = None,
+            env: t.StrMapping | None = None,
         ) -> SimpleNamespace:
             _ = (cwd, timeout, env)
             return SimpleNamespace(is_failure=False, value=SimpleNamespace(exit_code=0))
 
         def _run_fail(
-            _cmd: Sequence[str],
+            _cmd: t.StrSequence,
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: Mapping[str, str] | None = None,
+            env: t.StrMapping | None = None,
         ) -> SimpleNamespace:
             _ = (cwd, timeout, env)
             return SimpleNamespace(is_failure=True)
 
         def _run_non_zero(
-            _cmd: Sequence[str],
+            _cmd: t.StrSequence,
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: Mapping[str, str] | None = None,
+            env: t.StrMapping | None = None,
         ) -> SimpleNamespace:
             _ = (cwd, timeout, env)
             return SimpleNamespace(is_failure=False, value=SimpleNamespace(exit_code=1))

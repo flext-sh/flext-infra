@@ -24,6 +24,7 @@ from flext_infra import (
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
     output,
+    t,
     u,
 )
 
@@ -54,11 +55,11 @@ class FlextInfraWorkspaceCommand:
 
     @staticmethod
     def run_orchestrate(
-        projects: Sequence[str],
+        projects: t.StrSequence,
         verb: str,
         *,
         fail_fast: bool,
-        make_args: Sequence[str],
+        make_args: t.StrSequence,
     ) -> int:
         """Run make verb across projects."""
         filtered_projects = [project for project in projects if project]
@@ -107,7 +108,7 @@ class FlextInfraWorkspaceCommand:
         return 1 if failed_projects else 0
 
     @staticmethod
-    def run(argv: Sequence[str] | None = None) -> int:
+    def run(argv: t.StrSequence | None = None) -> int:
         """Dispatch workspace subcommands and return process exit code."""
         parser, subs = u.Infra.create_subcommand_parser(
             "flext_infra workspace",
@@ -182,11 +183,11 @@ def _run_sync(cli: u.Infra.CliArgs, canonical_root: str | None) -> int:
 
 
 def _run_orchestrate(
-    projects: Sequence[str],
+    projects: t.StrSequence,
     verb: str,
     *,
     fail_fast: bool,
-    make_args: Sequence[str],
+    make_args: t.StrSequence,
 ) -> int:
     return FlextInfraWorkspaceCommand.run_orchestrate(
         projects,
@@ -200,11 +201,11 @@ def _run_migrate(cli: u.Infra.CliArgs) -> int:
     return FlextInfraWorkspaceCommand.run_migrate(cli)
 
 
-def _main_inner(argv: Sequence[str] | None = None) -> int:
+def _main_inner(argv: t.StrSequence | None = None) -> int:
     return FlextInfraWorkspaceCommand.run(argv)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: t.StrSequence | None = None) -> int:
     """Run workspace utilities: detect mode, sync base.mk, orchestrate projects."""
     return u.Infra.run_cli(_main_inner, argv)
 

@@ -26,6 +26,7 @@ from flext_infra import (
     NamespaceFacadeScanner,
     c,
     m,
+    t,
 )
 
 
@@ -119,7 +120,7 @@ class FlextInfraUtilitiesRefactorNamespace:
     def _namespace_append_typing_alias_blocks(
         *,
         target_file: Path,
-        blocks: Sequence[str],
+        blocks: t.StrSequence,
     ) -> None:
         if not blocks:
             return
@@ -366,7 +367,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         *,
         project_root: Path,
         target_file: Path,
-        blocks: Sequence[str],
+        blocks: t.StrSequence,
     ) -> None:
         if not blocks:
             return

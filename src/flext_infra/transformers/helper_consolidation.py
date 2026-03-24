@@ -16,9 +16,9 @@ class HelperConsolidationTransformer(cst.CSTTransformer):
 
     def __init__(
         self,
-        helper_mappings: Mapping[str, str],
+        helper_mappings: t.StrMapping,
         policy_context: t.Infra.PolicyContext | None = None,
-        helper_families: Mapping[str, str] | None = None,
+        helper_families: t.StrMapping | None = None,
     ) -> None:
         """Initialize with helper-to-namespace mappings and optional policy context."""
         self._helper_mappings = helper_mappings

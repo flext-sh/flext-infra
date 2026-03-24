@@ -15,7 +15,7 @@ from pathlib import Path
 from flext_core import FlextLogger
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, r, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -90,10 +90,10 @@ class FlextInfraDocValidator:
             reports.append(report)
         return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
 
-    def _run_adr_skill_check(self, workspace_root: Path) -> tuple[int, Sequence[str]]:
+    def _run_adr_skill_check(self, workspace_root: Path) -> tuple[int, t.StrSequence]:
         """Run ADR skill check and return exit code with missing skill names."""
         skills_root = workspace_root / ".claude/skills"
-        required: Sequence[str] = []
+        required: t.StrSequence = []
         config = workspace_root / "docs/architecture/architecture_config.json"
         if config.exists():
             payload_result = u.Infra.read_json(config)
@@ -105,7 +105,7 @@ class FlextInfraDocValidator:
                 configured = docs_validation.get("required_skills")
                 if isinstance(configured, list):
                     try:
-                        required_items = TypeAdapter(Sequence[str]).validate_python(
+                        required_items = TypeAdapter(t.StrSequence).validate_python(
                             configured,
                             strict=True,
                         )
@@ -131,7 +131,7 @@ class FlextInfraDocValidator:
         """Run validation for a single project scope."""
         status = c.Infra.Status.OK
         message = "validation passed"
-        missing_adr_skills: Sequence[str] = []
+        missing_adr_skills: t.StrSequence = []
         config_exists = (
             scope.path / "docs/architecture/architecture_config.json"
         ).exists()

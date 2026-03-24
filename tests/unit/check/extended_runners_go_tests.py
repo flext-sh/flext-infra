@@ -18,7 +18,7 @@ from tests import m
 from tests.helpers import FlextInfraTestHelpers as h
 
 RunCallable = Callable[
-    [Sequence[str], Path, int, Mapping[str, str] | None],
+    [t.StrSequence, Path, int, t.StrMapping | None],
     m.Infra.CommandOutput,
 ]
 
@@ -42,10 +42,10 @@ def _stub_run_seq(
 
     def _run(
         _self: FlextInfraGate,
-        _cmd: Sequence[str],
+        _cmd: t.StrSequence,
         _cwd: Path,
         timeout: int = 120,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> m.Infra.CommandOutput:
         del _self, _cmd, _cwd, timeout, env
         i = idx[0]

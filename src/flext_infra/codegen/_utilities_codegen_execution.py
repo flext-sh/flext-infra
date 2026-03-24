@@ -126,7 +126,7 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
         }
 
     @staticmethod
-    def quality_gate_modified_python_files(workspace_root: Path) -> Sequence[str]:
+    def quality_gate_modified_python_files(workspace_root: Path) -> t.StrSequence:
         """Detect modified Python files in workspace."""
         normalized: set[str] = set()
         for rel in FlextInfraCodegenExecutionTools.git_lines(

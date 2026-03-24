@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import Annotated
 
 from flext_core import FlextModels
@@ -51,7 +50,7 @@ class FlextInfraBasemkModels:
             ),
         ]
         lint_gates: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Enabled quality gates",

@@ -16,7 +16,7 @@ from typing import override
 
 from flext_core import FlextLogger
 
-from flext_infra import c, m, r, s, u
+from flext_infra import c, m, r, s, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -48,7 +48,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         self,
         workspace_root: Path,
         version: str,
-        project_names: Sequence[str],
+        project_names: t.StrSequence,
     ) -> r[bool]:
         """Execute the build phase and write build-report.json."""
         output_dir = (
@@ -114,7 +114,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         workspace_root: Path,
         version: str,
         tag: str,
-        project_names: Sequence[str],
+        project_names: t.StrSequence,
         *,
         dry_run: bool = False,
         push: bool = False,
@@ -175,7 +175,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         self,
         workspace_root: Path,
         version: str,
-        project_names: Sequence[str],
+        project_names: t.StrSequence,
         *,
         dry_run: bool = False,
         dev_suffix: bool = False,
@@ -265,7 +265,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     def _build_targets(
         self,
         workspace_root: Path,
-        project_names: Sequence[str],
+        project_names: t.StrSequence,
     ) -> Sequence[tuple[str, Path]]:
         """Resolve unique build targets from project names."""
         targets: MutableSequence[tuple[str, Path]] = [
@@ -287,7 +287,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         self,
         workspace_root: Path,
         version: str,
-        project_names: Sequence[str],
+        project_names: t.StrSequence,
         bump: str,
     ) -> r[bool]:
         """Bump to the next development version."""
@@ -314,7 +314,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         self,
         workspace_root: Path,
         version: str,
-        project_names: Sequence[str],
+        project_names: t.StrSequence,
     ) -> r[bool]:
         """Create local release branches for workspace and projects."""
         branch = f"release/{version}"
@@ -379,7 +379,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         workspace_root: Path,
         version: str,
         tag: str,
-        project_names: Sequence[str],
+        project_names: t.StrSequence,
         output_path: Path,
     ) -> r[bool]:
         """Generate release notes from Git history."""
@@ -416,7 +416,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     def _version_files(
         self,
         workspace_root: Path,
-        project_names: Sequence[str],
+        project_names: t.StrSequence,
     ) -> Sequence[Path]:
         """Discover pyproject.toml files that need version updates."""
         files: MutableSequence[Path] = [

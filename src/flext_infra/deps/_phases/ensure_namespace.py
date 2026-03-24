@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 
 import tomlkit
+from flext_core import FlextTypes as t
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
@@ -15,7 +16,7 @@ from flext_infra import c, u
 class EnsureNamespaceToolingPhase:
     """Ensure namespace discovery is reflected across project tooling tables."""
 
-    def apply(self, doc: tomlkit.TOMLDocument, *, path: Path) -> Sequence[str]:
+    def apply(self, doc: tomlkit.TOMLDocument, *, path: Path) -> t.StrSequence:
         changes: MutableSequence[str] = []
         detected = sorted(u.Infra.discover_first_party_namespaces(path.parent))
         if not detected:

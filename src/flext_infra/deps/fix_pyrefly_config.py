@@ -43,7 +43,7 @@ class FlextInfraConfigFixer(s[bool]):
         self._workspace_root = self._resolve_workspace_root(workspace_root)
 
     @staticmethod
-    def _to_array(items_list: Sequence[str]) -> items.Array:
+    def _to_array(items_list: t.StrSequence) -> items.Array:
         items_infra: Sequence[t.Infra.InfraValue] = list(items_list)
         serialized_result = u.Infra.serialize(items_infra)
         if serialized_result.is_failure:
@@ -71,18 +71,18 @@ class FlextInfraConfigFixer(s[bool]):
             project_paths=project_paths,
         )
 
-    def process_file(self, path: Path, *, dry_run: bool = False) -> r[Sequence[str]]:
+    def process_file(self, path: Path, *, dry_run: bool = False) -> r[t.StrSequence]:
         """Process one pyproject.toml file and apply fixes."""
         document_result = u.Infra.read_document(path)
         if document_result.is_failure:
-            return r[Sequence[str]].fail(
+            return r[t.StrSequence].fail(
                 document_result.error or f"failed to read {path}",
             )
         doc = document_result.value
         doc_data = doc.unwrap()
         tool_data = doc_data.get(c.Infra.Toml.TOOL)
         if not isinstance(tool_data, dict):
-            return r[Sequence[str]].ok([])
+            return r[t.StrSequence].ok([])
         typed_tool_data: MutableMapping[str, t.Infra.InfraValue] = TypeAdapter(
             MutableMapping[str, t.Infra.InfraValue],
         ).validate_python(
@@ -90,13 +90,13 @@ class FlextInfraConfigFixer(s[bool]):
         )
         pyrefly_data = typed_tool_data.get(c.Infra.Toml.PYREFLY)
         if not isinstance(pyrefly_data, Mapping):
-            return r[Sequence[str]].ok([])
+            return r[t.StrSequence].ok([])
         try:
             pyrefly: MutableMapping[str, t.Infra.InfraValue] = TypeAdapter(
                 MutableMapping[str, t.Infra.InfraValue],
             ).validate_python(pyrefly_data)
         except ValidationError:
-            return r[Sequence[str]].ok([])
+            return r[t.StrSequence].ok([])
         all_fixes: MutableSequence[str] = []
         fixes = self._fix_search_paths_tk(pyrefly, path.parent)
         all_fixes.extend(fixes)
@@ -116,23 +116,23 @@ class FlextInfraConfigFixer(s[bool]):
                 new_doc[str(key)] = value
             write_result = u.Infra.write_document(path, new_doc)
             if write_result.is_failure:
-                return r[Sequence[str]].fail(
+                return r[t.StrSequence].fail(
                     write_result.error or f"failed to write {path}",
                 )
-        return r[Sequence[str]].ok(all_fixes)
+        return r[t.StrSequence].ok(all_fixes)
 
     def run(
         self,
-        projects: Sequence[str],
+        projects: t.StrSequence,
         *,
         dry_run: bool = False,
         verbose: bool = False,
-    ) -> r[Sequence[str]]:
+    ) -> r[t.StrSequence]:
         """Run pyrefly configuration fixes for selected projects."""
         project_paths = [self._resolve_project_path(project) for project in projects]
         files_result = self.find_pyproject_files(project_paths or None)
         if files_result.is_failure:
-            return r[Sequence[str]].fail(
+            return r[t.StrSequence].fail(
                 files_result.error or "failed to find pyproject files",
             )
         messages: MutableSequence[str] = []
@@ -141,10 +141,10 @@ class FlextInfraConfigFixer(s[bool]):
         for path in pyproject_files:
             fixes_result = self.process_file(path, dry_run=dry_run)
             if fixes_result.is_failure:
-                return r[Sequence[str]].fail(
+                return r[t.StrSequence].fail(
                     fixes_result.error or f"failed to process {path}",
                 )
-            fixes: Sequence[str] = fixes_result.value
+            fixes: t.StrSequence = fixes_result.value
             if not fixes:
                 continue
             total_fixes += len(fixes)
@@ -159,15 +159,15 @@ class FlextInfraConfigFixer(s[bool]):
                     messages.append(line)
         if verbose and total_fixes == 0:
             _logger.info("pyrefly_configs_clean")
-        return r[Sequence[str]].ok(messages)
+        return r[t.StrSequence].ok(messages)
 
     def _ensure_project_excludes_tk(
         self,
         pyrefly: MutableMapping[str, t.Infra.InfraValue],
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         fixes: MutableSequence[str] = []
         excludes = pyrefly.get(c.Infra.Toml.PROJECT_EXCLUDES)
-        current: Sequence[str] = []
+        current: t.StrSequence = []
         if isinstance(excludes, list):
             exclude_items: Sequence[JsonValue] = []
             with contextlib.suppress(ValidationError):
@@ -190,7 +190,7 @@ class FlextInfraConfigFixer(s[bool]):
         self,
         pyrefly: MutableMapping[str, t.Infra.InfraValue],
         project_dir: Path,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         fixes: MutableSequence[str] = []
         search_path = pyrefly.get(c.Infra.Toml.SEARCH_PATH)
         if not isinstance(search_path, list):
@@ -232,7 +232,7 @@ class FlextInfraConfigFixer(s[bool]):
             if isinstance(path_item, str) and (not (project_dir / path_item).exists())
         ]
         if nonexistent:
-            remaining: Sequence[str] = [
+            remaining: t.StrSequence = [
                 str(path_item)
                 for path_item in current_paths
                 if isinstance(path_item, str) and path_item not in nonexistent
@@ -244,7 +244,7 @@ class FlextInfraConfigFixer(s[bool]):
     def _remove_ignore_sub_config_tk(
         self,
         pyrefly: MutableMapping[str, t.Infra.InfraValue],
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         fixes: MutableSequence[str] = []
         sub_configs = pyrefly.get(c.Infra.Toml.SUB_CONFIG)
         if not isinstance(sub_configs, list):
@@ -289,7 +289,7 @@ class FlextInfraConfigFixer(s[bool]):
         return result.value if result.is_success else Path.cwd().resolve()
 
     @staticmethod
-    def main(argv: Sequence[str] | None = None) -> int:
+    def main(argv: t.StrSequence | None = None) -> int:
         """Run the pyrefly configuration fixer CLI."""
         parser = argparse.ArgumentParser()
         _ = parser.add_argument("projects", nargs="*")

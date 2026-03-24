@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 
 _DICT_KEY_VALUE_ARITY = 2
 
@@ -137,7 +138,7 @@ class ViolationCensusVisitor(cst.CSTVisitor):
             return node.module.value
         return self._dotted_name(node.module)
 
-    def _imported_names(self, node: cst.ImportFrom) -> Sequence[str]:
+    def _imported_names(self, node: cst.ImportFrom) -> t.StrSequence:
         if isinstance(node.names, cst.ImportStar):
             return []
         names: MutableSequence[str] = []

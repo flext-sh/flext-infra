@@ -78,4 +78,4 @@ class TestCensusReportModel:
         tm.that(report.fixable, eq=2)
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

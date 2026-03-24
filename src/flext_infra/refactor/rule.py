@@ -47,19 +47,19 @@ class FlextInfraRefactorRuleLoader:
     def extract_engine_file_filters(
         self,
         config: t.Infra.InfraValue,
-    ) -> tuple[Sequence[str], Sequence[str]]:
+    ) -> tuple[t.StrSequence, t.StrSequence]:
         """Extract ignore patterns and file extensions from engine config."""
         scope = self._resolve_engine_config(config)
         return (list(scope.ignore_patterns), list(scope.file_extensions))
 
-    def extract_project_scan_dirs(self, config: t.Infra.InfraValue) -> Sequence[str]:
+    def extract_project_scan_dirs(self, config: t.Infra.InfraValue) -> t.StrSequence:
         """Extract project scan directories from engine config."""
         scope = self._resolve_engine_config(config)
         return list(scope.project_scan_dirs)
 
     def load_rules(
         self,
-        rule_filters: Sequence[str],
+        rule_filters: t.StrSequence,
         validator: FlextInfraRefactorRuleDefinitionValidator,
         build_rule: Callable[
             [Mapping[str, t.Infra.InfraValue]],

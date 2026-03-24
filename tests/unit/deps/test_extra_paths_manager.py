@@ -130,7 +130,7 @@ class TestSyncOne:
     def test_sync_one_success_cases(
         self,
         tmp_path: Path,
-        tool_doc: Mapping[str, t.Infra.TomlValue],
+        tool_doc: Mapping[str, t.Infra.InfraValue],
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         doc = tomlkit.document()

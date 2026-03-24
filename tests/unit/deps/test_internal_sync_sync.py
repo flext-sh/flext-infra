@@ -14,20 +14,20 @@ from tests import t
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: Sequence[r[t.Infra.TomlConfig]],
+    values: Sequence[r[t.Infra.ContainerDict]],
 ) -> None:
     state = {"index": 0}
 
-    def _read(_path: Path) -> r[t.Infra.TomlConfig]:
+    def _read(_path: Path) -> r[t.Infra.ContainerDict]:
         item = values[state["index"]]
         state["index"] += 1
         return item
 
     class _TomlReaderStub:
-        def __init__(self, fn: Callable[[Path], r[t.Infra.TomlConfig]]) -> None:
+        def __init__(self, fn: Callable[[Path], r[t.Infra.ContainerDict]]) -> None:
             self._fn = fn
 
-        def read_plain(self, path: Path) -> r[t.Infra.TomlConfig]:
+        def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
             return self._fn(path)
 
     service.toml = _TomlReaderStub(_read)
@@ -36,13 +36,13 @@ def _set_toml_stub(
 class TestSync:
     def test_sync_no_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
-        _set_toml_stub(service, [r[t.Infra.TomlConfig].ok({"tool": {}, "project": {}})])
+        _set_toml_stub(service, [r[t.Infra.ContainerDict].ok({"tool": {}, "project": {}})])
         (tmp_path / "pyproject.toml").write_text("")
         tm.ok(service.sync(tmp_path), eq=0)
 
     def test_sync_collect_failure(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
-        _set_toml_stub(service, [r[t.Infra.TomlConfig].fail("read error")])
+        _set_toml_stub(service, [r[t.Infra.ContainerDict].fail("read error")])
         (tmp_path / "pyproject.toml").write_text("")
         tm.fail(service.sync(tmp_path))
 
@@ -64,7 +64,7 @@ class TestSync:
         _set_toml_stub(
             service,
             [
-                r[t.Infra.TomlConfig].ok({
+                r[t.Infra.ContainerDict].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {
@@ -79,7 +79,7 @@ class TestSync:
         monkeypatch.setenv("FLEXT_STANDALONE", "")
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
 
-        def _git_run(_cmd: Sequence[str], cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
             _ = cwd
             return r[str].ok("")
 
@@ -103,7 +103,7 @@ class TestSync:
         _set_toml_stub(
             service,
             [
-                r[t.Infra.TomlConfig].ok({
+                r[t.Infra.ContainerDict].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {
@@ -113,13 +113,13 @@ class TestSync:
                     },
                     "project": {},
                 }),
-                r[t.Infra.TomlConfig].ok({"repo": {}}),
+                r[t.Infra.ContainerDict].ok({"repo": {}}),
             ],
         )
         monkeypatch.setenv("FLEXT_STANDALONE", "")
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
 
-        def _git_run(_cmd: Sequence[str], cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
             _ = cwd
             return r[str].ok("")
 

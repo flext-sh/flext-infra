@@ -9,10 +9,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from datetime import UTC, datetime
 from pathlib import Path
 
+from flext_core import FlextTypes as t
 from pydantic import JsonValue
 
 from flext_infra import c, m, r, u
@@ -45,7 +46,7 @@ class FlextInfraInventoryService:
         try:
             root = workspace_root.resolve()
             scripts_dir = root / c.Infra.Directories.SCRIPTS
-            scripts: Sequence[str] = []
+            scripts: t.StrSequence = []
             if scripts_dir.exists():
                 scripts = sorted(
                     path.relative_to(root).as_posix()

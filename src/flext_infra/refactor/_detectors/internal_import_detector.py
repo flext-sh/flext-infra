@@ -19,6 +19,7 @@ from flext_infra import (
     FlextInfraNamespaceEnforcerModels as nem,
     m,
     p,
+    t,
     u,
 )
 
@@ -129,7 +130,7 @@ class InternalImportDetector(p.Infra.Scanner):
             if file_path.name == "__init__.py":
                 continue
             if isinstance(stmt.names, cst.ImportStar):
-                imported_names: Sequence[str] = []
+                imported_names: t.StrSequence = []
                 import_list = "*"
             else:
                 imported_names = [

@@ -84,14 +84,14 @@ class FlextInfraUtilitiesYaml:
                     encoding=c.Infra.Encoding.DEFAULT,
                 )
             )
-            parsed_raw: t.Infra.TomlValue | None = safe_load(raw_text)
+            parsed_raw: t.Infra.InfraValue | None = safe_load(raw_text)
             if not isinstance(parsed_raw, Mapping):
                 result = r[m.Infra.ToolConfigDocument].fail(
                     "tool_config.yml must contain a top-level mapping",
                 )
                 FlextInfraUtilitiesYaml._tool_config_cache = result
                 return result
-            payload: t.Infra.TomlConfig = dict(parsed_raw.items())
+            payload: t.Infra.ContainerDict = dict(parsed_raw.items())
             validated = m.Infra.ToolConfigDocument.model_validate(payload)
             result = r[m.Infra.ToolConfigDocument].ok(validated)
             FlextInfraUtilitiesYaml._tool_config_cache = result

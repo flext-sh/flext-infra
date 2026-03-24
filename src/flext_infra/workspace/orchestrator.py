@@ -17,7 +17,7 @@ from typing import override
 
 from flext_core import FlextLogger
 
-from flext_infra import c, m, output, r, s, u
+from flext_infra import c, m, output, r, s, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -54,11 +54,11 @@ class FlextInfraOrchestratorService(s[bool]):
 
     def orchestrate(
         self,
-        projects: Sequence[str],
+        projects: t.StrSequence,
         verb: str,
         *,
         fail_fast: bool = False,
-        make_args: Sequence[str] = (),
+        make_args: t.StrSequence = (),
     ) -> r[Sequence[m.Infra.CommandOutput]]:
         """Execute make verb across projects with per-project logging.
 
@@ -150,7 +150,7 @@ class FlextInfraOrchestratorService(s[bool]):
         verb: str,
         _index: int,
         *,
-        make_args: Sequence[str],
+        make_args: t.StrSequence,
     ) -> r[m.Infra.CommandOutput]:
         """Execute make verb for a single project.
 
@@ -215,8 +215,8 @@ class FlextInfraOrchestratorService(s[bool]):
         *,
         project: str,
         verb: str,
-        make_args: Sequence[str],
-    ) -> Sequence[str]:
+        make_args: t.StrSequence,
+    ) -> t.StrSequence:
         if (verb != c.Infra.Verbs.CHECK) or (not self._is_go_project(project)):
             return make_args
         normalized_args: MutableSequence[str] = []

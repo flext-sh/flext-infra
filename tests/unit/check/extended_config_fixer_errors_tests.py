@@ -22,9 +22,9 @@ def _fake_process(
     _p: Path,
     *,
     dry_run: bool = False,
-) -> r[Sequence[str]]:
+) -> r[t.StrSequence]:
     del dry_run
-    return r[Sequence[str]].ok(["fix1"])
+    return r[t.StrSequence].ok(["fix1"])
 
 
 class TestConfigFixerRunMethods:
@@ -49,9 +49,9 @@ class TestConfigFixerRunMethods:
             _p: Path,
             *,
             dry_run: bool = False,
-        ) -> r[Sequence[str]]:
+        ) -> r[t.StrSequence]:
             del dry_run
-            return r[Sequence[str]].ok(["fix1", "fix2"])
+            return r[t.StrSequence].ok(["fix1", "fix2"])
 
         monkeypatch.setattr(FlextInfraConfigFixer, "find_pyproject_files", _find)
         monkeypatch.setattr(FlextInfraConfigFixer, "process_file", _proc)
@@ -127,7 +127,7 @@ class TestProcessFileReadError:
             _s: FlextInfraConfigFixer,
             _d: MutableMapping[str, t.Infra.InfraValue],
             _r: Path,
-        ) -> Sequence[str]:
+        ) -> t.StrSequence:
             return ["fix1"]
 
         original_write = Path.write_text

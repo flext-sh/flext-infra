@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Final
+
+from flext_infra import t
 
 
 class FlextInfraCheckConstants:
@@ -33,7 +35,7 @@ class FlextInfraCheckConstants:
         ),
         "go": ("Go Vet", "https://pkg.go.dev/cmd/vet"),
     }
-    REQUIRED_EXCLUDES: Final[Sequence[str]] = ["**/*_pb2*.py", "**/*_pb2_grpc*.py"]
+    REQUIRED_EXCLUDES: Final[t.StrSequence] = ["**/*_pb2*.py", "**/*_pb2_grpc*.py"]
     RUFF_FORMAT_FILE_RE: Final[re.Pattern[str]] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )

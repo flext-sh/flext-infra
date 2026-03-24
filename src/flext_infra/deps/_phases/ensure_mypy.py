@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 
 import tomlkit
+from flext_core import FlextTypes as t
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
@@ -17,7 +18,7 @@ class EnsureMypyConfigPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         self._tool_config = tool_config
 
-    def apply(self, doc: tomlkit.TOMLDocument) -> Sequence[str]:
+    def apply(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | Container | None = None
         if c.Infra.Toml.TOOL in doc:

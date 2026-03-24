@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import shlex
 import subprocess
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_core import r
 
-from flext_infra import c, m
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesSubprocess:
@@ -17,10 +16,10 @@ class FlextInfraUtilitiesSubprocess:
 
     @staticmethod
     def run_raw(
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[m.Infra.CommandOutput]:
         """Run command without enforcing exit code."""
         try:
@@ -49,10 +48,10 @@ class FlextInfraUtilitiesSubprocess:
 
     @staticmethod
     def run(
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[m.Infra.CommandOutput]:
         """Run command with zero-exit enforcement."""
         res = FlextInfraUtilitiesSubprocess.run_raw(cmd, cwd, timeout, env)
@@ -67,10 +66,10 @@ class FlextInfraUtilitiesSubprocess:
 
     @staticmethod
     def run_checked(
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[bool]:
         """Run command and return status."""
         return FlextInfraUtilitiesSubprocess.run(cmd, cwd, timeout, env).map(
@@ -79,10 +78,10 @@ class FlextInfraUtilitiesSubprocess:
 
     @staticmethod
     def capture(
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[str]:
         """Capture stripped stdout."""
         return FlextInfraUtilitiesSubprocess.run(cmd, cwd, timeout, env).map(
@@ -91,11 +90,11 @@ class FlextInfraUtilitiesSubprocess:
 
     @staticmethod
     def run_to_file(
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         output_file: Path,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[int]:
         """Stream combined output to file."""
         try:

@@ -22,10 +22,10 @@ class StubPrManager:
 
     def __init__(
         self,
-        status_returns: Sequence[r[Mapping[str, t.Scalar]]] | None = None,
-        create_returns: Sequence[r[Mapping[str, t.Scalar]]] | None = None,
+        status_returns: Sequence[r[t.ScalarMapping]] | None = None,
+        create_returns: Sequence[r[t.ScalarMapping]] | None = None,
         view_returns: Sequence[r[str]] | None = None,
-        checks_returns: Sequence[r[Mapping[str, t.Scalar]]] | None = None,
+        checks_returns: Sequence[r[t.ScalarMapping]] | None = None,
         merge_returns: Sequence[r[t.Container]] | None = None,
         close_returns: Sequence[r[bool]] | None = None,
     ) -> None:
@@ -38,8 +38,8 @@ class StubPrManager:
 
     @staticmethod
     def _pop_status(
-        returns: Sequence[r[Mapping[str, t.Scalar]]],
-    ) -> r[Mapping[str, t.Scalar]]:
+        returns: Sequence[r[t.ScalarMapping]],
+    ) -> r[t.ScalarMapping]:
         if not returns:
             return r[t.ScalarMapping].fail("no return configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
@@ -69,7 +69,7 @@ class StubPrManager:
         repo_root: Path,
         base: str,
         head: str,
-    ) -> r[Mapping[str, t.Scalar]]:
+    ) -> r[t.ScalarMapping]:
         _ = repo_root, base, head
         return self._pop_status(self._status)
 
@@ -82,7 +82,7 @@ class StubPrManager:
         body: str,
         *,
         draft: bool = False,
-    ) -> r[Mapping[str, t.Scalar]]:
+    ) -> r[t.ScalarMapping]:
         _ = repo_root, base, head, title, body, draft
         return self._pop_status(self._create)
 
@@ -96,7 +96,7 @@ class StubPrManager:
         selector: str,
         *,
         strict: bool = False,
-    ) -> r[Mapping[str, t.Scalar]]:
+    ) -> r[t.ScalarMapping]:
         _ = repo_root, selector, strict
         return self._pop_status(self._checks)
 
@@ -210,12 +210,12 @@ class StubWorkspaceManager:
         self,
         workspace_root: Path,
         *,
-        projects: Sequence[str] | None = None,
+        projects: t.StrSequence | None = None,
         include_root: bool = True,
         branch: str = "",
         checkpoint: bool = True,
         fail_fast: bool = False,
-        pr_args: Mapping[str, str] | None = None,
+        pr_args: t.StrMapping | None = None,
     ) -> r[m.Infra.PrOrchestrationResult]:
         infra_projects: Sequence[t.Infra.InfraValue] | None = (
             [str(p) for p in projects] if projects else None

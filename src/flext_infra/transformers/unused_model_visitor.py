@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 
 
 class ModelDefinitionCollector(cst.CSTVisitor):
@@ -61,7 +62,7 @@ class ModelDefinitionCollector(cst.CSTVisitor):
                     return True
         return False
 
-    def _attribute_parts(self, expression: cst.Attribute) -> Sequence[str]:
+    def _attribute_parts(self, expression: cst.Attribute) -> t.StrSequence:
         parts: MutableSequence[str] = [expression.attr.value]
         current: cst.BaseExpression = expression.value
         while isinstance(current, cst.Attribute):

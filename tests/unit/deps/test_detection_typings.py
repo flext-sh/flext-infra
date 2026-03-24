@@ -12,11 +12,11 @@ from tests import m, t
 
 
 class _StubToml:
-    def __init__(self, values: Sequence[r[t.Infra.TomlConfig]]) -> None:
+    def __init__(self, values: Sequence[r[t.Infra.ContainerDict]]) -> None:
         self._values = values
         self._idx = 0
 
-    def read_plain(self, path: Path) -> r[t.Infra.TomlConfig]:
+    def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
         _ = path
         value = self._values[self._idx]
         if self._idx < len(self._values) - 1:
@@ -27,12 +27,12 @@ class _StubToml:
 class _StubRunner:
     def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
         self._result = result
-        self.last_kwargs: Mapping[str, str | int | Path | Mapping[str, str]] = {}
+        self.last_kwargs: Mapping[str, str | int | Path | t.StrMapping] = {}
 
     def run_raw(
         self,
-        *args: t.Infra.TomlValue,
-        **kwargs: str | int | Path | Mapping[str, str],
+        *args: t.Infra.InfraValue,
+        **kwargs: str | int | Path | t.StrMapping,
     ) -> r[m.Infra.CommandOutput]:
         _ = args
         self.last_kwargs = kwargs
@@ -45,7 +45,7 @@ class TestLoadDependencyLimits:
         monkeypatch.setattr(
             service,
             "toml",
-            _StubToml([r[t.Infra.TomlConfig].ok({"key": "value", "num": 42})]),
+            _StubToml([r[t.Infra.ContainerDict].ok({"key": "value", "num": 42})]),
         )
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert result.get("key") == "value"
@@ -56,7 +56,7 @@ class TestLoadDependencyLimits:
         monkeypatch.setattr(
             service,
             "toml",
-            _StubToml([r[t.Infra.TomlConfig].fail("not found")]),
+            _StubToml([r[t.Infra.ContainerDict].fail("not found")]),
         )
         tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), eq={})
 
@@ -68,7 +68,7 @@ class TestLoadDependencyLimits:
         monkeypatch.setattr(
             service,
             "toml",
-            _StubToml([r[t.Infra.TomlConfig].ok({"good": "val", "bad": ["x"]})]),
+            _StubToml([r[t.Infra.ContainerDict].ok({"good": "val", "bad": ["x"]})]),
         )
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert "good" in result
@@ -79,7 +79,7 @@ class TestLoadDependencyLimits:
         monkeypatch.setattr(
             service,
             "toml",
-            _StubToml([r[t.Infra.TomlConfig].ok({"key": None})]),
+            _StubToml([r[t.Infra.ContainerDict].ok({"key": None})]),
         )
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         assert "key" in result

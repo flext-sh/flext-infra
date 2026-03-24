@@ -12,7 +12,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
-from flext_infra import c
+from flext_infra import c, t
 
 _TEMPLATE_ROOT = Path(__file__).resolve().parent.parent / "templates"
 
@@ -51,7 +51,7 @@ class FlextInfraCodegenGeneration:
         groups: Mapping[str, Sequence[tuple[str, str]]],
         *,
         include_flext_types: bool = True,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Generate TYPE_CHECKING import block for type hints.
 
         Creates Python code for conditional imports guarded by TYPE_CHECKING,
@@ -131,9 +131,9 @@ class FlextInfraCodegenGeneration:
     @staticmethod
     def generate_file(
         docstring_source: str,
-        exports: Sequence[str],
+        exports: t.StrSequence,
         filtered: Mapping[str, tuple[str, str]],
-        inline_constants: Mapping[str, str],
+        inline_constants: t.StrMapping,
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
     ) -> str:

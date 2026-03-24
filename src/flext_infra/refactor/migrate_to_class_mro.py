@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
+
+from flext_core import FlextTypes as t
 
 from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
@@ -33,7 +35,7 @@ class FlextInfraRefactorMigrateToClassMRO:
             workspace_root=self._workspace_root,
             target=normalized_target,
         )
-        warnings: Sequence[str] = []
+        warnings: t.StrSequence = []
         errors: MutableSequence[str] = []
         stash_ref = ""
         moved_index: MutableMapping[str, Mapping[str, str]] = {}

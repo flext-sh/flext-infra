@@ -9,6 +9,8 @@ from pathlib import Path
 import libcst as cst
 from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
+from flext_infra import t
+
 
 class FlextInfraUtilitiesParsing:
     """Static parsing utilities for Python source analysis."""
@@ -182,7 +184,7 @@ class FlextInfraUtilitiesParsing:
         return names
 
     @staticmethod
-    def cst_import_line(module_name: str, aliases: Sequence[str]) -> cst.BaseStatement:
+    def cst_import_line(module_name: str, aliases: t.StrSequence) -> cst.BaseStatement:
         """Construct a CST ImportFrom statement line."""
         return cst.SimpleStatementLine(
             body=[

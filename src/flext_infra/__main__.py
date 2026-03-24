@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import importlib
 import sys
-from collections.abc import Sequence
 from types import MappingProxyType
 from typing import ClassVar, override
 
@@ -81,7 +80,7 @@ class FlextInfraMainCLI(FlextService[int]):
             output.info(f"  {group:<16}{FlextInfraMainCLI.DESCRIPTIONS.get(group, '')}")
 
 
-def main_inner(argv: Sequence[str] | None = None) -> int:
+def main_inner(argv: t.StrSequence | None = None) -> int:
     """Dispatch to the appropriate group CLI."""
     args = argv if argv is not None else sys.argv
     if len(args) < c.Infra.MIN_ARGV or args[1] in {"-h", "--help"}:
@@ -98,7 +97,7 @@ def main_inner(argv: Sequence[str] | None = None) -> int:
     return int(exit_code) if exit_code is not None else 0
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: t.StrSequence | None = None) -> int:
     """Run the top-level flext-infra CLI dispatcher."""
     return u.Infra.run_cli(main_inner, argv)
 

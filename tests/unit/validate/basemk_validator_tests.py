@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
+
 from pathlib import Path
 
 import pytest
@@ -152,4 +153,4 @@ class TestBaseMkValidatorSha256:
         tm.that(self._sha(f1), ne=self._sha(f2))
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

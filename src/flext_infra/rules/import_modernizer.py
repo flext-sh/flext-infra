@@ -29,7 +29,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, Sequence[str]]:
+    ) -> tuple[cst.Module, t.StrSequence]:
         """Apply import modernizer or lazy-import hoisting based on fix action."""
         fix_action = (
             str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
@@ -65,10 +65,10 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         value: Sequence[JsonValue] | Sequence[Mapping[str, JsonValue]] | JsonValue,
     ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         try:
-            raw_items = TypeAdapter(Sequence[t.Infra.RuleConfig]).validate_python(value)
+            raw_items = TypeAdapter(Sequence[t.Infra.ContainerDict]).validate_python(value)
         except ValidationError:
             return []
-        normalized: Sequence[t.Infra.RuleConfig] = [
+        normalized: Sequence[t.Infra.ContainerDict] = [
             {
                 "module": item_mapping.get("module", ""),
                 "symbol_mapping": item_mapping.get("symbol_mapping", {}),
@@ -204,7 +204,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         tree.visit(FunctionShadowCollector())
         return shadowed_aliases
 
-    def _fix_lazy_imports(self, tree: cst.Module) -> tuple[cst.Module, Sequence[str]]:
+    def _fix_lazy_imports(self, tree: cst.Module) -> tuple[cst.Module, t.StrSequence]:
         transformer = FlextInfraRefactorLazyImportFixer()
         new_tree = tree.visit(transformer)
         return (new_tree, transformer.changes)

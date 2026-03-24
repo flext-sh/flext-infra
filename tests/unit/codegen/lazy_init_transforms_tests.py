@@ -32,7 +32,7 @@ _merge_child_exports: Callable[
 ] = getattr(FlextInfraCodegenLazyInit, "_merge_child_exports")
 _extract_version_exports: Callable[
     [Path, str],
-    tuple[Mapping[str, str], Mapping[str, tuple[str, str]]],
+    tuple[t.StrMapping, Mapping[str, tuple[str, str]]],
 ] = getattr(FlextInfraCodegenLazyInit, "_extract_version_exports")
 
 

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
+
+from flext_core import FlextTypes as t
 
 from flext_infra import FlextInfraCodegenSnapshot
 
@@ -23,7 +25,7 @@ class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
         return ""
 
     @staticmethod
-    def extract_exports(tree: ast.Module) -> tuple[bool, Sequence[str]]:
+    def extract_exports(tree: ast.Module) -> tuple[bool, t.StrSequence]:
         exports: MutableSequence[str] = []
         has_all = False
         for node in tree.body:

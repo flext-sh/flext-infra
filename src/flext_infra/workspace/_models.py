@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -61,11 +60,11 @@ class FlextInfraWorkspaceModels:
 
         project: Annotated[t.NonEmptyStr, Field(description="Project identifier")]
         changes: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(default_factory=list, description="Applied changes"),
         ] = Field(default_factory=list)
         errors: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(default_factory=list, description="Migration errors"),
         ] = Field(default_factory=list)
 

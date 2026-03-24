@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence
 from typing import override
 
 import libcst as cst
@@ -139,7 +139,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
     def _attribute_from_base(
         self,
         base: cst.BaseExpression,
-        dotted_parts: Sequence[str],
+        dotted_parts: t.StrSequence,
     ) -> cst.BaseExpression:
         expr: cst.BaseExpression = base
         for part in dotted_parts:
@@ -153,7 +153,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
             return expr.attr.value
         return None
 
-    def _split_dotted(self, dotted_name: str) -> Sequence[str]:
+    def _split_dotted(self, dotted_name: str) -> t.StrSequence:
         return [part for part in dotted_name.split(".") if part]
 
     def _should_propagate(self, symbol_name: str, policy_key: str) -> bool:

@@ -18,8 +18,8 @@ class _StubRunner:
 
     def run_raw(
         self,
-        *args: t.Infra.TomlValue,
-        **kwargs: t.Infra.TomlValue,
+        *args: t.Infra.InfraValue,
+        **kwargs: t.Infra.InfraValue,
     ) -> r[m.Infra.CommandOutput]:
         _ = args
         _ = kwargs
@@ -90,12 +90,12 @@ class TestDetectionUncoveredLines:
             def __init__(self) -> None:
                 self._i = 0
 
-            def read_plain(self, path: Path) -> r[Mapping[str, t.Infra.TomlValue]]:
+            def read_plain(self, path: Path) -> r[Mapping[str, t.Infra.InfraValue]]:
                 _ = path
                 self._i += 1
                 if self._i == 1:
-                    return r[t.Infra.TomlConfig].ok({"python": {"version": "3.13"}})
-                return r[t.Infra.TomlConfig].ok({})
+                    return r[t.Infra.ContainerDict].ok({"python": {"version": "3.13"}})
+                return r[t.Infra.ContainerDict].ok({})
 
         monkeypatch.setattr(service, "toml", _Toml())
         report = tm.ok(service.get_required_typings(tmp_path, venv_bin))

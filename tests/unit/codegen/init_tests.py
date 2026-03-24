@@ -33,4 +33,4 @@ def test_codegen_lazy_imports_work() -> None:
     tm.that(hasattr(FlextInfraCodegenLazyInit, "run"), eq=True)
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

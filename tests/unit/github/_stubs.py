@@ -57,10 +57,10 @@ class StubRunner:
         self._capture_returns = list(capture_returns or [])
         self._run_checked_returns = list(run_checked_returns or [])
         self._run_to_file_returns = list(run_to_file_returns or [])
-        self.run_calls: Sequence[Sequence[str]] = []
-        self.capture_calls: Sequence[Sequence[str]] = []
-        self.run_checked_calls: Sequence[Sequence[str]] = []
-        self.run_to_file_calls: Sequence[Sequence[str]] = []
+        self.run_calls: Sequence[t.StrSequence] = []
+        self.capture_calls: Sequence[t.StrSequence] = []
+        self.run_checked_calls: Sequence[t.StrSequence] = []
+        self.run_to_file_calls: Sequence[t.StrSequence] = []
 
     @staticmethod
     def _pop_run(
@@ -90,10 +90,10 @@ class StubRunner:
 
     def run(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[m.Infra.CommandOutput]:
         _ = cwd, timeout, env
         self.run_calls.append(list(cmd))
@@ -101,10 +101,10 @@ class StubRunner:
 
     def capture(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[str]:
         _ = cwd, timeout, env
         self.capture_calls.append(list(cmd))
@@ -112,10 +112,10 @@ class StubRunner:
 
     def run_checked(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[bool]:
         _ = cwd, timeout, env
         self.run_checked_calls.append(list(cmd))
@@ -123,11 +123,11 @@ class StubRunner:
 
     def run_to_file(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         output_file: Path,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[int]:
         _ = output_file, cwd, timeout, env
         self.run_to_file_calls.append(list(cmd))
@@ -135,10 +135,10 @@ class StubRunner:
 
     def run_raw(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[m.Infra.CommandOutput]:
         return self.run(cmd, cwd=cwd, timeout=timeout, env=env)
 
@@ -206,7 +206,7 @@ class StubSelector(FlextInfraUtilitiesSelection):
     @override
     def resolve_projects(
         workspace_root: Path,
-        names: Sequence[str],
+        names: t.StrSequence,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         _ = workspace_root, names
         return StubSelector._resolve_returns

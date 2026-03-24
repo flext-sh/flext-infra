@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import re
 import tomllib
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
 from flext_infra import c, m, t, u
@@ -41,10 +41,10 @@ class ProjectClassifier:
             family_chains={**family_chains},
         )
 
-    def _read_project_metadata(self) -> tuple[str, Sequence[str]]:
+    def _read_project_metadata(self) -> tuple[str, t.StrSequence]:
         if not self._pyproject_path.is_file():
             return ("", [])
-        parsed: t.Infra.TomlConfig = tomllib.loads(
+        parsed: t.Infra.ContainerDict = tomllib.loads(
             self._pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT),
         )
         raw_project = self._as_mapping(parsed.get(c.Infra.Toml.PROJECT))
@@ -133,7 +133,7 @@ class ProjectClassifier:
     def _ordered_mapping_keys(
         self,
         raw_mapping: Mapping[str, t.Infra.InfraValue],
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         keys = list(raw_mapping.keys())
         if self._mapping_order_is_trusted(raw_mapping):
             return keys
@@ -158,9 +158,9 @@ class ProjectClassifier:
     def _internal_dependencies(
         self,
         *,
-        dependencies: Sequence[str],
+        dependencies: t.StrSequence,
         project_name: str,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         internal: MutableSequence[str] = []
         for dependency in dependencies:
             if not dependency.startswith("flext-"):
@@ -230,10 +230,10 @@ class ProjectClassifier:
     def _build_confirmed_family_chains(
         self,
         *,
-        internal_dependencies: Sequence[str],
+        internal_dependencies: t.StrSequence,
         family_bases: Mapping[str, set[str]],
-    ) -> Mapping[str, Sequence[str]]:
-        family_chains: MutableMapping[str, Sequence[str]] = {}
+    ) -> Mapping[str, t.StrSequence]:
+        family_chains: MutableMapping[str, t.StrSequence] = {}
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_parents = self._expected_parents_for_family(
                 family_suffix=suffix,
@@ -253,8 +253,8 @@ class ProjectClassifier:
         self,
         *,
         family_suffix: str,
-        internal_dependencies: Sequence[str],
-    ) -> Sequence[str]:
+        internal_dependencies: t.StrSequence,
+    ) -> t.StrSequence:
         expected: MutableSequence[str] = []
         for dependency in internal_dependencies:
             stem = self._dependency_to_class_stem(dependency)
@@ -283,7 +283,7 @@ class ProjectClassifier:
     def _infer_project_kind(
         self,
         *,
-        internal_dependencies: Sequence[str],
+        internal_dependencies: t.StrSequence,
         local_facade_classes: set[str],
     ) -> str:
         if not internal_dependencies:

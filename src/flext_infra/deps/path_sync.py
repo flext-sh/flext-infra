@@ -15,7 +15,7 @@ from pydantic import JsonValue
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, r, t, u
 
 
 class _FlextInfraOutput:
@@ -121,12 +121,12 @@ class FlextInfraDependencyPathSync:
         is_root: bool,
         mode: str,
         internal_names: set[str],
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         project_raw = self._table_get(doc, c.Infra.Toml.PROJECT)
         if not isinstance(project_raw, Table):
             return []
         project_section: Table = project_raw
-        deps: Sequence[str] = u.Infra.as_string_list(
+        deps: t.StrSequence = u.Infra.as_string_list(
             self._table_get(project_section, c.Infra.Toml.DEPENDENCIES),
         )
         if not deps:
@@ -166,7 +166,7 @@ class FlextInfraDependencyPathSync:
     @staticmethod
     def _rewrite_poetry(
         doc: TOMLDocument, *, is_root: bool, mode: str
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         tool_raw = FlextInfraDependencyPathSync._table_get(doc, c.Infra.Toml.TOOL)
         if not isinstance(tool_raw, Table):
             return []
@@ -216,11 +216,11 @@ class FlextInfraDependencyPathSync:
         internal_names: set[str],
         is_root: bool = False,
         dry_run: bool = False,
-    ) -> r[Sequence[str]]:
+    ) -> r[t.StrSequence]:
         """Rewrite PEP 621 and Poetry dependency paths."""
         doc_result = self._read_document(pyproject_path)
         if doc_result.is_failure:
-            return r[Sequence[str]].fail(
+            return r[t.StrSequence].fail(
                 doc_result.error or "failed to read TOML document"
             )
         doc: TOMLDocument = doc_result.value
@@ -236,16 +236,16 @@ class FlextInfraDependencyPathSync:
         if changes and (not dry_run):
             write_result = self._write_document(pyproject_path, doc)
             if write_result.is_failure:
-                return r[Sequence[str]].fail(
+                return r[t.StrSequence].fail(
                     write_result.error or "failed to write TOML"
                 )
-        return r[Sequence[str]].ok(changes)
+        return r[t.StrSequence].ok(changes)
 
     def run(self, *, cli: u.Infra.CliArgs, mode: str) -> int:
         """Execute path synchronization for the given CLI arguments."""
         self.set_workspace_root(cli.workspace)
         dry_run = cli.dry_run
-        selected_projects: Sequence[str] = cli.project_names() or []
+        selected_projects: t.StrSequence = cli.project_names() or []
 
         if mode == "auto":
             mode = self.detect_mode(self._root)
@@ -281,7 +281,7 @@ class FlextInfraDependencyPathSync:
                     error_detail=root_error,
                 )
                 return 1
-            changes: Sequence[str] = changes_result.value
+            changes: t.StrSequence = changes_result.value
             if changes:
                 prefix = "[DRY-RUN] " if dry_run else ""
                 output.info(f"{prefix}{root_pyproject}:")
@@ -340,7 +340,7 @@ class FlextInfraDependencyPathSync:
                     error_detail=project_error,
                 )
                 return 1
-            project_changes: Sequence[str] = changes_result.value
+            project_changes: t.StrSequence = changes_result.value
             if project_changes:
                 prefix = "[DRY-RUN] " if dry_run else ""
                 output.info(f"{prefix}{pyproject}:")
@@ -358,7 +358,7 @@ class FlextInfraDependencyPathSync:
         return 0
 
     @staticmethod
-    def main(argv: Sequence[str] | None = None) -> int:
+    def main(argv: t.StrSequence | None = None) -> int:
         """Entry point for path sync CLI."""
         parser = u.Infra.create_parser(
             "flext-infra deps path-sync",

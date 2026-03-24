@@ -10,13 +10,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
 
 from flext_core import r
 
 from flext_infra import (
     FlextInfraPythonVersionEnforcer,
     output,
+    t,
     u,
 )
 
@@ -25,7 +25,7 @@ class FlextInfraWorkspaceMaintenanceCommand:
     """CLI entry point for workspace maintenance operations (Python version enforcement)."""
 
     @staticmethod
-    def run(argv: Sequence[str] | None = None) -> int:
+    def run(argv: t.StrSequence | None = None) -> int:
         """Execute maintenance CLI and return service exit code."""
         parser = u.Infra.create_parser(
             prog="maintenance",
@@ -48,7 +48,7 @@ class FlextInfraWorkspaceMaintenanceCommand:
         return 1
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: t.StrSequence | None = None) -> int:
     """Run maintenance service CLI."""
     return FlextInfraWorkspaceMaintenanceCommand.run(argv)
 

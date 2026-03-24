@@ -14,6 +14,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, Final
 
+from flext_infra import t
+
 _TAIL_LINES: Final[int] = 50
 
 
@@ -43,7 +45,7 @@ class FlextInfraUtilitiesLogParser:
         log_path: Path,
         *,
         max_lines: int = 5,
-    ) -> tuple[int, Sequence[str]]:
+    ) -> tuple[int, t.StrSequence]:
         """Read log tail and extract error lines.
 
         Args:

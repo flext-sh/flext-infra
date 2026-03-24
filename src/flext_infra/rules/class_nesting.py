@@ -32,7 +32,7 @@ class ClassNestingRefactorRule:
         self._policy_path = Path(__file__).with_name("class-policy-v2.yml")
         self._pre_check_gate = PreCheckGate()
         self._post_check_gate = PostCheckGate()
-        self._cached_config: t.Infra.RuleConfig | None = None
+        self._cached_config: t.Infra.ContainerDict | None = None
         self._cached_policy_context: t.Infra.PolicyContext | None = None
 
     def apply(
@@ -188,7 +188,7 @@ class ClassNestingRefactorRule:
                 refactored_code=None,
             )
 
-    def _load_config(self) -> t.Infra.RuleConfig:
+    def _load_config(self) -> t.Infra.ContainerDict:
         if self._cached_config is not None:
             return self._cached_config
         try:
@@ -233,7 +233,7 @@ class ClassNestingRefactorRule:
         self._cached_config = config
         return config
 
-    def _confidence_threshold(self, config: t.Infra.RuleConfig) -> str:
+    def _confidence_threshold(self, config: t.Infra.ContainerDict) -> str:
         raw = config.get("confidence_threshold", c.Infra.Severity.LOW)
         if not isinstance(raw, str):
             msg = "confidence_threshold must be a string"
@@ -254,7 +254,7 @@ class ClassNestingRefactorRule:
 
     def _class_nesting_mappings(
         self,
-        config: t.Infra.RuleConfig,
+        config: t.Infra.ContainerDict,
         file_path: Path,
         confidence_threshold: str,
     ) -> MutableMapping[str, str]:
@@ -272,7 +272,7 @@ class ClassNestingRefactorRule:
 
     def _run_precheck(
         self,
-        config: t.Infra.RuleConfig,
+        config: t.Infra.ContainerDict,
         file_path: Path,
         confidence_threshold: str,
     ) -> MutableSequence[str]:
@@ -307,7 +307,7 @@ class ClassNestingRefactorRule:
 
     def _helper_consolidation_mappings(
         self,
-        config: t.Infra.RuleConfig,
+        config: t.Infra.ContainerDict,
         file_path: Path,
         confidence_threshold: str,
     ) -> MutableMapping[str, str]:
@@ -412,7 +412,7 @@ class ClassNestingRefactorRule:
 
     def _build_postcheck_payload(
         self,
-        config: t.Infra.RuleConfig,
+        config: t.Infra.ContainerDict,
         file_path: Path,
         confidence_threshold: str,
     ) -> t.Infra.ContainerDict:
@@ -467,7 +467,7 @@ class ClassNestingRefactorRule:
         mappings: Mapping[str, str],
         changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
-        class_families: t.Infra.ClassFamilyMap,
+        class_families: Mapping[str, str],
     ) -> cst.Module:
         return self._apply_transformer(
             tree=tree,
@@ -487,7 +487,7 @@ class ClassNestingRefactorRule:
         mappings: Mapping[str, str],
         changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
-        helper_families: t.Infra.ClassFamilyMap,
+        helper_families: Mapping[str, str],
     ) -> cst.Module:
         return self._apply_transformer(
             tree=tree,

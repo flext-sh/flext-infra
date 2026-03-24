@@ -44,7 +44,7 @@ class FlextInfraRefactorModels(
             Field(default=None, description="Error message on failure"),
         ] = None
         changes: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Human-readable change descriptions",
@@ -99,7 +99,7 @@ class FlextInfraRefactorModels(
             ),
         ]
         decorators: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Decorator names applied to this method",
@@ -122,7 +122,7 @@ class FlextInfraRefactorModels(
             Field(default="", description="Git stash reference"),
         ] = ""
         processed_targets: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Already-processed file targets",
@@ -202,7 +202,7 @@ class FlextInfraRefactorModels(
             ),
         ]
         family_chains: Annotated[
-            Mapping[str, Sequence[str]],
+            Mapping[str, t.StrSequence],
             Field(
                 description="Family letter to MRO chain mapping",
             ),
@@ -279,21 +279,21 @@ class FlextInfraRefactorModels(
             Field(description="Module family name"),
         ]
         allowed_operations: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Enabled operation identifiers for this family",
             ),
         ]
         forbidden_operations: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Disabled operation identifiers for this family",
             ),
         ]
         forbidden_targets: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Target namespaces forbidden for this family",
@@ -342,14 +342,14 @@ class FlextInfraRefactorModels(
             ),
         ]
         required_parameters: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Function parameters that must exist in helper signatures",
             ),
         ]
         forbidden_parameters: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Function parameters that must not exist in helper signatures",
@@ -405,14 +405,14 @@ class FlextInfraRefactorModels(
             ),
         ]
         blocked_reference_prefixes: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Name prefixes blocked from rewrite propagation",
             ),
         ]
         allowed_targets: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Explicitly allowed target namespaces",
@@ -458,7 +458,7 @@ class FlextInfraRefactorModels(
             Field(description="Target namespace path"),
         ]
         dependencies: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Imported dependencies used by function",

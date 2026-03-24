@@ -64,7 +64,7 @@ class FlextInfraCheckModels:
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         passed: Annotated[bool, Field(description="Gate execution status")]
         errors: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=lambda: (),
                 description="Gate error messages",

@@ -70,7 +70,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Checker(Protocol):
             """Contract for infrastructure checker services."""
 
-            def run(self, argv: Sequence[str] | None = None) -> r[int]:
+            def run(self, argv: t.StrSequence | None = None) -> r[int]:
                 """Execute check and return result."""
                 ...
 
@@ -78,7 +78,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Syncer(Protocol):
             """Contract for synchronization services."""
 
-            def sync(self, argv: Sequence[str] | None = None) -> r[int]:
+            def sync(self, argv: t.StrSequence | None = None) -> r[int]:
                 """Execute sync and return result."""
                 ...
 
@@ -86,7 +86,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Generator(Protocol):
             """Contract for code generation services."""
 
-            def generate(self, argv: Sequence[str] | None = None) -> r[int]:
+            def generate(self, argv: t.StrSequence | None = None) -> r[int]:
                 """Execute generation and return result."""
                 ...
 
@@ -94,7 +94,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Validator(Protocol):
             """Contract for validation services."""
 
-            def validate(self, argv: Sequence[str] | None = None) -> r[int]:
+            def validate(self, argv: t.StrSequence | None = None) -> r[int]:
                 """Execute validation and return result."""
                 ...
 
@@ -102,7 +102,7 @@ class FlextInfraProtocols(FlextProtocols):
         class Orchestrator(Protocol):
             """Contract for orchestration services."""
 
-            def orchestrate(self, argv: Sequence[str] | None = None) -> r[int]:
+            def orchestrate(self, argv: t.StrSequence | None = None) -> r[int]:
                 """Execute orchestration and return result."""
                 ...
 
@@ -121,7 +121,7 @@ class FlextInfraProtocols(FlextProtocols):
         class TomlReader(Protocol):
             """Contract for TOML file readers used by dependency services."""
 
-            def read_plain(self, path: Path) -> r[t.Infra.TomlConfig]:
+            def read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
                 """Read and parse a TOML file as a plain dict with r error handling."""
                 ...
 
@@ -131,51 +131,51 @@ class FlextInfraProtocols(FlextProtocols):
 
             def run(
                 self,
-                cmd: Sequence[str],
+                cmd: t.StrSequence,
                 cwd: Path | None = None,
                 timeout: int | None = None,
-                env: Mapping[str, str] | None = None,
+                env: t.StrMapping | None = None,
             ) -> r[m.Infra.CommandOutput]:
                 """Execute a command and return output."""
                 ...
 
             def capture(
                 self,
-                cmd: Sequence[str],
+                cmd: t.StrSequence,
                 cwd: Path | None = None,
                 timeout: int | None = None,
-                env: Mapping[str, str] | None = None,
+                env: t.StrMapping | None = None,
             ) -> r[str]:
                 """Execute a command and return captured stdout."""
                 ...
 
             def run_raw(
                 self,
-                cmd: Sequence[str],
+                cmd: t.StrSequence,
                 cwd: Path | None = None,
                 timeout: int | None = None,
-                env: Mapping[str, str] | None = None,
+                env: t.StrMapping | None = None,
             ) -> r[m.Infra.CommandOutput]:
                 """Execute a command and return raw output, including non-zero exit codes."""
                 ...
 
             def run_checked(
                 self,
-                cmd: Sequence[str],
+                cmd: t.StrSequence,
                 cwd: Path | None = None,
                 timeout: int | None = None,
-                env: Mapping[str, str] | None = None,
+                env: t.StrMapping | None = None,
             ) -> r[bool]:
                 """Execute a command and return success/failure status."""
                 ...
 
             def run_to_file(
                 self,
-                cmd: Sequence[str],
+                cmd: t.StrSequence,
                 output_file: Path,
                 cwd: Path | None = None,
                 timeout: int | None = None,
-                env: Mapping[str, str] | None = None,
+                env: t.StrMapping | None = None,
             ) -> r[int]:
                 """Execute a command and write combined output to file."""
                 ...
@@ -186,7 +186,7 @@ class FlextInfraProtocols(FlextProtocols):
 
             def capture(
                 self,
-                cmd: Sequence[str],
+                cmd: t.StrSequence,
                 cwd: Path | None = None,
                 timeout: int | None = None,
             ) -> r[str]:
@@ -195,7 +195,7 @@ class FlextInfraProtocols(FlextProtocols):
 
             def run_checked(
                 self,
-                cmd: Sequence[str],
+                cmd: t.StrSequence,
                 cwd: Path | None = None,
                 timeout: int | None = None,
             ) -> r[bool]:
@@ -257,7 +257,7 @@ class FlextInfraProtocols(FlextProtocols):
                 self,
                 workspace_root: Path,
                 *,
-                projects_filter: Sequence[str] | None = None,
+                projects_filter: t.StrSequence | None = None,
             ) -> r[Sequence[Path]]:
                 """Discover project paths in workspace root."""
                 ...
@@ -266,14 +266,14 @@ class FlextInfraProtocols(FlextProtocols):
                 self,
                 project_path: Path,
                 venv_bin: Path,
-            ) -> r[tuple[Sequence[t.Infra.IssueMap], int]]:
+            ) -> r[tuple[Sequence[t.Infra.ContainerDict], int]]:
                 """Run deptry on a project and return issues."""
                 ...
 
             def build_project_report(
                 self,
                 project_name: str,
-                deptry_issues: Sequence[t.Infra.IssueMap],
+                deptry_issues: Sequence[t.Infra.ContainerDict],
             ) -> p.Infra.ProjectReportLike:
                 """Build project report from deptry issues."""
                 ...
@@ -285,7 +285,7 @@ class FlextInfraProtocols(FlextProtocols):
             def load_dependency_limits(
                 self,
                 limits_path: Path | None = None,
-            ) -> Mapping[str, t.Infra.TomlValue]:
+            ) -> Mapping[str, t.Infra.InfraValue]:
                 """Load dependency limits from TOML file."""
                 ...
 
@@ -308,7 +308,7 @@ class FlextInfraProtocols(FlextProtocols):
                 self,
                 workspace_root: Path,
                 venv_bin: Path,
-            ) -> r[tuple[Sequence[str], int]]:
+            ) -> r[tuple[t.StrSequence, int]]:
                 """Run pip check on workspace and return results."""
                 ...
 
@@ -318,10 +318,10 @@ class FlextInfraProtocols(FlextProtocols):
 
             def run_raw(
                 self,
-                cmd: Sequence[str],
+                cmd: t.StrSequence,
                 cwd: Path | None = None,
                 timeout: int | None = None,
-                env: Mapping[str, str] | None = None,
+                env: t.StrMapping | None = None,
             ) -> r[m.Infra.CommandOutput]:
                 """Run command and return raw output."""
                 ...
@@ -341,7 +341,7 @@ class FlextInfraProtocols(FlextProtocols):
                 ...
 
             @staticmethod
-            def project_filter(cli: u.Infra.CliArgs) -> Sequence[str] | None:
+            def project_filter(cli: u.Infra.CliArgs) -> t.StrSequence | None:
                 """Resolve project filter list from parsed args."""
                 ...
 
@@ -359,7 +359,7 @@ class FlextInfraProtocols(FlextProtocols):
         class RunnableDetector(Protocol):
             """Contract for detectors that can be invoked via CLI."""
 
-            def run(self, argv: Sequence[str] | None = None) -> r[int]:
+            def run(self, argv: t.StrSequence | None = None) -> r[int]:
                 """Execute the detector and return an exit code."""
                 ...
 

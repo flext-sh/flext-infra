@@ -38,4 +38,4 @@ class TestCoreModuleInit:
         tm.that(hasattr(FlextInfraBaseMkValidator, "validate"), eq=True)
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

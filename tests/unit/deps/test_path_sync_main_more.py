@@ -28,7 +28,7 @@ def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
 
 class _OutputRecorder:
     def __init__(self) -> None:
-        self.calls: Sequence[str] = []
+        self.calls: t.StrSequence = []
 
     def info(self, message: str) -> None:
         self.calls.append(message)
@@ -128,9 +128,9 @@ def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
         internal_names: set[str],
         is_root: bool = False,
         dry_run: bool = False,
-    ) -> r[Sequence[str]]:
+    ) -> r[t.StrSequence]:
         _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
-        return r[Sequence[str]].ok([])
+        return r[t.StrSequence].ok([])
 
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
     monkeypatch.setattr(
@@ -171,9 +171,9 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         internal_names: set[str],
         is_root: bool = False,
         dry_run: bool = False,
-    ) -> r[Sequence[str]]:
+    ) -> r[t.StrSequence]:
         _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
-        return r[Sequence[str]].ok(["  PEP621: old -> new"])
+        return r[t.StrSequence].ok(["  PEP621: old -> new"])
 
     monkeypatch.setattr(sys, "argv", ["sync-paths", "--dry-run"])
     monkeypatch.setattr(
@@ -206,9 +206,9 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         internal_names: set[str],
         is_root: bool = False,
         dry_run: bool = False,
-    ) -> r[Sequence[str]]:
+    ) -> r[t.StrSequence]:
         _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
-        return r[Sequence[str]].ok(["  PEP621: old -> new"])
+        return r[t.StrSequence].ok(["  PEP621: old -> new"])
 
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
     monkeypatch.setattr(

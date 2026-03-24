@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+
 from pathlib import Path
 
 from flext_core import r
@@ -16,7 +17,7 @@ def rewrite_dep_paths(
     internal_names: set[str],
     is_root: bool = False,
     dry_run: bool = False,
-) -> r[Sequence[str]]:
+) -> r[t.StrSequence]:
     return FlextInfraDependencyPathSync().rewrite_dep_paths(
         pyproject_path,
         mode=mode,

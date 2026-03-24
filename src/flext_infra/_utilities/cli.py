@@ -51,7 +51,7 @@ class FlextInfraUtilitiesCli:
             """Return human-readable mode label."""
             return "apply" if self.apply else "dry-run"
 
-        def project_names(self) -> Sequence[str] | None:
+        def project_names(self) -> t.StrSequence | None:
             """Extract project names from single or comma-separated project string.
 
             Combines --project (single) and --projects (comma-separated) arguments.
@@ -338,8 +338,8 @@ class FlextInfraUtilitiesCli:
 
     @staticmethod
     def run_cli(
-        main_fn: Callable[[Sequence[str] | None], int],
-        argv: Sequence[str] | None = None,
+        main_fn: Callable[[t.StrSequence | None], int],
+        argv: t.StrSequence | None = None,
     ) -> int:
         try:
             FlextRuntime.ensure_structlog_configured()

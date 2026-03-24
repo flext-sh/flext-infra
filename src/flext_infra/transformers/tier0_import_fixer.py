@@ -203,7 +203,7 @@ class FlextInfraTransformerTier0ImportFixer:
             self._missing_classes: set[str] = set()
 
         @property
-        def changes(self) -> Sequence[str]:
+        def changes(self) -> t.StrSequence:
             """Return recorded transformation changes."""
             return self._changes
 

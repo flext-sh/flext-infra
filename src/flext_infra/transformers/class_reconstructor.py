@@ -17,7 +17,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
 
     def __init__(
         self,
-        order_config: Sequence[t.Infra.RuleConfig],
+        order_config: Sequence[t.Infra.ContainerDict],
         on_change: Callable[[str], None] | None = None,
     ) -> None:
         """Initialize with rule order config and optional change callback."""
@@ -96,7 +96,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
             decorators=decorators,
         )
 
-    def _categorize(self, name: str, decorators: Sequence[str]) -> str:
+    def _categorize(self, name: str, decorators: t.StrSequence) -> str:
         if any(
             decorator_name in decorators
             for decorator_name in ["property", "cached_property", "computed_field"]

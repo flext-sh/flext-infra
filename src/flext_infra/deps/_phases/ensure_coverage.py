@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 
 import tomlkit
+from flext_core import FlextTypes as t
 from tomlkit.items import Item, Table
 
 from flext_infra import c, m, u
@@ -21,7 +22,7 @@ class EnsureCoverageConfigPhase:
         doc: tomlkit.TOMLDocument,
         *,
         project_kind: str = "core",
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | None = None
         if c.Infra.Toml.TOOL in doc:

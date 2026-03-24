@@ -36,8 +36,8 @@ class PreCheckGate:
 
     def validate_entry(
         self,
-        entry: Mapping[str, str],
-    ) -> tuple[bool, Mapping[str, str] | None]:
+        entry: t.StrMapping,
+    ) -> tuple[bool, t.StrMapping | None]:
         """Validate a single class-nesting entry against the loaded policy."""
         source_symbol = entry.get(c.Infra.ReportKeys.LOOSE_NAME, "")
         helper_symbol = entry.get("helper_name", "")
@@ -160,8 +160,8 @@ class FlextInfraRefactorClassNestingReconstructor:
 
     @staticmethod
     def class_rename_mappings(
-        entries: Sequence[Mapping[str, str]],
-    ) -> Mapping[str, str]:
+        entries: Sequence[t.StrMapping],
+    ) -> t.StrMapping:
         """Build a mapping of loose class names to their nested target names."""
         mappings: MutableMapping[str, str] = {}
         for entry in entries:
@@ -180,10 +180,10 @@ class FlextInfraRefactorClassNestingReconstructor:
     @staticmethod
     def apply_nested_class_propagation(
         tree: cst.Module,
-        mappings: Mapping[str, str],
+        mappings: t.StrMapping,
         changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
-        class_families: t.Infra.ClassFamilyMap,
+        class_families: t.StrMapping,
     ) -> cst.Module:
         """Apply nested class propagation transforms using the given rename mappings."""
         transformer = NestedClassPropagationTransformer(
@@ -208,14 +208,14 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, Sequence[str]]:
+    ) -> tuple[cst.Module, t.StrSequence]:
         """Apply method reordering transformer when order config is available."""
         order_config_raw = self.config.get("method_order") or self.config.get(
             "order",
             [],
         )
         try:
-            order_config = TypeAdapter(Sequence[t.Infra.RuleConfig]).validate_python(
+            order_config = TypeAdapter(Sequence[t.Infra.ContainerDict]).validate_python(
                 order_config_raw,
             )
         except ValidationError:

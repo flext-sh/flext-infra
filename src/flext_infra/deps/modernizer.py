@@ -25,6 +25,7 @@ from flext_infra import (
     ProjectClassifier,
     c,
     r,
+    t,
     u,
 )
 
@@ -72,10 +73,10 @@ class FlextInfraPyprojectModernizer:
         self,
         path: Path,
         *,
-        canonical_dev: Sequence[str],
+        canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Process one pyproject.toml file and collect changes."""
         doc = u.Infra.read(path)
         if doc is None:
@@ -171,7 +172,7 @@ class FlextInfraPyprojectModernizer:
         if root_doc is None:
             return 2
         canonical_dev = u.Infra.canonical_dev_dependencies(root_doc)
-        violations: MutableMapping[str, Sequence[str]] = {}
+        violations: MutableMapping[str, t.StrSequence] = {}
         total = 0
         for file_path in files:
             changes = self.process_file(
@@ -217,7 +218,7 @@ class FlextInfraPyprojectModernizer:
         return 1 if has_warning else 0
 
     @staticmethod
-    def main(argv: Sequence[str] | None = None) -> int:
+    def main(argv: t.StrSequence | None = None) -> int:
         """Run the pyproject modernizer CLI."""
         parser = u.Infra.create_parser(
             "flext-infra deps modernize",

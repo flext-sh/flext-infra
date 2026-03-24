@@ -33,7 +33,7 @@ class _DepsStub:
         self,
         root: Path,
         *,
-        projects_filter: Sequence[str] | None = None,
+        projects_filter: t.StrSequence | None = None,
     ) -> r[Sequence[Path]]:
         _ = root
         _ = projects_filter
@@ -45,17 +45,17 @@ class _DepsStub:
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[tuple[Sequence[Mapping[str, str]], int]]:
+    ) -> r[tuple[Sequence[t.StrMapping], int]]:
         _ = project_path
         _ = venv_bin
         if self.deptry_failure is not None:
-            return r[tuple[Sequence[Mapping[str, str]], int]].fail(self.deptry_failure)
-        return r[tuple[Sequence[Mapping[str, str]], int]].ok(([], 0))
+            return r[tuple[Sequence[t.StrMapping], int]].fail(self.deptry_failure)
+        return r[tuple[Sequence[t.StrMapping], int]].ok(([], 0))
 
     def build_project_report(
         self,
         project_name: str,
-        issues: Sequence[Mapping[str, str]],
+        issues: Sequence[t.StrMapping],
     ) -> _ReportStub:
         _ = project_name
         _ = issues
@@ -75,7 +75,7 @@ class _DepsStub:
             return r[types.SimpleNamespace].fail(self.typings_failure)
         typings = types.SimpleNamespace(to_add=[])
 
-        def _model_dump() -> Mapping[str, Sequence[str]]:
+        def _model_dump() -> Mapping[str, t.StrSequence]:
             return {"to_add": []}
 
         setattr(typings, "model_dump", _model_dump)
@@ -83,7 +83,7 @@ class _DepsStub:
 
     def load_dependency_limits(
         self, limits_path: Path | None = None
-    ) -> Mapping[str, str]:
+    ) -> t.StrMapping:
         _ = limits_path
         return {}
 

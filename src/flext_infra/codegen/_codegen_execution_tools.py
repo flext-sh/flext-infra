@@ -28,7 +28,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     """Execution tools for external command invocation and import scanning."""
 
     @staticmethod
-    def git_lines(workspace_root: Path, args: Sequence[str]) -> Sequence[str]:
+    def git_lines(workspace_root: Path, args: t.StrSequence) -> t.StrSequence:
         """Run git command and return output lines."""
         git_bin = shutil.which(c.Infra.Cli.GIT)
         if not git_bin:
@@ -46,7 +46,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     @staticmethod
     def quality_gate_run_pyrefly_check(
         workspace_root: Path,
-        modified_files: Sequence[str],
+        modified_files: t.StrSequence,
     ) -> Mapping[str, t.Infra.InfraValue]:
         """Run pyrefly check on modified files."""
         if not modified_files:
@@ -76,7 +76,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     @staticmethod
     def quality_gate_run_ruff_check(
         workspace_root: Path,
-        modified_files: Sequence[str],
+        modified_files: t.StrSequence,
     ) -> Mapping[str, t.Infra.InfraValue]:
         """Run ruff check on modified files."""
         if not modified_files:
@@ -100,7 +100,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     @staticmethod
     def run_external_check(
         workspace_root: Path,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
     ) -> MutableMapping[str, t.Infra.InfraValue]:
         """Execute external check command and return result."""
         result = FlextInfraUtilitiesSubprocess().run_raw(cmd, cwd=workspace_root)
@@ -123,7 +123,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     @staticmethod
     def quality_gate_scan_import_nodes(
         workspace_root: Path,
-        modified_files: Sequence[str],
+        modified_files: t.StrSequence,
     ) -> Mapping[str, t.Infra.InfraValue]:
         """Scan import nodes in modified files for invalid patterns."""
         invalid_import_from: MutableSequence[str] = []

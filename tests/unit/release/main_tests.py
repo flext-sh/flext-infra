@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import sys
 from argparse import Namespace
-from collections.abc import Sequence
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
@@ -17,7 +18,7 @@ from flext_tests import tm
 from flext_infra import u
 
 
-def _parse_args(argv: Sequence[str] | None = None) -> Namespace:
+def _parse_args(argv: t.StrSequence | None = None) -> Namespace:
     parser = u.Infra.create_parser(
         prog="release",
         description="Release orchestration",

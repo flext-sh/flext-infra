@@ -9,7 +9,7 @@ from pathlib import Path
 
 from flext_core import r
 
-from flext_infra import c, m, output, u
+from flext_infra import c, m, output, t, u
 
 
 def configure_workflows_parser(parser: ArgumentParser) -> None:
@@ -102,7 +102,7 @@ def run_lint(
     return 0
 
 
-def run_pr(argv: Sequence[str]) -> int:
+def run_pr(argv: t.StrSequence) -> int:
     """Manage pull requests for a single project."""
     parser = u.Infra.create_parser(
         "flext-infra github pr",
@@ -229,7 +229,7 @@ def run_pr_workspace(
     return u.Infra.exit_code(result, failure_msg="PR workspace orchestration failed")
 
 
-def run(argv: Sequence[str] | None = None) -> int:
+def run(argv: t.StrSequence | None = None) -> int:
     """Run GitHub command dispatcher."""
     parser, subs = u.Infra.create_subcommand_parser(
         "flext-infra github",

@@ -12,6 +12,7 @@ from flext_infra import (
     FlextInfraUtilitiesCodegenGovernance,
     FlextInfraUtilitiesParsing,
     m,
+    t,
 )
 
 
@@ -164,7 +165,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                 self.all_constant_refs.append((constant_name, line))
 
     @staticmethod
-    def attribute_chain(expr: cst.BaseExpression) -> Sequence[str]:
+    def attribute_chain(expr: cst.BaseExpression) -> t.StrSequence:
         if isinstance(expr, cst.Name):
             return [expr.value]
         if isinstance(expr, cst.Attribute):
@@ -752,7 +753,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         class_path: str,
         *,
         dry_run: bool = True,
-    ) -> Mapping[str, str | int | Sequence[str] | Sequence[Mapping[str, str | int]]]:
+    ) -> Mapping[str, str | int | t.StrSequence | Sequence[Mapping[str, str | int]]]:
         """Apply a single deduplication fix.
 
         Returns dict with: status, canonical, replaced, files_modified

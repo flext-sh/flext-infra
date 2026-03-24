@@ -18,7 +18,7 @@ from pathlib import Path
 
 import orjson
 
-from flext_infra import c, m
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesRefactorCli:
@@ -65,9 +65,9 @@ class FlextInfraUtilitiesRefactorCli:
     @staticmethod
     def build_impact_map(
         results: Sequence[m.Infra.Result],
-    ) -> Sequence[Mapping[str, str]]:
+    ) -> Sequence[t.StrMapping]:
         """Build normalized impact-map rows from refactor results."""
-        impact_map: MutableSequence[Mapping[str, str]] = []
+        impact_map: MutableSequence[t.StrMapping] = []
         symbol_pattern = re.compile(r"^(.*):\s+(.+)\s+->\s+(.+?)(?:\s+\(|$)")
         added_pattern = re.compile(r"^\[(.+)\]\s+Added keyword:\s+(.+)$")
         removed_pattern = re.compile(r"^\[(.+)\]\s+Removed keyword:\s+(.+)$")

@@ -25,7 +25,7 @@ from pathlib import Path
 
 from pydantic import JsonValue
 
-from flext_infra import c, m
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesReporting:
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesReporting:
     @staticmethod
     def generate_sarif(
         results: Sequence[m.Infra.ProjectResult],
-        gates: Sequence[str],
+        gates: t.StrSequence,
     ) -> JsonValue:
         """Generate a SARIF 2.1.0 payload from gate results."""
         sarif_runs: MutableSequence[m.Infra.SarifRun] = []
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesReporting:
     @staticmethod
     def generate_markdown(
         results: Sequence[m.Infra.ProjectResult],
-        gates: Sequence[str],
+        gates: t.StrSequence,
         timestamp: str,
     ) -> str:
         """Generate a markdown summary report."""

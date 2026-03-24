@@ -24,7 +24,7 @@ class FlextInfraInternalDependencySyncService:
         """Initialize the internal dependency sync service."""
         self.toml: p.Infra.TomlReader | None = None
 
-    def _read_plain(self, path: Path) -> r[t.Infra.TomlConfig]:
+    def _read_plain(self, path: Path) -> r[t.Infra.ContainerDict]:
         if self.toml is not None:
             return self.toml.read_plain(path)
         return u.Infra.read_plain(path)
@@ -353,9 +353,9 @@ class FlextInfraInternalDependencySyncService:
             return {}
 
     @staticmethod
-    def _normalize_string_list(value: t.Infra.InfraValue) -> Sequence[str]:
+    def _normalize_string_list(value: t.Infra.InfraValue) -> t.StrSequence:
         try:
-            adapter: TypeAdapter[Sequence[str]] = TypeAdapter(Sequence[str])
+            adapter: TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
             return adapter.validate_python(value)
         except ValidationError:
             if not isinstance(value, list):

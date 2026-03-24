@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Sequence, Callable, Mapping
 from types import ModuleType, SimpleNamespace
 
 import pytest
@@ -22,7 +22,7 @@ from flext_infra.deps.__main__ import _SUBCOMMAND_MODULES, _main_impl, main
 from tests import t
 
 
-def _fake_module(return_value: t.Infra.TomlValue = 0) -> ModuleType:
+def _fake_module(return_value: t.Infra.InfraValue = 0) -> ModuleType:
     """Create a real ModuleType with a main() returning *return_value*."""
     mod = ModuleType("fake_subcommand")
     setattr(mod, "main", lambda: return_value)
@@ -39,8 +39,8 @@ def _stub_import(mod: ModuleType) -> Callable[[str], ModuleType]:
 
 def _patch_dispatch(
     mp: pytest.MonkeyPatch,
-    argv: Sequence[str],
-    ret: t.Infra.TomlValue = 0,
+    argv: t.StrSequence,
+    ret: t.Infra.InfraValue = 0,
 ) -> None:
     """Patch sys.argv and importlib for dispatch tests."""
     mp.setattr(sys, "argv", argv)
@@ -54,7 +54,7 @@ def _patch_dispatch(
 class TestSubcommandMapping:
     """Test subcommand mapping completeness."""
 
-    EXPECTED_SUBCOMMAND_MODULES: Mapping[str, str] = {
+    EXPECTED_SUBCOMMAND_MODULES: t.StrMapping = {
         "detect": "flext_infra.deps.detector",
         "extra-paths": "flext_infra.deps.extra_paths",
         "internal-sync": "flext_infra.deps.internal_sync",
@@ -123,7 +123,7 @@ class TestMainReturnValues:
     def test_return_value_normalization(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        return_val: t.Infra.TomlValue,
+        return_val: t.Infra.InfraValue,
         expected: int,
     ) -> None:
         """Test _main_impl normalizes subcommand return values."""

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, t as t_infra, u
+from flext_infra import c, m, t, t as t_infra, u
 
 
 class FlextInfraGate(ABC):
@@ -42,10 +42,10 @@ class FlextInfraGate(ABC):
 
     def _run(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path,
         timeout: int = c.Infra.Timeouts.DEFAULT,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> m.Infra.CommandOutput:
         result = u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.is_failure:
@@ -78,7 +78,7 @@ class FlextInfraGate(ABC):
             raw_output=raw_output,
         )
 
-    def _existing_check_dirs(self, project_dir: Path) -> Sequence[str]:
+    def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
         dirs = (
             c.Infra.DEFAULT_CHECK_DIRS
             if project_dir.resolve() == self._workspace_root.resolve()
@@ -87,7 +87,7 @@ class FlextInfraGate(ABC):
         return [d for d in dirs if (project_dir / d).is_dir()]
 
     @staticmethod
-    def _dirs_with_py(project_dir: Path, dirs: Sequence[str]) -> Sequence[str]:
+    def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:
         out: MutableSequence[str] = []
         for directory in dirs:
             path = project_dir / directory
