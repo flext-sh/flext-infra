@@ -32,7 +32,7 @@ class TestMain:
             return cli_args
 
         def _sync(
-            _self: FlextInfraInternalDependencySyncService, _root: Path
+            _self: FlextInfraInternalDependencySyncService, _root: Path,
         ) -> r[int]:
             return r[int].ok(0)
 
@@ -63,7 +63,7 @@ class TestMain:
             return cli_args
 
         def _sync(
-            _self: FlextInfraInternalDependencySyncService, _root: Path
+            _self: FlextInfraInternalDependencySyncService, _root: Path,
         ) -> r[int]:
             return r[int].fail("sync failed")
 

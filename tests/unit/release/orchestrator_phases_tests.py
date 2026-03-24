@@ -82,7 +82,7 @@ class TestPhaseVersion:
 
         monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         monkeypatch.setattr(
-            u.Infra, "replace_project_version", staticmethod(_replace_version)
+            u.Infra, "replace_project_version", staticmethod(_replace_version),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=False))
@@ -113,7 +113,7 @@ class TestPhaseVersion:
 
         monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         monkeypatch.setattr(
-            u.Infra, "replace_project_version", staticmethod(_replace_version)
+            u.Infra, "replace_project_version", staticmethod(_replace_version),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dev_suffix=True))

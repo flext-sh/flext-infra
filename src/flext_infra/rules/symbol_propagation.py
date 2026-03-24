@@ -37,7 +37,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         target_modules = set(u.Infra.string_list(target_modules_raw))
         try:
             module_renames: Mapping[str, str] = TypeAdapter(
-                Mapping[str, str]
+                Mapping[str, str],
             ).validate_python(
                 module_renames_raw,
             )
@@ -45,7 +45,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
             module_renames = {}
         try:
             symbol_renames: Mapping[str, str] = TypeAdapter(
-                Mapping[str, str]
+                Mapping[str, str],
             ).validate_python(
                 symbol_renames_raw,
             )

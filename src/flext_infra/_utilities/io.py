@@ -162,7 +162,7 @@ class FlextInfraUtilitiesIo:
         """
         try:
             parsed: JsonValue = FlextInfraUtilitiesIo._json_value_adapter.validate_json(
-                text
+                text,
             )
             return r[JsonValue].ok(parsed)
         except (ValidationError, ValueError) as exc:

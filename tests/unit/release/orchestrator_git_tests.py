@@ -50,7 +50,7 @@ class TestCreateBranches:
 
         @classmethod  # type: ignore[misc]
         def _resolve_empty(
-            cls: type[object], ws: Path, names: t.StrSequence
+            cls: type[object], ws: Path, names: t.StrSequence,
         ) -> r[Sequence[SimpleNamespace]]:
             return r[Sequence[SimpleNamespace]].ok([])
 
@@ -84,7 +84,7 @@ class TestCreateBranches:
 
         @classmethod  # type: ignore[misc]
         def _resolve_one(
-            cls: type[object], ws: Path, names: t.StrSequence
+            cls: type[object], ws: Path, names: t.StrSequence,
         ) -> r[Sequence[SimpleNamespace]]:
             return r[Sequence[SimpleNamespace]].ok([mock_project])
 

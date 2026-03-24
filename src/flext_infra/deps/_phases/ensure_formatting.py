@@ -38,7 +38,7 @@ class FlextInfraEnsureFormattingToolingPhase:
             if isinstance(value, list) and isinstance(current, list):
                 try:
                     current_values: Sequence[str] = TypeAdapter(
-                        Sequence[str]
+                        Sequence[str],
                     ).validate_python([str(x) for x in current])
                 except ValidationError:
                     current_values = []

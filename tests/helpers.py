@@ -70,7 +70,7 @@ class FlextInfraTestHelpers:
 
     @staticmethod
     def assert_fail[TResult: t.Tests.Testobject](
-        result: r[TResult], contains: str | None = None
+        result: r[TResult], contains: str | None = None,
     ) -> str:
         """Assert r failure and return error message.
 

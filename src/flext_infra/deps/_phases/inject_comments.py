@@ -96,7 +96,7 @@ class FlextInfraInjectCommentsPhase:
                 changes.append(f"marker injected for {stripped}")
                 emitted_markers.add(marker)
             if stripped == "[project.optional-dependencies]" or stripped.startswith(
-                "optional-dependencies.dev"
+                "optional-dependencies.dev",
             ):
                 self._inject_dev_markers(out, changes, emitted_markers)
             out.append(line)

@@ -315,7 +315,7 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
             raw_types = typed_cfg.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))
             cast_remover = FlextInfraRedundantCastRemover(
-                removable_types=removable_types
+                removable_types=removable_types,
             )
             updated = tree.visit(cast_remover)
             return (updated, cast_remover.changes)

@@ -90,7 +90,7 @@ class TestBuildTargets:
         fake_sel = FakeSelection()
         fake_sel._resolve_result = r[Sequence[_m.Infra.ProjectInfo]].ok([
             _m.Infra.ProjectInfo(
-                name="proj1", path=workspace_root / "proj1", stack="python"
+                name="proj1", path=workspace_root / "proj1", stack="python",
             ),
         ])
         _patch_sel(monkeypatch, fake_sel)

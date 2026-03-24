@@ -56,7 +56,7 @@ class FlextInfraDependencyDetectorRuntime:
         do_typings = bool(args.typings) or apply_typings
         limits_path = Path(args.limits) if args.limits else limits_default
         projects_report: MutableMapping[
-            str, MutableMapping[str, t.Infra.InfraValue]
+            str, MutableMapping[str, t.Infra.InfraValue],
         ] = {}
         report_model = self._workspace_report_factory(
             workspace=str(root),
@@ -93,7 +93,7 @@ class FlextInfraDependencyDetectorRuntime:
             issues, _ = deptry_result.value
             project_payload = deps_service.build_project_report(project_name, issues)
             dumped: MutableMapping[str, t.Infra.InfraValue] = dict(
-                project_payload.model_dump()
+                project_payload.model_dump(),
             )
             projects_report[project_name] = dumped
             if do_typings and (project_path / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():

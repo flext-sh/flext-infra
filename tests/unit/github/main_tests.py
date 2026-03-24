@@ -24,7 +24,7 @@ class TestRunWorkflows:
             return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
-            u.Infra, "github_sync_workspace_workflows", staticmethod(_sync)
+            u.Infra, "github_sync_workspace_workflows", staticmethod(_sync),
         )
         cli = u.Infra.resolve(_ns(tmp_path))
         assert run_workflows(cli, prune=False, report=None) == 0
@@ -34,7 +34,7 @@ class TestRunWorkflows:
             return r[Sequence[m.Infra.SyncOperation]].fail("sync failed")
 
         monkeypatch.setattr(
-            u.Infra, "github_sync_workspace_workflows", staticmethod(_sync)
+            u.Infra, "github_sync_workspace_workflows", staticmethod(_sync),
         )
         cli = u.Infra.resolve(_ns(tmp_path))
         assert run_workflows(cli, prune=False, report=None) == 1

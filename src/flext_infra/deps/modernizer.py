@@ -201,10 +201,10 @@ class FlextInfraPyprojectModernizer:
         )
         changes.extend(FlextInfraEnsureMypyConfigPhase(self._tool_config).apply(doc))
         changes.extend(
-            FlextInfraEnsurePydanticMypyConfigPhase(self._tool_config).apply(doc)
+            FlextInfraEnsurePydanticMypyConfigPhase(self._tool_config).apply(doc),
         )
         changes.extend(
-            FlextInfraEnsureFormattingToolingPhase(self._tool_config).apply(doc)
+            FlextInfraEnsureFormattingToolingPhase(self._tool_config).apply(doc),
         )
         changes.extend(FlextInfraEnsureNamespaceToolingPhase().apply(doc, path=path))
         changes.extend(

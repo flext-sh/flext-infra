@@ -83,7 +83,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             pyrefly[c.Infra.Toml.SEARCH_PATH] = u.Infra.array(expected_search)
             changes.append(f"tool.pyrefly.search-path set to {expected_search}")
         current_includes = u.Infra.as_string_list(
-            u.Infra.get(pyrefly, "project-includes")
+            u.Infra.get(pyrefly, "project-includes"),
         )
         if current_includes != expected_includes:
             pyrefly["project-includes"] = u.Infra.array(expected_includes)

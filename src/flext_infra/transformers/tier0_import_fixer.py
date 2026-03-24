@@ -30,7 +30,7 @@ class FlextInfraTransformerTier0ImportFixer:
         package_name: str
         file_path: Path
         alias_to_module: dict[str, str] = field(
-            default_factory=lambda: dict[str, str]()
+            default_factory=lambda: dict[str, str](),
         )
         category_a: set[str] = field(default_factory=lambda: set[str]())
         category_b: set[str] = field(default_factory=lambda: set[str]())

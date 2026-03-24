@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections import defaultdict
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -175,12 +176,12 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
                 report.project,
             )
             all_definitions.extend(definitions)
-        name_to_defs: MutableMapping[
+        name_to_defs: defaultdict[
             str,
             MutableSequence[m.Infra.ConstantDefinition],
-        ] = {}
+        ] = defaultdict(list)
         for definition in all_definitions:
-            name_to_defs.setdefault(definition.name, []).append(definition)
+            name_to_defs[definition.name].append(definition)
         groups: MutableSequence[m.Infra.DuplicateConstantGroup] = []
         for name, definitions in sorted(name_to_defs.items()):
             projects = {item.project for item in definitions}

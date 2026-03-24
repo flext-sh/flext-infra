@@ -43,7 +43,7 @@ class FlextInfraRefactorRuleLoader:
             return r[Mapping[str, t.Infra.InfraValue]].ok(normalized)
         except (OSError, TypeError, ValueError) as exc:
             return r[Mapping[str, t.Infra.InfraValue]].fail(
-                f"Failed to load config: {exc}"
+                f"Failed to load config: {exc}",
             )
 
     def extract_engine_file_filters(

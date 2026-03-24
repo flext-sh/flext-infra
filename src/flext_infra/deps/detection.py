@@ -260,7 +260,7 @@ class FlextInfraDependencyDetectionService:
         if isinstance(typings, list):
             try:
                 typed_typings: Sequence[str] = TypeAdapter(
-                    Sequence[str]
+                    Sequence[str],
                 ).validate_python([str(s) for s in typings])
             except ValidationError:
                 typed_typings = []
@@ -276,7 +276,7 @@ class FlextInfraDependencyDetectionService:
         elif isinstance(typings, Mapping):
             try:
                 typed_typings_map: Mapping[str, str] = TypeAdapter(
-                    Mapping[str, str]
+                    Mapping[str, str],
                 ).validate_python({k: str(v) for k, v in typings.items()})
             except ValidationError:
                 typed_typings_map = {}
@@ -300,7 +300,7 @@ class FlextInfraDependencyDetectionService:
             if isinstance(excluded, list):
                 try:
                     typed_excluded: Sequence[str] = TypeAdapter(
-                        Sequence[str]
+                        Sequence[str],
                     ).validate_python([str(e) for e in excluded])
                 except ValidationError:
                     typed_excluded = []
@@ -379,7 +379,7 @@ class FlextInfraDependencyDetectionService:
             ):
                 try:
                     module_to_package_map: Mapping[str, str] = TypeAdapter(
-                        Mapping[str, str]
+                        Mapping[str, str],
                     ).validate_python({k: str(v) for k, v in module_to_package.items()})
                 except ValidationError:
                     module_to_package_map = {}

@@ -106,7 +106,7 @@ class FlextInfraDocValidator:
                 if isinstance(configured, list):
                     try:
                         required_items: Sequence[str] = TypeAdapter(
-                            Sequence[str]
+                            Sequence[str],
                         ).validate_python(
                             configured,
                             strict=True,
