@@ -38,31 +38,13 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraOrchestratorService": (
-        "flext_infra.workspace.orchestrator",
-        "FlextInfraOrchestratorService",
-    ),
-    "FlextInfraProjectMakefileUpdater": (
-        "flext_infra.workspace.project_makefile",
-        "FlextInfraProjectMakefileUpdater",
-    ),
-    "FlextInfraProjectMigrator": (
-        "flext_infra.workspace.migrator",
-        "FlextInfraProjectMigrator",
-    ),
-    "FlextInfraPythonVersionEnforcer": (
-        "flext_infra.workspace.maintenance.python_version",
-        "FlextInfraPythonVersionEnforcer",
-    ),
+    "FlextInfraOrchestratorService": ("flext_infra.workspace.orchestrator", "FlextInfraOrchestratorService"),
+    "FlextInfraProjectMakefileUpdater": ("flext_infra.workspace.project_makefile", "FlextInfraProjectMakefileUpdater"),
+    "FlextInfraProjectMigrator": ("flext_infra.workspace.migrator", "FlextInfraProjectMigrator"),
+    "FlextInfraPythonVersionEnforcer": ("flext_infra.workspace.maintenance.python_version", "FlextInfraPythonVersionEnforcer"),
     "FlextInfraSyncService": ("flext_infra.workspace.sync", "FlextInfraSyncService"),
-    "FlextInfraWorkspaceDetector": (
-        "flext_infra.workspace.detector",
-        "FlextInfraWorkspaceDetector",
-    ),
-    "FlextInfraWorkspaceMakefileGenerator": (
-        "flext_infra.workspace.workspace_makefile",
-        "FlextInfraWorkspaceMakefileGenerator",
-    ),
+    "FlextInfraWorkspaceDetector": ("flext_infra.workspace.detector", "FlextInfraWorkspaceDetector"),
+    "FlextInfraWorkspaceMakefileGenerator": ("flext_infra.workspace.workspace_makefile", "FlextInfraWorkspaceMakefileGenerator"),
     "WorkspaceMode": ("flext_infra.workspace.detector", "WorkspaceMode"),
     "logger": ("flext_infra.workspace.maintenance.python_version", "logger"),
     "main": ("flext_infra.workspace.sync", "main"),

@@ -30,34 +30,13 @@ if TYPE_CHECKING:
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraBaseMkValidator": (
-        "flext_infra.validate.basemk_validator",
-        "FlextInfraBaseMkValidator",
-    ),
-    "FlextInfraInventoryService": (
-        "flext_infra.validate.inventory",
-        "FlextInfraInventoryService",
-    ),
-    "FlextInfraNamespaceValidator": (
-        "flext_infra.validate.namespace_validator",
-        "FlextInfraNamespaceValidator",
-    ),
-    "FlextInfraPytestDiagExtractor": (
-        "flext_infra.validate.pytest_diag",
-        "FlextInfraPytestDiagExtractor",
-    ),
-    "FlextInfraSkillValidator": (
-        "flext_infra.validate.skill_validator",
-        "FlextInfraSkillValidator",
-    ),
-    "FlextInfraStubSupplyChain": (
-        "flext_infra.validate.stub_chain",
-        "FlextInfraStubSupplyChain",
-    ),
-    "FlextInfraTextPatternScanner": (
-        "flext_infra.validate.scanner",
-        "FlextInfraTextPatternScanner",
-    ),
+    "FlextInfraBaseMkValidator": ("flext_infra.validate.basemk_validator", "FlextInfraBaseMkValidator"),
+    "FlextInfraInventoryService": ("flext_infra.validate.inventory", "FlextInfraInventoryService"),
+    "FlextInfraNamespaceValidator": ("flext_infra.validate.namespace_validator", "FlextInfraNamespaceValidator"),
+    "FlextInfraPytestDiagExtractor": ("flext_infra.validate.pytest_diag", "FlextInfraPytestDiagExtractor"),
+    "FlextInfraSkillValidator": ("flext_infra.validate.skill_validator", "FlextInfraSkillValidator"),
+    "FlextInfraStubSupplyChain": ("flext_infra.validate.stub_chain", "FlextInfraStubSupplyChain"),
+    "FlextInfraTextPatternScanner": ("flext_infra.validate.scanner", "FlextInfraTextPatternScanner"),
 }
 
 __all__ = [

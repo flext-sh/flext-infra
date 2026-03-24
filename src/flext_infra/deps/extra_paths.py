@@ -136,6 +136,7 @@ class FlextInfraExtraPathsManager:
                         "build",
                         "dist",
                         ".venv",
+                        "tests",
                     }:
                         continue
                     # Check if this directory contains Python files
@@ -176,6 +177,12 @@ class FlextInfraExtraPathsManager:
         local_dirs = self._discover_local_python_dirs(project_dir)
 
         if is_root:
+            # Exclude dependency project root dirs — their src/ subdirs are
+            # already in dep_paths.  Including the root dir leaks each
+            # project's tests/ package into the workspace namespace, causing
+            # pyright to resolve `from tests import m` ambiguously.
+            dep_names = {p.split("/")[0] for p in dep_paths}
+            local_dirs = sorted(d for d in local_dirs if d not in dep_names)
             pyright_base = sorted({*local_dirs, "typings", "typings/generated"})
             mypy_base = sorted({*local_dirs, "typings", "typings/generated"})
         else:
@@ -248,6 +255,8 @@ class FlextInfraExtraPathsManager:
         local_dirs = self._discover_local_python_dirs(project_dir)
 
         if is_root:
+            dep_names = {p.split("/")[0] for p in dep_paths}
+            local_dirs = sorted(d for d in local_dirs if d not in dep_names)
             pyright_base = sorted({*local_dirs, "typings", "typings/generated"})
             mypy_base = sorted(
                 {*local_dirs, "typings", "typings/generated"},
