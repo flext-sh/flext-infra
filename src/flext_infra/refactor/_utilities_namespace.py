@@ -23,7 +23,6 @@ from tomlkit.exceptions import TOMLKitError
 
 from flext_infra import (
     FlextInfraNamespaceFacadeScanner,
-    FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesRefactorLoader,
     c,
     m,
@@ -169,7 +168,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             if chain:
                 lines: MutableSequence[str] = []
                 for base_class_name in chain:
-                    module = FlextInfraUtilitiesFormatting.class_name_to_module(
+                    module = u.Infra.class_name_to_module(
                         base_class_name,
                     )
                     lines.append(f"from {module} import {base_class_name}")
@@ -668,7 +667,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         if not transformer.changed:
             return
         file_path.write_text(new_tree.code, encoding="utf-8")
-        FlextInfraUtilitiesFormatting.run_ruff_fix(file_path)
+        u.Infra.run_ruff_fix(file_path)
 
     @staticmethod
     def _namespace_is_facade_file(
@@ -748,7 +747,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             for base_name in sorted(rewriter.new_bases):
                 if base_name in existing_imports:
                     continue
-                module = FlextInfraUtilitiesFormatting.class_name_to_module(
+                module = u.Infra.class_name_to_module(
                     base_name,
                 )
                 new_imports.append(f"from {module} import {base_name}\n")
@@ -759,7 +758,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 "".join(lines),
                 encoding=c.Infra.Encoding.DEFAULT,
             )
-            FlextInfraUtilitiesFormatting.run_ruff_fix(
+            u.Infra.run_ruff_fix(
                 file_path,
                 include_format=True,
                 quiet=True,

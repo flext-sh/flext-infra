@@ -13,10 +13,10 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import (
-    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorPydanticAnalysis,
     m,
     t,
+    u,
 )
 
 
@@ -172,7 +172,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         skipped_nonpackage_apply = 0
         skipped_non_necessary_apply = 0
         failure_stats = m.Infra.CentralizerFailureStats()
-        files_result = FlextInfraUtilitiesIteration.iter_python_files(
+        files_result = u.Infra.iter_python_files(
             workspace_root=workspace_root,
         )
         if files_result.is_failure:
