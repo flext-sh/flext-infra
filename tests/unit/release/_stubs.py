@@ -74,7 +74,7 @@ class FakeUtilsNamespace:
         def resolve_projects(
             cls,
             workspace_root: Path,
-            names: t.StrSequence,
+            names: Sequence[str],
         ) -> r[Sequence[SimpleNamespace]]:
             return r[Sequence[SimpleNamespace]].ok([])
 

@@ -330,7 +330,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
 
     @staticmethod
     def break_import_cycles(pkg_dir: Path) -> tuple[bool, Sequence[str]]:
-        def parse_lazy_imports(init_file: Path) -> t.StrMapping:
+        def parse_lazy_imports(init_file: Path) -> Mapping[str, str]:
             if not init_file.is_file():
                 return {}
             source = init_file.read_text("utf-8")
@@ -345,7 +345,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
 
         def build_self_import_graph(
             package_name: str,
-            lazy_map: t.StrMapping,
+            lazy_map: Mapping[str, str],
         ) -> Mapping[str, set[str]]:
             graph: MutableMapping[str, set[str]] = {}
             for py_file in pkg_dir.glob("*.py"):

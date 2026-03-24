@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from importlib.metadata import PackageMetadata, PackageNotFoundError, metadata
 from typing import Final
 
@@ -24,7 +25,7 @@ class FlextInfraVersion:
     metadata extraction.
     """
 
-    _metadata: PackageMetadata | t.StrMapping
+    _metadata: PackageMetadata | Mapping[str, str]
     try:
         _metadata = metadata("flext-infra")
     except PackageNotFoundError:
@@ -78,7 +79,7 @@ class FlextInfraVersion:
         return (cur_major, cur_minor, cur_patch) >= (major, minor, patch)
 
     @classmethod
-    def get_package_info(cls) -> t.StrMapping:
+    def get_package_info(cls) -> Mapping[str, str]:
         """Return package metadata as a string-keyed dict of strings."""
         return {
             "name": cls.__title__,

@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -94,7 +94,7 @@ class DependencyAnalyzer:
     def _build_package_index(
         self,
         projects: Sequence[m.Infra.RefactorProjectInfo],
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Build a mapping from package names to owning project names.
 
         Args:

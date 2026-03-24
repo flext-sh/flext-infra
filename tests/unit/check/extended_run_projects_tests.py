@@ -15,7 +15,7 @@ from flext_tests import tm
 from flext_infra import FlextInfraWorkspaceChecker
 from tests import m
 
-CheckProjectStub = Callable[[Path, t.StrSequence, Path], m.Infra.ProjectResult]
+CheckProjectStub = Callable[[Path, Sequence[str], Path], m.Infra.ProjectResult]
 
 
 def _make_gate_exec(
@@ -50,7 +50,7 @@ def _setup_project(tmp_path: Path, name: str) -> Path:
 def _check_project_stub(project: m.Infra.ProjectResult) -> CheckProjectStub:
     def _fake_check(
         _project_dir: Path,
-        _gates: t.StrSequence,
+        _gates: Sequence[str],
         _reports_dir: Path,
     ) -> m.Infra.ProjectResult:
         return project
@@ -65,7 +65,7 @@ def _iter_check_project_stub(
 
     def _fake_check(
         _project_dir: Path,
-        _gates: t.StrSequence,
+        _gates: Sequence[str],
         _reports_dir: Path,
     ) -> m.Infra.ProjectResult:
         return next(project_iter)
@@ -147,7 +147,7 @@ class TestRunProjectsBehavior:
 
         def _fake_check(
             _project_dir: Path,
-            _gates: t.StrSequence,
+            _gates: Sequence[str],
             _reports_dir: Path,
         ) -> m.Infra.ProjectResult:
             del _project_dir, _gates, _reports_dir

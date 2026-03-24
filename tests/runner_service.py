@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import override
 
 from flext_core import r
@@ -20,7 +21,7 @@ class RealSubprocessRunner(s[str]):
     def execute(self) -> r[str]:
         return r[str].ok("")
 
-    def _validate_safe_command(self, cmd: t.StrSequence) -> r[bool]:
+    def _validate_safe_command(self, cmd: Sequence[str]) -> r[bool]:
         if not cmd:
             return r[bool].fail("empty command")
         if cmd[0] not in self.allowed_commands:
@@ -30,7 +31,7 @@ class RealSubprocessRunner(s[str]):
     def _failure_message[T](self, result: r[T]) -> str:
         return str(result.error) if result.error else "failed"
 
-    def run_safe(self, cmd: t.StrSequence) -> r[str]:
+    def run_safe(self, cmd: Sequence[str]) -> r[str]:
         v = self._validate_safe_command(cmd)
         if v.is_failure:
             return r[str].fail(v.error or "unsafe")
@@ -39,7 +40,7 @@ class RealSubprocessRunner(s[str]):
             return r[str].fail(self._failure_message(res))
         return r[str].ok(res.value.stdout.strip())
 
-    def capture_output(self, cmd: t.StrSequence) -> r[tuple[str, str]]:
+    def capture_output(self, cmd: Sequence[str]) -> r[tuple[str, str]]:
         v = self._validate_safe_command(cmd)
         if v.is_failure:
             return r[tuple[str, str]].fail(v.error or "unsafe")

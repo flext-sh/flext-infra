@@ -40,7 +40,7 @@ class FlextInfraUtilitiesCodegenGovernance:
         }
 
     @staticmethod
-    def get_canonical_str_values() -> t.StrMapping:
+    def get_canonical_str_values() -> Mapping[str, str]:
         config = FlextInfraUtilitiesCodegenGovernance.load_governance_config()
         return {
             entry.value: entry.canonical_ref

@@ -9,7 +9,7 @@ from flext_infra import m
 
 class FlextInfraRectorTypes:
     type PolicyContext = Mapping[str, m.Infra.ClassNestingPolicy]
-    type ClassFamilyMap = t.StrMapping
+    type ClassFamilyMap = Mapping[str, str]
 
 
 __all__ = ["FlextInfraRectorTypes"]

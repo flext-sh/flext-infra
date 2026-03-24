@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -178,4 +179,4 @@ class TestStubChainDiscoverProjects:
         tm.that(len(self.discover(tmp_path)), eq=0)
 
 
-__all__: t.StrSequence = []
+__all__: Sequence[str] = []

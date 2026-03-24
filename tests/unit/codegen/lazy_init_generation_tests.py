@@ -21,7 +21,7 @@ _resolve_aliases: Callable[[Mapping[str, tuple[str, str]]], None] = getattr(
     "_resolve_aliases",
 )
 _generate_file: Callable[
-    [str, t.StrSequence, Mapping[str, tuple[str, str]], t.StrMapping, str],
+    [str, Sequence[str], Mapping[str, tuple[str, str]], Mapping[str, str], str],
     str,
 ] = getattr(FlextInfraCodegenLazyInit, "_generate_file")
 _run_ruff_fix: Callable[[Path], None] = getattr(
@@ -132,7 +132,7 @@ class TestGenerateFile:
         """Test uses correct lazy import for flext_core."""
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
-        inline_constants: t.StrMapping = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "flext_core")
         tm.that(content, contains="flext_core.lazy")
 
@@ -140,7 +140,7 @@ class TestGenerateFile:
         """Test uses correct lazy import for non-core packages."""
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
-        inline_constants: t.StrMapping = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "other_pkg")
         tm.that(content, contains="from flext_core import")
 
@@ -157,7 +157,7 @@ class TestGenerateFile:
         docstring = '"""Test module."""'
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
-        inline_constants: t.StrMapping = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file(
             docstring,
             exports,
@@ -171,7 +171,7 @@ class TestGenerateFile:
         """Test generated file starts with autogen header."""
         exports = ["Test"]
         filtered = {"Test": ("module", "Test")}
-        inline_constants: t.StrMapping = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
         tm.that(content, contains="AUTO-GENERATED")
 
@@ -179,7 +179,7 @@ class TestGenerateFile:
         """Test generated file has __all__ list."""
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
-        inline_constants: t.StrMapping = {}
+        inline_constants: Mapping[str, str] = {}
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
         tm.that(content, contains="__all__")
         tm.that(content, contains='"Alpha"')

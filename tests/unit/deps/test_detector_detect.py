@@ -33,7 +33,7 @@ class _DepsStub:
         self,
         root: Path,
         *,
-        projects_filter: t.StrSequence | None = None,
+        projects_filter: Sequence[str] | None = None,
     ) -> r[Sequence[Path]]:
         _ = root
         _ = projects_filter
@@ -45,17 +45,17 @@ class _DepsStub:
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[tuple[Sequence[t.StrMapping], int]]:
+    ) -> r[tuple[Sequence[Mapping[str, str]], int]]:
         _ = project_path
         _ = venv_bin
         if self.deptry_failure is not None:
-            return r[tuple[Sequence[t.StrMapping], int]].fail(self.deptry_failure)
-        return r[tuple[Sequence[t.StrMapping], int]].ok(([], 0))
+            return r[tuple[Sequence[Mapping[str, str]], int]].fail(self.deptry_failure)
+        return r[tuple[Sequence[Mapping[str, str]], int]].ok(([], 0))
 
     def build_project_report(
         self,
         project_name: str,
-        issues: Sequence[t.StrMapping],
+        issues: Sequence[Mapping[str, str]],
     ) -> _ReportStub:
         _ = project_name
         _ = issues
@@ -75,13 +75,15 @@ class _DepsStub:
             return r[types.SimpleNamespace].fail(self.typings_failure)
         typings = types.SimpleNamespace(to_add=[])
 
-        def _model_dump() -> Mapping[str, t.StrSequence]:
+        def _model_dump() -> Mapping[str, Sequence[str]]:
             return {"to_add": []}
 
         setattr(typings, "model_dump", _model_dump)
         return r[types.SimpleNamespace].ok(typings)
 
-    def load_dependency_limits(self, limits_path: Path | None = None) -> t.StrMapping:
+    def load_dependency_limits(
+        self, limits_path: Path | None = None
+    ) -> Mapping[str, str]:
         _ = limits_path
         return {}
 

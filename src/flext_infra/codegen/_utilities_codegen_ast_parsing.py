@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraCodegenSnapshot
@@ -41,7 +41,7 @@ class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
         return (has_all, exports)
 
     @staticmethod
-    def extract_inline_constants(tree: ast.Module) -> t.StrMapping:
+    def extract_inline_constants(tree: ast.Module) -> Mapping[str, str]:
         constants: MutableMapping[str, str] = {}
         for node in tree.body:
             if isinstance(node, ast.Assign) and len(node.targets) == 1:

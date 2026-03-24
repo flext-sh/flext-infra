@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -100,4 +101,4 @@ class TestScaffoldProjectIdempotency:
         tm.that(len(second_result.files_skipped), eq=5)
 
 
-__all__: t.StrSequence = []
+__all__: Sequence[str] = []

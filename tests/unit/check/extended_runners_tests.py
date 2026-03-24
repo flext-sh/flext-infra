@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -46,10 +46,10 @@ def _stub_run(
 ) -> Callable[..., SimpleNamespace]:
     def _run(
         _self: FlextInfraGate,
-        cmd: t.StrSequence,
+        cmd: Sequence[str],
         cwd: Path,
         timeout: int = 120,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> SimpleNamespace:
         del _self, cmd, cwd, timeout, env
         return _as_command_output(result)

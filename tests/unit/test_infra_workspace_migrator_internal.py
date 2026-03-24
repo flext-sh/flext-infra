@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -102,4 +103,4 @@ class TestMigratorEdgeCases:
         tm.that(result.is_failure or result.is_success, eq=True)
 
 
-__all__: t.StrSequence = []
+__all__: Sequence[str] = []

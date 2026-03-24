@@ -277,7 +277,7 @@ class ClassNestingRefactorRule:
         confidence_threshold: str,
     ) -> MutableSequence[str]:
         violations: MutableSequence[str] = []
-        entries: MutableSequence[t.StrMapping] = list(
+        entries: MutableSequence[Mapping[str, str]] = list(
             self._entries_for_source_file(
                 u.Infra.entry_list(config.get(c.Infra.ReportKeys.CLASS_NESTING)),
                 file_path,
@@ -327,15 +327,15 @@ class ClassNestingRefactorRule:
 
     def _entries_for_source_file(
         self,
-        raw_entries: Sequence[t.StrMapping],
+        raw_entries: Sequence[Mapping[str, str]],
         file_path: Path,
         confidence_threshold: str,
-    ) -> Sequence[t.StrMapping]:
+    ) -> Sequence[Mapping[str, str]]:
         entries = raw_entries
         if not entries:
             return []
         module_path = u.Infra.normalize_module_path(file_path)
-        accepted: MutableSequence[t.StrMapping] = []
+        accepted: MutableSequence[Mapping[str, str]] = []
         for entry in entries:
             current_file = entry.get(c.Infra.ReportKeys.CURRENT_FILE)
             if current_file is None:
@@ -353,14 +353,14 @@ class ClassNestingRefactorRule:
 
     def _entries_for_scope(
         self,
-        raw_entries: Sequence[t.StrMapping],
+        raw_entries: Sequence[Mapping[str, str]],
         file_path: Path,
         confidence_threshold: str,
-    ) -> Sequence[t.StrMapping]:
+    ) -> Sequence[Mapping[str, str]]:
         entries = raw_entries
         if not entries:
             return []
-        accepted: MutableSequence[t.StrMapping] = []
+        accepted: MutableSequence[Mapping[str, str]] = []
         for entry in entries:
             confidence = entry.get(c.Infra.ReportKeys.CONFIDENCE, c.Infra.Severity.LOW)
             if not self._confidence_allowed(confidence, confidence_threshold):
@@ -380,8 +380,8 @@ class ClassNestingRefactorRule:
     def _coerce_entries(
         self,
         entries: Sequence[Mapping[str, t.Infra.InfraValue]],
-    ) -> Sequence[t.StrMapping]:
-        coerced: MutableSequence[t.StrMapping] = []
+    ) -> Sequence[Mapping[str, str]]:
+        coerced: MutableSequence[Mapping[str, str]] = []
         for typed in entries:
             current_file = typed.get(c.Infra.ReportKeys.CURRENT_FILE)
             if not isinstance(current_file, str):
@@ -464,7 +464,7 @@ class ClassNestingRefactorRule:
     def _apply_class_nesting(
         self,
         tree: cst.Module,
-        mappings: t.StrMapping,
+        mappings: Mapping[str, str],
         changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
         class_families: t.Infra.ClassFamilyMap,
@@ -484,7 +484,7 @@ class ClassNestingRefactorRule:
     def _apply_helper_consolidation(
         self,
         tree: cst.Module,
-        mappings: t.StrMapping,
+        mappings: Mapping[str, str],
         changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
         helper_families: t.Infra.ClassFamilyMap,
@@ -533,7 +533,7 @@ class ClassNestingRefactorRule:
     def _families_for_scope(
         self,
         *,
-        entries: Sequence[t.StrMapping],
+        entries: Sequence[Mapping[str, str]],
         symbol_key: str,
     ) -> MutableMapping[str, str]:
         families: MutableMapping[str, str] = {}

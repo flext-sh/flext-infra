@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shlex
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -20,7 +20,7 @@ class FlextInfraUtilitiesSubprocess:
         cmd: Sequence[str],
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> r[m.Infra.CommandOutput]:
         """Run command without enforcing exit code."""
         try:
@@ -52,7 +52,7 @@ class FlextInfraUtilitiesSubprocess:
         cmd: Sequence[str],
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> r[m.Infra.CommandOutput]:
         """Run command with zero-exit enforcement."""
         res = FlextInfraUtilitiesSubprocess.run_raw(cmd, cwd, timeout, env)
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesSubprocess:
         cmd: Sequence[str],
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> r[bool]:
         """Run command and return status."""
         return FlextInfraUtilitiesSubprocess.run(cmd, cwd, timeout, env).map(
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesSubprocess:
         cmd: Sequence[str],
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> r[str]:
         """Capture stripped stdout."""
         return FlextInfraUtilitiesSubprocess.run(cmd, cwd, timeout, env).map(
@@ -95,7 +95,7 @@ class FlextInfraUtilitiesSubprocess:
         output_file: Path,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> r[int]:
         """Stream combined output to file."""
         try:

@@ -19,7 +19,7 @@ class SubprocessScenario(m.Value):
     """Single scenario for subprocess operation testing using m.Value."""
 
     name: str
-    cmd: t.StrSequence
+    cmd: Sequence[str]
     expected_output: str = ""
     should_succeed: bool = True
     description: str | None = None
@@ -29,7 +29,7 @@ class GitScenario(m.Value):
     """Single scenario for git operation testing using m.Value."""
 
     name: str
-    operations: t.StrSequence
+    operations: Sequence[str]
     expected_state: str
     should_succeed: bool = True
     description: str | None = None
@@ -39,7 +39,7 @@ class WorkspaceScenario(m.Value):
     """Single scenario for workspace state testing using m.Value."""
 
     name: str
-    structure: Mapping[str, t.StrMapping]
+    structure: Mapping[str, Mapping[str, str]]
     should_be_valid: bool = True
     description: str | None = None
 
@@ -49,7 +49,7 @@ class DependencyScenario(m.Value):
 
     name: str
     pyproject_content: str
-    expected_deps: t.StrSequence
+    expected_deps: Sequence[str]
     should_succeed: bool = True
     description: str | None = None
 

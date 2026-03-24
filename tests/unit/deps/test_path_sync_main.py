@@ -127,9 +127,9 @@ class TestMain:
             internal_names: set[str],
             is_root: bool = False,
             dry_run: bool = False,
-        ) -> r[t.StrSequence]:
+        ) -> r[Sequence[str]]:
             _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
-            return r[t.StrSequence].fail("rewrite failed")
+            return r[Sequence[str]].fail("rewrite failed")
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
         monkeypatch.setattr(
@@ -172,12 +172,12 @@ class TestMain:
             internal_names: set[str],
             is_root: bool = False,
             dry_run: bool = False,
-        ) -> r[t.StrSequence]:
+        ) -> r[Sequence[str]]:
             _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
             calls["n"] += 1
             if calls["n"] == 1:
-                return r[t.StrSequence].ok([])
-            return r[t.StrSequence].fail("project rewrite failed")
+                return r[Sequence[str]].ok([])
+            return r[Sequence[str]].fail("project rewrite failed")
 
         monkeypatch.setattr(
             FlextInfraDependencyPathSync,

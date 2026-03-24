@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from pydantic import ValidationError
 
 from flext_infra import m, t
@@ -14,7 +16,7 @@ class FlextInfraRefactorTransformerPolicyUtilities:
     def policy_for_symbol(
         *,
         policy_context: t.Infra.PolicyContext | None,
-        symbol_families: t.StrMapping | None,
+        symbol_families: Mapping[str, str] | None,
         symbol_name: str,
     ) -> m.Infra.ClassNestingPolicy | None:
         """Resolve and validate policy for a symbol based on its family."""

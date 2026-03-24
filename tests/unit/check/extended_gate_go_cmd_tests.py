@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -32,8 +32,8 @@ GateClass = type[FlextInfraGoGate] | type[FlextInfraRuffLintGate]
 
 def _create_run_raw_result(
     result: r[SimpleNamespace] | str,
-) -> Callable[[t.StrSequence], r[SimpleNamespace]]:
-    def _fake_run_raw(_cmd: t.StrSequence, **_kw: t.Scalar) -> r[SimpleNamespace]:
+) -> Callable[[Sequence[str]], r[SimpleNamespace]]:
+    def _fake_run_raw(_cmd: Sequence[str], **_kw: t.Scalar) -> r[SimpleNamespace]:
         del _cmd, _kw
         if isinstance(result, str):
             return r[SimpleNamespace].fail(result)
@@ -65,10 +65,10 @@ def _patch_go_gate_run_sequence(
 
     def _fake_run(
         _self: FlextInfraGate,
-        _cmd: t.StrSequence,
+        _cmd: Sequence[str],
         _cwd: Path,
         timeout: int = 120,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> SimpleNamespace:
         del _self, _cmd, _cwd, timeout, env
         current = index["value"]

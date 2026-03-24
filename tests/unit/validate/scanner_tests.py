@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -197,4 +198,4 @@ class TestScannerHelpers:
             f.chmod(0o644)
 
 
-__all__: t.StrSequence = []
+__all__: Sequence[str] = []

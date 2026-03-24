@@ -27,12 +27,12 @@ class _StubToml:
 class _StubRunner:
     def __init__(self, result: r[m.Infra.CommandOutput]) -> None:
         self._result = result
-        self.last_kwargs: Mapping[str, str | int | Path | t.StrMapping] = {}
+        self.last_kwargs: Mapping[str, str | int | Path | Mapping[str, str]] = {}
 
     def run_raw(
         self,
         *args: t.Infra.TomlValue,
-        **kwargs: str | int | Path | t.StrMapping,
+        **kwargs: str | int | Path | Mapping[str, str],
     ) -> r[m.Infra.CommandOutput]:
         _ = args
         self.last_kwargs = kwargs

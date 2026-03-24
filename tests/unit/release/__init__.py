@@ -49,80 +49,29 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "TestBuildTargets": (
-        "tests.unit.release.orchestrator_helpers_tests",
-        "TestBuildTargets",
-    ),
-    "TestBumpNextDev": (
-        "tests.unit.release.orchestrator_helpers_tests",
-        "TestBumpNextDev",
-    ),
-    "TestCollectChanges": (
-        "tests.unit.release.orchestrator_git_tests",
-        "TestCollectChanges",
-    ),
-    "TestCreateBranches": (
-        "tests.unit.release.orchestrator_git_tests",
-        "TestCreateBranches",
-    ),
+    "TestBuildTargets": ("tests.unit.release.orchestrator_helpers_tests", "TestBuildTargets"),
+    "TestBumpNextDev": ("tests.unit.release.orchestrator_helpers_tests", "TestBumpNextDev"),
+    "TestCollectChanges": ("tests.unit.release.orchestrator_git_tests", "TestCollectChanges"),
+    "TestCreateBranches": ("tests.unit.release.orchestrator_git_tests", "TestCreateBranches"),
     "TestCreateTag": ("tests.unit.release.orchestrator_git_tests", "TestCreateTag"),
-    "TestDispatchPhase": (
-        "tests.unit.release.orchestrator_helpers_tests",
-        "TestDispatchPhase",
-    ),
-    "TestGenerateNotes": (
-        "tests.unit.release.orchestrator_helpers_tests",
-        "TestGenerateNotes",
-    ),
-    "TestPhaseBuild": (
-        "tests.unit.release.orchestrator_phases_tests",
-        "TestPhaseBuild",
-    ),
-    "TestPhasePublish": (
-        "tests.unit.release.orchestrator_publish_tests",
-        "TestPhasePublish",
-    ),
-    "TestPhaseValidate": (
-        "tests.unit.release.orchestrator_phases_tests",
-        "TestPhaseValidate",
-    ),
-    "TestPhaseVersion": (
-        "tests.unit.release.orchestrator_phases_tests",
-        "TestPhaseVersion",
-    ),
+    "TestDispatchPhase": ("tests.unit.release.orchestrator_helpers_tests", "TestDispatchPhase"),
+    "TestGenerateNotes": ("tests.unit.release.orchestrator_helpers_tests", "TestGenerateNotes"),
+    "TestPhaseBuild": ("tests.unit.release.orchestrator_phases_tests", "TestPhaseBuild"),
+    "TestPhasePublish": ("tests.unit.release.orchestrator_publish_tests", "TestPhasePublish"),
+    "TestPhaseValidate": ("tests.unit.release.orchestrator_phases_tests", "TestPhaseValidate"),
+    "TestPhaseVersion": ("tests.unit.release.orchestrator_phases_tests", "TestPhaseVersion"),
     "TestPreviousTag": ("tests.unit.release.orchestrator_git_tests", "TestPreviousTag"),
     "TestPushRelease": ("tests.unit.release.orchestrator_git_tests", "TestPushRelease"),
     "TestReleaseInit": ("tests.unit.release.release_init_tests", "TestReleaseInit"),
     "TestReleaseMainFlow": ("tests.unit.release.flow_tests", "TestReleaseMainFlow"),
-    "TestReleaseMainParsing": (
-        "tests.unit.release.main_tests",
-        "TestReleaseMainParsing",
-    ),
-    "TestReleaseMainTagResolution": (
-        "tests.unit.release.version_resolution_tests",
-        "TestReleaseMainTagResolution",
-    ),
-    "TestReleaseMainVersionResolution": (
-        "tests.unit.release.version_resolution_tests",
-        "TestReleaseMainVersionResolution",
-    ),
-    "TestReleaseOrchestratorExecute": (
-        "tests.unit.release.orchestrator_tests",
-        "TestReleaseOrchestratorExecute",
-    ),
-    "TestResolveVersionInteractive": (
-        "tests.unit.release.version_resolution_tests",
-        "TestResolveVersionInteractive",
-    ),
+    "TestReleaseMainParsing": ("tests.unit.release.main_tests", "TestReleaseMainParsing"),
+    "TestReleaseMainTagResolution": ("tests.unit.release.version_resolution_tests", "TestReleaseMainTagResolution"),
+    "TestReleaseMainVersionResolution": ("tests.unit.release.version_resolution_tests", "TestReleaseMainVersionResolution"),
+    "TestReleaseOrchestratorExecute": ("tests.unit.release.orchestrator_tests", "TestReleaseOrchestratorExecute"),
+    "TestResolveVersionInteractive": ("tests.unit.release.version_resolution_tests", "TestResolveVersionInteractive"),
     "TestRunMake": ("tests.unit.release.orchestrator_helpers_tests", "TestRunMake"),
-    "TestUpdateChangelog": (
-        "tests.unit.release.orchestrator_helpers_tests",
-        "TestUpdateChangelog",
-    ),
-    "TestVersionFiles": (
-        "tests.unit.release.orchestrator_helpers_tests",
-        "TestVersionFiles",
-    ),
+    "TestUpdateChangelog": ("tests.unit.release.orchestrator_helpers_tests", "TestUpdateChangelog"),
+    "TestVersionFiles": ("tests.unit.release.orchestrator_helpers_tests", "TestVersionFiles"),
     "workspace_root": ("tests.unit.release.orchestrator_tests", "workspace_root"),
 }
 

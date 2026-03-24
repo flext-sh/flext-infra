@@ -270,7 +270,7 @@ def test_removes_unused_preserves_used_when_import_precedes_usage() -> None:
         "from typing import ClassVar, Final, Literal, override\n\n"
         "class Config:\n"
         "    NAME: Final[str] = 'app'\n"
-        "    ITEMS: ClassVar[t.StrSequence] = []\n"
+        "    ITEMS: ClassVar[Sequence[str]] = []\n"
     )
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorTypingUnificationRule({
@@ -463,7 +463,7 @@ def test_preserves_typealias_import_when_class_level_usage_exists() -> None:
     source = (
         "from __future__ import annotations\n"
         "from typing import TypeAlias\n"
-        "from collections.abc import Callable\n\n"
+        "from collections.abc import Sequence, Callable\n\n"
         "class MyTypes:\n"
         "    Handler: TypeAlias = Callable[[], None]\n"
     )

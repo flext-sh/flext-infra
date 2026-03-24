@@ -133,7 +133,7 @@ class FlextInfraCodegenGeneration:
         docstring_source: str,
         exports: Sequence[str],
         filtered: Mapping[str, tuple[str, str]],
-        inline_constants: t.StrMapping,
+        inline_constants: Mapping[str, str],
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
     ) -> str:

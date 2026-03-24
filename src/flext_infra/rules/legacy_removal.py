@@ -45,7 +45,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         expected_star_arg: str | None,
         expected_star_kwarg: str | None,
         positional_forwarded: Sequence[str],
-        keyword_forwarded: t.StrMapping,
+        keyword_forwarded: Mapping[str, str],
         star_forwarded: str | None,
         star_kw_forwarded: str | None,
     ) -> bool:
@@ -198,7 +198,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     def _parse_forwarded_arguments(
         self,
         call_args: Sequence[cst.Arg],
-    ) -> tuple[Sequence[str], t.StrMapping, str | None, str | None] | None:
+    ) -> tuple[Sequence[str], Mapping[str, str], str | None, str | None] | None:
         positional_forwarded: MutableSequence[str] = []
         keyword_forwarded: MutableMapping[str, str] = {}
         star_forwarded: str | None = None

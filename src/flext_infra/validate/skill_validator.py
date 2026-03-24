@@ -55,7 +55,7 @@ class FlextInfraSkillValidator:
         skill_name: str,
         *,
         mode: str = c.Infra.Modes.BASELINE,
-        _project_filter: t.StrSequence | None = None,
+        _project_filter: Sequence[str] | None = None,
     ) -> r[m.Infra.ValidationReport]:
         """Validate a single skill across workspace projects.
 
@@ -191,8 +191,8 @@ class FlextInfraSkillValidator:
         rule: Mapping[str, t.Infra.InfraValue],
         skill_dir: Path,
         project_path: Path,
-        include_globs: t.StrSequence,
-        exclude_globs: t.StrSequence,
+        include_globs: Sequence[str],
+        exclude_globs: Sequence[str],
     ) -> int:
         """Run an ast-grep rule and return match count."""
         rule_file_raw = str(rule.get(c.Infra.ReportKeys.FILE, "")).strip()

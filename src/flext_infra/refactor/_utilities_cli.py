@@ -65,9 +65,9 @@ class FlextInfraUtilitiesRefactorCli:
     @staticmethod
     def build_impact_map(
         results: Sequence[m.Infra.Result],
-    ) -> Sequence[t.StrMapping]:
+    ) -> Sequence[Mapping[str, str]]:
         """Build normalized impact-map rows from refactor results."""
-        impact_map: MutableSequence[t.StrMapping] = []
+        impact_map: MutableSequence[Mapping[str, str]] = []
         symbol_pattern = re.compile(r"^(.*):\s+(.+)\s+->\s+(.+?)(?:\s+\(|$)")
         added_pattern = re.compile(r"^\[(.+)\]\s+Added keyword:\s+(.+)$")
         removed_pattern = re.compile(r"^\[(.+)\]\s+Removed keyword:\s+(.+)$")

@@ -82,7 +82,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
         census_reports: Sequence[m.Infra.CensusReport],
         duplicate_groups: int,
         import_scan: Mapping[str, t.Infra.InfraValue],
-        modified_files: t.StrSequence,
+        modified_files: Sequence[str],
     ) -> Mapping[str, t.Infra.InfraValue]:
         by_rule: MutableMapping[str, int] = dict.fromkeys(
             c.Infra.QualityGate.RULE_KEYS,

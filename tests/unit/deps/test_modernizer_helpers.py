@@ -43,9 +43,9 @@ def test_dep_name(raw: str, expected: str) -> None:
     ],
 )
 def test_dedupe_specs(
-    specs: t.StrSequence,
+    specs: Sequence[str],
     expected_length: int,
-    expected_names: t.StrSequence,
+    expected_names: Sequence[str],
     check_sorted: bool,
 ) -> None:
     deduped = u.Infra.dedupe_specs(specs)
@@ -74,7 +74,7 @@ def test_unwrap_item_toml_item(doc: TOMLDocument) -> None:
     tm.that(u.Infra.unwrap_item(doc["key"]), eq="value")
 
 
-def _toml_item(value: str | int | t.StrSequence) -> tomlkit.items.Item:
+def _toml_item(value: str | int | Sequence[str]) -> tomlkit.items.Item:
     if isinstance(value, str):
         return tomlkit.items.String.from_raw(value)
     if isinstance(value, int):
@@ -106,7 +106,7 @@ def _toml_table_item() -> tomlkit.items.Item:
     ],
 )
 def test_as_string_list(
-    value: tomlkit.items.Item | None, expected: t.StrSequence
+    value: tomlkit.items.Item | None, expected: Sequence[str]
 ) -> None:
     tm.that(u.Infra.as_string_list(value), eq=expected)
 
@@ -124,7 +124,7 @@ def test_as_string_list_toml_item(doc: TOMLDocument) -> None:
     ("items", "expected"),
     [(["a", "b", "c"], 3), ([], 0), (["single"], 1)],
 )
-def test_array(items: t.StrSequence, expected: int) -> None:
+def test_array(items: Sequence[str], expected: int) -> None:
     tm.that(len(u.Infra.array(items)), eq=expected)
 
 
@@ -149,7 +149,7 @@ def test_ensure_table(mode: str) -> None:
     tm.that(parent, has="key")
 
 
-def _doc_with_optional_deps(optional_deps: Mapping[str, t.StrSequence]) -> TOMLDocument:
+def _doc_with_optional_deps(optional_deps: Mapping[str, Sequence[str]]) -> TOMLDocument:
     doc = tomlkit.document()
     doc["project"] = {"optional-dependencies": optional_deps}
     return doc
@@ -174,9 +174,9 @@ def _doc_with_optional_deps(optional_deps: Mapping[str, t.StrSequence]) -> TOMLD
     ],
 )
 def test_project_dev_groups(
-    optional_deps: Mapping[str, t.StrSequence],
-    expected_dev: t.StrSequence,
-    expected_docs: t.StrSequence,
+    optional_deps: Mapping[str, Sequence[str]],
+    expected_dev: Sequence[str],
+    expected_docs: Sequence[str],
 ) -> None:
     groups = u.Infra.project_dev_groups(_doc_with_optional_deps(optional_deps))
     tm.that(groups.get("dev", []), eq=expected_dev)
@@ -208,7 +208,7 @@ def test_project_dev_groups_missing_sections(doc: TOMLDocument) -> None:
     ],
 )
 def test_canonical_dev_dependencies(
-    optional_deps: Mapping[str, t.StrSequence],
+    optional_deps: Mapping[str, Sequence[str]],
     expected_length: int,
     expect_pytest: bool,
 ) -> None:

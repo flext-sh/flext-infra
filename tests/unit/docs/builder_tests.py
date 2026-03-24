@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -72,7 +73,7 @@ class TestBuilderCore:
         self,
         builder: FlextInfraDocBuilder,
         tmp_path: Path,
-        kwargs: t.StrMapping,
+        kwargs: Mapping[str, str],
     ) -> None:
         params = dict(kwargs)
         if "output_dir" in params:

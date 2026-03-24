@@ -28,7 +28,7 @@ class _DepsStub:
         self,
         root: Path,
         *,
-        projects_filter: t.StrSequence | None = None,
+        projects_filter: Sequence[str] | None = None,
     ) -> r[Sequence[Path]]:
         del root
         del projects_filter
@@ -38,24 +38,24 @@ class _DepsStub:
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[tuple[Sequence[t.StrMapping], int]]:
+    ) -> r[tuple[Sequence[Mapping[str, str]], int]]:
         del project_path
         del venv_bin
-        return r[tuple[Sequence[t.StrMapping], int]].ok(([], 0))
+        return r[tuple[Sequence[Mapping[str, str]], int]].ok(([], 0))
 
     def build_project_report(
         self,
         project_name: str,
-        issues: Sequence[t.StrMapping],
+        issues: Sequence[Mapping[str, str]],
     ) -> _ReportStub:
         del project_name
         del issues
         return _ReportStub(self._raw_count)
 
-    def run_pip_check(self, root: Path, venv_bin: Path) -> r[tuple[t.StrSequence, int]]:
+    def run_pip_check(self, root: Path, venv_bin: Path) -> r[tuple[Sequence[str], int]]:
         del root
         del venv_bin
-        return r[tuple[t.StrSequence, int]].ok(([], self._pip_exit))
+        return r[tuple[Sequence[str], int]].ok(([], self._pip_exit))
 
 
 def _setup(

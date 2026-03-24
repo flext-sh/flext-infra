@@ -34,7 +34,7 @@ class _DepsStub:
         self,
         root: Path,
         *,
-        projects_filter: t.StrSequence | None = None,
+        projects_filter: Sequence[str] | None = None,
     ) -> r[Sequence[Path]]:
         _ = root
         _ = projects_filter
@@ -44,15 +44,15 @@ class _DepsStub:
         self,
         project_path: Path,
         venv_bin: Path,
-    ) -> r[tuple[Sequence[t.StrMapping], int]]:
+    ) -> r[tuple[Sequence[Mapping[str, str]], int]]:
         _ = project_path
         _ = venv_bin
-        return r[tuple[Sequence[t.StrMapping], int]].ok(([], 0))
+        return r[tuple[Sequence[Mapping[str, str]], int]].ok(([], 0))
 
     def build_project_report(
         self,
         project_name: str,
-        issues: Sequence[t.StrMapping],
+        issues: Sequence[Mapping[str, str]],
     ) -> _ReportStub:
         _ = project_name
         _ = issues
@@ -70,14 +70,16 @@ class _DepsStub:
         _ = limits_path
         return r[_TypingsStub].ok(_TypingsStub(self._to_add))
 
-    def load_dependency_limits(self, limits_path: Path) -> Mapping[str, t.StrMapping]:
+    def load_dependency_limits(
+        self, limits_path: Path
+    ) -> Mapping[str, Mapping[str, str]]:
         del limits_path
         return {}
 
-    def run_pip_check(self, root: Path, venv_bin: Path) -> r[tuple[t.StrSequence, int]]:
+    def run_pip_check(self, root: Path, venv_bin: Path) -> r[tuple[Sequence[str], int]]:
         _ = root
         _ = venv_bin
-        return r[tuple[t.StrSequence, int]].ok(([], 0))
+        return r[tuple[Sequence[str], int]].ok(([], 0))
 
 
 def _setup_typings_detector(
@@ -98,7 +100,7 @@ def _setup_typings_detector(
         *,
         cwd: Path,
         timeout: int,
-        env: t.StrMapping,
+        env: Mapping[str, str],
     ) -> r[types.SimpleNamespace]:
         _ = cwd
         _ = timeout

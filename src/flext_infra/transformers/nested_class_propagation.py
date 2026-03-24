@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
@@ -18,9 +18,9 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
 
     def __init__(
         self,
-        class_renames: t.StrMapping,
+        class_renames: Mapping[str, str],
         policy_context: t.Infra.PolicyContext | None = None,
-        class_families: t.StrMapping | None = None,
+        class_families: Mapping[str, str] | None = None,
     ) -> None:
         """Initialize with class rename mappings and optional policy context."""
         self._class_renames = class_renames
@@ -139,7 +139,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
     def _attribute_from_base(
         self,
         base: cst.BaseExpression,
-        dotted_parts: t.StrSequence,
+        dotted_parts: Sequence[str],
     ) -> cst.BaseExpression:
         expr: cst.BaseExpression = base
         for part in dotted_parts:
@@ -153,7 +153,7 @@ class NestedClassPropagationTransformer(cst.CSTTransformer):
             return expr.attr.value
         return None
 
-    def _split_dotted(self, dotted_name: str) -> t.StrSequence:
+    def _split_dotted(self, dotted_name: str) -> Sequence[str]:
         return [part for part in dotted_name.split(".") if part]
 
     def _should_propagate(self, symbol_name: str, policy_key: str) -> bool:

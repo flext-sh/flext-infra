@@ -115,7 +115,7 @@ class FlextInfraUtilitiesToml:
         return FlextInfraUtilitiesToml.normalize_container_value(value)
 
     @staticmethod
-    def as_string_list(value: t.Infra.InfraValue | Item | None) -> t.StrSequence:
+    def as_string_list(value: t.Infra.InfraValue | Item | None) -> Sequence[str]:
         """Convert TOML value to list of strings."""
         normalized = FlextInfraUtilitiesToml.normalize_container_value(value)
         if normalized is None or isinstance(normalized, str):
@@ -133,7 +133,7 @@ class FlextInfraUtilitiesToml:
         ]
 
     @staticmethod
-    def array(items: t.StrSequence) -> Array:
+    def array(items: Sequence[str]) -> Array:
         """Create multiline TOML array from string items."""
         arr: Array = tomlkit.array()
         for item in items:
@@ -201,7 +201,7 @@ class FlextInfraUtilitiesToml:
             return None
 
     @staticmethod
-    def table_string_keys(table: Table) -> t.StrSequence:
+    def table_string_keys(table: Table) -> Sequence[str]:
         """Return table keys as strings."""
         return list(table)
 

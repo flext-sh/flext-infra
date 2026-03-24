@@ -39,7 +39,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
     def mro_migrate_file(
         *,
         scan_result: m.Infra.MROScanReport,
-    ) -> tuple[str, m.Infra.MROFileMigration, t.StrMapping]:
+    ) -> tuple[str, m.Infra.MROFileMigration, Mapping[str, str]]:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
         module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         class_def: cst.ClassDef,
         moved_by_symbol: Mapping[str, cst.CSTNode],
         ordered_symbols: Sequence[str],
-    ) -> tuple[cst.ClassDef, t.StrMapping]:
+    ) -> tuple[cst.ClassDef, Mapping[str, str]]:
         retained_class_body: MutableSequence[cst.CSTNode] = []
         alias_by_symbol: MutableMapping[str, str] = {}
         alias_replacement_values: MutableMapping[str, cst.BaseExpression] = {}
@@ -315,7 +315,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         class_name: str,
         moved_by_symbol: Mapping[str, cst.CSTNode],
         ordered_symbols: Sequence[str],
-    ) -> tuple[cst.ClassDef, t.StrMapping]:
+    ) -> tuple[cst.ClassDef, Mapping[str, str]]:
         class_template = cst.ClassDef(
             name=cst.Name(class_name),
             body=cst.IndentedBlock(body=()),

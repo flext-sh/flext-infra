@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 

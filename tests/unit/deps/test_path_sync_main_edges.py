@@ -78,12 +78,12 @@ class TestMainEdgeCases:
             internal_names: set[str],
             is_root: bool = False,
             dry_run: bool = False,
-        ) -> r[t.StrSequence]:
+        ) -> r[Sequence[str]]:
             _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
             calls["n"] += 1
             if calls["n"] == 1:
-                return r[t.StrSequence].ok([])
-            return r[t.StrSequence].ok(["change1"])
+                return r[Sequence[str]].ok([])
+            return r[Sequence[str]].ok(["change1"])
 
         monkeypatch.setattr(
             FlextInfraDependencyPathSync,
@@ -146,9 +146,9 @@ class TestMainEdgeCases:
             internal_names: set[str],
             is_root: bool = False,
             dry_run: bool = False,
-        ) -> r[t.StrSequence]:
+        ) -> r[Sequence[str]]:
             _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
-            return r[t.StrSequence].ok([])
+            return r[Sequence[str]].ok([])
 
         monkeypatch.setattr(
             FlextInfraDependencyPathSync,

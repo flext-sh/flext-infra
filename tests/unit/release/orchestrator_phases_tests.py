@@ -52,7 +52,7 @@ class TestPhaseValidate:
         called = False
 
         def _fake_run_checked(
-            cmd: t.StrSequence,
+            cmd: Sequence[str],
             **kw: t.Scalar,
         ) -> r[bool]:
             nonlocal called

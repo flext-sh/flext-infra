@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -121,10 +122,10 @@ class TestMypyEmptyLinesInOutput:
 
         def _fake_run(
             _self: FlextInfraGate,
-            _cmd: t.StrSequence,
+            _cmd: Sequence[str],
             _cwd: Path,
             timeout: int = 120,
-            env: t.StrMapping | None = None,
+            env: Mapping[str, str] | None = None,
         ) -> m.Infra.CommandOutput:
             del _self, _cmd, _cwd, timeout, env
             return m.Infra.CommandOutput(
@@ -136,13 +137,13 @@ class TestMypyEmptyLinesInOutput:
         def _fake_existing_dirs(
             _self: FlextInfraGate,
             _project_dir: Path,
-        ) -> t.StrSequence:
+        ) -> Sequence[str]:
             del _self, _project_dir
             return ["src"]
 
         def _fake_dirs_with_py(
-            _project_dir: Path, _dirs: t.StrSequence
-        ) -> t.StrSequence:
+            _project_dir: Path, _dirs: Sequence[str]
+        ) -> Sequence[str]:
             del _project_dir, _dirs
             return ["src"]
 
@@ -182,10 +183,10 @@ class TestGoFmtEmptyLinesInOutput:
 
         def _fake_run(
             _self: FlextInfraGate,
-            _cmd: t.StrSequence,
+            _cmd: Sequence[str],
             _cwd: Path,
             timeout: int = 120,
-            env: t.StrMapping | None = None,
+            env: Mapping[str, str] | None = None,
         ) -> m.Infra.CommandOutput:
             del _self, _cmd, _cwd, timeout, env
             index = min(call_idx[0], len(results) - 1)
@@ -213,10 +214,10 @@ class TestRuffFormatDuplicateFiles:
 
         def _fake_run(
             _self: FlextInfraGate,
-            _cmd: t.StrSequence,
+            _cmd: Sequence[str],
             _cwd: Path,
             timeout: int = 120,
-            env: t.StrMapping | None = None,
+            env: Mapping[str, str] | None = None,
         ) -> m.Infra.CommandOutput:
             del _self, _cmd, _cwd, timeout, env
             return m.Infra.CommandOutput(

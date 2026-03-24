@@ -18,7 +18,7 @@ class _StubSelector:
     def resolve_projects(
         self,
         workspace_root: Path,
-        names: t.StrSequence,
+        names: Sequence[str],
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         _ = workspace_root
         _ = names

@@ -98,12 +98,12 @@ class FlextInfraUtilitiesRefactor(
         return "other_private"
 
     @staticmethod
-    def entry_list(value: t.Infra.InfraValue | None) -> Sequence[t.StrMapping]:
+    def entry_list(value: t.Infra.InfraValue | None) -> Sequence[Mapping[str, str]]:
         """Normalize class-nesting config entries to a strict list."""
         if value is None:
             return []
         try:
-            return TypeAdapter(Sequence[t.StrMapping]).validate_python(value)
+            return TypeAdapter(Sequence[Mapping[str, str]]).validate_python(value)
         except ValidationError:
             msg = "class nesting entries must be a list"
             raise ValueError(msg) from None
@@ -196,7 +196,7 @@ class FlextInfraUtilitiesRefactor(
         return tokens
 
     @staticmethod
-    def rewrite_scope(entry: t.StrMapping) -> str:
+    def rewrite_scope(entry: Mapping[str, str]) -> str:
         raw_scope = entry.get(c.Infra.ReportKeys.REWRITE_SCOPE, c.Infra.ReportKeys.FILE)
         scope = raw_scope.strip().lower()
         if scope in {
@@ -210,7 +210,7 @@ class FlextInfraUtilitiesRefactor(
 
     @staticmethod
     def scope_applies_to_file(
-        entry: t.StrMapping,
+        entry: Mapping[str, str],
         current_file: Path,
         candidate_file: Path,
     ) -> bool:
@@ -509,7 +509,7 @@ class FlextInfraUtilitiesRefactor(
     def build_facade_inner_class_map(
         facade_path: Path,
         facade_class_name: str,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Map inner class names → base class names in a facade.
 
         E.g. ``{"Conversion": "FlextUtilitiesConversion", ...}``.

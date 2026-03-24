@@ -36,7 +36,7 @@ class NormalizerContext(m.ArbitraryTypesModel):
     project_package: str
     project_aliases: frozenset[str]
     declared_alias: str
-    alias_to_defining_module: t.StrMapping
+    alias_to_defining_module: Mapping[str, str]
     alias_tiers: Mapping[str, int]
     file_tier: int
     package_reachability: Mapping[str, frozenset[str]]
@@ -115,7 +115,7 @@ class FlextInfraUtilitiesImportNormalizer:
         package_dir: Path,
         project_root: Path | None,
         alias_map: Mapping[str, tuple[str, ...]] | None,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Build alias-to-module map from project facades and lazy exports."""
         init_path = package_dir / "__init__.py"
         alias_to_module = dict(
@@ -220,7 +220,7 @@ class FlextInfraUtilitiesImportNormalizer:
         *,
         file_path: Path,
         project_package: str,
-        facade_to_alias: t.StrMapping,
+        facade_to_alias: Mapping[str, str],
         alias_tiers: Mapping[str, int],
     ) -> int:
         """Infer architectural tier for a file based on facade/paths."""
@@ -279,7 +279,7 @@ class FlextInfraUtilitiesImportNormalizer:
                     if cand.is_dir() and (cand / "__init__.py").is_file():
                         package_dir = cand
 
-        alias_to_module: t.StrMapping = (
+        alias_to_module: Mapping[str, str] = (
             FlextInfraUtilitiesImportNormalizer.normalizer_build_alias_to_defining_module(
                 package_name=package_name,
                 package_dir=package_dir,
@@ -301,7 +301,7 @@ class FlextInfraUtilitiesImportNormalizer:
                 )
             except ValueError:
                 file_module = ""
-        alias_to_facade: t.StrMapping = (
+        alias_to_facade: Mapping[str, str] = (
             FlextInfraUtilitiesDiscovery.discover_project_aliases(project_root)
             if project_root is not None
             else {}

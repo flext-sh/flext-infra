@@ -125,7 +125,7 @@ class FlextInfraUtilitiesOutput:
         elapsed: float,
         log_path: Path,
         error_count: int,
-        errors: t.StrSequence,
+        errors: Sequence[str],
         *,
         max_show: int = 3,
     ) -> None:
@@ -534,7 +534,7 @@ class OutputBackend:
         elapsed: float,
         log_path: Path,
         error_count: int,
-        errors: t.StrSequence,
+        errors: Sequence[str],
         *,
         max_show: int = 3,
     ) -> None:

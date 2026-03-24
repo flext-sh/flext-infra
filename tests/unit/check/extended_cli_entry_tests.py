@@ -25,7 +25,7 @@ from ...models import m
 
 
 def _fake_checker_cls(
-    parse_result: t.StrSequence,
+    parse_result: Sequence[str],
     run_result: r[Sequence[SimpleNamespace]] | r[Sequence[m.Infra.ProjectResult]],
 ) -> type:
     class _Fake:
@@ -33,13 +33,13 @@ def _fake_checker_cls(
             _ = _kw
 
         @staticmethod
-        def parse_gate_csv(_gates: str) -> t.StrSequence:
+        def parse_gate_csv(_gates: str) -> Sequence[str]:
             return parse_result
 
         def run_projects(
             self,
-            projects: t.StrSequence | None = None,
-            gates: t.StrSequence | None = None,
+            projects: Sequence[str] | None = None,
+            gates: Sequence[str] | None = None,
             **kw: t.Scalar,
         ) -> r[Sequence[SimpleNamespace]] | r[Sequence[m.Infra.ProjectResult]]:
             _ = projects, gates, kw
@@ -49,7 +49,7 @@ def _fake_checker_cls(
 
 
 def _fake_fixer_cls(
-    run_result: r[t.StrSequence],
+    run_result: r[Sequence[str]],
 ) -> type:
     class _Fake:
         def __init__(self, **_kw: t.Scalar) -> None:
@@ -57,14 +57,14 @@ def _fake_fixer_cls(
 
         def run(
             self,
-            _projects: t.StrSequence | None = None,
+            _projects: Sequence[str] | None = None,
             **kw: t.Scalar,
-        ) -> r[t.StrSequence]:
+        ) -> r[Sequence[str]]:
             _ = _projects, kw
             return run_result
 
         @staticmethod
-        def main(argv: t.StrSequence | None = None) -> int:
+        def main(argv: Sequence[str] | None = None) -> int:
             _ = argv
             instance = _Fake()
             result = instance.run()
@@ -107,7 +107,7 @@ class TestWorkspaceCheckCLI:
 
 class TestFixPyrelfyCLI:
     def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fake = _fake_fixer_cls(r[t.StrSequence].ok([]))
+        fake = _fake_fixer_cls(r[Sequence[str]].ok([]))
         monkeypatch.setattr(
             fix_pyrefly_mod,
             "FlextInfraConfigFixer",
@@ -116,7 +116,7 @@ class TestFixPyrelfyCLI:
         tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=0)
 
     def test_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fake = _fake_fixer_cls(r[t.StrSequence].fail("error"))
+        fake = _fake_fixer_cls(r[Sequence[str]].fail("error"))
         monkeypatch.setattr(
             fix_pyrefly_mod,
             "FlextInfraConfigFixer",
@@ -125,8 +125,8 @@ class TestFixPyrelfyCLI:
         tm.that(fix_pyrefly_mod.FlextInfraConfigFixer.main([]), eq=1)
 
 
-def _const_cli_result(code: int) -> Callable[[t.StrSequence | None], int]:
-    def _runner(argv: t.StrSequence | None = None) -> int:
+def _const_cli_result(code: int) -> Callable[[Sequence[str] | None], int]:
+    def _runner(argv: Sequence[str] | None = None) -> int:
         _ = argv
         return code
 
@@ -168,7 +168,7 @@ class TestRunCLIExtended:
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraConfigFixer",
-            _fake_fixer_cls(r[t.StrSequence].ok([])),
+            _fake_fixer_cls(r[Sequence[str]].ok([])),
         )
         tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=0)
 
@@ -176,7 +176,7 @@ class TestRunCLIExtended:
         monkeypatch.setattr(
             ws_mod,
             "FlextInfraConfigFixer",
-            _fake_fixer_cls(r[t.StrSequence].fail("error")),
+            _fake_fixer_cls(r[Sequence[str]].fail("error")),
         )
         tm.that(FlextInfraWorkspaceChecker.run_cli(["fix-pyrefly-config"]), eq=1)
 
@@ -207,8 +207,8 @@ class TestRunCLIExtended:
 
         def _fake_run_projects(
             _self: FlextInfraWorkspaceChecker,
-            projects: t.StrSequence | None = None,
-            gates: t.StrSequence | None = None,
+            projects: Sequence[str] | None = None,
+            gates: Sequence[str] | None = None,
             **kw: t.Scalar,
         ) -> r[Sequence[m.Infra.ProjectResult]]:
             _ = projects, gates, kw

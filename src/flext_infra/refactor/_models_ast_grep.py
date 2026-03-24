@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Annotated, ClassVar
 
 from flext_core import FlextModels
@@ -197,21 +198,21 @@ class FlextInfraRefactorAstGrepModels:
         model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
 
         project_scan_dirs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=lambda: ["src", "tests", "scripts", "examples"],
                 description="Relative directories scanned for candidate files",
             ),
         ]
         ignore_patterns: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Glob/file patterns ignored during scan",
             ),
         ]
         file_extensions: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Allowed file extensions (empty = all by pattern)",
@@ -235,28 +236,28 @@ class FlextInfraRefactorAstGrepModels:
             ),
         ]
         exclude_decorators: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Decorators to exclude",
             ),
         ]
         decorators: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Decorators to match",
             ),
         ]
         patterns: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Pattern rules",
             ),
         ]
         order: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Explicit method order",
@@ -278,14 +279,14 @@ class FlextInfraRefactorAstGrepModels:
             ),
         ]
         target_qualified_names: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Qualified names to match",
             ),
         ]
         target_simple_names: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Simple names to match",
@@ -299,7 +300,7 @@ class FlextInfraRefactorAstGrepModels:
             ),
         ]
         remove_keywords: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Keywords to remove",

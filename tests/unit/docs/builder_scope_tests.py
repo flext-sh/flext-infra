@@ -24,7 +24,7 @@ class _RunnerStub:
 
     def run_raw(
         self,
-        command: t.StrSequence,
+        command: Sequence[str],
         cwd: Path,
     ) -> r[m.Infra.CommandOutput]:
         _ = command, cwd

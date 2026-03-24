@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -32,19 +32,19 @@ def _setup_project_with_git(tmp_path: Path) -> Path:
     return project_root
 
 
-def _git_run_ok(value: str) -> Callable[[t.StrSequence, Path | None], r[str]]:
+def _git_run_ok(value: str) -> Callable[[Sequence[str], Path | None], r[str]]:
     """Return a git_run replacement that returns ok(value)."""
 
-    def _fn(_cmd: t.StrSequence, cwd: Path | None = None) -> r[str]:
+    def _fn(_cmd: Sequence[str], cwd: Path | None = None) -> r[str]:
         return r[str].ok(value)
 
     return _fn
 
 
-def _git_run_fail(error: str) -> Callable[[t.StrSequence, Path | None], r[str]]:
+def _git_run_fail(error: str) -> Callable[[Sequence[str], Path | None], r[str]]:
     """Return a git_run replacement that returns fail(error)."""
 
-    def _fn(_cmd: t.StrSequence, cwd: Path | None = None) -> r[str]:
+    def _fn(_cmd: Sequence[str], cwd: Path | None = None) -> r[str]:
         return r[str].fail(error)
 
     return _fn
@@ -180,7 +180,7 @@ class TestDetectorGitRunScenarios:
     ) -> None:
         project_root = _setup_project_with_git(tmp_path)
 
-        def _raise(_cmd: t.StrSequence, cwd: Path | None = None) -> r[str]:
+        def _raise(_cmd: Sequence[str], cwd: Path | None = None) -> r[str]:
             msg = "Command failed"
             raise RuntimeError(msg)
 

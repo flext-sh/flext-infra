@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, override
 
@@ -61,7 +61,7 @@ class WorkspaceFactory(m.Config):
         )
         return project_root
 
-    def create_with_deps(self, tmp_path: Path, name: str, deps: t.StrSequence) -> Path:
+    def create_with_deps(self, tmp_path: Path, name: str, deps: Sequence[str]) -> Path:
         """Create project with specified dependencies."""
         return self._create_project(tmp_path=tmp_path, name=name, deps=deps)
 
@@ -92,7 +92,7 @@ class WorkspaceFactory(m.Config):
         )
         return workspace_root
 
-    def _create_project(self, tmp_path: Path, name: str, deps: t.StrSequence) -> Path:
+    def _create_project(self, tmp_path: Path, name: str, deps: Sequence[str]) -> Path:
         """Internal method to create project structure."""
         project_root = tmp_path / name
         package_dir = project_root / "src" / name.replace("-", "_")
@@ -114,7 +114,7 @@ class WorkspaceFactory(m.Config):
         (tests_dir / "__init__.py").write_text("", encoding=self.encoding)
         return project_root
 
-    def _project_pyproject(self, name: str, deps: t.StrSequence) -> str:
+    def _project_pyproject(self, name: str, deps: Sequence[str]) -> str:
         """Generate pyproject.toml content using c.Infra.Toml constants."""
         dependency_lines = [f'python = "^{self.default_python.lstrip("^")}"']
         dependency_lines.extend(f'{dep} = "*"' for dep in deps)

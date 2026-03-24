@@ -45,7 +45,7 @@ class FlextInfraGate(ABC):
         cmd: Sequence[str],
         cwd: Path,
         timeout: int = c.Infra.Timeouts.DEFAULT,
-        env: t.StrMapping | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> m.Infra.CommandOutput:
         result = u.Infra.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         if result.is_failure:

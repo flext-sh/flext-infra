@@ -34,7 +34,7 @@ def _stub_import(mod: ModuleType) -> Callable[[str], ModuleType]:
 
 def _patch_dispatch(
     mp: pytest.MonkeyPatch,
-    argv: t.StrSequence,
+    argv: Sequence[str],
     ret: t.Infra.TomlValue = 0,
 ) -> None:
     mp.setattr(sys, "argv", argv)
@@ -74,7 +74,7 @@ class TestMainModuleImport:
         expected_module: str,
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", subcommand, "--workspace", "."])
-        imported: t.StrSequence = []
+        imported: Sequence[str] = []
         fake = _fake_module(0)
 
         def tracking_import(name: str) -> ModuleType:
@@ -113,9 +113,9 @@ class TestMainDelegation:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        received: Sequence[Callable[[t.StrSequence | None], int]] = []
+        received: Sequence[Callable[[Sequence[str] | None], int]] = []
 
-        def fake_run_cli(fn: Callable[[t.StrSequence | None], int]) -> int:
+        def fake_run_cli(fn: Callable[[Sequence[str] | None], int]) -> int:
             received.append(fn)
             return 0
 

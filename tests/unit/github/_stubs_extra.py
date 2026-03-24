@@ -210,12 +210,12 @@ class StubWorkspaceManager:
         self,
         workspace_root: Path,
         *,
-        projects: t.StrSequence | None = None,
+        projects: Sequence[str] | None = None,
         include_root: bool = True,
         branch: str = "",
         checkpoint: bool = True,
         fail_fast: bool = False,
-        pr_args: t.StrMapping | None = None,
+        pr_args: Mapping[str, str] | None = None,
     ) -> r[m.Infra.PrOrchestrationResult]:
         infra_projects: Sequence[t.Infra.InfraValue] | None = (
             [str(p) for p in projects] if projects else None

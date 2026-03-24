@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -175,28 +175,28 @@ class TestModernizerRunAndMain:
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
 
         def _run_ok(
-            _cmd: t.StrSequence,
+            _cmd: Sequence[str],
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: t.StrMapping | None = None,
+            env: Mapping[str, str] | None = None,
         ) -> SimpleNamespace:
             _ = (cwd, timeout, env)
             return SimpleNamespace(is_failure=False, value=SimpleNamespace(exit_code=0))
 
         def _run_fail(
-            _cmd: t.StrSequence,
+            _cmd: Sequence[str],
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: t.StrMapping | None = None,
+            env: Mapping[str, str] | None = None,
         ) -> SimpleNamespace:
             _ = (cwd, timeout, env)
             return SimpleNamespace(is_failure=True)
 
         def _run_non_zero(
-            _cmd: t.StrSequence,
+            _cmd: Sequence[str],
             cwd: Path | None = None,
             timeout: int | None = None,
-            env: t.StrMapping | None = None,
+            env: Mapping[str, str] | None = None,
         ) -> SimpleNamespace:
             _ = (cwd, timeout, env)
             return SimpleNamespace(is_failure=False, value=SimpleNamespace(exit_code=1))

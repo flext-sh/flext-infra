@@ -27,7 +27,7 @@ class FlextInfraDependencyDetectorRuntime:
         self._dependency_limits_factory = dependency_limits_factory
         self._pip_check_factory = pip_check_factory
 
-    def run(self, argv: t.StrSequence | None = None) -> r[int]:
+    def run(self, argv: Sequence[str] | None = None) -> r[int]:
         """Execute dependency detection and generate workspace report."""
         detector = self._detector
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
@@ -114,7 +114,7 @@ class FlextInfraDependencyDetectorRuntime:
                 projects_report[project_name][c.Infra.Directories.TYPINGS] = (
                     typings_report.model_dump()
                 )
-                to_add: t.StrSequence = typings_report.to_add
+                to_add: Sequence[str] = typings_report.to_add
                 if apply_typings and to_add and cli.apply:
                     env = {
                         **os.environ,

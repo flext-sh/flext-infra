@@ -104,7 +104,7 @@ class FlextInfraDocsModels:
             Field(default="", description="Built site directory path"),
         ] = ""
         checks: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(default_factory=list, description="Executed checks"),
         ] = Field(default_factory=list)
         strict: Annotated[
@@ -135,7 +135,7 @@ class FlextInfraDocsModels:
             ),
         ] = ""
         missing_adr_skills: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=list,
                 description="Missing ADR skill references",

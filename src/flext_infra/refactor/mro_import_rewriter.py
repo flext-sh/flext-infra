@@ -24,8 +24,8 @@ class FlextInfraRefactorMROImportRewriter:
         cls,
         *,
         workspace_root: Path,
-        moved_index: Mapping[str, t.StrMapping],
-        module_facade_aliases: t.StrMapping,
+        moved_index: Mapping[str, Mapping[str, str]],
+        module_facade_aliases: Mapping[str, str],
         apply: bool,
     ) -> Sequence[m.Infra.MRORewriteResult]:
         """Rewrite all eligible Python files inside a workspace."""
@@ -47,8 +47,8 @@ class FlextInfraRefactorMROImportRewriter:
     def rewrite_file(
         *,
         file_path: Path,
-        moved_index: Mapping[str, t.StrMapping],
-        module_facade_aliases: t.StrMapping,
+        moved_index: Mapping[str, Mapping[str, str]],
+        module_facade_aliases: Mapping[str, str],
         apply: bool,
     ) -> m.Infra.MRORewriteResult | None:
         """Rewrite one file and return replacement statistics."""

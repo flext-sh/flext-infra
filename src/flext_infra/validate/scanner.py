@@ -29,8 +29,8 @@ class FlextInfraTextPatternScanner:
     @staticmethod
     def _collect_files(
         root: Path,
-        includes: t.StrSequence,
-        excludes: t.StrSequence,
+        includes: Sequence[str],
+        excludes: Sequence[str],
     ) -> Sequence[Path]:
         """Collect files matching include/exclude globs."""
         selected: MutableSequence[Path] = []
@@ -64,8 +64,8 @@ class FlextInfraTextPatternScanner:
         root: Path,
         pattern: str,
         *,
-        includes: t.StrSequence,
-        excludes: t.StrSequence | None = None,
+        includes: Sequence[str],
+        excludes: Sequence[str] | None = None,
         match_mode: str = c.Infra.MatchModes.PRESENT,
     ) -> r[t.ConfigurationMapping]:
         """Scan files under root for regex matches.

@@ -246,7 +246,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         docstring: str,
         exports: Sequence[str],
         lazy_map: Mapping[str, tuple[str, str]],
-        inline_constants: t.StrMapping,
+        inline_constants: Mapping[str, str],
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
     ) -> tuple[int, Mapping[str, tuple[str, str]]]:
@@ -489,7 +489,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _extract_version_exports(
         pkg_dir: Path,
         current_pkg: str,
-    ) -> tuple[t.StrMapping, Mapping[str, tuple[str, str]]]:
+    ) -> tuple[Mapping[str, str], Mapping[str, tuple[str, str]]]:
         """Extract version-related exports from ``__version__.py``.
 
         Returns:
@@ -609,7 +609,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         docstring_source: str,
         exports: Sequence[str],
         filtered: Mapping[str, tuple[str, str]],
-        inline_constants: t.StrMapping,
+        inline_constants: Mapping[str, str],
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
     ) -> str:
