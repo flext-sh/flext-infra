@@ -51,7 +51,9 @@ class TestMain:
             return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
-            u.Infra, "github_sync_workspace_workflows", staticmethod(_sync),
+            u.Infra,
+            "github_sync_workspace_workflows",
+            staticmethod(_sync),
         )
         original = sys.argv.copy()
         try:
@@ -116,7 +118,9 @@ class TestMain:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
-            u.Infra, "github_pr_orchestrate", staticmethod(_orchestrate),
+            u.Infra,
+            "github_pr_orchestrate",
+            staticmethod(_orchestrate),
         )
         original = sys.argv.copy()
         try:
@@ -191,7 +195,9 @@ class TestMain:
             return r[Sequence[m.Infra.SyncOperation]].ok(ops)
 
         monkeypatch.setattr(
-            u.Infra, "github_sync_workspace_workflows", staticmethod(_sync),
+            u.Infra,
+            "github_sync_workspace_workflows",
+            staticmethod(_sync),
         )
         original = sys.argv.copy()
         try:

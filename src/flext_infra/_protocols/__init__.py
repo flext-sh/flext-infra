@@ -1,7 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make codegen
 #
-"""Models package."""
+"""Protocols package."""
 
 from __future__ import annotations
 
@@ -13,17 +13,14 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra._models.base import FlextInfraModelsBase
-    from flext_infra._models.scan import FlextInfraModelsScan
+    from flext_infra._protocols.base import FlextInfraProtocolsBase
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraModelsBase": ("flext_infra._models.base", "FlextInfraModelsBase"),
-    "FlextInfraModelsScan": ("flext_infra._models.scan", "FlextInfraModelsScan"),
+    "FlextInfraProtocolsBase": ("flext_infra._protocols.base", "FlextInfraProtocolsBase"),
 }
 
 __all__ = [
-    "FlextInfraModelsBase",
-    "FlextInfraModelsScan",
+    "FlextInfraProtocolsBase",
 ]
 
 

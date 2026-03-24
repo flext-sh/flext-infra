@@ -13,11 +13,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from pathlib import Path
-
 from flext_core import FlextTypes
-from pydantic import BaseModel
+
+from flext_infra import FlextInfraProtocolsBase, FlextInfraTypesBase
 
 
 class FlextInfraTypes(FlextTypes):
@@ -29,35 +27,12 @@ class FlextInfraTypes(FlextTypes):
     transparently from ``FlextTypes`` via MRO.
     """
 
-    class Infra:
+    class Infra(FlextInfraTypesBase, FlextInfraProtocolsBase):
         """Infrastructure-domain type aliases.
 
         These aliases compose ``FlextTypes.Scalar`` and collection generics
         for infrastructure payload contracts and common patterns.
         """
-
-        type InfraValue = (
-            str
-            | int
-            | float
-            | bool
-            | None
-            | Mapping[str, FlextInfraTypes.Infra.InfraValue]
-            | Sequence[FlextInfraTypes.Infra.InfraValue]
-        )
-        "Recursive infrastructure value: primitive, nested dict/list, or null."
-        type ContainerDict = Mapping[str, InfraValue]
-        "Dict with string keys and infra values (project reports, etc.)."
-        type FacadeFamily = str
-        "Facade family identifier for MRO chain resolution."
-        type ExpectedBase = type | str
-        "Expected MRO base: a class or its qualified name."
-        type PolicyContext = Mapping[str, ContainerDict]
-        "Class-nesting policy matrix keyed by module family."
-        type MetricValue = FlextTypes.Scalar | Path | None
-        "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
-        type MetricRecord = BaseModel | Mapping[str, MetricValue]
-        "A single metric record: a Pydantic model or a string-keyed mapping of metric values."
 
 
 t = FlextInfraTypes

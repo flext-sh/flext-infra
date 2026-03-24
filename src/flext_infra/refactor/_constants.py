@@ -162,6 +162,14 @@ class FlextInfraRefactorConstants:
         "u": "Utilities",
     }
     "Facade family letter → class suffix mapping."
+    FAMILY_DIRECTORIES: ClassVar[t.StrMapping] = {
+        "c": "_constants",
+        "t": "_typings",
+        "p": "_protocols",
+        "m": "_models",
+        "u": "_utilities",
+    }
+    "Facade family letter → subdirectory name mapping."
     FAMILY_FILES: ClassVar[t.StrMapping] = {
         "c": "*constants.py",
         "t": "*typings.py",

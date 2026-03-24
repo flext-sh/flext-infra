@@ -326,7 +326,9 @@ class FlextInfraExtraPathsManager:
         env_dirs = set(rules.env_dirs)
         includes: set[str] = set()
         local_dirs = set(u.Infra.discover_python_dirs(project_dir))
-        includes.update(f"{directory}/**/*.py*" for directory in sorted(local_dirs & env_dirs))
+        includes.update(
+            f"{directory}/**/*.py*" for directory in sorted(local_dirs & env_dirs)
+        )
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)
         child_env_dirs = set(rules.workspace_include_child_env_dirs)
@@ -336,7 +338,10 @@ class FlextInfraExtraPathsManager:
             if not (child / c.Infra.Files.PYPROJECT_FILENAME).exists():
                 continue
             child_dirs = set(u.Infra.discover_python_dirs(child))
-            includes.update(f"{child.name}/{directory}/**/*.py*" for directory in sorted(child_dirs & child_env_dirs))
+            includes.update(
+                f"{child.name}/{directory}/**/*.py*"
+                for directory in sorted(child_dirs & child_env_dirs)
+            )
         return sorted(includes)
 
     def sync_one(

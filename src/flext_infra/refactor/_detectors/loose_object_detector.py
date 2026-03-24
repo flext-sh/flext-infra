@@ -318,7 +318,8 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
         classes: set[str] = set()
         for stmt in tree.body:
             FlextInfraLooseObjectDetector._collect_namespace_classes(
-                node=stmt, classes=classes,
+                node=stmt,
+                classes=classes,
             )
         return classes
 
@@ -338,7 +339,8 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
                     break
         for child in node.children:
             FlextInfraLooseObjectDetector._collect_namespace_classes(
-                node=child, classes=classes,
+                node=child,
+                classes=classes,
             )
 
 

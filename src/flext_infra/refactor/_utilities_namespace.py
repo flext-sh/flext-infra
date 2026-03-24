@@ -15,7 +15,7 @@ from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from io import StringIO
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import libcst as cst
 import tomlkit
@@ -35,6 +35,8 @@ from flext_infra import (
 class FlextInfraUtilitiesRefactorNamespace:
     """Namespace enforcement rewriting utilities as static methods for MRO chain."""
 
+    _base_chains_cache: ClassVar[MutableMapping[Path, Mapping[str, Sequence[str]]]] = {}
+
     @staticmethod
     def build_expected_base_chains(
         *,
@@ -45,11 +47,29 @@ class FlextInfraUtilitiesRefactorNamespace:
         Connects the dep graph SSOT (ExtraPathsManager) with the class name SSOT
         (FacadeScanner) to compute the expected base classes for each family.
 
+        Results are memoized per project_root for the duration of the process.
+
         Returns:
             Mapping from family alias to sequence of expected base class names.
             E.g. ``{"m": ["FlextMeltanoModels", "FlextDbOracleModels"]}``.
 
         """
+        resolved = project_root.resolve()
+        cached = FlextInfraUtilitiesRefactorNamespace._base_chains_cache.get(resolved)
+        if cached is not None:
+            return cached
+        result = FlextInfraUtilitiesRefactorNamespace._compute_base_chains(
+            project_root=resolved,
+        )
+        FlextInfraUtilitiesRefactorNamespace._base_chains_cache[resolved] = result
+        return result
+
+    @staticmethod
+    def _compute_base_chains(
+        *,
+        project_root: Path,
+    ) -> Mapping[str, Sequence[str]]:
+        """Compute expected MRO base chains (uncached)."""
         pyproject_path = project_root / c.Infra.Files.PYPROJECT_FILENAME
         if not pyproject_path.exists():
             return {}
@@ -70,7 +90,6 @@ class FlextInfraUtilitiesRefactorNamespace:
         for dep_name in direct_dep_names:
             if not dep_name:
                 continue
-            # Skip flext-core (already the default base) and non-flext deps
             if dep_name == "flext-core" or not dep_name.startswith("flext-"):
                 continue
             stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
@@ -703,91 +722,58 @@ class FlextInfraUtilitiesRefactorNamespace:
         violations: Sequence[m.Infra.MROCompletenessViolation],
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
-        """Rewrite facade class headers adding missing MRO bases and imports."""
+        """Rewrite facade class headers adding missing MRO bases and imports.
+
+        Uses libcst CSTTransformer for class header modification (robust against
+        multi-line headers and unusual formatting), and ast for import injection.
+        """
         violations_by_file: Mapping[
             Path,
             MutableSequence[m.Infra.MROCompletenessViolation],
-        ] = defaultdict(
-            list,
-        )
+        ] = defaultdict(list)
         for violation in violations:
             violations_by_file[Path(violation.file)].append(violation)
+        core_bases = frozenset(
+            f"Flext{suffix}" for suffix in c.Infra.FAMILY_SUFFIXES.values()
+        )
         for file_path, file_violations in violations_by_file.items():
-            parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
-                file_path,
-                stage="mro-completeness-rewrite",
-                parse_failures=parse_failures,
-            )
-            if parsed is None:
-                continue
-            lines = parsed.source.splitlines(keepends=True)
-            changed = False
-            all_new_bases: set[str] = set()
             missing_by_facade: Mapping[str, set[str]] = defaultdict(set)
             for violation in file_violations:
                 missing_by_facade[violation.facade_class].add(violation.missing_base)
-            # Collect existing imports to avoid duplicates
-            existing_imports: set[str] = set()
-            for stmt in parsed.tree.body:
-                if isinstance(stmt, ast.ImportFrom) and stmt.names:
-                    existing_imports.update(alias.name for alias in stmt.names)
-            facade_nodes = [
-                stmt
-                for stmt in parsed.tree.body
-                if isinstance(stmt, ast.ClassDef) and stmt.name in missing_by_facade
-            ]
-            for class_node in sorted(
-                facade_nodes,
-                key=operator.attrgetter("lineno"),
-                reverse=True,
-            ):
-                current_bases = [
-                    base_name
-                    for base_name in (
-                        FlextInfraUtilitiesRefactorNamespace._namespace_extract_base_name(
-                            base_expr,
-                        )
-                        for base_expr in class_node.bases
-                    )
-                    if base_name
-                ]
-                missing_bases = sorted(missing_by_facade[class_node.name])
-                proposed_bases = current_bases + [
-                    base_name
-                    for base_name in missing_bases
-                    if base_name not in current_bases
-                ]
-                # Remove core bases now transitively inherited via dep-graph bases
-                # e.g. FlextModels is redundant when FlextDbOracleModels is added
-                core_bases = {
-                    f"Flext{suffix}" for suffix in c.Infra.FAMILY_SUFFIXES.values()
-                }
-                if any(b in core_bases for b in missing_bases):
-                    proposed_bases = [b for b in proposed_bases if b not in core_bases]
-                if len(proposed_bases) == len(current_bases):
-                    continue
-                indent = " " * class_node.col_offset
-                new_header = (
-                    f"{indent}class {class_node.name}({', '.join(proposed_bases)}):\n"
-                )
-                start = class_node.lineno - 1
-                end = start
-                while end < len(lines):
-                    if lines[end].rstrip().endswith("):"):
-                        break
-                    end += 1
-                if end >= len(lines):
-                    continue
-                lines[start : end + 1] = [new_header]
-                changed = True
-                for base_name in missing_bases:
-                    if base_name not in current_bases:
-                        all_new_bases.add(base_name)
-            if not changed:
+            # CST parse for class header rewriting
+            try:
+                source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                cst_tree = cst.parse_module(source)
+            except (OSError, UnicodeDecodeError, cst.ParserSyntaxError):
                 continue
-            # Inject import statements for new bases not already imported
+            rewriter = _MROBaseRewriter(
+                missing_by_facade=missing_by_facade,
+                core_bases=core_bases,
+            )
+            modified_tree = cst_tree.visit(rewriter)
+            if not rewriter.changed:
+                continue
+            # Inject import statements for new bases via line manipulation
+            modified_source = modified_tree.code
+            lines = modified_source.splitlines(keepends=True)
+            # Use ast to find existing imports and last import line
+            parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
+                file_path,
+                stage="mro-completeness-imports",
+                parse_failures=parse_failures,
+            )
+            existing_imports: set[str] = set()
+            insert_line = 0
+            if parsed is not None:
+                for stmt in parsed.tree.body:
+                    if isinstance(stmt, ast.ImportFrom) and stmt.names:
+                        existing_imports.update(
+                            alias.name for alias in stmt.names
+                        )
+                    if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                        insert_line = stmt.end_lineno or stmt.lineno
             new_imports: MutableSequence[str] = []
-            for base_name in sorted(all_new_bases):
+            for base_name in sorted(rewriter.new_bases):
                 if base_name in existing_imports:
                     continue
                 module = FlextInfraUtilitiesRefactorNamespace._class_name_to_module(
@@ -795,11 +781,6 @@ class FlextInfraUtilitiesRefactorNamespace:
                 )
                 new_imports.append(f"from {module} import {base_name}\n")
             if new_imports:
-                # Find last import line to insert after
-                insert_line = 0
-                for stmt in parsed.tree.body:
-                    if isinstance(stmt, (ast.Import, ast.ImportFrom)):
-                        insert_line = stmt.end_lineno or stmt.lineno
                 for import_line in reversed(new_imports):
                     lines.insert(insert_line, import_line)
             _ = file_path.write_text(
@@ -1037,6 +1018,66 @@ class FlextInfraUtilitiesRefactorNamespace:
             stage=stage,
             parse_failures=parse_failures,
         )
+
+
+class _MROBaseRewriter(cst.CSTTransformer):
+    """CST transformer that adds missing MRO bases to facade class definitions."""
+
+    def __init__(
+        self,
+        *,
+        missing_by_facade: Mapping[str, set[str]],
+        core_bases: frozenset[str],
+    ) -> None:
+        self._missing_by_facade = missing_by_facade
+        self._core_bases = core_bases
+        self.changed = False
+        self.new_bases: set[str] = set()
+
+    @override
+    def leave_ClassDef(
+        self,
+        original_node: cst.ClassDef,
+        updated_node: cst.ClassDef,
+    ) -> cst.ClassDef:
+        class_name = updated_node.name.value
+        missing = self._missing_by_facade.get(class_name)
+        if not missing:
+            return updated_node
+        current_names = [self._base_name(arg) for arg in updated_node.bases]
+        proposed = list(current_names) + [
+            b for b in sorted(missing) if b not in current_names
+        ]
+        # Remove core bases when dep-graph bases supersede them
+        if any(b in self._core_bases for b in missing):
+            proposed = [b for b in proposed if b not in self._core_bases]
+        if proposed == current_names:
+            return updated_node
+        new_args: MutableSequence[cst.Arg] = []
+        for i, name in enumerate(proposed):
+            comma: cst.Comma | cst.MaybeSentinel = (
+                cst.Comma(whitespace_after=cst.SimpleWhitespace(" "))
+                if i < len(proposed) - 1
+                else cst.MaybeSentinel.DEFAULT
+            )
+            new_args.append(cst.Arg(value=cst.Name(name), comma=comma))
+        self.changed = True
+        self.new_bases.update(set(proposed) - set(current_names))
+        return updated_node.with_changes(bases=new_args)
+
+    @staticmethod
+    def _base_name(arg: cst.Arg) -> str:
+        if isinstance(arg.value, cst.Name):
+            return arg.value.value
+        if isinstance(arg.value, cst.Attribute):
+            return arg.value.attr.value
+        if isinstance(arg.value, cst.Subscript):
+            val = arg.value.value
+            if isinstance(val, cst.Name):
+                return val.value
+            if isinstance(val, cst.Attribute):
+                return val.attr.value
+        return ""
 
 
 _MAX_ALIAS_NAME_LEN: int = 2

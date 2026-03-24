@@ -66,7 +66,9 @@ def _apply_vs(
             return current_result
 
         monkeypatch.setattr(
-            u.Infra, "current_workspace_version", staticmethod(_current_version),
+            u.Infra,
+            "current_workspace_version",
+            staticmethod(_current_version),
         )
     if bump is not None:
         bump_result = bump

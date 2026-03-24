@@ -20,6 +20,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
+    "FlextInfraUtilitiesBase": ("flext_infra._utilities.base", "FlextInfraUtilitiesBase"),
     "FlextInfraUtilitiesCli": ("flext_infra._utilities.cli", "FlextInfraUtilitiesCli"),
     "FlextInfraUtilitiesDiscovery": ("flext_infra._utilities.discovery", "FlextInfraUtilitiesDiscovery"),
     "FlextInfraUtilitiesDocs": ("flext_infra._utilities.docs", "FlextInfraUtilitiesDocs"),
@@ -74,6 +76,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
 }
 
 __all__ = [
+    "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCli",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",

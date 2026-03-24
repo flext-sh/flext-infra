@@ -56,7 +56,8 @@ def test_ensure_pyrefly_config_phase_apply_python_version() -> None:
     tm.that(tool, is_=MutableMapping)
     tool["pyrefly"] = tomlkit.table()
     changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
-        doc, is_root=True,
+        doc,
+        is_root=True,
     )
     tm.that(any("python-version set to 3.13" in c for c in changes), eq=True)
     pyrefly = tool["pyrefly"]
@@ -76,7 +77,8 @@ def test_ensure_pyrefly_config_phase_apply_ignore_errors() -> None:
     tm.that(tool, is_=MutableMapping)
     tool["pyrefly"] = tomlkit.table()
     changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
-        doc, is_root=True,
+        doc,
+        is_root=True,
     )
     assert any("ignore-errors-in-generated-code" in c for c in changes)
     pyrefly = tool["pyrefly"]
@@ -99,7 +101,8 @@ def test_ensure_pyrefly_config_phase_apply_search_path() -> None:
     tm.that(tool, is_=MutableMapping)
     tool["pyrefly"] = tomlkit.table()
     changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
-        doc, is_root=True,
+        doc,
+        is_root=True,
     )
     tm.that(" ".join(changes), has="search-path set to")
 
@@ -112,6 +115,7 @@ def test_ensure_pyrefly_config_phase_apply_errors() -> None:
     tm.that(tool, is_=MutableMapping)
     tool["pyrefly"] = tomlkit.table()
     changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
-        doc, is_root=True,
+        doc,
+        is_root=True,
     )
     tm.that(any("errors" in c for c in changes), eq=True)

@@ -148,15 +148,15 @@ class FlextInfraNamespaceEnforcer:
             workspace_root=self._workspace_root,
         )
         py_files = self._collect_py_files(project_root=project_root)
-        package_name = (
-            FlextInfraNamespaceSourceDetector.discover_project_package_name(
-                project_root=project_root,
-            )
+        package_name = FlextInfraNamespaceSourceDetector.discover_project_package_name(
+            project_root=project_root,
         )
         loose_objects = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraLooseObjectDetector.detect_file(
-                file_path=f, project_name=project_name, parse_failures=parse_failures,
+                file_path=f,
+                project_name=project_name,
+                parse_failures=parse_failures,
             ),
             rewrite_fn=None,
             apply=apply,
@@ -164,10 +164,12 @@ class FlextInfraNamespaceEnforcer:
         import_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraImportAliasDetector.detect_file(
-                file_path=f, parse_failures=parse_failures,
+                file_path=f,
+                parse_failures=parse_failures,
             ),
             rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_import_violations(
-                py_files=py_files, project_package=package_name,
+                py_files=py_files,
+                project_package=package_name,
             ),
             apply=apply,
         )
@@ -189,7 +191,8 @@ class FlextInfraNamespaceEnforcer:
         internal_import_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraInternalImportDetector.detect_file(
-                file_path=f, parse_failures=parse_failures,
+                file_path=f,
+                parse_failures=parse_failures,
             ),
             rewrite_fn=None,
             apply=apply,
@@ -197,7 +200,9 @@ class FlextInfraNamespaceEnforcer:
         runtime_alias_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraRuntimeAliasDetector.detect_file(
-                file_path=f, project_name=project_name, parse_failures=parse_failures,
+                file_path=f,
+                project_name=project_name,
+                parse_failures=parse_failures,
             ),
             rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_runtime_alias_violations(
                 py_files=py_files,
@@ -207,7 +212,8 @@ class FlextInfraNamespaceEnforcer:
         future_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraFutureAnnotationsDetector.detect_file(
-                file_path=f, parse_failures=parse_failures,
+                file_path=f,
+                parse_failures=parse_failures,
             ),
             rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_missing_future_annotations(
                 py_files=py_files,
@@ -217,39 +223,50 @@ class FlextInfraNamespaceEnforcer:
         manual_protocol_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraManualProtocolDetector.detect_file(
-                file_path=f, parse_failures=parse_failures,
+                file_path=f,
+                parse_failures=parse_failures,
             ),
             rewrite_fn=lambda vs: u.Infra.namespace_rewrite_manual_protocol_violations(
-                project_root=project_root, py_files=py_files, violations=vs,
+                project_root=project_root,
+                py_files=py_files,
+                violations=vs,
             ),
             apply=apply,
         )
         manual_typing_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraManualTypingAliasDetector.detect_file(
-                file_path=f, parse_failures=parse_failures,
-            ),
-            rewrite_fn=lambda vs: u.Infra.namespace_rewrite_manual_typing_alias_violations(
-                project_root=project_root,
-                violations=vs,
+                file_path=f,
                 parse_failures=parse_failures,
+            ),
+            rewrite_fn=lambda vs: (
+                u.Infra.namespace_rewrite_manual_typing_alias_violations(
+                    project_root=project_root,
+                    violations=vs,
+                    parse_failures=parse_failures,
+                )
             ),
             apply=apply,
         )
         compatibility_alias_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraCompatibilityAliasDetector.detect_file(
-                file_path=f, parse_failures=parse_failures,
+                file_path=f,
+                parse_failures=parse_failures,
             ),
-            rewrite_fn=lambda vs: u.Infra.namespace_rewrite_compatibility_alias_violations(
-                violations=vs, parse_failures=parse_failures,
+            rewrite_fn=lambda vs: (
+                u.Infra.namespace_rewrite_compatibility_alias_violations(
+                    violations=vs,
+                    parse_failures=parse_failures,
+                )
             ),
             apply=apply,
         )
         class_placement_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraClassPlacementDetector.detect_file(
-                file_path=f, parse_failures=parse_failures,
+                file_path=f,
+                parse_failures=parse_failures,
             ),
             rewrite_fn=None,
             apply=apply,
@@ -257,10 +274,12 @@ class FlextInfraNamespaceEnforcer:
         mro_completeness_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraMROCompletenessDetector.detect_file(
-                file_path=f, parse_failures=parse_failures,
+                file_path=f,
+                parse_failures=parse_failures,
             ),
             rewrite_fn=lambda vs: u.Infra.namespace_rewrite_mro_completeness_violations(
-                violations=vs, parse_failures=parse_failures,
+                violations=vs,
+                parse_failures=parse_failures,
             ),
             apply=apply,
         )

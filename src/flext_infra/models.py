@@ -13,7 +13,7 @@ from flext_core import FlextModels
 
 from flext_infra import (
     FlextInfraBasemkModels,
-    FlextInfraCheckModels,
+    # FlextInfraCheckModels,
     FlextInfraCodegenModels,
     FlextInfraCoreModels,
     FlextInfraDepsModels,
@@ -24,6 +24,7 @@ from flext_infra import (
     FlextInfraRefactorModels,
     FlextInfraReleaseModels,
     FlextInfraWorkspaceModels,
+    FlextInfraModelsBase,
 )
 
 
@@ -32,7 +33,7 @@ class FlextInfraModels(FlextModels):
 
     class Infra(
         FlextInfraBasemkModels,
-        FlextInfraCheckModels,
+        # FlextInfraCheckModels,
         FlextInfraCodegenModels,
         FlextInfraDepsModels,
         FlextInfraDocsModels,
@@ -43,6 +44,7 @@ class FlextInfraModels(FlextModels):
         FlextInfraCoreModels,
         FlextInfraWorkspaceModels,
         FlextInfraModelsScan,
+        FlextInfraModelsBase,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 

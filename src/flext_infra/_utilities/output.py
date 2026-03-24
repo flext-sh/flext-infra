@@ -265,7 +265,9 @@ class FlextInfraUtilitiesOutput:
                 lines=lines,
                 violations=proj.loose_objects,
                 label="Loose objects",
-                formatter=lambda obj: f"    {obj.file}:{obj.line} {obj.kind} '{obj.name}' -> {obj.suggestion}",
+                formatter=lambda obj: (
+                    f"    {obj.file}:{obj.line} {obj.kind} '{obj.name}' -> {obj.suggestion}"
+                ),
                 max_items=max_loose,
             )
             render(
@@ -279,7 +281,9 @@ class FlextInfraUtilitiesOutput:
                 lines=lines,
                 violations=proj.internal_import_violations,
                 label="Internal imports",
-                formatter=lambda iv: f"    {iv.file}:{iv.line} {iv.current_import} ({iv.detail})",
+                formatter=lambda iv: (
+                    f"    {iv.file}:{iv.line} {iv.current_import} ({iv.detail})"
+                ),
                 max_items=max_imports,
             )
             render(
@@ -293,7 +297,9 @@ class FlextInfraUtilitiesOutput:
                 lines=lines,
                 violations=proj.runtime_alias_violations,
                 label="Runtime alias violations",
-                formatter=lambda rv: f"    {rv.file} [{rv.kind}] alias='{rv.alias}' {rv.detail}",
+                formatter=lambda rv: (
+                    f"    {rv.file} [{rv.kind}] alias='{rv.alias}' {rv.detail}"
+                ),
                 max_items=no_limit,
             )
             render(
@@ -321,14 +327,18 @@ class FlextInfraUtilitiesOutput:
                 lines=lines,
                 violations=proj.compatibility_alias_violations,
                 label="Compatibility aliases",
-                formatter=lambda cv: f"    {cv.file}:{cv.line} {cv.alias_name}={cv.target_name}",
+                formatter=lambda cv: (
+                    f"    {cv.file}:{cv.line} {cv.alias_name}={cv.target_name}"
+                ),
                 max_items=max_loose,
             )
             render(
                 lines=lines,
                 violations=proj.class_placement_violations,
                 label="Class placement violations",
-                formatter=lambda cpv: f"    {cpv.file}:{cpv.line} {cpv.name} -> {cpv.suggestion}",
+                formatter=lambda cpv: (
+                    f"    {cpv.file}:{cpv.line} {cpv.name} -> {cpv.suggestion}"
+                ),
                 max_items=max_loose,
             )
             render(
@@ -355,7 +365,9 @@ class FlextInfraUtilitiesOutput:
                 lines=lines,
                 violations=proj.parse_failures,
                 label="Parse failures",
-                formatter=lambda pf: f"    {pf.file} [{pf.stage}] {pf.error_type}: {pf.detail}",
+                formatter=lambda pf: (
+                    f"    {pf.file} [{pf.stage}] {pf.error_type}: {pf.detail}"
+                ),
                 max_items=max_loose,
             )
             lines.append("")

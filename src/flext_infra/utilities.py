@@ -40,6 +40,7 @@ from flext_infra import (
     FlextInfraUtilitiesTomlParse,
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
+    FlextInfraUtilitiesBase,
 )
 
 
@@ -60,6 +61,7 @@ class FlextInfraUtilities(FlextUtilities):
         FlextInfraRefactorTransformerPolicyUtilities,
         FlextInfraUtilitiesCli,
         FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesBase,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesImportNormalizer,

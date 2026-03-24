@@ -37,13 +37,7 @@ class FlextInfraMROCompletenessDetector(
     ensuring complete composition of constants, types, protocols, models, and utilities.
     """
 
-    FAMILY_DIR_BY_ALIAS: ClassVar[t.StrMapping] = {
-        "c": "_constants",
-        "t": "_typings",
-        "p": "_protocols",
-        "m": "_models",
-        "u": "_utilities",
-    }
+    FAMILY_DIR_BY_ALIAS: ClassVar[t.StrMapping] = c.Infra.FAMILY_DIRECTORIES
 
     def __init__(
         self,

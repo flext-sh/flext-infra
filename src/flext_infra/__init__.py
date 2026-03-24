@@ -21,7 +21,10 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes, d, e, h, r, s, x
 
     from flext_infra import (
+        _constants,
         _models,
+        _protocols,
+        _typings,
         _utilities,
         basemk,
         check,
@@ -47,7 +50,12 @@ if TYPE_CHECKING:
         __version__,
         __version_info__,
     )
+    from flext_infra._constants.base import FlextInfraConstantsBase
+    from flext_infra._models.base import FlextInfraModelsBase
     from flext_infra._models.scan import FlextInfraModelsScan
+    from flext_infra._protocols.base import FlextInfraProtocolsBase
+    from flext_infra._typings.base import FlextInfraTypesBase
+    from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -465,6 +473,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "FlextInfraConfigFixer": ("flext_infra.check.services", "FlextInfraConfigFixer"),
     "FlextInfraConsolidateGroupsPhase": ("flext_infra.deps._phases.consolidate_groups", "FlextInfraConsolidateGroupsPhase"),
     "FlextInfraConstants": ("flext_infra.constants", "FlextInfraConstants"),
+    "FlextInfraConstantsBase": ("flext_infra._constants.base", "FlextInfraConstantsBase"),
     "FlextInfraCoreConstants": ("flext_infra.validate._constants", "FlextInfraCoreConstants"),
     "FlextInfraCoreModels": ("flext_infra.validate._models", "FlextInfraCoreModels"),
     "FlextInfraCyclicImportDetector": ("flext_infra.refactor._detectors.cyclic_import_detector", "FlextInfraCyclicImportDetector"),
@@ -517,6 +526,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "FlextInfraModelDefinitionCollector": ("flext_infra.transformers.unused_model_visitor", "FlextInfraModelDefinitionCollector"),
     "FlextInfraModelReferenceCollector": ("flext_infra.transformers.unused_model_visitor", "FlextInfraModelReferenceCollector"),
     "FlextInfraModels": ("flext_infra.models", "FlextInfraModels"),
+    "FlextInfraModelsBase": ("flext_infra._models.base", "FlextInfraModelsBase"),
     "FlextInfraModelsScan": ("flext_infra._models.scan", "FlextInfraModelsScan"),
     "FlextInfraMypyGate": ("flext_infra.gates.mypy", "FlextInfraMypyGate"),
     "FlextInfraNamespaceEnforcer": ("flext_infra.refactor.namespace_enforcer", "FlextInfraNamespaceEnforcer"),
@@ -533,6 +543,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "FlextInfraProjectMakefileUpdater": ("flext_infra.workspace.project_makefile", "FlextInfraProjectMakefileUpdater"),
     "FlextInfraProjectMigrator": ("flext_infra.workspace.migrator", "FlextInfraProjectMigrator"),
     "FlextInfraProtocols": ("flext_infra.protocols", "FlextInfraProtocols"),
+    "FlextInfraProtocolsBase": ("flext_infra._protocols.base", "FlextInfraProtocolsBase"),
     "FlextInfraPyprojectModernizer": ("flext_infra.deps.modernizer", "FlextInfraPyprojectModernizer"),
     "FlextInfraPyreflyGate": ("flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"),
     "FlextInfraPyrightGate": ("flext_infra.gates.pyright", "FlextInfraPyrightGate"),
@@ -600,10 +611,12 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "FlextInfraTransformerImportNormalizer": ("flext_infra.transformers.import_normalizer", "FlextInfraTransformerImportNormalizer"),
     "FlextInfraTransformerTier0ImportFixer": ("flext_infra.transformers.tier0_import_fixer", "FlextInfraTransformerTier0ImportFixer"),
     "FlextInfraTypes": ("flext_infra.typings", "FlextInfraTypes"),
+    "FlextInfraTypesBase": ("flext_infra._typings.base", "FlextInfraTypesBase"),
     "FlextInfraTypingAnnotationCensusVisitor": ("flext_infra.transformers.typing_census_visitor", "FlextInfraTypingAnnotationCensusVisitor"),
     "FlextInfraTypingAnnotationReplacer": ("flext_infra.transformers.typing_annotation_replacer", "FlextInfraTypingAnnotationReplacer"),
     "FlextInfraUnusedModelRemover": ("flext_infra.transformers.unused_model_remover", "FlextInfraUnusedModelRemover"),
     "FlextInfraUtilities": ("flext_infra.utilities", "FlextInfraUtilities"),
+    "FlextInfraUtilitiesBase": ("flext_infra._utilities.base", "FlextInfraUtilitiesBase"),
     "FlextInfraUtilitiesCli": ("flext_infra._utilities.cli", "FlextInfraUtilitiesCli"),
     "FlextInfraUtilitiesCodegen": ("flext_infra.codegen._utilities", "FlextInfraUtilitiesCodegen"),
     "FlextInfraUtilitiesCodegenAstParsing": ("flext_infra.codegen._utilities_codegen_ast_parsing", "FlextInfraUtilitiesCodegenAstParsing"),
@@ -660,7 +673,10 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "__url__": ("flext_infra.__version__", "__url__"),
     "__version__": ("flext_infra.__version__", "__version__"),
     "__version_info__": ("flext_infra.__version__", "__version_info__"),
+    "_constants": ("flext_infra._constants", ""),
     "_models": ("flext_infra._models", ""),
+    "_protocols": ("flext_infra._protocols", ""),
+    "_typings": ("flext_infra._typings", ""),
     "_utilities": ("flext_infra._utilities", ""),
     "basemk": ("flext_infra.basemk", ""),
     "build_parser": ("flext_infra.check.workspace_check", "build_parser"),
@@ -725,6 +741,7 @@ __all__ = [
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraConstants",
+    "FlextInfraConstantsBase",
     "FlextInfraCoreConstants",
     "FlextInfraCoreModels",
     "FlextInfraCyclicImportDetector",
@@ -777,6 +794,7 @@ __all__ = [
     "FlextInfraModelDefinitionCollector",
     "FlextInfraModelReferenceCollector",
     "FlextInfraModels",
+    "FlextInfraModelsBase",
     "FlextInfraModelsScan",
     "FlextInfraMypyGate",
     "FlextInfraNamespaceEnforcer",
@@ -793,6 +811,7 @@ __all__ = [
     "FlextInfraProjectMakefileUpdater",
     "FlextInfraProjectMigrator",
     "FlextInfraProtocols",
+    "FlextInfraProtocolsBase",
     "FlextInfraPyprojectModernizer",
     "FlextInfraPyreflyGate",
     "FlextInfraPyrightGate",
@@ -860,10 +879,12 @@ __all__ = [
     "FlextInfraTransformerImportNormalizer",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
+    "FlextInfraTypesBase",
     "FlextInfraTypingAnnotationCensusVisitor",
     "FlextInfraTypingAnnotationReplacer",
     "FlextInfraUnusedModelRemover",
     "FlextInfraUtilities",
+    "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCli",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenAstParsing",
@@ -920,7 +941,10 @@ __all__ = [
     "__url__",
     "__version__",
     "__version_info__",
+    "_constants",
     "_models",
+    "_protocols",
+    "_typings",
     "_utilities",
     "basemk",
     "build_parser",

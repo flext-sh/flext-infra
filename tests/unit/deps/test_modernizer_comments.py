@@ -76,7 +76,8 @@ def test_inject_comments_phase_removes_auto_banner_and_auto_marker() -> None:
     rendered = "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Sections with [AUTO] are derived from workspace layout and dependencies.\n# [AUTO] merged from dev/docs/security/test/typings\n[project.optional-dependencies]\ndev = ['pytest']"
     result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
     tm.that(
-        result, has="# Run `make mod` to regenerate all managed pyproject sections.",
+        result,
+        has="# Run `make mod` to regenerate all managed pyproject sections.",
     )
     tm.that("[AUTO]" in result, eq=False)
 
