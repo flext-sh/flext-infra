@@ -23,7 +23,10 @@ if TYPE_CHECKING:
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraReleaseOrchestrator": ("flext_infra.release.orchestrator", "FlextInfraReleaseOrchestrator"),
+    "FlextInfraReleaseOrchestrator": (
+        "flext_infra.release.orchestrator",
+        "FlextInfraReleaseOrchestrator",
+    ),
 }
 
 __all__ = [

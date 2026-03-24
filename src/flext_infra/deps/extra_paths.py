@@ -177,12 +177,19 @@ class FlextInfraExtraPathsManager:
         local_dirs = self._discover_local_python_dirs(project_dir)
 
         if is_root:
-            # Exclude dependency project root dirs — their src/ subdirs are
-            # already in dep_paths.  Including the root dir leaks each
-            # project's tests/ package into the workspace namespace, causing
-            # pyright to resolve `from tests import m` ambiguously.
-            dep_names = {p.split("/")[0] for p in dep_paths}
-            local_dirs = sorted(d for d in local_dirs if d not in dep_names)
+            # Exclude ALL subproject root dirs (any dir with its own
+            # pyproject.toml).  Dependency projects already contribute
+            # their src/ subdirs via dep_paths.  Non-dependency projects
+            # should not be in extraPaths at all.  Including project root
+            # dirs leaks each project's tests/ package into the workspace
+            # namespace, causing pyright to resolve `from tests import m`
+            # ambiguously.
+            subproject_names = {
+                d
+                for d in local_dirs
+                if (project_dir / d / c.Infra.Files.PYPROJECT_FILENAME).is_file()
+            }
+            local_dirs = sorted(d for d in local_dirs if d not in subproject_names)
             pyright_base = sorted({*local_dirs, "typings", "typings/generated"})
             mypy_base = sorted({*local_dirs, "typings", "typings/generated"})
         else:
@@ -255,8 +262,12 @@ class FlextInfraExtraPathsManager:
         local_dirs = self._discover_local_python_dirs(project_dir)
 
         if is_root:
-            dep_names = {p.split("/")[0] for p in dep_paths}
-            local_dirs = sorted(d for d in local_dirs if d not in dep_names)
+            subproject_names = {
+                d
+                for d in local_dirs
+                if (project_dir / d / c.Infra.Files.PYPROJECT_FILENAME).is_file()
+            }
+            local_dirs = sorted(d for d in local_dirs if d not in subproject_names)
             pyright_base = sorted({*local_dirs, "typings", "typings/generated"})
             mypy_base = sorted(
                 {*local_dirs, "typings", "typings/generated"},
