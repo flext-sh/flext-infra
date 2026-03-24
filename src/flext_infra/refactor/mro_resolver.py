@@ -32,11 +32,11 @@ class FlextInfraRefactorMROResolver:
         """Resolve expected and effective MRO data for all facade families."""
         resolutions: MutableSequence[m.Infra.FamilyMROResolution] = []
         for family in (
-            c.FacadeFamily.C,
-            c.FacadeFamily.T,
-            c.FacadeFamily.P,
-            c.FacadeFamily.M,
-            c.FacadeFamily.U,
+            c.Infra.FacadeFamily.C,
+            c.Infra.FacadeFamily.T,
+            c.Infra.FacadeFamily.P,
+            c.Infra.FacadeFamily.M,
+            c.Infra.FacadeFamily.U,
         ):
             facade_class = family_classes[family]
             expected_chain = expected_base_chains[family]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import overload, override
 
@@ -24,7 +25,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
     def __init__(self) -> None:
         """Initialize call capture state for assertions."""
         super().__init__()
-        self.calls: list[str] = []
+        self.calls: MutableSequence[str] = []
 
     @override
     def create_pre_transformation_stash(

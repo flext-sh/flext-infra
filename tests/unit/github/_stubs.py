@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
@@ -53,37 +53,37 @@ class StubRunner:
         run_checked_returns: Sequence[r[bool]] | None = None,
         run_to_file_returns: Sequence[r[int]] | None = None,
     ) -> None:
-        self._run_returns: list[r[m.Infra.CommandOutput]] = list(run_returns or [])
-        self._capture_returns: list[r[str]] = list(capture_returns or [])
-        self._run_checked_returns: list[r[bool]] = list(run_checked_returns or [])
-        self._run_to_file_returns: list[r[int]] = list(run_to_file_returns or [])
-        self.run_calls: list[t.StrSequence] = []
-        self.capture_calls: list[t.StrSequence] = []
-        self.run_checked_calls: list[t.StrSequence] = []
-        self.run_to_file_calls: list[t.StrSequence] = []
+        self._run_returns: MutableSequence[r[m.Infra.CommandOutput]] = list(run_returns or [])
+        self._capture_returns: MutableSequence[r[str]] = list(capture_returns or [])
+        self._run_checked_returns: MutableSequence[r[bool]] = list(run_checked_returns or [])
+        self._run_to_file_returns: MutableSequence[r[int]] = list(run_to_file_returns or [])
+        self.run_calls: MutableSequence[t.StrSequence] = []
+        self.capture_calls: MutableSequence[t.StrSequence] = []
+        self.run_checked_calls: MutableSequence[t.StrSequence] = []
+        self.run_to_file_calls: MutableSequence[t.StrSequence] = []
 
     @staticmethod
     def _pop_run(
-        returns: list[r[m.Infra.CommandOutput]],
+        returns: MutableSequence[r[m.Infra.CommandOutput]],
     ) -> r[m.Infra.CommandOutput]:
         if not returns:
             return r[m.Infra.CommandOutput].fail("no return value configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
-    def _pop_capture(returns: list[r[str]]) -> r[str]:
+    def _pop_capture(returns: MutableSequence[r[str]]) -> r[str]:
         if not returns:
             return r[str].fail("no return value configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
-    def _pop_checked(returns: list[r[bool]]) -> r[bool]:
+    def _pop_checked(returns: MutableSequence[r[bool]]) -> r[bool]:
         if not returns:
             return r[bool].fail("no return value configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod
-    def _pop_to_file(returns: list[r[int]]) -> r[int]:
+    def _pop_to_file(returns: MutableSequence[r[int]]) -> r[int]:
         if not returns:
             return r[int].fail("no return value configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)

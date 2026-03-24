@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
@@ -28,7 +28,7 @@ def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
 
 class _OutputRecorder:
     def __init__(self) -> None:
-        self.calls: list[str] = []
+        self.calls: MutableSequence[str] = []
 
     def info(self, message: str) -> None:
         self.calls.append(message)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
@@ -149,7 +149,7 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        called: list[bool] = []
+        called: MutableSequence[bool] = []
 
         def _lint(**kw: bool) -> r[m.Infra.WorkflowLintResult]:
             return r[m.Infra.WorkflowLintResult].ok(

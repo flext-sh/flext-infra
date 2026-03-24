@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -126,7 +126,7 @@ class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scan
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: list[m.Infra.CompatibilityAliasViolation] = []
+        violations: MutableSequence[m.Infra.CompatibilityAliasViolation] = []
         for stmt in u.Infra.cst_iter_simple_statements(module.body):
             if not isinstance(stmt, cst.Assign):
                 continue

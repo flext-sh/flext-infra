@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence
 
 import pytest
 import tomlkit
@@ -83,7 +83,7 @@ def _toml_item(value: str | int | t.StrSequence) -> tomlkit.items.Item:
             trivia=tomlkit.items.Trivia(),
             raw=str(value),
         )
-    str_items: list[tomlkit.items.Item] = [
+    str_items: MutableSequence[tomlkit.items.Item] = [
         tomlkit.items.String.from_raw(v) for v in value
     ]
     return tomlkit.items.Array(str_items, trivia=tomlkit.items.Trivia())
