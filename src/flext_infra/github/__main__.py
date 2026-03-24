@@ -203,20 +203,6 @@ def run_pr_workspace(
     pr_args: m.Infra.PrWorkspaceArgs,
 ) -> int:
     """Manage PRs across workspace."""
-    pr_dict = {
-        c.Infra.ReportKeys.ACTION: pr_args.pr_action,
-        "base": pr_args.pr_base,
-        "head": pr_args.pr_head,
-        "number": str(pr_args.pr_number) if pr_args.pr_number else "",
-        "title": pr_args.pr_title,
-        "body": pr_args.pr_body,
-        "draft": "1" if pr_args.pr_draft else "0",
-        "merge_method": pr_args.pr_merge_method,
-        "auto": "1" if pr_args.pr_auto else "0",
-        "delete_branch": "1" if pr_args.pr_delete_branch else "0",
-        "checks_strict": "1" if pr_args.pr_checks_strict else "0",
-        "release_on_merge": "1" if pr_args.pr_release_on_merge else "0",
-    }
     result = u.Infra.github_pr_orchestrate(
         workspace_root=cli.workspace,
         projects=cli.projects if isinstance(cli.projects, list) else [],
@@ -224,7 +210,7 @@ def run_pr_workspace(
         branch=pr_args.branch,
         checkpoint=pr_args.checkpoint,
         fail_fast=pr_args.fail_fast,
-        pr_args=pr_dict,
+        pr_args=pr_args.as_orchestrate_dict(),
     )
     return u.Infra.exit_code(result, failure_msg="PR workspace orchestration failed")
 
@@ -237,7 +223,7 @@ def run(argv: t.StrSequence | None = None) -> int:
         subcommands={
             "workflows": "Sync GitHub workflow files across workspace",
             c.Infra.LINT_SECTION: "Lint GitHub workflow files",
-            c.Cli.GhCmd.PR: "Manage pull requests for a single project",
+            c.Infra.PR: "Manage pull requests for a single project",
             "pr-workspace": "Manage pull requests across workspace projects",
         },
         include_apply=True,
@@ -256,27 +242,10 @@ def run(argv: t.StrSequence | None = None) -> int:
         return run_workflows(cli, prune=args.prune, report=args.report)
     if args.command == c.Infra.LINT_SECTION:
         return run_lint(cli, report=args.report, strict=args.strict)
-    if args.command == c.Cli.GhCmd.PR:
+    if args.command == c.Infra.PR:
         return run_pr(argv[2:] if argv is not None else sys.argv[2:])
     if args.command == "pr-workspace":
-        pr_args = m.Infra.PrWorkspaceArgs(
-            include_root=args.include_root == 1,
-            branch=args.branch,
-            checkpoint=args.checkpoint == 1,
-            fail_fast=args.fail_fast == 1,
-            pr_action=args.pr_action,
-            pr_base=args.pr_base,
-            pr_head=args.pr_head,
-            pr_number=str(args.pr_number) if args.pr_number else "",
-            pr_title=args.pr_title,
-            pr_body=args.pr_body,
-            pr_draft=args.pr_draft == 1,
-            pr_merge_method=args.pr_merge_method,
-            pr_auto=args.pr_auto == 1,
-            pr_delete_branch=args.pr_delete_branch == 1,
-            pr_checks_strict=args.pr_checks_strict == 1,
-            pr_release_on_merge=args.pr_release_on_merge == 1,
-        )
+        pr_args = m.Infra.PrWorkspaceArgs.from_cli_namespace(args)
         return run_pr_workspace(cli, pr_args)
     parser.print_help()
     return 1

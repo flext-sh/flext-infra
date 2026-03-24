@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, Final
 
-from flext_infra import t
+from flext_infra import c, t
 
 _TAIL_LINES: Final[int] = 50
 
@@ -59,7 +59,9 @@ class FlextInfraUtilitiesLogParser:
         if not log_path.exists():
             return (0, [])
         try:
-            text = log_path.read_text(encoding="utf-8", errors="replace")
+            text = log_path.read_text(
+                encoding=c.Infra.Encoding.DEFAULT, errors="replace"
+            )
         except OSError:
             return (0, [])
         tail = text.splitlines()[-_TAIL_LINES:]

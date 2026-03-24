@@ -11,30 +11,34 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import libcst as cst
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     m,
     p,
     t,
     u,
 )
 
+from ._base_detector import FlextInfraScanFileMixin
 
-class FlextInfraInternalImportDetector(p.Infra.Scanner):
+
+class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detector for private module and symbol import violations.
 
     Identifies imports that expose private implementation details by importing
     from private modules or importing symbols with underscore prefixes.
     """
 
+    _rule_id: ClassVar[str] = "namespace.internal_import"
+
     def __init__(
         self,
         *,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraInternalImportDetector scanner.
 
@@ -46,35 +50,35 @@ class FlextInfraInternalImportDetector(p.Infra.Scanner):
         self._parse_failures = parse_failures
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for internal import violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format an internal import violation message.
+
+        Args:
+            violation: The violation model with current_import and detail fields.
+
+        Returns:
+            Human-readable message for the internal import violation.
+
+        """
+        fields = violation.model_dump()
+        current_import = fields.get("current_import", "")
+        detail = fields.get("detail", "")
+        return f"Internal import '{current_import}': {detail}"
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect internal import violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected private import violations.
+            Sequence of InternalImportViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
-        )
-        return m.Infra.ScanResult(
-            file_path=file_path,
-            violations=[
-                m.Infra.ScanViolation(
-                    line=violation.line,
-                    message=(
-                        f"Internal import '{violation.current_import}': "
-                        f"{violation.detail}"
-                    ),
-                    severity="error",
-                    rule_id="namespace.internal_import",
-                )
-                for violation in violations
-            ],
-            detector_name=self.__class__.__name__,
         )
 
     @classmethod
@@ -82,8 +86,8 @@ class FlextInfraInternalImportDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.InternalImportViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.InternalImportViolation]:
         """Detect internal import violations in a file.
 
         Args:
@@ -104,8 +108,8 @@ class FlextInfraInternalImportDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.InternalImportViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.InternalImportViolation]:
         """Scan a file for private module or symbol imports.
 
         Args:
@@ -120,7 +124,7 @@ class FlextInfraInternalImportDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: MutableSequence[nem.InternalImportViolation] = []
+        violations: MutableSequence[m.Infra.InternalImportViolation] = []
         for stmt in u.Infra.cst_iter_simple_statements(module.body):
             if not isinstance(stmt, cst.ImportFrom):
                 continue
@@ -150,7 +154,7 @@ class FlextInfraInternalImportDetector(p.Infra.Scanner):
                 else "private symbol import"
             )
             violations.append(
-                nem.InternalImportViolation.create(
+                m.Infra.InternalImportViolation.create(
                     file=str(file_path),
                     line=u.Infra.cst_line_for(node=stmt, positions=positions),
                     current_import=current_import,

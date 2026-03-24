@@ -308,7 +308,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         if not init_path.exists():
             return ""
         try:
-            content = init_path.read_text(encoding="utf-8")
+            content = init_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except OSError:
             return ""
         # NOTE: source text needed below - cannot delegate to u.Infra.parse_module_ast
@@ -633,8 +633,8 @@ class FlextInfraCodegenLazyInit(s[int]):
         """Run ``ruff --fix`` on the given file to auto-fix lint issues."""
         with contextlib.suppress(FileNotFoundError):
             u.Infra.run_checked([
-                c.Cli.RUFF,
-                c.Cli.RuffCmd.CHECK,
+                c.Infra.RUFF,
+                c.Infra.CHECK,
                 "--fix",
                 "--quiet",
                 str(path),

@@ -53,27 +53,27 @@ class TestFlextInfraConstantsGatesNamespace:
     """Tests for Gates namespace constants."""
 
     def test_gate_constants_exist(self) -> None:
-        tm.that(infra_c.Infra.Gates.LINT, eq="lint")
-        tm.that(infra_c.Infra.Gates.FORMAT, eq="format")
-        tm.that(infra_c.Infra.Gates.PYREFLY, eq="pyrefly")
-        tm.that(infra_c.Infra.Gates.MYPY, eq="mypy")
-        tm.that(infra_c.Infra.Gates.PYRIGHT, eq="pyright")
-        tm.that(infra_c.Infra.Gates.SECURITY, eq="security")
-        tm.that(infra_c.Infra.Gates.MARKDOWN, eq="markdown")
-        tm.that(infra_c.Infra.Gates.GO, eq="go")
+        tm.that(infra_c.Infra.LINT, eq="lint")
+        tm.that(infra_c.Infra.FORMAT, eq="format")
+        tm.that(infra_c.Infra.PYREFLY, eq="pyrefly")
+        tm.that(infra_c.Infra.MYPY, eq="mypy")
+        tm.that(infra_c.Infra.PYRIGHT, eq="pyright")
+        tm.that(infra_c.Infra.SECURITY, eq="security")
+        tm.that(infra_c.Infra.MARKDOWN, eq="markdown")
+        tm.that(infra_c.Infra.GO, eq="go")
 
     def test_type_alias_gate(self) -> None:
-        tm.that(infra_c.Infra.Gates.TYPE_ALIAS, eq="type")
+        tm.that(infra_c.Infra.TYPE_ALIAS, eq="type")
 
     def test_default_csv_contains_gates(self) -> None:
-        csv = infra_c.Infra.Gates.DEFAULT_CSV
+        csv = infra_c.Infra.DEFAULT_CSV
         tm.that(csv, contains="lint")
         tm.that(csv, contains="format")
         tm.that(csv, contains="mypy")
         tm.that(csv, contains="pyright")
 
     def test_default_csv_is_comma_separated(self) -> None:
-        csv = infra_c.Infra.Gates.DEFAULT_CSV
+        csv = infra_c.Infra.DEFAULT_CSV
         gates = csv.split(",")
         tm.that(gates, length_gt=0)
         for g in gates:

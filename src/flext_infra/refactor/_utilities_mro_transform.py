@@ -20,8 +20,8 @@ from flext_infra import (
     c,
     m,
     t,
-    u,
 )
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 
 class FlextInfraUtilitiesRefactorMroTransform:
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
     ) -> tuple[str, m.Infra.MROFileMigration, t.StrMapping]:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
-        module = u.Infra.parse_cst_from_source(source)
+        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
         if module is None:
             return (
                 source,

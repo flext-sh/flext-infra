@@ -259,5 +259,18 @@ class FlextInfraUtilitiesIteration:
                 f"workspace python module iteration failed: {exc}",
             )
 
+    @staticmethod
+    def resolve_project_root(file_path: Path) -> Path | None:
+        """Walk up from file_path to find the project root containing pyproject.toml."""
+        current = file_path.parent
+        for _ in range(10):
+            if (current / c.Infra.Files.PYPROJECT_FILENAME).is_file():
+                return current
+            parent = current.parent
+            if parent == current:
+                break
+            current = parent
+        return None
+
 
 __all__ = ["FlextInfraUtilitiesIteration"]

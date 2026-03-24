@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
 
-from flext_infra import u
+from flext_infra import t, u
 
 
 class FlextInfraTransformerImportNormalizer:
@@ -23,7 +23,7 @@ class FlextInfraTransformerImportNormalizer:
             file_path: Path,
             project_package: str = "",
             alias_map: Mapping[str, tuple[str, ...]] | None = None,
-            on_change: Callable[[str], None] | None = None,
+            on_change: t.Infra.ChangeCallback = None,
         ) -> None:
             """Initialize transformer with file context and change callback."""
             self._context = u.Infra.normalizer_build_context(

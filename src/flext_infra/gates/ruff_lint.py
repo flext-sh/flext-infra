@@ -17,11 +17,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     """Gate for Ruff lint checks."""
 
     """Ruff Lint quality gate."""
-    gate_id = c.Infra.Gates.LINT
+    gate_id = c.Infra.LINT
     gate_name = "Ruff Lint"
     can_fix = False
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.LINT][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.LINT][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][1]
 
     @override
     def check(
@@ -41,7 +41,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 c.Infra.Verbs.CHECK,
                 *targets,
                 "--output-format",
-                c.Cli.OUTPUT_JSON,
+                c.Infra.OUTPUT_JSON,
                 "--quiet",
             ],
             project_dir,

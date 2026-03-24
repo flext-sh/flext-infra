@@ -11,25 +11,27 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import ClassVar, override
+
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     c,
+    m,
     p,
-    u,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import m
+from ._base_detector import FlextInfraScanFileMixin
 
 
-class FlextInfraImportAliasDetector(p.Infra.Scanner):
+class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detector for deep import paths that should use top-level aliases.
 
     Identifies deep imports (e.g., `from package.submodule.impl import Class`)
     that could be simplified using top-level aliases (e.g., `from package import Class`).
     """
+
+    _rule_id: ClassVar[str] = "namespace.import_alias"
 
     @classmethod
     def _discover_package(cls, file_path: Path) -> str:
@@ -56,7 +58,7 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraImportAliasDetector scanner.
 
@@ -68,29 +70,35 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
         self._parse_failures = parse_failures
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for import alias violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format an import alias violation message.
+
+        Args:
+            violation: The violation model with current_import and suggested_import.
+
+        Returns:
+            Human-readable message for the import alias violation.
+
+        """
+        fields = violation.model_dump()
+        current_import = fields.get("current_import", "")
+        suggested_import = fields.get("suggested_import", "")
+        return f"Deep import '{current_import}' should use '{suggested_import}'"
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect import alias violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected alias violations.
+            Sequence of ImportAliasViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
-        )
-        return u.Infra.build_scan_result(
-            file_path=file_path,
-            detector_name=self.__class__.__name__,
-            rule_id="namespace.import_alias",
-            violations=violations,
-            message_builder=lambda violation: (
-                f"Deep import '{violation.current_import}' should use "
-                f"'{violation.suggested_import}'"
-            ),
         )
 
     @classmethod
@@ -98,8 +106,8 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.ImportAliasViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.ImportAliasViolation]:
         """Detect import alias violations in a file.
 
         Args:
@@ -120,8 +128,8 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.ImportAliasViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.ImportAliasViolation]:
         """Scan a file for deep import paths that should use aliases.
 
         Args:
@@ -149,7 +157,7 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
             project_package=cls._discover_package(file_path),
             alias_map=None,
         )
-        violations: MutableSequence[nem.ImportAliasViolation] = []
+        violations: MutableSequence[m.Infra.ImportAliasViolation] = []
         for raw in violations_raw:
             violation_type = getattr(raw, "violation_type", "")
             file_value = getattr(raw, "file", "")
@@ -167,7 +175,7 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
             if not isinstance(suggested_import, str):
                 continue
             violations.append(
-                nem.ImportAliasViolation.create(
+                m.Infra.ImportAliasViolation.create(
                     file=file_value,
                     line=line_value,
                     current_import=current_import,

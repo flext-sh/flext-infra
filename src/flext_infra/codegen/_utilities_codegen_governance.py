@@ -6,7 +6,7 @@ from typing import ClassVar, Final
 
 from yaml import safe_load
 
-from flext_infra import m, t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesCodegenGovernance:
@@ -22,7 +22,9 @@ class FlextInfraUtilitiesCodegenGovernance:
             return cached
         raw: t.ContainerMapping = (
             safe_load(
-                FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE.read_text("utf-8"),
+                FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE.read_text(
+                    c.Infra.Encoding.DEFAULT
+                ),
             )
             or {}
         )

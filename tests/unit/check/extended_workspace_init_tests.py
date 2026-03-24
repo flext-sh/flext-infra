@@ -132,5 +132,5 @@ class TestWorkspaceCheckerBuildGateResult:
             raw_output="",
         )
         tm.that(result.result.passed, eq=True)
-        tm.that(result.result.gate, eq=c.Infra.Gates.LINT)
+        tm.that(result.result.gate, eq=c.Infra.LINT)
         tm.that(len(result.issues), eq=1)

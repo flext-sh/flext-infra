@@ -10,6 +10,7 @@ import libcst as cst
 from flext_infra import (
     FlextInfraUtilitiesCodegenConstantDetection,
     FlextInfraUtilitiesParsing,
+    c,
     m,
     t,
 )
@@ -250,7 +251,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         )
         new_tree = tree.visit(transformer)
         if transformer.replacements > 0:
-            file_path.write_text(new_tree.code, encoding="utf-8")
+            file_path.write_text(new_tree.code, encoding=c.Infra.Encoding.DEFAULT)
         return transformer.replacements > 0, transformer.changes
 
     @staticmethod
@@ -267,7 +268,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         )
         new_tree = tree.visit(transformer)
         if transformer.removals > 0:
-            file_path.write_text(new_tree.code, encoding="utf-8")
+            file_path.write_text(new_tree.code, encoding=c.Infra.Encoding.DEFAULT)
         return transformer.removals > 0, transformer.changes
 
     @staticmethod
@@ -295,7 +296,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         )
         new_tree = tree.visit(transformer)
         if transformer.replacements > 0:
-            file_path.write_text(new_tree.code, encoding="utf-8")
+            file_path.write_text(new_tree.code, encoding=c.Infra.Encoding.DEFAULT)
         return transformer.replacements > 0, transformer.changes
 
     @staticmethod
@@ -334,7 +335,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         def parse_lazy_imports(init_file: Path) -> t.StrMapping:
             if not init_file.is_file():
                 return {}
-            source = init_file.read_text("utf-8")
+            source = init_file.read_text(c.Infra.Encoding.DEFAULT)
             mapping: MutableMapping[str, str] = {}
             for match in re.finditer(
                 r'"(\w+)":\s*\("([\w.]+)",\s*"(\w+)"\)',
@@ -508,7 +509,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
 
             if changed:
                 new_tree = tree.with_changes(body=new_body)
-                source_file.write_text(new_tree.code, encoding="utf-8")
+                source_file.write_text(new_tree.code, encoding=c.Infra.Encoding.DEFAULT)
                 any_modified = True
 
         return any_modified, all_changes

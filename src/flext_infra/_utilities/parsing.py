@@ -9,7 +9,7 @@ from pathlib import Path
 import libcst as cst
 from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesParsing:
@@ -27,7 +27,7 @@ class FlextInfraUtilitiesParsing:
     def parse_module_ast(file_path: Path) -> ast.Module | None:
         """Parse a Python file into an AST module."""
         try:
-            return ast.parse(file_path.read_text(encoding="utf-8"))
+            return ast.parse(file_path.read_text(encoding=c.Infra.Encoding.DEFAULT))
         except (OSError, SyntaxError):
             return None
 
@@ -43,7 +43,9 @@ class FlextInfraUtilitiesParsing:
     def parse_module_cst(file_path: Path) -> cst.Module | None:
         """Parse a Python file into a CST module."""
         try:
-            return cst.parse_module(file_path.read_text(encoding="utf-8"))
+            return cst.parse_module(
+                file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            )
         except (OSError, cst.ParserSyntaxError):
             return None
 
@@ -310,6 +312,18 @@ class FlextInfraUtilitiesParsing:
         if isinstance(base_expr, ast.Subscript):
             return FlextInfraUtilitiesParsing.ast_extract_base_name(base_expr.value)
         return ""
+
+    @staticmethod
+    def cst_find_toplevel_class(
+        *,
+        tree: cst.Module,
+        class_name: str,
+    ) -> cst.ClassDef | None:
+        """Find a top-level class definition by name in a CST module."""
+        for stmt in tree.body:
+            if isinstance(stmt, cst.ClassDef) and stmt.name.value == class_name:
+                return stmt
+        return None
 
 
 __all__ = ["FlextInfraUtilitiesParsing"]

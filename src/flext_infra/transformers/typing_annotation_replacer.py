@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
 
-from flext_infra import u
+from flext_infra import t, u
 
 
 class FlextInfraTypingAnnotationReplacer(cst.CSTTransformer):
@@ -29,7 +29,7 @@ class FlextInfraTypingAnnotationReplacer(cst.CSTTransformer):
     def __init__(
         self,
         *,
-        on_change: Callable[[str], None] | None = None,
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize replacement state and change tracking."""
         self._on_change = on_change

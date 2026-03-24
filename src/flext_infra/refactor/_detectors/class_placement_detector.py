@@ -11,28 +11,30 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
 import libcst as cst
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     c,
+    m,
     p,
     u,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import m
+from ._base_detector import FlextInfraScanFileMixin
 
 
-class FlextInfraClassPlacementDetector(p.Infra.Scanner):
+class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detector for Pydantic model class placement violations.
 
     Scans Python files to identify BaseModel subclasses defined outside
     canonical model files (models.py, _models.py) or _models/ directories.
     Enforces namespace consistency by catching models in non-standard locations.
     """
+
+    _rule_id: ClassVar[str] = "namespace.class_placement"
 
     PYDANTIC_BASE_NAMES: ClassVar[frozenset[str]] = frozenset(
         {
@@ -52,7 +54,7 @@ class FlextInfraClassPlacementDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraClassPlacementDetector scanner.
 
@@ -64,29 +66,35 @@ class FlextInfraClassPlacementDetector(p.Infra.Scanner):
         self._parse_failures = parse_failures
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for class placement violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format a class placement violation message.
+
+        Args:
+            violation: The violation model with name and suggestion fields.
+
+        Returns:
+            Human-readable message for the class placement violation.
+
+        """
+        fields = violation.model_dump()
+        name = fields.get("name", "")
+        suggestion = fields.get("suggestion", "")
+        return f"Model class '{name}' must be in canonical model files ({suggestion})"
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect class placement violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected violations with standardized format.
+            Sequence of ClassPlacementViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
-        )
-        return u.Infra.build_scan_result(
-            file_path=file_path,
-            detector_name=self.__class__.__name__,
-            rule_id="namespace.class_placement",
-            violations=violations,
-            message_builder=lambda violation: (
-                f"Model class '{violation.name}' must be in canonical "
-                f"model files ({violation.suggestion})"
-            ),
         )
 
     @classmethod
@@ -94,8 +102,8 @@ class FlextInfraClassPlacementDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.ClassPlacementViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.ClassPlacementViolation]:
         """Detect class placement violations in a file.
 
         Args:
@@ -116,8 +124,8 @@ class FlextInfraClassPlacementDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.ClassPlacementViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.ClassPlacementViolation]:
         """Scan a file for BaseModel subclasses outside canonical locations.
 
         Args:
@@ -141,7 +149,7 @@ class FlextInfraClassPlacementDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: MutableSequence[nem.ClassPlacementViolation] = []
+        violations: MutableSequence[m.Infra.ClassPlacementViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.ClassDef):
                 continue
@@ -151,7 +159,7 @@ class FlextInfraClassPlacementDetector(p.Infra.Scanner):
             if not is_model_class:
                 continue
             violations.append(
-                nem.ClassPlacementViolation.create(
+                m.Infra.ClassPlacementViolation.create(
                     file=str(file_path),
                     line=u.Infra.cst_line_for(node=stmt, positions=positions),
                     name=stmt.name.value,

@@ -13,7 +13,7 @@ from flext_core import FlextModels
 
 from flext_infra import (
     FlextInfraBasemkModels,
-    # FlextInfraCheckModels,
+    FlextInfraCheckModels,
     FlextInfraCodegenModels,
     FlextInfraCoreModels,
     FlextInfraDepsModels,
@@ -33,7 +33,7 @@ class FlextInfraModels(FlextModels):
 
     class Infra(
         FlextInfraBasemkModels,
-        # FlextInfraCheckModels,
+        FlextInfraCheckModels,
         FlextInfraCodegenModels,
         FlextInfraDepsModels,
         FlextInfraDocsModels,

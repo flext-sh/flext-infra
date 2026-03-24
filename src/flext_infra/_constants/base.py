@@ -137,79 +137,51 @@ class FlextInfraConstantsBase:
     WARN: Final[str] = "⚠"
     SKIP: Final[str] = "–"
 
-    class Cli:
-        """CLI tool binary names used in subprocess calls."""
+    # CLI tool binary names used in subprocess calls."""
 
-        GIT: Final[str] = "git"
-        "Git version control binary."
-        RUFF: Final[str] = "ruff"
-        "Ruff linter/formatter binary."
-        POETRY: Final[str] = "poetry"
-        "Poetry package manager binary."
-        SG: Final[str] = "sg"
-        "ast-grep (sg) binary."
-        DEPTRY: Final[str] = "deptry"
-        "Deptry dependency checker binary."
-        BANDIT: Final[str] = "bandit"
-        "Bandit security linter binary."
-        MARKDOWNLINT: Final[str] = "markdownlint"
-        "Markdown linter binary."
-        GOFMT: Final[str] = "gofmt"
-        "Go formatter binary."
-        OUTPUT_JSON: Final[str] = "json"
-        "Common CLI output format flag value."
-        MYPY: Final[str] = "mypy"
-        "Mypy type checker binary."
-        PYRIGHT: Final[str] = "pyright"
-        "Pyright type checker binary."
-        PYREFLY: Final[str] = "pyrefly"
-        "Pyrefly type checker binary."
-        GOVET: Final[str] = "go"
-        "Go vet binary (invoked as 'go vet')."
-        MAKE: Final[str] = "make"
-        "Make build tool binary."
+    GIT: Final[str] = "git"
+    "Git version control binary."
+    RUFF: Final[str] = "ruff"
+    "Ruff linter/formatter binary."
+    POETRY: Final[str] = "poetry"
+    "Poetry package manager binary."
+    SG: Final[str] = "sg"
+    "ast-grep (sg) binary."
+    DEPTRY: Final[str] = "deptry"
+    "Deptry dependency checker binary."
+    BANDIT: Final[str] = "bandit"
+    "Bandit security linter binary."
+    MARKDOWNLINT: Final[str] = "markdownlint"
+    "Markdown linter binary."
+    GOFMT: Final[str] = "gofmt"
+    "Go formatter binary."
+    OUTPUT_JSON: Final[str] = "json"
+    "Common CLI output format flag value."
+    MYPY: Final[str] = "mypy"
+    "Mypy type checker binary."
+    PYRIGHT: Final[str] = "pyright"
+    "Pyright type checker binary."
+    PYREFLY: Final[str] = "pyrefly"
+    "Pyrefly type checker binary."
+    PR: Final[str] = "pr"
+    "GitHub pull request subcommand."
+    SQUASH: Final[str] = "squash"
+    "GitHub squash merge method."
+    SCAN: Final[str] = "scan"
+    "ast-grep scan subcommand."
+    GOVET: Final[str] = "go"
+    "Go vet binary (invoked as 'go vet')."
+    MAKE: Final[str] = "make"
+    "Make build tool binary."
 
-        class RuffCmd:
-            """Ruff subcommand constants."""
+    # Quality gate identifiers.
 
-            CHECK: Final[str] = "check"
-            FORMAT: Final[str] = "format"
-
-        class PoetryCmd:
-            """Poetry subcommand constants."""
-
-            RUN: Final[str] = "run"
-            CHECK: Final[str] = "check"
-
-        class SgCmd:
-            """ast-grep subcommand constants."""
-
-            SCAN: Final[str] = "scan"
-
-        class GhCmd:
-            """GitHub CLI subcommand constants."""
-
-            PR: Final[str] = "pr"
-            SQUASH: Final[str] = "squash"
-
-    class Gates:
-        """Quality gate identifiers."""
-
-        LINT: Final[str] = "lint"
-        FORMAT: Final[str] = "format"
-        PYREFLY: Final[str] = "pyrefly"
-        MYPY: Final[str] = "mypy"
-        PYRIGHT: Final[str] = "pyright"
-        SECURITY: Final[str] = "security"
-        MARKDOWN: Final[str] = "markdown"
-        GO: Final[str] = "go"
-        GOVET: Final[str] = "govet"
-        GOFMT: Final[str] = "gofmt"
-        MARKDOWNLINT: Final[str] = "markdownlint"
-        TYPE_ALIAS: Final[str] = "type"
-        DEFAULT_CSV: Final[str] = (
-            "lint,format,pyrefly,mypy,pyright,security,markdown,go"
-        )
+    LINT: Final[str] = "lint"
+    FORMAT: Final[str] = "format"
+    MARKDOWN: Final[str] = "markdown"
+    GO: Final[str] = "go"
+    TYPE_ALIAS: Final[str] = "type"
+    DEFAULT_CSV: Final[str] = "lint,format,pyrefly,mypy,pyright,security,markdown,go"
 
     class Status:
         """Status strings for check results."""
@@ -333,6 +305,12 @@ class FlextInfraConstantsBase:
 
         DEFAULT: Final[str] = "utf-8"
         "Default text encoding for file operations."
+
+    class SourceCode:
+        """Source code template constants."""
+
+        FUTURE_ANNOTATIONS: Final[str] = "from __future__ import annotations"
+        "Standard future annotations import line."
 
     DEFAULT_CHECK_DIRS: Final[tuple[str, ...]] = (
         "src",

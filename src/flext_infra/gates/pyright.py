@@ -18,7 +18,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
 
     """Pyright quality gate."""
 
-    gate_id: str = c.Infra.Gates.PYRIGHT
+    gate_id: str = c.Infra.PYRIGHT
     gate_name: str = "Pyright"
     can_fix: bool = False
     tool_name: str = "Pyright"
@@ -45,7 +45,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 raw_output="",
             )
         result = self._run(
-            [sys.executable, "-m", c.Cli.PYRIGHT, *check_dirs, "--outputjson"],
+            [sys.executable, "-m", c.Infra.PYRIGHT, *check_dirs, "--outputjson"],
             project_dir,
             timeout=c.Infra.Timeouts.LONG,
         )

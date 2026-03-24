@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
+import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar
@@ -148,6 +149,37 @@ class FlextInfraUtilitiesIo:
             items = FlextInfraUtilitiesIo._json_list_adapter.validate_python(data)
             return [FlextInfraUtilitiesIo._sort_json_keys(item) for item in items]
         return data
+
+    @staticmethod
+    def atomic_write_file(target: Path, content: str) -> r[bool]:
+        """Write content to target via atomic temp-file rename.
+
+        Creates parent directories as needed.  Writes to a temporary file in
+        the same directory, then atomically replaces the target.
+
+        Args:
+            target: Destination file path.
+            content: Text content to write.
+
+        Returns:
+            r[bool] with True on success.
+
+        """
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                dir=str(target.parent),
+                delete=False,
+                encoding=c.Infra.Encoding.DEFAULT,
+                suffix=".tmp",
+            ) as tmp:
+                _ = tmp.write(content)
+                tmp_path = Path(tmp.name)
+            _ = tmp_path.replace(target)
+        except OSError as exc:
+            return r[bool].fail(f"atomic write failed: {exc}")
+        return r[bool].ok(True)
 
     @staticmethod
     def parse(text: str) -> r[JsonValue]:

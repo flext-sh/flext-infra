@@ -107,9 +107,7 @@ class FlextInfraSkillValidator:
                     continue
                 rule_id = str(rule_obj.get(c.Infra.ReportKeys.ID, "")).strip()
                 rule_type = str(rule_obj.get("type", "")).strip()
-                group = (
-                    str(rule_obj.get(c.Infra.GROUP, rule_id)).strip() or rule_id
-                )
+                group = str(rule_obj.get(c.Infra.GROUP, rule_id)).strip() or rule_id
                 if rule_type == "ast-grep":
                     count = self._run_ast_grep_count(
                         rule_obj,
@@ -204,8 +202,8 @@ class FlextInfraSkillValidator:
         if not rule_file.exists():
             return 0
         cmd = [
-            c.Cli.SG,
-            c.Cli.SgCmd.SCAN,
+            c.Infra.SG,
+            c.Infra.SCAN,
             "--rule",
             str(rule_file),
             "--json=stream",

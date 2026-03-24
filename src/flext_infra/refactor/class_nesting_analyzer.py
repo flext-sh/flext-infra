@@ -98,7 +98,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     ) -> Mapping[Path, set[str]]:
         grouped: MutableMapping[Path, set[str]] = {}
         for file_path in files:
-            project_root = cls._find_project_root(file_path)
+            project_root = u.Infra.resolve_project_root(file_path)
             if project_root is None:
                 continue
             module_path = cls._module_path_for_file(file_path, project_root)
@@ -106,20 +106,6 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 continue
             grouped.setdefault(project_root, set()).add(module_path)
         return grouped
-
-    @classmethod
-    def _find_project_root(cls, file_path: Path) -> Path | None:
-        resolved = file_path.resolve()
-        for parent in (resolved.parent, *resolved.parents):
-            src_dir = parent / c.Infra.Paths.DEFAULT_SRC_DIR
-            if not src_dir.is_dir():
-                continue
-            try:
-                resolved.relative_to(src_dir.resolve())
-                return parent
-            except ValueError:
-                continue
-        return None
 
     @classmethod
     def _module_path_for_file(cls, file_path: Path, project_root: Path) -> str | None:

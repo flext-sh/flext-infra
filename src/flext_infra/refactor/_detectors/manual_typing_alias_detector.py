@@ -11,20 +11,23 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import libcst as cst
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     c,
     m,
     p,
     u,
 )
 
+from ._base_detector import FlextInfraScanFileMixin
+
 
 class FlextInfraManualTypingAliasDetector(
+    FlextInfraScanFileMixin,
     p.Infra.Scanner,
 ):
     """Detector for type aliases outside canonical typings locations.
@@ -33,10 +36,12 @@ class FlextInfraManualTypingAliasDetector(
     the canonical typing files/directories where they should be centralized.
     """
 
+    _rule_id: ClassVar[str] = "namespace.manual_typing_alias"
+
     def __init__(
         self,
         *,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraManualTypingAliasDetector scanner.
 
@@ -48,32 +53,35 @@ class FlextInfraManualTypingAliasDetector(
         self._parse_failures = parse_failures
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for typing alias placement violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format a typing alias violation message.
+
+        Args:
+            violation: The violation model with name and detail fields.
+
+        Returns:
+            Human-readable message for the typing alias violation.
+
+        """
+        fields = violation.model_dump()
+        name = fields.get("name", "")
+        detail = fields.get("detail", "")
+        return f"Typing alias '{name}': {detail}"
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect typing alias violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected typing alias violations.
+            Sequence of ManualTypingAliasViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
-        )
-        return m.Infra.ScanResult(
-            file_path=file_path,
-            violations=[
-                m.Infra.ScanViolation(
-                    line=violation.line,
-                    message=f"Typing alias '{violation.name}': {violation.detail}",
-                    severity="error",
-                    rule_id="namespace.manual_typing_alias",
-                )
-                for violation in violations
-            ],
-            detector_name=self.__class__.__name__,
         )
 
     @classmethod
@@ -81,8 +89,8 @@ class FlextInfraManualTypingAliasDetector(
         cls,
         *,
         file_path: Path,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.ManualTypingAliasViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
         """Detect type alias placement violations in a file.
 
         Args:
@@ -103,8 +111,8 @@ class FlextInfraManualTypingAliasDetector(
         cls,
         *,
         file_path: Path,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.ManualTypingAliasViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
         """Scan a file for type aliases outside canonical locations.
 
         Args:
@@ -126,7 +134,7 @@ class FlextInfraManualTypingAliasDetector(
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: MutableSequence[nem.ManualTypingAliasViolation] = []
+        violations: MutableSequence[m.Infra.ManualTypingAliasViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.SimpleStatementLine):
                 continue
@@ -134,7 +142,7 @@ class FlextInfraManualTypingAliasDetector(
                 alias_name = cls._type_alias_name(stmt=small_stmt)
                 if alias_name:
                     violations.append(
-                        nem.ManualTypingAliasViolation.create(
+                        m.Infra.ManualTypingAliasViolation.create(
                             file=str(file_path),
                             line=u.Infra.cst_line_for(
                                 node=small_stmt,
@@ -155,7 +163,7 @@ class FlextInfraManualTypingAliasDetector(
                     )
                 ):
                     violations.append(
-                        nem.ManualTypingAliasViolation.create(
+                        m.Infra.ManualTypingAliasViolation.create(
                             file=str(file_path),
                             line=u.Infra.cst_line_for(
                                 node=small_stmt,

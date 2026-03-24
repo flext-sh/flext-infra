@@ -15,11 +15,11 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     """Markdown quality gate."""
 
-    gate_id = c.Infra.Gates.MARKDOWN
+    gate_id = c.Infra.MARKDOWN
     gate_name = "Markdown"
     can_fix = True
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.MARKDOWN][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.MARKDOWN][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
     def _collect_markdown_files(self, project_dir: Path) -> Sequence[Path]:
         files: MutableSequence[Path] = []
@@ -45,7 +45,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                 duration=time.monotonic() - started,
                 raw_output="",
             )
-        cmd = [c.Cli.MARKDOWNLINT]
+        cmd = [c.Infra.MARKDOWNLINT]
         if fix:
             cmd.append("--fix")
         root_config = self._workspace_root / ".markdownlint.json"
@@ -77,7 +77,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                         file=".",
                         line=1,
                         column=1,
-                        code=c.Infra.Gates.MARKDOWNLINT,
+                        code=c.Infra.MARKDOWNLINT,
                         message=(
                             result.stdout or result.stderr or "markdownlint failed"
                         ).strip(),

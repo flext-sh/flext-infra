@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import fcntl
 import hashlib
-import tempfile
 from pathlib import Path
 from typing import override
 
@@ -53,21 +52,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
     @staticmethod
     def _atomic_write(target: Path, content: str) -> r[bool]:
         """Write content to target via atomic temp-file rename."""
-        try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                dir=str(target.parent),
-                delete=False,
-                encoding=c.Infra.Encoding.DEFAULT,
-                suffix=".tmp",
-            ) as tmp:
-                _ = tmp.write(content)
-                tmp_path = Path(tmp.name)
-            _ = tmp_path.replace(target)
-            return r[bool].ok(True)
-        except OSError as exc:
-            return r[bool].fail(f"atomic write failed: {exc}")
+        return u.Infra.atomic_write_file(target, content)
 
     @staticmethod
     def _sha256_content(content: str) -> str:

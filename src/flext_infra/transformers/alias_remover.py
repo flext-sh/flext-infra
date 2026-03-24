@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
+
+from flext_infra import t
 
 
 class FlextInfraRefactorAliasRemover(cst.CSTTransformer):
@@ -15,7 +17,7 @@ class FlextInfraRefactorAliasRemover(cst.CSTTransformer):
         self,
         allow_aliases: set[str],
         allow_target_suffixes: tuple[str, ...],
-        on_change: Callable[[str], None] | None = None,
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize alias remover with allow-list configuration."""
         self._scope_depth = 0

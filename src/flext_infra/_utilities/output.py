@@ -85,11 +85,7 @@ class FlextInfraUtilitiesOutput:
             if result
             else (c.Infra.FAIL if cls._use_unicode else "[FAIL]")
         )
-        clr = (
-            (c.Infra.GREEN if result else c.Infra.RED)
-            if cls._use_color
-            else ""
-        )
+        clr = (c.Infra.GREEN if result else c.Infra.RED) if cls._use_color else ""
         cls._stream.write(
             f"  {clr}{sym}{c.Infra.RESET if cls._use_color else ''} {verb:<8} {proj:<24} {elapsed:.2f}s\n",
         )

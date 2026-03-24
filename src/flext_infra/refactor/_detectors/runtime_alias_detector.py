@@ -11,31 +11,35 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import libcst as cst
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     c,
     m,
     p,
     u,
 )
 
+from ._base_detector import FlextInfraScanFileMixin
 
-class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
+
+class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detector for missing or duplicate runtime alias assignments.
 
     Identifies namespace facade files that lack or have duplicate runtime alias
     assignments that expose family modules to the namespace.
     """
 
+    _rule_id: ClassVar[str] = "namespace.runtime_alias"
+
     def __init__(
         self,
         *,
         project_name: str,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraRuntimeAliasDetector scanner.
 
@@ -45,40 +49,41 @@ class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
 
         """
         super().__init__()
-        self._project_name = project_name
         self._parse_failures = parse_failures
+        self._project_name = project_name
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for runtime alias violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format a runtime alias violation message.
+
+        Args:
+            violation: The violation model with alias, kind, and detail fields.
+
+        Returns:
+            Human-readable message for the runtime alias violation.
+
+        """
+        fields = violation.model_dump()
+        alias = fields.get("alias", "")
+        kind = fields.get("kind", "")
+        detail = fields.get("detail", "")
+        return f"Runtime alias '{alias}' {kind}: {detail}"
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect runtime alias violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected runtime alias violations.
+            Sequence of RuntimeAliasViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             project_name=self._project_name,
             _parse_failures=self._parse_failures,
-        )
-        return m.Infra.ScanResult(
-            file_path=file_path,
-            violations=[
-                m.Infra.ScanViolation(
-                    line=violation.line if violation.line > 0 else 1,
-                    message=(
-                        f"Runtime alias '{violation.alias}' {violation.kind}: "
-                        f"{violation.detail}"
-                    ),
-                    severity="error",
-                    rule_id="namespace.runtime_alias",
-                )
-                for violation in violations
-            ],
-            detector_name=self.__class__.__name__,
         )
 
     @classmethod
@@ -87,8 +92,8 @@ class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
         *,
         file_path: Path,
         project_name: str,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.RuntimeAliasViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.RuntimeAliasViolation]:
         """Detect runtime alias violations in a file.
 
         Args:
@@ -112,8 +117,8 @@ class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
         *,
         file_path: Path,
         project_name: str,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.RuntimeAliasViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.RuntimeAliasViolation]:
         """Scan a file for missing or duplicate runtime alias assignments.
 
         Args:
@@ -132,7 +137,7 @@ class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             return []
-        violations: MutableSequence[nem.RuntimeAliasViolation] = []
+        violations: MutableSequence[m.Infra.RuntimeAliasViolation] = []
         _ = project_name
         family = cls._family_for_file(file_name=file_path.name)
         if not family:
@@ -151,7 +156,7 @@ class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
         matches = [a for a in alias_assignments if a[1] == expected_alias]
         if not matches:
             violations.append(
-                nem.RuntimeAliasViolation.create(
+                m.Infra.RuntimeAliasViolation.create(
                     file=str(file_path),
                     kind="missing",
                     alias=expected_alias,
@@ -160,7 +165,7 @@ class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
             )
         elif len(matches) > 1:
             violations.append(
-                nem.RuntimeAliasViolation.create(
+                m.Infra.RuntimeAliasViolation.create(
                     file=str(file_path),
                     line=matches[1][0],
                     kind="duplicate",

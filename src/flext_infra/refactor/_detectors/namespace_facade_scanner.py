@@ -15,10 +15,10 @@ from pathlib import Path
 import libcst as cst
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     c,
-    u,
+    m,
 )
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 
 class FlextInfraNamespaceFacadeScanner:
@@ -34,8 +34,8 @@ class FlextInfraNamespaceFacadeScanner:
         *,
         project_root: Path,
         project_name: str,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.FacadeStatus]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.FacadeStatus]:
         """Scan a project for namespace facade classes and return their status.
 
         Args:
@@ -47,7 +47,7 @@ class FlextInfraNamespaceFacadeScanner:
             List of FacadeStatus objects for each family's facade class.
 
         """
-        results: MutableSequence[nem.FacadeStatus] = []
+        results: MutableSequence[m.Infra.FacadeStatus] = []
         class_stem = cls.project_class_stem(project_name=project_name)
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected_class = f"{class_stem}{suffix}"
@@ -59,7 +59,7 @@ class FlextInfraNamespaceFacadeScanner:
                 _parse_failures=parse_failures,
             )
             results.append(
-                nem.FacadeStatus.create(
+                m.Infra.FacadeStatus.create(
                     family=family,
                     exists=bool(found_class),
                     class_name=found_class,
@@ -77,7 +77,7 @@ class FlextInfraNamespaceFacadeScanner:
         family: str,
         expected_class: str,
         suffix: str,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None,
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None,
     ) -> tuple[str, str, int]:
         """Find a facade class for a given family in a project.
 
@@ -97,7 +97,7 @@ class FlextInfraNamespaceFacadeScanner:
         if not src_dir.is_dir():
             return ("", "", 0)
         for file_path in src_dir.rglob(file_pattern):
-            tree = u.Infra.parse_module_cst(file_path)
+            tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
             if tree is None:
                 continue
             for node in cls._walk_classes(tree.body):

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
+
+from flext_infra import t
 
 
 class FlextInfraRefactorDeprecatedRemover(cst.CSTTransformer):
@@ -14,7 +16,7 @@ class FlextInfraRefactorDeprecatedRemover(cst.CSTTransformer):
     def __init__(
         self,
         changes: MutableSequence[str] | None = None,
-        on_change: Callable[[str], None] | None = None,
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize change sinks used by the transformer."""
         self.changes: MutableSequence[str] = changes if changes is not None else []

@@ -16,10 +16,9 @@ from typing import ClassVar, override
 
 import libcst as cst
 from libcst import metadata as cst_metadata
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
-    FlextInfraUtilitiesRefactorNamespace,
     c,
     m,
     p,
@@ -27,8 +26,11 @@ from flext_infra import (
     u,
 )
 
+from ._base_detector import FlextInfraScanFileMixin
+
 
 class FlextInfraMROCompletenessDetector(
+    FlextInfraScanFileMixin,
     p.Infra.Scanner,
 ):
     """Detector for facade classes missing MRO composition bases.
@@ -37,12 +39,14 @@ class FlextInfraMROCompletenessDetector(
     ensuring complete composition of constants, types, protocols, models, and utilities.
     """
 
+    _rule_id: ClassVar[str] = "namespace.mro_completeness"
+
     FAMILY_DIR_BY_ALIAS: ClassVar[t.StrMapping] = c.Infra.FAMILY_DIRECTORIES
 
     def __init__(
         self,
         *,
-        parse_failures: MutableSequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraMROCompletenessDetector scanner.
 
@@ -54,29 +58,39 @@ class FlextInfraMROCompletenessDetector(
         self._parse_failures = parse_failures
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for MRO completeness violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format an MRO completeness violation message.
+
+        Args:
+            violation: The violation model with facade_class, missing_base, family.
+
+        Returns:
+            Human-readable message for the MRO completeness violation.
+
+        """
+        fields = violation.model_dump()
+        facade_class = fields.get("facade_class", "")
+        missing_base = fields.get("missing_base", "")
+        family = fields.get("family", "")
+        return (
+            f"Facade '{facade_class}' missing base '{missing_base}' "
+            f"for family '{family}'"
+        )
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect MRO completeness violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected MRO violations.
+            Sequence of MROCompletenessViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
-        )
-        return u.Infra.build_scan_result(
-            file_path=file_path,
-            detector_name=self.__class__.__name__,
-            rule_id="namespace.mro_completeness",
-            violations=violations,
-            message_builder=lambda violation: (
-                f"Facade '{violation.facade_class}' missing base "
-                f"'{violation.missing_base}' for family '{violation.family}'"
-            ),
         )
 
     @classmethod
@@ -84,8 +98,8 @@ class FlextInfraMROCompletenessDetector(
         cls,
         *,
         file_path: Path,
-        parse_failures: MutableSequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.MROCompletenessViolation]:
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.MROCompletenessViolation]:
         """Detect MRO completeness violations in a file.
 
         Args:
@@ -106,8 +120,8 @@ class FlextInfraMROCompletenessDetector(
         cls,
         *,
         file_path: Path,
-        _parse_failures: MutableSequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.MROCompletenessViolation]:
+        _parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.MROCompletenessViolation]:
         """Scan a facade file for missing local and dep-graph composition bases.
 
         Args:
@@ -127,7 +141,7 @@ class FlextInfraMROCompletenessDetector(
         if tree is None:
             if _parse_failures is not None:
                 _parse_failures.append(
-                    nem.ParseFailureViolation.create(
+                    m.Infra.ParseFailureViolation.create(
                         file=str(file_path),
                         stage="mro-completeness-scan",
                         error_type="ParseError",
@@ -138,7 +152,7 @@ class FlextInfraMROCompletenessDetector(
         facade_name = cls._resolve_facade_class_name(tree=tree, family=family)
         if facade_name is None:
             return []
-        facade_node = cls._find_top_level_class(
+        facade_node = u.Infra.cst_find_toplevel_class(
             tree=tree,
             class_name=facade_name,
         )
@@ -158,12 +172,10 @@ class FlextInfraMROCompletenessDetector(
             _parse_failures=_parse_failures,
         )
         # Add dep-graph-based expected parents
-        project_root = cls._resolve_project_root(file_path)
+        project_root = u.Infra.resolve_project_root(file_path)
         if project_root is not None:
-            dep_chains = (
-                FlextInfraUtilitiesRefactorNamespace.build_expected_base_chains(
-                    project_root=project_root,
-                )
+            dep_chains = u.Infra.build_expected_base_chains(
+                project_root=project_root,
             )
             dep_bases = dep_chains.get(family, [])
             for dep_base in dep_bases:
@@ -171,7 +183,7 @@ class FlextInfraMROCompletenessDetector(
                     name == dep_base for name, _line in candidates
                 ):
                     candidates.add((dep_base, 1))
-        violations: MutableSequence[nem.MROCompletenessViolation] = []
+        violations: MutableSequence[m.Infra.MROCompletenessViolation] = []
         for candidate_name, candidate_line in sorted(
             candidates,
             key=operator.itemgetter(0),
@@ -179,7 +191,7 @@ class FlextInfraMROCompletenessDetector(
             if candidate_name in declared_bases:
                 continue
             violations.append(
-                nem.MROCompletenessViolation.create(
+                m.Infra.MROCompletenessViolation.create(
                     file=str(file_path),
                     line=candidate_line,
                     family=family,
@@ -191,19 +203,6 @@ class FlextInfraMROCompletenessDetector(
                 ),
             )
         return violations
-
-    @staticmethod
-    def _resolve_project_root(file_path: Path) -> Path | None:
-        """Walk up from file_path to find the project root (contains pyproject.toml)."""
-        current = file_path.parent
-        for _ in range(10):
-            if (current / c.Infra.Files.PYPROJECT_FILENAME).is_file():
-                return current
-            parent = current.parent
-            if parent == current:
-                break
-            current = parent
-        return None
 
     @staticmethod
     def _resolve_facade_class_name(*, tree: cst.Module, family: str) -> str | None:
@@ -239,27 +238,6 @@ class FlextInfraMROCompletenessDetector(
                 return stmt.name.value
         return None
 
-    @staticmethod
-    def _find_top_level_class(
-        *,
-        tree: cst.Module,
-        class_name: str,
-    ) -> cst.ClassDef | None:
-        """Find a top-level class definition by name.
-
-        Args:
-            tree: The CST module to search.
-            class_name: The name of the class to find.
-
-        Returns:
-            The ClassDef node if found, None otherwise.
-
-        """
-        for stmt in tree.body:
-            if isinstance(stmt, cst.ClassDef) and stmt.name.value == class_name:
-                return stmt
-        return None
-
     @classmethod
     def _collect_local_candidates(
         cls,
@@ -267,7 +245,7 @@ class FlextInfraMROCompletenessDetector(
         file_path: Path,
         facade_name: str,
         family: str,
-        _parse_failures: MutableSequence[nem.ParseFailureViolation] | None,
+        _parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None,
     ) -> set[tuple[str, int]]:
         """Collect candidate base classes from the family module.
 
@@ -322,13 +300,13 @@ class FlextInfraMROCompletenessDetector(
         file_path: Path,
         facade_prefix: str,
         facade_name: str,
-        _parse_failures: MutableSequence[nem.ParseFailureViolation] | None,
+        _parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None,
     ) -> set[tuple[str, int]]:
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             if _parse_failures is not None:
                 _parse_failures.append(
-                    nem.ParseFailureViolation.create(
+                    m.Infra.ParseFailureViolation.create(
                         file=str(file_path),
                         stage="mro-completeness-candidates",
                         error_type="ParseError",

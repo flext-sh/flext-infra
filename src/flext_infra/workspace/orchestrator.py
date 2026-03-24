@@ -178,7 +178,7 @@ class FlextInfraOrchestratorService(s[bool]):
             make_args=make_args,
         )
         proc_result = u.Infra.run_to_file(
-            [c.Cli.MAKE, "-C", project, verb, *normalized_make_args],
+            [c.Infra.MAKE, "-C", project, verb, *normalized_make_args],
             log_path,
             env={"NO_COLOR": "1", **os.environ},
         )
@@ -238,29 +238,27 @@ class FlextInfraOrchestratorService(s[bool]):
             return gates_value
         normalized_gates: MutableSequence[str] = []
         go_supported = {
-            c.Infra.Gates.LINT,
-            c.Infra.Gates.FORMAT,
-            c.Infra.Gates.SECURITY,
-            c.Infra.Gates.MARKDOWN,
-            c.Infra.Gates.GO,
-            c.Infra.Gates.TYPE_ALIAS,
+            c.Infra.LINT,
+            c.Infra.FORMAT,
+            c.Infra.SECURITY,
+            c.Infra.MARKDOWN,
+            c.Infra.GO,
+            c.Infra.TYPE_ALIAS,
         }
         python_type_gates = {
-            c.Infra.Gates.PYREFLY,
-            c.Infra.Gates.MYPY,
-            c.Infra.Gates.PYRIGHT,
+            c.Infra.PYREFLY,
+            c.Infra.MYPY,
+            c.Infra.PYRIGHT,
         }
         for gate in raw_gates:
-            mapped_gate = (
-                c.Infra.Gates.TYPE_ALIAS if gate in python_type_gates else gate
-            )
+            mapped_gate = c.Infra.TYPE_ALIAS if gate in python_type_gates else gate
             if mapped_gate not in go_supported and mapped_gate not in python_type_gates:
                 normalized_gates.append(mapped_gate)
                 continue
             if mapped_gate in go_supported and mapped_gate not in normalized_gates:
                 normalized_gates.append(mapped_gate)
         if not normalized_gates:
-            normalized_gates.append(c.Infra.Gates.TYPE_ALIAS)
+            normalized_gates.append(c.Infra.TYPE_ALIAS)
         return ",".join(normalized_gates)
 
 

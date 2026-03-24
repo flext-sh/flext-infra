@@ -12,31 +12,33 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import ClassVar, override
 
 import libcst as cst
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
+    m,
     p,
     u,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import m
+from ._base_detector import FlextInfraScanFileMixin
 
 
-class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
+class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detector for compatibility alias assignment statements.
 
     Identifies simple name-to-name assignments that create compatibility aliases,
     particularly those where both names are capitalized (suggesting class aliases).
     """
 
+    _rule_id: ClassVar[str] = "namespace.compatibility_alias"
+
     def __init__(
         self,
         *,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraCompatibilityAliasDetector scanner.
 
@@ -48,29 +50,35 @@ class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
         self._parse_failures = parse_failures
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for compatibility alias violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format a compatibility alias violation message.
+
+        Args:
+            violation: The violation model with alias_name and target_name fields.
+
+        Returns:
+            Human-readable message for the compatibility alias violation.
+
+        """
+        fields = violation.model_dump()
+        alias_name = fields.get("alias_name", "")
+        target_name = fields.get("target_name", "")
+        return f"Compatibility alias '{alias_name}' -> '{target_name}'"
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect compatibility alias violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected aliases with standardized format.
+            Sequence of CompatibilityAliasViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
-        )
-        return u.Infra.build_scan_result(
-            file_path=file_path,
-            detector_name=self.__class__.__name__,
-            rule_id="namespace.compatibility_alias",
-            violations=violations,
-            message_builder=lambda violation: (
-                f"Compatibility alias '{violation.alias_name}' -> "
-                f"'{violation.target_name}'"
-            ),
         )
 
     @classmethod
@@ -78,8 +86,8 @@ class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.CompatibilityAliasViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a file.
 
         Args:
@@ -100,8 +108,8 @@ class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.CompatibilityAliasViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.CompatibilityAliasViolation]:
         """Scan a file for removable compatibility aliases.
 
         Args:
@@ -118,7 +126,7 @@ class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: MutableSequence[nem.CompatibilityAliasViolation] = []
+        violations: MutableSequence[m.Infra.CompatibilityAliasViolation] = []
         for stmt in u.Infra.cst_iter_simple_statements(module.body):
             if not isinstance(stmt, cst.Assign):
                 continue
@@ -141,7 +149,7 @@ class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
                 continue
             if alias_name[0].isupper() and target_name[0].isupper():
                 violations.append(
-                    nem.CompatibilityAliasViolation.create(
+                    m.Infra.CompatibilityAliasViolation.create(
                         file=str(file_path),
                         line=u.Infra.cst_line_for(node=stmt, positions=positions),
                         alias_name=alias_name,

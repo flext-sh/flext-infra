@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
 from flext_core import FlextTypes as t
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
-from flext_infra import c, u
+from flext_infra import c, t as infra_t, u
 
 
 class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
@@ -23,7 +23,7 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         symbols_to_replace: t.StrMapping,
         runtime_aliases: set[str],
         blocked_aliases: set[str],
-        on_change: Callable[[str], None] | None = None,
+        on_change: infra_t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize import rewrite configuration and result tracking."""
         self._imports_to_remove = imports_to_remove

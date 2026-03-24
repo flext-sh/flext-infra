@@ -65,11 +65,11 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
             source_dir=c.Infra.Paths.DEFAULT_SRC_DIR,
             tests_dir=c.Infra.Directories.TESTS,
             lint_gates=[
-                c.Infra.Gates.LINT,
-                c.Infra.Gates.FORMAT,
-                c.Infra.Gates.PYREFLY,
-                c.Infra.Gates.MYPY,
-                c.Infra.Gates.PYRIGHT,
+                c.Infra.LINT,
+                c.Infra.FORMAT,
+                c.Infra.PYREFLY,
+                c.Infra.MYPY,
+                c.Infra.PYRIGHT,
             ],
             test_command=c.Infra.PYTEST,
         )

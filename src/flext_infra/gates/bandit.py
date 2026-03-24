@@ -18,11 +18,11 @@ class FlextInfraBanditGate(FlextInfraGate):
 
     """Bandit quality gate."""
 
-    gate_id = c.Infra.Gates.SECURITY
+    gate_id = c.Infra.SECURITY
     gate_name = "Bandit"
     can_fix = False
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.SECURITY][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.SECURITY][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.SECURITY][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.SECURITY][1]
 
     @override
     def check(
@@ -44,11 +44,11 @@ class FlextInfraBanditGate(FlextInfraGate):
             [
                 sys.executable,
                 "-m",
-                c.Cli.BANDIT,
+                c.Infra.BANDIT,
                 "-r",
                 c.Infra.Paths.DEFAULT_SRC_DIR,
                 "-f",
-                c.Cli.OUTPUT_JSON,
+                c.Infra.OUTPUT_JSON,
                 "-q",
                 "-ll",
             ],

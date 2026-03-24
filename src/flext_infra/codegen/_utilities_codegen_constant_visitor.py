@@ -11,6 +11,7 @@ import libcst as cst
 from flext_infra import (
     FlextInfraUtilitiesCodegenGovernance,
     FlextInfraUtilitiesParsing,
+    c,
     m,
     t,
 )
@@ -60,7 +61,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             self._project = project
             self._file_path = file_path
             self._render = FlextInfraUtilitiesCodegenConstantDetection.RenderContext(
-                Path(file_path).read_text("utf-8"),
+                Path(file_path).read_text(c.Infra.Encoding.DEFAULT),
             )
             self._class_stack: MutableSequence[str] = []
             self.definitions: MutableSequence[m.Infra.ConstantDefinition] = []
@@ -109,7 +110,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             self._target_class = target_class
             self._collect_all_refs = collect_all_refs
             self._render = FlextInfraUtilitiesCodegenConstantDetection.RenderContext(
-                Path(file_path).read_text("utf-8"),
+                Path(file_path).read_text(c.Infra.Encoding.DEFAULT),
             )
             self.used_constants: set[str] = set()
             self.direct_refs: MutableSequence[m.Infra.DirectConstantRef] = []
@@ -588,7 +589,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             if any(excl in py_file.parts for excl in exclude_patterns):
                 continue
             try:
-                source = py_file.read_text("utf-8")
+                source = py_file.read_text(c.Infra.Encoding.DEFAULT)
             except (UnicodeDecodeError, OSError):
                 continue
 
@@ -808,7 +809,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                 ):
                     continue
                 try:
-                    content = py_file.read_text("utf-8")
+                    content = py_file.read_text(c.Infra.Encoding.DEFAULT)
                 except (UnicodeDecodeError, OSError):
                     continue
 
@@ -834,7 +835,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                             modified = True
 
                 if modified and not dry_run:
-                    py_file.write_text(new_content, encoding="utf-8")
+                    py_file.write_text(new_content, encoding=c.Infra.Encoding.DEFAULT)
                     files_modified += 1
 
         return {

@@ -8,30 +8,34 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
+
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     c,
     m,
     p,
-    u,
 )
 
+from ._base_detector import FlextInfraScanFileMixin
 
-class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
+
+class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detector for alias imports from wrong source packages.
 
     Identifies imports that source public aliases from internal or wrong packages
     instead of the canonical/correct source package.
     """
 
+    _rule_id: ClassVar[str] = "namespace.source_alias"
+
     def __init__(
         self,
         *,
         project_name: str,
         project_root: Path,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraNamespaceSourceDetector scanner.
 
@@ -42,36 +46,46 @@ class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
 
         """
         super().__init__()
+        self._parse_failures = parse_failures
         self._project_name = project_name
         self._project_root = project_root
-        self._parse_failures = parse_failures
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for namespace source violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format a namespace source violation message.
+
+        Args:
+            violation: The violation model with alias, current_source, correct_source.
+
+        Returns:
+            Human-readable message for the namespace source violation.
+
+        """
+        fields = violation.model_dump()
+        alias = fields.get("alias", "")
+        current_source = fields.get("current_source", "")
+        correct_source = fields.get("correct_source", "")
+        return (
+            f"Wrong source for alias '{alias}': "
+            f"'{current_source}' -> '{correct_source}'"
+        )
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect namespace source violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected source violations.
+            Sequence of NamespaceSourceViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             project_name=self._project_name,
             project_root=self._project_root,
             _parse_failures=self._parse_failures,
-        )
-        return u.Infra.build_scan_result(
-            file_path=file_path,
-            detector_name=self.__class__.__name__,
-            rule_id="namespace.source_alias",
-            violations=violations,
-            message_builder=lambda violation: (
-                f"Wrong source for alias '{violation.alias}': "
-                f"'{violation.current_source}' -> '{violation.correct_source}'"
-            ),
         )
 
     @classmethod
@@ -81,8 +95,8 @@ class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
         file_path: Path,
         project_name: str,
         project_root: Path,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.NamespaceSourceViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.NamespaceSourceViolation]:
         """Detect namespace source violations in a file.
 
         Args:
@@ -109,8 +123,8 @@ class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
         file_path: Path,
         project_name: str,
         project_root: Path,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.NamespaceSourceViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.NamespaceSourceViolation]:
         """Scan a file for wrong-source alias imports."""
         _ = project_name
         _ = _parse_failures
@@ -133,7 +147,7 @@ class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
             project_package=package_name,
             alias_map=None,
         )
-        violations: MutableSequence[nem.NamespaceSourceViolation] = []
+        violations: MutableSequence[m.Infra.NamespaceSourceViolation] = []
         for raw in violations_cst:
             violation_type = getattr(raw, "violation_type", "")
             file_value = getattr(raw, "file", "")
@@ -159,7 +173,7 @@ class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
                 current_import.split(" ")[1] if " " in current_import else ""
             )
             violations.append(
-                nem.NamespaceSourceViolation.create(
+                m.Infra.NamespaceSourceViolation.create(
                     file=file_value,
                     line=line_value,
                     alias=alias,

@@ -13,7 +13,6 @@ from typing import override
 import libcst as cst
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     m,
     p,
     u,
@@ -30,7 +29,7 @@ class FlextInfraFutureAnnotationsDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraFutureAnnotationsDetector scanner.
 
@@ -75,8 +74,8 @@ class FlextInfraFutureAnnotationsDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.FutureAnnotationsViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.FutureAnnotationsViolation]:
         """Detect missing future annotations in a file.
 
         Args:
@@ -97,8 +96,8 @@ class FlextInfraFutureAnnotationsDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.FutureAnnotationsViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.FutureAnnotationsViolation]:
         """Scan a file for missing future annotations import.
 
         Args:
@@ -149,7 +148,7 @@ class FlextInfraFutureAnnotationsDetector(p.Infra.Scanner):
             if isinstance(stmt, (cst.ClassDef, cst.FunctionDef)):
                 break
         return [
-            nem.FutureAnnotationsViolation.create(
+            m.Infra.FutureAnnotationsViolation.create(
                 file=str(file_path),
             ),
         ]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -71,7 +71,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
         self,
         *,
         migrations: Sequence[m.Infra.SignatureMigration],
-        on_change: Callable[[str], None] | None = None,
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize transformer state for declarative signature migrations."""
         self._migrations = migrations

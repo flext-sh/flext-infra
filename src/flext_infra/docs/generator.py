@@ -254,9 +254,7 @@ class FlextInfraDocGenerator:
                     "apply": apply,
                     "source": source,
                 },
-                "files": [
-                    {c.Infra.PATH: f.path, "written": f.written} for f in files
-                ],
+                "files": [{c.Infra.PATH: f.path, "written": f.written} for f in files],
             },
         )
         _ = u.Infra.write_markdown(

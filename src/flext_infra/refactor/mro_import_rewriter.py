@@ -31,9 +31,11 @@ class FlextInfraRefactorMROImportRewriter:
     ) -> Sequence[m.Infra.MRORewriteResult]:
         """Rewrite all eligible Python files inside a workspace."""
         results: MutableSequence[m.Infra.MRORewriteResult] = []
-        for file_path in cls._iter_workspace_python_files(
-            workspace_root=workspace_root,
-        ):
+        py_files = u.Infra.iter_python_files(workspace_root=workspace_root).fold(
+            on_failure=lambda _: [],
+            on_success=lambda v: [p for p in v],  # noqa: C416
+        )
+        for file_path in py_files:
             rewritten = cls.rewrite_file(
                 file_path=file_path,
                 moved_index=moved_index,
@@ -157,14 +159,6 @@ class FlextInfraRefactorMROImportRewriter:
         return m.Infra.MRORewriteResult(
             file=str(file_path),
             replacements=rewriter.replacements,
-        )
-
-    @staticmethod
-    def _iter_workspace_python_files(*, workspace_root: Path) -> Sequence[Path]:
-        result = u.Infra.iter_python_files(workspace_root=workspace_root)
-        return result.fold(
-            on_failure=lambda _: [],
-            on_success=lambda v: v,
         )
 
 

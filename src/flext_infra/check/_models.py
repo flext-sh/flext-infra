@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from flext_core import FlextModels
 from pydantic import ConfigDict, Field, computed_field, model_serializer
 
-from flext_infra import c, t
+from flext_infra import c
 
 
 class FlextInfraCheckModels:
@@ -43,13 +43,13 @@ class FlextInfraCheckModels:
         """Execution result for a single quality gate."""
 
         result: Annotated[
-            FlextInfraCheckModels.GateResult,
+            GateResult,
             Field(
                 description="Gate result model",
             ),
         ]
         issues: Annotated[
-            Sequence[FlextInfraCheckModels.Issue],
+            Sequence[Issue],
             Field(
                 default_factory=lambda: (),
                 description="Detected issues",
@@ -60,18 +60,18 @@ class FlextInfraCheckModels:
     class GateResult(FlextModels.ArbitraryTypesModel):
         """Result summary for a single quality gate execution."""
 
-        gate: Annotated[t.NonEmptyStr, Field(description="Gate name")]
-        project: Annotated[t.NonEmptyStr, Field(description="Project name")]
+        gate: Annotated[str, Field(description="Gate name")]
+        project: Annotated[str, Field(description="Project name")]
         passed: Annotated[bool, Field(description="Gate execution status")]
         errors: Annotated[
-            t.StrSequence,
+            Sequence[str],
             Field(
                 default_factory=lambda: (),
                 description="Gate error messages",
             ),
         ]
         duration: Annotated[
-            t.NonNegativeFloat,
+            float,
             Field(default=0.0, description="Duration in seconds"),
         ]
 
@@ -80,7 +80,7 @@ class FlextInfraCheckModels:
 
         project: Annotated[str, Field(description="Project name")]
         gates: Annotated[
-            MutableMapping[str, FlextInfraCheckModels.GateExecution],
+            MutableMapping[str, GateExecution],
             Field(
                 default_factory=dict,
                 description="Gate name to execution mapping",
@@ -111,7 +111,7 @@ class FlextInfraCheckModels:
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, t.Infra.InfraValue]:
+        def _serialize(self) -> Mapping[str, object]:
             return {
                 "id": self.id,
                 "shortDescription": {"text": self.short_description},
@@ -132,7 +132,7 @@ class FlextInfraCheckModels:
         ] = "%SRCROOT%"
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, t.Infra.InfraValue]:
+        def _serialize(self) -> Mapping[str, object]:
             return {
                 "physicalLocation": {
                     "artifactLocation": {
@@ -153,14 +153,14 @@ class FlextInfraCheckModels:
         level: Annotated[str, Field(description="Result level (error/warning)")]
         message: Annotated[str, Field(description="Result message")]
         locations: Annotated[
-            Sequence[FlextInfraCheckModels.SarifLocation],
+            Sequence[SarifLocation],
             Field(
                 description="Result locations",
             ),
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, t.Infra.InfraValue]:
+        def _serialize(self) -> Mapping[str, object]:
             return {
                 "ruleId": self.rule_id,
                 "level": self.level,
@@ -182,14 +182,14 @@ class FlextInfraCheckModels:
             ),
         ] = ""
         rules: Annotated[
-            Sequence[FlextInfraCheckModels.SarifRule],
+            Sequence[SarifRule],
             Field(
                 default_factory=lambda: (),
                 description="Rule descriptors",
             ),
         ]
         results: Annotated[
-            Sequence[FlextInfraCheckModels.SarifResult],
+            Sequence[SarifResult],
             Field(
                 default_factory=lambda: (),
                 description="Run results",
@@ -197,7 +197,7 @@ class FlextInfraCheckModels:
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, t.Infra.InfraValue]:
+        def _serialize(self) -> Mapping[str, object]:
             return {
                 "tool": {
                     "driver": {
@@ -231,7 +231,7 @@ class FlextInfraCheckModels:
             Field(default="2.1.0", description="SARIF version"),
         ] = "2.1.0"
         runs: Annotated[
-            Sequence[FlextInfraCheckModels.SarifRun],
+            Sequence[SarifRun],
             Field(
                 default_factory=lambda: (),
                 description="SARIF runs",

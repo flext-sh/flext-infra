@@ -16,7 +16,8 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import m, u
+from flext_infra import c, m
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 
 class FlextInfraUtilitiesRefactorPydanticAnalysis:
@@ -290,8 +291,8 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         file_path: Path,
     ) -> tuple[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]]:
         """Collect class and alias moves required for centralization."""
-        source = file_path.read_text(encoding="utf-8")
-        tree = u.Infra.parse_ast_from_source(source)
+        source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
         if tree is None:
             msg = "Failed to parse source"
             raise SyntaxError(msg)
@@ -370,10 +371,10 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     def pydantic_scan_file_violations(file_path: Path) -> tuple[int, int]:
         """Return counts of model and dict-alias violations in one file."""
         try:
-            source = file_path.read_text(encoding="utf-8")
+            source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except (UnicodeDecodeError, OSError):
             return (0, 0)
-        tree = u.Infra.parse_ast_from_source(source)
+        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
         if tree is None:
             return (0, 0)
         model_class_count = 0
@@ -404,7 +405,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         import_statement: str,
     ) -> str:
         """Rewrite source after extracting moved classes and aliases."""
-        source = file_path.read_text(encoding="utf-8")
+        source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         lines = source.splitlines()
         ranges = sorted(
             [(m.start, m.end) for m in class_moves]
@@ -433,7 +434,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         normalized = import_stmt.strip()
         if not normalized:
             return source
-        module = u.Infra.parse_cst_from_source(source)
+        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
         if module is None:
             return source
         try:

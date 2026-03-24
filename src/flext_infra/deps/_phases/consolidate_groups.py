@@ -39,7 +39,7 @@ class FlextInfraConsolidateGroupsPhase:
             *canonical_dev,
             *existing.get(c.Infra.DEV, []),
             *existing.get(c.Infra.Directories.DOCS, []),
-            *existing.get(c.Infra.Gates.SECURITY, []),
+            *existing.get(c.Infra.SECURITY, []),
             *existing.get(c.Infra.TEST, []),
             *existing.get(c.Infra.Directories.TYPINGS, []),
         ])

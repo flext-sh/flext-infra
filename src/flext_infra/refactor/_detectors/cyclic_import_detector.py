@@ -17,8 +17,8 @@ from pathlib import Path
 import libcst as cst
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     c,
+    m,
     u,
 )
 
@@ -38,8 +38,8 @@ class FlextInfraCyclicImportDetector:
         cls,
         *,
         project_root: Path,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.CyclicImportViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.CyclicImportViolation]:
         """Scan a project for cyclic import dependencies.
 
         Args:
@@ -106,7 +106,7 @@ class FlextInfraCyclicImportDetector:
                                 root_pkg = imported.split(".")[0]
                                 if root_pkg in package_roots:
                                     graph[module_name].add(imported)
-        violations: MutableSequence[nem.CyclicImportViolation] = []
+        violations: MutableSequence[m.Infra.CyclicImportViolation] = []
         try:
             _ = list(TopologicalSorter(graph).static_order())
         except CycleError as exc:
@@ -122,7 +122,7 @@ class FlextInfraCyclicImportDetector:
                     for module_name in normalized_cycle
                 )
                 violations.append(
-                    nem.CyclicImportViolation.create(
+                    m.Infra.CyclicImportViolation.create(
                         cycle=normalized_cycle,
                         files=cycle_files,
                     ),

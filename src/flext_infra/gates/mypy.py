@@ -17,7 +17,7 @@ from flext_infra import FlextInfraGate, c, m, t as t_infra, u
 class FlextInfraMypyGate(FlextInfraGate):
     """Gate for Mypy type checking."""
 
-    gate_id: str = c.Infra.Gates.MYPY
+    gate_id: str = c.Infra.MYPY
     gate_name: str = "Mypy"
     can_fix: bool = False
     tool_name: str = "Mypy"
@@ -61,12 +61,12 @@ class FlextInfraMypyGate(FlextInfraGate):
             [
                 sys.executable,
                 "-m",
-                c.Cli.MYPY,
+                c.Infra.MYPY,
                 *mypy_dirs,
                 "--config-file",
                 str(cfg),
                 "--output",
-                c.Cli.OUTPUT_JSON,
+                c.Infra.OUTPUT_JSON,
             ],
             project_dir,
             env=mypy_env,

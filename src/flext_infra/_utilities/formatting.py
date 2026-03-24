@@ -38,8 +38,8 @@ class FlextInfraUtilitiesFormatting:
 
         """
         check_cmd = [
-            c.Cli.RUFF,
-            c.Cli.RuffCmd.CHECK,
+            c.Infra.RUFF,
+            c.Infra.CHECK,
             "--fix",
         ]
         if quiet:
@@ -55,8 +55,8 @@ class FlextInfraUtilitiesFormatting:
 
         if include_format:
             runner.run_checked([
-                c.Cli.RUFF,
-                c.Cli.RuffCmd.FORMAT,
+                c.Infra.RUFF,
+                c.Infra.FORMAT,
                 str(path),
             ])
 

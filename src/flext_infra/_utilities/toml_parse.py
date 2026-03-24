@@ -112,7 +112,7 @@ class FlextInfraUtilitiesTomlParse:
         return {
             c.Infra.DEV: _group_values(c.Infra.DEV),
             c.Infra.Directories.DOCS: _group_values(c.Infra.DOCS),
-            c.Infra.Gates.SECURITY: _group_values(c.Infra.SECURITY),
+            c.Infra.SECURITY: _group_values(c.Infra.SECURITY),
             c.Infra.TEST: _group_values(c.Infra.TEST),
             c.Infra.Directories.TYPINGS: _group_values(c.Infra.Directories.TYPINGS),
         }
@@ -124,7 +124,7 @@ class FlextInfraUtilitiesTomlParse:
         merged = [
             *groups.get(c.Infra.DEV, []),
             *groups.get(c.Infra.Directories.DOCS, []),
-            *groups.get(c.Infra.Gates.SECURITY, []),
+            *groups.get(c.Infra.SECURITY, []),
             *groups.get(c.Infra.TEST, []),
             *groups.get(c.Infra.Directories.TYPINGS, []),
         ]

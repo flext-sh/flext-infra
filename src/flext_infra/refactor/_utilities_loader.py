@@ -15,7 +15,8 @@ from typing import TypeVar
 
 from pydantic import JsonValue
 
-from flext_infra import c, m, p, u
+from flext_infra import c, m, p
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 _V = TypeVar("_V", bound=p.Infra.ViolationWithLine)
 
@@ -130,7 +131,7 @@ class FlextInfraUtilitiesRefactorLoader:
                     ),
                 )
             return None
-        tree = u.Infra.parse_ast_from_source(source)
+        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
         if tree is None:
             if parse_failures is not None:
                 parse_failures.append(

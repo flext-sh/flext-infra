@@ -57,7 +57,7 @@ class FlextInfraUtilitiesDiscovery:
         if not gitmodules.exists():
             return set()
         try:
-            content = gitmodules.read_text(encoding="utf-8")
+            content = gitmodules.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except OSError:
             return set()
         return set(re.findall(r"^\s*path\s*=\s*(.+?)\s*$", content, re.MULTILINE))
@@ -156,7 +156,7 @@ class FlextInfraUtilitiesDiscovery:
         """Discover the core package name for a project."""
         pyproject = project_root / "pyproject.toml"
         if pyproject.is_file():
-            content = pyproject.read_text(encoding="utf-8")
+            content = pyproject.read_text(encoding=c.Infra.Encoding.DEFAULT)
             if "flext-core" in content or "flext_core" in content:
                 return "flext_core"
         return "flext_core"

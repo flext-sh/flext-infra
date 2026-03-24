@@ -27,8 +27,9 @@ from flext_infra import (
     c,
     m,
     t,
-    u,
 )
+from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 
 class FlextInfraUtilitiesRefactorNamespace:
@@ -168,7 +169,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             if chain:
                 lines: MutableSequence[str] = []
                 for base_class_name in chain:
-                    module = u.Infra.class_name_to_module(
+                    module = FlextInfraUtilitiesFormatting.class_name_to_module(
                         base_class_name,
                     )
                     lines.append(f"from {module} import {base_class_name}")
@@ -243,18 +244,6 @@ class FlextInfraUtilitiesRefactorNamespace:
         return source_file.parent / filename
 
     @staticmethod
-    def _namespace_manual_typings_target_file(
-        *,
-        project_root: Path,
-        source_file: Path,
-    ) -> Path:
-        return FlextInfraUtilitiesRefactorNamespace._namespace_canonical_target_file(
-            project_root=project_root,
-            source_file=source_file,
-            filename="typings.py",
-        )
-
-    @staticmethod
     def _namespace_append_typing_alias_blocks(
         *,
         target_file: Path,
@@ -274,18 +263,6 @@ class FlextInfraUtilitiesRefactorNamespace:
         updated = updated.rstrip() + "\n\n" + merged_blocks + "\n"
         target_file.parent.mkdir(parents=True, exist_ok=True)
         _ = target_file.write_text(updated, encoding=c.Infra.Encoding.DEFAULT)
-
-    @staticmethod
-    def _namespace_manual_protocol_target_file(
-        *,
-        project_root: Path,
-        source_file: Path,
-    ) -> Path:
-        return FlextInfraUtilitiesRefactorNamespace._namespace_canonical_target_file(
-            project_root=project_root,
-            source_file=source_file,
-            filename="protocols.py",
-        )
 
     @staticmethod
     def _namespace_is_ast_protocol_class(node: ast.ClassDef) -> bool:
@@ -425,9 +402,10 @@ class FlextInfraUtilitiesRefactorNamespace:
         if not class_nodes:
             return None
         target_file = (
-            FlextInfraUtilitiesRefactorNamespace._namespace_manual_protocol_target_file(
+            FlextInfraUtilitiesRefactorNamespace._namespace_canonical_target_file(
                 project_root=project_root,
                 source_file=source_file,
+                filename="protocols.py",
             )
         )
         FlextInfraUtilitiesRefactorNamespace._namespace_append_protocol_blocks(
@@ -492,9 +470,10 @@ class FlextInfraUtilitiesRefactorNamespace:
         if not blocks:
             return
         target_file = (
-            FlextInfraUtilitiesRefactorNamespace._namespace_manual_typings_target_file(
+            FlextInfraUtilitiesRefactorNamespace._namespace_canonical_target_file(
                 project_root=project_root,
                 source_file=source_file,
+                filename="typings.py",
             )
         )
         FlextInfraUtilitiesRefactorNamespace._namespace_append_typing_alias_blocks(
@@ -653,7 +632,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         project_package: str,
     ) -> None:
         """Apply import normalization to a single file via CST rewrite."""
-        tree = u.Infra.parse_module_cst(file_path)
+        tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if tree is None:
             return
         is_facade = FlextInfraUtilitiesRefactorNamespace._namespace_is_facade_file(
@@ -666,8 +645,8 @@ class FlextInfraUtilitiesRefactorNamespace:
         new_tree = tree.visit(transformer)
         if not transformer.changed:
             return
-        file_path.write_text(new_tree.code, encoding="utf-8")
-        u.Infra.run_ruff_fix(file_path)
+        file_path.write_text(new_tree.code, encoding=c.Infra.Encoding.DEFAULT)
+        FlextInfraUtilitiesFormatting.run_ruff_fix(file_path)
 
     @staticmethod
     def _namespace_is_facade_file(
@@ -716,7 +695,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             for violation in file_violations:
                 missing_by_facade[violation.facade_class].add(violation.missing_base)
             # CST parse for class header rewriting
-            cst_tree = u.Infra.parse_module_cst(file_path)
+            cst_tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
             if cst_tree is None:
                 continue
             rewriter = _MROBaseRewriter(
@@ -747,7 +726,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             for base_name in sorted(rewriter.new_bases):
                 if base_name in existing_imports:
                     continue
-                module = u.Infra.class_name_to_module(
+                module = FlextInfraUtilitiesFormatting.class_name_to_module(
                     base_name,
                 )
                 new_imports.append(f"from {module} import {base_name}\n")
@@ -758,7 +737,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 "".join(lines),
                 encoding=c.Infra.Encoding.DEFAULT,
             )
-            u.Infra.run_ruff_fix(
+            FlextInfraUtilitiesFormatting.run_ruff_fix(
                 file_path,
                 include_format=True,
                 quiet=True,
@@ -1001,7 +980,10 @@ class _MROBaseRewriter(cst.CSTTransformer):
         missing = self._missing_by_facade.get(class_name)
         if not missing:
             return updated_node
-        current_names = [self._base_name(arg) for arg in updated_node.bases]
+        current_names = [
+            FlextInfraUtilitiesParsing.cst_extract_base_name(arg.value)
+            for arg in updated_node.bases
+        ]
         proposed = list(current_names) + [
             b for b in sorted(missing) if b not in current_names
         ]
@@ -1022,20 +1004,6 @@ class _MROBaseRewriter(cst.CSTTransformer):
         self.new_bases.update(set(proposed) - set(current_names))
         return updated_node.with_changes(bases=new_args)
 
-    @staticmethod
-    def _base_name(arg: cst.Arg) -> str:
-        if isinstance(arg.value, cst.Name):
-            return arg.value.value
-        if isinstance(arg.value, cst.Attribute):
-            return arg.value.attr.value
-        if isinstance(arg.value, cst.Subscript):
-            val = arg.value.value
-            if isinstance(val, cst.Name):
-                return val.value
-            if isinstance(val, cst.Attribute):
-                return val.attr.value
-        return ""
-
 
 _MAX_ALIAS_NAME_LEN: int = 2
 
@@ -1054,7 +1022,9 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        module_name = u.Infra.cst_module_to_str(updated_node.module)
+        module_name = FlextInfraUtilitiesParsing.cst_module_to_str(
+            updated_node.module,
+        )
         if not module_name or not module_name.startswith(self._project_package):
             return updated_node
         if module_name == self._project_package:

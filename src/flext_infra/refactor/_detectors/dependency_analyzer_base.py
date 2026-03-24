@@ -14,12 +14,10 @@ import sys
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextTypes as t, r
+from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, u
-
-from .import_collector import FlextInfraImportCollector
+from flext_infra import FlextInfraImportCollector, c, m, t, u
 
 
 class FlextInfraDependencyAnalyzer:

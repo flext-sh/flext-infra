@@ -14,10 +14,11 @@ from pathlib import Path
 
 from flext_infra import (
     FlextInfraUtilitiesRefactorPydanticAnalysis,
+    c,
     m,
     t,
-    u,
 )
+from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilitiesRefactorPydantic:
@@ -88,7 +89,7 @@ class FlextInfraUtilitiesRefactorPydantic:
     @staticmethod
     def _pydantic_ensure_dest_header(dest_path: Path) -> str:
         if dest_path.exists():
-            return dest_path.read_text(encoding="utf-8")
+            return dest_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         return (
             '"""Auto-generated centralized models."""\n\n'
             "from __future__ import annotations\n\n"
@@ -172,7 +173,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         skipped_nonpackage_apply = 0
         skipped_non_necessary_apply = 0
         failure_stats = m.Infra.CentralizerFailureStats()
-        files_result = u.Infra.iter_python_files(
+        files_result = FlextInfraUtilitiesIteration.iter_python_files(
             workspace_root=workspace_root,
         )
         if files_result.is_failure:
@@ -283,8 +284,12 @@ class FlextInfraUtilitiesRefactorPydantic:
                 ):
                     skipped_nonpackage_apply += 1
                     continue
-                _ = dest_path.write_text(updated_dest, encoding="utf-8")
-                _ = file_path.write_text(updated_source, encoding="utf-8")
+                _ = dest_path.write_text(
+                    updated_dest, encoding=c.Infra.Encoding.DEFAULT
+                )
+                _ = file_path.write_text(
+                    updated_source, encoding=c.Infra.Encoding.DEFAULT
+                )
         if normalize_remaining:
             for file_path in python_files:
                 if not FlextInfraUtilitiesRefactorPydantic._pydantic_is_target_python(

@@ -8,14 +8,13 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
-from flext_core import FlextTypes as t
 
 from flext_infra import (
     FlextInfraRefactorMROResolver,
     FlextInfraRefactorRule,
     c,
     m,
-    u,
+    u,t,
 )
 
 

@@ -120,7 +120,7 @@ class FlextInfraBaseMkGenerator(s[str]):
                     encoding=c.Infra.Encoding.DEFAULT,
                 )
                 process_result = self._get_runner.run([
-                    c.Cli.MAKE,
+                    c.Infra.MAKE,
                     "-C",
                     str(temp_dir),
                     "--dry-run",

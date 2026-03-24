@@ -28,7 +28,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     def _run_make(project_path: Path, verb: str) -> r[tuple[int, str]]:
         """Execute a make command for a project and return (exit_code, output)."""
         result = u.Infra.run_raw([
-            c.Cli.MAKE,
+            c.Infra.MAKE,
             "-C",
             str(project_path),
             verb,
@@ -167,7 +167,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             self.logger.info("release_phase_validate", action="dry-run", status="ok")
             return r[bool].ok(True)
         return u.Infra.run_checked(
-            [c.Cli.MAKE, c.Infra.Verbs.VALIDATE, "VALIDATE_SCOPE=workspace"],
+            [c.Infra.MAKE, c.Infra.Verbs.VALIDATE, "VALIDATE_SCOPE=workspace"],
             cwd=workspace_root,
         )
 

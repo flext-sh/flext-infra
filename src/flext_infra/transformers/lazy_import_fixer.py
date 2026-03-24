@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
 
-from flext_infra import u
+from flext_infra import t, u
 
 
 class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
     """Hoist function-local imports to module top while preserving ordering."""
 
-    def __init__(self, on_change: Callable[[str], None] | None = None) -> None:
+    def __init__(self, on_change: t.Infra.ChangeCallback = None) -> None:
         """Initialize lazy import collector and emitted change sink."""
         self._on_change = on_change
         self.changes: MutableSequence[str] = []

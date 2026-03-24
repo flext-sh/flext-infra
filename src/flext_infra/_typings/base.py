@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
+
 
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
@@ -32,3 +34,9 @@ class FlextInfraTypesBase:
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
     type MetricRecord = BaseModel | Mapping[str, MetricValue]
     "A single metric record: a Pydantic model or a string-keyed mapping of metric values."
+    type ChangeCallback = Callable[[str], None] | None
+    "Optional callback invoked on transformer changes."
+    type StrIndex = Mapping[str, int]
+    "String-keyed integer index (counters, metrics)."
+    type MutableStrIndex = MutableMapping[str, int]
+    "Mutable string-keyed integer index."

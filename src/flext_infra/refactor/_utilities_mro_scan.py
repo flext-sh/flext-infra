@@ -11,7 +11,9 @@ import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, u
+from flext_infra import c, m
+from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 
 class FlextInfraUtilitiesRefactorMroScan:
@@ -63,7 +65,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         target_spec: m.Infra.MROTargetSpec,
     ) -> m.Infra.MROScanReport | None:
         """Scan one file and return migration candidates when found."""
-        tree = u.Infra.parse_module_ast(file_path)
+        tree = FlextInfraUtilitiesParsing.parse_module_ast(file_path)
         if tree is None:
             return None
         constants_class = (
@@ -149,7 +151,7 @@ class FlextInfraUtilitiesRefactorMroScan:
 
     @staticmethod
     def _mro_scan_project_roots(*, workspace_root: Path) -> Sequence[Path]:
-        return u.Infra.discover_project_roots(
+        return FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root,
         )
 
@@ -217,7 +219,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             root: Path = project_root / directory_name
             if not root.is_dir():
                 continue
-            for file_path in u.Infra.iter_directory_python_files(
+            for file_path in FlextInfraUtilitiesIteration.iter_directory_python_files(
                 root,
             ):
                 if file_path.name in target_spec.file_names:

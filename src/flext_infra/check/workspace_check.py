@@ -79,7 +79,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
             name = gate.strip()
             if not name:
                 continue
-            mapped = c.Infra.Gates.PYREFLY if name == c.Infra.Gates.TYPE_ALIAS else name
+            mapped = c.Infra.PYREFLY if name == c.Infra.TYPE_ALIAS else name
             if mapped not in c.Infra.ALLOWED_GATES:
                 return r[t.StrSequence].fail(f"ERROR: unknown gate '{gate}'")
             if mapped not in resolved:
@@ -93,7 +93,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
     def format(self, project_dir: Path) -> r[m.Infra.GateResult]:
         """Run format checks for one project."""
         return r[m.Infra.GateResult].ok(
-            self._run_gate(c.Infra.Gates.FORMAT, project_dir).result,
+            self._run_gate(c.Infra.FORMAT, project_dir).result,
         )
 
     def generate_markdown_report(
@@ -108,7 +108,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
     def lint(self, project_dir: Path) -> r[m.Infra.GateResult]:
         """Run lint checks for one project."""
         return r[m.Infra.GateResult].ok(
-            self._run_gate(c.Infra.Gates.LINT, project_dir).result,
+            self._run_gate(c.Infra.LINT, project_dir).result,
         )
 
     @staticmethod
@@ -125,7 +125,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         )
         _ = subs[c.Infra.Verbs.RUN].add_argument(
             "--gates",
-            default=c.Infra.Gates.DEFAULT_CSV,
+            default=c.Infra.DEFAULT_CSV,
         )
         _ = subs[c.Infra.Verbs.RUN].add_argument(
             "--project",
@@ -188,7 +188,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
             include_apply=False,
         )
         _ = parser.add_argument("projects", nargs="*")
-        _ = parser.add_argument("--gates", default=c.Infra.Gates.DEFAULT_CSV)
+        _ = parser.add_argument("--gates", default=c.Infra.DEFAULT_CSV)
         _ = parser.add_argument(
             "--reports-dir",
             default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/check",
@@ -273,11 +273,11 @@ class FlextInfraWorkspaceChecker(s[bool]):
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         md_path = report_base / "check-report.md"
         _ = md_path.write_text(
-            self.generate_markdown_report(results, resolved_gates, timestamp),
+            u.Infra.generate_markdown(results, resolved_gates, timestamp),
             encoding=c.Infra.Encoding.DEFAULT,
         )
         sarif_path = report_base / "check-report.sarif"
-        sarif_payload = self.generate_sarif_report(results, resolved_gates)
+        sarif_payload = u.Infra.generate_sarif(results, resolved_gates)
         json_write_result = u.Infra.write_json(sarif_path, sarif_payload)
         if json_write_result.is_failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
@@ -325,56 +325,56 @@ class FlextInfraWorkspaceChecker(s[bool]):
         project_dir: Path,
         reports_dir: Path | None = None,
     ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.PYREFLY, project_dir, reports_dir)
+        return self._run_gate(c.Infra.PYREFLY, project_dir, reports_dir)
 
     def _run_mypy(
         self,
         project_dir: Path,
         reports_dir: Path | None = None,
     ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.MYPY, project_dir, reports_dir)
+        return self._run_gate(c.Infra.MYPY, project_dir, reports_dir)
 
     def _run_pyright(
         self,
         project_dir: Path,
         reports_dir: Path | None = None,
     ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.PYRIGHT, project_dir, reports_dir)
+        return self._run_gate(c.Infra.PYRIGHT, project_dir, reports_dir)
 
     def _run_bandit(
         self,
         project_dir: Path,
         reports_dir: Path | None = None,
     ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.SECURITY, project_dir, reports_dir)
+        return self._run_gate(c.Infra.SECURITY, project_dir, reports_dir)
 
     def _run_markdown(
         self,
         project_dir: Path,
         reports_dir: Path | None = None,
     ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.MARKDOWN, project_dir, reports_dir)
+        return self._run_gate(c.Infra.MARKDOWN, project_dir, reports_dir)
 
     def _run_go(
         self,
         project_dir: Path,
         reports_dir: Path | None = None,
     ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.GO, project_dir, reports_dir)
+        return self._run_gate(c.Infra.GO, project_dir, reports_dir)
 
     def _run_ruff_format(
         self,
         project_dir: Path,
         reports_dir: Path | None = None,
     ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.FORMAT, project_dir, reports_dir)
+        return self._run_gate(c.Infra.FORMAT, project_dir, reports_dir)
 
     def _run_ruff_lint(
         self,
         project_dir: Path,
         reports_dir: Path | None = None,
     ) -> m.Infra.GateExecution:
-        return self._run_gate(c.Infra.Gates.LINT, project_dir, reports_dir)
+        return self._run_gate(c.Infra.LINT, project_dir, reports_dir)
 
     def _run_gate(
         self,

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
+
+from flext_infra import t
 
 
 class FlextInfraUnusedModelRemover(cst.CSTTransformer):
@@ -15,7 +17,7 @@ class FlextInfraUnusedModelRemover(cst.CSTTransformer):
         self,
         *,
         unused_classes: frozenset[str],
-        on_change: Callable[[str], None] | None = None,
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize class-removal transformer for known unused models."""
         self._unused_classes = unused_classes

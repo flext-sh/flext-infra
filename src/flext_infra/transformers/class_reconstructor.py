@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
@@ -18,7 +18,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
     def __init__(
         self,
         order_config: Sequence[t.Infra.ContainerDict],
-        on_change: Callable[[str], None] | None = None,
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with rule order config and optional change callback."""
         try:

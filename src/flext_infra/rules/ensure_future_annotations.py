@@ -7,9 +7,8 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
-from flext_core import FlextTypes as t
 
-from flext_infra import FlextInfraRefactorRule
+from flext_infra import FlextInfraRefactorRule, t
 
 
 class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):

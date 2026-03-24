@@ -19,11 +19,11 @@ class FlextInfraPyreflyGate(FlextInfraGate):
 
     """Pyrefly quality gate."""
 
-    gate_id = c.Infra.Gates.PYREFLY
+    gate_id = c.Infra.PYREFLY
     gate_name = "Pyrefly"
     can_fix = False
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.PYREFLY][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.PYREFLY][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.PYREFLY][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.PYREFLY][1]
 
     @override
     def check(
@@ -36,12 +36,12 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         cmd = [
             sys.executable,
             "-m",
-            c.Cli.PYREFLY,
-            c.Cli.RuffCmd.CHECK,
+            c.Infra.PYREFLY,
+            c.Infra.CHECK,
             "--config",
             c.Infra.Files.PYPROJECT_FILENAME,
             "--output-format",
-            c.Cli.OUTPUT_JSON,
+            c.Infra.OUTPUT_JSON,
             "-o",
             str(json_file),
             "--summary=none",
@@ -84,7 +84,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                         file="?",
                         line=0,
                         column=0,
-                        code=c.Infra.Gates.PYREFLY,
+                        code=c.Infra.PYREFLY,
                         message=f"Pyrefly reported {count} error(s)",
                     ),
                 ] * count

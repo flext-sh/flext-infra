@@ -130,7 +130,7 @@ class FlextInfraDependencyDetectorRuntime:
                     for package in to_add:
                         run = detector.runner.run_raw(
                             [
-                                c.Cli.POETRY,
+                                c.Infra.POETRY,
                                 "add",
                                 "--group",
                                 c.Infra.Directories.TYPINGS,

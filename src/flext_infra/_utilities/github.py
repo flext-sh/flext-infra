@@ -374,7 +374,7 @@ class FlextInfraUtilitiesGithub(
         report_dir = cls.get_report_dir(
             workspace_root,
             c.Infra.ReportKeys.WORKSPACE,
-            c.Cli.GhCmd.PR,
+            c.Infra.PR,
         )
         with contextlib.suppress(OSError):
             report_dir.mkdir(parents=True, exist_ok=True)
@@ -393,7 +393,7 @@ class FlextInfraUtilitiesGithub(
                 "--draft",
                 pr_args.get("draft", "0"),
                 "--merge-method",
-                pr_args.get("merge_method", c.Cli.GhCmd.SQUASH),
+                pr_args.get("merge_method", c.Infra.SQUASH),
                 "--auto",
                 pr_args.get("auto", "0"),
                 "--delete-branch",
@@ -405,10 +405,10 @@ class FlextInfraUtilitiesGithub(
             ]
         else:
             command = [
-                c.Cli.MAKE,
+                c.Infra.MAKE,
                 "-C",
                 str(repo_root),
-                c.Cli.GhCmd.PR,
+                c.Infra.PR,
                 f"PR_ACTION={pr_args.get('action', 'status')}",
                 f"PR_BASE={pr_args.get('base', 'main')}",
                 f"PR_DRAFT={pr_args.get('draft', '0')}",

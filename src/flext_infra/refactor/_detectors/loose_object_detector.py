@@ -11,28 +11,31 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import libcst as cst
 from libcst.metadata import CodeRange
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
+    FlextInfraNamespaceFacadeScanner,
     c,
     m,
     p,
     u,
 )
 
-from .namespace_facade_scanner import FlextInfraNamespaceFacadeScanner
+from ._base_detector import FlextInfraScanFileMixin
 
 
-class FlextInfraLooseObjectDetector(p.Infra.Scanner):
+class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detector for loose top-level objects outside namespace classes.
 
     Identifies module-level functions, constants, and type aliases that should be
     organized inside appropriate namespace classes (e.g., ProjectUtilities, ProjectConstants).
     """
+
+    _rule_id: ClassVar[str] = "namespace.loose_object"
 
     ALLOWED_TOP_LEVEL = frozenset({"__all__", "__version__", "__version_info__"})
 
@@ -40,7 +43,7 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
         self,
         *,
         project_name: str,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraLooseObjectDetector scanner.
 
@@ -50,39 +53,40 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
 
         """
         super().__init__()
-        self._project_name = project_name
         self._parse_failures = parse_failures
+        self._project_name = project_name
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for loose top-level t.NormalizedValue violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format a loose object violation message.
+
+        Args:
+            violation: The violation model with kind and name fields.
+
+        Returns:
+            Human-readable message for the loose object violation.
+
+        """
+        fields = violation.model_dump()
+        kind = fields.get("kind", "")
+        name = fields.get("name", "")
+        return f"Loose {kind} '{name}' outside namespace"
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect loose object violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected loose t.NormalizedValue violations.
+            Sequence of LooseObjectViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             project_name=self._project_name,
             _parse_failures=self._parse_failures,
-        )
-        return m.Infra.ScanResult(
-            file_path=file_path,
-            violations=[
-                m.Infra.ScanViolation(
-                    line=violation.line,
-                    message=(
-                        f"Loose {violation.kind} '{violation.name}' outside namespace"
-                    ),
-                    severity="error",
-                    rule_id="namespace.loose_object",
-                )
-                for violation in violations
-            ],
-            detector_name=self.__class__.__name__,
         )
 
     @classmethod
@@ -91,8 +95,8 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
         *,
         file_path: Path,
         project_name: str,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.LooseObjectViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.LooseObjectViolation]:
         """Detect loose objects in a file.
 
         Args:
@@ -116,8 +120,8 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
         *,
         file_path: Path,
         project_name: str,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.LooseObjectViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.LooseObjectViolation]:
         """Scan a file for loose top-level objects outside namespace classes.
 
         Args:
@@ -142,7 +146,7 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
         class_stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )
-        violations: MutableSequence[nem.LooseObjectViolation] = []
+        violations: MutableSequence[m.Infra.LooseObjectViolation] = []
         for stmt in module.body:
             violation = cls._check_statement(
                 stmt=stmt,
@@ -164,7 +168,7 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
         file_path: Path,
         class_stem: str,
         positions: Mapping[cst.CSTNode, CodeRange],
-    ) -> nem.LooseObjectViolation | None:
+    ) -> m.Infra.LooseObjectViolation | None:
         """Check a statement for loose objects outside namespace classes.
 
         Args:
@@ -178,37 +182,38 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
             LooseObjectViolation if a loose t.NormalizedValue is found, None otherwise.
 
         """
-        if isinstance(stmt, cst.SimpleStatementLine):
-            for small_stmt in stmt.body:
-                violation = cls._check_small_statement(
-                    stmt=small_stmt,
-                    file_path=file_path,
-                    class_stem=class_stem,
-                    positions=positions,
+        match stmt:
+            case cst.SimpleStatementLine():
+                for small_stmt in stmt.body:
+                    violation = cls._check_small_statement(
+                        stmt=small_stmt,
+                        file_path=file_path,
+                        class_stem=class_stem,
+                        positions=positions,
+                    )
+                    if violation is not None:
+                        return violation
+                return None
+            case cst.If():
+                return None
+            case cst.ClassDef():
+                _ = namespace_classes  # membership check: all paths return None
+                return None
+            case cst.FunctionDef():
+                name = stmt.name.value
+                if name.startswith("__") and name.endswith("__"):
+                    return None
+                if name.startswith("_"):
+                    return None
+                return m.Infra.LooseObjectViolation.create(
+                    file=str(file_path),
+                    line=u.Infra.cst_line_for(node=stmt, positions=positions),
+                    name=name,
+                    kind="function",
+                    suggestion=f"{class_stem}Utilities",
                 )
-                if violation is not None:
-                    return violation
-            return None
-        if isinstance(stmt, cst.If):
-            return None
-        if isinstance(stmt, cst.ClassDef):
-            if stmt.name.value in namespace_classes:
+            case _:
                 return None
-            return None
-        if isinstance(stmt, cst.FunctionDef):
-            name = stmt.name.value
-            if name.startswith("__") and name.endswith("__"):
-                return None
-            if name.startswith("_"):
-                return None
-            return nem.LooseObjectViolation.create(
-                file=str(file_path),
-                line=u.Infra.cst_line_for(node=stmt, positions=positions),
-                name=name,
-                kind="function",
-                suggestion=f"{class_stem}Utilities",
-            )
-        return None
 
     @classmethod
     def _check_small_statement(
@@ -218,7 +223,7 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
         file_path: Path,
         class_stem: str,
         positions: Mapping[cst.CSTNode, CodeRange],
-    ) -> nem.LooseObjectViolation | None:
+    ) -> m.Infra.LooseObjectViolation | None:
         """Check a small statement for loose objects.
 
         Args:
@@ -245,7 +250,7 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
             if name.startswith("_"):
                 return None
             if c.Infra.NAMESPACE_CONSTANT_PATTERN.match(name):
-                return nem.LooseObjectViolation.create(
+                return m.Infra.LooseObjectViolation.create(
                     file=str(file_path),
                     line=u.Infra.cst_line_for(node=stmt, positions=positions),
                     name=name,
@@ -265,7 +270,7 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
                 if name.startswith("_"):
                     return None
                 if c.Infra.NAMESPACE_CONSTANT_PATTERN.match(name):
-                    return nem.LooseObjectViolation.create(
+                    return m.Infra.LooseObjectViolation.create(
                         file=str(file_path),
                         line=u.Infra.cst_line_for(node=stmt, positions=positions),
                         name=name,
@@ -274,7 +279,7 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
                     )
         name = cls._type_alias_name(stmt=stmt)
         if name and name not in cls.ALLOWED_TOP_LEVEL:
-            return nem.LooseObjectViolation.create(
+            return m.Infra.LooseObjectViolation.create(
                 file=str(file_path),
                 line=u.Infra.cst_line_for(node=stmt, positions=positions),
                 name=name,

@@ -11,27 +11,29 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import ClassVar, override
 
 import libcst as cst
+from pydantic import BaseModel
 
 from flext_infra import (
-    FlextInfraNamespaceEnforcerModels as nem,
     c,
+    m,
     p,
     u,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import m
+from ._base_detector import FlextInfraScanFileMixin
 
 
-class FlextInfraManualProtocolDetector(p.Infra.Scanner):
+class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detector for Protocol classes outside canonical locations.
 
     Scans for typing.Protocol subclasses that are defined outside the canonical
     protocol files/directories where they should be centralized.
     """
+
+    _rule_id: ClassVar[str] = "namespace.manual_protocol"
 
     CANONICAL_FILE_NAMES = c.Infra.NAMESPACE_CANONICAL_PROTOCOL_FILES
     CANONICAL_DIR_NAME = c.Infra.NAMESPACE_CANONICAL_PROTOCOL_DIR
@@ -39,7 +41,7 @@ class FlextInfraManualProtocolDetector(p.Infra.Scanner):
     def __init__(
         self,
         *,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> None:
         """Initialize the FlextInfraManualProtocolDetector scanner.
 
@@ -51,29 +53,35 @@ class FlextInfraManualProtocolDetector(p.Infra.Scanner):
         self._parse_failures = parse_failures
 
     @override
-    def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file for Protocol class placement violations.
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format a protocol placement violation message.
+
+        Args:
+            violation: The violation model with name and suggestion fields.
+
+        Returns:
+            Human-readable message for the protocol placement violation.
+
+        """
+        fields = violation.model_dump()
+        name = fields.get("name", "")
+        suggestion = fields.get("suggestion", "")
+        return f"Protocol class '{name}' must be centralized ({suggestion})"
+
+    @override
+    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+        """Collect protocol placement violations for the given file.
 
         Args:
             file_path: Path to the Python file to scan.
 
         Returns:
-            ScanResult containing detected protocol violations.
+            Sequence of ManualProtocolViolation objects found.
 
         """
-        violations = type(self).scan_file_impl(
+        return type(self).scan_file_impl(
             file_path=file_path,
             _parse_failures=self._parse_failures,
-        )
-        return u.Infra.build_scan_result(
-            file_path=file_path,
-            detector_name=self.__class__.__name__,
-            rule_id="namespace.manual_protocol",
-            violations=violations,
-            message_builder=lambda violation: (
-                f"Protocol class '{violation.name}' must be centralized "
-                f"({violation.suggestion})"
-            ),
         )
 
     @classmethod
@@ -81,8 +89,8 @@ class FlextInfraManualProtocolDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.ManualProtocolViolation]:
+        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations.
 
         Args:
@@ -103,8 +111,8 @@ class FlextInfraManualProtocolDetector(p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        _parse_failures: Sequence[nem.ParseFailureViolation] | None = None,
-    ) -> Sequence[nem.ManualProtocolViolation]:
+        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[m.Infra.ManualProtocolViolation]:
         """Scan a file for Protocol classes outside canonical locations.
 
         Args:
@@ -126,13 +134,13 @@ class FlextInfraManualProtocolDetector(p.Infra.Scanner):
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: MutableSequence[nem.ManualProtocolViolation] = []
+        violations: MutableSequence[m.Infra.ManualProtocolViolation] = []
         for stmt in module.body:
             if not isinstance(stmt, cst.ClassDef):
                 continue
             if cls.is_protocol_class(stmt):
                 violations.append(
-                    nem.ManualProtocolViolation.create(
+                    m.Infra.ManualProtocolViolation.create(
                         file=str(file_path),
                         line=u.Infra.cst_line_for(node=stmt, positions=positions),
                         name=stmt.name.value,

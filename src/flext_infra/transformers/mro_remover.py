@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence
+from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
+
+from flext_infra import t
 
 
 class FlextInfraRefactorMRORemover(cst.CSTTransformer):
     """Remove nested class bases that redundantly reference the parent class."""
 
-    def __init__(self, on_change: Callable[[str], None] | None = None) -> None:
+    def __init__(self, on_change: t.Infra.ChangeCallback = None) -> None:
         """Initialize optional callback for emitted change messages."""
         self._on_change = on_change
         self.changes: MutableSequence[str] = []

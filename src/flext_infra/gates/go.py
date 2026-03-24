@@ -15,11 +15,11 @@ class FlextInfraGoGate(FlextInfraGate):
 
     """Go quality gate."""
 
-    gate_id = c.Infra.Gates.GO
+    gate_id = c.Infra.GO
     gate_name = "Go"
     can_fix = False
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.GO][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.GO][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.GO][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.GO][1]
 
     @override
     def check(
@@ -40,7 +40,7 @@ class FlextInfraGoGate(FlextInfraGate):
         issues: MutableSequence[m.Infra.Issue] = []
         raw_output = ""
         vet_result = self._run(
-            [c.Cli.GOVET, "vet", "./..."],
+            [c.Infra.GOVET, "vet", "./..."],
             project_dir,
             timeout=c.Infra.Timeouts.CI,
         )
@@ -56,7 +56,7 @@ class FlextInfraGoGate(FlextInfraGate):
                     file=match.group("file"),
                     line=int(match.group("line")),
                     column=int(match.group("col") or 1),
-                    code=c.Infra.Gates.GOVET,
+                    code=c.Infra.GOVET,
                     message=match.group("msg"),
                 ),
             )
@@ -66,7 +66,7 @@ class FlextInfraGoGate(FlextInfraGate):
                     file=".",
                     line=1,
                     column=1,
-                    code=c.Infra.Gates.GOVET,
+                    code=c.Infra.GOVET,
                     message=(
                         vet_result.stdout or vet_result.stderr or "go vet failed"
                     ).strip(),
@@ -76,7 +76,7 @@ class FlextInfraGoGate(FlextInfraGate):
         if go_files:
             fmt_result = self._run(
                 [
-                    c.Cli.GOFMT,
+                    c.Infra.GOFMT,
                     "-l",
                     *[str(path.relative_to(project_dir)) for path in go_files],
                 ],
@@ -98,7 +98,7 @@ class FlextInfraGoGate(FlextInfraGate):
                         file=cleaned,
                         line=1,
                         column=1,
-                        code=c.Infra.Gates.GOFMT,
+                        code=c.Infra.GOFMT,
                         message="File is not gofmt-formatted",
                     ),
                 )

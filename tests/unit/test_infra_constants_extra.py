@@ -113,14 +113,14 @@ class TestFlextInfraConstantsConsistency:
 
     def test_all_gate_values_are_lowercase(self) -> None:
         gates = [
-            c.Infra.Gates.LINT,
-            c.Infra.Gates.FORMAT,
-            c.Infra.Gates.PYREFLY,
-            c.Infra.Gates.MYPY,
-            c.Infra.Gates.PYRIGHT,
-            c.Infra.Gates.SECURITY,
-            c.Infra.Gates.MARKDOWN,
-            c.Infra.Gates.GO,
+            c.Infra.LINT,
+            c.Infra.FORMAT,
+            c.Infra.PYREFLY,
+            c.Infra.MYPY,
+            c.Infra.PYRIGHT,
+            c.Infra.SECURITY,
+            c.Infra.MARKDOWN,
+            c.Infra.GO,
         ]
         for gate in gates:
             tm.that(gate.islower(), eq=True, msg=f"Gate {gate} should be lowercase")

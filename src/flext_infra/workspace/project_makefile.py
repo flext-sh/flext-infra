@@ -11,14 +11,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
-import tempfile
 import tomllib
 from pathlib import Path
 from typing import NamedTuple
 
-from flext_infra import FlextInfraBaseMkGenerator, r
-
-_ENCODING = "utf-8"
+from flext_infra import FlextInfraBaseMkGenerator, c, r, u
 
 # Legacy sentinel used by the previous sentinel-based approach.
 # Present only during migration; the new generated Makefile has no sentinel.
@@ -86,7 +83,7 @@ class FlextInfraProjectMakefileUpdater:
         # Migration: move any legacy inline custom section to custom.mk
         if makefile_path.exists():
             try:
-                existing = makefile_path.read_text(encoding=_ENCODING)
+                existing = makefile_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
 
@@ -99,8 +96,12 @@ class FlextInfraProjectMakefileUpdater:
                     migrate_result.error or "custom.mk migration failed",
                 )
 
-            existing_hash = hashlib.sha256(existing.encode(_ENCODING)).hexdigest()
-            new_hash = hashlib.sha256(new_content.encode(_ENCODING)).hexdigest()
+            existing_hash = hashlib.sha256(
+                existing.encode(c.Infra.Encoding.DEFAULT)
+            ).hexdigest()
+            new_hash = hashlib.sha256(
+                new_content.encode(c.Infra.Encoding.DEFAULT)
+            ).hexdigest()
             if existing_hash == new_hash:
                 return r[bool].ok(False)
 
@@ -195,39 +196,12 @@ class FlextInfraProjectMakefileUpdater:
             return r[bool].ok(False)
 
         custom_content = "\n".join(custom_lines) + "\n"
-        try:
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                dir=str(custom_mk_path.parent),
-                delete=False,
-                encoding=_ENCODING,
-                suffix=".tmp",
-            ) as tmp:
-                _ = tmp.write(custom_content)
-                tmp_path = Path(tmp.name)
-            _ = tmp_path.replace(custom_mk_path)
-        except OSError as exc:
-            return r[bool].fail(f"custom.mk write failed: {exc}")
-        return r[bool].ok(True)
+        return u.Infra.atomic_write_file(custom_mk_path, custom_content)
 
     @staticmethod
     def _atomic_write(target: Path, content: str) -> r[bool]:
         """Write content to target via atomic temp-file rename."""
-        try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                dir=str(target.parent),
-                delete=False,
-                encoding=_ENCODING,
-                suffix=".tmp",
-            ) as tmp:
-                _ = tmp.write(content)
-                tmp_path = Path(tmp.name)
-            _ = tmp_path.replace(target)
-        except OSError as exc:
-            return r[bool].fail(f"atomic write failed: {exc}")
-        return r[bool].ok(True)
+        return u.Infra.atomic_write_file(target, content)
 
 
 __all__ = ["FlextInfraProjectMakefileUpdater"]

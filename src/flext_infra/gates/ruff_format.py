@@ -14,11 +14,11 @@ from flext_infra import FlextInfraGate, c, m
 class FlextInfraRuffFormatGate(FlextInfraGate):
     """Gate for Ruff formatter checks and fixes."""
 
-    gate_id = c.Infra.Gates.FORMAT
+    gate_id = c.Infra.FORMAT
     gate_name = "Ruff Format"
     can_fix = True
-    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.FORMAT][0]
-    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.Gates.FORMAT][1]
+    tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][0]
+    tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][1]
 
     @override
     def check(
@@ -34,8 +34,8 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             [
                 sys.executable,
                 "-m",
-                c.Cli.RUFF,
-                c.Cli.RuffCmd.FORMAT,
+                c.Infra.RUFF,
+                c.Infra.FORMAT,
                 "--check",
                 *targets,
                 "--quiet",
@@ -60,7 +60,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                             file=file_path,
                             line=0,
                             column=0,
-                            code=c.Infra.Gates.FORMAT,
+                            code=c.Infra.FORMAT,
                             message="Would be reformatted",
                         ),
                     )
@@ -75,7 +75,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                             file=path,
                             line=0,
                             column=0,
-                            code=c.Infra.Gates.FORMAT,
+                            code=c.Infra.FORMAT,
                             message="Would be reformatted",
                         ),
                     )
@@ -96,7 +96,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         result = self._run(
-            [sys.executable, "-m", c.Cli.RUFF, c.Cli.RuffCmd.FORMAT, "."],
+            [sys.executable, "-m", c.Infra.RUFF, c.Infra.FORMAT, "."],
             project_dir,
         )
         return self._build_gate_result(
