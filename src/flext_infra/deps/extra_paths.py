@@ -60,10 +60,10 @@ class FlextInfraExtraPathsManager:
 
     def path_dep_paths_pep621(self, doc: TOMLDocument) -> t.StrSequence:
         """Extract path dependency paths from PEP 621 project.dependencies."""
-        project_table = self._as_table(self._table_get(doc, c.Infra.Toml.PROJECT))
+        project_table = self._as_table(self._table_get(doc, c.Infra.PROJECT))
         if project_table is None:
             return []
-        deps_list = self._table_get(project_table, c.Infra.Toml.DEPENDENCIES)
+        deps_list = self._table_get(project_table, c.Infra.DEPENDENCIES)
         deps_items = self._as_string_list(deps_list)
         paths: MutableSequence[str] = []
         for item in deps_items:
@@ -81,14 +81,14 @@ class FlextInfraExtraPathsManager:
 
     def path_dep_paths_poetry(self, doc: TOMLDocument) -> t.StrSequence:
         """Extract path dependency paths from Poetry tool.poetry.dependencies."""
-        tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
+        tool_table = self._as_table(self._table_get(doc, c.Infra.TOOL))
         if tool_table is None:
             return []
-        poetry_table = self._as_table(self._table_get(tool_table, c.Infra.Toml.POETRY))
+        poetry_table = self._as_table(self._table_get(tool_table, c.Infra.POETRY))
         if poetry_table is None:
             return []
         deps_table = self._as_table(
-            self._table_get(poetry_table, c.Infra.Toml.DEPENDENCIES),
+            self._table_get(poetry_table, c.Infra.DEPENDENCIES),
         )
         if deps_table is None:
             return []
@@ -97,7 +97,7 @@ class FlextInfraExtraPathsManager:
             dep_table = self._as_table(self._table_get(deps_table, dep_key))
             if dep_table is None:
                 continue
-            dep_path = self._table_get(dep_table, c.Infra.Toml.PATH)
+            dep_path = self._table_get(dep_table, c.Infra.PATH)
             if isinstance(dep_path, str) and dep_path:
                 dep_path = dep_path.strip()
                 if dep_path.startswith("./"):
@@ -367,17 +367,17 @@ class FlextInfraExtraPathsManager:
             project_dir=project_dir,
             is_root=is_root,
         )
-        tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
+        tool_table = self._as_table(self._table_get(doc, c.Infra.TOOL))
         if tool_table is None:
             return r[bool].fail(f"no [tool] section in {pyproject_path}")
         pyright_table = self._as_table(
-            self._table_get(tool_table, c.Infra.Toml.PYRIGHT),
+            self._table_get(tool_table, c.Infra.PYRIGHT),
         )
         if pyright_table is None:
             return r[bool].fail(f"no [tool.pyright] section in {pyproject_path}")
-        mypy_table = self._as_table(self._table_get(tool_table, c.Infra.Toml.MYPY))
+        mypy_table = self._as_table(self._table_get(tool_table, c.Infra.MYPY))
         self._as_table(
-            self._table_get(tool_table, c.Infra.Toml.PYREFLY),
+            self._table_get(tool_table, c.Infra.PYREFLY),
         )
         changed = False
         current_pyright = self._as_string_list(
@@ -392,12 +392,12 @@ class FlextInfraExtraPathsManager:
             )
             if current_mypy != mypy_path:
                 mypy_table["mypy_path"] = mypy_path
-                tool_table[c.Infra.Toml.MYPY] = mypy_table
+                tool_table[c.Infra.MYPY] = mypy_table
                 changed = True
         # NOTE: pyrefly search-path is handled by FlextInfraEnsurePyreflyConfigPhase (SSOT).
         if changed:
-            tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
-            doc[c.Infra.Toml.TOOL] = tool_table
+            tool_table[c.Infra.PYRIGHT] = pyright_table
+            doc[c.Infra.TOOL] = tool_table
         if changed and (not dry_run):
             write_result = u.Infra.write_document(pyproject_path, doc)
             if write_result.is_failure:
@@ -431,17 +431,17 @@ class FlextInfraExtraPathsManager:
             project_dir=project_dir,
             is_root=is_root,
         )
-        tool_table = self._as_table(self._table_get(doc, c.Infra.Toml.TOOL))
+        tool_table = self._as_table(self._table_get(doc, c.Infra.TOOL))
         if tool_table is None:
             return changes
         pyright_table = self._as_table(
-            self._table_get(tool_table, c.Infra.Toml.PYRIGHT),
+            self._table_get(tool_table, c.Infra.PYRIGHT),
         )
         if pyright_table is None:
             return changes
-        mypy_table = self._as_table(self._table_get(tool_table, c.Infra.Toml.MYPY))
+        mypy_table = self._as_table(self._table_get(tool_table, c.Infra.MYPY))
         self._as_table(
-            self._table_get(tool_table, c.Infra.Toml.PYREFLY),
+            self._table_get(tool_table, c.Infra.PYREFLY),
         )
         current_pyright = self._as_string_list(
             self._table_get(pyright_table, "extraPaths"),
@@ -455,12 +455,12 @@ class FlextInfraExtraPathsManager:
             )
             if current_mypy != mypy_path:
                 mypy_table["mypy_path"] = mypy_path
-                tool_table[c.Infra.Toml.MYPY] = mypy_table
+                tool_table[c.Infra.MYPY] = mypy_table
                 changes.append("synchronized mypy mypy_path")
         # NOTE: pyrefly search-path is handled by FlextInfraEnsurePyreflyConfigPhase (SSOT).
         if changes:
-            tool_table[c.Infra.Toml.PYRIGHT] = pyright_table
-            doc[c.Infra.Toml.TOOL] = tool_table
+            tool_table[c.Infra.PYRIGHT] = pyright_table
+            doc[c.Infra.TOOL] = tool_table
         return changes
 
     def sync_extra_paths(

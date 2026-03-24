@@ -92,13 +92,13 @@ class FlextInfraUtilitiesTomlParse:
     def project_dev_groups(doc: tomlkit.TOMLDocument) -> Mapping[str, t.StrSequence]:
         """Extract optional-dependencies groups from project table."""
         project_raw: t.Infra.InfraValue | Item | Container | None = None
-        if c.Infra.Toml.PROJECT in doc:
-            project_raw = doc[c.Infra.Toml.PROJECT]
+        if c.Infra.PROJECT in doc:
+            project_raw = doc[c.Infra.PROJECT]
         if not isinstance(project_raw, (Table, dict)):
             return {}
         optional_raw: t.Infra.InfraValue | Item | None = None
-        if c.Infra.Toml.OPTIONAL_DEPENDENCIES in project_raw:
-            optional_raw = project_raw[c.Infra.Toml.OPTIONAL_DEPENDENCIES]
+        if c.Infra.OPTIONAL_DEPENDENCIES in project_raw:
+            optional_raw = project_raw[c.Infra.OPTIONAL_DEPENDENCIES]
         if not isinstance(optional_raw, (Table, dict)):
             return {}
         opt_deps: Table | Mapping[str, t.Infra.InfraValue] = optional_raw
@@ -110,10 +110,10 @@ class FlextInfraUtilitiesTomlParse:
             return FlextInfraUtilitiesToml.as_string_list(value)
 
         return {
-            c.Infra.Toml.DEV: _group_values(c.Infra.Toml.DEV),
-            c.Infra.Directories.DOCS: _group_values(c.Infra.Toml.DOCS),
-            c.Infra.Gates.SECURITY: _group_values(c.Infra.Toml.SECURITY),
-            c.Infra.Toml.TEST: _group_values(c.Infra.Toml.TEST),
+            c.Infra.DEV: _group_values(c.Infra.DEV),
+            c.Infra.Directories.DOCS: _group_values(c.Infra.DOCS),
+            c.Infra.Gates.SECURITY: _group_values(c.Infra.SECURITY),
+            c.Infra.TEST: _group_values(c.Infra.TEST),
             c.Infra.Directories.TYPINGS: _group_values(c.Infra.Directories.TYPINGS),
         }
 
@@ -122,10 +122,10 @@ class FlextInfraUtilitiesTomlParse:
         """Merge all dev dependency groups from root pyproject."""
         groups = FlextInfraUtilitiesTomlParse.project_dev_groups(root_doc)
         merged = [
-            *groups.get(c.Infra.Toml.DEV, []),
+            *groups.get(c.Infra.DEV, []),
             *groups.get(c.Infra.Directories.DOCS, []),
             *groups.get(c.Infra.Gates.SECURITY, []),
-            *groups.get(c.Infra.Toml.TEST, []),
+            *groups.get(c.Infra.TEST, []),
             *groups.get(c.Infra.Directories.TYPINGS, []),
         ]
         return FlextInfraUtilitiesTomlParse.dedupe_specs(merged)

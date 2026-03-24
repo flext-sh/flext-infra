@@ -122,12 +122,12 @@ class FlextInfraDependencyPathSync:
         mode: str,
         internal_names: set[str],
     ) -> t.StrSequence:
-        project_raw = self._table_get(doc, c.Infra.Toml.PROJECT)
+        project_raw = self._table_get(doc, c.Infra.PROJECT)
         if not isinstance(project_raw, Table):
             return []
         project_section: Table = project_raw
         deps: t.StrSequence = u.Infra.as_string_list(
-            self._table_get(project_section, c.Infra.Toml.DEPENDENCIES),
+            self._table_get(project_section, c.Infra.DEPENDENCIES),
         )
         if not deps:
             return []
@@ -160,7 +160,7 @@ class FlextInfraDependencyPathSync:
             else:
                 updated_deps.append(item)
         if changes:
-            project_section[c.Infra.Toml.DEPENDENCIES] = updated_deps
+            project_section[c.Infra.DEPENDENCIES] = updated_deps
         return changes
 
     @staticmethod
@@ -170,20 +170,20 @@ class FlextInfraDependencyPathSync:
         is_root: bool,
         mode: str,
     ) -> t.StrSequence:
-        tool_raw = FlextInfraDependencyPathSync._table_get(doc, c.Infra.Toml.TOOL)
+        tool_raw = FlextInfraDependencyPathSync._table_get(doc, c.Infra.TOOL)
         if not isinstance(tool_raw, Table):
             return []
         tool_section: Table = tool_raw
         poetry_raw = FlextInfraDependencyPathSync._table_get(
             tool_section,
-            c.Infra.Toml.POETRY,
+            c.Infra.POETRY,
         )
         if not isinstance(poetry_raw, Table):
             return []
         poetry_section: Table = poetry_raw
         deps_raw = FlextInfraDependencyPathSync._table_get(
             poetry_section,
-            c.Infra.Toml.DEPENDENCIES,
+            c.Infra.DEPENDENCIES,
         )
         if not isinstance(deps_raw, Table):
             return []
@@ -192,10 +192,10 @@ class FlextInfraDependencyPathSync:
         for dep_key_raw in deps:
             dep_key = dep_key_raw
             value = deps[dep_key_raw]
-            if not isinstance(value, Table) or c.Infra.Toml.PATH not in value:
+            if not isinstance(value, Table) or c.Infra.PATH not in value:
                 continue
             value_map: Table = value
-            raw_path = value_map[c.Infra.Toml.PATH]
+            raw_path = value_map[c.Infra.PATH]
             if not isinstance(raw_path, str) or not raw_path.strip():
                 continue
             dep_name = FlextInfraDependencyPathSync.extract_dep_name(raw_path)
@@ -208,7 +208,7 @@ class FlextInfraDependencyPathSync:
                 changes.append(
                     f"  Poetry: {dep_key}.path = {raw_path!r} -> {new_path!r}",
                 )
-                value_map[c.Infra.Toml.PATH] = new_path
+                value_map[c.Infra.PATH] = new_path
         return changes
 
     def rewrite_dep_paths(
@@ -262,9 +262,9 @@ class FlextInfraDependencyPathSync:
             root_data_result = self._read_document(root_pyproject)
             if root_data_result.is_success:
                 root_data: TOMLDocument = root_data_result.value
-                root_project = self._table_get(root_data, c.Infra.Toml.PROJECT)
+                root_project = self._table_get(root_data, c.Infra.PROJECT)
                 if isinstance(root_project, Mapping):
-                    root_name = self._mapping_str_value(root_project, c.Infra.Toml.NAME)
+                    root_name = self._mapping_str_value(root_project, c.Infra.NAME)
                     if root_name is not None:
                         internal_names.add(root_name)
 
@@ -317,10 +317,10 @@ class FlextInfraDependencyPathSync:
             if data_result.is_failure:
                 continue
             project_data: TOMLDocument = data_result.value
-            project_obj = self._table_get(project_data, c.Infra.Toml.PROJECT)
+            project_obj = self._table_get(project_data, c.Infra.PROJECT)
             if not isinstance(project_obj, Mapping):
                 continue
-            project_name = self._mapping_str_value(project_obj, c.Infra.Toml.NAME)
+            project_name = self._mapping_str_value(project_obj, c.Infra.NAME)
             if project_name is not None:
                 internal_names.add(project_name)
 

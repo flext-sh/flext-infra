@@ -62,7 +62,7 @@ class FlextInfraUtilitiesSafety:
         if not FlextInfraUtilitiesGit.git_is_repo(workspace_root):
             return r[bool].ok(True)
 
-        command = [c.Infra.Cli.GIT, "stash", "pop"]
+        command = [c.Cli.GIT, "stash", "pop"]
         if stash_ref:
             command.append(stash_ref)
         return FlextInfraUtilitiesSubprocess.run_checked(command, cwd=workspace_root)

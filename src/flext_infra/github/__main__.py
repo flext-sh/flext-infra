@@ -236,15 +236,15 @@ def run(argv: t.StrSequence | None = None) -> int:
         "GitHub integration services",
         subcommands={
             "workflows": "Sync GitHub workflow files across workspace",
-            c.Infra.Toml.LINT_SECTION: "Lint GitHub workflow files",
-            c.Infra.Cli.GhCmd.PR: "Manage pull requests for a single project",
+            c.Infra.LINT_SECTION: "Lint GitHub workflow files",
+            c.Cli.GhCmd.PR: "Manage pull requests for a single project",
             "pr-workspace": "Manage pull requests across workspace projects",
         },
         include_apply=True,
         include_project=True,
     )
     configure_workflows_parser(subs["workflows"])
-    configure_lint_parser(subs[c.Infra.Toml.LINT_SECTION])
+    configure_lint_parser(subs[c.Infra.LINT_SECTION])
     configure_pr_workspace_parser(subs["pr-workspace"])
 
     args = parser.parse_args(argv)
@@ -254,9 +254,9 @@ def run(argv: t.StrSequence | None = None) -> int:
     cli = u.Infra.resolve(args)
     if args.command == "workflows":
         return run_workflows(cli, prune=args.prune, report=args.report)
-    if args.command == c.Infra.Toml.LINT_SECTION:
+    if args.command == c.Infra.LINT_SECTION:
         return run_lint(cli, report=args.report, strict=args.strict)
-    if args.command == c.Infra.Cli.GhCmd.PR:
+    if args.command == c.Cli.GhCmd.PR:
         return run_pr(argv[2:] if argv is not None else sys.argv[2:])
     if args.command == "pr-workspace":
         pr_args = m.Infra.PrWorkspaceArgs(

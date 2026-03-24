@@ -25,13 +25,13 @@ class FlextInfraEnsureCoverageConfigPhase:
     ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | None = None
-        if c.Infra.Toml.TOOL in doc:
-            raw_tool = doc[c.Infra.Toml.TOOL]
+        if c.Infra.TOOL in doc:
+            raw_tool = doc[c.Infra.TOOL]
             if isinstance(raw_tool, Item):
                 tool = raw_tool
         if not isinstance(tool, Table):
             tool = tomlkit.table()
-            doc[c.Infra.Toml.TOOL] = tool
+            doc[c.Infra.TOOL] = tool
 
         coverage_tbl = u.Infra.ensure_table(tool, "coverage")
         report_tbl = u.Infra.ensure_table(coverage_tbl, "report")

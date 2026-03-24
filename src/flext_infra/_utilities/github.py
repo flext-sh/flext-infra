@@ -248,8 +248,8 @@ class FlextInfraUtilitiesGithub(
         summary_dict: dict[str, JsonValue] = dict(by_action)
         ops_list: list[JsonValue] = [
             {
-                c.Infra.Toml.PROJECT: op.project,
-                c.Infra.Toml.PATH: op.path,
+                c.Infra.PROJECT: op.project,
+                c.Infra.PATH: op.path,
                 c.Infra.ReportKeys.ACTION: op.action,
                 "reason": op.reason,
             }
@@ -374,14 +374,14 @@ class FlextInfraUtilitiesGithub(
         report_dir = cls.get_report_dir(
             workspace_root,
             c.Infra.ReportKeys.WORKSPACE,
-            c.Infra.Cli.GhCmd.PR,
+            c.Cli.GhCmd.PR,
         )
         with contextlib.suppress(OSError):
             report_dir.mkdir(parents=True, exist_ok=True)
         log_path = report_dir / f"{display}.log"
         if repo_root == workspace_root:
             command = [
-                c.Infra.Toml.PYTHON,
+                c.Infra.PYTHON,
                 "-m",
                 "flext_infra.github.pr",
                 "--repo-root",
@@ -393,7 +393,7 @@ class FlextInfraUtilitiesGithub(
                 "--draft",
                 pr_args.get("draft", "0"),
                 "--merge-method",
-                pr_args.get("merge_method", c.Infra.Cli.GhCmd.SQUASH),
+                pr_args.get("merge_method", c.Cli.GhCmd.SQUASH),
                 "--auto",
                 pr_args.get("auto", "0"),
                 "--delete-branch",
@@ -405,10 +405,10 @@ class FlextInfraUtilitiesGithub(
             ]
         else:
             command = [
-                c.Infra.Cli.MAKE,
+                c.Cli.MAKE,
                 "-C",
                 str(repo_root),
-                c.Infra.Cli.GhCmd.PR,
+                c.Cli.GhCmd.PR,
                 f"PR_ACTION={pr_args.get('action', 'status')}",
                 f"PR_BASE={pr_args.get('base', 'main')}",
                 f"PR_DRAFT={pr_args.get('draft', '0')}",

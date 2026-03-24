@@ -21,13 +21,13 @@ class FlextInfraEnsureFormattingToolingPhase:
     def apply(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | None = None
-        if c.Infra.Toml.TOOL in doc:
-            raw_tool = doc[c.Infra.Toml.TOOL]
+        if c.Infra.TOOL in doc:
+            raw_tool = doc[c.Infra.TOOL]
             if isinstance(raw_tool, Item):
                 tool = raw_tool
         if not isinstance(tool, Table):
             tool = tomlkit.table()
-            doc[c.Infra.Toml.TOOL] = tool
+            doc[c.Infra.TOOL] = tool
         tomlsort = u.Infra.ensure_table(tool, "tomlsort")
         for key, value in {
             "all": self._tool_config.tools.tomlsort.all,

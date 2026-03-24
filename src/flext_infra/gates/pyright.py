@@ -45,7 +45,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 raw_output="",
             )
         result = self._run(
-            [sys.executable, "-m", c.Infra.Cli.PYRIGHT, *check_dirs, "--outputjson"],
+            [sys.executable, "-m", c.Cli.PYRIGHT, *check_dirs, "--outputjson"],
             project_dir,
             timeout=c.Infra.Timeouts.LONG,
         )
@@ -61,7 +61,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     column=self._nested_int(diag, "range", "start", "character") + 1,
                     code=str(diag.get("rule", "")),
                     message=str(diag.get("message", "")),
-                    severity=str(diag.get("severity", c.Infra.Toml.ERROR)),
+                    severity=str(diag.get("severity", c.Infra.ERROR)),
                 )
                 for diag in diagnostics
             )

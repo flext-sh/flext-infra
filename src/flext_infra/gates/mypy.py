@@ -61,12 +61,12 @@ class FlextInfraMypyGate(FlextInfraGate):
             [
                 sys.executable,
                 "-m",
-                c.Infra.Cli.MYPY,
+                c.Cli.MYPY,
                 *mypy_dirs,
                 "--config-file",
                 str(cfg),
                 "--output",
-                c.Infra.Cli.OUTPUT_JSON,
+                c.Cli.OUTPUT_JSON,
             ],
             project_dir,
             env=mypy_env,
@@ -84,8 +84,8 @@ class FlextInfraMypyGate(FlextInfraGate):
                 continue
             try:
                 severity = self._as_str(
-                    line_data.get("severity", c.Infra.Toml.ERROR),
-                    c.Infra.Toml.ERROR,
+                    line_data.get("severity", c.Infra.ERROR),
+                    c.Infra.ERROR,
                 )
                 if severity in {"error", "warning", "note"}:
                     issues.append(

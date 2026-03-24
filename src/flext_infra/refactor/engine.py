@@ -315,7 +315,7 @@ class FlextInfraRefactorEngine:
         return [
             {
                 c.Infra.ReportKeys.ID: rule.rule_id,
-                c.Infra.Toml.NAME: rule.name,
+                c.Infra.NAME: rule.name,
                 "description": rule.description,
                 c.Infra.ReportKeys.ENABLED: rule.enabled,
                 "severity": rule.severity,

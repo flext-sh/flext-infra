@@ -170,7 +170,7 @@ class FlextInfraRefactorLooseClassScanner:
             "--pattern",
             "class $NAME",
             "--lang",
-            c.Infra.Toml.PYTHON,
+            c.Infra.PYTHON,
             "--json",
             str(project_root / c.Infra.Paths.DEFAULT_SRC_DIR),
         ]

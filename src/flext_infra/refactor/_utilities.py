@@ -201,7 +201,7 @@ class FlextInfraUtilitiesRefactor(
         scope = raw_scope.strip().lower()
         if scope in {
             c.Infra.ReportKeys.FILE,
-            c.Infra.Toml.PROJECT,
+            c.Infra.PROJECT,
             c.Infra.ReportKeys.WORKSPACE,
         }:
             return scope

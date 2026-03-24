@@ -37,11 +37,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             [
                 sys.executable,
                 "-m",
-                c.Infra.Toml.RUFF,
+                c.Infra.RUFF,
                 c.Infra.Verbs.CHECK,
                 *targets,
                 "--output-format",
-                c.Infra.Cli.OUTPUT_JSON,
+                c.Cli.OUTPUT_JSON,
                 "--quiet",
             ],
             project_dir,

@@ -91,7 +91,7 @@ class FlextInfraSkillValidator:
                 scan_targets.get("include", ["**/*.py"]),
             ) or ["**/*"]
             exclude_globs = u.Infra.string_list(
-                scan_targets.get(c.Infra.Toml.EXCLUDE, []),
+                scan_targets.get(c.Infra.EXCLUDE, []),
             )
             rules_list_obj = rules.get(c.Infra.ReportKeys.RULES, [])
             if not isinstance(rules_list_obj, list):
@@ -108,7 +108,7 @@ class FlextInfraSkillValidator:
                 rule_id = str(rule_obj.get(c.Infra.ReportKeys.ID, "")).strip()
                 rule_type = str(rule_obj.get("type", "")).strip()
                 group = (
-                    str(rule_obj.get(c.Infra.Toml.GROUP, rule_id)).strip() or rule_id
+                    str(rule_obj.get(c.Infra.GROUP, rule_id)).strip() or rule_id
                 )
                 if rule_type == "ast-grep":
                     count = self._run_ast_grep_count(
@@ -204,8 +204,8 @@ class FlextInfraSkillValidator:
         if not rule_file.exists():
             return 0
         cmd = [
-            c.Infra.Cli.SG,
-            c.Infra.Cli.SgCmd.SCAN,
+            c.Cli.SG,
+            c.Cli.SgCmd.SCAN,
             "--rule",
             str(rule_file),
             "--json=stream",

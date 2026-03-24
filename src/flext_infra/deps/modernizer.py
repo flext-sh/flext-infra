@@ -165,13 +165,13 @@ class FlextInfraPyprojectModernizer:
             if kind_result.is_success:
                 project_kind = kind_result.value
         changes: MutableSequence[str] = []
-        tool_item = self._table_child(doc, c.Infra.Toml.TOOL)
+        tool_item = self._table_child(doc, c.Infra.TOOL)
         if tool_item is None:
             tool_item = tomlkit.table()
-            doc[c.Infra.Toml.TOOL] = tool_item
-        poetry_item = self._table_child(tool_item, c.Infra.Toml.POETRY)
+            doc[c.Infra.TOOL] = tool_item
+        poetry_item = self._table_child(tool_item, c.Infra.POETRY)
         if poetry_item is not None:
-            group_item = self._table_child(poetry_item, c.Infra.Toml.GROUP)
+            group_item = self._table_child(poetry_item, c.Infra.GROUP)
             if group_item is not None:
                 empty_groups: MutableSequence[str] = []
                 for name in u.Infra.table_string_keys(group_item):
@@ -180,7 +180,7 @@ class FlextInfraPyprojectModernizer:
                         continue
                     deps_item = self._table_child(
                         group_dep_item,
-                        c.Infra.Toml.DEPENDENCIES,
+                        c.Infra.DEPENDENCIES,
                     )
                     if deps_item is not None and not deps_item:
                         empty_groups.append(name)
@@ -188,7 +188,7 @@ class FlextInfraPyprojectModernizer:
                     del group_item[name]
                     changes.append(f"removed empty poetry group '{name}'")
                 if not group_item:
-                    del poetry_item[c.Infra.Toml.GROUP]
+                    del poetry_item[c.Infra.GROUP]
                     changes.append("removed empty poetry group container")
         changes.extend(FlextInfraConsolidateGroupsPhase().apply(doc, canonical_dev))
         changes.extend(FlextInfraEnsurePytestConfigPhase(self._tool_config).apply(doc))

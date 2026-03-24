@@ -30,7 +30,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
     @staticmethod
     def git_lines(workspace_root: Path, args: t.StrSequence) -> t.StrSequence:
         """Run git command and return output lines."""
-        git_bin = shutil.which(c.Infra.Cli.GIT)
+        git_bin = shutil.which(c.Cli.GIT)
         if not git_bin:
             return []
         result = FlextInfraUtilitiesSubprocess().run_raw(
@@ -58,8 +58,8 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         cmd = [
             sys.executable,
             "-m",
-            c.Infra.Cli.PYREFLY,
-            c.Infra.Cli.RuffCmd.CHECK,
+            c.Cli.PYREFLY,
+            c.Cli.RuffCmd.CHECK,
             *modified_files,
             "--config",
             c.Infra.Files.PYPROJECT_FILENAME,
@@ -88,11 +88,11 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         cmd = [
             sys.executable,
             "-m",
-            c.Infra.Cli.RUFF,
+            c.Cli.RUFF,
             c.Infra.Verbs.CHECK,
             *modified_files,
             "--output-format",
-            c.Infra.Cli.OUTPUT_JSON,
+            c.Cli.OUTPUT_JSON,
             "--quiet",
         ]
         return FlextInfraCodegenExecutionTools.run_external_check(workspace_root, cmd)

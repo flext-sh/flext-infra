@@ -133,7 +133,7 @@ class FlextInfraDependencyDetectionService:
                     continue
                 if isinstance(raw_value, (str, int, float, bool)):
                     normalized_item[str(key)] = str(raw_value)
-            error_obj = item.get(c.Infra.Toml.ERROR)
+            error_obj = item.get(c.Infra.ERROR)
             if not isinstance(error_obj, Mapping):
                 continue
             try:
@@ -144,7 +144,7 @@ class FlextInfraDependencyDetectionService:
                 )
             except ValidationError:
                 continue
-            code = error_data.get(c.Infra.Toml.CODE)
+            code = error_data.get(c.Infra.CODE)
             if code == "DEP001":
                 groups.dep001.append(normalized_item)
             elif code == "DEP002":
@@ -176,7 +176,7 @@ class FlextInfraDependencyDetectionService:
         classified = self.classify_issues(deptry_issues)
 
         def _module_name(item: Mapping[str, t.Infra.InfraValue]) -> str | None:
-            val = item.get(c.Infra.Toml.MODULE)
+            val = item.get(c.Infra.MODULE)
             if val is None:
                 return None
             return str(val)
@@ -246,15 +246,15 @@ class FlextInfraDependencyDetectionService:
         if not data:
             return []
         names: set[str] = set()
-        tool = self._mapping_from_value(data.get(c.Infra.Toml.TOOL))
-        poetry = self._mapping_from_value(tool.get(c.Infra.Toml.POETRY))
-        group = self._mapping_from_value(poetry.get(c.Infra.Toml.GROUP))
+        tool = self._mapping_from_value(data.get(c.Infra.TOOL))
+        poetry = self._mapping_from_value(tool.get(c.Infra.POETRY))
+        group = self._mapping_from_value(poetry.get(c.Infra.GROUP))
         typings_group = self._mapping_from_value(group.get(c.Infra.Directories.TYPINGS))
-        deps = self._mapping_from_value(typings_group.get(c.Infra.Toml.DEPENDENCIES))
+        deps = self._mapping_from_value(typings_group.get(c.Infra.DEPENDENCIES))
         names.update(str(key) for key in deps)
-        project = self._mapping_from_value(data.get(c.Infra.Toml.PROJECT))
+        project = self._mapping_from_value(data.get(c.Infra.PROJECT))
         optional = self._mapping_from_value(
-            project.get(c.Infra.Toml.OPTIONAL_DEPENDENCIES),
+            project.get(c.Infra.OPTIONAL_DEPENDENCIES),
         )
         typings = optional.get(c.Infra.Directories.TYPINGS)
         if isinstance(typings, list):
@@ -294,9 +294,9 @@ class FlextInfraDependencyDetectionService:
         """Analyze project and generate typing stubs requirements report."""
         limits = self.load_dependency_limits(limits_path)
         exclude_set: set[str] = set()
-        typing_libraries = limits.get(c.Infra.Toml.TYPING_LIBRARIES)
+        typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
         if typing_libraries is not None and isinstance(typing_libraries, Mapping):
-            excluded = typing_libraries.get(c.Infra.Toml.EXCLUDE)
+            excluded = typing_libraries.get(c.Infra.EXCLUDE)
             if isinstance(excluded, list):
                 try:
                     typed_excluded: Sequence[str] = TypeAdapter(
@@ -323,12 +323,12 @@ class FlextInfraDependencyDetectionService:
         required_set -= exclude_set
         current = self.get_current_typings_from_pyproject(project_path)
         current_set = set(current)
-        python_cfg = limits.get(c.Infra.Toml.PYTHON)
+        python_cfg = limits.get(c.Infra.PYTHON)
         python_version = (
-            str(python_cfg.get(c.Infra.Toml.VERSION))
+            str(python_cfg.get(c.Infra.VERSION))
             if python_cfg is not None
             and isinstance(python_cfg, Mapping)
-            and (python_cfg.get(c.Infra.Toml.VERSION) is not None)
+            and (python_cfg.get(c.Infra.VERSION) is not None)
             else None
         )
         report = m.Infra.TypingsReport(
@@ -369,9 +369,9 @@ class FlextInfraDependencyDetectionService:
         root = module_name.split(".", 1)[0]
         if root.startswith(u.Infra.INTERNAL_PREFIXES):
             return None
-        typing_libraries = limits.get(c.Infra.Toml.TYPING_LIBRARIES)
+        typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
         if typing_libraries is not None and isinstance(typing_libraries, Mapping):
-            module_to_package = typing_libraries.get(c.Infra.Toml.MODULE_TO_PACKAGE)
+            module_to_package = typing_libraries.get(c.Infra.MODULE_TO_PACKAGE)
             if (
                 module_to_package is not None
                 and isinstance(module_to_package, Mapping)
@@ -404,7 +404,7 @@ class FlextInfraDependencyDetectionService:
             return r[tuple[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
         out_file = json_output_path or project_path / ".deptry-report.json"
         cmd: MutableSequence[str] = [
-            str(venv_bin / c.Infra.Toml.DEPTRY),
+            str(venv_bin / c.Infra.DEPTRY),
             ".",
             "--config",
             str(config),
@@ -467,7 +467,7 @@ class FlextInfraDependencyDetectionService:
         timeout: int = c.Infra.Timeouts.DEFAULT,
     ) -> r[tuple[t.StrSequence, t.StrSequence]]:
         """Run mypy to detect missing type stubs and hinted packages."""
-        mypy_bin = venv_bin / c.Infra.Toml.MYPY
+        mypy_bin = venv_bin / c.Infra.MYPY
         if not mypy_bin.exists():
             return r[tuple[t.StrSequence, t.StrSequence]].ok(([], []))
         cmd: t.StrSequence = [

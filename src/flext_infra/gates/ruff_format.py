@@ -34,8 +34,8 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             [
                 sys.executable,
                 "-m",
-                c.Infra.Cli.RUFF,
-                c.Infra.Cli.RuffCmd.FORMAT,
+                c.Cli.RUFF,
+                c.Cli.RuffCmd.FORMAT,
                 "--check",
                 *targets,
                 "--quiet",
@@ -96,7 +96,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         result = self._run(
-            [sys.executable, "-m", c.Infra.Cli.RUFF, c.Infra.Cli.RuffCmd.FORMAT, "."],
+            [sys.executable, "-m", c.Cli.RUFF, c.Cli.RuffCmd.FORMAT, "."],
             project_dir,
         )
         return self._build_gate_result(

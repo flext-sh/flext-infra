@@ -24,9 +24,9 @@ class FlextInfraRefactorSafetyManager:
             ".sisyphus/refactor/safety-checkpoint.json",
         )
         self._test_command = test_command or [
-            c.Infra.Toml.PYTHON,
+            c.Infra.PYTHON,
             "-m",
-            c.Infra.Toml.PYTEST,
+            c.Infra.PYTEST,
             "-q",
         ]
         self._emergency_stop_reason = ""
@@ -114,9 +114,9 @@ class FlextInfraRefactorSafetyManager:
             out2: r[bool] = r[bool].ok(True)
             return out2
         import_cmd = [
-            c.Infra.Toml.PYTHON,
+            c.Infra.PYTHON,
             "-m",
-            c.Infra.Toml.PYTEST,
+            c.Infra.PYTEST,
             "--collect-only",
             "-q",
         ]

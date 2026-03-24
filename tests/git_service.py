@@ -20,7 +20,7 @@ from flext_infra import u
 class RealGitService(s[bool]):
     """Real git service using flext_tests service base.
 
-    Uses c.Infra.Cli.GitCmd constants for git operations and
+    Uses c.Cli.GitCmd constants for git operations and
     r (r) for railway-oriented error handling.
     """
 

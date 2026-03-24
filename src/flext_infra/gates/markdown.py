@@ -45,7 +45,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                 duration=time.monotonic() - started,
                 raw_output="",
             )
-        cmd = [c.Infra.Cli.MARKDOWNLINT]
+        cmd = [c.Cli.MARKDOWNLINT]
         if fix:
             cmd.append("--fix")
         root_config = self._workspace_root / ".markdownlint.json"

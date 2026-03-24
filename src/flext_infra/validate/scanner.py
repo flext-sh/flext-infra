@@ -52,7 +52,7 @@ class FlextInfraTextPatternScanner:
             try:
                 text = file_path.read_text(
                     encoding=c.Infra.Encoding.DEFAULT,
-                    errors=c.Infra.Toml.IGNORE,
+                    errors=c.Infra.IGNORE,
                 )
             except OSError:
                 continue

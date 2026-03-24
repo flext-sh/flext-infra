@@ -85,7 +85,7 @@ class FlextInfraConfigFixer(s[bool]):
             )
         doc = document_result.value
         doc_data = doc.unwrap()
-        tool_data = doc_data.get(c.Infra.Toml.TOOL)
+        tool_data = doc_data.get(c.Infra.TOOL)
         if not isinstance(tool_data, dict):
             return r[t.StrSequence].ok([])
         typed_tool_data: MutableMapping[str, t.Infra.InfraValue] = TypeAdapter(
@@ -93,7 +93,7 @@ class FlextInfraConfigFixer(s[bool]):
         ).validate_python(
             tool_data,
         )
-        pyrefly_data = typed_tool_data.get(c.Infra.Toml.PYREFLY)
+        pyrefly_data = typed_tool_data.get(c.Infra.PYREFLY)
         if not isinstance(pyrefly_data, Mapping):
             return r[t.StrSequence].ok([])
         try:
@@ -114,8 +114,8 @@ class FlextInfraConfigFixer(s[bool]):
             fixes = self._ensure_project_excludes_tk(pyrefly)
             all_fixes.extend(fixes)
         if all_fixes and (not dry_run):
-            typed_tool_data[c.Infra.Toml.PYREFLY] = dict(pyrefly.items())
-            doc_data[c.Infra.Toml.TOOL] = typed_tool_data
+            typed_tool_data[c.Infra.PYREFLY] = dict(pyrefly.items())
+            doc_data[c.Infra.TOOL] = typed_tool_data
             new_doc = tomlkit.document()
             for key, value in doc_data.items():
                 new_doc[str(key)] = value
@@ -171,7 +171,7 @@ class FlextInfraConfigFixer(s[bool]):
         pyrefly: MutableMapping[str, t.Infra.InfraValue],
     ) -> t.StrSequence:
         fixes: MutableSequence[str] = []
-        excludes = pyrefly.get(c.Infra.Toml.PROJECT_EXCLUDES)
+        excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)
         current: t.StrSequence = []
         if isinstance(excludes, list):
             exclude_items: Sequence[JsonValue] = []
@@ -182,7 +182,7 @@ class FlextInfraConfigFixer(s[bool]):
             current = [str(value) for value in exclude_items]
         expected = sorted(set(self._tool_config.tools.pyrefly.project_exclude_globs))
         if current != expected:
-            pyrefly[c.Infra.Toml.PROJECT_EXCLUDES] = self._to_array(expected)
+            pyrefly[c.Infra.PROJECT_EXCLUDES] = self._to_array(expected)
             fixes.append("synchronized project-excludes from YAML rules")
         return fixes
 
@@ -192,7 +192,7 @@ class FlextInfraConfigFixer(s[bool]):
         project_dir: Path,
     ) -> t.StrSequence:
         fixes: MutableSequence[str] = []
-        search_path = pyrefly.get(c.Infra.Toml.SEARCH_PATH)
+        search_path = pyrefly.get(c.Infra.SEARCH_PATH)
         if not isinstance(search_path, list):
             return []
         manager = FlextInfraExtraPathsManager(workspace_root=self._workspace_root)
@@ -200,7 +200,7 @@ class FlextInfraConfigFixer(s[bool]):
             project_dir=project_dir,
             is_root=project_dir == self._workspace_root,
         )
-        search_raw = pyrefly.get(c.Infra.Toml.SEARCH_PATH)
+        search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
         current_paths: Sequence[JsonValue] = []
         if isinstance(search_raw, list):
             try:
@@ -213,7 +213,7 @@ class FlextInfraConfigFixer(s[bool]):
             str(path_item) for path_item in current_paths if isinstance(path_item, str)
         ]
         if current_search != expected_search:
-            pyrefly[c.Infra.Toml.SEARCH_PATH] = self._to_array(expected_search)
+            pyrefly[c.Infra.SEARCH_PATH] = self._to_array(expected_search)
             fixes.append("synchronized search-path from YAML rules")
         return fixes
 
@@ -222,7 +222,7 @@ class FlextInfraConfigFixer(s[bool]):
         pyrefly: MutableMapping[str, t.Infra.InfraValue],
     ) -> t.StrSequence:
         fixes: MutableSequence[str] = []
-        sub_configs = pyrefly.get(c.Infra.Toml.SUB_CONFIG)
+        sub_configs = pyrefly.get(c.Infra.SUB_CONFIG)
         if not isinstance(sub_configs, list):
             return []
         new_configs: MutableSequence[t.Infra.InfraValue] = []
@@ -243,13 +243,13 @@ class FlextInfraConfigFixer(s[bool]):
                     conf_map = {}
             else:
                 conf_map = {}
-            if conf_map.get(c.Infra.Toml.IGNORE) is True:
+            if conf_map.get(c.Infra.IGNORE) is True:
                 matches = conf_map.get("matches", c.Infra.Defaults.UNKNOWN)
                 fixes.append(f"removed ignore=true sub-config for '{matches}'")
                 continue
             new_configs.append(conf_out)
         if len(new_configs) != len(configs):
-            pyrefly[c.Infra.Toml.SUB_CONFIG] = new_configs
+            pyrefly[c.Infra.SUB_CONFIG] = new_configs
         return fixes
 
     def _resolve_project_path(self, raw: str) -> Path:

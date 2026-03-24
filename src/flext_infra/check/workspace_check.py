@@ -45,7 +45,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         self._registry = FlextInfraGateRegistry.default()
         report_dir = u.Infra.get_report_dir(
             self._workspace_root,
-            c.Infra.Toml.PROJECT,
+            c.Infra.PROJECT,
             c.Infra.Verbs.CHECK,
         )
         try:

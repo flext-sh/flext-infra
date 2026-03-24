@@ -47,15 +47,15 @@ class FlextInfraProjectClassifier:
         parsed: t.Infra.ContainerDict = tomllib.loads(
             self._pyproject_path.read_text(encoding=c.Infra.Encoding.DEFAULT),
         )
-        raw_project = self._as_mapping(parsed.get(c.Infra.Toml.PROJECT))
+        raw_project = self._as_mapping(parsed.get(c.Infra.PROJECT))
         project_name = self._normalized_name_from_mapping(raw_project)
         dependencies: MutableSequence[str] = []
         self._append_project_dependencies(
             raw_project=raw_project,
             dependencies=dependencies,
         )
-        raw_tool = self._as_mapping(parsed.get(c.Infra.Toml.TOOL))
-        raw_poetry = self._as_mapping(raw_tool.get(c.Infra.Toml.POETRY))
+        raw_tool = self._as_mapping(parsed.get(c.Infra.TOOL))
+        raw_poetry = self._as_mapping(raw_tool.get(c.Infra.POETRY))
         if not project_name:
             project_name = self._normalized_name_from_mapping(raw_poetry)
         self._append_poetry_dependencies(
@@ -76,7 +76,7 @@ class FlextInfraProjectClassifier:
         self,
         raw_mapping: Mapping[str, t.Infra.InfraValue],
     ) -> str:
-        raw_name = raw_mapping.get(c.Infra.Toml.NAME)
+        raw_name = raw_mapping.get(c.Infra.NAME)
         if isinstance(raw_name, str):
             return self._normalize_dependency_name(raw_name)
         return ""
@@ -87,7 +87,7 @@ class FlextInfraProjectClassifier:
         raw_project: Mapping[str, t.Infra.InfraValue],
         dependencies: MutableSequence[str],
     ) -> None:
-        raw_dependencies = raw_project.get(c.Infra.Toml.DEPENDENCIES)
+        raw_dependencies = raw_project.get(c.Infra.DEPENDENCIES)
         if not isinstance(raw_dependencies, list):
             return
         for raw_dependency in raw_dependencies:
@@ -106,13 +106,13 @@ class FlextInfraProjectClassifier:
         dependencies: MutableSequence[str],
     ) -> None:
         self._append_poetry_dependency_mapping(
-            raw_mapping=self._as_mapping(raw_poetry.get(c.Infra.Toml.DEPENDENCIES)),
+            raw_mapping=self._as_mapping(raw_poetry.get(c.Infra.DEPENDENCIES)),
             dependencies=dependencies,
         )
-        raw_group = self._as_mapping(raw_poetry.get(c.Infra.Toml.GROUP))
-        raw_test_group = self._as_mapping(raw_group.get(c.Infra.Toml.TEST))
+        raw_group = self._as_mapping(raw_poetry.get(c.Infra.GROUP))
+        raw_test_group = self._as_mapping(raw_group.get(c.Infra.TEST))
         self._append_poetry_dependency_mapping(
-            raw_mapping=self._as_mapping(raw_test_group.get(c.Infra.Toml.DEPENDENCIES)),
+            raw_mapping=self._as_mapping(raw_test_group.get(c.Infra.DEPENDENCIES)),
             dependencies=dependencies,
         )
 

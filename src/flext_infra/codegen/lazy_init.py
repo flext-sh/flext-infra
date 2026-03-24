@@ -633,8 +633,8 @@ class FlextInfraCodegenLazyInit(s[int]):
         """Run ``ruff --fix`` on the given file to auto-fix lint issues."""
         with contextlib.suppress(FileNotFoundError):
             u.Infra.run_checked([
-                c.Infra.Cli.RUFF,
-                c.Infra.Cli.RuffCmd.CHECK,
+                c.Cli.RUFF,
+                c.Cli.RuffCmd.CHECK,
                 "--fix",
                 "--quiet",
                 str(path),

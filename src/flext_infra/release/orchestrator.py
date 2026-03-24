@@ -28,7 +28,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     def _run_make(project_path: Path, verb: str) -> r[tuple[int, str]]:
         """Execute a make command for a project and return (exit_code, output)."""
         result = u.Infra.run_raw([
-            c.Infra.Cli.MAKE,
+            c.Cli.MAKE,
             "-C",
             str(project_path),
             verb,
@@ -54,7 +54,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         output_dir = (
             u.Infra.get_report_dir(
                 workspace_root,
-                c.Infra.Toml.PROJECT,
+                c.Infra.PROJECT,
                 c.Infra.ReportKeys.RELEASE,
             )
             / f"v{version}"
@@ -123,7 +123,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         notes_dir = (
             u.Infra.get_report_dir(
                 workspace_root,
-                c.Infra.Toml.PROJECT,
+                c.Infra.PROJECT,
                 c.Infra.ReportKeys.RELEASE,
             )
             / tag
@@ -167,7 +167,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             self.logger.info("release_phase_validate", action="dry-run", status="ok")
             return r[bool].ok(True)
         return u.Infra.run_checked(
-            [c.Infra.Cli.MAKE, c.Infra.Verbs.VALIDATE, "VALIDATE_SCOPE=workspace"],
+            [c.Cli.MAKE, c.Infra.Verbs.VALIDATE, "VALIDATE_SCOPE=workspace"],
             cwd=workspace_root,
         )
 
@@ -353,7 +353,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         dev_suffix = dispatch_config.dev_suffix
         if phase == c.Infra.Verbs.VALIDATE:
             return self.phase_validate(workspace_root, dry_run=dry_run)
-        if phase == c.Infra.Toml.VERSION:
+        if phase == c.Infra.VERSION:
             return self.phase_version(
                 workspace_root,
                 version,

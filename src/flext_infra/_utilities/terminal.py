@@ -1,7 +1,7 @@
 """Terminal detection helpers for infrastructure output.
 
 Centralizes terminal capability detection (color, unicode).
-All constants (colors, symbols) are in constants.py via c.Infra.Style.*
+All constants (colors, symbols) are in constants.py via c.Infra.*
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -18,7 +18,7 @@ class FlextInfraUtilitiesTerminal:
     """Terminal capability detection helpers.
 
     Centralizes terminal capability detection (color, unicode).
-    Style constants are in c.Infra.Style - import from there.
+    Style constants are in c.Infra - import from there.
 
     Usage via namespace::
 
@@ -26,7 +26,7 @@ class FlextInfraUtilitiesTerminal:
 
         logger = FlextLogger(__name__)
         if u.Infra.terminal_should_use_color():
-            logger.error(f"{c.Infra.Style.RED}Error{c.Infra.Style.RESET}")
+            logger.error(f"{c.Infra.RED}Error{c.Infra.RESET}")
     """
 
     @staticmethod

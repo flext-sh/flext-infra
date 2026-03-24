@@ -60,8 +60,8 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         return m.Infra.BaseMkConfig(
             project_name=c.Infra.Defaults.UNNAMED,
             python_version="3.13",
-            core_stack=c.Infra.Toml.PYTHON,
-            package_manager=c.Infra.Toml.POETRY,
+            core_stack=c.Infra.PYTHON,
+            package_manager=c.Infra.POETRY,
             source_dir=c.Infra.Paths.DEFAULT_SRC_DIR,
             tests_dir=c.Infra.Directories.TESTS,
             lint_gates=[
@@ -71,7 +71,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
                 c.Infra.Gates.MYPY,
                 c.Infra.Gates.PYRIGHT,
             ],
-            test_command=c.Infra.Toml.PYTEST,
+            test_command=c.Infra.PYTEST,
         )
 
     @override

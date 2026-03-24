@@ -119,7 +119,7 @@ class FlextInfraPytestDiagExtractor:
         slow_rows: MutableSequence[tuple[float, str]] = []
         for case in root.iter("testcase"):
             classname = case.attrib.get("classname", "")
-            name = case.attrib.get(c.Infra.Toml.NAME, "")
+            name = case.attrib.get(c.Infra.NAME, "")
             label = f"{classname}::{name}" if classname else name
             try:
                 secs = float(case.attrib.get("time", "0") or 0.0)
@@ -127,7 +127,7 @@ class FlextInfraPytestDiagExtractor:
                 secs = 0.0
             slow_rows.append((secs, label))
             failure = case.find("failure")
-            error = case.find(c.Infra.Toml.ERROR)
+            error = case.find(c.Infra.ERROR)
             skipped = case.find("skipped")
             if failure is not None:
                 diag.failed_cases.append(label)

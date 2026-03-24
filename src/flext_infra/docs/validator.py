@@ -32,7 +32,7 @@ class FlextInfraDocValidator:
         """Check whether a skill file contains an ADR reference."""
         text = skill_path.read_text(
             encoding=c.Infra.Encoding.DEFAULT,
-            errors=c.Infra.Toml.IGNORE,
+            errors=c.Infra.IGNORE,
         ).lower()
         return "adr" in text
 

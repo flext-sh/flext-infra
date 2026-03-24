@@ -21,11 +21,11 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
     def apply(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | Container | None = None
-        if c.Infra.Toml.TOOL in doc:
-            tool = doc[c.Infra.Toml.TOOL]
+        if c.Infra.TOOL in doc:
+            tool = doc[c.Infra.TOOL]
         if not isinstance(tool, Table):
             tool = tomlkit.table()
-            doc[c.Infra.Toml.TOOL] = tool
+            doc[c.Infra.TOOL] = tool
         pydantic_mypy = u.Infra.ensure_table(tool, "pydantic-mypy")
         for key, value in {
             "init_forbid_extra": self._tool_config.tools.pydantic_mypy.init_forbid_extra,

@@ -44,11 +44,11 @@ class FlextInfraBanditGate(FlextInfraGate):
             [
                 sys.executable,
                 "-m",
-                c.Infra.Cli.BANDIT,
+                c.Cli.BANDIT,
                 "-r",
                 c.Infra.Paths.DEFAULT_SRC_DIR,
                 "-f",
-                c.Infra.Cli.OUTPUT_JSON,
+                c.Cli.OUTPUT_JSON,
                 "-q",
                 "-ll",
             ],

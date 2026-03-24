@@ -155,9 +155,9 @@ class FlextInfraStubSupplyChain:
         """Run mypy and extract types-package hints."""
         result = self._runner.run(
             [
-                c.Infra.Cli.POETRY,
+                c.Cli.POETRY,
                 c.Infra.Verbs.RUN,
-                c.Infra.Cli.MYPY,
+                c.Cli.MYPY,
                 c.Infra.Paths.DEFAULT_SRC_DIR,
                 "--config-file",
                 c.Infra.Files.PYPROJECT_FILENAME,
@@ -179,10 +179,10 @@ class FlextInfraStubSupplyChain:
         """Run pyrefly check and extract missing imports."""
         result = self._runner.run(
             [
-                c.Infra.Cli.POETRY,
+                c.Cli.POETRY,
                 c.Infra.Verbs.RUN,
-                c.Infra.Cli.PYREFLY,
-                c.Infra.Cli.RuffCmd.CHECK,
+                c.Cli.PYREFLY,
+                c.Cli.RuffCmd.CHECK,
                 c.Infra.Paths.DEFAULT_SRC_DIR,
                 "--config",
                 c.Infra.Files.PYPROJECT_FILENAME,

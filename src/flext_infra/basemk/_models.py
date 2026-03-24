@@ -31,7 +31,7 @@ class FlextInfraBasemkModels:
         package_manager: Annotated[
             str,
             Field(
-                default=c.Infra.Toml.POETRY,
+                default=c.Infra.POETRY,
                 description="Dependency manager",
             ),
         ]
@@ -59,7 +59,7 @@ class FlextInfraBasemkModels:
         test_command: Annotated[
             str,
             Field(
-                default=c.Infra.Toml.PYTEST,
+                default=c.Infra.PYTEST,
                 description="Default test command",
             ),
         ]

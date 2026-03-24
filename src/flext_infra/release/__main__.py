@@ -87,7 +87,7 @@ def run(argv: t.StrSequence | None = None) -> int:
     phases = (
         [
             c.Infra.Verbs.VALIDATE,
-            c.Infra.Toml.VERSION,
+            c.Infra.VERSION,
             c.Infra.Directories.BUILD,
             "publish",
         ]
@@ -95,7 +95,7 @@ def run(argv: t.StrSequence | None = None) -> int:
         else [part.strip() for part in args.phase.split(",") if part.strip()]
     )
     needs_version = bool(
-        {c.Infra.Toml.VERSION, c.Infra.Directories.BUILD, "publish"} & set(phases),
+        {c.Infra.VERSION, c.Infra.Directories.BUILD, "publish"} & set(phases),
     )
     if needs_version:
         try:

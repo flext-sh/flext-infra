@@ -184,7 +184,7 @@ class FlextInfraDependencyAnalyzer:
             "--pattern",
             pattern,
             "--lang",
-            c.Infra.Toml.PYTHON,
+            c.Infra.PYTHON,
             "--json",
             str(src_path),
         ]

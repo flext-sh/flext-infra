@@ -112,8 +112,8 @@ class FlextInfraUtilitiesReporting:
                     sarif_results.append(
                         m.Infra.SarifResult(
                             rule_id=rule_id,
-                            level=c.Infra.Toml.ERROR
-                            if issue.severity == c.Infra.Toml.ERROR
+                            level=c.Infra.ERROR
+                            if issue.severity == c.Infra.ERROR
                             else c.Infra.Severity.WARNING,
                             message=issue.message,
                             locations=[

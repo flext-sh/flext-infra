@@ -280,25 +280,25 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | None = None
-        if c.Infra.Toml.TOOL in doc:
-            raw_tool = doc[c.Infra.Toml.TOOL]
+        if c.Infra.TOOL in doc:
+            raw_tool = doc[c.Infra.TOOL]
             if isinstance(raw_tool, Item):
                 tool = raw_tool
         if not isinstance(tool, Table):
             tool = tomlkit.table()
-            doc[c.Infra.Toml.TOOL] = tool
-        pyright = u.Infra.ensure_table(tool, c.Infra.Toml.PYRIGHT)
+            doc[c.Infra.TOOL] = tool
+        pyright = u.Infra.ensure_table(tool, c.Infra.PYRIGHT)
         project_root = workspace_root if is_root else project_dir
         expected_excludes = self._expected_excludes(project_root)
         current_excludes = u.Infra.as_string_list(
-            u.Infra.get(pyright, c.Infra.Toml.EXCLUDE),
+            u.Infra.get(pyright, c.Infra.EXCLUDE),
         )
         if expected_excludes:
             if current_excludes != expected_excludes:
-                pyright[c.Infra.Toml.EXCLUDE] = u.Infra.array(expected_excludes)
+                pyright[c.Infra.EXCLUDE] = u.Infra.array(expected_excludes)
                 changes.append("tool.pyright.exclude synchronized from discovered dirs")
-        elif c.Infra.Toml.EXCLUDE in pyright:
-            del pyright[c.Infra.Toml.EXCLUDE]
+        elif c.Infra.EXCLUDE in pyright:
+            del pyright[c.Infra.EXCLUDE]
             changes.append("tool.pyright.exclude removed (no discovered excludes)")
         expected_ignores = self._expected_ignores(
             is_root=is_root,
@@ -306,16 +306,16 @@ class FlextInfraEnsurePyrightConfigPhase:
             project_dir=project_dir,
         )
         current_ignores = u.Infra.as_string_list(
-            u.Infra.get(pyright, c.Infra.Toml.IGNORE),
+            u.Infra.get(pyright, c.Infra.IGNORE),
         )
         if expected_ignores:
             if current_ignores != expected_ignores:
-                pyright[c.Infra.Toml.IGNORE] = u.Infra.array(expected_ignores)
+                pyright[c.Infra.IGNORE] = u.Infra.array(expected_ignores)
                 changes.append(
                     "tool.pyright.ignore synchronized for typings diagnostics",
                 )
-        elif c.Infra.Toml.IGNORE in pyright:
-            del pyright[c.Infra.Toml.IGNORE]
+        elif c.Infra.IGNORE in pyright:
+            del pyright[c.Infra.IGNORE]
             changes.append("tool.pyright.ignore removed (no discovered ignores)")
         if "stubPath" in pyright:
             del pyright["stubPath"]

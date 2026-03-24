@@ -27,21 +27,21 @@ class FlextInfraEnsureRuffConfigPhase:
     ) -> t.StrSequence:
         changes: MutableSequence[str] = []
         tool: Item | Container | None = None
-        if c.Infra.Toml.TOOL in doc:
-            tool = doc[c.Infra.Toml.TOOL]
+        if c.Infra.TOOL in doc:
+            tool = doc[c.Infra.TOOL]
         if not isinstance(tool, Table):
             tool = tomlkit.table()
-            doc[c.Infra.Toml.TOOL] = tool
-        ruff = u.Infra.ensure_table(tool, c.Infra.Toml.RUFF)
-        if c.Infra.Toml.EXTEND in ruff:
-            del ruff[c.Infra.Toml.EXTEND]
+            doc[c.Infra.TOOL] = tool
+        ruff = u.Infra.ensure_table(tool, c.Infra.RUFF)
+        if c.Infra.EXTEND in ruff:
+            del ruff[c.Infra.EXTEND]
             changes.append("tool.ruff.extend removed")
 
         ruff_cfg = self._tool_config.tools.ruff
         if sorted(
-            u.Infra.as_string_list(u.Infra.get(ruff, c.Infra.Toml.EXCLUDE)),
+            u.Infra.as_string_list(u.Infra.get(ruff, c.Infra.EXCLUDE)),
         ) != sorted(ruff_cfg.exclude):
-            ruff[c.Infra.Toml.EXCLUDE] = u.Infra.array(sorted(ruff_cfg.exclude))
+            ruff[c.Infra.EXCLUDE] = u.Infra.array(sorted(ruff_cfg.exclude))
             changes.append("tool.ruff.exclude set")
         for key, value in {
             "fix": ruff_cfg.fix,
@@ -71,19 +71,19 @@ class FlextInfraEnsureRuffConfigPhase:
                 ruff_format[key] = value
                 changes.append(f"tool.ruff.format.{key} set")
 
-        lint = u.Infra.ensure_table(ruff, c.Infra.Toml.LINT_SECTION)
+        lint = u.Infra.ensure_table(ruff, c.Infra.LINT_SECTION)
         if sorted(u.Infra.as_string_list(u.Infra.get(lint, "select"))) != sorted(
             ruff_cfg.lint.select,
         ):
             lint["select"] = u.Infra.array(sorted(ruff_cfg.lint.select))
             changes.append("tool.ruff.lint.select set")
         if sorted(
-            u.Infra.as_string_list(u.Infra.get(lint, c.Infra.Toml.IGNORE)),
+            u.Infra.as_string_list(u.Infra.get(lint, c.Infra.IGNORE)),
         ) != sorted(ruff_cfg.lint.ignore):
-            lint[c.Infra.Toml.IGNORE] = u.Infra.array(sorted(ruff_cfg.lint.ignore))
+            lint[c.Infra.IGNORE] = u.Infra.array(sorted(ruff_cfg.lint.ignore))
             changes.append("tool.ruff.lint.ignore set")
 
-        isort = u.Infra.ensure_table(lint, c.Infra.Toml.ISORT)
+        isort = u.Infra.ensure_table(lint, c.Infra.ISORT)
         for key, value in {
             "combine-as-imports": ruff_cfg.lint.isort.combine_as_imports,
             "force-single-line": ruff_cfg.lint.isort.force_single_line,
@@ -109,18 +109,18 @@ class FlextInfraEnsureRuffConfigPhase:
         if detected_packages:
             current_kfp = sorted(
                 u.Infra.as_string_list(
-                    u.Infra.get(isort, c.Infra.Toml.KNOWN_FIRST_PARTY_HYPHEN),
+                    u.Infra.get(isort, c.Infra.KNOWN_FIRST_PARTY_HYPHEN),
                 ),
             )
             if current_kfp != detected_packages:
-                isort[c.Infra.Toml.KNOWN_FIRST_PARTY_HYPHEN] = u.Infra.array(
+                isort[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = u.Infra.array(
                     detected_packages,
                 )
                 changes.append(
                     f"tool.ruff.lint.isort.known-first-party set to {detected_packages}",
                 )
-        if c.Infra.Toml.LINT_SECTION in doc:
-            del doc[c.Infra.Toml.LINT_SECTION]
+        if c.Infra.LINT_SECTION in doc:
+            del doc[c.Infra.LINT_SECTION]
             changes.append("removed stale top-level [lint] section")
         return changes
 

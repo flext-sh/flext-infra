@@ -304,7 +304,7 @@ class FlextInfraNamespaceValidator:
                         f"[NS-002-{seq:03d}] {filepath}:{node.lineno} — TypeAlias '{target_name}' belongs in typings.py",
                     )
                 if isinstance(node, ast.TypeAlias):
-                    name = getattr(node, c.Infra.Toml.NAME, None)
+                    name = getattr(node, c.Infra.NAME, None)
                     name_str = (
                         getattr(name, c.Infra.ReportKeys.ID, str(name))
                         if name

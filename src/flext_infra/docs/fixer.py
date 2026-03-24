@@ -180,7 +180,7 @@ class FlextInfraDocFixer:
         """Fix links and TOC in a single markdown file."""
         original = md_file.read_text(
             encoding=c.Infra.Encoding.DEFAULT,
-            errors=c.Infra.Toml.IGNORE,
+            errors=c.Infra.IGNORE,
         )
         link_count = 0
 

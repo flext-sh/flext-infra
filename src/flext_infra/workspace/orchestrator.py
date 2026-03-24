@@ -178,7 +178,7 @@ class FlextInfraOrchestratorService(s[bool]):
             make_args=make_args,
         )
         proc_result = u.Infra.run_to_file(
-            [c.Infra.Cli.MAKE, "-C", project, verb, *normalized_make_args],
+            [c.Cli.MAKE, "-C", project, verb, *normalized_make_args],
             log_path,
             env={"NO_COLOR": "1", **os.environ},
         )

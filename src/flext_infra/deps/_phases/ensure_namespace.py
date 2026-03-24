@@ -22,19 +22,19 @@ class FlextInfraEnsureNamespaceToolingPhase:
         if not detected:
             return changes
         tool: Item | Container | None = None
-        if c.Infra.Toml.TOOL in doc:
-            tool = doc[c.Infra.Toml.TOOL]
+        if c.Infra.TOOL in doc:
+            tool = doc[c.Infra.TOOL]
         if not isinstance(tool, Table):
             tool = tomlkit.table()
-            doc[c.Infra.Toml.TOOL] = tool
-        deptry = u.Infra.ensure_table(tool, c.Infra.Toml.DEPTRY)
+            doc[c.Infra.TOOL] = tool
+        deptry = u.Infra.ensure_table(tool, c.Infra.DEPTRY)
         current_deptry = sorted(
             u.Infra.as_string_list(
-                u.Infra.get(deptry, c.Infra.Toml.KNOWN_FIRST_PARTY_UNDERSCORE),
+                u.Infra.get(deptry, c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE),
             ),
         )
         if current_deptry != detected:
-            deptry[c.Infra.Toml.KNOWN_FIRST_PARTY_UNDERSCORE] = u.Infra.array(detected)
+            deptry[c.Infra.KNOWN_FIRST_PARTY_UNDERSCORE] = u.Infra.array(detected)
             changes.append(f"tool.deptry.known_first_party set to {detected}")
         return changes
 

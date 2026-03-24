@@ -255,7 +255,7 @@ class FlextInfraDocGenerator:
                     "source": source,
                 },
                 "files": [
-                    {c.Infra.Toml.PATH: f.path, "written": f.written} for f in files
+                    {c.Infra.PATH: f.path, "written": f.written} for f in files
                 ],
             },
         )

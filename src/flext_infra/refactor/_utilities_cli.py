@@ -74,7 +74,7 @@ class FlextInfraUtilitiesRefactorCli:
         for result in results:
             if not result.success:
                 impact_map.append({
-                    c.Infra.Toml.PROJECT: FlextInfraUtilitiesRefactorCli.project_name_from_path(
+                    c.Infra.PROJECT: FlextInfraUtilitiesRefactorCli.project_name_from_path(
                         result.file_path,
                     ),
                     c.Infra.ReportKeys.FILE: str(result.file_path),
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesRefactorCli:
                 if symbol_match is not None:
                     _, old_symbol, new_symbol = symbol_match.groups()
                     impact_map.append({
-                        c.Infra.Toml.PROJECT: project_name,
+                        c.Infra.PROJECT: project_name,
                         c.Infra.ReportKeys.FILE: str(result.file_path),
                         "kind": "rename",
                         "old": old_symbol.strip(),
@@ -106,7 +106,7 @@ class FlextInfraUtilitiesRefactorCli:
                 if add_match is not None:
                     migration_id, payload = add_match.groups()
                     impact_map.append({
-                        c.Infra.Toml.PROJECT: project_name,
+                        c.Infra.PROJECT: project_name,
                         c.Infra.ReportKeys.FILE: str(result.file_path),
                         "kind": "signature_add",
                         "old": "",
@@ -118,7 +118,7 @@ class FlextInfraUtilitiesRefactorCli:
                 if remove_match is not None:
                     migration_id, payload = remove_match.groups()
                     impact_map.append({
-                        c.Infra.Toml.PROJECT: project_name,
+                        c.Infra.PROJECT: project_name,
                         c.Infra.ReportKeys.FILE: str(result.file_path),
                         "kind": "signature_remove",
                         "old": payload.strip(),
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesRefactorCli:
         )
         name_width = (
             max(
-                len(str(item.get(c.Infra.Toml.NAME, c.Infra.Defaults.UNKNOWN)))
+                len(str(item.get(c.Infra.NAME, c.Infra.Defaults.UNKNOWN)))
                 for item in rules
             )
             + 2

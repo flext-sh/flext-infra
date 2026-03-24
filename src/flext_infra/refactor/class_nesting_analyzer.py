@@ -187,7 +187,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         candidate = raw_scope.strip().lower()
         if candidate in {
             c.Infra.ReportKeys.FILE,
-            c.Infra.Toml.PROJECT,
+            c.Infra.PROJECT,
             c.Infra.ReportKeys.WORKSPACE,
         }:
             return candidate

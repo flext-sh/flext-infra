@@ -191,23 +191,23 @@ class FlextInfraInternalDependencySyncService:
                 data_result.error or f"failed to read {pyproject}",
             )
         data = data_result.value
-        tool = self._normalize_str_object_mapping(data.get(c.Infra.Toml.TOOL))
-        poetry = self._normalize_str_object_mapping(tool.get(c.Infra.Toml.POETRY))
-        deps = self._normalize_str_object_mapping(poetry.get(c.Infra.Toml.DEPENDENCIES))
+        tool = self._normalize_str_object_mapping(data.get(c.Infra.TOOL))
+        poetry = self._normalize_str_object_mapping(tool.get(c.Infra.POETRY))
+        deps = self._normalize_str_object_mapping(poetry.get(c.Infra.DEPENDENCIES))
         result: MutableMapping[str, Path] = {}
         for dep_name, dep_value in deps.items():
             dep_value_map = self._normalize_str_object_mapping(dep_value)
             if not dep_value_map:
                 continue
-            dep_path = dep_value_map.get(c.Infra.Toml.PATH)
+            dep_path = dep_value_map.get(c.Infra.PATH)
             if not isinstance(dep_path, str):
                 continue
             repo_name = self.is_internal_path_dep(dep_path)
             if repo_name is None:
                 continue
             result[dep_name] = project_root / ".flext-deps" / repo_name
-        project_obj = self._normalize_str_object_mapping(data.get(c.Infra.Toml.PROJECT))
-        project_deps_raw = project_obj.get(c.Infra.Toml.DEPENDENCIES)
+        project_obj = self._normalize_str_object_mapping(data.get(c.Infra.PROJECT))
+        project_deps_raw = project_obj.get(c.Infra.DEPENDENCIES)
         project_deps = self._normalize_string_list(project_deps_raw)
         for dep in project_deps:
             if " @ " not in dep:

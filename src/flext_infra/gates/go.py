@@ -40,7 +40,7 @@ class FlextInfraGoGate(FlextInfraGate):
         issues: MutableSequence[m.Infra.Issue] = []
         raw_output = ""
         vet_result = self._run(
-            [c.Infra.Cli.GOVET, "vet", "./..."],
+            [c.Cli.GOVET, "vet", "./..."],
             project_dir,
             timeout=c.Infra.Timeouts.CI,
         )
@@ -76,7 +76,7 @@ class FlextInfraGoGate(FlextInfraGate):
         if go_files:
             fmt_result = self._run(
                 [
-                    c.Infra.Cli.GOFMT,
+                    c.Cli.GOFMT,
                     "-l",
                     *[str(path.relative_to(project_dir)) for path in go_files],
                 ],

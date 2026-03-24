@@ -46,10 +46,10 @@ class FlextInfraDependencyDetectorRuntime:
         if not projects:
             detector.log.error("deps_no_projects_found")
             return r[int].ok(2)
-        if not (venv_bin / c.Infra.Toml.DEPTRY).exists():
+        if not (venv_bin / c.Infra.DEPTRY).exists():
             detector.log.error(
                 "deps_deptry_missing",
-                path=str(venv_bin / c.Infra.Toml.DEPTRY),
+                path=str(venv_bin / c.Infra.DEPTRY),
             )
             return r[int].ok(3)
         apply_typings = bool(args.apply_typings)
@@ -73,11 +73,11 @@ class FlextInfraDependencyDetectorRuntime:
             typing_deps = deps_service
             limits_data = typing_deps.load_dependency_limits(limits_path)
             if limits_data:
-                python_cfg = limits_data.get(c.Infra.Toml.PYTHON)
+                python_cfg = limits_data.get(c.Infra.PYTHON)
                 python_version = (
-                    str(python_cfg.get(c.Infra.Toml.VERSION))
+                    str(python_cfg.get(c.Infra.VERSION))
                     if isinstance(python_cfg, dict)
-                    and python_cfg.get(c.Infra.Toml.VERSION) is not None
+                    and python_cfg.get(c.Infra.VERSION) is not None
                     else None
                 )
                 report_model.dependency_limits = self._dependency_limits_factory(
@@ -130,7 +130,7 @@ class FlextInfraDependencyDetectorRuntime:
                     for package in to_add:
                         run = detector.runner.run_raw(
                             [
-                                c.Infra.Cli.POETRY,
+                                c.Cli.POETRY,
                                 "add",
                                 "--group",
                                 c.Infra.Directories.TYPINGS,
@@ -175,8 +175,8 @@ class FlextInfraDependencyDetectorRuntime:
         elif cli.apply:
             report_dir = detector.reporting.get_report_dir(
                 root,
-                c.Infra.Toml.PROJECT,
-                c.Infra.Toml.DEPENDENCIES,
+                c.Infra.PROJECT,
+                c.Infra.DEPENDENCIES,
             )
             try:
                 report_dir.mkdir(parents=True, exist_ok=True)
@@ -191,7 +191,7 @@ class FlextInfraDependencyDetectorRuntime:
                 detector.log.info("deps_report_written", path=str(out_path))
         total_issues = 0
         for payload in projects_report.values():
-            deptry_obj = payload.get(c.Infra.Toml.DEPTRY)
+            deptry_obj = payload.get(c.Infra.DEPTRY)
             if isinstance(deptry_obj, dict):
                 try:
                     deptry_payload = TypeAdapter(

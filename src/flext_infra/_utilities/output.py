@@ -42,35 +42,35 @@ class FlextInfraUtilitiesOutput:
 
     @classmethod
     def _fmt(cls, level: str, color: str, message: str) -> None:
-        reset = c.Infra.Style.RESET if cls._use_color else ""
+        reset = c.Infra.RESET if cls._use_color else ""
         clr = color if cls._use_color else ""
         cls._stream.write(f"{clr}{level}{reset}: {message}\n")
         cls._stream.flush()
 
     @classmethod
     def info(cls, msg: str) -> None:
-        cls._fmt("INFO", c.Infra.Style.BLUE, msg)
+        cls._fmt("INFO", c.Infra.BLUE, msg)
 
     @classmethod
     def error(cls, msg: str, detail: str | None = None) -> None:
-        cls._fmt("ERROR", c.Infra.Style.RED, msg)
+        cls._fmt("ERROR", c.Infra.RED, msg)
         if detail:
             cls._stream.write(f"  {detail}\n")
 
     @classmethod
     def warning(cls, msg: str) -> None:
-        cls._fmt("WARN", c.Infra.Style.YELLOW, msg)
+        cls._fmt("WARN", c.Infra.YELLOW, msg)
 
     @classmethod
     def debug(cls, msg: str) -> None:
-        cls._fmt("DEBUG", c.Infra.Style.GREEN, msg)
+        cls._fmt("DEBUG", c.Infra.GREEN, msg)
 
     @classmethod
     def header(cls, title: str) -> None:
         sep = "═" if cls._use_unicode else "="
         line = sep * 60
         cls._stream.write(
-            f"\n{c.Infra.Style.BOLD if cls._use_color else ''}{line}\n  {title}\n{line}{c.Infra.Style.RESET if cls._use_color else ''}\n",
+            f"\n{c.Infra.BOLD if cls._use_color else ''}{line}\n  {title}\n{line}{c.Infra.RESET if cls._use_color else ''}\n",
         )
 
     @classmethod
@@ -81,17 +81,17 @@ class FlextInfraUtilitiesOutput:
     @classmethod
     def status(cls, verb: str, proj: str, result: bool, elapsed: float) -> None:
         sym = (
-            (c.Infra.Style.OK if cls._use_unicode else "[OK]")
+            (c.Infra.OK if cls._use_unicode else "[OK]")
             if result
-            else (c.Infra.Style.FAIL if cls._use_unicode else "[FAIL]")
+            else (c.Infra.FAIL if cls._use_unicode else "[FAIL]")
         )
         clr = (
-            (c.Infra.Style.GREEN if result else c.Infra.Style.RED)
+            (c.Infra.GREEN if result else c.Infra.RED)
             if cls._use_color
             else ""
         )
         cls._stream.write(
-            f"  {clr}{sym}{c.Infra.Style.RESET if cls._use_color else ''} {verb:<8} {proj:<24} {elapsed:.2f}s\n",
+            f"  {clr}{sym}{c.Infra.RESET if cls._use_color else ''} {verb:<8} {proj:<24} {elapsed:.2f}s\n",
         )
 
     @classmethod
@@ -118,7 +118,7 @@ class FlextInfraUtilitiesOutput:
     @classmethod
     def gate_result(cls, gate: str, count: int, passed: bool, elapsed: float) -> None:
         sym = (
-            (c.Infra.Style.OK if passed else c.Infra.Style.FAIL)
+            (c.Infra.OK if passed else c.Infra.FAIL)
             if cls._use_unicode
             else ("[OK]" if passed else "[FAIL]")
         )
@@ -136,9 +136,9 @@ class FlextInfraUtilitiesOutput:
         max_show: int = 3,
     ) -> None:
         """Show failed project with error excerpt."""
-        clr = c.Infra.Style.RED if cls._use_color else ""
-        reset = c.Infra.Style.RESET if cls._use_color else ""
-        fail_sym = c.Infra.Style.FAIL if cls._use_unicode else "[FAIL]"
+        clr = c.Infra.RED if cls._use_color else ""
+        reset = c.Infra.RESET if cls._use_color else ""
+        fail_sym = c.Infra.FAIL if cls._use_unicode else "[FAIL]"
         count_label = f"  [{error_count} errors]" if error_count > 0 else ""
         cls._stream.write(
             f"  {clr}{fail_sym}{reset} {project} completed in {int(elapsed)}s"
@@ -165,9 +165,9 @@ class FlextInfraUtilitiesOutput:
             if cls._use_unicode
             else f"-- {verb} failed projects --"
         )
-        clr = c.Infra.Style.RED if cls._use_color else ""
-        reset = c.Infra.Style.RESET if cls._use_color else ""
-        fail_sym = c.Infra.Style.FAIL if cls._use_unicode else "[FAIL]"
+        clr = c.Infra.RED if cls._use_color else ""
+        reset = c.Infra.RESET if cls._use_color else ""
+        fail_sym = c.Infra.FAIL if cls._use_unicode else "[FAIL]"
         cls._stream.write(f"\n{hdr}\n")
         for project, error_count, log_path in failures:
             count_label = f"{error_count} errors" if error_count > 0 else "failed"

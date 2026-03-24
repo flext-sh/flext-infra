@@ -24,7 +24,7 @@ class FlextInfraRefactorRule:
         self.config = dict(config.items())
         rule_id = self.config.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN)
         self.rule_id = str(rule_id)
-        name_raw = self.config.get(c.Infra.Toml.NAME, self.rule_id)
+        name_raw = self.config.get(c.Infra.NAME, self.rule_id)
         self.name = str(name_raw)
         description_raw = self.config.get("description", "")
         self.description = description_raw if isinstance(description_raw, str) else ""

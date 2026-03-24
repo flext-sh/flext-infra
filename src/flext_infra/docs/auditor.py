@@ -257,7 +257,7 @@ class FlextInfraDocAuditor:
         for md_file in u.Infra.iter_markdown_files(scope.path):
             content = md_file.read_text(
                 encoding=c.Infra.Encoding.DEFAULT,
-                errors=c.Infra.Toml.IGNORE,
+                errors=c.Infra.IGNORE,
             )
             rel = md_file.relative_to(scope.path).as_posix()
             in_fenced_code = False
@@ -304,7 +304,7 @@ class FlextInfraDocAuditor:
                 continue
             content = md_file.read_text(
                 encoding=c.Infra.Encoding.DEFAULT,
-                errors=c.Infra.Toml.IGNORE,
+                errors=c.Infra.IGNORE,
             ).lower()
             issues.extend(
                 m.Infra.AuditIssue(

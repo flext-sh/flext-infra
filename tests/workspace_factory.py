@@ -113,16 +113,16 @@ class WorkspaceFactory(m.Config):
         return project_root
 
     def _project_pyproject(self, name: str, deps: t.StrSequence) -> str:
-        """Generate pyproject.toml content using c.Infra.Toml constants."""
+        """Generate pyproject.toml content using c.Infra constants."""
         dependency_lines = [f'python = "^{self.default_python.lstrip("^")}"']
         dependency_lines.extend(f'{dep} = "*"' for dep in deps)
         dependencies = "\n".join(dependency_lines)
-        # Use c.Infra.Toml constants at runtime
-        tool_poetry = f"[tool.{FlextInfraConstants.Infra.Toml.POETRY}]\n"
+        # Use c.Infra constants at runtime
+        tool_poetry = f"[tool.{FlextInfraConstants.Infra.POETRY}]\n"
         poetry_deps = (
             "[tool."
-            f"{FlextInfraConstants.Infra.Toml.POETRY}."
-            f"{FlextInfraConstants.Infra.Toml.DEPENDENCIES}]\n"
+            f"{FlextInfraConstants.Infra.POETRY}."
+            f"{FlextInfraConstants.Infra.DEPENDENCIES}]\n"
         )
         return (
             tool_poetry

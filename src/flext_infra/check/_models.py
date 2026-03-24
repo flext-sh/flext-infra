@@ -25,10 +25,10 @@ class FlextInfraCheckModels:
         severity: Annotated[
             str,
             Field(
-                default=c.Infra.Toml.ERROR,
+                default=c.Infra.ERROR,
                 description="Issue severity level",
             ),
-        ] = c.Infra.Toml.ERROR
+        ] = c.Infra.ERROR
 
         @computed_field
         @property

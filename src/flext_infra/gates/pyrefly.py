@@ -36,12 +36,12 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         cmd = [
             sys.executable,
             "-m",
-            c.Infra.Cli.PYREFLY,
-            c.Infra.Cli.RuffCmd.CHECK,
+            c.Cli.PYREFLY,
+            c.Cli.RuffCmd.CHECK,
             "--config",
             c.Infra.Files.PYPROJECT_FILENAME,
             "--output-format",
-            c.Infra.Cli.OUTPUT_JSON,
+            c.Cli.OUTPUT_JSON,
             "-o",
             str(json_file),
             "--summary=none",
@@ -68,7 +68,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                         column=self._as_int(item.get("column"), 0),
                         code=self._as_str(item.get("name"), ""),
                         message=self._as_str(item.get("description"), ""),
-                        severity=self._as_str(item.get("severity"), c.Infra.Toml.ERROR),
+                        severity=self._as_str(item.get("severity"), c.Infra.ERROR),
                     )
                     for err in error_items
                     for item in [dict(err)]
