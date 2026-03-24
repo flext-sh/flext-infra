@@ -351,6 +351,20 @@ class FlextInfraDepsModels:
                     description="Child env dirs included by root pyrefly when enabled.",
                 ),
             ]
+            include_path_dependencies_in_search_path: Annotated[
+                bool,
+                Field(
+                    alias="include-path-dependencies-in-search-path",
+                    description="Include resolved path dependencies in pyrefly search-path.",
+                ),
+            ]
+            project_shared_search_paths: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="project-shared-search-paths",
+                    description="Additional shared workspace paths for subproject pyrefly search-path.",
+                ),
+            ]
 
         python_version: Annotated[
             str,

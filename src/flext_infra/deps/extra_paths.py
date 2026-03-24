@@ -301,6 +301,17 @@ class FlextInfraExtraPathsManager:
                         if child_env.is_dir():
                             paths.add(f"{child.name}/{env_dir}")
             return sorted(paths)
+        if rules.include_path_dependencies_in_search_path:
+            project_pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
+            doc_result = u.Infra.read_document(project_pyproject)
+            if doc_result.is_success:
+                dep_paths = self.get_dep_paths(doc_result.value, is_root=False)
+                paths.update(dep_paths)
+        shared_paths = self._existing_relative_paths(
+            project_dir,
+            rules.project_shared_search_paths,
+        )
+        paths.update(shared_paths)
         paths.add(rules.project_root)
         return sorted(paths)
 

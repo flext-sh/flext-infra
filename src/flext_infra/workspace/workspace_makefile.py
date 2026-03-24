@@ -20,12 +20,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
-import subprocess
 import tempfile
 import tomllib
 from pathlib import Path
 
-from flext_infra import r
+from flext_infra import FlextInfraUtilitiesSubprocess, r
 
 _ENCODING = "utf-8"
 _TEMPLATE_NAME = "workspace_makefile.mk.j2"
@@ -155,20 +154,14 @@ class FlextInfraWorkspaceMakefileGenerator:
     @staticmethod
     def _current_branch(workspace_root: Path) -> str:
         """Return current git branch or version from pyproject.toml."""
-        try:
-            result = subprocess.run(
-                ["git", "-C", str(workspace_root), "rev-parse", "--abbrev-ref", "HEAD"],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=5,
-            )
-            if result.returncode == 0:
-                branch = result.stdout.strip()
-                if branch and branch != "HEAD":
-                    return branch
-        except (OSError, subprocess.TimeoutExpired):
-            pass
+        capture_result = FlextInfraUtilitiesSubprocess.capture(
+            ["git", "-C", str(workspace_root), "rev-parse", "--abbrev-ref", "HEAD"],
+            timeout=5,
+        )
+        if capture_result.is_success:
+            branch = capture_result.value
+            if branch and branch != "HEAD":
+                return branch
 
         # Fallback: read version from pyproject.toml
         pyproject = workspace_root / "pyproject.toml"

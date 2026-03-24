@@ -38,8 +38,12 @@ class FlextInfraUtilitiesSubprocess:
             stderr_raw = res.stderr or (b"" if input_data else "")
             return r[m.Infra.CommandOutput].ok(
                 m.Infra.CommandOutput(
-                    stdout=stdout_raw.decode() if isinstance(stdout_raw, bytes) else stdout_raw,
-                    stderr=stderr_raw.decode() if isinstance(stderr_raw, bytes) else stderr_raw,
+                    stdout=stdout_raw.decode()
+                    if isinstance(stdout_raw, bytes)
+                    else stdout_raw,
+                    stderr=stderr_raw.decode()
+                    if isinstance(stderr_raw, bytes)
+                    else stderr_raw,
                     exit_code=res.returncode,
                 ),
             )
