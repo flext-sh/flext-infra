@@ -13,7 +13,10 @@ import io
 
 from flext_tests import tm
 
-from flext_infra import OutputBackend, u as iu
+from flext_infra import u as iu
+from flext_infra._utilities.output import FlextInfraUtilitiesOutput
+
+OutputBackend = FlextInfraUtilitiesOutput.OutputBackend
 
 
 def _make_backend(

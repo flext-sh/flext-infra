@@ -47,12 +47,11 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        def _sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
+            return r[Sequence[m.Infra.SyncOperation]].ok([])
+
         monkeypatch.setattr(
-            u.Infra,
-            "github_sync_workspace_workflows",
-            staticmethod(
-                lambda **kw: r[Sequence[m.Infra.SyncOperation]].ok([]),
-            ),
+            u.Infra, "github_sync_workspace_workflows", staticmethod(_sync)
         )
         original = sys.argv.copy()
         try:
@@ -71,15 +70,12 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "github_lint_workflows",
-            staticmethod(
-                lambda **kw: r[m.Infra.WorkflowLintResult].ok(
-                    m.Infra.WorkflowLintResult(status="ok"),
-                ),
-            ),
-        )
+        def _lint(**kw: bool) -> r[m.Infra.WorkflowLintResult]:
+            return r[m.Infra.WorkflowLintResult].ok(
+                m.Infra.WorkflowLintResult(status="ok"),
+            )
+
+        monkeypatch.setattr(u.Infra, "github_lint_workflows", staticmethod(_lint))
         original = sys.argv.copy()
         try:
             sys.argv = [
@@ -97,11 +93,10 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            github_main,
-            "run_pr",
-            lambda argv: 0,
-        )
+        def _run_pr(argv: list[str]) -> int:
+            return 0
+
+        monkeypatch.setattr(github_main, "run_pr", _run_pr)
         original = sys.argv.copy()
         try:
             sys.argv = [
@@ -117,14 +112,11 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        def _orchestrate(**kw: bool) -> r[m.Infra.PrOrchestrationResult]:
+            return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
+
         monkeypatch.setattr(
-            u.Infra,
-            "github_pr_orchestrate",
-            staticmethod(
-                lambda **kw: r[m.Infra.PrOrchestrationResult].ok(
-                    _orch(fail=0),
-                ),
-            ),
+            u.Infra, "github_pr_orchestrate", staticmethod(_orchestrate)
         )
         original = sys.argv.copy()
         try:
@@ -153,16 +145,14 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        called: Sequence[bool] = []
-        monkeypatch.setattr(
-            u.Infra,
-            "github_lint_workflows",
-            staticmethod(
-                lambda **kw: r[m.Infra.WorkflowLintResult].ok(
-                    m.Infra.WorkflowLintResult(status="ok"),
-                ),
-            ),
-        )
+        called: list[bool] = []
+
+        def _lint(**kw: bool) -> r[m.Infra.WorkflowLintResult]:
+            return r[m.Infra.WorkflowLintResult].ok(
+                m.Infra.WorkflowLintResult(status="ok"),
+            )
+
+        monkeypatch.setattr(u.Infra, "github_lint_workflows", staticmethod(_lint))
         original = sys.argv.copy()
         try:
             sys.argv = [
@@ -196,10 +186,12 @@ class TestMain:
                 reason="changed",
             ),
         ]
+
+        def _sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
+            return r[Sequence[m.Infra.SyncOperation]].ok(ops)
+
         monkeypatch.setattr(
-            u.Infra,
-            "github_sync_workspace_workflows",
-            staticmethod(lambda **kw: r[Sequence[m.Infra.SyncOperation]].ok(ops)),
+            u.Infra, "github_sync_workspace_workflows", staticmethod(_sync)
         )
         original = sys.argv.copy()
         try:

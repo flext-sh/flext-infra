@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import pytest
 from flext_core import r
@@ -31,7 +31,9 @@ class TestMain:
         def _resolve(_a: argparse.Namespace) -> u.Infra.CliArgs:
             return cli_args
 
-        def _sync(_self: FlextInfraInternalDependencySyncService, _root: Path) -> r[int]:
+        def _sync(
+            _self: FlextInfraInternalDependencySyncService, _root: Path
+        ) -> r[int]:
             return r[int].ok(0)
 
         monkeypatch.setattr(argparse.ArgumentParser, "parse_args", _parse_args)
@@ -60,7 +62,9 @@ class TestMain:
         def _resolve(_a: argparse.Namespace) -> u.Infra.CliArgs:
             return cli_args
 
-        def _sync(_self: FlextInfraInternalDependencySyncService, _root: Path) -> r[int]:
+        def _sync(
+            _self: FlextInfraInternalDependencySyncService, _root: Path
+        ) -> r[int]:
             return r[int].fail("sync failed")
 
         monkeypatch.setattr(argparse.ArgumentParser, "parse_args", _parse_args)

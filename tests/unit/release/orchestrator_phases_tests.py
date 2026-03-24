@@ -74,15 +74,15 @@ class TestPhaseVersion:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
+        def _parse_semver(version: str) -> r[str]:
+            return r[str].ok(version)
+
+        def _replace_version(path: Path, version: str) -> None:
+            _ = path, version
+
+        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         monkeypatch.setattr(
-            u.Infra,
-            "parse_semver",
-            staticmethod(lambda version: r[str].ok(version)),
-        )
-        monkeypatch.setattr(
-            u.Infra,
-            "replace_project_version",
-            staticmethod(lambda path, version: None),
+            u.Infra, "replace_project_version", staticmethod(_replace_version)
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=False))
@@ -92,11 +92,11 @@ class TestPhaseVersion:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "parse_semver",
-            staticmethod(lambda version: r[str].fail("invalid version")),
-        )
+        def _parse_semver_fail(version: str) -> r[str]:
+            _ = version
+            return r[str].fail("invalid version")
+
+        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver_fail))
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.fail(orchestrator.phase_version(workspace_root, "invalid", []))
 
@@ -105,25 +105,24 @@ class TestPhaseVersion:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
+        def _parse_semver(version: str) -> r[str]:
+            return r[str].ok(version)
+
+        def _replace_version(path: Path, version: str) -> None:
+            _ = path, version
+
+        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         monkeypatch.setattr(
-            u.Infra,
-            "parse_semver",
-            staticmethod(lambda version: r[str].ok(version)),
-        )
-        monkeypatch.setattr(
-            u.Infra,
-            "replace_project_version",
-            staticmethod(lambda path, version: None),
+            u.Infra, "replace_project_version", staticmethod(_replace_version)
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dev_suffix=True))
 
     def test_dry_run(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "parse_semver",
-            staticmethod(lambda version: r[str].ok(version)),
-        )
+        def _parse_semver(version: str) -> r[str]:
+            return r[str].ok(version)
+
+        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=True))
 
@@ -138,16 +137,12 @@ class TestPhaseVersion:
             del a, kw
             return [workspace_root / "nonexistent.toml"]
 
-        monkeypatch.setattr(
-            orchestrator,
-            "_version_files",
-            _fake_version_files,
-        )
-        monkeypatch.setattr(
-            u.Infra,
-            "parse_semver",
-            staticmethod(lambda version: r[str].ok(version)),
-        )
+        monkeypatch.setattr(orchestrator, "_version_files", _fake_version_files)
+
+        def _parse_semver(version: str) -> r[str]:
+            return r[str].ok(version)
+
+        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", []))
 
 
@@ -159,11 +154,13 @@ class TestPhaseBuild:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "get_report_dir",
-            staticmethod(lambda ws, scope, verb: workspace_root / "reports"),
-        )
+        ws_root = workspace_root
+
+        def _get_report_dir(ws: Path | str, scope: str, verb: str) -> Path:
+            _ = ws, scope, verb
+            return ws_root / "reports"
+
+        monkeypatch.setattr(u.Infra, "get_report_dir", staticmethod(_get_report_dir))
 
         def _fake_run_make(*a: t.Scalar, **kw: t.Scalar) -> r[tuple[int, str]]:
             del a, kw
@@ -182,11 +179,13 @@ class TestPhaseBuild:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "get_report_dir",
-            staticmethod(lambda ws, scope, verb: workspace_root / "reports"),
-        )
+        ws_root = workspace_root
+
+        def _get_report_dir(ws: Path | str, scope: str, verb: str) -> Path:
+            _ = ws, scope, verb
+            return ws_root / "reports"
+
+        monkeypatch.setattr(u.Infra, "get_report_dir", staticmethod(_get_report_dir))
 
         def _raise_mkdir(*a: t.Scalar, **kw: t.Scalar) -> None:
             del a, kw

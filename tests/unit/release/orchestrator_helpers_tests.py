@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from types import SimpleNamespace
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -13,6 +13,7 @@ from flext_tests import tm
 import flext_infra.release.orchestrator as _orch_mod
 from flext_infra import (
     FlextInfraReleaseOrchestrator,
+    m,
     m as infra_models,
     u,
 )
@@ -21,13 +22,10 @@ from tests import t
 from ...models import m as _m
 from ._stubs import (
     FakeSelection,
-    FakeSubprocess,
     FakeUtilsNamespace,
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from _pytest.monkeypatch import MonkeyPatch
 
 _CLS = FlextInfraReleaseOrchestrator
@@ -44,19 +42,13 @@ def workspace_root(tmp_path: Path) -> Path:
 
 
 def _patch_sel(mp: MonkeyPatch, sel: FakeSelection) -> None:
-    mp.setattr(
-        u.Infra,
-        "resolve_projects",
-        staticmethod(lambda ws, names: sel.resolve_projects(ws, names)),
-    )
+    def _resolve_projects(
+        workspace_root: Path,
+        names: t.StrSequence,
+    ) -> r[Sequence[m.Infra.ProjectInfo]]:
+        return sel.resolve_projects(workspace_root, names)
 
-
-def _patch_sp(mp: MonkeyPatch, sp: FakeSubprocess) -> None:
-    mp.setattr(
-        u.Infra,
-        "run_raw",
-        staticmethod(lambda cmd, **kw: sp.run_raw(cmd, **kw)),
-    )
+    mp.setattr(u.Infra, "resolve_projects", staticmethod(_resolve_projects))
 
 
 class TestVersionFiles:
@@ -69,8 +61,8 @@ class TestVersionFiles:
         proj_dir.mkdir()
         (proj_dir / "pyproject.toml").touch()
         fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[Sequence[SimpleNamespace]].ok([
-            SimpleNamespace(name="proj1", path=proj_dir),
+        fake_sel._resolve_result = r[Sequence[_m.Infra.ProjectInfo]].ok([
+            _m.Infra.ProjectInfo(name="proj1", path=proj_dir, stack="python"),
         ])
         _patch_sel(monkeypatch, fake_sel)
         tm.that(len(_CLS()._version_files(workspace_root, ["proj1"])), gt=0)
@@ -96,8 +88,10 @@ class TestBuildTargets:
         monkeypatch: MonkeyPatch,
     ) -> None:
         fake_sel = FakeSelection()
-        fake_sel._resolve_result = r[Sequence[SimpleNamespace]].ok([
-            SimpleNamespace(name="proj1", path=workspace_root / "proj1"),
+        fake_sel._resolve_result = r[Sequence[_m.Infra.ProjectInfo]].ok([
+            _m.Infra.ProjectInfo(
+                name="proj1", path=workspace_root / "proj1", stack="python"
+            ),
         ])
         _patch_sel(monkeypatch, fake_sel)
         names = [n for n, _ in _CLS()._build_targets(workspace_root, ["proj1"])]
@@ -202,11 +196,11 @@ class TestBumpNextDev:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "bump_version",
-            staticmethod(lambda cur, kind: r[str].ok("1.1.0")),
-        )
+        def _bump_ok(cur: str, kind: str) -> r[str]:
+            _ = cur, kind
+            return r[str].ok("1.1.0")
+
+        monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_ok))
 
         def _phase_version(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
             del a, kw
@@ -216,11 +210,11 @@ class TestBumpNextDev:
         tm.ok(_CLS()._bump_next_dev(workspace_root, "1.0.0", [], "minor"))
 
     def test_bump_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "bump_version",
-            staticmethod(lambda cur, kind: r[str].fail("invalid bump")),
-        )
+        def _bump_fail(cur: str, kind: str) -> r[str]:
+            _ = cur, kind
+            return r[str].fail("invalid bump")
+
+        monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_fail))
         tm.fail(_CLS()._bump_next_dev(workspace_root, "1.0.0", [], "invalid"))
 
 

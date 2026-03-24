@@ -31,11 +31,13 @@ def workspace_root(tmp_path: Path) -> Path:
 
 def _stub_publish(mp: MonkeyPatch, root: Path) -> None:
     """Stub reporting + notes for publish tests."""
-    mp.setattr(
-        u.Infra,
-        "get_report_dir",
-        staticmethod(lambda ws, scope, verb: root / "reports"),
-    )
+    root_ = root
+
+    def _get_report_dir(ws: Path | str, scope: str, verb: str) -> Path:
+        _ = ws, scope, verb
+        return root_ / "reports"
+
+    mp.setattr(u.Infra, "get_report_dir", staticmethod(_get_report_dir))
 
     def _generate_notes(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
         del a, kw
@@ -48,11 +50,11 @@ def _stub_full_publish(mp: MonkeyPatch, root: Path) -> None:
     """Stub reporting + notes + changelog + tag for full publish."""
     _stub_publish(mp, root)
 
-    mp.setattr(
-        u.Infra,
-        "update_changelog",
-        staticmethod(lambda *a, **kw: r[bool].ok(True)),
-    )
+    def _update_changelog(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
+        _ = a, kw
+        return r[bool].ok(True)
+
+    mp.setattr(u.Infra, "update_changelog", staticmethod(_update_changelog))
 
     def _create_tag(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
         del a, kw
@@ -128,11 +130,13 @@ class TestPhasePublish:
         workspace_root: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "get_report_dir",
-            staticmethod(lambda ws, scope, verb: workspace_root / "reports"),
-        )
+        ws_root = workspace_root
+
+        def _get_report_dir_2(ws: Path | str, scope: str, verb: str) -> Path:
+            _ = ws, scope, verb
+            return ws_root / "reports"
+
+        monkeypatch.setattr(u.Infra, "get_report_dir", staticmethod(_get_report_dir_2))
 
         def _generate_notes(*a: t.Scalar, **kw: t.Scalar) -> r[bool]:
             del a, kw

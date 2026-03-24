@@ -15,8 +15,6 @@ try:
     )
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
-from flext_tests import tm
-
 from flext_infra import FlextInfraRefactorSafetyManager
 
 
@@ -26,7 +24,7 @@ class EngineSafetyStub(FlextInfraRefactorSafetyManager):
     def __init__(self) -> None:
         """Initialize call capture state for assertions."""
         super().__init__()
-        self.calls: t.StrSequence = []
+        self.calls: list[str] = []
 
     @override
     def create_pre_transformation_stash(
@@ -113,7 +111,7 @@ def test_refactor_project_integrates_safety_manager(tmp_path: Path) -> None:
     stub = EngineSafetyStub()
     engine.safety_manager = stub
     loaded = engine.load_rules()
-    tm.ok(loaded)
+    assert loaded.is_success
     results = engine.refactor_project(tmp_path, dry_run=False, apply_safety=True)
     assert results
     assert all(item.success for item in results)

@@ -56,8 +56,9 @@ if TYPE_CHECKING:
     from flext_infra.deps.internal_sync import (
         FlextInfraInternalDependencySyncService,
         shutil,
+        u,
     )
-    from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer, u
+    from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
@@ -140,7 +141,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "_phases": ("flext_infra.deps._phases", ""),
     "main": ("flext_infra.deps.detector", "main"),
     "shutil": ("flext_infra.deps.internal_sync", "shutil"),
-    "u": ("flext_infra.deps.modernizer", "u"),
+    "u": ("flext_infra.deps.internal_sync", "u"),
 }
 
 __all__ = [

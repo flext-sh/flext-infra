@@ -16,7 +16,7 @@ from types import SimpleNamespace
 import pytest
 from flext_core import r
 
-from flext_infra import FlextInfraModels, t
+from flext_infra import FlextInfraModels, m as _infra_m, t
 
 _m = FlextInfraModels
 
@@ -152,13 +152,15 @@ class FakeReporting:
 class FakeSelection:
     """Fake for FlextInfraUtilitiesSelection."""
 
-    _resolve_result: r[Sequence[SimpleNamespace]] = r[Sequence[SimpleNamespace]].ok([])
+    _resolve_result: r[Sequence[_infra_m.Infra.ProjectInfo]] = r[
+        Sequence[_infra_m.Infra.ProjectInfo]
+    ].ok([])
 
     def resolve_projects(
         self,
-        *args: str,
-        **kwargs: str,
-    ) -> r[Sequence[SimpleNamespace]]:
+        workspace_root: Path,
+        names: t.StrSequence,
+    ) -> r[Sequence[_infra_m.Infra.ProjectInfo]]:
         return self._resolve_result
 
 

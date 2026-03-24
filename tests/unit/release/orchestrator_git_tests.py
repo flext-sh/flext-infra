@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
@@ -18,12 +19,10 @@ from flext_core import r
 from flext_tests import tm
 
 import flext_infra.release.orchestrator as _orch_mod
-from flext_infra import FlextInfraReleaseOrchestrator
+from flext_infra import FlextInfraReleaseOrchestrator, t
 from tests import FakeUtilsNamespace
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from _pytest.monkeypatch import MonkeyPatch
 
 
@@ -48,10 +47,17 @@ class TestCreateBranches:
     ) -> None:
         FakeUtilsNamespace.Infra.reset()
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
+
+        @classmethod  # type: ignore[misc]
+        def _resolve_empty(
+            cls: type[object], ws: Path, names: t.StrSequence
+        ) -> r[Sequence[SimpleNamespace]]:
+            return r[Sequence[SimpleNamespace]].ok([])
+
         monkeypatch.setattr(
             FakeUtilsNamespace.Infra,
             "resolve_projects",
-            classmethod(lambda cls, ws, names: r[Sequence[SimpleNamespace]].ok([])),
+            _resolve_empty,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator._create_branches(workspace_root, "1.0.0", []))
@@ -75,12 +81,17 @@ class TestCreateBranches:
         ]
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         mock_project = SimpleNamespace(name="proj1", path=workspace_root / "proj1")
+
+        @classmethod  # type: ignore[misc]
+        def _resolve_one(
+            cls: type[object], ws: Path, names: t.StrSequence
+        ) -> r[Sequence[SimpleNamespace]]:
+            return r[Sequence[SimpleNamespace]].ok([mock_project])
+
         monkeypatch.setattr(
             FakeUtilsNamespace.Infra,
             "resolve_projects",
-            classmethod(
-                lambda cls, ws, names: r[Sequence[SimpleNamespace]].ok([mock_project]),
-            ),
+            _resolve_one,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.fail(orchestrator._create_branches(workspace_root, "1.0.0", ["proj1"]))

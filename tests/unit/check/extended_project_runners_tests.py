@@ -28,7 +28,11 @@ class TestCheckProjectRunners:
         checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "test.py").touch()
-        called: MutableMapping[str, bool] = {"lint": False, "format": False, "pyrefly": False}
+        called: MutableMapping[str, bool] = {
+            "lint": False,
+            "format": False,
+            "pyrefly": False,
+        }
 
         class _FakeGate:
             def __init__(self, gate_name: str) -> None:

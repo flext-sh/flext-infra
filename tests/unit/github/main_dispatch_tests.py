@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -24,7 +25,7 @@ def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
 
 def _cli(tmp_path: Path) -> u.Infra.CliArgs:
     return u.Infra.resolve(
-        type("NS", (), {"workspace": tmp_path, "apply": False, "projects": None})(),
+        argparse.Namespace(workspace=tmp_path, apply=False, projects=None),
     )
 
 
@@ -53,25 +54,17 @@ def _pr_args(**overrides: str | bool) -> m.Infra.PrWorkspaceArgs:
 
 class TestRunPrWorkspace:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "github_pr_orchestrate",
-            staticmethod(
-                lambda **kw: r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0)),
-            ),
-        )
+        def _ok(**kw: t.Scalar) -> r[m.Infra.PrOrchestrationResult]:
+            return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
+
+        monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_ok))
         assert run_pr_workspace(_cli(tmp_path), _pr_args()) == 0
 
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "github_pr_orchestrate",
-            staticmethod(
-                lambda **kw: r[m.Infra.PrOrchestrationResult].fail(
-                    "orchestration failed",
-                ),
-            ),
-        )
+        def _fail(**kw: t.Scalar) -> r[m.Infra.PrOrchestrationResult]:
+            return r[m.Infra.PrOrchestrationResult].fail("orchestration failed")
+
+        monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_fail))
         assert run_pr_workspace(_cli(tmp_path), _pr_args()) == 1
 
     def test_with_failures(
@@ -79,15 +72,10 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            u.Infra,
-            "github_pr_orchestrate",
-            staticmethod(
-                lambda **kw: r[m.Infra.PrOrchestrationResult].fail(
-                    "orchestration had failures",
-                ),
-            ),
-        )
+        def _fail2(**kw: t.Scalar) -> r[m.Infra.PrOrchestrationResult]:
+            return r[m.Infra.PrOrchestrationResult].fail("orchestration had failures")
+
+        monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_fail2))
         assert run_pr_workspace(_cli(tmp_path), _pr_args()) == 1
 
     def test_with_pr_args(

@@ -32,7 +32,7 @@ def test_rule_dispatch_prefers_fix_action_metadata(tmp_path: Path) -> None:
     )
     engine = FlextInfraRefactorEngine(config_path=config_path)
     result = engine.load_rules()
-    tm.ok(result)
+    assert result.is_success
     assert len(engine.rules) == 9
     assert isinstance(engine.rules[0], FlextInfraRefactorLegacyRemovalRule)
     assert isinstance(engine.rules[1], FlextInfraRefactorImportModernizerRule)
@@ -91,7 +91,7 @@ def test_engine_always_enables_class_nesting_file_rule(tmp_path: Path) -> None:
     engine = FlextInfraRefactorEngine(config_path=config_path)
     engine.set_rule_filters(["custom-import-rule"])
     result = engine.load_rules()
-    tm.ok(result)
+    assert result.is_success
     assert len(engine.file_rules) == 1
 
 
@@ -107,7 +107,7 @@ def test_rule_dispatch_keeps_legacy_id_fallback_mapping(tmp_path: Path) -> None:
     )
     engine = FlextInfraRefactorEngine(config_path=config_path)
     result = engine.load_rules()
-    tm.ok(result)
+    assert result.is_success
     assert len(engine.rules) == 1
     assert isinstance(engine.rules[0], FlextInfraRefactorImportModernizerRule)
 
@@ -135,7 +135,7 @@ def test_refactor_project_scans_tests_and_scripts_dirs(tmp_path: Path) -> None:
     (scripts_dir / "task.py").write_text("import sys\n", encoding="utf-8")
     engine = FlextInfraRefactorEngine(config_path=config_path)
     loaded = engine.load_rules()
-    tm.ok(loaded)
+    assert loaded.is_success
     results = engine.refactor_project(project_root)
     assert len(results) == 2
     assert all(result.success for result in results)
@@ -158,7 +158,7 @@ def test_refactor_files_skips_non_python_inputs(tmp_path: Path) -> None:
     md_file.write_text("# doc\n", encoding="utf-8")
     engine = FlextInfraRefactorEngine(config_path=config_path)
     loaded = engine.load_rules()
-    tm.ok(loaded)
+    assert loaded.is_success
     results = engine.refactor_files([py_file, md_file], dry_run=True)
     assert len(results) == 2
     md_result = next(item for item in results if item.file_path == md_file)

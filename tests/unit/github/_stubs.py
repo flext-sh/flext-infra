@@ -146,18 +146,30 @@ class StubRunner:
 class StubJsonIo(FlextInfraUtilitiesIo):
     """Stub for FlextInfraUtilitiesIo (json_io dependency)."""
 
+    _PayloadT = (
+        JsonValue
+        | BaseModel
+        | Mapping[str, JsonValue]
+        | Sequence[JsonValue]
+        | Mapping[str, t.Infra.InfraValue]
+    )
+
     write_json_returns: ClassVar[r[bool]] = r[bool].ok(True)
-    write_json_calls: ClassVar[list[tuple[Path, t.NormalizedValue]]] = []
+    write_json_calls: ClassVar[list[tuple[Path, _PayloadT]]] = []
 
     def __init__(self, write_returns: r[bool] | None = None) -> None:
         StubJsonIo.write_json_returns = write_returns or r[bool].ok(True)
-        StubJsonIo.write_json_calls = []  # noqa: RUF012
+        StubJsonIo.write_json_calls = []
 
     @staticmethod
     @override
     def write_json(
         path: Path,
-        payload: JsonValue | BaseModel | Mapping[str, JsonValue] | Sequence[JsonValue],
+        payload: JsonValue
+        | BaseModel
+        | Mapping[str, JsonValue]
+        | Sequence[JsonValue]
+        | Mapping[str, t.Infra.InfraValue],
         *,
         sort_keys: bool = False,
         ensure_ascii: bool = False,
@@ -179,7 +191,6 @@ class StubVersioning(FlextInfraUtilitiesVersioning):
         )
 
     @staticmethod
-    @override
     def release_tag_from_branch(branch: str) -> r[str]:
         _ = branch
         return StubVersioning._release_tag_returns

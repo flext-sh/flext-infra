@@ -124,12 +124,12 @@ class StubSyncer:
 
     def __init__(
         self,
-        sync_returns: r[Sequence[m.Infra.SyncOperation]] | None = None,
+        sync_returns: r[list[m.Infra.SyncOperation]] | None = None,
     ) -> None:
-        self._sync_returns = (
+        self._sync_returns: r[list[m.Infra.SyncOperation]] = (
             sync_returns
             if sync_returns is not None
-            else r[Sequence[m.Infra.SyncOperation]].ok([])
+            else r[list[m.Infra.SyncOperation]].ok(list[m.Infra.SyncOperation]())
         )
         self.sync_workspace_calls: list[Mapping[str, t.Infra.InfraValue]] = []
 
@@ -141,7 +141,7 @@ class StubSyncer:
         report_path: Path | None = None,
         apply: bool = False,
         prune: bool = False,
-    ) -> r[Sequence[m.Infra.SyncOperation]]:
+    ) -> r[list[m.Infra.SyncOperation]]:
         kwargs: Mapping[str, t.Infra.InfraValue] = {
             "workspace_root": str(workspace_root),
             "source_workflow": str(source_workflow) if source_workflow else None,
