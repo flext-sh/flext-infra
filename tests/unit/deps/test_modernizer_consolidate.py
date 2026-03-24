@@ -18,7 +18,7 @@ class TestConsolidateGroupsPhase:
         project["optional-dependencies"] = optional
         doc["project"] = project
         changes = ConsolidateGroupsPhase().apply(doc, [])
-        tm.that(changes, eq=True)
+        tm.that(changes, empty=False)
 
     def test_consolidate_groups_removes_old_groups(self) -> None:
         doc = tomlkit.parse(
@@ -45,7 +45,7 @@ class TestConsolidateGroupsPhase:
         tool["poetry"] = poetry
         doc["tool"] = tool
         changes = ConsolidateGroupsPhase().apply(doc, [])
-        tm.that(changes, eq=True)
+        tm.that(changes, empty=False)
 
     def test_consolidate_groups_sets_deptry_config(self) -> None:
         doc = tomlkit.document()
@@ -58,7 +58,7 @@ class TestConsolidateGroupsPhase:
 
     def test_consolidate_groups_handles_missing_tables(self) -> None:
         changes = ConsolidateGroupsPhase().apply(tomlkit.document(), [])
-        tm.that(changes, eq=True)
+        tm.that(changes, empty=False)
 
 
 def test_consolidate_groups_phase_apply_removes_old_groups() -> None:
@@ -90,4 +90,4 @@ def test_consolidate_groups_phase_apply_with_empty_poetry_group() -> None:
     tool["poetry"] = poetry
     doc["tool"] = tool
     changes = ConsolidateGroupsPhase().apply(doc, [])
-    tm.that(changes, eq=True)
+    tm.that(changes, empty=False)
