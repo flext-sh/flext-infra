@@ -3,7 +3,7 @@ from __future__ import annotations
 import fcntl
 import sys
 import tempfile
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import override
 
@@ -25,7 +25,7 @@ def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
         @override
         def generate(
             self,
-            config: m.Infra.BaseMkConfig | Mapping[str, t.Scalar] | None = None,
+            config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
         ) -> r[str]:
             _ = self
             _ = config

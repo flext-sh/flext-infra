@@ -84,18 +84,18 @@ class FlextInfraTextPatternScanner:
         """
         try:
             if not root.exists() or not root.is_dir():
-                return r[Mapping[str, t.Scalar]].fail(
+                return r[t.ScalarMapping].fail(
                     f"root directory does not exist: {root}",
                 )
             if not includes:
-                return r[Mapping[str, t.Scalar]].fail(
+                return r[t.ScalarMapping].fail(
                     "at least one include glob required",
                 )
             if match_mode not in {
                 c.Infra.MatchModes.PRESENT,
                 c.Infra.MatchModes.ABSENT,
             }:
-                return r[Mapping[str, t.Scalar]].fail(
+                return r[t.ScalarMapping].fail(
                     f"invalid match_mode: {match_mode}",
                 )
             regex = re.compile(pattern, flags=re.MULTILINE)
@@ -113,11 +113,11 @@ class FlextInfraTextPatternScanner:
                 "match_count": matches,
                 "files_scanned": len(files),
             }
-            return r[Mapping[str, t.Scalar]].ok(result)
+            return r[t.ScalarMapping].ok(result)
         except re.error as exc:
-            return r[Mapping[str, t.Scalar]].fail(f"invalid regex pattern: {exc}")
+            return r[t.ScalarMapping].fail(f"invalid regex pattern: {exc}")
         except (OSError, ValueError, TypeError) as exc:
-            return r[Mapping[str, t.Scalar]].fail(f"text pattern scan failed: {exc}")
+            return r[t.ScalarMapping].fail(f"text pattern scan failed: {exc}")
 
 
 __all__ = ["FlextInfraTextPatternScanner"]

@@ -36,8 +36,8 @@ class PreCheckGate:
 
     def validate_entry(
         self,
-        entry: t.Infra.StrMap,
-    ) -> tuple[bool, t.Infra.StrMap | None]:
+        entry: t.StrMapping,
+    ) -> tuple[bool, t.StrMapping | None]:
         """Validate a single class-nesting entry against the loaded policy."""
         source_symbol = entry.get(c.Infra.ReportKeys.LOOSE_NAME, "")
         helper_symbol = entry.get("helper_name", "")
@@ -159,7 +159,7 @@ class FlextInfraRefactorClassNestingReconstructor:
     """Reconstruct class nesting by applying rename mappings and propagation."""
 
     @staticmethod
-    def class_rename_mappings(entries: Sequence[t.Infra.StrMap]) -> Mapping[str, str]:
+    def class_rename_mappings(entries: Sequence[t.StrMapping]) -> Mapping[str, str]:
         """Build a mapping of loose class names to their nested target names."""
         mappings: MutableMapping[str, str] = {}
         for entry in entries:

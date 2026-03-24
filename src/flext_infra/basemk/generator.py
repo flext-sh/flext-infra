@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tempfile
-from collections.abc import Mapping
 from pathlib import Path
 from typing import TextIO, override
 
@@ -53,7 +52,7 @@ class FlextInfraBaseMkGenerator(s[str]):
     @override
     def generate(
         self,
-        config: m.Infra.BaseMkConfig | Mapping[str, t.Scalar] | None = None,
+        config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:
         """Generate base.mk content from configuration."""
         config_result = self._normalize_config(config)
@@ -91,7 +90,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def _normalize_config(
         self,
-        config: m.Infra.BaseMkConfig | Mapping[str, t.Scalar] | None,
+        config: m.Infra.BaseMkConfig | t.ScalarMapping | None,
     ) -> r[m.Infra.BaseMkConfig]:
         if config is None:
             return r[m.Infra.BaseMkConfig].ok(

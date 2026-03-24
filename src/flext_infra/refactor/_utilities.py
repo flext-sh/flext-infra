@@ -196,7 +196,7 @@ class FlextInfraUtilitiesRefactor(
         return tokens
 
     @staticmethod
-    def rewrite_scope(entry: t.Infra.StrMap) -> str:
+    def rewrite_scope(entry: t.StrMapping) -> str:
         raw_scope = entry.get(c.Infra.ReportKeys.REWRITE_SCOPE, c.Infra.ReportKeys.FILE)
         scope = raw_scope.strip().lower()
         if scope in {
@@ -210,7 +210,7 @@ class FlextInfraUtilitiesRefactor(
 
     @staticmethod
     def scope_applies_to_file(
-        entry: t.Infra.StrMap,
+        entry: t.StrMapping,
         current_file: Path,
         candidate_file: Path,
     ) -> bool:

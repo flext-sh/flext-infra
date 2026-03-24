@@ -41,7 +41,7 @@ class StubPrManager:
         returns: Sequence[r[Mapping[str, t.Scalar]]],
     ) -> r[Mapping[str, t.Scalar]]:
         if not returns:
-            return r[Mapping[str, t.Scalar]].fail("no return configured")
+            return r[t.ScalarMapping].fail("no return configured")
         return returns[0] if len(returns) == 1 else returns.pop(0)
 
     @staticmethod

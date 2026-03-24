@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -44,7 +44,7 @@ class _StubGenerator(FlextInfraBaseMkGenerator):
     @override
     def generate(
         self,
-        config: im.Infra.BaseMkConfig | Mapping[str, t.Scalar] | None = None,
+        config: im.Infra.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:
         if self._fail:
             return r[str].fail(self._fail)
