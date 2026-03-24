@@ -584,19 +584,7 @@ indent-style = "space"
 line-ending = "lf"
 quote-style = "double"
 [tool.pyright]
-extraPaths = [
-  ".",
-  "../flext-cli/examples",
-  "../flext-cli/src",
-  "../flext-cli/tests",
-  "../flext-core/examples",
-  "../flext-core/src",
-  "../flext-core/tests",
-  "../typings",
-  "../typings/generated",
-  "src",
-  "tests",
-]
+extraPaths = [".", "../flext-cli/examples", "../flext-cli/src", "../flext-cli/tests", "../flext-core/examples", "../flext-core/src", "../flext-core/tests", "../typings", "../typings/generated", "src", "tests", "../flext-tests/src", "../flext-infra/src"]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
