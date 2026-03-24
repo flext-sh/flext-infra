@@ -41,7 +41,7 @@ class TestEnsurePyreflyConfigPhase:
             doc,
             is_root=False,
         )
-        tm.that(changes, eq=True)
+        tm.that(changes, empty=False)
 
 
 def test_ensure_pyrefly_config_phase_apply_python_version() -> None:

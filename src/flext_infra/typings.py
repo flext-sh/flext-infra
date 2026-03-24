@@ -14,29 +14,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import datetime
 from pathlib import Path
 
 from flext_core import FlextTypes
 from pydantic import BaseModel
-
-_Scalar = str | int | float | bool | datetime
 
 
 class FlextInfraTypes(FlextTypes):
     """Type namespace for flext-infra; extends FlextTypes via MRO.
 
     Infra-specific types are nested under the ``Infra`` inner class to
-    keep the namespace explicit (``t.Infra.Payload``, ``t.Infra.StrMap``).
-    Parent types (``t.Scalar``, ``t.Container``, etc.) are inherited
+    keep the namespace explicit (``t.Infra.Payload``, ``t.Infra.ContainerDict``).
+    Parent types (``t.Scalar``, ``t.StrMapping``, etc.) are inherited
     transparently from ``FlextTypes`` via MRO.
     """
-
-    # Re-export base aliases explicitly so pyright resolves them on this class
-    # (PEP 695 `type X` aliases are not accessible as class attributes via inheritance)
-    ScalarMapping = Mapping[str, _Scalar]
-    StrMapping = Mapping[str, str]
-    StrSequence = Sequence[str]
 
     class Infra:
         """Infrastructure-domain type aliases.
