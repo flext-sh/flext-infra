@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 import sys
 from argparse import Namespace
 from pathlib import Path
@@ -15,7 +13,7 @@ from pathlib import Path
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
-from flext_infra import u
+from flext_infra import t, u
 
 
 def _parse_args(argv: t.StrSequence | None = None) -> Namespace:

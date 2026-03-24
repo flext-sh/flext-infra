@@ -8,14 +8,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence, Callable
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorkspaceDetector, WorkspaceMode
+from flext_infra import FlextInfraWorkspaceDetector, WorkspaceMode, t
 
 
 @pytest.fixture

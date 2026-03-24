@@ -6,11 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import t, tm
 
 from tests.unit.test_infra_workspace_migrator import (
     _build_migrator,

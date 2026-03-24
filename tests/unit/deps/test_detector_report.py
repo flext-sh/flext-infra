@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from flext_core import r
-from flext_tests import tm
+from flext_tests import t, tm
 
 import flext_infra.deps as detector_module
 

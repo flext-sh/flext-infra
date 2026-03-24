@@ -436,16 +436,12 @@ class FlextInfraCodegenFixer(s[bool]):
         project_path: Path,
         files_modified: set[str],
     ) -> None:
-        before_snapshot: t.StrMapping = (
-            FlextInfraCodegenSnapshot.snapshot_init_files(
-                project_path=project_path,
-            )
+        before_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_init_files(
+            project_path=project_path,
         )
         _ = FlextInfraCodegenLazyInit(workspace_root=project_path).run(check_only=False)
-        after_snapshot: t.StrMapping = (
-            FlextInfraCodegenSnapshot.snapshot_init_files(
-                project_path=project_path,
-            )
+        after_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_init_files(
+            project_path=project_path,
         )
         for path_str, updated in after_snapshot.items():
             previous = before_snapshot.get(path_str)

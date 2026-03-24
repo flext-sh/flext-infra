@@ -6,13 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence, Mapping
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraGate, FlextInfraMypyGate, FlextInfraWorkspaceChecker
+from flext_infra import (
+    FlextInfraGate,
+    FlextInfraMypyGate,
+    FlextInfraWorkspaceChecker,
+    t,
+)
 
 from ...helpers import h
 from ...models import m

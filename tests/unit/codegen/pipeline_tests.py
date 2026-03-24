@@ -9,8 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 import ast
 from pathlib import Path
 
@@ -21,6 +19,7 @@ from flext_infra import (
     FlextInfraCodegenFixer,
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenScaffolder,
+    t,
 )
 
 _SRC_MODULES = (

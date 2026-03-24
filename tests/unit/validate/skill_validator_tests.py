@@ -6,14 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraSkillValidator, u
+from flext_infra import FlextInfraSkillValidator, t, u
 
 _safe_load_yaml = u.Infra.safe_load_yaml
 _string_list = u.Infra.string_list

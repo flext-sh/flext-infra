@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from pathlib import Path
 from typing import overload, override
 
@@ -13,6 +11,7 @@ from flext_core import r
 try:
     from flext_infra import (
         FlextInfraRefactorEngine,
+        t,
     )
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)

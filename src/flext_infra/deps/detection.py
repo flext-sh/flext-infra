@@ -378,9 +378,9 @@ class FlextInfraDependencyDetectionService:
                 and (root in module_to_package)
             ):
                 try:
-                    module_to_package_map = TypeAdapter(
-                        t.StrMapping
-                    ).validate_python({k: str(v) for k, v in module_to_package.items()})
+                    module_to_package_map = TypeAdapter(t.StrMapping).validate_python({
+                        k: str(v) for k, v in module_to_package.items()
+                    })
                 except ValidationError:
                     module_to_package_map: t.StrMapping = {}
                 value = module_to_package_map.get(root)

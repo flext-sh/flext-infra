@@ -9,13 +9,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 import subprocess
 import sys
 from pathlib import Path
 
-from flext_tests import tm
+from flext_tests import t, tm
 
 from flext_infra.codegen import __main__ as codegen_main
 

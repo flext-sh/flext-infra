@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-from collections.abc import Sequence, Callable, Mapping
+from collections.abc import Callable
 from types import ModuleType, SimpleNamespace
 
 import pytest

@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence, Mapping
 from pathlib import Path
 
 import pytest
@@ -20,6 +19,7 @@ from flext_infra import (
     FlextInfraMarkdownGate,
     FlextInfraPyrightGate,
     FlextInfraWorkspaceChecker,
+    t,
 )
 
 from ...models import m

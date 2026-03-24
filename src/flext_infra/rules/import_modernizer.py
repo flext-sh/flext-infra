@@ -65,7 +65,9 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         value: Sequence[JsonValue] | Sequence[Mapping[str, JsonValue]] | JsonValue,
     ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         try:
-            raw_items = TypeAdapter(Sequence[t.Infra.ContainerDict]).validate_python(value)
+            raw_items = TypeAdapter(Sequence[t.Infra.ContainerDict]).validate_python(
+                value
+            )
         except ValidationError:
             return []
         normalized: Sequence[t.Infra.ContainerDict] = [

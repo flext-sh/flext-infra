@@ -14,7 +14,7 @@ import pytest
 from flext_tests import tm
 
 import flext_infra.codegen as mod
-from flext_infra import FlextInfraCodegenLazyInit, u
+from flext_infra import FlextInfraCodegenLazyInit, t, u
 
 _resolve_aliases: Callable[[Mapping[str, tuple[str, str]]], None] = getattr(
     FlextInfraCodegenLazyInit,

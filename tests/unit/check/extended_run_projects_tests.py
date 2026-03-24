@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraWorkspaceChecker, t
 from tests import m
 
 CheckProjectStub = Callable[[Path, t.StrSequence, Path], m.Infra.ProjectResult]

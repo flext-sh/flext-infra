@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from flext_core import r
 
-from flext_infra import FlextInfraUtilitiesSubprocess, c, u
+from flext_infra import FlextInfraUtilitiesSubprocess, c, t, u
 
 
 class TestFormattingRunRuffFix:

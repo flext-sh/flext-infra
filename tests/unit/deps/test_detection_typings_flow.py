@@ -58,7 +58,9 @@ class TestModuleAndTypingsFlow:
         typing_libraries: Mapping[str, t.Infra.InfraValue] = {
             "module_to_package": module_to_package,
         }
-        limits: Mapping[str, t.Infra.InfraValue] = {"typing_libraries": typing_libraries}
+        limits: Mapping[str, t.Infra.InfraValue] = {
+            "typing_libraries": typing_libraries
+        }
         tm.that(service.module_to_types_package("yaml", limits), eq="custom-types-yaml")
         tm.that(service.module_to_types_package("unknown_module", {}), eq=None)
         tm.that(service.module_to_types_package("yaml.parser", {}), eq="types-pyyaml")

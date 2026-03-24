@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from pathlib import Path
 
-from flext_infra import u
+from flext_infra import t, u
 
 
 class TestIterWorkspacePythonModules:

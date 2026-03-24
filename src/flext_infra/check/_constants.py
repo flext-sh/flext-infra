@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraCheckConstants:

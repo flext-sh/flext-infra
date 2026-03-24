@@ -8,14 +8,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from pathlib import Path
 
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator
+from flext_infra import FlextInfraBaseMkGenerator, FlextInfraBaseMkValidator, t
 from tests import m
 
 _ROOT = "# root content"

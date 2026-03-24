@@ -38,7 +38,9 @@ class TestClassifyIssues:
 
     def test_non_dict_error_skipped(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        issues: Sequence[t.Infra.ContainerDict] = [{"error": "not-a-dict", "module": "foo"}]
+        issues: Sequence[t.Infra.ContainerDict] = [
+            {"error": "not-a-dict", "module": "foo"}
+        ]
         tm.that(len(service.classify_issues(issues).dep001), eq=0)
 
     def test_missing_code_skipped(self) -> None:

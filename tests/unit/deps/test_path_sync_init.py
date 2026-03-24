@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from pathlib import Path
 
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyPathSync
+from flext_infra import FlextInfraDependencyPathSync, t
 
 
 def rewrite_dep_paths(

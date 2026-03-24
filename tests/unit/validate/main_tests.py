@@ -8,8 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 import argparse
 import subprocess
 import sys
@@ -17,7 +15,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import u
+from flext_infra import t, u
 from flext_infra.validate.__main__ import (
     _run_basemk_validate,
     _run_inventory,

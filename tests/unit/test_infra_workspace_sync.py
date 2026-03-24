@@ -3,7 +3,7 @@ from __future__ import annotations
 import fcntl
 import sys
 import tempfile
-from collections.abc import Sequence, Callable
+from collections.abc import Callable
 from pathlib import Path
 from typing import override
 

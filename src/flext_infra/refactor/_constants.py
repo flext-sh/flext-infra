@@ -5,9 +5,10 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorConstants:

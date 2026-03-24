@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from typing import override
 
 from flext_core import r
 from flext_tests import s
 
-from flext_infra import FlextInfraUtilitiesSubprocess
+from flext_infra import FlextInfraUtilitiesSubprocess, t
 
 
 class RealSubprocessRunner(s[str]):

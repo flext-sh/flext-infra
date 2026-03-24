@@ -6,13 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence, Mapping
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-from flext_infra import m, u
+from flext_infra import m, t, u
 
 
 @pytest.fixture

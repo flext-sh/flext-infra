@@ -13,6 +13,7 @@ from tomlkit.toml_document import TOMLDocument
 from flext_infra import (
     FlextInfraExtraPathsManager,
     FlextInfraUtilitiesToml,
+    t,
 )
 from flext_infra.deps import extra_paths
 

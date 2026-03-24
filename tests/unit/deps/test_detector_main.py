@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from flext_core import r
-from flext_tests import tm
+from flext_tests import t, tm
 
 import flext_infra.deps as detector_module
 import flext_infra.deps.detector as detector_main_module
@@ -70,9 +70,7 @@ class _DepsStub:
         _ = limits_path
         return r[_TypingsStub].ok(_TypingsStub(self._to_add))
 
-    def load_dependency_limits(
-        self, limits_path: Path
-    ) -> Mapping[str, t.StrMapping]:
+    def load_dependency_limits(self, limits_path: Path) -> Mapping[str, t.StrMapping]:
         del limits_path
         return {}
 

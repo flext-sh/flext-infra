@@ -16,7 +16,7 @@ from flext_core import r
 from flext_tests import tm
 
 import flext_infra.release.__main__ as _main_mod
-from flext_infra import m, u
+from flext_infra import m, t, u
 from flext_infra.release.__main__ import main
 
 

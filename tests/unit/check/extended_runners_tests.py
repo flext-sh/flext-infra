@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence, Callable, Mapping
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -19,6 +19,7 @@ from flext_infra import (
     FlextInfraPyreflyGate,
     FlextInfraPyrightGate,
     FlextInfraWorkspaceChecker,
+    t,
 )
 from tests import patch_python_dir_detection
 from tests.helpers import FlextInfraTestHelpers as h

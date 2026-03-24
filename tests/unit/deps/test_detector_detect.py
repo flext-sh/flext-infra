@@ -11,7 +11,7 @@ from flext_tests import tm
 
 import flext_infra.deps as detector_module
 import flext_infra.deps.detector as _det_mod
-from flext_infra import p
+from flext_infra import p, t
 
 
 class _ReportStub:
@@ -81,9 +81,7 @@ class _DepsStub:
         setattr(typings, "model_dump", _model_dump)
         return r[types.SimpleNamespace].ok(typings)
 
-    def load_dependency_limits(
-        self, limits_path: Path | None = None
-    ) -> t.StrMapping:
+    def load_dependency_limits(self, limits_path: Path | None = None) -> t.StrMapping:
         _ = limits_path
         return {}
 

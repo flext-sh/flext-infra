@@ -20,8 +20,6 @@ from pathlib import Path
 from flext_core import FlextTypes
 from pydantic import BaseModel
 
-from flext_infra import c
-
 _Scalar = str | int | float | bool | datetime
 
 
@@ -59,7 +57,7 @@ class FlextInfraTypes(FlextTypes):
         "Recursive infrastructure value: primitive, nested dict/list, or null."
         type ContainerDict = Mapping[str, InfraValue]
         "Dict with string keys and infra values (project reports, etc.)."
-        type FacadeFamily = c.FacadeFamily
+        type FacadeFamily = str
         "Facade family identifier for MRO chain resolution."
         type ExpectedBase = type | str
         "Expected MRO base: a class or its qualified name."

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,7 +11,7 @@ import pytest
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer, u
+from flext_infra import FlextInfraPyprojectModernizer, t, u
 
 
 class TestFlextInfraPyprojectModernizer:
