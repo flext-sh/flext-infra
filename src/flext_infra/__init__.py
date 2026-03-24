@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
     from flext_infra import (
         _constants,
+        _detectors,
         _models,
         _protocols,
         _typings,
@@ -51,6 +52,50 @@ if TYPE_CHECKING:
         __version_info__,
     )
     from flext_infra._constants.base import FlextInfraConstantsBase
+    from flext_infra._detectors._base_detector import FlextInfraScanFileMixin
+    from flext_infra._detectors.class_placement_detector import (
+        FlextInfraClassPlacementDetector,
+    )
+    from flext_infra._detectors.compatibility_alias_detector import (
+        FlextInfraCompatibilityAliasDetector,
+    )
+    from flext_infra._detectors.cyclic_import_detector import (
+        FlextInfraCyclicImportDetector,
+    )
+    from flext_infra._detectors.dependency_analyzer_base import (
+        FlextInfraDependencyAnalyzer,
+    )
+    from flext_infra._detectors.future_annotations_detector import (
+        FlextInfraFutureAnnotationsDetector,
+    )
+    from flext_infra._detectors.import_alias_detector import (
+        FlextInfraImportAliasDetector,
+    )
+    from flext_infra._detectors.import_collector import FlextInfraImportCollector
+    from flext_infra._detectors.internal_import_detector import (
+        FlextInfraInternalImportDetector,
+    )
+    from flext_infra._detectors.loose_object_detector import (
+        FlextInfraLooseObjectDetector,
+    )
+    from flext_infra._detectors.manual_protocol_detector import (
+        FlextInfraManualProtocolDetector,
+    )
+    from flext_infra._detectors.manual_typing_alias_detector import (
+        FlextInfraManualTypingAliasDetector,
+    )
+    from flext_infra._detectors.mro_completeness_detector import (
+        FlextInfraMROCompletenessDetector,
+    )
+    from flext_infra._detectors.namespace_facade_scanner import (
+        FlextInfraNamespaceFacadeScanner,
+    )
+    from flext_infra._detectors.namespace_source_detector import (
+        FlextInfraNamespaceSourceDetector,
+    )
+    from flext_infra._detectors.runtime_alias_detector import (
+        FlextInfraRuntimeAliasDetector,
+    )
     from flext_infra._models.base import FlextInfraModelsBase
     from flext_infra._models.scan import FlextInfraModelsScan
     from flext_infra._protocols.base import FlextInfraProtocolsBase
@@ -196,52 +241,6 @@ if TYPE_CHECKING:
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor._base_rule import FlextInfraRefactorRule
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
-    from flext_infra._detectors._base_detector import FlextInfraScanFileMixin
-    from flext_infra._detectors.class_placement_detector import (
-        FlextInfraClassPlacementDetector,
-    )
-    from flext_infra._detectors.compatibility_alias_detector import (
-        FlextInfraCompatibilityAliasDetector,
-    )
-    from flext_infra._detectors.cyclic_import_detector import (
-        FlextInfraCyclicImportDetector,
-    )
-    from flext_infra._detectors.dependency_analyzer_base import (
-        FlextInfraDependencyAnalyzer,
-    )
-    from flext_infra._detectors.future_annotations_detector import (
-        FlextInfraFutureAnnotationsDetector,
-    )
-    from flext_infra._detectors.import_alias_detector import (
-        FlextInfraImportAliasDetector,
-    )
-    from flext_infra._detectors.import_collector import (
-        FlextInfraImportCollector,
-    )
-    from flext_infra._detectors.internal_import_detector import (
-        FlextInfraInternalImportDetector,
-    )
-    from flext_infra._detectors.loose_object_detector import (
-        FlextInfraLooseObjectDetector,
-    )
-    from flext_infra._detectors.manual_protocol_detector import (
-        FlextInfraManualProtocolDetector,
-    )
-    from flext_infra._detectors.manual_typing_alias_detector import (
-        FlextInfraManualTypingAliasDetector,
-    )
-    from flext_infra._detectors.mro_completeness_detector import (
-        FlextInfraMROCompletenessDetector,
-    )
-    from flext_infra._detectors.namespace_facade_scanner import (
-        FlextInfraNamespaceFacadeScanner,
-    )
-    from flext_infra._detectors.namespace_source_detector import (
-        FlextInfraNamespaceSourceDetector,
-    )
-    from flext_infra._detectors.runtime_alias_detector import (
-        FlextInfraRuntimeAliasDetector,
-    )
     from flext_infra.refactor._function_dependency_collector import (
         FlextInfraFunctionDependencyCollector,
     )
@@ -480,7 +479,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraClassNestingRefactorRule",
     ),
     "FlextInfraClassPlacementDetector": (
-        "flext_infra.refactor._detectors.class_placement_detector",
+        "flext_infra._detectors.class_placement_detector",
         "FlextInfraClassPlacementDetector",
     ),
     "FlextInfraCodegenCensus": (
@@ -537,7 +536,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraCodegenSnapshot",
     ),
     "FlextInfraCompatibilityAliasDetector": (
-        "flext_infra.refactor._detectors.compatibility_alias_detector",
+        "flext_infra._detectors.compatibility_alias_detector",
         "FlextInfraCompatibilityAliasDetector",
     ),
     "FlextInfraConfigFixer": ("flext_infra.check.services", "FlextInfraConfigFixer"),
@@ -556,11 +555,11 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     ),
     "FlextInfraCoreModels": ("flext_infra.validate._models", "FlextInfraCoreModels"),
     "FlextInfraCyclicImportDetector": (
-        "flext_infra.refactor._detectors.cyclic_import_detector",
+        "flext_infra._detectors.cyclic_import_detector",
         "FlextInfraCyclicImportDetector",
     ),
     "FlextInfraDependencyAnalyzer": (
-        "flext_infra.refactor._detectors.dependency_analyzer_base",
+        "flext_infra._detectors.dependency_analyzer_base",
         "FlextInfraDependencyAnalyzer",
     ),
     "FlextInfraDependencyDetectionService": (
@@ -640,7 +639,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraFunctionDependencyCollector",
     ),
     "FlextInfraFutureAnnotationsDetector": (
-        "flext_infra.refactor._detectors.future_annotations_detector",
+        "flext_infra._detectors.future_annotations_detector",
         "FlextInfraFutureAnnotationsDetector",
     ),
     "FlextInfraGate": ("flext_infra.gates._base_gate", "FlextInfraGate"),
@@ -660,11 +659,11 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraHelperConsolidationTransformer",
     ),
     "FlextInfraImportAliasDetector": (
-        "flext_infra.refactor._detectors.import_alias_detector",
+        "flext_infra._detectors.import_alias_detector",
         "FlextInfraImportAliasDetector",
     ),
     "FlextInfraImportCollector": (
-        "flext_infra.refactor._detectors.import_collector",
+        "flext_infra._detectors.import_collector",
         "FlextInfraImportCollector",
     ),
     "FlextInfraImportDependencyCollector": (
@@ -680,7 +679,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraInternalDependencySyncService",
     ),
     "FlextInfraInternalImportDetector": (
-        "flext_infra.refactor._detectors.internal_import_detector",
+        "flext_infra._detectors.internal_import_detector",
         "FlextInfraInternalImportDetector",
     ),
     "FlextInfraInventoryService": (
@@ -688,19 +687,19 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraInventoryService",
     ),
     "FlextInfraLooseObjectDetector": (
-        "flext_infra.refactor._detectors.loose_object_detector",
+        "flext_infra._detectors.loose_object_detector",
         "FlextInfraLooseObjectDetector",
     ),
     "FlextInfraMROCompletenessDetector": (
-        "flext_infra.refactor._detectors.mro_completeness_detector",
+        "flext_infra._detectors.mro_completeness_detector",
         "FlextInfraMROCompletenessDetector",
     ),
     "FlextInfraManualProtocolDetector": (
-        "flext_infra.refactor._detectors.manual_protocol_detector",
+        "flext_infra._detectors.manual_protocol_detector",
         "FlextInfraManualProtocolDetector",
     ),
     "FlextInfraManualTypingAliasDetector": (
-        "flext_infra.refactor._detectors.manual_typing_alias_detector",
+        "flext_infra._detectors.manual_typing_alias_detector",
         "FlextInfraManualTypingAliasDetector",
     ),
     "FlextInfraMarkdownGate": ("flext_infra.gates.markdown", "FlextInfraMarkdownGate"),
@@ -725,11 +724,11 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraNamespaceEnforcerModels",
     ),
     "FlextInfraNamespaceFacadeScanner": (
-        "flext_infra.refactor._detectors.namespace_facade_scanner",
+        "flext_infra._detectors.namespace_facade_scanner",
         "FlextInfraNamespaceFacadeScanner",
     ),
     "FlextInfraNamespaceSourceDetector": (
-        "flext_infra.refactor._detectors.namespace_source_detector",
+        "flext_infra._detectors.namespace_source_detector",
         "FlextInfraNamespaceSourceDetector",
     ),
     "FlextInfraNamespaceValidator": (
@@ -986,7 +985,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     ),
     "FlextInfraRuffLintGate": ("flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"),
     "FlextInfraRuntimeAliasDetector": (
-        "flext_infra.refactor._detectors.runtime_alias_detector",
+        "flext_infra._detectors.runtime_alias_detector",
         "FlextInfraRuntimeAliasDetector",
     ),
     "FlextInfraRuntimeDevDependencyDetector": (
@@ -994,7 +993,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraRuntimeDevDependencyDetector",
     ),
     "FlextInfraScanFileMixin": (
-        "flext_infra.refactor._detectors._base_detector",
+        "flext_infra._detectors._base_detector",
         "FlextInfraScanFileMixin",
     ),
     "FlextInfraSharedInfraConstants": (
@@ -1234,6 +1233,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "__version__": ("flext_infra.__version__", "__version__"),
     "__version_info__": ("flext_infra.__version__", "__version_info__"),
     "_constants": ("flext_infra._constants", ""),
+    "_detectors": ("flext_infra._detectors", ""),
     "_models": ("flext_infra._models", ""),
     "_protocols": ("flext_infra._protocols", ""),
     "_typings": ("flext_infra._typings", ""),
@@ -1503,6 +1503,7 @@ __all__ = [
     "__version__",
     "__version_info__",
     "_constants",
+    "_detectors",
     "_models",
     "_protocols",
     "_typings",

@@ -17,11 +17,11 @@ import libcst as cst
 from flext_infra import (
     FlextInfraRefactorMROPrivateInlineTransformer,
     FlextInfraRefactorMROQualifiedReferenceTransformer,
+    FlextInfraUtilitiesParsing,
     c,
     m,
     t,
 )
-from flext_infra import FlextInfraUtilitiesParsing
 
 
 class FlextInfraUtilitiesRefactorMroTransform:

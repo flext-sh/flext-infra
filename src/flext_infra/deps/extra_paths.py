@@ -235,6 +235,7 @@ class FlextInfraExtraPathsManager:
         project_dir: Path,
         is_root: bool,
     ) -> t.StrSequence:
+        """Compute pyright extra paths for a project."""
         rules = self._pyright_path_rules()
         source_root = self._source_root(
             project_dir,
@@ -253,6 +254,7 @@ class FlextInfraExtraPathsManager:
         project_dir: Path,
         is_root: bool,
     ) -> t.StrSequence:
+        """Compute mypy search paths for a project."""
         rules = self._pyright_path_rules()
         source_root = self._source_root(
             project_dir,
@@ -271,6 +273,7 @@ class FlextInfraExtraPathsManager:
         project_dir: Path,
         is_root: bool,
     ) -> t.StrSequence:
+        """Compute pyrefly search paths for a project."""
         rules = self._pyrefly_path_rules()
         source_root = self._source_root(
             project_dir,

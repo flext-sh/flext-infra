@@ -265,7 +265,7 @@ class FlextInfraProtocolsBase:
             self,
             project_name: str,
             deptry_issues: Sequence[t.Infra.ContainerDict],
-        ) -> p.Infra.ProjectReportLike:
+        ) -> p.Infra.ProjectReportLike:  # noqa: F821
             """Build project report from deptry issues."""
             ...
 

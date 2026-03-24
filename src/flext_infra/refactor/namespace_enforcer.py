@@ -121,16 +121,20 @@ class FlextInfraNamespaceEnforcer:
         rewrite_fn: Callable[[MutableSequence[V]], None] | None,
         apply: bool,
     ) -> MutableSequence[V]:
-        """Run detect → optional apply → re-detect cycle for a violation type."""
+        """Run detect → optional apply → re-detect cycle for a violation type.
+
+        Re-detection only runs when apply=True AND a real rewrite_fn is provided.
+        """
         violations: MutableSequence[V] = []
         for py_file in py_files:
             violations.extend(detect_fn(py_file))
-        if apply and violations and rewrite_fn is not None:
-            rewrite_fn(violations)
-            violations = []
-            for py_file in py_files:
-                violations.extend(detect_fn(py_file))
-        return violations
+        if not (apply and violations and rewrite_fn is not None):
+            return violations
+        rewrite_fn(violations)
+        post_violations: MutableSequence[V] = []
+        for py_file in py_files:
+            post_violations.extend(detect_fn(py_file))
+        return post_violations
 
     def _enforce_project(
         self,
