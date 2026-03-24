@@ -380,9 +380,6 @@ if __name__ == "__main__":
     sys.exit(FlextInfraExtraPathsManager.main())
 
 
-main = FlextInfraExtraPathsManager.main
-
-
 __all__ = [
     "FlextInfraExtraPathsManager",
 ]
