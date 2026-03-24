@@ -51,29 +51,92 @@ if TYPE_CHECKING:
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "FlextInfraUtilitiesCli": ("flext_infra._utilities.cli", "FlextInfraUtilitiesCli"),
-    "FlextInfraUtilitiesDiscovery": ("flext_infra._utilities.discovery", "FlextInfraUtilitiesDiscovery"),
-    "FlextInfraUtilitiesDocs": ("flext_infra._utilities.docs", "FlextInfraUtilitiesDocs"),
-    "FlextInfraUtilitiesFormatting": ("flext_infra._utilities.formatting", "FlextInfraUtilitiesFormatting"),
+    "FlextInfraUtilitiesDiscovery": (
+        "flext_infra._utilities.discovery",
+        "FlextInfraUtilitiesDiscovery",
+    ),
+    "FlextInfraUtilitiesDocs": (
+        "flext_infra._utilities.docs",
+        "FlextInfraUtilitiesDocs",
+    ),
+    "FlextInfraUtilitiesFormatting": (
+        "flext_infra._utilities.formatting",
+        "FlextInfraUtilitiesFormatting",
+    ),
     "FlextInfraUtilitiesGit": ("flext_infra._utilities.git", "FlextInfraUtilitiesGit"),
-    "FlextInfraUtilitiesGithub": ("flext_infra._utilities.github", "FlextInfraUtilitiesGithub"),
+    "FlextInfraUtilitiesGithub": (
+        "flext_infra._utilities.github",
+        "FlextInfraUtilitiesGithub",
+    ),
     "FlextInfraUtilitiesIo": ("flext_infra._utilities.io", "FlextInfraUtilitiesIo"),
-    "FlextInfraUtilitiesIteration": ("flext_infra._utilities.iteration", "FlextInfraUtilitiesIteration"),
-    "FlextInfraUtilitiesLogParser": ("flext_infra._utilities.log_parser", "FlextInfraUtilitiesLogParser"),
-    "FlextInfraUtilitiesOutput": ("flext_infra._utilities.output", "FlextInfraUtilitiesOutput"),
-    "FlextInfraUtilitiesParsing": ("flext_infra._utilities.parsing", "FlextInfraUtilitiesParsing"),
-    "FlextInfraUtilitiesPaths": ("flext_infra._utilities.paths", "FlextInfraUtilitiesPaths"),
-    "FlextInfraUtilitiesPatterns": ("flext_infra._utilities.patterns", "FlextInfraUtilitiesPatterns"),
-    "FlextInfraUtilitiesRelease": ("flext_infra._utilities.release", "FlextInfraUtilitiesRelease"),
-    "FlextInfraUtilitiesReporting": ("flext_infra._utilities.reporting", "FlextInfraUtilitiesReporting"),
-    "FlextInfraUtilitiesSafety": ("flext_infra._utilities.safety", "FlextInfraUtilitiesSafety"),
-    "FlextInfraUtilitiesSelection": ("flext_infra._utilities.selection", "FlextInfraUtilitiesSelection"),
-    "FlextInfraUtilitiesSubprocess": ("flext_infra._utilities.subprocess", "FlextInfraUtilitiesSubprocess"),
-    "FlextInfraUtilitiesTemplates": ("flext_infra._utilities.templates", "FlextInfraUtilitiesTemplates"),
-    "FlextInfraUtilitiesTerminal": ("flext_infra._utilities.terminal", "FlextInfraUtilitiesTerminal"),
-    "FlextInfraUtilitiesToml": ("flext_infra._utilities.toml", "FlextInfraUtilitiesToml"),
-    "FlextInfraUtilitiesTomlParse": ("flext_infra._utilities.toml_parse", "FlextInfraUtilitiesTomlParse"),
-    "FlextInfraUtilitiesVersioning": ("flext_infra._utilities.versioning", "FlextInfraUtilitiesVersioning"),
-    "FlextInfraUtilitiesYaml": ("flext_infra._utilities.yaml", "FlextInfraUtilitiesYaml"),
+    "FlextInfraUtilitiesIteration": (
+        "flext_infra._utilities.iteration",
+        "FlextInfraUtilitiesIteration",
+    ),
+    "FlextInfraUtilitiesLogParser": (
+        "flext_infra._utilities.log_parser",
+        "FlextInfraUtilitiesLogParser",
+    ),
+    "FlextInfraUtilitiesOutput": (
+        "flext_infra._utilities.output",
+        "FlextInfraUtilitiesOutput",
+    ),
+    "FlextInfraUtilitiesParsing": (
+        "flext_infra._utilities.parsing",
+        "FlextInfraUtilitiesParsing",
+    ),
+    "FlextInfraUtilitiesPaths": (
+        "flext_infra._utilities.paths",
+        "FlextInfraUtilitiesPaths",
+    ),
+    "FlextInfraUtilitiesPatterns": (
+        "flext_infra._utilities.patterns",
+        "FlextInfraUtilitiesPatterns",
+    ),
+    "FlextInfraUtilitiesRelease": (
+        "flext_infra._utilities.release",
+        "FlextInfraUtilitiesRelease",
+    ),
+    "FlextInfraUtilitiesReporting": (
+        "flext_infra._utilities.reporting",
+        "FlextInfraUtilitiesReporting",
+    ),
+    "FlextInfraUtilitiesSafety": (
+        "flext_infra._utilities.safety",
+        "FlextInfraUtilitiesSafety",
+    ),
+    "FlextInfraUtilitiesSelection": (
+        "flext_infra._utilities.selection",
+        "FlextInfraUtilitiesSelection",
+    ),
+    "FlextInfraUtilitiesSubprocess": (
+        "flext_infra._utilities.subprocess",
+        "FlextInfraUtilitiesSubprocess",
+    ),
+    "FlextInfraUtilitiesTemplates": (
+        "flext_infra._utilities.templates",
+        "FlextInfraUtilitiesTemplates",
+    ),
+    "FlextInfraUtilitiesTerminal": (
+        "flext_infra._utilities.terminal",
+        "FlextInfraUtilitiesTerminal",
+    ),
+    "FlextInfraUtilitiesToml": (
+        "flext_infra._utilities.toml",
+        "FlextInfraUtilitiesToml",
+    ),
+    "FlextInfraUtilitiesTomlParse": (
+        "flext_infra._utilities.toml_parse",
+        "FlextInfraUtilitiesTomlParse",
+    ),
+    "FlextInfraUtilitiesVersioning": (
+        "flext_infra._utilities.versioning",
+        "FlextInfraUtilitiesVersioning",
+    ),
+    "FlextInfraUtilitiesYaml": (
+        "flext_infra._utilities.yaml",
+        "FlextInfraUtilitiesYaml",
+    ),
     "OutputBackend": ("flext_infra._utilities.output", "OutputBackend"),
     "output": ("flext_infra._utilities.output", "output"),
 }
