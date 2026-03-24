@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -134,19 +134,15 @@ class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: MutableSequence[m.Infra.ManualProtocolViolation] = []
-        for stmt in module.body:
-            if not isinstance(stmt, cst.ClassDef):
-                continue
-            if cls.is_protocol_class(stmt):
-                violations.append(
-                    m.Infra.ManualProtocolViolation.create(
-                        file=str(file_path),
-                        line=u.Infra.cst_line_for(node=stmt, positions=positions),
-                        name=stmt.name.value,
-                    ),
-                )
-        return violations
+        return [
+            m.Infra.ManualProtocolViolation.create(
+                file=str(file_path),
+                line=u.Infra.cst_line_for(node=stmt, positions=positions),
+                name=stmt.name.value,
+            )
+            for stmt in module.body
+            if isinstance(stmt, cst.ClassDef) and cls.is_protocol_class(stmt)
+        ]
 
     @staticmethod
     def is_protocol_class(node: cst.ClassDef) -> bool:

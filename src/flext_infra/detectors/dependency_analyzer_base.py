@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -48,22 +48,18 @@ class FlextInfraDependencyAnalyzer:
             List of RefactorProjectInfo for each discovered project.
 
         """
-        projects: MutableSequence[m.Infra.RefactorProjectInfo] = []
-        for candidate in sorted(self._workspace_root.iterdir()):
-            if not candidate.is_dir() or candidate.name.startswith("."):
-                continue
-            src = candidate / c.Infra.Paths.DEFAULT_SRC_DIR
-            if not src.is_dir():
-                continue
-            projects.append(
-                m.Infra.RefactorProjectInfo(
-                    name=candidate.name,
-                    path=candidate,
-                    src_path=src,
-                    package_roots=self._discover_package_roots(src),
-                ),
+        return [
+            m.Infra.RefactorProjectInfo(
+                name=candidate.name,
+                path=candidate,
+                src_path=src,
+                package_roots=self._discover_package_roots(src),
             )
-        return projects
+            for candidate in sorted(self._workspace_root.iterdir())
+            if candidate.is_dir() and not candidate.name.startswith(".")
+            for src in [candidate / c.Infra.Paths.DEFAULT_SRC_DIR]
+            if src.is_dir()
+        ]
 
     def _discover_package_roots(self, src_path: Path) -> t.Infra.StrSet:
         """Discover package root names in a source directory.

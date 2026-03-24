@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
@@ -267,8 +267,8 @@ class TestRunMigrate:
 
 def _capture(
     monkeypatch: pytest.MonkeyPatch,
-) -> Sequence[tuple[t.StrSequence, str, bool, t.StrSequence]]:
-    captured: Sequence[tuple[t.StrSequence, str, bool, t.StrSequence]] = []
+) -> MutableSequence[tuple[t.StrSequence, str, bool, t.StrSequence]]:
+    captured: MutableSequence[tuple[t.StrSequence, str, bool, t.StrSequence]] = []
 
     def _capture_orchestrate(
         projects: t.StrSequence,

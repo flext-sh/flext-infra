@@ -183,26 +183,23 @@ class FlextInfraMROCompletenessDetector(
                     name == dep_base for name, _line in candidates
                 ):
                     candidates.add((dep_base, 1))
-        violations: MutableSequence[m.Infra.MROCompletenessViolation] = []
-        for candidate_name, candidate_line in sorted(
-            candidates,
-            key=operator.itemgetter(0),
-        ):
-            if candidate_name in declared_bases:
-                continue
-            violations.append(
-                m.Infra.MROCompletenessViolation.create(
-                    file=str(file_path),
-                    line=candidate_line,
-                    family=family,
-                    facade_class=facade_name,
-                    missing_base=candidate_name,
-                    suggestion=(
-                        f"Add '{candidate_name}' to '{facade_name}' inheritance bases"
-                    ),
+        return [
+            m.Infra.MROCompletenessViolation.create(
+                file=str(file_path),
+                line=candidate_line,
+                family=family,
+                facade_class=facade_name,
+                missing_base=candidate_name,
+                suggestion=(
+                    f"Add '{candidate_name}' to '{facade_name}' inheritance bases"
                 ),
             )
-        return violations
+            for candidate_name, candidate_line in sorted(
+                candidates,
+                key=operator.itemgetter(0),
+            )
+            if candidate_name not in declared_bases
+        ]
 
     @staticmethod
     def _resolve_facade_class_name(*, tree: cst.Module, family: str) -> str | None:

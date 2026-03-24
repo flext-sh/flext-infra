@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -147,18 +147,20 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         class_stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )
-        violations: MutableSequence[m.Infra.LooseObjectViolation] = []
-        for stmt in module.body:
-            violation = cls._check_statement(
-                stmt=stmt,
-                namespace_classes=namespace_classes,
-                file_path=file_path,
-                class_stem=class_stem,
-                positions=positions,
+        return [
+            violation
+            for stmt in module.body
+            if (
+                violation := cls._check_statement(
+                    stmt=stmt,
+                    namespace_classes=namespace_classes,
+                    file_path=file_path,
+                    class_stem=class_stem,
+                    positions=positions,
+                )
             )
-            if violation is not None:
-                violations.append(violation)
-        return violations
+            is not None
+        ]
 
     @classmethod
     def _check_statement(

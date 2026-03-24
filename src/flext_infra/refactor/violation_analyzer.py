@@ -68,9 +68,7 @@ class FlextInfraRefactorViolationAnalyzer:
         for raw_file, raw_count in class_nesting.per_file_counts.items():
             counts = per_file.setdefault(raw_file, {})
             counts[c.Infra.ReportKeys.CLASS_NESTING] = raw_count
-        ranked_files: MutableSequence[
-            t.Infra.Triple[str, int, Mapping[str, int]]
-        ] = []
+        ranked_files: MutableSequence[t.Infra.Triple[str, int, Mapping[str, int]]] = []
         for file_name, counts in per_file.items():
             ranked_files.append((file_name, sum(counts.values()), counts))
         ranked_sorted = sorted(ranked_files, key=itemgetter(1), reverse=True)

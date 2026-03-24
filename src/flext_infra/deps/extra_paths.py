@@ -106,10 +106,57 @@ class FlextInfraExtraPathsManager:
                     paths.append(dep_path)
         return sorted(set(paths))
 
+    def path_dep_paths_uv_sources(self, doc: TOMLDocument) -> t.StrSequence:
+        """Extract internal dependency paths from tool.uv.sources."""
+        tool_table = self._as_table(self._table_get(doc, c.Infra.TOOL))
+        if tool_table is None:
+            return []
+        uv_table = self._as_table(self._table_get(tool_table, "uv"))
+        if uv_table is None:
+            return []
+        sources_table = self._as_table(self._table_get(uv_table, "sources"))
+        if sources_table is None:
+            return []
+        project_table = self._as_table(self._table_get(doc, c.Infra.PROJECT))
+        project_deps = (
+            self._as_string_list(self._table_get(project_table, c.Infra.DEPENDENCIES))
+            if project_table is not None
+            else []
+        )
+        project_dep_names: t.Infra.StrSet = set()
+        for dep_entry in project_deps:
+            dep_name = FlextInfraDependencyPathSync.extract_dep_name(
+                dep_entry.split(" ", 1)[0]
+            )
+            if dep_name:
+                project_dep_names.add(dep_name)
+        paths: MutableSequence[str] = []
+        for source_key in sources_table:
+            dep_name = str(source_key)
+            if project_dep_names and dep_name not in project_dep_names:
+                continue
+            source_table = self._as_table(self._table_get(sources_table, dep_name))
+            if source_table is None:
+                continue
+            workspace_enabled = source_table.get("workspace") is True
+            if workspace_enabled:
+                paths.append(dep_name)
+                continue
+            source_path = source_table.get(c.Infra.PATH)
+            if isinstance(source_path, str):
+                normalized_path = source_path.strip().removeprefix("./")
+                if normalized_path:
+                    paths.append(normalized_path)
+        return sorted(set(paths))
+
     def path_dep_paths(self, doc: TOMLDocument) -> t.StrSequence:
         """Combine PEP 621 and Poetry path dependencies."""
         return sorted(
-            {*self.path_dep_paths_pep621(doc), *self.path_dep_paths_poetry(doc)},
+            {
+                *self.path_dep_paths_pep621(doc),
+                *self.path_dep_paths_poetry(doc),
+                *self.path_dep_paths_uv_sources(doc),
+            },
         )
 
     def _resolve_transitive_deps(

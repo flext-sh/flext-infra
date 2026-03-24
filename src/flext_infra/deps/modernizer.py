@@ -59,6 +59,47 @@ class FlextInfraPyprojectModernizer:
         kind = FlextInfraProjectClassifier(project_dir).classify().project_kind
         return r[str].ok(kind)
 
+    def _ensure_build_system(self, doc: tomlkit.TOMLDocument) -> t.StrSequence:
+        """Ensure canonical build-system backend/requirements."""
+        changes: MutableSequence[str] = []
+        build_system = self._table_child(doc, "build-system")
+        if build_system is None:
+            build_system = tomlkit.table()
+            doc["build-system"] = build_system
+            changes.append("created [build-system]")
+        expected_backend = "hatchling.build"
+        current_backend = str(build_system.get("build-backend", "")).strip()
+        if current_backend != expected_backend:
+            build_system["build-backend"] = expected_backend
+            changes.append("build-system.build-backend set to hatchling.build")
+        expected_requires = ["hatchling"]
+        current_requires = sorted(
+            u.Infra.as_string_list(build_system.get("requires", [])),
+        )
+        if current_requires != expected_requires:
+            build_system["requires"] = u.Infra.array(expected_requires)
+            changes.append("build-system.requires set to ['hatchling']")
+        if str(build_system.get("build-backend", "")).strip() == expected_backend:
+            tool_table = u.Infra.ensure_table(doc, c.Infra.TOOL)
+            hatch_table = u.Infra.ensure_table(tool_table, "hatch")
+            metadata_table = u.Infra.ensure_table(hatch_table, "metadata")
+            current_allow = metadata_table.get("allow-direct-references")
+            if current_allow is not True:
+                metadata_table["allow-direct-references"] = True
+                changes.append(
+                    "tool.hatch.metadata.allow-direct-references set to true"
+                )
+        return changes
+
+    @staticmethod
+    def _project_has_direct_references(doc: tomlkit.TOMLDocument) -> bool:
+        """Return whether project.dependencies contains direct references."""
+        project_table = FlextInfraPyprojectModernizer._table_child(doc, c.Infra.PROJECT)
+        if project_table is None:
+            return False
+        dependencies = u.Infra.as_string_list(project_table.get(c.Infra.DEPENDENCIES))
+        return any(" @ " in dep for dep in dependencies)
+
     @staticmethod
     def _ordered_keys(
         keys: Sequence[str],
@@ -168,6 +209,7 @@ class FlextInfraPyprojectModernizer:
             if kind_result.is_success:
                 project_kind = kind_result.value
         changes: MutableSequence[str] = []
+        changes.extend(self._ensure_build_system(doc))
         tool_item = self._table_child(doc, c.Infra.TOOL)
         if tool_item is None:
             tool_item = tomlkit.table()

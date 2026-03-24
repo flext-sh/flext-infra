@@ -20,12 +20,13 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
     def _collect_markdown_files(self, project_dir: Path) -> Sequence[Path]:
-        files: MutableSequence[Path] = []
-        for path in project_dir.rglob("*.md"):
-            if any(part in c.Infra.Excluded.CHECK_EXCLUDED_DIRS for part in path.parts):
-                continue
-            files.append(path)
-        return files
+        return [
+            path
+            for path in project_dir.rglob("*.md")
+            if not any(
+                part in c.Infra.Excluded.CHECK_EXCLUDED_DIRS for part in path.parts
+            )
+        ]
 
     def _run_markdown(
         self,

@@ -163,14 +163,11 @@ class FlextInfraProjectClassifier:
         dependencies: t.StrSequence,
         project_name: str,
     ) -> t.StrSequence:
-        internal: MutableSequence[str] = []
-        for dependency in dependencies:
-            if not dependency.startswith("flext-"):
-                continue
-            if dependency == project_name:
-                continue
-            internal.append(dependency)
-        return internal
+        return [
+            dependency
+            for dependency in dependencies
+            if dependency.startswith("flext-") and dependency != project_name
+        ]
 
     def _extract_dependency_name(self, raw_dependency: str) -> str:
         cleaned = raw_dependency.strip().split(";", maxsplit=1)[0].strip()

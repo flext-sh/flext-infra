@@ -90,7 +90,9 @@ class FlextInfraDocValidator:
             reports.append(report)
         return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
 
-    def _run_adr_skill_check(self, workspace_root: Path) -> t.Infra.Pair[int, t.StrSequence]:
+    def _run_adr_skill_check(
+        self, workspace_root: Path
+    ) -> t.Infra.Pair[int, t.StrSequence]:
         """Run ADR skill check and return exit code with missing skill names."""
         skills_root = workspace_root / ".claude/skills"
         required: t.StrSequence = []

@@ -53,9 +53,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
                 if parsed.is_success and isinstance(parsed.value, Mapping):
                     parsed_map = self._to_mapping(parsed.value)
-                    error_items = (
-                        self._to_mapping_list(parsed_map.get("errors", []))
-                    )
+                    error_items = self._to_mapping_list(parsed_map.get("errors", []))
                 elif parsed.is_success and isinstance(parsed.value, list):
                     error_items = self._to_mapping_list(parsed.value)
                 issues.extend(

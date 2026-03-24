@@ -95,7 +95,7 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _run_pr(argv: list[str]) -> int:
+        def _run_pr(argv: Sequence[str]) -> int:
             return 0
 
         monkeypatch.setattr(github_main, "run_pr", _run_pr)

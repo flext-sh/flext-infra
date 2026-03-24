@@ -29,15 +29,14 @@ class FlextInfraStubSupplyChain:
     def _discover_stub_projects(self, workspace_root: Path) -> Sequence[Path]:
         """Discover projects that should participate in stub checks."""
         _ = self
-        projects: MutableSequence[Path] = []
-        for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name):
-            if not entry.is_dir() or entry.name.startswith("."):
-                continue
-            if (entry / c.Infra.Files.PYPROJECT_FILENAME).exists() and (
-                entry / c.Infra.Paths.DEFAULT_SRC_DIR
-            ).is_dir():
-                projects.append(entry)
-        return projects
+        return [
+            entry
+            for entry in sorted(workspace_root.iterdir(), key=lambda v: v.name)
+            if entry.is_dir()
+            and not entry.name.startswith(".")
+            and (entry / c.Infra.Files.PYPROJECT_FILENAME).exists()
+            and (entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir()
+        ]
 
     def _is_internal(self, module_name: str, project_name: str) -> bool:
         """Check if a module is an internal project module."""

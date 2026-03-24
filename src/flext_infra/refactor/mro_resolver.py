@@ -86,12 +86,9 @@ class FlextInfraRefactorMROResolver:
         *,
         expected_chain: Sequence[t.Infra.ExpectedBase],
     ) -> t.Infra.VariadicTuple[str]:
-        expected_names: MutableSequence[str] = []
-        for base in expected_chain:
-            if isinstance(base, str):
-                expected_names.append(base)
-                continue
-            expected_names.append(base.__name__)
+        expected_names: Sequence[str] = [
+            base if isinstance(base, str) else base.__name__ for base in expected_chain
+        ]
         return tuple(expected_names)
 
     @classmethod

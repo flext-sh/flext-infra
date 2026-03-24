@@ -209,7 +209,16 @@ class FlextInfraInternalDependencySyncService:
         project_obj = self._normalize_str_object_mapping(data.get(c.Infra.PROJECT))
         project_deps_raw = project_obj.get(c.Infra.DEPENDENCIES)
         project_deps = self._normalize_string_list(project_deps_raw)
+        internal_dep_names: t.Infra.StrSet = set()
         for dep in project_deps:
+            dep_name_match = c.Infra.DEP_NAME_RE.match(dep)
+            if dep_name_match is not None:
+                dep_name = dep_name_match.group(1)
+                if dep_name.startswith("flext-") or dep_name in {
+                    "flext",
+                    "flexcore",
+                }:
+                    internal_dep_names.add(dep_name)
             if " @ " not in dep:
                 continue
             match = c.Infra.PEP621_PATH_RE.search(dep)
@@ -219,6 +228,24 @@ class FlextInfraInternalDependencySyncService:
             if repo_name is None:
                 continue
             _ = result.setdefault(repo_name, project_root / ".flext-deps" / repo_name)
+        tool_obj = self._normalize_str_object_mapping(data.get(c.Infra.TOOL))
+        uv_obj = self._normalize_str_object_mapping(tool_obj.get("uv"))
+        sources_obj = self._normalize_str_object_mapping(uv_obj.get("sources"))
+        for dep_name in internal_dep_names:
+            source_value = self._normalize_str_object_mapping(sources_obj.get(dep_name))
+            if not source_value:
+                continue
+            if source_value.get("workspace") is True:
+                _ = result.setdefault(dep_name, project_root / ".flext-deps" / dep_name)
+                continue
+            source_path = source_value.get(c.Infra.PATH)
+            if isinstance(source_path, str):
+                repo_name = self.is_internal_path_dep(source_path)
+                if repo_name is not None:
+                    _ = result.setdefault(
+                        repo_name,
+                        project_root / ".flext-deps" / repo_name,
+                    )
         return r[Mapping[str, Path]].ok(result)
 
     def ensure_checkout(self, dep_path: Path, repo_url: str, ref_name: str) -> r[bool]:

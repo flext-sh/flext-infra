@@ -10,6 +10,7 @@ import sys
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
+import tomlkit
 from flext_core import FlextLogger
 from pydantic import JsonValue
 from tomlkit.items import Item, Table
@@ -118,21 +119,20 @@ class FlextInfraDependencyPathSync:
         self,
         doc: TOMLDocument,
         *,
-        is_root: bool,
-        mode: str,
         internal_names: t.Infra.StrSet,
-    ) -> t.StrSequence:
+    ) -> t.Infra.Pair[t.StrSequence, t.Infra.StrSet]:
         project_raw = self._table_get(doc, c.Infra.PROJECT)
         if not isinstance(project_raw, Table):
-            return []
+            return ([], set())
         project_section: Table = project_raw
         deps: t.StrSequence = u.Infra.as_string_list(
             self._table_get(project_section, c.Infra.DEPENDENCIES),
         )
         if not deps:
-            return []
+            return ([], set())
         changes: MutableSequence[str] = []
         updated_deps: MutableSequence[str] = []
+        internal_deps: t.Infra.StrSet = set()
         for item_raw in deps:
             item = item_raw
             marker = ""
@@ -144,16 +144,8 @@ class FlextInfraDependencyPathSync:
             if not dep_name or dep_name not in internal_names:
                 updated_deps.append(item)
                 continue
-            if " @ " in requirement_part:
-                match = c.Infra.PEP621_PATH_DEP_RE.match(requirement_part)
-                if not match:
-                    updated_deps.append(item)
-                    continue
-                raw_path = match.group("path").strip()
-                dep_name = self.extract_dep_name(raw_path)
-            new_path = self._target_path(dep_name, is_root=is_root, mode=mode)
-            path_prefix = "./" if is_root else ""
-            new_entry = f"{dep_name} @ file:{path_prefix}{new_path}{marker}"
+            internal_deps.add(dep_name)
+            new_entry = f"{dep_name}{marker}" if " @ " in requirement_part else item
             if item != new_entry:
                 changes.append(f"  PEP621: {item} -> {new_entry}")
                 updated_deps.append(new_entry)
@@ -161,6 +153,75 @@ class FlextInfraDependencyPathSync:
                 updated_deps.append(item)
         if changes:
             project_section[c.Infra.DEPENDENCIES] = updated_deps
+        return (changes, internal_deps)
+
+    @staticmethod
+    def _ensure_table(parent: TOMLDocument | Table, key: str) -> Table:
+        existing = FlextInfraDependencyPathSync._table_get(parent, key)
+        if isinstance(existing, Table):
+            return existing
+        created = tomlkit.table()
+        parent[key] = created
+        return created
+
+    def _rewrite_uv_sources(
+        self,
+        doc: TOMLDocument,
+        *,
+        is_root: bool,
+        mode: str,
+        internal_names: t.Infra.StrSet,
+        internal_deps: t.Infra.StrSet,
+    ) -> t.StrSequence:
+        if not internal_deps:
+            return []
+        changes: MutableSequence[str] = []
+        tool_section = self._ensure_table(doc, c.Infra.TOOL)
+        uv_section = self._ensure_table(tool_section, "uv")
+        sources = self._ensure_table(uv_section, "sources")
+        for source_key_raw in list(sources):
+            source_key = str(source_key_raw)
+            if source_key in internal_names and source_key not in internal_deps:
+                del sources[source_key]
+                changes.append(f"  uv.sources: removed stale source {source_key}")
+        for dep_name in sorted(internal_deps):
+            expected: t.Infra.ContainerDict
+            if mode == c.Infra.ReportKeys.WORKSPACE:
+                expected = {"workspace": True}
+            else:
+                path_value = self._target_path(dep_name, is_root=is_root, mode=mode)
+                expected = {"path": path_value, "editable": True}
+            current_value = sources.get(dep_name)
+            current_map = (
+                dict(current_value.unwrap()) if isinstance(current_value, Table) else {}
+            )
+            if current_map == expected:
+                continue
+            source_table = tomlkit.table()
+            for key in sorted(expected):
+                source_table[key] = expected[key]
+            sources[dep_name] = source_table
+            changes.append(f"  uv.sources: synced source for {dep_name}")
+        return changes
+
+    def _rewrite_uv_workspace(
+        self,
+        doc: TOMLDocument,
+        *,
+        is_root: bool,
+        members: t.StrSequence,
+    ) -> t.StrSequence:
+        if not is_root:
+            return []
+        changes: MutableSequence[str] = []
+        tool_section = self._ensure_table(doc, c.Infra.TOOL)
+        uv_section = self._ensure_table(tool_section, "uv")
+        workspace_section = self._ensure_table(uv_section, "workspace")
+        expected_members = sorted(set(members))
+        current_members = u.Infra.as_string_list(workspace_section.get("members", []))
+        if current_members != expected_members:
+            workspace_section["members"] = u.Infra.array(expected_members)
+            changes.append("  uv.workspace: members synchronized")
         return changes
 
     @staticmethod
@@ -217,6 +278,7 @@ class FlextInfraDependencyPathSync:
         *,
         mode: str,
         internal_names: t.Infra.StrSet,
+        workspace_members: t.StrSequence,
         is_root: bool = False,
         dry_run: bool = False,
     ) -> r[t.StrSequence]:
@@ -227,12 +289,25 @@ class FlextInfraDependencyPathSync:
                 doc_result.error or "failed to read TOML document",
             )
         doc: TOMLDocument = doc_result.value
-        changes: MutableSequence[str] = list(
-            self._rewrite_pep621(
+        pep_changes, internal_deps = self._rewrite_pep621(
+            doc,
+            internal_names=internal_names,
+        )
+        changes: MutableSequence[str] = list(pep_changes)
+        changes += list(
+            self._rewrite_uv_sources(
                 doc,
                 is_root=is_root,
                 mode=mode,
                 internal_names=internal_names,
+                internal_deps=internal_deps,
+            ),
+        )
+        changes += list(
+            self._rewrite_uv_workspace(
+                doc,
+                is_root=is_root,
+                members=workspace_members,
             ),
         )
         changes += list(self._rewrite_poetry(doc, is_root=is_root, mode=mode))
@@ -268,30 +343,6 @@ class FlextInfraDependencyPathSync:
                     if root_name is not None:
                         internal_names.add(root_name)
 
-        if not selected_projects and root_pyproject.exists():
-            changes_result = self.rewrite_dep_paths(
-                root_pyproject,
-                mode=mode,
-                internal_names=internal_names,
-                is_root=True,
-                dry_run=dry_run,
-            )
-            if changes_result.is_failure:
-                root_error = changes_result.error or "sync_dep_paths_root_failed"
-                self._log.error(
-                    "sync_dep_paths_root_failed",
-                    pyproject=str(root_pyproject),
-                    error_detail=root_error,
-                )
-                return 1
-            changes: t.StrSequence = changes_result.value
-            if changes:
-                prefix = "[DRY-RUN] " if dry_run else ""
-                output.info(f"{prefix}{root_pyproject}:")
-                for change in changes:
-                    output.info(change)
-                total_changes += len(changes)
-
         discover_result = self._discover_projects()
         if discover_result.is_failure:
             discovery_error = discover_result.error or "sync_dep_paths_discovery_failed"
@@ -304,6 +355,9 @@ class FlextInfraDependencyPathSync:
 
         projects_list: Sequence[m.Infra.ProjectInfo] = discover_result.value
         all_project_dirs = [project.path for project in projects_list]
+        workspace_members = sorted(
+            str(path.relative_to(self._root)) for path in all_project_dirs
+        )
         if selected_projects:
             project_dirs = [self._root / project for project in selected_projects]
         else:
@@ -324,6 +378,31 @@ class FlextInfraDependencyPathSync:
             if project_name is not None:
                 internal_names.add(project_name)
 
+        if not selected_projects and root_pyproject.exists():
+            changes_result = self.rewrite_dep_paths(
+                root_pyproject,
+                mode=mode,
+                internal_names=internal_names,
+                workspace_members=workspace_members,
+                is_root=True,
+                dry_run=dry_run,
+            )
+            if changes_result.is_failure:
+                root_error = changes_result.error or "sync_dep_paths_root_failed"
+                self._log.error(
+                    "sync_dep_paths_root_failed",
+                    pyproject=str(root_pyproject),
+                    error_detail=root_error,
+                )
+                return 1
+            changes: t.StrSequence = changes_result.value
+            if changes:
+                prefix = "[DRY-RUN] " if dry_run else ""
+                output.info(f"{prefix}{root_pyproject}:")
+                for change in changes:
+                    output.info(change)
+                total_changes += len(changes)
+
         for project_dir in sorted(project_dirs):
             pyproject = project_dir / c.Infra.Files.PYPROJECT_FILENAME
             if not pyproject.exists():
@@ -332,6 +411,7 @@ class FlextInfraDependencyPathSync:
                 pyproject,
                 mode=mode,
                 internal_names=internal_names,
+                workspace_members=workspace_members,
                 is_root=False,
                 dry_run=dry_run,
             )

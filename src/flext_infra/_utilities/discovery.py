@@ -277,16 +277,14 @@ class FlextInfraUtilitiesDiscovery:
         if not project_dir.is_dir():
             return []
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
-        dirs: MutableSequence[str] = []
-        for subdir in sorted(project_dir.iterdir()):
-            if not subdir.is_dir():
-                continue
-            if subdir.name.startswith(".") or subdir.name in effective_skip:
-                continue
-            has_py = any(subdir.rglob("*.py"))
-            if has_py:
-                dirs.append(subdir.name)
-        return dirs
+        return [
+            subdir.name
+            for subdir in sorted(project_dir.iterdir())
+            if subdir.is_dir()
+            and not subdir.name.startswith(".")
+            and subdir.name not in effective_skip
+            and any(subdir.rglob("*.py"))
+        ]
 
     @staticmethod
     def discover_src_package_dir(project_root: Path) -> t.Infra.Pair[str, Path] | None:

@@ -206,7 +206,9 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         tree.visit(FunctionShadowCollector())
         return shadowed_aliases
 
-    def _fix_lazy_imports(self, tree: cst.Module) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+    def _fix_lazy_imports(
+        self, tree: cst.Module
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         return self._apply_transformer(FlextInfraRefactorLazyImportFixer(), tree)
 
 

@@ -229,7 +229,9 @@ class FlextInfraClassNestingRefactorRule:
                 ]
                 config[c.Infra.ReportKeys.HELPER_CONSOLIDATION] = coerced_helpers
             except ValidationError:
-                config[c.Infra.ReportKeys.HELPER_CONSOLIDATION] = list[t.Infra.InfraValue]()
+                config[c.Infra.ReportKeys.HELPER_CONSOLIDATION] = list[
+                    t.Infra.InfraValue
+                ]()
         self._cached_config = config
         return config
 

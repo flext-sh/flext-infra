@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -149,25 +149,19 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         if tree is None:
             return []
         module, positions = u.Infra.cst_resolve_positions(tree)
-        violations: MutableSequence[m.Infra.ClassPlacementViolation] = []
-        for stmt in module.body:
-            if not isinstance(stmt, cst.ClassDef):
-                continue
-            if stmt.name.value.startswith("_"):
-                continue
-            is_model_class, base_class_name = cls.is_pydantic_model_class(stmt)
-            if not is_model_class:
-                continue
-            violations.append(
-                m.Infra.ClassPlacementViolation.create(
-                    file=str(file_path),
-                    line=u.Infra.cst_line_for(node=stmt, positions=positions),
-                    name=stmt.name.value,
-                    base_class=base_class_name,
-                    suggestion="Move class to models.py/_models.py or _models/",
-                ),
+        return [
+            m.Infra.ClassPlacementViolation.create(
+                file=str(file_path),
+                line=u.Infra.cst_line_for(node=stmt, positions=positions),
+                name=stmt.name.value,
+                base_class=base_class_name,
+                suggestion="Move class to models.py/_models.py or _models/",
             )
-        return violations
+            for stmt in module.body
+            if isinstance(stmt, cst.ClassDef) and not stmt.name.value.startswith("_")
+            for is_model_class, base_class_name in [cls.is_pydantic_model_class(stmt)]
+            if is_model_class
+        ]
 
     @staticmethod
     def is_pydantic_model_class(node: cst.ClassDef) -> t.Infra.Pair[bool, str]:

@@ -12,6 +12,7 @@ requires = [ "hatchling" ]
 
 # [CUSTOM] poetry
 
+# [MANAGED] consolidated development dependencies
 authors = [ {email = "team@flext.sh", name = "FLEXT Team"} ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -25,12 +26,7 @@ classifiers = [
   "Topic :: Software Development :: Code Generators",
   "Typing :: Typed",
 ]
-dependencies = [
-  "flext-cli @ file:../flext-cli",
-  "flext-core @ file:../flext-core",
-  "libcst (>=1.5.1,<2)",
-  "rope (>=1.14.0,<2.0.0)",
-]
+dependencies = [ "flext-cli", "flext-core", "libcst (>=1.5.1,<2)", "rope (>=1.14.0,<2.0.0)" ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
 keywords = [ "automation", "codegen", "flext", "infrastructure", "tooling" ]
 license = "MIT"
@@ -42,7 +38,6 @@ scripts = {"flext-basemk" = "flext_infra.basemk:main", "flext-check" = "flext_in
 urls = {Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md", Homepage = "https://github.com/flext-sh/flext-infra", Repository = "https://github.com/flext-sh/flext-infra"}
 version = "0.12.0-dev"
 
-# [MANAGED] consolidated development dependencies
 [project.optional-dependencies]
 dev = [
   "autoflake>=2.3.1",
@@ -112,12 +107,14 @@ skips = [ "B101" ]
 targets = [ "src" ]
 
 # [MANAGED] codespell
+
 [tool.codespell]
 check-filenames = true
 ignore-words-list = "crate,nd"
 skip = ".git,poetry.lock,.mypy_cache,.pytest_cache,.ruff_cache"
 
 # [MANAGED] coverage
+
 [tool.coverage.report]
 fail_under = 25
 precision = 2
@@ -125,11 +122,20 @@ show_missing = true
 skip_covered = false
 
 # [MANAGED] deptry
+
 [tool.deptry]
 known_first_party = [
   "flext_infra",
 ]
 pep621_dev_dependency_groups = [ "dev" ]
+
+[tool.hatch.build.targets.wheel]
+packages = [ "src/flext_infra" ]
+
+# [MANAGED] pydantic-mypy
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.interrogate]
 exclude = [ "docs", "examples", "scripts", "tests" ]
@@ -142,6 +148,7 @@ ignore-private = true
 ignore-property-decorators = true
 
 # [MANAGED] mypy
+
 [tool.mypy]
 
 disable_error_code = [
@@ -156,16 +163,15 @@ plugins = [
 ]
 python_version = "3.13"
 
-[tool.hatch.build.targets.wheel]
-packages = [ "src/flext_infra" ]
+[tool.poetry]
 
-# [MANAGED] pydantic-mypy
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
 
 # [MANAGED] pyrefly
+
 [tool.pyrefly]
 disable-project-excludes-heuristics = true
 disable-search-path-heuristics = true
@@ -217,6 +223,7 @@ unannotated-parameter = true
 unannotated-return = true
 
 # [MANAGED] pyright
+
 [tool.pyright]
 exclude = [
   "**/.*",
@@ -268,7 +275,6 @@ extraPaths = [ ".", "src" ]
 reportPrivateUsage = "none"
 root = "tests"
 
-# [MANAGED] pytest
 [tool.pytest.ini_options]
 addopts = [ "--strict-markers" ]
 enable_assertion_pass_hook = true
@@ -297,6 +303,7 @@ exclude = "tests/*,examples/*"
 mi_min = "B"
 
 # [MANAGED] ruff
+
 [tool.ruff]
 exclude = [
   ".git",
@@ -402,6 +409,7 @@ split-on-trailing-comma = true
 
 [tool.ruff.lint.per-file-ignores]
 
+# [MANAGED] tomlsort
 "**/.vulture_whitelist.py" = [
   "ALL",
 ]
@@ -456,7 +464,6 @@ split-on-trailing-comma = true
 ]
 "**/*models*" = [
   "ANN401",
-  "F821",
   "FBT001",
   "PLC2701",
   "PLR0206",
@@ -692,7 +699,6 @@ split-on-trailing-comma = true
   "S607",
 ]
 
-# [MANAGED] tomlsort
 [tool.tomlsort]
 all = true
 in_place = true
@@ -704,9 +710,16 @@ sort_first = [
 ]
 
 # [MANAGED] yamlfix
+
 [tool.yamlfix]
 explicit_start = false
 line_length = 88
 preserve_quotes = true
 section_whitelines = 1
 whitelines = 1
+
+[tool.uv.sources.flext-cli]
+workspace = true
+
+[tool.uv.sources.flext-core]
+workspace = true

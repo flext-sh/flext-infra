@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, MutableSequence, Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -47,27 +47,26 @@ class FlextInfraNamespaceFacadeScanner:
             List of FacadeStatus objects for each family's facade class.
 
         """
-        results: MutableSequence[m.Infra.FacadeStatus] = []
         class_stem = cls.project_class_stem(project_name=project_name)
-        for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
-            expected_class = f"{class_stem}{suffix}"
-            found_class, found_file, symbol_count = cls._find_facade_class(
-                project_root=project_root,
+        return [
+            m.Infra.FacadeStatus.create(
                 family=family,
-                expected_class=expected_class,
-                suffix=suffix,
-                _parse_failures=parse_failures,
+                exists=bool(found_class),
+                class_name=found_class,
+                file=found_file,
+                symbol_count=symbol_count,
             )
-            results.append(
-                m.Infra.FacadeStatus.create(
+            for family, suffix in c.Infra.FAMILY_SUFFIXES.items()
+            for found_class, found_file, symbol_count in [
+                cls._find_facade_class(
+                    project_root=project_root,
                     family=family,
-                    exists=bool(found_class),
-                    class_name=found_class,
-                    file=found_file,
-                    symbol_count=symbol_count,
-                ),
-            )
-        return results
+                    expected_class=f"{class_stem}{suffix}",
+                    suffix=suffix,
+                    _parse_failures=parse_failures,
+                )
+            ]
+        ]
 
     @classmethod
     def _find_facade_class(
