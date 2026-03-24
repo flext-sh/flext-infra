@@ -257,7 +257,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             else ""
         )
         updated = target_source
-        if "from __future__ import annotations" not in updated:
+        if c.Infra.SourceCode.FUTURE_ANNOTATIONS not in updated:
             updated = "from __future__ import annotations\n\n" + updated.lstrip("\n")
         merged_blocks = "\n\n".join(blocks)
         updated = updated.rstrip() + "\n\n" + merged_blocks + "\n"
@@ -506,7 +506,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             else ""
         )
         updated = target_source
-        if "from __future__ import annotations" not in updated:
+        if c.Infra.SourceCode.FUTURE_ANNOTATIONS not in updated:
             updated = "from __future__ import annotations\n\n" + updated.lstrip("\n")
         if "from typing import Protocol" not in updated:
             updated = updated.rstrip() + "\n\nfrom typing import Protocol\n"
@@ -791,7 +791,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             except (OSError, UnicodeDecodeError):
                 continue
-            if "from __future__ import annotations" in source:
+            if c.Infra.SourceCode.FUTURE_ANNOTATIONS in source:
                 continue
             lines = source.splitlines()
             if not lines:
@@ -820,7 +820,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                             break
             new_lines = (
                 lines[:insert_idx]
-                + ["", "from __future__ import annotations", ""]
+                + ["", c.Infra.SourceCode.FUTURE_ANNOTATIONS, ""]
                 + lines[insert_idx:]
             )
             _ = file_path.write_text(
