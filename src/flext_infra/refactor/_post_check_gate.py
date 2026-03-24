@@ -33,9 +33,7 @@ class FlextInfraPostCheckGate:
             errors.extend(self._validate_imports(file_path))
         source_symbol_raw = expected.get(c.Infra.ReportKeys.SOURCE_SYMBOL, "")
         source_symbol = source_symbol_raw if isinstance(source_symbol_raw, str) else ""
-        expected_chain = u.Infra.string_list(
-            expected.get("expected_base_chain"),
-        )
+        expected_chain = u.Infra.string_list(expected.get("expected_base_chain"))
         if (
             source_symbol
             and expected_chain

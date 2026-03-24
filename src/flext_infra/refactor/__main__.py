@@ -117,7 +117,11 @@ class FlextInfraRefactorCommand:
         return 0
 
     @staticmethod
-    def run_migrate_to_mro(cli: u.Infra.CliArgs, *, target: str) -> int:
+    def run_migrate_to_mro(
+        cli: u.Infra.CliArgs,
+        *,
+        target: str,
+    ) -> int:
         """Run MRO migration workflow for the selected target scope."""
         service = FlextInfraRefactorMigrateToClassMRO(workspace_root=cli.workspace)
         report = service.run(target=target, apply=cli.apply)

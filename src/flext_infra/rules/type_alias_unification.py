@@ -19,12 +19,13 @@ class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
         tree: cst.Module,
         _file_path: Path | None = None,
     ) -> tuple[cst.Module, t.StrSequence]:
-        transformer = FlextInfraRefactorTypingUnifier(
-            canonical_map=c.Infra.TYPING_INLINE_UNION_CANONICAL_MAP,
-            file_path=_file_path,
+        return self._apply_transformer(
+            FlextInfraRefactorTypingUnifier(
+                canonical_map=c.Infra.TYPING_INLINE_UNION_CANONICAL_MAP,
+                file_path=_file_path,
+            ),
+            tree,
         )
-        updated_tree = tree.visit(transformer)
-        return (updated_tree, transformer.changes)
 
 
 __all__ = ["FlextInfraRefactorTypingUnificationRule"]

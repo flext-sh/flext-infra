@@ -11,7 +11,7 @@ from typing import override
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraGate, c, m, t as t_infra, u
+from flext_infra import FlextInfraGate, c, m, t
 
 
 class FlextInfraMypyGate(FlextInfraGate):
@@ -29,7 +29,6 @@ class FlextInfraMypyGate(FlextInfraGate):
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        _ = u
         started = time.monotonic()
         check_dirs = self._existing_check_dirs(project_dir)
         mypy_dirs = self._dirs_with_py(project_dir, check_dirs)
@@ -78,7 +77,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                 continue
             try:
                 line_data = TypeAdapter(
-                    Mapping[str, t_infra.Infra.InfraValue],
+                    Mapping[str, t.Infra.InfraValue],
                 ).validate_json(stripped)
             except ValidationError:
                 continue

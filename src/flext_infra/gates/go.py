@@ -11,8 +11,6 @@ from flext_infra import FlextInfraGate, c, m
 
 
 class FlextInfraGoGate(FlextInfraGate):
-    """Gate for Go quality checks."""
-
     """Go quality gate."""
 
     gate_id = c.Infra.GO

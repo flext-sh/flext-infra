@@ -21,7 +21,7 @@ from flext_infra import (
     m,
     t,
 )
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra import FlextInfraUtilitiesParsing
 
 
 class FlextInfraUtilitiesRefactorMroTransform:

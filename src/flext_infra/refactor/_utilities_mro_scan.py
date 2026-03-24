@@ -11,9 +11,7 @@ import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, m
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra import FlextInfraUtilitiesIteration, FlextInfraUtilitiesParsing, c, m
 
 
 class FlextInfraUtilitiesRefactorMroScan:

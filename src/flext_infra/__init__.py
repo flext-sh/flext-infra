@@ -196,6 +196,7 @@ if TYPE_CHECKING:
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor._base_rule import FlextInfraRefactorRule
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
+    from flext_infra.refactor._detectors._base_detector import FlextInfraScanFileMixin
     from flext_infra.refactor._detectors.class_placement_detector import (
         FlextInfraClassPlacementDetector,
     )
@@ -992,6 +993,10 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.deps.detector",
         "FlextInfraRuntimeDevDependencyDetector",
     ),
+    "FlextInfraScanFileMixin": (
+        "flext_infra.refactor._detectors._base_detector",
+        "FlextInfraScanFileMixin",
+    ),
     "FlextInfraSharedInfraConstants": (
         "flext_infra.validate._constants",
         "FlextInfraSharedInfraConstants",
@@ -1425,6 +1430,7 @@ __all__ = [
     "FlextInfraRuffLintGate",
     "FlextInfraRuntimeAliasDetector",
     "FlextInfraRuntimeDevDependencyDetector",
+    "FlextInfraScanFileMixin",
     "FlextInfraSharedInfraConstants",
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",

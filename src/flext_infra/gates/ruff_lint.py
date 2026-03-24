@@ -14,9 +14,8 @@ from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraRuffLintGate(FlextInfraGate):
-    """Gate for Ruff lint checks."""
-
     """Ruff Lint quality gate."""
+
     gate_id = c.Infra.LINT
     gate_name = "Ruff Lint"
     can_fix = False

@@ -41,5 +41,15 @@ class FlextInfraRefactorRule:
         """Apply the rule to a CST module and return transformed tree plus changes."""
         return (tree, [])
 
+    def _apply_transformer(
+        self,
+        transformer: cst.CSTTransformer,
+        tree: cst.Module,
+    ) -> tuple[cst.Module, t.StrSequence]:
+        """Apply a single transformer and return (tree, changes)."""
+        new_tree = tree.visit(transformer)
+        changes: t.StrSequence = getattr(transformer, "changes", [])
+        return (new_tree, changes)
+
 
 __all__ = ["FlextInfraRefactorRule"]

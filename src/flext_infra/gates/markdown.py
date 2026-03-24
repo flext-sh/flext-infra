@@ -11,8 +11,6 @@ from flext_infra import FlextInfraGate, c, m
 
 
 class FlextInfraMarkdownGate(FlextInfraGate):
-    """Gate for markdown lint checks and fixes."""
-
     """Markdown quality gate."""
 
     gate_id = c.Infra.MARKDOWN

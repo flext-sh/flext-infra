@@ -20,9 +20,7 @@ class FlextInfraRefactorMRORedundancyChecker(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> tuple[cst.Module, t.StrSequence]:
         """Apply MRO redeclaration cleanup transformer."""
-        transformer = FlextInfraRefactorMRORemover()
-        new_tree = tree.visit(transformer)
-        return (new_tree, transformer.changes)
+        return self._apply_transformer(FlextInfraRefactorMRORemover(), tree)
 
 
 __all__ = ["FlextInfraRefactorMRORedundancyChecker"]

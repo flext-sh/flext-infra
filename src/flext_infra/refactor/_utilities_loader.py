@@ -15,8 +15,7 @@ from typing import TypeVar
 
 from pydantic import JsonValue
 
-from flext_infra import c, m, p
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra import FlextInfraUtilitiesParsing, c, m, p
 
 _V = TypeVar("_V", bound=p.Infra.ViolationWithLine)
 

@@ -222,9 +222,10 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
             return (tree, [])
         if not order_config:
             return (tree, [])
-        transformer = FlextInfraRefactorClassReconstructor(order_config=order_config)
-        new_tree = tree.visit(transformer)
-        return (new_tree, transformer.changes)
+        return self._apply_transformer(
+            FlextInfraRefactorClassReconstructor(order_config=order_config),
+            tree,
+        )
 
 
 __all__ = [

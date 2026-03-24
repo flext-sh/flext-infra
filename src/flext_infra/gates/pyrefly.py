@@ -15,8 +15,6 @@ from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraPyreflyGate(FlextInfraGate):
-    """Gate for Pyrefly checks."""
-
     """Pyrefly quality gate."""
 
     gate_id = c.Infra.PYREFLY

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes
 
     from flext_infra.refactor import _detectors
+    from flext_infra.refactor._detectors._base_detector import FlextInfraScanFileMixin
     from flext_infra.refactor._detectors.class_placement_detector import (
         FlextInfraClassPlacementDetector,
     )
@@ -85,7 +86,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
     from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
-    from flext_infra.refactor.validation import FlextInfraPostCheckGate
     from flext_infra.refactor.violation_analyzer import (
         FlextInfraRefactorViolationAnalyzer,
     )
@@ -151,10 +151,6 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.refactor._detectors.namespace_source_detector",
         "FlextInfraNamespaceSourceDetector",
     ),
-    "FlextInfraPostCheckGate": (
-        "flext_infra.refactor.validation",
-        "FlextInfraPostCheckGate",
-    ),
     "FlextInfraProjectClassifier": (
         "flext_infra.refactor.project_classifier",
         "FlextInfraProjectClassifier",
@@ -212,6 +208,10 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.refactor._detectors.runtime_alias_detector",
         "FlextInfraRuntimeAliasDetector",
     ),
+    "FlextInfraScanFileMixin": (
+        "flext_infra.refactor._detectors._base_detector",
+        "FlextInfraScanFileMixin",
+    ),
     "_detectors": ("flext_infra.refactor._detectors", ""),
 }
 
@@ -231,7 +231,6 @@ __all__ = [
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceFacadeScanner",
     "FlextInfraNamespaceSourceDetector",
-    "FlextInfraPostCheckGate",
     "FlextInfraProjectClassifier",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
@@ -247,6 +246,7 @@ __all__ = [
     "FlextInfraRefactorSafetyManager",
     "FlextInfraRefactorViolationAnalyzer",
     "FlextInfraRuntimeAliasDetector",
+    "FlextInfraScanFileMixin",
     "_detectors",
 ]
 

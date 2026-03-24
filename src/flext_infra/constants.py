@@ -56,5 +56,6 @@ class FlextInfraConstants(FlextConstants):
     ):
         """Merged infra-domain constants from all sub-packages."""
 
+
 c = FlextInfraConstants
 __all__ = ["FlextInfraConstants", "c"]

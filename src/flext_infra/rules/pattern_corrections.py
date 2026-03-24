@@ -303,22 +303,22 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
         )
         if fix_action == "convert_dict_to_mapping_annotations":
             include_returns = bool(self.config.get("include_return_annotations", False))
-            dict_to_mapping_transformer = FlextInfraDictToMappingTransformer(
-                include_return_annotations=include_returns,
+            return self._apply_transformer(
+                FlextInfraDictToMappingTransformer(
+                    include_return_annotations=include_returns,
+                ),
+                tree,
             )
-            updated = tree.visit(dict_to_mapping_transformer)
-            return (updated, dict_to_mapping_transformer.changes)
         if fix_action == "remove_redundant_casts":
             typed_cfg: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
                 Mapping[str, t.Infra.InfraValue],
             ).validate_python(self.config)
             raw_types = typed_cfg.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))
-            cast_remover = FlextInfraRedundantCastRemover(
-                removable_types=removable_types,
+            return self._apply_transformer(
+                FlextInfraRedundantCastRemover(removable_types=removable_types),
+                tree,
             )
-            updated = tree.visit(cast_remover)
-            return (updated, cast_remover.changes)
         return (tree, [])
 
 

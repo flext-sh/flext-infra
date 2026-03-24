@@ -14,9 +14,7 @@ from flext_infra import FlextInfraGate, c, m, t, u
 
 
 class FlextInfraBanditGate(FlextInfraGate):
-    """Gate for Bandit security checks."""
-
-    """Bandit quality gate."""
+    """Bandit security quality gate."""
 
     gate_id = c.Infra.SECURITY
     gate_name = "Bandit"

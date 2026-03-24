@@ -14,8 +14,6 @@ from flext_infra import FlextInfraGate, c, m, u
 
 
 class FlextInfraPyrightGate(FlextInfraGate):
-    """Gate for Pyright type checks."""
-
     """Pyright quality gate."""
 
     gate_id: str = c.Infra.PYRIGHT

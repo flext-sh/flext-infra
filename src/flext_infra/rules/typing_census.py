@@ -23,9 +23,10 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
             str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
         )
         if fix_action == "replace_object_annotations":
-            replacer = FlextInfraTypingAnnotationReplacer()
-            updated = tree.visit(replacer)
-            return (updated, replacer.changes)
+            return self._apply_transformer(
+                FlextInfraTypingAnnotationReplacer(),
+                tree,
+            )
         return (tree, [])
 
 

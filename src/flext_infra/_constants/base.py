@@ -141,13 +141,10 @@ class FlextInfraConstantsBase:
 
     GIT: Final[str] = "git"
     "Git version control binary."
-    RUFF: Final[str] = "ruff"
     "Ruff linter/formatter binary."
-    POETRY: Final[str] = "poetry"
     "Poetry package manager binary."
     SG: Final[str] = "sg"
     "ast-grep (sg) binary."
-    DEPTRY: Final[str] = "deptry"
     "Deptry dependency checker binary."
     BANDIT: Final[str] = "bandit"
     "Bandit security linter binary."
@@ -157,11 +154,8 @@ class FlextInfraConstantsBase:
     "Go formatter binary."
     OUTPUT_JSON: Final[str] = "json"
     "Common CLI output format flag value."
-    MYPY: Final[str] = "mypy"
     "Mypy type checker binary."
-    PYRIGHT: Final[str] = "pyright"
     "Pyright type checker binary."
-    PYREFLY: Final[str] = "pyrefly"
     "Pyrefly type checker binary."
     PR: Final[str] = "pr"
     "GitHub pull request subcommand."
@@ -176,6 +170,8 @@ class FlextInfraConstantsBase:
 
     # Quality gate identifiers.
 
+    CHECK: Final[str] = "check"
+    "Generic check command/subcommand identifier."
     LINT: Final[str] = "lint"
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"

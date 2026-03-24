@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, t, t as t_infra, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraGate(ABC):
@@ -102,29 +102,29 @@ class FlextInfraGate(ABC):
 
     @staticmethod
     def _to_mapping(
-        value: t_infra.Infra.InfraValue,
-    ) -> Mapping[str, t_infra.Infra.InfraValue]:
+        value: t.Infra.InfraValue,
+    ) -> Mapping[str, t.Infra.InfraValue]:
         if not isinstance(value, Mapping):
             return {}
-        return TypeAdapter(Mapping[str, t_infra.Infra.InfraValue]).validate_python(
+        return TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
             value,
         )
 
     @classmethod
     def _to_mapping_list(
         cls,
-        value: t_infra.Infra.InfraValue,
-    ) -> Sequence[Mapping[str, t_infra.Infra.InfraValue]]:
+        value: t.Infra.InfraValue,
+    ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         if not isinstance(value, list):
             return []
-        typed_items = TypeAdapter(Sequence[t_infra.Infra.InfraValue]).validate_python(
+        typed_items = TypeAdapter(Sequence[t.Infra.InfraValue]).validate_python(
             value,
         )
-        normalized: MutableSequence[Mapping[str, t_infra.Infra.InfraValue]] = []
+        normalized: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
         for raw_item in typed_items:
             try:
                 typed_item = TypeAdapter(
-                    Mapping[str, t_infra.Infra.InfraValue],
+                    Mapping[str, t.Infra.InfraValue],
                 ).validate_python(raw_item)
             except ValidationError:
                 continue
@@ -132,7 +132,7 @@ class FlextInfraGate(ABC):
         return normalized
 
     @staticmethod
-    def _as_int(value: t_infra.Infra.InfraValue, default: int = 0) -> int:
+    def _as_int(value: t.Infra.InfraValue, default: int = 0) -> int:
         if isinstance(value, int):
             return value
         if isinstance(value, float):
@@ -145,7 +145,7 @@ class FlextInfraGate(ABC):
         return default
 
     @staticmethod
-    def _as_str(value: t_infra.Infra.InfraValue, default: str = "") -> str:
+    def _as_str(value: t.Infra.InfraValue, default: str = "") -> str:
         return value if isinstance(value, str) else default
 
     @staticmethod
@@ -155,37 +155,37 @@ class FlextInfraGate(ABC):
 
     @staticmethod
     def _nested_mapping(
-        data: Mapping[str, t_infra.Infra.InfraValue],
+        data: Mapping[str, t.Infra.InfraValue],
         *keys: str,
-    ) -> Mapping[str, t_infra.Infra.InfraValue]:
-        current: t_infra.Infra.InfraValue = data
+    ) -> Mapping[str, t.Infra.InfraValue]:
+        current: t.Infra.InfraValue = data
         for key in keys:
             if not isinstance(current, Mapping):
                 return {}
             typed_current = TypeAdapter(
-                Mapping[str, t_infra.Infra.InfraValue],
+                Mapping[str, t.Infra.InfraValue],
             ).validate_python(current)
             if key not in typed_current:
                 return {}
-            child: t_infra.Infra.InfraValue = typed_current[key]
+            child: t.Infra.InfraValue = typed_current[key]
             if child is None:
                 return {}
             current = child
         if not isinstance(current, Mapping):
             return {}
-        return TypeAdapter(Mapping[str, t_infra.Infra.InfraValue]).validate_python(
+        return TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
             current,
         )
 
     @classmethod
     def _nested_int(
         cls,
-        data: Mapping[str, t_infra.Infra.InfraValue],
+        data: Mapping[str, t.Infra.InfraValue],
         *keys: str,
         default: int = 0,
     ) -> int:
         target = cls._nested_mapping(data, *keys[:-1])
-        raw: t_infra.Infra.InfraValue = target.get(keys[-1])
+        raw: t.Infra.InfraValue = target.get(keys[-1])
         if raw is None:
             return default
         return cls._as_int(raw, default)
