@@ -11,7 +11,7 @@ import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraUtilitiesIteration, FlextInfraUtilitiesParsing, c, m
+from flext_infra import FlextInfraUtilitiesIteration, c, m, u
 
 
 class FlextInfraUtilitiesRefactorMroScan:
@@ -63,7 +63,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         target_spec: m.Infra.MROTargetSpec,
     ) -> m.Infra.MROScanReport | None:
         """Scan one file and return migration candidates when found."""
-        tree = FlextInfraUtilitiesParsing.parse_module_ast(file_path)
+        tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
             return None
         constants_class = (
