@@ -798,67 +798,67 @@ class_nesting:
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorClassReconstructorRule
-    current_file: flext-core/src/flext_infra/refactor/rules/class_reconstructor.py
+    current_file: flext-core/src/flext_infra/rules/class_reconstructor.py
     target_namespace: FlextRefactorRulesClassReconstructor
     target_name: FlextInfraRefactorClassReconstructorRule
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorEnsureFutureAnnotationsRule
-    current_file: flext-core/src/flext_infra/refactor/rules/ensure_future_annotations.py
+    current_file: flext-core/src/flext_infra/rules/ensure_future_annotations.py
     target_namespace: FlextRefactorRulesEnsureFutureAnnotations
     target_name: FlextInfraRefactorEnsureFutureAnnotationsRule
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorImportModernizerRule
-    current_file: flext-core/src/flext_infra/refactor/rules/import_modernizer.py
+    current_file: flext-core/src/flext_infra/rules/import_modernizer.py
     target_namespace: FlextRefactorRulesImportModernizer
     target_name: FlextInfraRefactorImportModernizerRule
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorLegacyRemovalRule
-    current_file: flext-core/src/flext_infra/refactor/rules/legacy_removal.py
+    current_file: flext-core/src/flext_infra/rules/legacy_removal.py
     target_namespace: FlextRefactorRulesLegacyRemoval
     target_name: FlextInfraRefactorLegacyRemovalRule
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorMRORedundancyChecker
-    current_file: flext-core/src/flext_infra/refactor/rules/mro_redundancy_checker.py
+    current_file: flext-core/src/flext_infra/rules/mro_redundancy_checker.py
     target_namespace: FlextRefactorRulesMroRedundancyChecker
     target_name: FlextInfraRefactorMRORedundancyChecker
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: _DictToMappingTransformer
-    current_file: flext-core/src/flext_infra/refactor/rules/pattern_corrections.py
+    current_file: flext-core/src/flext_infra/rules/pattern_corrections.py
     target_namespace: FlextRefactorRulesPatternCorrections
     target_name: _DictToMappingTransformer
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: _RedundantCastRemover
-    current_file: flext-core/src/flext_infra/refactor/rules/pattern_corrections.py
+    current_file: flext-core/src/flext_infra/rules/pattern_corrections.py
     target_namespace: FlextRefactorRulesPatternCorrections
     target_name: _RedundantCastRemover
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorPatternCorrectionsRule
-    current_file: flext-core/src/flext_infra/refactor/rules/pattern_corrections.py
+    current_file: flext-core/src/flext_infra/rules/pattern_corrections.py
     target_namespace: FlextRefactorRulesPatternCorrections
     target_name: FlextInfraRefactorPatternCorrectionsRule
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorSymbolPropagationRule
-    current_file: flext-core/src/flext_infra/refactor/rules/symbol_propagation.py
+    current_file: flext-core/src/flext_infra/rules/symbol_propagation.py
     target_namespace: FlextRefactorRulesSymbolPropagation
     target_name: FlextInfraRefactorSymbolPropagationRule
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorSignaturePropagator
-    current_file: flext-core/src/flext_infra/refactor/rules/symbol_propagation.py
+    current_file: flext-core/src/flext_infra/rules/symbol_propagation.py
     target_namespace: FlextRefactorRulesSymbolPropagation
     target_name: FlextInfraRefactorSignaturePropagator
     confidence: medium
     reason: top_level_class_without_namespace_prefix
   - loose_name: FlextInfraRefactorSignaturePropagationRule
-    current_file: flext-core/src/flext_infra/refactor/rules/symbol_propagation.py
+    current_file: flext-core/src/flext_infra/rules/symbol_propagation.py
     target_namespace: FlextRefactorRulesSymbolPropagation
     target_name: FlextInfraRefactorSignaturePropagationRule
     confidence: medium

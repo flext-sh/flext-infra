@@ -201,6 +201,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
 
     @classmethod
     def discover_project_package_name(cls, *, project_root: Path) -> str:
+        """Discover the package name for a project root."""
         return cls._discover_project_package_name(project_root=project_root)
 
 

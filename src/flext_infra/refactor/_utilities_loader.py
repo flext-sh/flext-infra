@@ -1,7 +1,7 @@
 """Detector scan result builder utilities for the refactor layer.
 
 Centralizes the ``DetectorScanResultBuilder`` logic previously nested inside
-``flext_infra._detectors.module_loader``.
+``flext_infra.detectors.module_loader``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

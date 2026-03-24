@@ -320,11 +320,11 @@ class FlextInfraProtocolsBase:
     class DetectorRuntime(Protocol):
         """Protocol for detector runtime service dependencies."""
 
-        reporting: p.Infra.ReportingService
-        json: p.Infra.JsonService
-        deps: p.Infra.DepsService
-        runner: p.Infra.RunnerService
-        log: p.Logger
+        reporting: p.Infra.ReportingService  # noqa: F821
+        json: p.Infra.JsonService  # noqa: F821
+        deps: p.Infra.DepsService  # noqa: F821
+        runner: p.Infra.RunnerService  # noqa: F821
+        log: p.Logger  # noqa: F821
 
         @staticmethod
         def parser(default_limits_path: Path) -> argparse.ArgumentParser:
@@ -364,7 +364,7 @@ class FlextInfraProtocolsBase:
             file_path: Path,
             project_package: str,
             alias_map: Mapping[str, tuple[str, ...]] | None = None,
-        ) -> Sequence[p.Infra.ViolationWithLine]:
+        ) -> Sequence[p.Infra.ViolationWithLine]:  # noqa: F821
             """Detect import violations in a file.
 
             Args:
