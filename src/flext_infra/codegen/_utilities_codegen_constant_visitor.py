@@ -746,18 +746,16 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             })
 
         # Sort by impact (total usages × duplicates)
-        return sorted(
-            fixes,
-            key=lambda x: (
-                (
-                    x["canonical_usages"]
-                    if isinstance(x.get("canonical_usages"), int)
-                    else 0
-                )
-                * len(x.get("duplicates", []))
-            ),
-            reverse=True,
-        )
+        def _sort_key(
+            x: Mapping[str, str | int | Sequence[Mapping[str, str | int]]],
+        ) -> int:
+            usages_val = x.get("canonical_usages", 0)
+            usages = usages_val if isinstance(usages_val, int) else 0
+            dups_val = x.get("duplicates", [])
+            dups_len = len(dups_val) if isinstance(dups_val, (list, tuple)) else 0
+            return usages * dups_len
+
+        return sorted(fixes, key=_sort_key, reverse=True)
 
     @staticmethod
     def apply_deduplication_fix(
@@ -794,6 +792,8 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             if isinstance(dup, dict):
                 dup_name = str(dup.get("name", ""))
                 replaced_names.append(dup_name)
+            else:
+                continue
 
             # Patterns to find and replace
             patterns = [

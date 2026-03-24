@@ -134,7 +134,7 @@ class FlextInfraRefactorModels(
                 default_factory=lambda: datetime.now(UTC).isoformat(),
                 description="ISO 8601 timestamp of last update",
             ),
-        ] = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+        ]
 
     class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""
@@ -562,10 +562,13 @@ class FlextInfraRefactorModels(
                 description="Per-file per-pattern counts",
             ),
         ]
-        top_files: Sequence[FlextInfraRefactorModels.ViolationTopFileSection] = Field(
-            default_factory=lambda: (),
-            description="Top hotspot files",
-        )
+        top_files: Annotated[
+            Sequence[FlextInfraRefactorModels.ViolationTopFileSection],
+            Field(
+                default_factory=lambda: (),
+                description="Top hotspot files",
+            ),
+        ]
         files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
         helper_classification: Annotated[
             FlextInfraRefactorModels.HelperClassificationReport,

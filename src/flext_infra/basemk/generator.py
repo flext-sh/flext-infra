@@ -47,10 +47,9 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     @override
     def execute(self) -> r[str]:
-        return self.generate()
+        return self.generate_basemk()
 
-    @override
-    def generate(
+    def generate_basemk(
         self,
         config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:

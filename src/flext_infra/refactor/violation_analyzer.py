@@ -9,6 +9,7 @@ from operator import itemgetter
 from pathlib import Path
 
 import libcst as cst
+from libcst.metadata import MetadataWrapper
 
 from flext_infra import (
     FlextInfraFunctionDependencyCollector,
@@ -52,7 +53,7 @@ class FlextInfraRefactorViolationAnalyzer:
             if tree is None:
                 continue
             violation_visitor = FlextInfraViolationCensusVisitor(file_path=file_path)
-            cst.metadata.MetadataWrapper(tree).visit(violation_visitor)
+            MetadataWrapper(tree).visit(violation_visitor)
             for record in violation_visitor.records:
                 kind = str(record.get("kind", ""))
                 if kind:

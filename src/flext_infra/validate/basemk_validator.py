@@ -56,7 +56,7 @@ class FlextInfraBaseMkValidator:
                         summary="missing root base.mk",
                     ),
                 )
-            gen_result = self._generator.generate()
+            gen_result = self._generator.generate_basemk()
             if gen_result.is_failure:
                 return r[m.Infra.ValidationReport].ok(
                     m.Infra.ValidationReport(

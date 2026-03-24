@@ -106,7 +106,7 @@ class FlextInfraRefactorAstGrepModels:
                 default_factory=tuple,
                 description="Module-level symbol candidates",
             ),
-        ] = Field(default_factory=tuple)
+        ]
 
     class MROFileMigration(FlextModels.ArbitraryTypesModel):
         """Migration summary for one transformed file."""

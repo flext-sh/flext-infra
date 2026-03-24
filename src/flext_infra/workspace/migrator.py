@@ -198,7 +198,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
                     dry_run=dry_run,
                 ),
             )
-        generated = self._generator.generate()
+        generated = self._generator.generate_basemk()
         if generated.is_failure:
             return r[str].fail(generated.error or "base.mk generation failed")
         generated_text: str = generated.value

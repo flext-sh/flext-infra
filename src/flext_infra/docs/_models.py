@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -108,7 +107,7 @@ class FlextInfraDocsModels:
         checks: Annotated[
             t.StrSequence,
             Field(default_factory=list, description="Executed checks"),
-        ] = Field(default_factory=list)
+        ]
         strict: Annotated[
             bool,
             Field(default=False, description="Strict-mode flag"),
@@ -142,7 +141,7 @@ class FlextInfraDocsModels:
                 default_factory=list,
                 description="Missing ADR skill references",
             ),
-        ] = Field(default_factory=list)
+        ]
         todo_written: Annotated[
             bool,
             Field(
@@ -150,10 +149,13 @@ class FlextInfraDocsModels:
                 description="Whether TODOS.md was written",
             ),
         ] = False
-        items: list[FlextInfraDocsModels.DocsPhaseItemModel] = Field(
-            default_factory=list,
-            description="Phase-specific item payloads",
-        )
+        items: Annotated[
+            list[FlextInfraDocsModels.DocsPhaseItemModel],
+            Field(
+                default_factory=list,
+                description="Phase-specific item payloads",
+            ),
+        ]
 
 
 __all__ = ["FlextInfraDocsModels"]

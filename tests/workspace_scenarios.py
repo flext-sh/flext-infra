@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar, Protocol
+from typing import Annotated, ClassVar, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -15,7 +15,7 @@ class WorkspaceFactoryLike(Protocol):
 class EmptyScenario(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
-    workspace_name: str = Field(default="workspace")
+    workspace_name: Annotated[str, Field(default="workspace")]
 
     def build(self, factory: WorkspaceFactoryLike, tmp_path: Path) -> Path:
         _ = factory
@@ -27,7 +27,7 @@ class EmptyScenario(BaseModel):
 class MinimalScenario(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
-    project_name: str = Field(default="test-proj")
+    project_name: Annotated[str, Field(default="test-proj")]
 
     def build(self, factory: WorkspaceFactoryLike, tmp_path: Path) -> Path:
         return factory.create_minimal(tmp_path=tmp_path, name=self.project_name)
@@ -36,7 +36,7 @@ class MinimalScenario(BaseModel):
 class FullScenario(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
-    project_name: str = Field(default="full-proj")
+    project_name: Annotated[str, Field(default="full-proj")]
 
     def build(self, factory: WorkspaceFactoryLike, tmp_path: Path) -> Path:
         return factory.create_full(tmp_path=tmp_path, name=self.project_name)
@@ -45,7 +45,7 @@ class FullScenario(BaseModel):
 class BrokenScenario(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
-    project_name: str = Field(default="broken-proj")
+    project_name: Annotated[str, Field(default="broken-proj")]
 
     def build(self, factory: WorkspaceFactoryLike, tmp_path: Path) -> Path:
         project_root = factory.create_minimal(tmp_path=tmp_path, name=self.project_name)

@@ -248,7 +248,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         )
         if is_subproject:
             return r[bool].ok(False)
-        gen_result = self._generator.generate(config)
+        gen_result = self._generator.generate_basemk(config)
         if gen_result.is_failure:
             return r[bool].fail(gen_result.error or "base.mk generation failed")
         content: str = gen_result.value

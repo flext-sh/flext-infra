@@ -57,7 +57,9 @@ class FlextInfraBanditGate(FlextInfraGate):
         issues: MutableSequence[m.Infra.Issue] = []
         try:
             parsed = u.Infra.parse(result.stdout or "{}")
-            bandit_data: Mapping[str, t.Infra.InfraValue] = self._to_mapping(parsed.value) if parsed.is_success else {}
+            bandit_data: Mapping[str, t.Infra.InfraValue] = (
+                self._to_mapping(parsed.value) if parsed.is_success else {}
+            )
             issues.extend(
                 m.Infra.Issue(
                     file=self._as_str(raw_item.get("filename", "?"), "?"),

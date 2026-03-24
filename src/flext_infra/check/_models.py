@@ -54,7 +54,7 @@ class FlextInfraCheckModels:
                 default_factory=lambda: (),
                 description="Detected issues",
             ),
-        ] = Field(default_factory=lambda: ())
+        ]
         raw_output: Annotated[str, Field(default="", description="Raw tool output")]
 
     class GateResult(FlextModels.ArbitraryTypesModel):
@@ -69,7 +69,7 @@ class FlextInfraCheckModels:
                 default_factory=lambda: (),
                 description="Gate error messages",
             ),
-        ] = Field(default_factory=lambda: ())
+        ]
         duration: Annotated[
             t.NonNegativeFloat,
             Field(default=0.0, description="Duration in seconds"),
@@ -85,7 +85,7 @@ class FlextInfraCheckModels:
                 default_factory=dict,
                 description="Gate name to execution mapping",
             ),
-        ] = Field(default_factory=dict)
+        ]
 
         @computed_field
         @property
@@ -187,14 +187,14 @@ class FlextInfraCheckModels:
                 default_factory=lambda: (),
                 description="Rule descriptors",
             ),
-        ] = Field(default_factory=lambda: ())
+        ]
         results: Annotated[
             Sequence[FlextInfraCheckModels.SarifResult],
             Field(
                 default_factory=lambda: (),
                 description="Run results",
             ),
-        ] = Field(default_factory=lambda: ())
+        ]
 
         @model_serializer(mode="plain")
         def _serialize(self) -> Mapping[str, t.Infra.InfraValue]:
@@ -236,7 +236,7 @@ class FlextInfraCheckModels:
                 default_factory=lambda: (),
                 description="SARIF runs",
             ),
-        ] = Field(default_factory=lambda: ())
+        ]
 
 
 __all__ = ["FlextInfraCheckModels"]

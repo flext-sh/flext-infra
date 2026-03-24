@@ -52,7 +52,7 @@ def run(argv: t.StrSequence | None = None) -> int:
         return 1
     generator = FlextInfraBaseMkGenerator()
     config = _build_config(args.project_name)
-    generated_result = generator.generate(config)
+    generated_result = generator.generate_basemk(config)
     if generated_result.is_failure:
         return u.Infra.exit_code(
             generated_result,

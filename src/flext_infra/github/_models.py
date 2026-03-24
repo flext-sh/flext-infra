@@ -46,7 +46,7 @@ class FlextInfraGithubModels:
                 default_factory=tuple,
                 description="Per-repository results",
             ),
-        ] = Field(default_factory=tuple)
+        ]
 
     class RepoUrls(FlextModels.ArbitraryTypesModel):
         """Repository URL pair with SSH and HTTPS variants."""

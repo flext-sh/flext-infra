@@ -173,7 +173,8 @@ class FlextInfraCodegenGeneration:
 
         # --- preamble (from .j2 template) ---
         preamble_name = tpl.PREAMBLE_L0 if is_l0_typings else tpl.PREAMBLE_STANDARD
-        out.extend(_ENV.get_template(preamble_name).render().splitlines())
+        preamble_rendered: str = _ENV.get_template(preamble_name).render()
+        out.extend(preamble_rendered.splitlines())
 
         # --- eager TypeVar imports ---
         if eager_typevar_names:
@@ -205,7 +206,7 @@ class FlextInfraCodegenGeneration:
             for exp in sorted(exports)
             if exp in lazy_filtered
         ]
-        body = _ENV.get_template(tpl.BODY).render(
+        body: str = _ENV.get_template(tpl.BODY).render(
             type_checking_lines="\n".join(type_checking_lines),
             inline_constants=sorted(inline_constants.items()),
             lazy_entries=lazy_entries,
@@ -216,7 +217,8 @@ class FlextInfraCodegenGeneration:
 
         # --- getattr block (from .j2 template) ---
         getattr_name = tpl.GETATTR_L0 if is_l0_typings else tpl.GETATTR_STANDARD
-        out.extend(_ENV.get_template(getattr_name).render().splitlines())
+        getattr_rendered: str = _ENV.get_template(getattr_name).render()
+        out.extend(getattr_rendered.splitlines())
 
         return "\n".join(out)
 

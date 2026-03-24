@@ -368,10 +368,13 @@ class FlextInfraDepsModels:
     class ProjectTypeOverrideConfig(m.ArbitraryTypesModel):
         """Per-project-type override settings."""
 
-        pyright: t.StrMapping = Field(
-            default_factory=dict,
-            description="Pyright override settings for this project type.",
-        )
+        pyright: Annotated[
+            t.StrMapping,
+            Field(
+                default_factory=dict,
+                description="Pyright override settings for this project type.",
+            ),
+        ]
 
     class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
         """Project-type-specific override matrix from tool_config.yml."""
@@ -379,33 +382,23 @@ class FlextInfraDepsModels:
         core: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
-        ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
-        )
+        ]
         domain: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
-        ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
-        )
+        ]
         platform: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
-        ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
-        )
+        ]
         integration: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
-        ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
-        )
+        ]
         app: Annotated[
             FlextInfraDepsModels.ProjectTypeOverrideConfig,
             Field(),
-        ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverrideConfig(),
-        )
+        ]
 
     class DependencyLimitsInfo(m.ArbitraryTypesModel):
         """Dependency limits configuration metadata."""
@@ -429,30 +422,39 @@ class FlextInfraDepsModels:
                 alias="project-type-overrides",
                 description="Per-project-type configuration overrides.",
             ),
-        ] = Field(
-            default_factory=lambda: FlextInfraDepsModels.ProjectTypeOverridesConfig(),
-            alias="project-type-overrides",
-        )
+        ]
 
     class DeptryIssueGroups(m.ArbitraryTypesModel):
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 
-        dep001: list[Mapping[str, t.Primitives | None]] = Field(
-            default_factory=list,
-            description="DEP001 issues",
-        )
-        dep002: list[Mapping[str, t.Primitives | None]] = Field(
-            default_factory=list,
-            description="DEP002 issues",
-        )
-        dep003: list[Mapping[str, t.Primitives | None]] = Field(
-            default_factory=list,
-            description="DEP003 issues",
-        )
-        dep004: list[Mapping[str, t.Primitives | None]] = Field(
-            default_factory=list,
-            description="DEP004 issues",
-        )
+        dep001: Annotated[
+            list[Mapping[str, t.Primitives | None]],
+            Field(
+                default_factory=list,
+                description="DEP001 issues",
+            ),
+        ]
+        dep002: Annotated[
+            list[Mapping[str, t.Primitives | None]],
+            Field(
+                default_factory=list,
+                description="DEP002 issues",
+            ),
+        ]
+        dep003: Annotated[
+            list[Mapping[str, t.Primitives | None]],
+            Field(
+                default_factory=list,
+                description="DEP003 issues",
+            ),
+        ]
+        dep004: Annotated[
+            list[Mapping[str, t.Primitives | None]],
+            Field(
+                default_factory=list,
+                description="DEP004 issues",
+            ),
+        ]
 
     class DeptryReport(m.ArbitraryTypesModel):
         """Deptry analysis report with categorized issue modules."""

@@ -22,7 +22,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
     ) -> None:
         """Initialize with rule order config and optional change callback."""
         try:
-            self._order_config = TypeAdapter(
+            self._order_config: Sequence[m.Infra.MethodOrderRule] = TypeAdapter(
                 Sequence[m.Infra.MethodOrderRule],
             ).validate_python(order_config)
         except ValidationError:
