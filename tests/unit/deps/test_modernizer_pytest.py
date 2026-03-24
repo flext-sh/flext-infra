@@ -41,15 +41,15 @@ class TestEnsurePytestConfigPhase:
         }
         _ = EnsurePytestConfigPhase(_test_tool_config()).apply(doc)
         tool = doc["tool"]
-        tm.that(isinstance(tool, MutableMapping), eq=True)
+        tm.that(tool, is_=MutableMapping)
         if not isinstance(tool, MutableMapping):
             return
         pytest_section = tool["pytest"]
-        tm.that(isinstance(pytest_section, MutableMapping), eq=True)
+        tm.that(pytest_section, is_=MutableMapping)
         if not isinstance(pytest_section, MutableMapping):
             return
         ini_options = pytest_section["ini_options"]
-        tm.that(isinstance(ini_options, MutableMapping), eq=True)
+        tm.that(ini_options, is_=MutableMapping)
         if isinstance(ini_options, MutableMapping):
             tm.that(str(ini_options["minversion"]), eq="8.0")
 
@@ -58,19 +58,19 @@ def test_ensure_pytest_config_phase_apply_minversion() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
-    tm.that(isinstance(tool, MutableMapping), eq=True)
+    tm.that(tool, is_=MutableMapping)
     if not isinstance(tool, MutableMapping):
         return
     tool["pytest"] = tomlkit.table()
     pytest_section = tool["pytest"]
-    tm.that(isinstance(pytest_section, MutableMapping), eq=True)
+    tm.that(pytest_section, is_=MutableMapping)
     if not isinstance(pytest_section, MutableMapping):
         return
     pytest_section["ini_options"] = tomlkit.table()
     changes = EnsurePytestConfigPhase(_test_tool_config()).apply(doc)
     tm.that(any("minversion set to 8.0" in c for c in changes), eq=True)
     ini_options = pytest_section["ini_options"]
-    tm.that(isinstance(ini_options, MutableMapping), eq=True)
+    tm.that(ini_options, is_=MutableMapping)
     if isinstance(ini_options, MutableMapping):
         tm.that(str(ini_options["minversion"]), eq="8.0")
 
@@ -79,12 +79,12 @@ def test_ensure_pytest_config_phase_apply_python_classes() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
-    tm.that(isinstance(tool, MutableMapping), eq=True)
+    tm.that(tool, is_=MutableMapping)
     if not isinstance(tool, MutableMapping):
         return
     tool["pytest"] = tomlkit.table()
     pytest_section = tool["pytest"]
-    tm.that(isinstance(pytest_section, MutableMapping), eq=True)
+    tm.that(pytest_section, is_=MutableMapping)
     if not isinstance(pytest_section, MutableMapping):
         return
     pytest_section["ini_options"] = tomlkit.table()
@@ -96,12 +96,12 @@ def test_ensure_pytest_config_phase_apply_markers() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
-    tm.that(isinstance(tool, MutableMapping), eq=True)
+    tm.that(tool, is_=MutableMapping)
     if not isinstance(tool, MutableMapping):
         return
     tool["pytest"] = tomlkit.table()
     pytest_section = tool["pytest"]
-    tm.that(isinstance(pytest_section, MutableMapping), eq=True)
+    tm.that(pytest_section, is_=MutableMapping)
     if not isinstance(pytest_section, MutableMapping):
         return
     pytest_section["ini_options"] = tomlkit.table()

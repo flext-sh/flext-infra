@@ -47,7 +47,10 @@ class TestRewritePep621:
         )
         tm.that(changes, eq=True)
         unwrapped = doc.unwrap()
-        tm.that(unwrapped["project"]["dependencies"][0], has="flext-core @ file:./flext-core")
+        tm.that(
+            unwrapped["project"]["dependencies"][0],
+            has="flext-core @ file:./flext-core",
+        )
 
     def test_rewrite_pep621_skip_external_dep(self) -> None:
         doc = TOMLDocument()

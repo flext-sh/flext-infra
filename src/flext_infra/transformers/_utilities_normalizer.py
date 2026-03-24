@@ -260,8 +260,7 @@ class FlextInfraUtilitiesImportNormalizer:
         """Build normalized analysis context for a target file."""
         package_name = (
             project_package
-            if project_package
-            else FlextInfraUtilitiesDiscovery.discover_package_from_file(file_path)
+            or FlextInfraUtilitiesDiscovery.discover_package_from_file(file_path)
         )
         project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
             file_path,

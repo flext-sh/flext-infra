@@ -48,14 +48,14 @@ def test_ensure_pyrefly_config_phase_apply_python_version() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
-    tm.that(isinstance(tool, MutableMapping), eq=True)
+    tm.that(tool, is_=MutableMapping)
     if not isinstance(tool, MutableMapping):
         return
     tool["pyrefly"] = tomlkit.table()
     changes = EnsurePyreflyConfigPhase(_test_tool_config()).apply(doc, is_root=True)
     tm.that(any("python-version set to 3.13" in c for c in changes), eq=True)
     pyrefly = tool["pyrefly"]
-    tm.that(isinstance(pyrefly, MutableMapping), eq=True)
+    tm.that(pyrefly, is_=MutableMapping)
     if isinstance(pyrefly, MutableMapping):
         tm.that(
             cast("str", pyrefly["python-version"]),
@@ -67,7 +67,7 @@ def test_ensure_pyrefly_config_phase_apply_ignore_errors() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
-    tm.that(isinstance(tool, MutableMapping), eq=True)
+    tm.that(tool, is_=MutableMapping)
     if not isinstance(tool, MutableMapping):
         return
     tool["pyrefly"] = tomlkit.table()
@@ -77,7 +77,7 @@ def test_ensure_pyrefly_config_phase_apply_ignore_errors() -> None:
         eq=True,
     )
     pyrefly = tool["pyrefly"]
-    tm.that(isinstance(pyrefly, MutableMapping), eq=True)
+    tm.that(pyrefly, is_=MutableMapping)
     if isinstance(pyrefly, MutableMapping):
         tm.that(
             cast(
@@ -92,7 +92,7 @@ def test_ensure_pyrefly_config_phase_apply_search_path() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
-    tm.that(isinstance(tool, MutableMapping), eq=True)
+    tm.that(tool, is_=MutableMapping)
     if not isinstance(tool, MutableMapping):
         return
     tool["pyrefly"] = tomlkit.table()
@@ -104,7 +104,7 @@ def test_ensure_pyrefly_config_phase_apply_errors() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
-    tm.that(isinstance(tool, MutableMapping), eq=True)
+    tm.that(tool, is_=MutableMapping)
     if not isinstance(tool, MutableMapping):
         return
     tool["pyrefly"] = tomlkit.table()

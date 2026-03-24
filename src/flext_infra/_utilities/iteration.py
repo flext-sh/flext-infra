@@ -80,10 +80,7 @@ class FlextInfraUtilitiesIteration:
                 and _looks_like_project(entry)
             ],
         )
-        if (
-            not roots
-            and (workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir()
-        ):
+        if not roots and (workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():
             return [workspace_root]
         return roots
 

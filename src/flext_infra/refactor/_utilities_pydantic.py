@@ -66,10 +66,8 @@ class FlextInfraUtilitiesRefactorPydantic:
         ):
             return False
         parts = set(file_path.parts)
-        return (
-            parts.intersection(
-                FlextInfraUtilitiesRefactorPydantic._PYDANTIC_SCOPE_DIRS,
-            )
+        return parts.intersection(
+            FlextInfraUtilitiesRefactorPydantic._PYDANTIC_SCOPE_DIRS,
         )
 
     @staticmethod

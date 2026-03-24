@@ -28,7 +28,7 @@ class TestInventoryServiceCore:
         """Empty workspace returns success with zero scripts."""
         service = FlextInfraInventoryService()
         report = tm.ok(service.generate(tmp_path))
-        tm.that(isinstance(report, m.Infra.InventoryReport), eq=True)
+        tm.that(report, is_=m.Infra.InventoryReport)
         tm.that(report.total_scripts, eq=0)
 
     def test_generate_with_output_dir(self, tmp_path: Path) -> None:
@@ -123,7 +123,7 @@ class TestInventoryServiceReports:
         output_dir = tmp_path / "reports"
         output_dir.mkdir()
         report = tm.ok(service.generate(tmp_path, output_dir=output_dir))
-        tm.that(isinstance(report.reports_written, list), eq=True)
+        tm.that(report.reports_written, is_=list)
 
     def test_generate_creates_inventory_report(self, tmp_path: Path) -> None:
         """Inventory report is created with scripts."""

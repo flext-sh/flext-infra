@@ -142,7 +142,9 @@ class TestFixerToc:
         tm.that(toc, has="<!-- TOC START -->")
         tm.that(toc, has="<!-- TOC END -->")
         tm.that(toc, has="Section 1")
-        tm.that(fixer._build_toc("# Main\n\nNo sections here.\n"), has="No sections found")
+        tm.that(
+            fixer._build_toc("# Main\n\nNo sections here.\n"), has="No sections found"
+        )
 
     def test_build_toc_skips_empty_anchors(self, fixer: FlextInfraDocFixer) -> None:
         toc = fixer._build_toc("## !!!\n\n## Valid Section\n")

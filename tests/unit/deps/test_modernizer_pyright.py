@@ -40,15 +40,15 @@ class TestEnsurePyrightConfigPhase:
             workspace_root=tmp_path,
         )
         tool = u.Infra.unwrap_item(doc["tool"])
-        tm.that(isinstance(tool, MutableMapping), eq=True)
+        tm.that(tool, is_=MutableMapping)
         if not isinstance(tool, MutableMapping):
             return
         pyright = u.Infra.unwrap_item(tool["pyright"])
-        tm.that(isinstance(pyright, MutableMapping), eq=True)
+        tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
         envs = u.Infra.unwrap_item(pyright["executionEnvironments"])
-        tm.that(isinstance(envs, list), eq=True)
+        tm.that(envs, is_=list)
         tm.that(
             envs,
             eq=[
@@ -57,7 +57,10 @@ class TestEnsurePyrightConfigPhase:
                 {"root": "flext-core/tests", "reportPrivateUsage": "none"},
             ],
         )
-        tm.that(changes, has="tool.pyright.executionEnvironments set with tests reportPrivateUsage=none")
+        tm.that(
+            changes,
+            has="tool.pyright.executionEnvironments set with tests reportPrivateUsage=none",
+        )
 
     def test_apply_subproject_sets_execution_environments(self) -> None:
         doc = tomlkit.document()
@@ -66,15 +69,15 @@ class TestEnsurePyrightConfigPhase:
             is_root=False,
         )
         tool = u.Infra.unwrap_item(doc["tool"])
-        tm.that(isinstance(tool, MutableMapping), eq=True)
+        tm.that(tool, is_=MutableMapping)
         if not isinstance(tool, MutableMapping):
             return
         pyright = u.Infra.unwrap_item(tool["pyright"])
-        tm.that(isinstance(pyright, MutableMapping), eq=True)
+        tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
         envs = u.Infra.unwrap_item(pyright["executionEnvironments"])
-        tm.that(isinstance(envs, list), eq=True)
+        tm.that(envs, is_=list)
         tm.that(
             envs,
             eq=[
@@ -82,4 +85,7 @@ class TestEnsurePyrightConfigPhase:
                 {"root": "tests", "reportPrivateUsage": "none"},
             ],
         )
-        tm.that(changes, has="tool.pyright.executionEnvironments set with tests reportPrivateUsage=none")
+        tm.that(
+            changes,
+            has="tool.pyright.executionEnvironments set with tests reportPrivateUsage=none",
+        )
