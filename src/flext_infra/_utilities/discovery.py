@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, MutableSet, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -114,7 +114,7 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def discover_workspace_packages(workspace_root: Path) -> frozenset[str]:
         """Discover all project package names in the workspace."""
-        packages: set[str] = set()
+        packages: MutableSet[str] = set()
         if not workspace_root.is_dir():
             return frozenset()
         for entry in workspace_root.iterdir():

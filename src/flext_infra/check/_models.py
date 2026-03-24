@@ -6,7 +6,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from typing import Annotated, ClassVar
 
 from flext_core import FlextModels
-from pydantic import ConfigDict, Field, computed_field, model_serializer
+from pydantic import ConfigDict, Field, JsonValue, computed_field, model_serializer
 
 from flext_infra import c
 
@@ -111,7 +111,7 @@ class FlextInfraCheckModels:
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, object]:
+        def _serialize(self) -> Mapping[str, JsonValue]:
             return {
                 "id": self.id,
                 "shortDescription": {"text": self.short_description},
@@ -132,7 +132,7 @@ class FlextInfraCheckModels:
         ] = "%SRCROOT%"
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, object]:
+        def _serialize(self) -> Mapping[str, JsonValue]:
             return {
                 "physicalLocation": {
                     "artifactLocation": {
@@ -160,7 +160,7 @@ class FlextInfraCheckModels:
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, object]:
+        def _serialize(self) -> Mapping[str, JsonValue]:
             return {
                 "ruleId": self.rule_id,
                 "level": self.level,
@@ -197,7 +197,7 @@ class FlextInfraCheckModels:
         ]
 
         @model_serializer(mode="plain")
-        def _serialize(self) -> Mapping[str, object]:
+        def _serialize(self) -> Mapping[str, JsonValue]:
             return {
                 "tool": {
                     "driver": {

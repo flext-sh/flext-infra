@@ -17,8 +17,8 @@ class FlextInfraTypesBase:
         | int
         | float
         | bool
-        | Mapping[str, FlextInfraTypes.Infra.InfraValue]  # noqa: F821
-        | Sequence[FlextInfraTypes.Infra.InfraValue]  # noqa: F821
+        | Mapping[str, FlextInfraTypes.Infra.InfraValue]
+        | Sequence[FlextInfraTypes.Infra.InfraValue]
         | None
     )
     "Recursive infrastructure value: primitive, nested dict/list, or null."
@@ -30,9 +30,9 @@ class FlextInfraTypesBase:
     "Expected MRO base: a class or its qualified name."
     type PolicyContext = Mapping[str, ContainerDict]
     "Class-nesting policy matrix keyed by module family."
-    type MetricValue = FlextTypes.Scalar | Path | None  # noqa: F821
+    type MetricValue = FlextTypes.Scalar | Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
-    type MetricRecord = BaseModel | Mapping[str, MetricValue]  # noqa: F821
+    type MetricRecord = BaseModel | Mapping[str, MetricValue]
     "A single metric record: a Pydantic model or a string-keyed mapping of metric values."
     type ChangeCallback = Callable[[str], None] | None
     "Optional callback invoked on transformer changes."

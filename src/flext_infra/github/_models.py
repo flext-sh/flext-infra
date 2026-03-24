@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from argparse import Namespace
 from typing import Annotated, ClassVar
 
 from flext_core import FlextModels
@@ -123,7 +124,7 @@ class FlextInfraGithubModels:
         ]
 
         @staticmethod
-        def _bool_flag(value: object) -> bool:
+        def _bool_flag(value: t.Scalar) -> bool:
             if isinstance(value, bool):
                 return value
             if isinstance(value, int):
@@ -133,7 +134,7 @@ class FlextInfraGithubModels:
         @classmethod
         def from_cli_namespace(
             cls,
-            args: object,
+            args: Namespace,
         ) -> FlextInfraGithubModels.PrWorkspaceArgs:
             return cls(
                 include_root=cls._bool_flag(getattr(args, "include_root", 0)),
@@ -156,7 +157,7 @@ class FlextInfraGithubModels:
                 ),
             )
 
-        def as_orchestrate_dict(self) -> dict[str, str]:
+        def as_orchestrate_dict(self) -> t.StrMapping:
             return {
                 c.Infra.ReportKeys.ACTION: self.pr_action,
                 "base": self.pr_base,

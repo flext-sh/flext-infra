@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -150,7 +151,7 @@ class FlextInfraDocsModels:
             ),
         ] = False
         items: Annotated[
-            list[FlextInfraDocsModels.DocsPhaseItemModel],
+            Sequence[FlextInfraDocsModels.DocsPhaseItemModel],
             Field(
                 default_factory=list,
                 description="Phase-specific item payloads",

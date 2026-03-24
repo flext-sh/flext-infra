@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, Final
 
@@ -65,7 +65,7 @@ class FlextInfraUtilitiesLogParser:
         except OSError:
             return (0, [])
         tail = text.splitlines()[-_TAIL_LINES:]
-        error_lines: list[str] = []
+        error_lines: MutableSequence[str] = []
         for line in tail:
             stripped = line.strip()
             if not stripped:

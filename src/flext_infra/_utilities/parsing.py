@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator, Mapping, MutableSequence, Sequence
+from collections.abc import Iterator, Mapping, MutableSequence, MutableSet, Sequence
 from pathlib import Path
 
 import libcst as cst
@@ -176,7 +176,7 @@ class FlextInfraUtilitiesParsing:
         """Collect all bound names from a CST ImportFrom node."""
         if isinstance(node.names, cst.ImportStar):
             return set()
-        names: set[str] = set()
+        names: MutableSet[str] = set()
         for item in node.names:
             bound = FlextInfraUtilitiesParsing.cst_asname_to_local(item.asname)
             if not bound and isinstance(item.name, cst.Name):

@@ -7,6 +7,7 @@ from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
+from tomlkit.container import Container
 from tomlkit.items import AoT, Item, Table
 
 from flext_infra import (
@@ -117,7 +118,9 @@ class FlextInfraPyprojectModernizer:
             preferred_first=("build-system", "dependency-groups", "project", "tool"),
         )
         if ordered_root != root_keys:
-            root_items: MutableMapping[str, Item] = {key: doc[key] for key in root_keys}
+            root_items: MutableMapping[str, Item | Container] = {
+                key: doc[key] for key in root_keys
+            }
             for key in root_keys:
                 del doc[key]
             for key in ordered_root:

@@ -9,7 +9,7 @@ from __future__ import annotations
 import contextlib
 import shutil
 import time
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -245,8 +245,8 @@ class FlextInfraUtilitiesGithub(
         by_action: MutableMapping[str, int] = {}
         for op in operations:
             by_action[op.action] = by_action.get(op.action, 0) + 1
-        summary_dict: dict[str, JsonValue] = dict(by_action)
-        ops_list: list[JsonValue] = [
+        summary_dict: Mapping[str, JsonValue] = dict(by_action)
+        ops_list: Sequence[JsonValue] = [
             {
                 c.Infra.PROJECT: op.project,
                 c.Infra.PATH: op.path,
@@ -255,7 +255,7 @@ class FlextInfraUtilitiesGithub(
             }
             for op in operations
         ]
-        payload: dict[str, JsonValue] = {
+        payload: Mapping[str, JsonValue] = {
             "mode": "apply" if apply else "dry-run",
             c.Infra.ReportKeys.SUMMARY: summary_dict,
             "operations": ops_list,

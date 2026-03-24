@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import tomllib
+from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_infra import FlextInfraUtilitiesSubprocess, c, r, u
@@ -103,7 +104,7 @@ class FlextInfraWorkspaceMakefileGenerator:
 
         # Build template: replace header, parameterise PR_BRANCH, add custom include
         lines = content.splitlines(keepends=True)
-        out: list[str] = []
+        out: MutableSequence[str] = []
         header_done = False
         custom_include_done = _CUSTOM_INCLUDE in content
 

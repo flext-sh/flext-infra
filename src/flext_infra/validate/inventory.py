@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -55,19 +55,19 @@ class FlextInfraInventoryService:
                     and path.suffix in {c.Infra.Extensions.PYTHON, ".sh"}
                 )
             now = datetime.now(UTC).isoformat()
-            scripts_infra: list[JsonValue] = list(scripts)
-            inventory: dict[str, JsonValue] = {
+            scripts_infra: Sequence[JsonValue] = list(scripts)
+            inventory: Mapping[str, JsonValue] = {
                 "generated_at": now,
                 "repo_root": str(root),
                 "total_scripts": len(scripts),
                 "scripts": scripts_infra,
             }
-            wiring: dict[str, JsonValue] = {
+            wiring: Mapping[str, JsonValue] = {
                 "generated_at": now,
                 "root_makefile": [c.Infra.Files.MAKEFILE_FILENAME],
                 "unwired_scripts": [],
             }
-            external: dict[str, JsonValue] = {
+            external: Mapping[str, JsonValue] = {
                 "generated_at": now,
                 "candidates": [],
             }

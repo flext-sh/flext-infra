@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -148,8 +148,8 @@ class FlextInfraDocValidator:
                 status = c.Infra.Status.FAIL
                 message = f"missing adr references in skills: {', '.join(missing)}"
         wrote_todo = self._maybe_write_todo(scope, apply_mode=apply_mode)
-        adr_skills_json: list[JsonValue] = list(missing_adr_skills)
-        payload: dict[str, JsonValue] = {
+        adr_skills_json: Sequence[JsonValue] = list(missing_adr_skills)
+        payload: Mapping[str, JsonValue] = {
             c.Infra.ReportKeys.SUMMARY: {
                 c.Infra.ReportKeys.SCOPE: scope.name,
                 "result": status,

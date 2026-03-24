@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import difflib
-from collections.abc import Callable, MutableSequence, Sequence
+from collections.abc import Callable, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -363,7 +363,7 @@ class FlextInfraNamespaceEnforcer:
         all_py_files: MutableSequence[Path] = []
         for project_root in project_roots:
             all_py_files.extend(self._collect_py_files(project_root=project_root))
-        snapshots: dict[Path, str] = {}
+        snapshots: MutableMapping[Path, str] = {}
         for py_file in all_py_files:
             if py_file.is_file():
                 snapshots[py_file] = py_file.read_text(

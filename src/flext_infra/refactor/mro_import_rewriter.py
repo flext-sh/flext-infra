@@ -33,7 +33,7 @@ class FlextInfraRefactorMROImportRewriter:
         results: MutableSequence[m.Infra.MRORewriteResult] = []
         py_files = u.Infra.iter_python_files(workspace_root=workspace_root).fold(
             on_failure=lambda _: [],
-            on_success=lambda v: [p for p in v],  # noqa: C416
+            on_success=lambda v: list(v),
         )
         for file_path in py_files:
             rewritten = cls.rewrite_file(

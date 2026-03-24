@@ -14,14 +14,20 @@ from jinja2 import (
     select_autoescape,
 )
 
-from flext_infra import c, m, r, s
+from flext_infra import c, m, r, s, t
 
 
 class _Renderable(Protocol):
-    def render(self, **kwargs: object) -> str: ...
+    def render(
+        self,
+        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue,
+    ) -> str: ...
 
 
-def _render(template: _Renderable, **kwargs: object) -> str:
+def _render(
+    template: _Renderable,
+    **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue,
+) -> str:
     """Render a jinja2 template with explicit str return type."""
     return template.render(**kwargs)
 
