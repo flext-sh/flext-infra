@@ -32,7 +32,9 @@ if TYPE_CHECKING:
     from flext_infra.refactor._detectors.import_alias_detector import (
         ImportAliasDetector,
     )
-    from flext_infra.refactor._detectors.import_collector import ImportCollector
+    from flext_infra.refactor._detectors.import_collector import (
+        FlextInfraImportCollector,
+    )
     from flext_infra.refactor._detectors.internal_import_detector import (
         InternalImportDetector,
     )
@@ -166,9 +168,9 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.refactor._detectors.import_alias_detector",
         "ImportAliasDetector",
     ),
-    "ImportCollector": (
+    "FlextInfraImportCollector": (
         "flext_infra.refactor._detectors.import_collector",
-        "ImportCollector",
+        "FlextInfraImportCollector",
     ),
     "InternalImportDetector": (
         "flext_infra.refactor._detectors.internal_import_detector",
@@ -215,6 +217,7 @@ __all__ = [
     "CompatibilityAliasDetector",
     "CyclicImportDetector",
     "DependencyAnalyzer",
+    "FlextInfraImportCollector",
     "FlextInfraNamespaceEnforcer",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
@@ -231,7 +234,6 @@ __all__ = [
     "FlextInfraRefactorViolationAnalyzer",
     "FutureAnnotationsDetector",
     "ImportAliasDetector",
-    "ImportCollector",
     "InternalImportDetector",
     "LooseObjectDetector",
     "MROCompletenessDetector",

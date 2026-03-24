@@ -19,7 +19,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, m, u
 
-from .import_collector import ImportCollector
+from .import_collector import FlextInfraImportCollector
 
 
 class FlextInfraDependencyAnalyzer:
@@ -219,7 +219,7 @@ class FlextInfraDependencyAnalyzer:
         tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             return r[m.Infra.FileImportData].fail(f"{file_path}: parse_failed")
-        col = ImportCollector()
+        col = FlextInfraImportCollector()
         _ = tree.visit(col)
         return r[m.Infra.FileImportData].ok(
             m.Infra.FileImportData(
