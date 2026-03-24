@@ -281,21 +281,25 @@ class FlextInfraPyprojectModernizer:
         if check_mode and total > 0:
             return 1
         if not dry_run and (not args.skip_check):
-            return self._run_poetry_check(files)
+            return self._run_build_check(files)
         return 0
 
-    def _run_poetry_check(self, files: Sequence[Path]) -> int:
+    def _run_build_check(self, files: Sequence[Path]) -> int:
+        """Validate pyproject.toml files have hatchling build backend."""
         has_warning = False
         for path in files:
-            project_dir = path.parent
-            result = u.Infra.run_raw(
-                [c.Infra.Cli.POETRY, c.Infra.Cli.PoetryCmd.CHECK],
-                cwd=project_dir,
-            )
-            if result.is_failure:
+            doc = u.Infra.read(path)
+            if doc is None:
                 has_warning = True
                 continue
-            if result.value.exit_code != 0:
+            build_sys = self._table_child(doc, "build-system")
+            if build_sys is None:
+                u.Infra.info(f"{path}: missing [build-system]")
+                has_warning = True
+                continue
+            backend = build_sys.get("build-backend", "")
+            if backend != "hatchling.build":
+                u.Infra.info(f"{path}: expected hatchling.build, got {backend}")
                 has_warning = True
         return 1 if has_warning else 0
 

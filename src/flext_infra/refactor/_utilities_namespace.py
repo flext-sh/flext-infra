@@ -29,6 +29,7 @@ from flext_infra import (
     c,
     m,
     t,
+    u,
 )
 
 
@@ -370,6 +371,26 @@ class FlextInfraUtilitiesRefactorNamespace:
                 )
 
     @staticmethod
+    def _remove_line_ranges_and_write(
+        *,
+        source: str,
+        source_file: Path,
+        remove_ranges: Sequence[tuple[int, int]],
+    ) -> None:
+        """Remove specified line ranges from source and write back to file."""
+        source_lines = source.splitlines()
+        filtered_lines: MutableSequence[str] = []
+        for line_number, line_content in enumerate(source_lines, start=1):
+            should_skip = any(
+                start <= line_number <= end for start, end in remove_ranges
+            )
+            if not should_skip:
+                filtered_lines.append(line_content)
+        rewritten = "\n".join(filtered_lines).rstrip()
+        normalized = re.sub(r"\n{3,}", "\n\n", rewritten)
+        _ = source_file.write_text(normalized + "\n", encoding=c.Infra.Encoding.DEFAULT)
+
+    @staticmethod
     def _namespace_move_protocol_classes_to_canonical_file(
         *,
         project_root: Path,
@@ -416,18 +437,11 @@ class FlextInfraUtilitiesRefactorNamespace:
             target_file=target_file,
             blocks=blocks,
         )
-        source_lines = source.splitlines()
-        filtered_lines: MutableSequence[str] = []
-        for line_number, line_content in enumerate(source_lines, start=1):
-            should_skip = any(
-                start <= line_number <= end for start, end in remove_ranges
-            )
-            if should_skip:
-                continue
-            filtered_lines.append(line_content)
-        rewritten = "\n".join(filtered_lines).rstrip()
-        normalized = re.sub(r"\n{3,}", "\n\n", rewritten)
-        _ = source_file.write_text(normalized + "\n", encoding=c.Infra.Encoding.DEFAULT)
+        FlextInfraUtilitiesRefactorNamespace._remove_line_ranges_and_write(
+            source=source,
+            source_file=source_file,
+            remove_ranges=remove_ranges,
+        )
         moved_names = tuple(sorted({node.name for node in class_nodes}))
         return (source_file, target_file, moved_names)
 
@@ -489,17 +503,11 @@ class FlextInfraUtilitiesRefactorNamespace:
             target_file=target_file,
             blocks=blocks,
         )
-        source_lines = source.splitlines()
-        filtered_lines: MutableSequence[str] = []
-        for line_number, line_content in enumerate(source_lines, start=1):
-            should_skip = any(
-                start <= line_number <= end for start, end in remove_ranges
-            )
-            if not should_skip:
-                filtered_lines.append(line_content)
-        rewritten = "\n".join(filtered_lines).rstrip()
-        normalized = re.sub(r"\n{3,}", "\n\n", rewritten)
-        _ = source_file.write_text(normalized + "\n", encoding=c.Infra.Encoding.DEFAULT)
+        FlextInfraUtilitiesRefactorNamespace._remove_line_ranges_and_write(
+            source=source,
+            source_file=source_file,
+            remove_ranges=remove_ranges,
+        )
 
     @staticmethod
     def _namespace_append_protocol_blocks(
@@ -1051,7 +1059,7 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        module_name = self._extract_module_name(updated_node.module)
+        module_name = u.Infra.cst_module_to_str(updated_node.module)
         if not module_name or not module_name.startswith(self._project_package):
             return updated_node
         if module_name == self._project_package:
@@ -1083,23 +1091,6 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
             cleaned = self._normalize_commas(remaining)
             return updated_node.with_changes(names=cleaned)
         return updated_node
-
-    @staticmethod
-    def _extract_module_name(module: cst.BaseExpression | None) -> str:
-        if module is None:
-            return ""
-        if isinstance(module, cst.Name):
-            return module.value
-        if isinstance(module, cst.Attribute):
-            parts: MutableSequence[str] = []
-            current: cst.BaseExpression = module
-            while isinstance(current, cst.Attribute):
-                parts.append(current.attr.value)
-                current = current.value
-            if isinstance(current, cst.Name):
-                parts.append(current.value)
-            return ".".join(reversed(parts))
-        return ""
 
     @staticmethod
     def _alias_name(alias: cst.ImportAlias) -> str:
