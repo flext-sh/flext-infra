@@ -334,6 +334,168 @@ class FlextInfraUtilitiesOutput:
             lines.append("")
         return "\n".join(lines) + "\n"
 
+    class OutputBackend:
+        """Instance-based terminal output formatter with stateful configuration.
+
+        Similar to FlextInfraUtilitiesOutput but uses instance state rather than class state.
+        Allows multiple independent OutputBackend instances with different color/unicode
+        settings and output streams, useful for tests or multi-threaded contexts.
+
+        Instance state:
+            _use_color: Whether to emit ANSI color codes.
+            _use_unicode: Whether to use unicode symbols (✓/✗ vs [OK]/[FAIL]).
+            _stream: TextIO stream for output (typically stderr).
+
+        Comparison:
+            FlextInfraUtilitiesOutput: Global singleton-like state via class methods.
+            OutputBackend: Per-instance configurable state via instance methods.
+
+        Attributes:
+            None (all state is private: _use_color, _use_unicode, _stream).
+
+        """
+
+        def __init__(
+            self, *, use_color: bool, use_unicode: bool, stream: TextIO
+        ) -> None:
+            """Initialize output backend with terminal capabilities and stream.
+
+            Args:
+                use_color: Emit ANSI color codes (e.g., for terminal with color support).
+                use_unicode: Use unicode box-drawing and status symbols vs ASCII fallbacks.
+                stream: TextIO stream for output (typically sys.stderr or sys.stdout).
+
+            """
+            self._use_color = use_color
+            self._use_unicode = use_unicode
+            self._stream = stream
+
+        def _fmt(self, level: str, color: str, message: str) -> None:
+            reset = c.Infra.Style.RESET if self._use_color else ""
+            clr = color if self._use_color else ""
+            self._stream.write(f"{clr}{level}{reset}: {message}\n")
+
+        def info(self, msg: str) -> None:
+            self._fmt("INFO", c.Infra.Style.BLUE, msg)
+
+        def error(self, msg: str, detail: str | None = None) -> None:
+            self._fmt("ERROR", c.Infra.Style.RED, msg)
+            if detail:
+                self._stream.write(f"  {detail}\n")
+
+        def warning(self, msg: str) -> None:
+            self._fmt("WARN", c.Infra.Style.YELLOW, msg)
+
+        def debug(self, msg: str) -> None:
+            self._fmt("DEBUG", c.Infra.Style.GREEN, msg)
+
+        def header(self, title: str) -> None:
+            sep = "═" if self._use_unicode else "="
+            line = sep * 60
+            self._stream.write(
+                f"\n{c.Infra.Style.BOLD if self._use_color else ''}{line}\n  {title}\n{line}{c.Infra.Style.RESET if self._use_color else ''}\n"
+            )
+
+        def progress(self, idx: int, total: int, proj: str, verb: str) -> None:
+            width = len(str(total))
+            self._stream.write(
+                f"[{idx:0{width}d}/{total:0{width}d}] {proj} {verb} ...\n"
+            )
+
+        def status(self, verb: str, proj: str, result: bool, elapsed: float) -> None:
+            symbol = (
+                (c.Infra.Style.OK if (result and self._use_unicode) else "[OK]")
+                if result
+                else (c.Infra.Style.FAIL if self._use_unicode else "[FAIL]")
+            )
+            color = (
+                (c.Infra.Style.GREEN if result else c.Infra.Style.RED)
+                if self._use_color
+                else ""
+            )
+            reset = c.Infra.Style.RESET if self._use_color else ""
+            self._stream.write(
+                f"  {color}{symbol}{reset} {verb:<8} {proj:<24} {elapsed:.2f}s\n"
+            )
+
+        def summary(
+            self,
+            verb: str,
+            total: int,
+            success: int,
+            failed: int,
+            skipped: int,
+            elapsed: float,
+        ) -> None:
+            header = (
+                f"── {verb} summary ──"
+                if self._use_unicode
+                else f"-- {verb} summary --"
+            )
+            self._stream.write(
+                f"\n{header}\nTotal: {total}  Success: {success}  Failed: {failed}  Skipped: {skipped}  ({elapsed:.2f}s)\n"
+            )
+
+        def gate_result(
+            self, gate: str, count: int, passed: bool, elapsed: float
+        ) -> None:
+            symbol = (
+                (c.Infra.Style.OK if passed else c.Infra.Style.FAIL)
+                if self._use_unicode
+                else ("[OK]" if passed else "[FAIL]")
+            )
+            self._stream.write(
+                f"    {symbol} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n"
+            )
+
+        def project_failure(
+            self,
+            project: str,
+            elapsed: float,
+            log_path: Path,
+            error_count: int,
+            errors: t.StrSequence,
+            *,
+            max_show: int = 3,
+        ) -> None:
+            """Show failed project with error excerpt."""
+            clr = c.Infra.Style.RED if self._use_color else ""
+            reset = c.Infra.Style.RESET if self._use_color else ""
+            fail_sym = c.Infra.Style.FAIL if self._use_unicode else "[FAIL]"
+            count_label = f"  [{error_count} errors]" if error_count > 0 else ""
+            self._stream.write(
+                f"  {clr}{fail_sym}{reset} {project} completed in {int(elapsed)}s"
+                f"{count_label}  ({log_path})\n",
+            )
+            for line in errors[:max_show]:
+                self._stream.write(f"      {line}\n")
+            remaining = error_count - max_show
+            if remaining > 0:
+                self._stream.write(f"      ... and {remaining} more (see log)\n")
+
+        def failure_summary(
+            self,
+            verb: str,
+            failures: Sequence[tuple[str, int, Path]],
+        ) -> None:
+            """Show end-of-run failure summary block."""
+            if not failures:
+                return
+            hdr = (
+                f"── {verb} failed projects ──"
+                if self._use_unicode
+                else f"-- {verb} failed projects --"
+            )
+            clr = c.Infra.Style.RED if self._use_color else ""
+            reset = c.Infra.Style.RESET if self._use_color else ""
+            fail_sym = c.Infra.Style.FAIL if self._use_unicode else "[FAIL]"
+            self._stream.write(f"\n{hdr}\n")
+            for project, error_count, log_path in failures:
+                count_label = f"{error_count} errors" if error_count > 0 else "failed"
+                self._stream.write(
+                    f"{clr}{fail_sym}{reset} {project:<20} {count_label}  ({log_path})\n",
+                )
+
     @staticmethod
     def render_census_report(report: m.Infra.UtilitiesCensusReport) -> str:
         """Render a human-readable census report."""
@@ -422,163 +584,10 @@ class FlextInfraUtilitiesOutput:
         return "\n".join(lines)
 
 
-class OutputBackend:
-    """Instance-based terminal output formatter with stateful configuration.
-
-    Similar to FlextInfraUtilitiesOutput but uses instance state rather than class state.
-    Allows multiple independent OutputBackend instances with different color/unicode
-    settings and output streams, useful for tests or multi-threaded contexts.
-
-    Instance state:
-        _use_color: Whether to emit ANSI color codes.
-        _use_unicode: Whether to use unicode symbols (✓/✗ vs [OK]/[FAIL]).
-        _stream: TextIO stream for output (typically stderr).
-
-    Comparison:
-        FlextInfraUtilitiesOutput: Global singleton-like state via class methods.
-        OutputBackend: Per-instance configurable state via instance methods.
-
-    Attributes:
-        None (all state is private: _use_color, _use_unicode, _stream).
-
-    """
-
-    def __init__(self, *, use_color: bool, use_unicode: bool, stream: TextIO) -> None:
-        """Initialize output backend with terminal capabilities and stream.
-
-        Args:
-            use_color: Emit ANSI color codes (e.g., for terminal with color support).
-            use_unicode: Use unicode box-drawing and status symbols vs ASCII fallbacks.
-            stream: TextIO stream for output (typically sys.stderr or sys.stdout).
-
-        """
-        self._use_color = use_color
-        self._use_unicode = use_unicode
-        self._stream = stream
-
-    def _fmt(self, level: str, color: str, message: str) -> None:
-        reset = c.Infra.Style.RESET if self._use_color else ""
-        clr = color if self._use_color else ""
-        self._stream.write(f"{clr}{level}{reset}: {message}\n")
-
-    def info(self, msg: str) -> None:
-        self._fmt("INFO", c.Infra.Style.BLUE, msg)
-
-    def error(self, msg: str, detail: str | None = None) -> None:
-        self._fmt("ERROR", c.Infra.Style.RED, msg)
-        if detail:
-            self._stream.write(f"  {detail}\n")
-
-    def warning(self, msg: str) -> None:
-        self._fmt("WARN", c.Infra.Style.YELLOW, msg)
-
-    def debug(self, msg: str) -> None:
-        self._fmt("DEBUG", c.Infra.Style.GREEN, msg)
-
-    def header(self, title: str) -> None:
-        sep = "═" if self._use_unicode else "="
-        line = sep * 60
-        self._stream.write(
-            f"\n{c.Infra.Style.BOLD if self._use_color else ''}{line}\n  {title}\n{line}{c.Infra.Style.RESET if self._use_color else ''}\n"
-        )
-
-    def progress(self, idx: int, total: int, proj: str, verb: str) -> None:
-        width = len(str(total))
-        self._stream.write(f"[{idx:0{width}d}/{total:0{width}d}] {proj} {verb} ...\n")
-
-    def status(self, verb: str, proj: str, result: bool, elapsed: float) -> None:
-        symbol = (
-            (c.Infra.Style.OK if (result and self._use_unicode) else "[OK]")
-            if result
-            else (c.Infra.Style.FAIL if self._use_unicode else "[FAIL]")
-        )
-        color = (
-            (c.Infra.Style.GREEN if result else c.Infra.Style.RED)
-            if self._use_color
-            else ""
-        )
-        reset = c.Infra.Style.RESET if self._use_color else ""
-        self._stream.write(
-            f"  {color}{symbol}{reset} {verb:<8} {proj:<24} {elapsed:.2f}s\n"
-        )
-
-    def summary(
-        self,
-        verb: str,
-        total: int,
-        success: int,
-        failed: int,
-        skipped: int,
-        elapsed: float,
-    ) -> None:
-        header = (
-            f"── {verb} summary ──" if self._use_unicode else f"-- {verb} summary --"
-        )
-        self._stream.write(
-            f"\n{header}\nTotal: {total}  Success: {success}  Failed: {failed}  Skipped: {skipped}  ({elapsed:.2f}s)\n"
-        )
-
-    def gate_result(self, gate: str, count: int, passed: bool, elapsed: float) -> None:
-        symbol = (
-            (c.Infra.Style.OK if passed else c.Infra.Style.FAIL)
-            if self._use_unicode
-            else ("[OK]" if passed else "[FAIL]")
-        )
-        self._stream.write(
-            f"    {symbol} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n"
-        )
-
-    def project_failure(
-        self,
-        project: str,
-        elapsed: float,
-        log_path: Path,
-        error_count: int,
-        errors: t.StrSequence,
-        *,
-        max_show: int = 3,
-    ) -> None:
-        """Show failed project with error excerpt."""
-        clr = c.Infra.Style.RED if self._use_color else ""
-        reset = c.Infra.Style.RESET if self._use_color else ""
-        fail_sym = c.Infra.Style.FAIL if self._use_unicode else "[FAIL]"
-        count_label = f"  [{error_count} errors]" if error_count > 0 else ""
-        self._stream.write(
-            f"  {clr}{fail_sym}{reset} {project} completed in {int(elapsed)}s"
-            f"{count_label}  ({log_path})\n",
-        )
-        for line in errors[:max_show]:
-            self._stream.write(f"      {line}\n")
-        remaining = error_count - max_show
-        if remaining > 0:
-            self._stream.write(f"      ... and {remaining} more (see log)\n")
-
-    def failure_summary(
-        self,
-        verb: str,
-        failures: Sequence[tuple[str, int, Path]],
-    ) -> None:
-        """Show end-of-run failure summary block."""
-        if not failures:
-            return
-        hdr = (
-            f"── {verb} failed projects ──"
-            if self._use_unicode
-            else f"-- {verb} failed projects --"
-        )
-        clr = c.Infra.Style.RED if self._use_color else ""
-        reset = c.Infra.Style.RESET if self._use_color else ""
-        fail_sym = c.Infra.Style.FAIL if self._use_unicode else "[FAIL]"
-        self._stream.write(f"\n{hdr}\n")
-        for project, error_count, log_path in failures:
-            count_label = f"{error_count} errors" if error_count > 0 else "failed"
-            self._stream.write(
-                f"{clr}{fail_sym}{reset} {project:<20} {count_label}  ({log_path})\n",
-            )
-
-
 # Initialize default state
 FlextInfraUtilitiesOutput.setup()
 output: Final[type[FlextInfraUtilitiesOutput]] = FlextInfraUtilitiesOutput
+# Module-level re-export for lazy loader compatibility
+OutputBackend = FlextInfraUtilitiesOutput.OutputBackend
 
 __all__ = ["FlextInfraUtilitiesOutput", "OutputBackend", "output"]

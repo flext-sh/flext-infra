@@ -19,17 +19,20 @@ from flext_infra import (
     FlextInfraDocFixer,
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
+    FlextInfraModels,
 )
 from flext_infra.docs.__main__ import main
-from tests import m, t
+from tests import t
+
+_DocsPhaseReport = FlextInfraModels.Infra.DocsPhaseReport
 
 
-def _ok_empty(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-    return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
+def _ok_empty(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_DocsPhaseReport]]:
+    return r[Sequence[_DocsPhaseReport]].ok([])
 
 
-def _ok_audit(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-    return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
+def _ok_audit(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_DocsPhaseReport]]:
+    return r[Sequence[_DocsPhaseReport]].ok([])
 
 
 class TestMainRouting:
@@ -92,20 +95,20 @@ class TestMainRouting:
 
 def _capture_audit(
     store: MutableMapping[str, t.Scalar],
-) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
-    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+) -> Callable[..., r[Sequence[_DocsPhaseReport]]]:
+    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_DocsPhaseReport]]:
         store.update(kw)
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
+        return r[Sequence[_DocsPhaseReport]].ok([])
 
     return _fn
 
 
 def _capture_simple(
     store: MutableMapping[str, t.Scalar],
-) -> Callable[..., r[Sequence[m.Infra.DocsPhaseReport]]]:
-    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+) -> Callable[..., r[Sequence[_DocsPhaseReport]]]:
+    def _fn(*a: t.Scalar, **kw: t.Scalar) -> r[Sequence[_DocsPhaseReport]]:
         store.update(kw)
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
+        return r[Sequence[_DocsPhaseReport]].ok([])
 
     return _fn
 
