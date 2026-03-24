@@ -16,7 +16,7 @@ from flext_infra.deps import modernizer as modernizer_module
 
 def _modernizer_args(**overrides: t.NormalizedValue) -> argparse.Namespace:
     """Create standard modernizer args namespace with defaults."""
-    defaults: t.ContainerMapping = {
+    defaults: t.MutableContainerMapping = {
         "project": None,
         "dry_run": True,
         "verbose": False,

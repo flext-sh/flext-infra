@@ -42,7 +42,7 @@ class _StubGenerator(FlextInfraBaseMkGenerator):
         self._fail = fail
 
     @override
-    def generate(
+    def generate_basemk(
         self,
         config: im.Infra.BaseMkConfig | t.ScalarMapping | None = None,
     ) -> r[str]:

@@ -28,7 +28,7 @@ def _project(path: Path, name: str = "flext-core") -> m.Infra.ProjectInfo:
 
 class _OutputRecorder:
     def __init__(self) -> None:
-        self.calls: t.StrSequence = []
+        self.calls: list[str] = []
 
     def info(self, message: str) -> None:
         self.calls.append(message)

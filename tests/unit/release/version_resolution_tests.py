@@ -51,23 +51,31 @@ def _apply_vs(
 ) -> None:
     """Apply version service stubs to u.Infra static methods."""
     if parse is not None:
-        monkeypatch.setattr(
-            u.Infra,
-            "parse_semver",
-            staticmethod(lambda version: parse),
-        )
+        _parse_result = parse
+
+        def _parse_semver(version: str) -> r[str]:
+            _ = version
+            return _parse_result
+
+        monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
     if current is not None:
+        _current_result = current
+
+        def _current_version(root: Path) -> r[str]:
+            _ = root
+            return _current_result
+
         monkeypatch.setattr(
-            u.Infra,
-            "current_workspace_version",
-            staticmethod(lambda root: current),
+            u.Infra, "current_workspace_version", staticmethod(_current_version)
         )
     if bump is not None:
-        monkeypatch.setattr(
-            u.Infra,
-            "bump_version",
-            staticmethod(lambda cur, kind: bump),
-        )
+        _bump_result = bump
+
+        def _bump_version(cur: str, kind: str) -> r[str]:
+            _ = cur, kind
+            return _bump_result
+
+        monkeypatch.setattr(u.Infra, "bump_version", staticmethod(_bump_version))
 
 
 class TestReleaseMainVersionResolution:

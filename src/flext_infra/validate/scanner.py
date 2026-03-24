@@ -28,16 +28,16 @@ class FlextInfraTextPatternScanner:
 
     @staticmethod
     def _collect_files(
-        root: Path,
+        scan_root: Path,
         includes: t.StrSequence,
         excludes: t.StrSequence,
     ) -> Sequence[Path]:
         """Collect files matching include/exclude globs."""
         selected: MutableSequence[Path] = []
-        for path in root.rglob("*"):
+        for path in scan_root.rglob("*"):
             if not path.is_file():
                 continue
-            rel = path.relative_to(root).as_posix()
+            rel = path.relative_to(scan_root).as_posix()
             if any(fnmatch.fnmatch(rel, pat) for pat in includes):
                 if any(fnmatch.fnmatch(rel, pat) for pat in excludes):
                     continue
@@ -61,17 +61,17 @@ class FlextInfraTextPatternScanner:
 
     def scan(
         self,
-        root: Path,
+        scan_root: Path,
         pattern: str,
         *,
         includes: t.StrSequence,
         excludes: t.StrSequence | None = None,
         match_mode: str = c.Infra.MatchModes.PRESENT,
     ) -> r[t.ConfigurationMapping]:
-        """Scan files under root for regex matches.
+        """Scan files under scan_root for regex matches.
 
         Args:
-            root: Directory to scan.
+            scan_root: Directory to scan.
             pattern: Regex pattern to search for.
             includes: Glob patterns for files to include.
             excludes: Glob patterns for files to exclude.
@@ -83,9 +83,9 @@ class FlextInfraTextPatternScanner:
 
         """
         try:
-            if not root.exists() or not root.is_dir():
+            if not scan_root.exists() or not scan_root.is_dir():
                 return r[t.ScalarMapping].fail(
-                    f"root directory does not exist: {root}",
+                    f"scan_root directory does not exist: {scan_root}",
                 )
             if not includes:
                 return r[t.ScalarMapping].fail(
@@ -99,7 +99,7 @@ class FlextInfraTextPatternScanner:
                     f"invalid match_mode: {match_mode}",
                 )
             regex = re.compile(pattern, flags=re.MULTILINE)
-            files = self._collect_files(root, includes, excludes or [])
+            files = self._collect_files(scan_root, includes, excludes or [])
             matches = self._count_matches(files, regex)
             violation_count = (
                 matches

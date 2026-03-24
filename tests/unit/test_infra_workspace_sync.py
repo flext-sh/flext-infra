@@ -23,7 +23,7 @@ def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
             super().__init__()
 
         @override
-        def generate(
+        def generate_basemk(
             self,
             config: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
         ) -> r[str]:

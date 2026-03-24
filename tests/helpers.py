@@ -23,6 +23,8 @@ from types import SimpleNamespace
 from flext_core import r
 from flext_tests import tm
 
+from flext_tests import t as tm_t
+
 from tests import t
 
 
@@ -53,7 +55,7 @@ class FlextInfraTestHelpers:
     # ── Assertions ───────────────────────────────────────────────────
 
     @staticmethod
-    def assert_ok[TResult](result: r[TResult]) -> TResult:
+    def assert_ok[TResult: tm_t.Tests.Testobject](result: r[TResult]) -> TResult:
         """Assert r success and return unwrapped value.
 
         Args:
@@ -69,7 +71,7 @@ class FlextInfraTestHelpers:
         return tm.ok(result)
 
     @staticmethod
-    def assert_fail[TResult](result: r[TResult], contains: str | None = None) -> str:
+    def assert_fail[TResult: tm_t.Tests.Testobject](result: r[TResult], contains: str | None = None) -> str:
         """Assert r failure and return error message.
 
         Args:

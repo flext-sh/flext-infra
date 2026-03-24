@@ -52,7 +52,7 @@ def test_generator_renders_with_config_override() -> None:
         lint_gates=["lint", "mypy"],
         test_command="pytest",
     )
-    result = FlextInfraBaseMkGenerator().generate(config)
+    result = FlextInfraBaseMkGenerator().generate_basemk(config)
     tm.ok(result)
     assert "PROJECT_NAME ?= sample-project" in result.value
 
@@ -60,7 +60,7 @@ def test_generator_renders_with_config_override() -> None:
 def test_generator_fails_for_invalid_make_syntax() -> None:
     result = FlextInfraBaseMkGenerator(
         template_engine=_InvalidTemplateEngine(),
-    ).generate()
+    ).generate_basemk()
     tm.fail(result)
     assert result.error is not None
     assert "validation failed" in result.error

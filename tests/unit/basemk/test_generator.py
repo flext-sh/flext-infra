@@ -56,7 +56,7 @@ def test_generator_execute_returns_generated_content() -> None:
 def test_generator_generate_with_none_config_uses_default() -> None:
     """Test generate() with None config uses default configuration."""
     gen = FlextInfraBaseMkGenerator(template_engine=_SuccessRenderer())
-    result = gen.generate(config=None)
+    result = gen.generate_basemk(config=None)
     tm.ok(result)
 
 
@@ -73,7 +73,7 @@ def test_generator_generate_with_basemk_config_object() -> None:
         test_command="pytest",
     )
     gen = FlextInfraBaseMkGenerator(template_engine=_SuccessRenderer())
-    result = gen.generate(config=config)
+    result = gen.generate_basemk(config=config)
     tm.ok(result)
 
 
@@ -90,7 +90,7 @@ def test_generator_generate_with_dict_config() -> None:
         test_command="pytest",
     )
     gen = FlextInfraBaseMkGenerator(template_engine=_SuccessRenderer())
-    result = gen.generate(config=config)
+    result = gen.generate_basemk(config=config)
     tm.ok(result)
 
 
@@ -98,7 +98,7 @@ def test_generator_generate_with_invalid_dict_config() -> None:
     """Test generate() fails with invalid dict configuration."""
     invalid_config = {"invalid_key": "value"}
     gen = FlextInfraBaseMkGenerator(template_engine=_SuccessRenderer())
-    result = gen.generate(config=invalid_config)
+    result = gen.generate_basemk(config=invalid_config)
     tm.fail(result)
     assert isinstance(result.error, str)
     assert isinstance(result.error, str)
@@ -108,7 +108,7 @@ def test_generator_generate_with_invalid_dict_config() -> None:
 def test_generator_generate_propagates_render_failure() -> None:
     """Test generate() propagates template render failures."""
     gen = FlextInfraBaseMkGenerator(template_engine=_FailureRenderer())
-    result = gen.generate()
+    result = gen.generate_basemk()
     tm.fail(result)
     assert isinstance(result.error, str)
     assert "render error" in result.error

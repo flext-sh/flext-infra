@@ -48,30 +48,28 @@ def test_ensure_pyrefly_config_phase_apply_python_version() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
+    assert isinstance(tool, MutableMapping)
     tm.that(tool, is_=MutableMapping)
-    if not isinstance(tool, MutableMapping):
-        return
     tool["pyrefly"] = tomlkit.table()
     changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
         doc, is_root=True
     )
     tm.that(any("python-version set to 3.13" in c for c in changes), eq=True)
     pyrefly = tool["pyrefly"]
+    assert isinstance(pyrefly, MutableMapping)
     tm.that(pyrefly, is_=MutableMapping)
-    if isinstance(pyrefly, MutableMapping):
-        tm.that(
-            cast("str", pyrefly["python-version"]),
-            eq="3.13",
-        )
+    tm.that(
+        cast("str", pyrefly["python-version"]),
+        eq="3.13",
+    )
 
 
 def test_ensure_pyrefly_config_phase_apply_ignore_errors() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
+    assert isinstance(tool, MutableMapping)
     tm.that(tool, is_=MutableMapping)
-    if not isinstance(tool, MutableMapping):
-        return
     tool["pyrefly"] = tomlkit.table()
     changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
         doc, is_root=True
@@ -81,24 +79,23 @@ def test_ensure_pyrefly_config_phase_apply_ignore_errors() -> None:
         eq=True,
     )
     pyrefly = tool["pyrefly"]
+    assert isinstance(pyrefly, MutableMapping)
     tm.that(pyrefly, is_=MutableMapping)
-    if isinstance(pyrefly, MutableMapping):
-        tm.that(
-            cast(
-                "str",
-                pyrefly["ignore-errors-in-generated-code"],
-            ),
-            eq=True,
-        )
+    tm.that(
+        cast(
+            "str",
+            pyrefly["ignore-errors-in-generated-code"],
+        ),
+        eq=True,
+    )
 
 
 def test_ensure_pyrefly_config_phase_apply_search_path() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
+    assert isinstance(tool, MutableMapping)
     tm.that(tool, is_=MutableMapping)
-    if not isinstance(tool, MutableMapping):
-        return
     tool["pyrefly"] = tomlkit.table()
     changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
         doc, is_root=True
@@ -110,9 +107,8 @@ def test_ensure_pyrefly_config_phase_apply_errors() -> None:
     doc = tomlkit.document()
     doc["tool"] = tomlkit.table()
     tool = doc["tool"]
+    assert isinstance(tool, MutableMapping)
     tm.that(tool, is_=MutableMapping)
-    if not isinstance(tool, MutableMapping):
-        return
     tool["pyrefly"] = tomlkit.table()
     changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
         doc, is_root=True

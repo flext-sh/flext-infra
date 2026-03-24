@@ -33,7 +33,7 @@ class FlextInfraRefactorCensus:
 
     def run(
         self,
-        root: Path,
+        workspace_root: Path,
         *,
         target: m.Infra.MROFamilyTarget | None = None,
     ) -> r[m.Infra.UtilitiesCensusReport]:
@@ -45,13 +45,13 @@ class FlextInfraRefactorCensus:
         output.header(f"Usage Census — family={target.family} ({target.class_suffix})")
 
         pkg = (
-            root
+            workspace_root
             / target.core_project
             / c.Infra.Paths.DEFAULT_SRC_DIR
             / target.package_dir
         )
         facade = (
-            root
+            workspace_root
             / target.core_project
             / c.Infra.Paths.DEFAULT_SRC_DIR
             / target.facade_module
@@ -79,7 +79,7 @@ class FlextInfraRefactorCensus:
         # 4. Scanning & Visitors
         output.progress(4, 5, "scan-files", "libcst")
         files_result = u.Infra.iter_workspace_python_modules(
-            root,
+            workspace_root,
             exclude_packages=frozenset({target.core_project}),
         )
         if files_result.is_failure:

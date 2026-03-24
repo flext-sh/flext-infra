@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Sequence
 
 import pytest
 from flext_core import r
@@ -20,16 +21,25 @@ class TestMain:
     ) -> None:
         cli_args = u.Infra.CliArgs(workspace=tmp_path)
 
-        monkeypatch.setattr(
-            argparse.ArgumentParser,
-            "parse_args",
-            lambda _self, _args=None, _ns=None: argparse.Namespace(workspace=tmp_path),
-        )
-        monkeypatch.setattr(u.Infra, "resolve", staticmethod(lambda _a: cli_args))
+        def _parse_args(
+            _self: argparse.ArgumentParser,
+            _args: Sequence[str] | None = None,
+            _ns: argparse.Namespace | None = None,
+        ) -> argparse.Namespace:
+            return argparse.Namespace(workspace=tmp_path)
+
+        def _resolve(_a: argparse.Namespace) -> u.Infra.CliArgs:
+            return cli_args
+
+        def _sync(_self: FlextInfraInternalDependencySyncService, _root: Path) -> r[int]:
+            return r[int].ok(0)
+
+        monkeypatch.setattr(argparse.ArgumentParser, "parse_args", _parse_args)
+        monkeypatch.setattr(u.Infra, "resolve", staticmethod(_resolve))
         monkeypatch.setattr(
             internal_sync.FlextInfraInternalDependencySyncService,
             "sync",
-            lambda _self, _root: r[int].ok(0),
+            _sync,
         )
         tm.that(FlextInfraInternalDependencySyncService.main(), eq=0)
 
@@ -40,15 +50,24 @@ class TestMain:
     ) -> None:
         cli_args = u.Infra.CliArgs(workspace=tmp_path)
 
-        monkeypatch.setattr(
-            argparse.ArgumentParser,
-            "parse_args",
-            lambda _self, _args=None, _ns=None: argparse.Namespace(workspace=tmp_path),
-        )
-        monkeypatch.setattr(u.Infra, "resolve", staticmethod(lambda _a: cli_args))
+        def _parse_args(
+            _self: argparse.ArgumentParser,
+            _args: Sequence[str] | None = None,
+            _ns: argparse.Namespace | None = None,
+        ) -> argparse.Namespace:
+            return argparse.Namespace(workspace=tmp_path)
+
+        def _resolve(_a: argparse.Namespace) -> u.Infra.CliArgs:
+            return cli_args
+
+        def _sync(_self: FlextInfraInternalDependencySyncService, _root: Path) -> r[int]:
+            return r[int].fail("sync failed")
+
+        monkeypatch.setattr(argparse.ArgumentParser, "parse_args", _parse_args)
+        monkeypatch.setattr(u.Infra, "resolve", staticmethod(_resolve))
         monkeypatch.setattr(
             internal_sync.FlextInfraInternalDependencySyncService,
             "sync",
-            lambda _self, _root: r[int].fail("sync failed"),
+            _sync,
         )
         tm.that(FlextInfraInternalDependencySyncService.main(), eq=1)

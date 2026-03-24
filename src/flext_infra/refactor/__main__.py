@@ -211,7 +211,7 @@ class FlextInfraRefactorCommand:
         census = FlextInfraRefactorCensus()
 
         target = u.Infra.build_mro_target(family)
-        result = census.run(cli.workspace, target=target)
+        result = census.run(workspace_root=cli.workspace, target=target)
         if result.is_failure:
             return u.Infra.exit_code(result, failure_msg="Census failed")
         report = result.value

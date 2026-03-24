@@ -545,9 +545,9 @@ class FlextInfraUtilitiesRefactor(
         return best.name
 
     @staticmethod
-    def _is_path_within_root(file_path: Path, root: Path) -> bool:
+    def _is_path_within_root(file_path: Path, base_path: Path) -> bool:
         try:
-            file_path.relative_to(root)
+            file_path.relative_to(base_path)
         except ValueError:
             return False
         return True

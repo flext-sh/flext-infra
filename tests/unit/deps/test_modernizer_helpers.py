@@ -83,7 +83,7 @@ def _toml_item(value: str | int | t.StrSequence) -> tomlkit.items.Item:
             trivia=tomlkit.items.Trivia(),
             raw=str(value),
         )
-    str_items: Sequence[tomlkit.items.Item] = [
+    str_items: list[tomlkit.items.Item] = [
         tomlkit.items.String.from_raw(v) for v in value
     ]
     return tomlkit.items.Array(str_items, trivia=tomlkit.items.Trivia())

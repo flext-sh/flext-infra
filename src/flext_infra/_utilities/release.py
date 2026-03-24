@@ -69,15 +69,16 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def update_changelog(
-        root: Path,
+        workspace_root: Path,
         version: str,
         tag: str,
         notes_path: Path,
     ) -> r[bool]:
         """Update docs/changelog and docs/releases entries."""
-        changelog_path = root / c.Infra.Directories.DOCS / "CHANGELOG.md"
-        latest_path = root / c.Infra.Directories.DOCS / "releases" / "latest.md"
-        tagged_path = root / c.Infra.Directories.DOCS / "releases" / f"{tag}.md"
+        docs = workspace_root / c.Infra.Directories.DOCS
+        changelog_path = docs / "CHANGELOG.md"
+        latest_path = docs / "releases" / "latest.md"
+        tagged_path = docs / "releases" / f"{tag}.md"
         try:
             notes_text = notes_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             existing = (

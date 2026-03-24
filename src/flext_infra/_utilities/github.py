@@ -41,7 +41,7 @@ class FlextInfraUtilitiesGithub(
     @classmethod
     def github_lint_workflows(
         cls,
-        root: Path,
+        workspace_root: Path,
         *,
         report_path: Path | None = None,
         strict: bool = False,
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesGithub(
             if report_path is not None:
                 cls.write_json(report_path, payload_skipped, sort_keys=True)
             return r[m.Infra.WorkflowLintResult].ok(payload_skipped)
-        result = cls.run_raw([actionlint], cwd=root)
+        result = cls.run_raw([actionlint], cwd=workspace_root)
         if result.is_success:
             output = result.value
             payload = m.Infra.WorkflowLintResult(

@@ -22,7 +22,7 @@ _ROOT = "# root content"
 def _generated_content() -> str:
     """Get the canonical generated base.mk content for hash-matching tests."""
     gen = FlextInfraBaseMkGenerator()
-    result = gen.generate()
+    result = gen.generate_basemk()
     assert result.is_success
     return result.value
 

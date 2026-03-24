@@ -89,7 +89,7 @@ def run_lint(
 ) -> int:
     """Lint GitHub workflow files across workspace."""
     result: r[m.Infra.WorkflowLintResult] = u.Infra.github_lint_workflows(
-        root=cli.workspace,
+        workspace_root=cli.workspace,
         report_path=report,
         strict=strict,
     )
