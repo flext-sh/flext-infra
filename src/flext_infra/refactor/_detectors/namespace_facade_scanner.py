@@ -16,8 +16,8 @@ import libcst as cst
 
 from flext_infra import (
     FlextInfraNamespaceEnforcerModels as nem,
-    FlextInfraUtilitiesParsing,
     c,
+    u,
 )
 
 
@@ -97,7 +97,7 @@ class FlextInfraNamespaceFacadeScanner:
         if not src_dir.is_dir():
             return ("", "", 0)
         for file_path in src_dir.rglob(file_pattern):
-            tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
+            tree = u.Infra.parse_module_cst(file_path)
             if tree is None:
                 continue
             for node in cls._walk_classes(tree.body):

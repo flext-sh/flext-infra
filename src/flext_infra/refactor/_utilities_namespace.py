@@ -24,7 +24,6 @@ from tomlkit.exceptions import TOMLKitError
 from flext_infra import (
     FlextInfraNamespaceFacadeScanner,
     FlextInfraUtilitiesFormatting,
-    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesRefactorLoader,
     c,
     m,
@@ -655,8 +654,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         project_package: str,
     ) -> None:
         """Apply import normalization to a single file via CST rewrite."""
-        source_text = file_path.read_text(encoding="utf-8")
-        tree = FlextInfraUtilitiesParsing.parse_cst_from_source(source_text)
+        tree = u.Infra.parse_module_cst(file_path)
         if tree is None:
             return
         is_facade = FlextInfraUtilitiesRefactorNamespace._namespace_is_facade_file(
@@ -719,10 +717,8 @@ class FlextInfraUtilitiesRefactorNamespace:
             for violation in file_violations:
                 missing_by_facade[violation.facade_class].add(violation.missing_base)
             # CST parse for class header rewriting
-            try:
-                source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-                cst_tree = cst.parse_module(source)
-            except (OSError, UnicodeDecodeError, cst.ParserSyntaxError):
+            cst_tree = u.Infra.parse_module_cst(file_path)
+            if cst_tree is None:
                 continue
             rewriter = _MROBaseRewriter(
                 missing_by_facade=missing_by_facade,

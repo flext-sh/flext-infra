@@ -16,7 +16,7 @@ from pathlib import Path
 
 import libcst as cst
 
-from flext_infra import FlextInfraUtilitiesParsing, m
+from flext_infra import m, u
 
 
 class FlextInfraUtilitiesRefactorPydanticAnalysis:
@@ -291,7 +291,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     ) -> tuple[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]]:
         """Collect class and alias moves required for centralization."""
         source = file_path.read_text(encoding="utf-8")
-        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
+        tree = u.Infra.parse_ast_from_source(source)
         if tree is None:
             msg = "Failed to parse source"
             raise SyntaxError(msg)
@@ -373,7 +373,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             source = file_path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             return (0, 0)
-        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
+        tree = u.Infra.parse_ast_from_source(source)
         if tree is None:
             return (0, 0)
         model_class_count = 0
@@ -433,7 +433,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         normalized = import_stmt.strip()
         if not normalized:
             return source
-        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
+        module = u.Infra.parse_cst_from_source(source)
         if module is None:
             return source
         try:
