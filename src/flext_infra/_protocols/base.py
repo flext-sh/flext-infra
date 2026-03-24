@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_core import r
+from flext_core import FlextProtocols, r
 from pydantic import JsonValue
 
 if TYPE_CHECKING:
@@ -265,7 +265,7 @@ class FlextInfraProtocolsBase:
             self,
             project_name: str,
             deptry_issues: Sequence[t.Infra.ContainerDict],
-        ) -> p.Infra.ProjectReportLike:
+        ) -> FlextInfraProtocolsBase.ProjectReportLike:
             """Build project report from deptry issues."""
             ...
 
@@ -320,11 +320,11 @@ class FlextInfraProtocolsBase:
     class DetectorRuntime(Protocol):
         """Protocol for detector runtime service dependencies."""
 
-        reporting: p.Infra.ReportingService
-        json: p.Infra.JsonService
-        deps: p.Infra.DepsService
-        runner: p.Infra.RunnerService
-        log: p.Logger
+        reporting: FlextInfraProtocolsBase.ReportingService
+        json: FlextInfraProtocolsBase.JsonService
+        deps: FlextInfraProtocolsBase.DepsService
+        runner: FlextInfraProtocolsBase.RunnerService
+        log: FlextProtocols.Logger
 
         @staticmethod
         def parser(default_limits_path: Path) -> argparse.ArgumentParser:
@@ -364,7 +364,7 @@ class FlextInfraProtocolsBase:
             file_path: Path,
             project_package: str,
             alias_map: Mapping[str, tuple[str, ...]] | None = None,
-        ) -> Sequence[p.Infra.ViolationWithLine]:
+        ) -> Sequence[FlextInfraProtocolsBase.ViolationWithLine]:
             """Detect import violations in a file.
 
             Args:

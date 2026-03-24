@@ -521,7 +521,9 @@ class FlextInfraDependencyDetectionService:
             env=env,
         )
         if result.is_failure:
-            return r[t.Infra.Pair[t.StrSequence, int]].fail(result.error or "pip check failed")
+            return r[t.Infra.Pair[t.StrSequence, int]].fail(
+                result.error or "pip check failed"
+            )
         cmd_result: m.Infra.CommandOutput = result.value
         output = cmd_result.stdout
         lines = output.strip().splitlines() if output else []

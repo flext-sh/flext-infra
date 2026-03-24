@@ -135,14 +135,23 @@ class FlextInfraRefactorRuleLoader:
             if unknown_rules:
                 unknown = ", ".join(sorted(unknown_rules))
                 return r[
-                    t.Infra.Pair[Sequence[FlextInfraRefactorRule], Sequence[FlextInfraClassNestingRefactorRule]]
+                    t.Infra.Pair[
+                        Sequence[FlextInfraRefactorRule],
+                        Sequence[FlextInfraClassNestingRefactorRule],
+                    ]
                 ].fail(f"Unknown rule mapping for: {unknown}")
             return r[
-                t.Infra.Pair[Sequence[FlextInfraRefactorRule], Sequence[FlextInfraClassNestingRefactorRule]]
+                t.Infra.Pair[
+                    Sequence[FlextInfraRefactorRule],
+                    Sequence[FlextInfraClassNestingRefactorRule],
+                ]
             ].ok((loaded_rules, loaded_file_rules))
         except Exception as exc:
             return r[
-                t.Infra.Pair[Sequence[FlextInfraRefactorRule], Sequence[FlextInfraClassNestingRefactorRule]]
+                t.Infra.Pair[
+                    Sequence[FlextInfraRefactorRule],
+                    Sequence[FlextInfraClassNestingRefactorRule],
+                ]
             ].fail(f"Failed to load rules: {exc}")
 
     def _resolve_engine_config(

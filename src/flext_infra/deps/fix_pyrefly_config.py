@@ -203,12 +203,10 @@ class FlextInfraConfigFixer(s[bool]):
         search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
         current_paths: Sequence[JsonValue] = []
         if isinstance(search_raw, list):
-            try:
+            with contextlib.suppress(ValidationError):
                 current_paths = TypeAdapter(Sequence[JsonValue]).validate_python(
                     list(search_raw),
                 )
-            except ValidationError:
-                pass
         current_search = [
             str(path_item) for path_item in current_paths if isinstance(path_item, str)
         ]

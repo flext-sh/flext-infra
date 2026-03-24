@@ -6,6 +6,8 @@ import re
 from collections.abc import Mapping
 from typing import Final
 
+from flext_infra import t
+
 
 class FlextInfraDepsConstants:
     """Deps infrastructure constants."""

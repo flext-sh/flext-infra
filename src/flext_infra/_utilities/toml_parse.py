@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import contextlib
 import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
@@ -63,10 +64,8 @@ class FlextInfraUtilitiesTomlParse:
         )
         current: Sequence[t.StrMapping] = []
         if isinstance(raw, list):
-            try:
+            with contextlib.suppress(ValidationError):
                 current = TypeAdapter(Sequence[t.StrMapping]).validate_python(raw)
-            except ValidationError:
-                pass
         if list(current) != expected:
             pyright["executionEnvironments"] = expected
             changes.append(

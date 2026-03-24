@@ -9,6 +9,9 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path as _Path
 
+from flext_core import FlextTypes
+from pydantic import BaseModel
+
 
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
@@ -40,8 +43,8 @@ class FlextInfraTypesBase:
         | int
         | float
         | bool
-        | Mapping[str, FlextInfraTypes.Infra.InfraValue]
-        | Sequence[FlextInfraTypes.Infra.InfraValue]
+        | Mapping[str, InfraValue]
+        | Sequence[InfraValue]
         | None
     )
     "Recursive infrastructure value: primitive, nested dict/list, or null."

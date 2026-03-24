@@ -130,7 +130,9 @@ class FlextInfraRefactorClassNestingAnalyzer:
             )
         raw_nesting = typed_doc.get(c.Infra.ReportKeys.CLASS_NESTING)
         if not isinstance(raw_nesting, list):
-            return r[Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]].ok({})
+            return r[
+                Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]
+            ].ok({})
         try:
             entries = TypeAdapter(
                 Sequence[m.Infra.ClassNestingMapping],
