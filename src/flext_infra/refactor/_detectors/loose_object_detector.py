@@ -343,3 +343,5 @@ class FlextInfraLooseObjectDetector(p.Infra.Scanner):
 
 
 LooseObjectDetector = FlextInfraLooseObjectDetector
+
+__all__ = ["FlextInfraLooseObjectDetector", "LooseObjectDetector"]

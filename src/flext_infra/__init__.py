@@ -294,7 +294,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
     from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
-    from flext_infra.refactor.validation import PostCheckGate
     from flext_infra.refactor.violation_analyzer import (
         FlextInfraRefactorViolationAnalyzer,
     )
@@ -440,10 +439,6 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "ConsolidateGroupsPhase": (
-        "flext_infra.deps._phases.consolidate_groups",
-        "ConsolidateGroupsPhase",
-    ),
     "FlextInfraBanditGate": ("flext_infra.gates.bandit", "FlextInfraBanditGate"),
     "FlextInfraBaseMkGenerator": (
         "flext_infra.basemk.generator",
@@ -1210,7 +1205,6 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "FlextInfraWorkspaceModels",
     ),
     "OutputBackend": ("flext_infra._utilities.output", "OutputBackend"),
-    "PostCheckGate": ("flext_infra.refactor.validation", "PostCheckGate"),
     "__all__": ("flext_infra.__version__", "__all__"),
     "__author__": ("flext_infra.__version__", "__author__"),
     "__author_email__": ("flext_infra.__version__", "__author_email__"),
@@ -1472,7 +1466,6 @@ __all__ = [
     "FlextInfraWorkspaceMode",
     "FlextInfraWorkspaceModels",
     "OutputBackend",
-    "PostCheckGate",
     "__all__",
     "__author__",
     "__author_email__",

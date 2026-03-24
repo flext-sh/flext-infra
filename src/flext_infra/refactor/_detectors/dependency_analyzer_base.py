@@ -230,3 +230,5 @@ class FlextInfraDependencyAnalyzer:
 
 
 DependencyAnalyzer = FlextInfraDependencyAnalyzer
+
+__all__ = ["DependencyAnalyzer", "FlextInfraDependencyAnalyzer"]

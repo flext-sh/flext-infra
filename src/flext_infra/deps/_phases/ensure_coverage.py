@@ -76,3 +76,5 @@ class FlextInfraEnsureCoverageConfigPhase:
 
 
 EnsureCoverageConfigPhase = FlextInfraEnsureCoverageConfigPhase
+
+__all__ = ["EnsureCoverageConfigPhase", "FlextInfraEnsureCoverageConfigPhase"]

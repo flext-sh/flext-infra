@@ -152,3 +152,5 @@ class FlextInfraCompatibilityAliasDetector(p.Infra.Scanner):
 
 
 CompatibilityAliasDetector = FlextInfraCompatibilityAliasDetector
+
+__all__ = ["CompatibilityAliasDetector", "FlextInfraCompatibilityAliasDetector"]

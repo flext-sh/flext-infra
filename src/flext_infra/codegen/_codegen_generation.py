@@ -10,6 +10,8 @@ from collections import defaultdict
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
+from typing import Protocol
+
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from flext_infra import c, t
@@ -24,6 +26,15 @@ _ENV = Environment(
     undefined=StrictUndefined,
     autoescape=select_autoescape(),
 )
+
+
+class _Renderable(Protocol):
+    def render(self, **kwargs: object) -> str: ...
+
+
+def _render(template: _Renderable, **kwargs: object) -> str:
+    """Render a jinja2 template with explicit str return type."""
+    return template.render(**kwargs)
 
 
 class FlextInfraCodegenGeneration:
@@ -173,7 +184,7 @@ class FlextInfraCodegenGeneration:
 
         # --- preamble (from .j2 template) ---
         preamble_name = tpl.PREAMBLE_L0 if is_l0_typings else tpl.PREAMBLE_STANDARD
-        preamble_rendered: str = _ENV.get_template(preamble_name).render()
+        preamble_rendered: str = _render(_ENV.get_template(preamble_name))
         out.extend(preamble_rendered.splitlines())
 
         # --- eager TypeVar imports ---
@@ -206,7 +217,8 @@ class FlextInfraCodegenGeneration:
             for exp in sorted(exports)
             if exp in lazy_filtered
         ]
-        body: str = _ENV.get_template(tpl.BODY).render(
+        body: str = _render(
+            _ENV.get_template(tpl.BODY),
             type_checking_lines="\n".join(type_checking_lines),
             inline_constants=sorted(inline_constants.items()),
             lazy_entries=lazy_entries,
@@ -217,7 +229,7 @@ class FlextInfraCodegenGeneration:
 
         # --- getattr block (from .j2 template) ---
         getattr_name = tpl.GETATTR_L0 if is_l0_typings else tpl.GETATTR_STANDARD
-        getattr_rendered: str = _ENV.get_template(getattr_name).render()
+        getattr_rendered: str = _render(_ENV.get_template(getattr_name))
         out.extend(getattr_rendered.splitlines())
 
         return "\n".join(out)

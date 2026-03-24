@@ -178,3 +178,5 @@ class FlextInfraImportAliasDetector(p.Infra.Scanner):
 
 
 ImportAliasDetector = FlextInfraImportAliasDetector
+
+__all__ = ["FlextInfraImportAliasDetector", "ImportAliasDetector"]

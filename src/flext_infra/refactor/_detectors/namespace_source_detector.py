@@ -191,3 +191,5 @@ class FlextInfraNamespaceSourceDetector(p.Infra.Scanner):
 
 
 NamespaceSourceDetector = FlextInfraNamespaceSourceDetector
+
+__all__ = ["FlextInfraNamespaceSourceDetector", "NamespaceSourceDetector"]

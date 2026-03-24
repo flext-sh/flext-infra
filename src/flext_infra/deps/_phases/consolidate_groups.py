@@ -108,3 +108,5 @@ class FlextInfraConsolidateGroupsPhase:
 
 
 ConsolidateGroupsPhase = FlextInfraConsolidateGroupsPhase
+
+__all__ = ["ConsolidateGroupsPhase", "FlextInfraConsolidateGroupsPhase"]

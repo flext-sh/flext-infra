@@ -126,3 +126,5 @@ class FlextInfraEnsureRuffConfigPhase:
 
 
 EnsureRuffConfigPhase = FlextInfraEnsureRuffConfigPhase
+
+__all__ = ["EnsureRuffConfigPhase", "FlextInfraEnsureRuffConfigPhase"]

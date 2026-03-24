@@ -174,3 +174,5 @@ class FlextInfraNamespaceFacadeScanner:
 
 
 NamespaceFacadeScanner = FlextInfraNamespaceFacadeScanner
+
+__all__ = ["FlextInfraNamespaceFacadeScanner", "NamespaceFacadeScanner"]

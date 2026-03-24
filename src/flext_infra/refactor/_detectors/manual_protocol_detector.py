@@ -166,3 +166,5 @@ class FlextInfraManualProtocolDetector(p.Infra.Scanner):
 
 
 ManualProtocolDetector = FlextInfraManualProtocolDetector
+
+__all__ = ["FlextInfraManualProtocolDetector", "ManualProtocolDetector"]

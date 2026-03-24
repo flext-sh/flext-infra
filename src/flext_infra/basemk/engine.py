@@ -6,6 +6,8 @@ from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
+from typing import Protocol
+
 from jinja2 import (
     Environment,
     FileSystemLoader,
@@ -15,6 +17,15 @@ from jinja2 import (
 )
 
 from flext_infra import c, m, r, s
+
+
+class _Renderable(Protocol):
+    def render(self, **kwargs: object) -> str: ...
+
+
+def _render(template: _Renderable, **kwargs: object) -> str:
+    """Render a jinja2 template with explicit str return type."""
+    return template.render(**kwargs)
 
 
 class FlextInfraBaseMkTemplateEngine(s[str]):
@@ -77,7 +88,8 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
                 template = self._environment.get_template(template_name)
-                rendered: str = template.render(
+                rendered = _render(
+                    template,
                     config=active_config,
                     lint_gates_csv=lint_gates_csv,
                 )

@@ -200,3 +200,5 @@ class FlextInfraCyclicImportDetector:
 
 
 CyclicImportDetector = FlextInfraCyclicImportDetector
+
+__all__ = ["CyclicImportDetector", "FlextInfraCyclicImportDetector"]

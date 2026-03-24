@@ -259,8 +259,8 @@ class FlextInfraDependencyDetectionService:
         typings = optional.get(c.Infra.Directories.TYPINGS)
         if isinstance(typings, list):
             try:
-                typed_typings: t.StrSequence = TypeAdapter(
-                    t.StrSequence
+                typed_typings: Sequence[str] = TypeAdapter(
+                    Sequence[str]
                 ).validate_python([str(s) for s in typings])
             except ValidationError:
                 typed_typings = []
@@ -275,8 +275,8 @@ class FlextInfraDependencyDetectionService:
                 )
         elif isinstance(typings, Mapping):
             try:
-                typed_typings_map: t.StrMapping = TypeAdapter(
-                    t.StrMapping
+                typed_typings_map: Mapping[str, str] = TypeAdapter(
+                    Mapping[str, str]
                 ).validate_python({k: str(v) for k, v in typings.items()})
             except ValidationError:
                 typed_typings_map = {}
@@ -299,14 +299,14 @@ class FlextInfraDependencyDetectionService:
             excluded = typing_libraries.get(c.Infra.Toml.EXCLUDE)
             if isinstance(excluded, list):
                 try:
-                    typed_excluded: t.StrSequence = TypeAdapter(
-                        t.StrSequence
+                    typed_excluded: Sequence[str] = TypeAdapter(
+                        Sequence[str]
                     ).validate_python([str(e) for e in excluded])
                 except ValidationError:
                     typed_excluded = []
                 exclude_set = set(typed_excluded)
-        hinted: t.StrSequence = []
-        missing_modules: t.StrSequence = []
+        hinted: Sequence[str] = []
+        missing_modules: Sequence[str] = []
         if include_mypy:
             hints_result = self.run_mypy_stub_hints(project_path, venv_bin)
             if hints_result.is_failure:
@@ -378,8 +378,8 @@ class FlextInfraDependencyDetectionService:
                 and (root in module_to_package)
             ):
                 try:
-                    module_to_package_map: t.StrMapping = TypeAdapter(
-                        t.StrMapping
+                    module_to_package_map: Mapping[str, str] = TypeAdapter(
+                        Mapping[str, str]
                     ).validate_python({k: str(v) for k, v in module_to_package.items()})
                 except ValidationError:
                     module_to_package_map = {}

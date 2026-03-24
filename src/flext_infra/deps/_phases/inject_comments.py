@@ -63,3 +63,5 @@ class FlextInfraInjectCommentsPhase:
 
 
 InjectCommentsPhase = FlextInfraInjectCommentsPhase
+
+__all__ = ["FlextInfraInjectCommentsPhase", "InjectCommentsPhase"]

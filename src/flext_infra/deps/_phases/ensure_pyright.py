@@ -185,3 +185,5 @@ class FlextInfraEnsurePyrightConfigPhase:
 
 
 EnsurePyrightConfigPhase = FlextInfraEnsurePyrightConfigPhase
+
+__all__ = ["EnsurePyrightConfigPhase", "FlextInfraEnsurePyrightConfigPhase"]

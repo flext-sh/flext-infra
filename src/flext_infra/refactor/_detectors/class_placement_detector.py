@@ -187,3 +187,5 @@ class FlextInfraClassPlacementDetector(p.Infra.Scanner):
 
 
 ClassPlacementDetector = FlextInfraClassPlacementDetector
+
+__all__ = ["ClassPlacementDetector", "FlextInfraClassPlacementDetector"]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Sequence
 
 import tomlkit
 from flext_core import FlextTypes as t
@@ -37,8 +37,8 @@ class FlextInfraEnsureFormattingToolingPhase:
             current = u.Infra.unwrap_item(u.Infra.get(tomlsort, key))
             if isinstance(value, list) and isinstance(current, list):
                 try:
-                    current_values: t.StrSequence = TypeAdapter(
-                        t.StrSequence
+                    current_values: Sequence[str] = TypeAdapter(
+                        Sequence[str]
                     ).validate_python([str(x) for x in current])
                 except ValidationError:
                     current_values = []
@@ -65,6 +65,3 @@ class FlextInfraEnsureFormattingToolingPhase:
                 yamlfix[key] = value
                 changes.append(f"tool.yamlfix.{key} set to {value}")
         return changes
-
-
-EnsureFormattingToolingPhase = FlextInfraEnsureFormattingToolingPhase

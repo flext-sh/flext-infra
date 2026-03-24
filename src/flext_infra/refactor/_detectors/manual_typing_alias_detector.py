@@ -204,3 +204,5 @@ class FlextInfraManualTypingAliasDetector(
 
 
 ManualTypingAliasDetector = FlextInfraManualTypingAliasDetector
+
+__all__ = ["FlextInfraManualTypingAliasDetector", "ManualTypingAliasDetector"]

@@ -185,3 +185,5 @@ class FlextInfraRuntimeAliasDetector(p.Infra.Scanner):
 
 
 RuntimeAliasDetector = FlextInfraRuntimeAliasDetector
+
+__all__ = ["FlextInfraRuntimeAliasDetector", "RuntimeAliasDetector"]

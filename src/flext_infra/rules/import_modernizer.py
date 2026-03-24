@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
 from libcst.metadata import MetadataWrapper
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
     FlextInfraRefactorImportModernizer,
@@ -62,7 +62,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
 
     @staticmethod
     def _parse_forbidden_rules(
-        value: Sequence[JsonValue] | Sequence[Mapping[str, JsonValue]] | JsonValue,
+        value: t.Infra.InfraValue,
     ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         try:
             raw_items = TypeAdapter(Sequence[t.Infra.ContainerDict]).validate_python(

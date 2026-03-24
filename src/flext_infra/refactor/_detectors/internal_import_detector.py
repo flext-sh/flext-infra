@@ -161,3 +161,5 @@ class FlextInfraInternalImportDetector(p.Infra.Scanner):
 
 
 InternalImportDetector = FlextInfraInternalImportDetector
+
+__all__ = ["FlextInfraInternalImportDetector", "InternalImportDetector"]

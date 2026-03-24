@@ -92,7 +92,10 @@ class FlextInfraDependencyDetectorRuntime:
                 return r[int].fail(deptry_result.error or "deptry run failed")
             issues, _ = deptry_result.value
             project_payload = deps_service.build_project_report(project_name, issues)
-            projects_report[project_name] = project_payload.model_dump()
+            dumped: MutableMapping[str, t.Infra.InfraValue] = dict(
+                project_payload.model_dump()
+            )
+            projects_report[project_name] = dumped
             if do_typings and (project_path / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():
                 if typing_deps is None:
                     return r[int].fail(

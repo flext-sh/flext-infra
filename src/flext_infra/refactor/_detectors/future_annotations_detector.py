@@ -156,3 +156,5 @@ class FlextInfraFutureAnnotationsDetector(p.Infra.Scanner):
 
 
 FutureAnnotationsDetector = FlextInfraFutureAnnotationsDetector
+
+__all__ = ["FlextInfraFutureAnnotationsDetector", "FutureAnnotationsDetector"]

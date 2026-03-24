@@ -47,3 +47,5 @@ class FlextInfraEnsureNamespaceToolingPhase:
 
 
 EnsureNamespaceToolingPhase = FlextInfraEnsureNamespaceToolingPhase
+
+__all__ = ["EnsureNamespaceToolingPhase", "FlextInfraEnsureNamespaceToolingPhase"]

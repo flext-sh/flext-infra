@@ -419,3 +419,5 @@ class FlextInfraMROCompletenessDetector(
 
 
 MROCompletenessDetector = FlextInfraMROCompletenessDetector
+
+__all__ = ["FlextInfraMROCompletenessDetector", "MROCompletenessDetector"]

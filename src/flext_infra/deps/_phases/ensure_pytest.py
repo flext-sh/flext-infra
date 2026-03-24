@@ -74,3 +74,5 @@ class FlextInfraEnsurePytestConfigPhase:
 
 
 EnsurePytestConfigPhase = FlextInfraEnsurePytestConfigPhase
+
+__all__ = ["EnsurePytestConfigPhase", "FlextInfraEnsurePytestConfigPhase"]
