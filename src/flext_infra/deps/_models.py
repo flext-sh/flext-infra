@@ -251,7 +251,6 @@ class FlextInfraDepsModels:
                     description="Typings paths used in subproject configs.",
                 ),
             ]
-
         strict_settings: Annotated[
             t.StrMapping,
             Field(
@@ -309,7 +308,42 @@ class FlextInfraDepsModels:
                     description="Typings paths used in subproject configs.",
                 ),
             ]
+            env_dirs: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="env-dirs",
+                    description="Canonical directories used to build project-includes.",
+                ),
+            ]
 
+        python_version: Annotated[
+            str,
+            Field(
+                alias="python-version",
+                description="Pyrefly python-version baseline.",
+            ),
+        ]
+        ignore_errors_in_generated_code: Annotated[
+            bool,
+            Field(
+                alias="ignore-errors-in-generated-code",
+                description="Enable ignoring errors in generated code.",
+            ),
+        ]
+        disable_project_excludes_heuristics: Annotated[
+            bool,
+            Field(
+                alias="disable-project-excludes-heuristics",
+                description="Disable implicit project-exclude heuristics in pyrefly.",
+            ),
+        ]
+        use_ignore_files: Annotated[
+            bool,
+            Field(
+                alias="use-ignore-files",
+                description="Whether pyrefly should apply .gitignore/.ignore files.",
+            ),
+        ]
         strict_errors: Annotated[
             t.StrSequence,
             Field(

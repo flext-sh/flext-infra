@@ -281,7 +281,18 @@ class FlextInfraExtraPathsManager:
             rules.root_typings_paths if is_root else rules.project_typings_paths
         )
         typings_paths = self._existing_relative_paths(project_dir, configured_typings)
-        return sorted({rules.project_root, source_root, *typings_paths})
+        paths: set[str] = {rules.project_root, source_root, *typings_paths}
+        if is_root:
+            for child in sorted(project_dir.iterdir()):
+                if not child.is_dir():
+                    continue
+                if not (child / c.Infra.Files.PYPROJECT_FILENAME).exists():
+                    continue
+                paths.add(child.name)
+                child_source = child / rules.source_dir
+                if child_source.is_dir():
+                    paths.add(f"{child.name}/{rules.source_dir}")
+        return sorted(paths)
 
     def sync_one(
         self,

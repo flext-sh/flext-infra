@@ -45,7 +45,7 @@ class TestRewritePep621:
             mode="workspace",
             internal_names={"flext-core"},
         )
-        tm.that(changes, eq=True)
+        assert len(changes) > 0
         unwrapped = doc.unwrap()
         tm.that(
             unwrapped["project"]["dependencies"][0],
@@ -78,7 +78,7 @@ class TestRewritePep621:
             mode="workspace",
             internal_names={"flext-core"},
         )
-        tm.that(changes, eq=True)
+        assert len(changes) > 0
         unwrapped = doc.unwrap()
         tm.that(unwrapped["project"]["dependencies"][0], has='python_version >= "3.8"')
 
@@ -106,7 +106,7 @@ class TestRewritePep621:
             mode="workspace",
             internal_names={"flext-core"},
         )
-        tm.that(changes, eq=True)
+        assert len(changes) > 0
         unwrapped = doc.unwrap()
         tm.that(unwrapped["project"]["dependencies"][0], has="../flext-core")
 

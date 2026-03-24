@@ -39,26 +39,17 @@ class TestModernizerEdgeCases:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("")
         modernizer = FlextInfraPyprojectModernizer(tmp_path)
-        tm.that(
-            {0, 1, 2},
-            has=modernizer.run(_modernizer_args(), _default_cli(tmp_path)),
-        )
+        assert modernizer.run(_modernizer_args(), _default_cli(tmp_path)) in {0, 1, 2}
 
     def test_modernizer_with_invalid_toml(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[invalid toml {")
         modernizer = FlextInfraPyprojectModernizer(tmp_path)
-        tm.that(
-            {0, 1, 2},
-            has=modernizer.run(_modernizer_args(), _default_cli(tmp_path)),
-        )
+        assert modernizer.run(_modernizer_args(), _default_cli(tmp_path)) in {0, 1, 2}
 
     def test_modernizer_with_missing_pyproject(self, tmp_path: Path) -> None:
         modernizer = FlextInfraPyprojectModernizer(tmp_path)
-        tm.that(
-            {0, 1, 2},
-            has=modernizer.run(_modernizer_args(), _default_cli(tmp_path)),
-        )
+        assert modernizer.run(_modernizer_args(), _default_cli(tmp_path)) in {0, 1, 2}
 
 
 class TestModernizerUncoveredLines:

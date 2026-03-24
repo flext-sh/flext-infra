@@ -282,5 +282,5 @@ class TestWorkspaceCheckerMarkdownReportEdgeCases:
             raw_output="",
         )
         exec2 = m.Infra.GateExecution(result=gate_no_issues, issues=[], raw_output="")
-        tm.that(exec1.issues, eq=True)
+        assert len(exec1.issues) > 0
         tm.that(len(exec2.issues), eq=0)

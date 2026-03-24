@@ -132,6 +132,15 @@ class FlextInfraRefactorCommand:
     def run_namespace_enforce(cli: u.Infra.CliArgs) -> int:
         """Run namespace enforcement checks and optionally apply fixes."""
         enforcer = FlextInfraNamespaceEnforcer(workspace_root=cli.workspace)
+        if cli.diff:
+            diff_output = enforcer.diff(project_names=cli.project_names())
+            if diff_output:
+                sys.stdout.write(diff_output)
+                sys.stdout.flush()
+            else:
+                sys.stdout.write("No changes detected.\n")
+                sys.stdout.flush()
+            return 0
         report = enforcer.enforce(
             apply=cli.apply,
             project_names=cli.project_names(),

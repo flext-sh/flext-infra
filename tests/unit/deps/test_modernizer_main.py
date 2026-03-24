@@ -126,7 +126,7 @@ class TestModernizerRunAndMain:
 
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
         monkeypatch.setattr(u.Infra, "read", _read_doc)
-        tm.that({0, 1}, has=modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)))
+        assert modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)) in {0, 1}
 
     def test_run_with_poetry_check(
         self,

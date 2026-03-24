@@ -419,6 +419,10 @@ tools:
     skip-covered: false
     precision: 2
   pyrefly:
+    disable-project-excludes-heuristics: true
+    ignore-errors-in-generated-code: true
+    python-version: '3.13'
+    use-ignore-files: false
     strict-errors:
       - deprecated
       - redundant-cast
@@ -436,16 +440,23 @@ tools:
     disabled-errors:
       - bad-override
     project-exclude-globs:
+      - '**/__pycache__'
+      - '**/node_modules'
       - '**/.venv/**'
       - '**/*_pb2*.py'
       - '**/*_pb2_grpc*.py'
       - '**/typings/**'
+      - '**/venv/**'
       - '**/vendor/**'
       - '.venv/**'
       - 'typings/**'
-      - '../typings/**'
       - 'vendor/**'
     path-rules:
+      env-dirs:
+        - src
+        - tests
+        - examples
+        - scripts
       source-dir: src
       project-root: .
       root-typings-paths: []

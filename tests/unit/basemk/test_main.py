@@ -40,7 +40,7 @@ def test_basemk_main_with_output_file(tmp_path: Path) -> None:
     tm.that(result, eq=0)
     tm.that(output_file.exists(), eq=True)
     content = output_file.read_text(encoding="utf-8")
-    tm.that(content, eq=True)
+    assert content
 
 
 def test_basemk_main_with_project_name(tmp_path: Path) -> None:
@@ -116,7 +116,7 @@ def test_basemk_main_with_generation_failure(
     def mock_generate(*args: t.Scalar, **kwargs: t.Scalar) -> r[str]:
         return r[str].fail("Generation failed")
 
-    monkeypatch.setattr(FlextInfraBaseMkGenerator, "generate", mock_generate)
+    monkeypatch.setattr(FlextInfraBaseMkGenerator, "generate_basemk", mock_generate)
     result = main(argv=["generate"])
     tm.that(result, eq=1)
 

@@ -58,7 +58,7 @@ class TestConfigFixerRunMethods:
         fixer = FlextInfraConfigFixer(workspace_root=tmp_path)
         result = fixer.run(["project1"], verbose=True)
         tm.ok(result)
-        tm.that(result.value, eq=True)
+        assert len(result.value) > 0
 
     def test_run_with_dry_run(
         self,

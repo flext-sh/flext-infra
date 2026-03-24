@@ -15,7 +15,7 @@ class TestFlextInfraConstantsCheckNamespace:
     """Tests for Check namespace constants."""
 
     def test_default_check_dirs_is_list(self) -> None:
-        tm.that(c.Infra.DEFAULT_CHECK_DIRS, is_=list)
+        tm.that(c.Infra.DEFAULT_CHECK_DIRS, is_=tuple)
 
     def test_default_check_dirs_contains_standard_dirs(self) -> None:
         dirs = c.Infra.DEFAULT_CHECK_DIRS
@@ -25,7 +25,7 @@ class TestFlextInfraConstantsCheckNamespace:
         tm.that(dirs, contains="scripts")
 
     def test_check_dirs_subproject_is_list(self) -> None:
-        tm.that(c.Infra.CHECK_DIRS_SUBPROJECT, is_=list)
+        tm.that(c.Infra.CHECK_DIRS_SUBPROJECT, is_=tuple)
 
     def test_check_dirs_subproject_excludes_scripts(self) -> None:
         dirs = c.Infra.CHECK_DIRS_SUBPROJECT
@@ -81,9 +81,8 @@ class TestFlextInfraConstantsAlias:
         tm.that(hasattr(c.Infra, "Gates"), eq=True)
         tm.that(hasattr(c.Infra, "Status"), eq=True)
         tm.that(hasattr(c.Infra, "Excluded"), eq=True)
-        tm.that(hasattr(c.Infra, "Check"), eq=True)
-        tm.that(hasattr(c.Infra, "Github"), eq=True)
         tm.that(hasattr(c.Infra, "Encoding"), eq=True)
+        tm.that(hasattr(c.Infra, "GITHUB_REPO_URL"), eq=True)
 
     def test_c_alias_access_to_constants(self) -> None:
         tm.that(c.Infra.Paths.VENV_BIN_REL, eq=".venv/bin")

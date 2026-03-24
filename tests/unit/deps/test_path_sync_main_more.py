@@ -222,4 +222,4 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     monkeypatch.setattr(path_sync_module, "output", recorder)
     tm.that(path_sync_module.main(), eq=0)
-    tm.that(recorder.calls, eq=True)
+    assert len(recorder.calls) > 0

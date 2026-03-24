@@ -40,7 +40,7 @@ class TestRewriteDepPaths:
             is_root=True,
         )
         tm.ok(result)
-        tm.that(result.value, eq=True)
+        assert len(result.value) > 0
 
     def test_rewrite_dep_paths_dry_run(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -122,7 +122,7 @@ def test_rewrite_dep_paths_with_internal_names(tmp_path: Path) -> None:
         dry_run=False,
     )
     tm.ok(result)
-    tm.that(result.value, eq=True)
+    assert len(result.value) > 0
 
 
 def test_rewrite_dep_paths_dry_run(tmp_path: Path) -> None:

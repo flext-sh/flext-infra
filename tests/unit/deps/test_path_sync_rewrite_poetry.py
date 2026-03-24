@@ -66,7 +66,7 @@ class TestRewritePoetry:
             is_root=True,
             mode="workspace",
         )
-        tm.that(changes, eq=True)
+        assert len(changes) > 0
         tm.that(doc.as_string(), contains='path = "flext-core"')
 
     def test_rewrite_poetry_skip_non_path_dep(self) -> None:
@@ -129,7 +129,7 @@ class TestRewritePoetry:
             is_root=False,
             mode="workspace",
         )
-        tm.that(changes, eq=True)
+        assert len(changes) > 0
         tm.that(doc.as_string(), contains='path = "../flext-core"')
 
 

@@ -17,7 +17,7 @@ from flext_core import FlextLogger, r, s
 from pydantic import JsonValue, TypeAdapter, ValidationError
 from tomlkit import items
 
-from flext_infra import c, output, t, u
+from flext_infra import FlextInfraExtraPathsManager, c, m, output, t, u
 
 _logger = FlextLogger.create_module_logger(__name__)
 
@@ -41,6 +41,11 @@ class FlextInfraConfigFixer(s[bool]):
             wire_classes=None,
         )
         self._workspace_root = self._resolve_workspace_root(workspace_root)
+        config_result = u.Infra.load_tool_config()
+        if config_result.is_failure:
+            msg = config_result.error or "failed to load deps tool config"
+            raise ValueError(msg)
+        self._tool_config: m.Infra.ToolConfigDocument = config_result.value
 
     @staticmethod
     def _to_array(items_list: t.StrSequence) -> items.Array:
@@ -175,15 +180,10 @@ class FlextInfraConfigFixer(s[bool]):
                     *excludes,
                 ])
             current = [str(value) for value in exclude_items]
-        stripped_to_add: MutableSequence[str] = []
-        for glob in c.Infra.REQUIRED_EXCLUDES:
-            clean_glob = glob.strip('"').strip("'")
-            if clean_glob not in current and glob not in current:
-                stripped_to_add.append(clean_glob)
-        if stripped_to_add:
-            updated = sorted(set(current) | set(stripped_to_add))
-            pyrefly[c.Infra.Toml.PROJECT_EXCLUDES] = self._to_array(updated)
-            fixes.append(f"added {', '.join(stripped_to_add)} to project-excludes")
+        expected = sorted(set(self._tool_config.tools.pyrefly.project_exclude_globs))
+        if current != expected:
+            pyrefly[c.Infra.Toml.PROJECT_EXCLUDES] = self._to_array(expected)
+            fixes.append("synchronized project-excludes from YAML rules")
         return fixes
 
     def _fix_search_paths_tk(
@@ -195,28 +195,11 @@ class FlextInfraConfigFixer(s[bool]):
         search_path = pyrefly.get(c.Infra.Toml.SEARCH_PATH)
         if not isinstance(search_path, list):
             return []
-        if project_dir == self._workspace_root:
-            new_paths: MutableSequence[str] = []
-            search_items: Sequence[JsonValue] = []
-            with contextlib.suppress(ValidationError):
-                search_items = TypeAdapter(Sequence[JsonValue]).validate_python([
-                    *search_path,
-                ])
-            for path_item in search_items:
-                if not isinstance(path_item, str):
-                    continue
-                if path_item == "../typings/generated":
-                    new_paths.append("typings/generated")
-                    fixes.append(
-                        "search-path ../typings/generated -> typings/generated",
-                    )
-                elif path_item == "../typings":
-                    new_paths.append(c.Infra.Directories.TYPINGS)
-                    fixes.append("search-path ../typings -> typings")
-                else:
-                    new_paths.append(path_item)
-            if fixes:
-                pyrefly[c.Infra.Toml.SEARCH_PATH] = self._to_array(new_paths)
+        manager = FlextInfraExtraPathsManager(workspace_root=self._workspace_root)
+        expected_search = manager.pyrefly_search_paths(
+            project_dir=project_dir,
+            is_root=project_dir == self._workspace_root,
+        )
         search_raw = pyrefly.get(c.Infra.Toml.SEARCH_PATH)
         current_paths: Sequence[JsonValue] = []
         if isinstance(search_raw, list):
@@ -226,19 +209,12 @@ class FlextInfraConfigFixer(s[bool]):
                 )
             except ValidationError:
                 current_paths = []
-        nonexistent = [
-            path_item
-            for path_item in current_paths
-            if isinstance(path_item, str) and (not (project_dir / path_item).exists())
+        current_search = [
+            str(path_item) for path_item in current_paths if isinstance(path_item, str)
         ]
-        if nonexistent:
-            remaining: t.StrSequence = [
-                str(path_item)
-                for path_item in current_paths
-                if isinstance(path_item, str) and path_item not in nonexistent
-            ]
-            pyrefly[c.Infra.Toml.SEARCH_PATH] = self._to_array(remaining)
-            fixes.append(f"removed nonexistent search-path: {', '.join(nonexistent)}")
+        if current_search != expected_search:
+            pyrefly[c.Infra.Toml.SEARCH_PATH] = self._to_array(expected_search)
+            fixes.append("synchronized search-path from YAML rules")
         return fixes
 
     def _remove_ignore_sub_config_tk(

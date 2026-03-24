@@ -51,7 +51,7 @@ class TestMainBaseMkValidate:
     def test_success(self, tmp_path: Path) -> None:
         """basemk-validate returns exit code (0 or 1) based on base.mk match."""
         (tmp_path / "base.mk").write_text("# root")
-        tm.that({0, 1}, has=_run_basemk_validate(_cli_args(tmp_path)))
+        assert _run_basemk_validate(_cli_args(tmp_path)) in {0, 1}
 
     def test_with_violations(self, tmp_path: Path) -> None:
         """basemk-validate returns 1 with mismatched base.mk."""
@@ -123,12 +123,12 @@ class TestMainCliRouting:
     def test_basemk_validate_routing(self, tmp_path: Path) -> None:
         """basemk-validate subcommand routes correctly."""
         result = _cli("basemk-validate", "--workspace", str(tmp_path))
-        tm.that({0, 1}, has=result.returncode)
+        assert result.returncode in {0, 1}
 
     def test_inventory_routing(self, tmp_path: Path) -> None:
         """Inventory subcommand routes correctly."""
         result = _cli("inventory", "--workspace", str(tmp_path))
-        tm.that({0, 1}, has=result.returncode)
+        assert result.returncode in {0, 1}
 
     def test_scan_routing(self, tmp_path: Path) -> None:
         """Scan subcommand routes correctly."""
@@ -142,7 +142,7 @@ class TestMainCliRouting:
             "--include",
             "*.txt",
         )
-        tm.that({0, 1}, has=result.returncode)
+        assert result.returncode in {0, 1}
 
     def test_no_command_returns_1(self) -> None:
         """No subcommand returns exit code 1."""
@@ -161,12 +161,12 @@ class TestMainCliRouting:
             "--workspace",
             str(tmp_path),
         )
-        tm.that({0, 1}, has=result.returncode)
+        assert result.returncode in {0, 1}
 
     def test_stub_validate_routing(self, tmp_path: Path) -> None:
         """stub-validate subcommand routes correctly."""
         result = _cli("stub-validate", "--workspace", str(tmp_path))
-        tm.that({0, 1}, has=result.returncode)
+        assert result.returncode in {0, 1}
 
 
 __all__: t.StrSequence = []

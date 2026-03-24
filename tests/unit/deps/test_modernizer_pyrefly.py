@@ -31,6 +31,10 @@ class TestEnsurePyreflyConfigPhase:
         tm.that(any("python-version" in c for c in changes), eq=True)
         tm.that(any("ignore-errors-in-generated-code" in c for c in changes), eq=True)
         tm.that(any("search-path" in c for c in changes), eq=True)
+        tm.that(
+            any("disable-project-excludes-heuristics" in c for c in changes),
+            eq=True,
+        )
         tm.that(any("errors" in c for c in changes), eq=True)
         tm.that(any("project-excludes" in c for c in changes), eq=True)
 
@@ -74,10 +78,7 @@ def test_ensure_pyrefly_config_phase_apply_ignore_errors() -> None:
     changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
         doc, is_root=True
     )
-    tm.that(
-        any("ignore-errors-in-generated-code enabled" in c for c in changes),
-        eq=True,
-    )
+    assert any("ignore-errors-in-generated-code" in c for c in changes)
     pyrefly = tool["pyrefly"]
     assert isinstance(pyrefly, MutableMapping)
     tm.that(pyrefly, is_=MutableMapping)

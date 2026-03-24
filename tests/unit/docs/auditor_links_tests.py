@@ -145,8 +145,8 @@ class TestAuditorBrokenLinks:
             report_dir=tmp_path / "reports",
         )
         issues = auditor.broken_link_issues(scope)
-        tm.that(issues, eq=True)
-        tm.that(any("missing.md" in issue.message for issue in issues), eq=True)
+        assert len(issues) > 0
+        assert any("missing.md" in issue.message for issue in issues)
 
     def test_broken_link_issues_skips_some_text(self, tmp_path: Path) -> None:
         """Test broken_link_issues skips plain text brackets."""

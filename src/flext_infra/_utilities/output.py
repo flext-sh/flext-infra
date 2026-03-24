@@ -208,6 +208,9 @@ class FlextInfraUtilitiesOutput:
             f"Manual protocols: {report.total_manual_protocol_violations}",
             f"Manual typing aliases: {report.total_manual_typing_violations}",
             f"Compatibility aliases: {report.total_compatibility_alias_violations}",
+            f"Class placement violations: {report.total_class_placement_violations}",
+            f"MRO completeness violations: {report.total_mro_completeness_violations}",
+            f"Namespace source violations: {report.total_namespace_source_violations}",
             f"Parse failures: {report.total_parse_failures}",
             "",
         ]
@@ -223,6 +226,9 @@ class FlextInfraUtilitiesOutput:
                 or proj.manual_protocol_violations
                 or proj.manual_typing_violations
                 or proj.compatibility_alias_violations
+                or proj.class_placement_violations
+                or proj.mro_completeness_violations
+                or proj.namespace_source_violations
                 or proj.parse_failures
             )
             if not has_violations:
@@ -327,6 +333,42 @@ class FlextInfraUtilitiesOutput:
                 if len(proj.compatibility_alias_violations) > max_loose:
                     lines.append(
                         f"    ... and {len(proj.compatibility_alias_violations) - max_loose} more",
+                    )
+            if proj.class_placement_violations:
+                lines.append(
+                    f"  Class placement violations: {len(proj.class_placement_violations)}",
+                )
+                lines.extend(
+                    f"    {cpv.file}:{cpv.line} {cpv.name} -> {cpv.suggestion}"
+                    for cpv in proj.class_placement_violations[:max_loose]
+                )
+                if len(proj.class_placement_violations) > max_loose:
+                    lines.append(
+                        f"    ... and {len(proj.class_placement_violations) - max_loose} more",
+                    )
+            if proj.mro_completeness_violations:
+                lines.append(
+                    f"  MRO completeness violations: {len(proj.mro_completeness_violations)}",
+                )
+                lines.extend(
+                    f"    {mv.file}:{mv.line} '{mv.facade_class}' missing base '{mv.missing_base}' (family={mv.family})"
+                    for mv in proj.mro_completeness_violations[:max_loose]
+                )
+                if len(proj.mro_completeness_violations) > max_loose:
+                    lines.append(
+                        f"    ... and {len(proj.mro_completeness_violations) - max_loose} more",
+                    )
+            if proj.namespace_source_violations:
+                lines.append(
+                    f"  Namespace source violations: {len(proj.namespace_source_violations)}",
+                )
+                lines.extend(
+                    f"    {nsv.file}:{nsv.line} alias='{nsv.alias}' {nsv.current_source} -> {nsv.correct_source}"
+                    for nsv in proj.namespace_source_violations[:max_loose]
+                )
+                if len(proj.namespace_source_violations) > max_loose:
+                    lines.append(
+                        f"    ... and {len(proj.namespace_source_violations) - max_loose} more",
                     )
             if proj.parse_failures:
                 lines.append(f"  Parse failures: {len(proj.parse_failures)}")

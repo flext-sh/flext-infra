@@ -19,7 +19,7 @@ def test_pattern_rule_converts_dict_annotations_to_mapping() -> None:
     updated_tree, _ = rule.apply(tree)
     updated = updated_tree.code
     assert "from collections.abc import Mapping" in updated
-    assert "data: t.ContainerMapping" in updated
+    assert "data: Mapping[str, t.NormalizedValue]" in updated
 
 
 def test_pattern_rule_optionally_converts_return_annotations_to_mapping() -> None:

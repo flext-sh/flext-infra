@@ -42,6 +42,7 @@ class FlextInfraUtilitiesCli:
         apply: bool = False
         output_format: str = "text"
         check: bool = False
+        diff: bool = False
         project: str | None = None
         projects: str | None = None
 
@@ -130,6 +131,11 @@ class FlextInfraUtilitiesCli:
                 help="Plan/Scan only",
             )
             _ = mode.add_argument("--apply", action="store_true", help="Apply changes")
+            _ = mode.add_argument(
+                "--diff",
+                action="store_true",
+                help="Show unified diff of changes without applying",
+            )
         if include_format:
             _ = base.add_argument(
                 "--format",
@@ -258,6 +264,11 @@ class FlextInfraUtilitiesCli:
                 help="Plan/Scan only",
             )
             _ = mode.add_argument("--apply", action="store_true", help="Apply changes")
+            _ = mode.add_argument(
+                "--diff",
+                action="store_true",
+                help="Show unified diff of changes without applying",
+            )
 
         # Add format flag if requested
         if include_format:
@@ -308,8 +319,9 @@ class FlextInfraUtilitiesCli:
             ValidationError: If argument values fail Pydantic validation.
 
         """
-        # Determine apply flag: True if --apply was set, False otherwise
+        # Determine apply/diff flags
         apply_flag = bool(getattr(args, "apply", False))
+        diff_flag = bool(getattr(args, "diff", False))
 
         # Get output format, defaulting to "text"
         output_format = getattr(args, "output_format", "text")
@@ -334,6 +346,7 @@ class FlextInfraUtilitiesCli:
         return FlextInfraUtilitiesCli.CliArgs(
             workspace=workspace_path,
             apply=apply_flag,
+            diff=diff_flag,
             output_format=output_format,
             check=check_flag,
             project=project,

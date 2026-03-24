@@ -703,7 +703,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         violations: Sequence[m.Infra.MROCompletenessViolation],
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
-        """Rewrite facade class headers adding missing MRO bases and Ruff-format."""
+        """Rewrite facade class headers adding missing MRO bases and imports."""
         violations_by_file: Mapping[
             Path,
             MutableSequence[m.Infra.MROCompletenessViolation],
@@ -722,9 +722,15 @@ class FlextInfraUtilitiesRefactorNamespace:
                 continue
             lines = parsed.source.splitlines(keepends=True)
             changed = False
+            all_new_bases: set[str] = set()
             missing_by_facade: Mapping[str, set[str]] = defaultdict(set)
             for violation in file_violations:
                 missing_by_facade[violation.facade_class].add(violation.missing_base)
+            # Collect existing imports to avoid duplicates
+            existing_imports: set[str] = set()
+            for stmt in parsed.tree.body:
+                if isinstance(stmt, ast.ImportFrom) and stmt.names:
+                    existing_imports.update(alias.name for alias in stmt.names)
             facade_nodes = [
                 stmt
                 for stmt in parsed.tree.body
@@ -767,8 +773,28 @@ class FlextInfraUtilitiesRefactorNamespace:
                     continue
                 lines[start : end + 1] = [new_header]
                 changed = True
+                for base_name in missing_bases:
+                    if base_name not in current_bases:
+                        all_new_bases.add(base_name)
             if not changed:
                 continue
+            # Inject import statements for new bases not already imported
+            new_imports: MutableSequence[str] = []
+            for base_name in sorted(all_new_bases):
+                if base_name in existing_imports:
+                    continue
+                module = FlextInfraUtilitiesRefactorNamespace._class_name_to_module(
+                    base_name,
+                )
+                new_imports.append(f"from {module} import {base_name}\n")
+            if new_imports:
+                # Find last import line to insert after
+                insert_line = 0
+                for stmt in parsed.tree.body:
+                    if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                        insert_line = stmt.end_lineno or stmt.lineno
+                for import_line in reversed(new_imports):
+                    lines.insert(insert_line, import_line)
             _ = file_path.write_text(
                 "".join(lines),
                 encoding=c.Infra.Encoding.DEFAULT,

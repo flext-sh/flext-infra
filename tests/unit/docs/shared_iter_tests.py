@@ -27,7 +27,7 @@ class TestIterMarkdownFiles:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "README.md").write_text("# Test\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(files, eq=True)
+        assert len(files) > 0
 
     def test_excludes_hidden(self, tmp_path: Path) -> None:
         """Test iter_markdown_files excludes hidden directories."""
@@ -45,7 +45,7 @@ class TestIterMarkdownFiles:
         nested_dir.mkdir(parents=True, exist_ok=True)
         (nested_dir / "guide.md").write_text("# Guide\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(files, eq=True)
+        assert len(files) > 0
 
     def test_returns_sorted_list(self, tmp_path: Path) -> None:
         """Test iter_markdown_files returns sorted list."""
@@ -69,7 +69,7 @@ class TestIterMarkdownFiles:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("# Test")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(files, eq=True)
+        assert len(files) > 0
 
     def test_excludes_node_modules(self, tmp_path: Path) -> None:
         """Test iter_markdown_files excludes node_modules."""

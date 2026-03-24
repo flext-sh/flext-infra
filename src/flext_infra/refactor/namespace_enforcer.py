@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
@@ -381,6 +382,85 @@ class FlextInfraNamespaceEnforcer:
             parse_failures=parse_failures,
             files_scanned=len(py_files),
         )
+
+    def diff(
+        self,
+        *,
+        project_names: Sequence[str] | None = None,
+    ) -> str:
+        """Run enforce with apply in diff mode: apply, capture diff, restore originals.
+
+        Returns:
+            Unified diff string showing all changes that --apply would make.
+
+        """
+        project_roots = u.Infra.discover_project_roots(
+            workspace_root=self._workspace_root,
+        )
+        if project_names:
+            name_set = set(project_names)
+            project_roots = [r for r in project_roots if r.name in name_set]
+        # Collect all Python files across selected projects
+        all_py_files: MutableSequence[Path] = []
+        for project_root in project_roots:
+            py_files_result = u.Infra.iter_python_files(
+                workspace_root=project_root,
+                project_roots=[project_root],
+                src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
+            )
+            if not py_files_result.is_failure:
+                all_py_files.extend(py_files_result.value)
+        # Snapshot before
+        snapshots: dict[Path, str] = {}
+        for py_file in all_py_files:
+            if py_file.is_file():
+                snapshots[py_file] = py_file.read_text(
+                    encoding=c.Infra.Encoding.DEFAULT,
+                )
+        # Run apply
+        self.enforce(apply=True, project_names=project_names)
+        # Collect diffs and restore
+        diff_lines: MutableSequence[str] = []
+        for py_file, original in snapshots.items():
+            if not py_file.is_file():
+                continue
+            modified = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            if modified != original:
+                rel = py_file.relative_to(self._workspace_root)
+                diff_lines.extend(
+                    difflib.unified_diff(
+                        original.splitlines(keepends=True),
+                        modified.splitlines(keepends=True),
+                        fromfile=f"a/{rel}",
+                        tofile=f"b/{rel}",
+                    ),
+                )
+            # Restore original
+            _ = py_file.write_text(original, encoding=c.Infra.Encoding.DEFAULT)
+        # Check for new files created by apply (facades that didn't exist before)
+        for project_root in project_roots:
+            py_files_result = u.Infra.iter_python_files(
+                workspace_root=project_root,
+                project_roots=[project_root],
+                src_dirs=frozenset(c.Infra.MRO_SCAN_DIRECTORIES),
+            )
+            if py_files_result.is_failure:
+                continue
+            for py_file in py_files_result.value:
+                if py_file not in snapshots and py_file.is_file():
+                    rel = py_file.relative_to(self._workspace_root)
+                    content = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                    diff_lines.extend(
+                        difflib.unified_diff(
+                            [],
+                            content.splitlines(keepends=True),
+                            fromfile="/dev/null",
+                            tofile=f"b/{rel}",
+                        ),
+                    )
+                    # Remove the newly created file to restore state
+                    py_file.unlink()
+        return "".join(diff_lines)
 
     @staticmethod
     def render_text(
