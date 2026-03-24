@@ -465,7 +465,7 @@ class FlextInfraDependencyDetectionService:
         venv_bin: Path,
         *,
         timeout: int = c.Infra.Timeouts.DEFAULT,
-    ) -> r[tuple[t.StrSequence, t.StrSequence]]:
+    ) -> r[t.Infra.Pair[t.StrSequence, t.StrSequence]]:
         """Run mypy to detect missing type stubs and hinted packages."""
         mypy_bin = venv_bin / c.Infra.MYPY
         if not mypy_bin.exists():
@@ -508,7 +508,7 @@ class FlextInfraDependencyDetectionService:
         self,
         workspace_root: Path,
         venv_bin: Path,
-    ) -> r[tuple[t.StrSequence, int]]:
+    ) -> r[t.Infra.Pair[t.StrSequence, int]]:
         """Run pip check to detect dependency conflicts in workspace."""
         pip = venv_bin / "pip"
         if not pip.exists():

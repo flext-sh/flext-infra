@@ -156,7 +156,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
                     return False
             return True
 
-        def sort_key(method: m.Infra.MethodInfo) -> tuple[int, int, str]:
+        def sort_key(method: m.Infra.MethodInfo) -> t.Infra.Triple[int, int, str]:
             for idx, rule_config in enumerate(self._order_config):
                 if rule_config.category == "class_attributes":
                     continue

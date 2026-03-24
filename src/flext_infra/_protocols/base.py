@@ -299,7 +299,7 @@ class FlextInfraProtocolsBase:
             self,
             workspace_root: Path,
             venv_bin: Path,
-        ) -> r[tuple[t.StrSequence, int]]:
+        ) -> r[t.Infra.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
 
@@ -363,7 +363,7 @@ class FlextInfraProtocolsBase:
             *,
             file_path: Path,
             project_package: str,
-            alias_map: Mapping[str, tuple[str, ...]] | None = None,
+            alias_map: Mapping[str, t.Infra.Pair[str, ...]] | None = None,
         ) -> Sequence[FlextInfraProtocolsBase.ViolationWithLine]:
             """Detect import violations in a file.
 

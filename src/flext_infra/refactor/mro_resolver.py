@@ -28,7 +28,7 @@ class FlextInfraRefactorMROResolver:
             t.Infra.FacadeFamily,
             Sequence[t.Infra.ExpectedBase],
         ],
-    ) -> tuple[m.Infra.FamilyMROResolution, ...]:
+    ) -> t.Infra.VariadicTuple[m.Infra.FamilyMROResolution]:
         """Resolve expected and effective MRO data for all facade families."""
         resolutions: MutableSequence[m.Infra.FamilyMROResolution] = []
         for family in (
@@ -85,7 +85,7 @@ class FlextInfraRefactorMROResolver:
         cls,
         *,
         expected_chain: Sequence[t.Infra.ExpectedBase],
-    ) -> tuple[str, ...]:
+    ) -> t.Infra.VariadicTuple[str]:
         expected_names: MutableSequence[str] = []
         for base in expected_chain:
             if isinstance(base, str):
@@ -100,7 +100,7 @@ class FlextInfraRefactorMROResolver:
         *,
         family: t.Infra.FacadeFamily,
         facade_class: type,
-        expected_names: tuple[str, ...],
+        expected_names: t.Infra.VariadicTuple[str],
     ) -> None:
         direct_base_names = tuple(base.__name__ for base in facade_class.__bases__)
         if len(direct_base_names) < len(expected_names):
@@ -129,8 +129,8 @@ class FlextInfraRefactorMROResolver:
         cls,
         *,
         family: t.Infra.FacadeFamily,
-        expected_names: tuple[str, ...],
-        accessible_namespaces: tuple[str, ...],
+        expected_names: t.Infra.VariadicTuple[str],
+        accessible_namespaces: t.Infra.VariadicTuple[str],
     ) -> None:
         missing_namespaces: MutableSequence[str] = []
         for base_name in expected_names:
@@ -153,7 +153,7 @@ class FlextInfraRefactorMROResolver:
         *,
         family: t.Infra.FacadeFamily,
         facade_class: type,
-    ) -> tuple[str, ...]:
+    ) -> t.Infra.VariadicTuple[str]:
         namespace_order: MutableSequence[str] = []
         for current in inspect.getmro(facade_class):
             if current is t.NormalizedValue:

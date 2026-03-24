@@ -212,7 +212,7 @@ class FlextInfraCodegenCensus(s[bool]):
             )
 
             # Count usage
-            all_usage_map: Mapping[str, Sequence[tuple[str, int]]] = (
+            all_usage_map: Mapping[str, Sequence[t.Infra.StrIntPair]] = (
                 u.Infra.scan_all_constant_usages(
                     src_dir.parent,
                     frozenset({".mypy_cache", "__pycache__"}),

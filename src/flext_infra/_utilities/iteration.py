@@ -218,7 +218,7 @@ class FlextInfraUtilitiesIteration:
         *,
         exclude_packages: frozenset[str] | None = None,
         include_tests: bool = True,
-    ) -> r[Sequence[tuple[Path, Path]]]:
+    ) -> r[Sequence[t.Infra.Pair[Path, Path]]]:
         """Discover all Python modules across workspace projects.
 
         Returns tuples of (project_root, file_path) for every Python file
@@ -239,7 +239,7 @@ class FlextInfraUtilitiesIteration:
                 workspace_root=workspace_root,
             )
             effective_exclude = exclude_packages or frozenset()
-            result: MutableSequence[tuple[Path, Path]] = []
+            result: MutableSequence[t.Infra.Pair[Path, Path]] = []
             for project_root in roots:
                 if project_root.name in effective_exclude:
                     continue

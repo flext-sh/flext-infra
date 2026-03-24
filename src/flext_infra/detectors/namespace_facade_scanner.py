@@ -78,7 +78,7 @@ class FlextInfraNamespaceFacadeScanner:
         expected_class: str,
         suffix: str,
         _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None,
-    ) -> tuple[str, str, int]:
+    ) -> t.Infra.Triple[str, str, int]:
         """Find a facade class for a given family in a project.
 
         Args:

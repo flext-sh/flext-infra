@@ -40,7 +40,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
     def mro_migrate_file(
         *,
         scan_result: m.Infra.MROScanReport,
-    ) -> tuple[str, m.Infra.MROFileMigration, t.StrMapping]:
+    ) -> t.Infra.Triple[str, m.Infra.MROFileMigration, t.StrMapping]:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
         module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 {},
             )
         candidate_symbols = {candidate.symbol for candidate in scan_result.candidates}
-        moved_statements: MutableSequence[tuple[str, cst.CSTNode]] = []
+        moved_statements: MutableSequence[t.Infra.Pair[str, cst.CSTNode]] = []
         retained_module_body: MutableSequence[cst.CSTNode] = []
         for stmt in module.body:
             moved = (
@@ -158,7 +158,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         *,
         statement: cst.CSTNode,
         candidate_symbols: t.Infra.StrSet,
-    ) -> tuple[str, cst.CSTNode] | None:
+    ) -> t.Infra.Pair[str, cst.CSTNode] | None:
         if isinstance(statement, cst.ClassDef):
             symbol = statement.name.value
             if symbol in candidate_symbols:
@@ -199,7 +199,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         class_def: cst.ClassDef,
         moved_by_symbol: Mapping[str, cst.CSTNode],
         ordered_symbols: t.StrSequence,
-    ) -> tuple[cst.ClassDef, t.StrMapping]:
+    ) -> t.Infra.Pair[cst.ClassDef, t.StrMapping]:
         retained_class_body: MutableSequence[cst.CSTNode] = []
         alias_by_symbol: MutableMapping[str, str] = {}
         alias_replacement_values: MutableMapping[str, cst.BaseExpression] = {}
@@ -316,7 +316,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         class_name: str,
         moved_by_symbol: Mapping[str, cst.CSTNode],
         ordered_symbols: t.StrSequence,
-    ) -> tuple[cst.ClassDef, t.StrMapping]:
+    ) -> t.Infra.Pair[cst.ClassDef, t.StrMapping]:
         class_template = cst.ClassDef(
             name=cst.Name(class_name),
             body=cst.IndentedBlock(body=()),
@@ -368,7 +368,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
     def _mro_extract_alias_assignment(
         *,
         statement: cst.CSTNode,
-    ) -> tuple[str, str] | None:
+    ) -> t.Infra.StrPair | None:
         if not isinstance(statement, cst.SimpleStatementLine):
             return None
         if len(statement.body) != 1:
@@ -455,7 +455,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
         class_body: Sequence[cst.CSTNode],
         moved_core_lines: Sequence[cst.CSTNode],
         target_class_name: str = "_Core",
-    ) -> tuple[Sequence[cst.CSTNode], bool]:
+    ) -> t.Infra.Pair[Sequence[cst.CSTNode], bool]:
         for index, statement in enumerate(class_body):
             if not (
                 isinstance(statement, cst.ClassDef)

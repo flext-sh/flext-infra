@@ -25,7 +25,7 @@ class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
         return ""
 
     @staticmethod
-    def extract_exports(tree: ast.Module) -> tuple[bool, t.StrSequence]:
+    def extract_exports(tree: ast.Module) -> t.Infra.Pair[bool, t.StrSequence]:
         exports: MutableSequence[str] = []
         has_all = False
         for node in tree.body:

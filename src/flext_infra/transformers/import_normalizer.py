@@ -22,7 +22,7 @@ class FlextInfraTransformerImportNormalizer:
             *,
             file_path: Path,
             project_package: str = "",
-            alias_map: Mapping[str, tuple[str, ...]] | None = None,
+            alias_map: Mapping[str, t.Infra.Pair[str, ...]] | None = None,
             on_change: t.Infra.ChangeCallback = None,
         ) -> None:
             """Initialize transformer with file context and change callback."""

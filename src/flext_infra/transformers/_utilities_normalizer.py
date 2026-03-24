@@ -91,7 +91,7 @@ class FlextInfraUtilitiesImportNormalizer:
 
     @staticmethod
     @lru_cache(maxsize=1)
-    def normalizer_wrong_source_config() -> tuple[bool, frozenset[str]]:
+    def normalizer_wrong_source_config() -> t.Infra.Pair[bool, frozenset[str]]:
         """Return wrong-source detection flag and universal aliases."""
         config = FlextInfraUtilitiesImportNormalizer.normalizer_load_config().get(
             "wrong_source",
@@ -114,7 +114,7 @@ class FlextInfraUtilitiesImportNormalizer:
         package_name: str,
         package_dir: Path,
         project_root: Path | None,
-        alias_map: Mapping[str, tuple[str, ...]] | None,
+        alias_map: Mapping[str, t.Infra.VariadicTuple[str]] | None,
     ) -> t.StrMapping:
         """Build alias-to-module map from project facades and lazy exports."""
         init_path = package_dir / "__init__.py"
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesImportNormalizer:
         *,
         file_path: Path,
         project_package: str,
-        alias_map: Mapping[str, tuple[str, ...]] | None,
+        alias_map: Mapping[str, t.Infra.Pair[str, ...]] | None,
     ) -> FlextInfraNormalizerContext:
         """Build normalized analysis context for a target file."""
         package_name = (

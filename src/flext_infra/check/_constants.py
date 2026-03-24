@@ -23,7 +23,7 @@ class FlextInfraCheckConstants:
         "markdown",
         "go",
     })
-    SARIF_TOOL_INFO: Final[Mapping[str, tuple[str, str]]] = {
+    SARIF_TOOL_INFO: Final[Mapping[str, t.Infra.StrPair]] = {
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
         "pyrefly": ("Pyrefly", "https://github.com/facebook/pyrefly"),

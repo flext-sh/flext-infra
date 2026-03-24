@@ -25,7 +25,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
     """Service for release lifecycle orchestration."""
 
     @staticmethod
-    def _run_make(project_path: Path, verb: str) -> r[tuple[int, str]]:
+    def _run_make(project_path: Path, verb: str) -> r[t.Infra.Pair[int, str]]:
         """Execute a make command for a project and return (exit_code, output)."""
         result = u.Infra.run_raw([
             c.Infra.MAKE,
@@ -268,16 +268,16 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         self,
         workspace_root: Path,
         project_names: t.StrSequence,
-    ) -> Sequence[tuple[str, Path]]:
+    ) -> Sequence[t.Infra.Pair[str, Path]]:
         """Resolve unique build targets from project names."""
-        targets: MutableSequence[tuple[str, Path]] = [
+        targets: MutableSequence[t.Infra.Pair[str, Path]] = [
             (c.Infra.ReportKeys.ROOT, workspace_root),
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.is_success:
             targets.extend((p.name, p.path) for p in projects_result.value)
         seen: t.Infra.StrSet = set()
-        unique: MutableSequence[tuple[str, Path]] = []
+        unique: MutableSequence[t.Infra.Pair[str, Path]] = []
         for name, path in targets:
             if name in seen or not path.exists():
                 continue

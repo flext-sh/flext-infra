@@ -49,8 +49,8 @@ class FlextInfraTransformerTier0ImportFixer:
             self,
             *,
             file_path: Path,
-            tier0_modules: tuple[str, ...],
-            core_aliases: tuple[str, ...],
+            tier0_modules: t.Infra.Pair[str, ...],
+            core_aliases: t.Infra.Pair[str, ...],
         ) -> None:
             """Initialize analyzer state for Tier 0 import scanning."""
             self._file_path = file_path

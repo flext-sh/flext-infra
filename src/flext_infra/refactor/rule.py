@@ -49,7 +49,7 @@ class FlextInfraRefactorRuleLoader:
     def extract_engine_file_filters(
         self,
         config: t.Infra.InfraValue,
-    ) -> tuple[t.StrSequence, t.StrSequence]:
+    ) -> t.Infra.Pair[t.StrSequence, t.StrSequence]:
         """Extract ignore patterns and file extensions from engine config."""
         scope = self._resolve_engine_config(config)
         return (list(scope.ignore_patterns), list(scope.file_extensions))

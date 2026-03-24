@@ -175,17 +175,17 @@ class FlextInfraRefactorModels(
 
         family: Annotated[t.NonEmptyStr, Field(description="Facade family letter")]
         expected_bases: Annotated[
-            tuple[str, ...],
+            t.Infra.Pair[str, ...],
             Field(
                 description="Expected base class names in order",
             ),
         ]
         resolved_mro: Annotated[
-            tuple[str, ...],
+            t.Infra.Pair[str, ...],
             Field(description="Resolved MRO class names"),
         ]
         accessible_namespaces: Annotated[
-            tuple[str, ...],
+            t.Infra.Pair[str, ...],
             Field(
                 description="Namespaces accessible through the MRO",
             ),

@@ -37,7 +37,7 @@ class FlextInfraRefactorRule:
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         """Apply the rule to a CST module and return transformed tree plus changes."""
         return (tree, [])
 
@@ -45,7 +45,7 @@ class FlextInfraRefactorRule:
         self,
         transformer: cst.CSTTransformer,
         tree: cst.Module,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         """Apply a single transformer and return (tree, changes)."""
         new_tree = tree.visit(transformer)
         changes: t.StrSequence = getattr(transformer, "changes", [])

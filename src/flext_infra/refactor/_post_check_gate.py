@@ -16,7 +16,7 @@ class FlextInfraPostCheckGate:
         self,
         result: m.Infra.Result,
         expected: t.Infra.ContainerDict,
-    ) -> tuple[bool, t.StrSequence]:
+    ) -> t.Infra.Pair[bool, t.StrSequence]:
         errors: MutableSequence[str] = []
         if not result.success:
             if result.error:

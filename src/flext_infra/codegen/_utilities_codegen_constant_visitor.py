@@ -115,7 +115,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             self.used_constants: t.Infra.StrSet = set()
             self.direct_refs: MutableSequence[m.Infra.DirectConstantRef] = []
             self.all_constant_refs: MutableSequence[
-                tuple[str, int]
+                t.Infra.StrIntPair
             ] = []  # (name, line)
 
         @override
@@ -306,7 +306,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     ) -> tuple[
         t.Infra.StrSet,
         Sequence[m.Infra.DirectConstantRef],
-        Sequence[tuple[str, int]],
+        Sequence[t.Infra.StrIntPair],
     ]:
         """Scan constant usages in a file.
 
@@ -345,7 +345,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     def scan_all_constant_usages(
         root_path: Path,
         exclude_packages: frozenset[str] | None = None,
-    ) -> Mapping[str, Sequence[tuple[str, int]]]:
+    ) -> Mapping[str, Sequence[t.Infra.StrIntPair]]:
         """Scan all constant usages across workspace (generic).
 
         Args:
@@ -359,7 +359,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         if exclude_packages is None:
             exclude_packages = frozenset()
 
-        usage_map: MutableMapping[str, MutableSequence[tuple[str, int]]] = {}
+        usage_map: MutableMapping[str, MutableSequence[t.Infra.StrIntPair]] = {}
 
         for py_file in root_path.rglob("*.py"):
             if any(excl in py_file.parts for excl in exclude_packages):
@@ -566,7 +566,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             "__pycache__",
         }),
         max_files: int = c.Infra.MAX_SCAN_FILES,
-    ) -> tuple[t.Infra.StrSet, Mapping[str, Sequence[tuple[str, int]]]]:
+    ) -> tuple[t.Infra.StrSet, Mapping[str, Sequence[t.Infra.StrIntPair]]]:
         """Scan workspace for usages of a specific class's attributes.
 
         Args:
@@ -580,7 +580,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
         """
         used_names: t.Infra.StrSet = set()
-        usage_map: MutableMapping[str, MutableSequence[tuple[str, int]]] = {}
+        usage_map: MutableMapping[str, MutableSequence[t.Infra.StrIntPair]] = {}
 
         # Fast lookup for class usages
         search_prefix = f"{class_name}."
@@ -635,7 +635,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
     ) -> tuple[
         Mapping[str, m.Infra.ConstantDefinition],
         t.Infra.StrSet,
-        Mapping[str, Sequence[tuple[str, int]]],
+        Mapping[str, Sequence[t.Infra.StrIntPair]],
     ]:
         """Shared logic: extract attributes and usages for a class."""
         attrs = FlextInfraUtilitiesCodegenConstantDetection.extract_class_attributes_with_mro(

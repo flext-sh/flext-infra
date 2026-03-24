@@ -123,7 +123,7 @@ class FlextInfraOrchestratorService(s[bool]):
             elapsed_total = time.monotonic() - started_total
             output.summary(verb, total, success, failed, skipped, elapsed_total)
             if failed > 0:
-                failures: MutableSequence[tuple[str, int, Path]] = []
+                failures: MutableSequence[t.Infra.Triple[str, int, Path]] = []
                 for proj_name, cmd_result in zip(
                     projects,
                     results,

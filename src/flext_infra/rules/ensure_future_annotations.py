@@ -19,7 +19,7 @@ class FlextInfraRefactorEnsureFutureAnnotationsRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         """Ensure future annotations import exists after docstring/header."""
         changes: MutableSequence[str] = []
         body = list(tree.body)

@@ -137,7 +137,7 @@ class FlextInfraUtilitiesIo:
     def _sort_json_keys(data: JsonValue) -> JsonValue:
         if isinstance(data, dict):
             mapped_data = FlextInfraUtilitiesIo._json_dict_adapter.validate_python(data)
-            sorted_items: Sequence[tuple[str, JsonValue]] = sorted(
+            sorted_items: Sequence[t.Infra.Pair[str, JsonValue]] = sorted(
                 mapped_data.items(),
                 key=operator.itemgetter(0),
             )

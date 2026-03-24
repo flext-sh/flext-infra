@@ -128,7 +128,7 @@ class FlextInfraUtilitiesDiscovery:
         return frozenset(packages)
 
     @staticmethod
-    def package_context(file_path: Path) -> tuple[Path, str]:
+    def package_context(file_path: Path) -> t.Infra.Pair[Path, str]:
         """Return (package_dir, package_name) for any project type."""
         parts = file_path.resolve().parts
         # 1. Standard FLEXT structure: .../src/<package_name>/...
@@ -289,7 +289,7 @@ class FlextInfraUtilitiesDiscovery:
         return dirs
 
     @staticmethod
-    def discover_src_package_dir(project_root: Path) -> tuple[str, Path] | None:
+    def discover_src_package_dir(project_root: Path) -> t.Infra.Pair[str, Path] | None:
         """Find the main package directory inside src/."""
         src_dir = project_root / "src"
         if not src_dir.is_dir():

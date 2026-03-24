@@ -98,7 +98,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         target_text = target_path.read_text(encoding=encoding)
 
         extracted: MutableSequence[str] = []
-        ranges: MutableSequence[tuple[int, int]] = []
+        ranges: MutableSequence[t.Infra.IntPair] = []
         for node in nodes_moved:
             start = node.lineno
             end = node.end_lineno or node.lineno

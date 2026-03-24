@@ -240,7 +240,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         file_path: Path,
         parent_class: str,
         definitions: Sequence[m.Infra.ConstantDefinition],
-    ) -> tuple[bool, t.StrSequence]:
+    ) -> t.Infra.Pair[bool, t.StrSequence]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
         tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if tree is None:
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
     def remove_unused_constants(
         file_path: Path,
         unused: Sequence[m.Infra.UnusedConstant],
-    ) -> tuple[bool, t.StrSequence]:
+    ) -> t.Infra.Pair[bool, t.StrSequence]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
         tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if tree is None:
@@ -276,7 +276,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         file_path: Path,
         project_import: str,
         pkg_dir: Path | None = None,
-    ) -> tuple[bool, t.StrSequence]:
+    ) -> t.Infra.Pair[bool, t.StrSequence]:
         t = FlextInfraUtilitiesCodegenConstantTransformation
         parts = project_import.replace("from ", "").split(" import ")
         package_name = parts[0].strip() if parts else ""
@@ -331,7 +331,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         return index
 
     @staticmethod
-    def break_import_cycles(pkg_dir: Path) -> tuple[bool, t.StrSequence]:
+    def break_import_cycles(pkg_dir: Path) -> t.Infra.Pair[bool, t.StrSequence]:
         def parse_lazy_imports(init_file: Path) -> t.StrMapping:
             if not init_file.is_file():
                 return {}

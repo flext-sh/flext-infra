@@ -163,7 +163,7 @@ class FlextInfraUtilitiesRefactorMroScan:
     def _mro_scan_target_specs(
         *,
         target: str,
-    ) -> tuple[m.Infra.MROTargetSpec, ...]:
+    ) -> t.Infra.Pair[m.Infra.MROTargetSpec, ...]:
         constants_spec = m.Infra.MROTargetSpec(
             family_alias="c",
             file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,

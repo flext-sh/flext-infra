@@ -41,7 +41,7 @@ class FlextInfraProjectClassifier:
             family_chains={**family_chains},
         )
 
-    def _read_project_metadata(self) -> tuple[str, t.StrSequence]:
+    def _read_project_metadata(self) -> t.Infra.Pair[str, t.StrSequence]:
         if not self._pyproject_path.is_file():
             return ("", [])
         parsed: t.Infra.ContainerDict = tomllib.loads(
@@ -210,7 +210,7 @@ class FlextInfraProjectClassifier:
         self,
         file_path: Path,
         suffix: str,
-    ) -> tuple[t.Infra.StrSet, t.Infra.StrSet]:
+    ) -> t.Infra.Pair[t.Infra.StrSet, t.Infra.StrSet]:
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
             return (set(), set())

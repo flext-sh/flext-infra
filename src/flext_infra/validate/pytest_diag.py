@@ -23,7 +23,7 @@ from flext_infra import c, m, r
 class _DiagResult:
     """Internal container for extracted diagnostics."""
 
-    __slots__: ClassVar[tuple[str, str, str, str, str]] = (
+    __slots__: ClassVar[t.Infra.Quint[str, str, str, str, str]] = (
         "error_traces",
         "failed_cases",
         "skip_cases",
@@ -116,7 +116,7 @@ class FlextInfraPytestDiagExtractor:
             return False
         if root is None:
             return False
-        slow_rows: MutableSequence[tuple[float, str]] = []
+        slow_rows: MutableSequence[t.Infra.Pair[float, str]] = []
         for case in root.iter("testcase"):
             classname = case.attrib.get("classname", "")
             name = case.attrib.get(c.Infra.NAME, "")

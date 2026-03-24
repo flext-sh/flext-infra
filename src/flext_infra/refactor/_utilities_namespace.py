@@ -284,7 +284,9 @@ class FlextInfraUtilitiesRefactorNamespace:
         *,
         project_root: Path,
         py_files: Sequence[Path],
-        protocol_moves: Sequence[tuple[Path, Path, tuple[str, ...]]],
+        protocol_moves: Sequence[
+            t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]]
+        ],
     ) -> None:
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
 
@@ -298,7 +300,9 @@ class FlextInfraUtilitiesRefactorNamespace:
                 parts = parts[:-1]
             return ".".join(parts)
 
-        source_target_names: MutableSequence[tuple[str, str, t.Infra.StrSet]] = []
+        source_target_names: MutableSequence[
+            t.Infra.Triple[str, str, t.Infra.StrSet]
+        ] = []
         for source_file, target_file, moved_name_seq in protocol_moves:
             source_module = _module_path(source_file)
             target_module = _module_path(target_file)
@@ -350,7 +354,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         *,
         source: str,
         source_file: Path,
-        remove_ranges: Sequence[tuple[int, int]],
+        remove_ranges: Sequence[t.Infra.IntPair],
     ) -> None:
         """Remove specified line ranges from source and write back to file."""
         source_lines = source.splitlines()
@@ -371,7 +375,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         project_root: Path,
         source_file: Path,
         protocol_names: t.Infra.StrSet,
-    ) -> tuple[Path, Path, tuple[str, ...]] | None:
+    ) -> t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]] | None:
         parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
             source_file,
         )
@@ -379,7 +383,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             return None
         source, tree = parsed.source, parsed.tree
         class_nodes: MutableSequence[ast.ClassDef] = []
-        remove_ranges: MutableSequence[tuple[int, int]] = []
+        remove_ranges: MutableSequence[t.Infra.IntPair] = []
         blocks: MutableSequence[str] = []
         for stmt in tree.body:
             if not isinstance(stmt, ast.ClassDef):
@@ -437,7 +441,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         if parsed is None:
             return
         source, tree = parsed.source, parsed.tree
-        remove_ranges: MutableSequence[tuple[int, int]] = []
+        remove_ranges: MutableSequence[t.Infra.IntPair] = []
         blocks: MutableSequence[str] = []
         for stmt in tree.body:
             if isinstance(stmt, ast.TypeAlias):
@@ -839,7 +843,9 @@ class FlextInfraUtilitiesRefactorNamespace:
         grouped_names: Mapping[Path, t.Infra.StrSet] = defaultdict(set)
         for violation in violations:
             grouped_names[Path(violation.file)].add(violation.name)
-        protocol_moves: MutableSequence[tuple[Path, Path, tuple[str, ...]]] = []
+        protocol_moves: MutableSequence[
+            t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]]
+        ] = []
         for source_file, protocol_names in grouped_names.items():
             move_result = FlextInfraUtilitiesRefactorNamespace._namespace_move_protocol_classes_to_canonical_file(
                 project_root=project_root,
@@ -918,7 +924,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             line_buffer = kept_source.splitlines(keepends=True)
             replacements_by_line: Mapping[
                 int,
-                MutableSequence[tuple[int, int, str]],
+                MutableSequence[t.Infra.Triple[int, int, str]],
             ] = defaultdict(
                 list,
             )

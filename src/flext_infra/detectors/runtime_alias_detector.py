@@ -142,7 +142,7 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         family = cls._family_for_file(file_name=file_path.name)
         if not family:
             return []
-        alias_assignments: MutableSequence[tuple[int, str, str]] = []
+        alias_assignments: MutableSequence[t.Infra.Triple[int, str, str]] = []
         for stmt in u.Infra.cst_iter_simple_statements(tree.body):
             if not isinstance(stmt, cst.Assign):
                 continue

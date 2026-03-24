@@ -37,7 +37,7 @@ class FlextInfraInjectCommentsPhase:
     def _strip_managed_lines(
         cls,
         lines: t.StrSequence,
-    ) -> tuple[t.StrSequence, t.StrSequence]:
+    ) -> t.Infra.Pair[t.StrSequence, t.StrSequence]:
         changes: MutableSequence[str] = []
         managed_lines = cls._managed_marker_lines()
         cleaned: MutableSequence[str] = []
@@ -78,7 +78,7 @@ class FlextInfraInjectCommentsPhase:
             changes.append("marker injected for optional-dependencies.dev")
             emitted_markers.add(managed_marker)
 
-    def apply(self, rendered: str) -> tuple[str, t.StrSequence]:
+    def apply(self, rendered: str) -> t.Infra.Pair[str, t.StrSequence]:
         changes: MutableSequence[str] = []
         lines = rendered.splitlines()
         cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)

@@ -11,7 +11,7 @@ class FlextInfraRefactorMROMigrationValidator:
     """Validator for MRO migration completeness and correctness."""
 
     @classmethod
-    def validate(cls, *, workspace_root: Path, target: str) -> tuple[int, int]:
+    def validate(cls, *, workspace_root: Path, target: str) -> t.Infra.IntPair:
         """Return count of remaining symbols and unsupported entries."""
         file_results, _ = u.Infra.mro_scan_workspace(
             workspace_root=workspace_root,

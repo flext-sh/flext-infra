@@ -37,7 +37,7 @@ class FlextInfraPreCheckGate:
     def validate_entry(
         self,
         entry: t.StrMapping,
-    ) -> tuple[bool, t.StrMapping | None]:
+    ) -> t.Infra.Pair[bool, t.StrMapping | None]:
         """Validate a single class-nesting entry against the loaded policy."""
         source_symbol = entry.get(c.Infra.ReportKeys.LOOSE_NAME, "")
         helper_symbol = entry.get("helper_name", "")
@@ -208,7 +208,7 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         """Apply method reordering transformer when order config is available."""
         order_config_raw = self.config.get("method_order") or self.config.get(
             "order",

@@ -170,7 +170,7 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         return violations
 
     @staticmethod
-    def is_pydantic_model_class(node: cst.ClassDef) -> tuple[bool, str]:
+    def is_pydantic_model_class(node: cst.ClassDef) -> t.Infra.Pair[bool, str]:
         """Check if a class definition is a Pydantic model.
 
         Args:

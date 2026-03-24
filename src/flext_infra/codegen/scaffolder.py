@@ -129,7 +129,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
         *,
         target_dir: Path,
         prefix: str,
-        modules: tuple[tuple[str, str, str, str], ...],
+        modules: tuple[t.Infra.Quad[str, str, str, str], ...],
         test_prefix: str,
         files_created: MutableSequence[str],
         files_skipped: MutableSequence[str],

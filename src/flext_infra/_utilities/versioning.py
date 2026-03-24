@@ -125,7 +125,7 @@ class FlextInfraUtilitiesVersioning:
         return r[str].ok(version)
 
     @staticmethod
-    def parse_semver(version: str) -> r[tuple[int, int, int]]:
+    def parse_semver(version: str) -> r[t.Infra.Triple[int, int, int]]:
         """Parse a semantic version string into (major, minor, patch).
 
         Args:

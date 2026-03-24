@@ -16,7 +16,7 @@ class FlextInfraRefactorAliasRemover(cst.CSTTransformer):
     def __init__(
         self,
         allow_aliases: t.Infra.StrSet,
-        allow_target_suffixes: tuple[str, ...],
+        allow_target_suffixes: t.Infra.Pair[str, ...],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize alias remover with allow-list configuration."""

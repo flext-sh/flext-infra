@@ -18,7 +18,7 @@ class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         return self._apply_transformer(
             FlextInfraRefactorTypingUnifier(
                 canonical_map=c.Infra.TYPING_INLINE_UNION_CANONICAL_MAP,

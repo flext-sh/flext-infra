@@ -298,7 +298,7 @@ class FlextInfraRefactorConstants:
     NAMESPACE_FILE_TO_FAMILY: ClassVar[t.StrMapping] = {
         f"{suffix.lower()}.py": alias for alias, suffix in FAMILY_SUFFIXES.items()
     }
-    NAMESPACE_FAMILY_EXPECTED_ALIAS: ClassVar[Mapping[str, tuple[str, str]]] = {
+    NAMESPACE_FAMILY_EXPECTED_ALIAS: ClassVar[Mapping[str, t.Infra.StrPair]] = {
         f"{suffix.lower()}.py": (alias, suffix)
         for alias, suffix in FAMILY_SUFFIXES.items()
     }

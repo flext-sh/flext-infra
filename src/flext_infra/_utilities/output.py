@@ -151,7 +151,7 @@ class FlextInfraUtilitiesOutput:
     def failure_summary(
         cls,
         verb: str,
-        failures: Sequence[tuple[str, int, Path]],
+        failures: Sequence[t.Infra.Triple[str, int, Path]],
     ) -> None:
         """Show end-of-run failure summary block."""
         if not failures:

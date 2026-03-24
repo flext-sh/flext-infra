@@ -238,14 +238,14 @@ class FlextInfraNamespaceEnforcerModels:
             )
 
     class CyclicImportViolation(FlextModels.FrozenStrictModel):
-        cycle: Annotated[tuple[str, ...], Field(description="Import cycle chain")]
+        cycle: Annotated[t.Infra.Pair[str, ...], Field(description="Import cycle chain")]
         files: Annotated[
-            tuple[str, ...],
+            t.Infra.Pair[str, ...],
             Field(default_factory=tuple, description="Files in cycle"),
         ]
 
         @classmethod
-        def create(cls, *, cycle: tuple[str, ...], files: tuple[str, ...]) -> Self:
+        def create(cls, *, cycle: t.Infra.Pair[str, ...], files: t.Infra.Pair[str, ...]) -> Self:
             return cls(cycle=cycle, files=files)
 
     class RuntimeAliasViolation(FlextModels.FrozenStrictModel):

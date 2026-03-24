@@ -27,7 +27,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         typed_cfg: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
             Mapping[str, t.Infra.InfraValue],
         ).validate_python(self.config)
@@ -222,7 +222,7 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         migrations_raw = self.config.get("signature_migrations", [])
         try:
             parsed = TypeAdapter(

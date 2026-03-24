@@ -275,7 +275,7 @@ class FlextInfraInternalDependencySyncService:
         remote_val = remote.value
         return self.owner_from_remote_url(remote_val.strip())
 
-    def is_workspace_mode(self, project_root: Path) -> tuple[bool, Path | None]:
+    def is_workspace_mode(self, project_root: Path) -> t.Infra.Pair[bool, Path | None]:
         """Determine workspace mode and return resolved workspace root."""
         if os.getenv("FLEXT_STANDALONE") == "1":
             u.Infra.info("Standalone mode: skipping workspace dependency sync")

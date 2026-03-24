@@ -80,7 +80,7 @@ class FlextInfraCensusUsageCollector(cst.CSTVisitor):
         self,
         *,
         method_index: Mapping[str, t.Infra.StrSet],
-        flat_aliases: Mapping[str, tuple[str, str]],
+        flat_aliases: Mapping[str, t.Infra.StrPair],
         inner_class_map: t.StrMapping,
         alias_locals: t.Infra.StrSet,
         direct_imports: t.StrMapping,

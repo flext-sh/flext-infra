@@ -45,7 +45,7 @@ class FlextInfraUtilitiesLogParser:
         log_path: Path,
         *,
         max_lines: int = 5,
-    ) -> tuple[int, t.StrSequence]:
+    ) -> t.Infra.Pair[int, t.StrSequence]:
         """Read log tail and extract error lines.
 
         Args:

@@ -27,7 +27,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, t.StrSequence]:
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         if _file_path is None:
             return (tree, [])
         if _file_path.name != c.Infra.CONSTANTS_FILE_GLOB:
