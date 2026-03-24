@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class FlextInfraWorkspaceConstants:
     """Workspace infrastructure constants."""
 
-    MAKEFILE_REPLACEMENTS: Final[t.Infra.Pair[t.Infra.StrPair, ...]] = (
+    MAKEFILE_REPLACEMENTS: Final[t.Infra.VariadicTuple[t.Infra.StrPair]] = (
         (
             'python3 "$(BASE_MK_DIR)/scripts/mode.py"',
             "python -m flext_infra workspace detect",

@@ -31,7 +31,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         *,
         workspace_root: Path,
         target: str,
-    ) -> tuple[Sequence[m.Infra.MROScanReport], int]:
+    ) -> t.Infra.Pair[Sequence[m.Infra.MROScanReport], int]:
         """Scan workspace and collect migration reports for a target family."""
         if target not in c.Infra.MRO_TARGETS:
             return ([], 0)
@@ -163,7 +163,7 @@ class FlextInfraUtilitiesRefactorMroScan:
     def _mro_scan_target_specs(
         *,
         target: str,
-    ) -> t.Infra.Pair[m.Infra.MROTargetSpec, ...]:
+    ) -> t.Infra.VariadicTuple[m.Infra.MROTargetSpec]:
         constants_spec = m.Infra.MROTargetSpec(
             family_alias="c",
             file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,

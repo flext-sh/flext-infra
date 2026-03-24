@@ -16,7 +16,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
         workspace_root: Path,
         before_report: Path | None,
         baseline_file: Path | None,
-    ) -> tuple[Mapping[str, t.Infra.InfraValue] | None, str, str]:
+    ) -> t.Infra.Triple[Mapping[str, t.Infra.InfraValue] | None, str, str]:
         baseline_path = before_report or baseline_file
         if baseline_path is None:
             return (None, "", "")

@@ -27,7 +27,7 @@ class FlextInfraCodegenConstants:
         "TypeVarTuple",
     })
     "Callable names that create type variables (for standalone detection)."
-    SRC_MODULES: Final[tuple[t.Infra.Quad[str, str, str, str], ...]] = (
+    SRC_MODULES: Final[t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
         ("typings.py", "Types", "FlextTypes", "Type aliases"),
         ("protocols.py", "Protocols", "FlextProtocols", "Protocol definitions"),
@@ -35,7 +35,7 @@ class FlextInfraCodegenConstants:
         ("utilities.py", "Utilities", "FlextUtilities", "Utility functions"),
     )
     "Base module definitions for src/: (filename, class_suffix, base_class, docstring)."
-    TESTS_MODULES: Final[tuple[t.Infra.Quad[str, str, str, str], ...]] = (
+    TESTS_MODULES: Final[t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextTestsConstants", "Test constants"),
         ("typings.py", "Types", "FlextTestsTypes", "Test type aliases"),
         ("protocols.py", "Protocols", "FlextTestsProtocols", "Test protocols"),

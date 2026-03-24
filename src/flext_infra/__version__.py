@@ -55,7 +55,7 @@ class FlextInfraVersion:
         return cls.__version__
 
     @classmethod
-    def get_version_info(cls) -> t.Infra.Pair[int | str, ...]:
+    def get_version_info(cls) -> t.Infra.VariadicTuple[int | str]:
         """Return the version as a tuple of integers and strings."""
         return cls.__version_info__
 

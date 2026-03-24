@@ -175,7 +175,7 @@ class FlextInfraUtilitiesCli:
         include_format: bool = False,
         include_check: bool = False,
         include_project: bool = False,
-    ) -> tuple[ArgumentParser, Mapping[str, ArgumentParser]]:
+    ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags.
 
         Builds an ArgumentParser supporting multiple subcommands (e.g., "check",

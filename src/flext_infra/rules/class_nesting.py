@@ -214,7 +214,7 @@ class FlextInfraClassNestingRefactorRule:
                 ]
                 config[c.Infra.ReportKeys.CLASS_NESTING] = coerced_nesting
             except ValidationError:
-                config[c.Infra.ReportKeys.CLASS_NESTING] = []
+                config[c.Infra.ReportKeys.CLASS_NESTING] = list[t.Infra.InfraValue]()
         helper_raw = loaded.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION)
         if isinstance(helper_raw, list):
             try:
@@ -229,7 +229,7 @@ class FlextInfraClassNestingRefactorRule:
                 ]
                 config[c.Infra.ReportKeys.HELPER_CONSOLIDATION] = coerced_helpers
             except ValidationError:
-                config[c.Infra.ReportKeys.HELPER_CONSOLIDATION] = []
+                config[c.Infra.ReportKeys.HELPER_CONSOLIDATION] = list[t.Infra.InfraValue]()
         self._cached_config = config
         return config
 

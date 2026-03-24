@@ -291,7 +291,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             )
             if defs:
                 if project_name not in all_defs:
-                    all_defs[project_name] = []
+                    all_defs[project_name] = list[m.Infra.ConstantDefinition]()
                 all_defs[project_name].extend(defs)
 
         return all_defs
@@ -303,7 +303,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         *,
         target_class: str = "",
         collect_all_refs: bool = False,
-    ) -> tuple[
+    ) -> t.Infra.Triple[
         t.Infra.StrSet,
         Sequence[m.Infra.DirectConstantRef],
         Sequence[t.Infra.StrIntPair],
@@ -382,7 +382,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
             for constant_name, line_num in all_refs:
                 if constant_name not in usage_map:
-                    usage_map[constant_name] = []
+                    usage_map[constant_name] = list[tuple[str, int]]()
                 usage_map[constant_name].append((str(py_file), line_num))
 
         return usage_map
@@ -432,7 +432,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         by_name: MutableMapping[str, MutableSequence[m.Infra.ConstantDefinition]] = {}
         for defn in definitions:
             if defn.name not in by_name:
-                by_name[defn.name] = []
+                by_name[defn.name] = list[m.Infra.ConstantDefinition]()
             by_name[defn.name].append(defn)
 
         # Group by value (for value duplicates)
@@ -440,7 +440,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         for defn in definitions:
             value_key = defn.value_repr
             if value_key not in by_value:
-                by_value[value_key] = []
+                by_value[value_key] = list[m.Infra.ConstantDefinition]()
             by_value[value_key].append(defn)
 
         duplicates: MutableSequence[m.Infra.DuplicateConstantGroup] = []
@@ -566,7 +566,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             "__pycache__",
         }),
         max_files: int = c.Infra.MAX_SCAN_FILES,
-    ) -> tuple[t.Infra.StrSet, Mapping[str, Sequence[t.Infra.StrIntPair]]]:
+    ) -> t.Infra.Pair[t.Infra.StrSet, Mapping[str, Sequence[t.Infra.StrIntPair]]]:
         """Scan workspace for usages of a specific class's attributes.
 
         Args:
@@ -620,7 +620,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                         attr_name = line[after_dot:end_pos]
                         used_names.add(attr_name)
                         if attr_name not in usage_map:
-                            usage_map[attr_name] = []
+                            usage_map[attr_name] = list[tuple[str, int]]()
                         usage_map[attr_name].append((str(py_file), line_num))
                     idx = pos + 1
 
@@ -632,7 +632,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         root_path: Path,
         exclude_patterns: frozenset[str],
         max_files: int,
-    ) -> tuple[
+    ) -> t.Infra.Triple[
         Mapping[str, m.Infra.ConstantDefinition],
         t.Infra.StrSet,
         Mapping[str, Sequence[t.Infra.StrIntPair]],
@@ -728,7 +728,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         for name, defn in attrs.items():
             value_key = defn.value_repr[:100]
             if value_key not in by_value:
-                by_value[value_key] = []
+                by_value[value_key] = list[Mapping[str, str | int]]()
             by_value[value_key].append({
                 "name": name,
                 "type": defn.type_annotation,

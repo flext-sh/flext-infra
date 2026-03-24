@@ -191,7 +191,7 @@ class FlextInfraProjectClassifier:
 
     def _discover_facade_inheritance(
         self,
-    ) -> tuple[Mapping[str, t.Infra.StrSet], t.Infra.StrSet]:
+    ) -> t.Infra.Pair[Mapping[str, t.Infra.StrSet], t.Infra.StrSet]:
         family_bases: Mapping[str, t.Infra.StrSet] = {
             family: set() for family in c.Infra.FAMILY_SUFFIXES
         }

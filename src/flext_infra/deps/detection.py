@@ -397,7 +397,7 @@ class FlextInfraDependencyDetectionService:
         config_path: Path | None = None,
         json_output_path: Path | None = None,
         extend_exclude: t.StrSequence | None = None,
-    ) -> r[tuple[Sequence[t.Infra.ContainerDict], int]]:
+    ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
         """Run deptry analysis on a project and parse JSON output."""
         config = config_path or project_path / c.Infra.Files.PYPROJECT_FILENAME
         if not config.exists():

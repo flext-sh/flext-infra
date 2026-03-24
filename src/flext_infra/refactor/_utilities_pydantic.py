@@ -144,7 +144,7 @@ class FlextInfraUtilitiesRefactorPydantic:
     def _pydantic_filter_moves_for_necessity(
         class_moves: Sequence[m.Infra.ClassMove],
         alias_moves: Sequence[m.Infra.AliasMove],
-    ) -> tuple[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]]:
+    ) -> t.Infra.Pair[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]]:
         filtered_classes = [
             move
             for move in class_moves

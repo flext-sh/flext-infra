@@ -118,7 +118,7 @@ class FlextInfraUtilitiesParsing:
     @staticmethod
     def cst_resolve_positions(
         tree: cst.Module,
-    ) -> tuple[cst.Module, Mapping[cst.CSTNode, CodeRange]]:
+    ) -> t.Infra.Pair[cst.Module, Mapping[cst.CSTNode, CodeRange]]:
         """Wrap a CST module and resolve position metadata.
 
         Args:

@@ -61,7 +61,7 @@ class FlextInfraRefactorEngine:
         *,
         apply_safety: bool,
         dry_run: bool,
-    ) -> tuple[str, Sequence[m.Infra.Result] | None]:
+    ) -> t.Infra.Pair[str, Sequence[m.Infra.Result] | None]:
         """Attempt to create a safety stash before transformations.
 
         Returns (stash_ref, None) on success or ("", error_results) on failure.

@@ -26,7 +26,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
                 Sequence[m.Infra.MethodOrderRule],
             ).validate_python(order_config)
         except ValidationError:
-            self._order_config = []
+            self._order_config = list[m.Infra.MethodOrderRule]()
         self._on_change = on_change
         self.changes: MutableSequence[str] = []
 

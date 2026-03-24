@@ -50,26 +50,24 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             try:
                 raw_text = json_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
                 parsed = u.Infra.parse(raw_text)
+                error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
                 if parsed.is_success and isinstance(parsed.value, Mapping):
                     parsed_map = self._to_mapping(parsed.value)
-                    error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = (
+                    error_items = (
                         self._to_mapping_list(parsed_map.get("errors", []))
                     )
                 elif parsed.is_success and isinstance(parsed.value, list):
                     error_items = self._to_mapping_list(parsed.value)
-                else:
-                    error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
                 issues.extend(
                     m.Infra.Issue(
-                        file=self._as_str(item.get("path"), "?"),
-                        line=self._as_int(item.get("line"), 0),
-                        column=self._as_int(item.get("column"), 0),
-                        code=self._as_str(item.get("name"), ""),
-                        message=self._as_str(item.get("description"), ""),
-                        severity=self._as_str(item.get("severity"), c.Infra.ERROR),
+                        file=self._as_str(err.get("path"), "?"),
+                        line=self._as_int(err.get("line"), 0),
+                        column=self._as_int(err.get("column"), 0),
+                        code=self._as_str(err.get("name"), ""),
+                        message=self._as_str(err.get("description"), ""),
+                        severity=self._as_str(err.get("severity"), c.Infra.ERROR),
                     )
                     for err in error_items
-                    for item in [dict(err)]
                 )
             except (TypeError, ValidationError):
                 pass

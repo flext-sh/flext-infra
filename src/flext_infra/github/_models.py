@@ -42,7 +42,7 @@ class FlextInfraGithubModels:
         success: Annotated[t.NonNegativeInt, Field(description="Successful executions")]
         fail: Annotated[t.NonNegativeInt, Field(description="Failed executions")]
         results: Annotated[
-            t.Infra.Pair[FlextInfraGithubModels.PrExecutionResultModel, ...],
+            t.Infra.VariadicTuple[FlextInfraGithubModels.PrExecutionResultModel],
             Field(
                 default_factory=tuple,
                 description="Per-repository results",

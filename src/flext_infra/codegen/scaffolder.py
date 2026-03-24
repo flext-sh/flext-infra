@@ -19,6 +19,7 @@ from flext_infra import (
     FlextInfraNamespaceValidator,
     c,
     m,
+    t,
     u,
 )
 
@@ -129,7 +130,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
         *,
         target_dir: Path,
         prefix: str,
-        modules: tuple[t.Infra.Quad[str, str, str, str], ...],
+        modules: t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]],
         test_prefix: str,
         files_created: MutableSequence[str],
         files_skipped: MutableSequence[str],

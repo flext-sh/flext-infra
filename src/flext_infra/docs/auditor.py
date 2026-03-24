@@ -39,7 +39,7 @@ class FlextInfraDocAuditor:
     @staticmethod
     def load_audit_budgets(
         workspace_root: Path,
-    ) -> tuple[int | None, Mapping[str, int]]:
+    ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
         """Load audit issue budgets from architecture config."""
         config_path: Path | None = None
         for candidate in [workspace_root, *workspace_root.parents]:

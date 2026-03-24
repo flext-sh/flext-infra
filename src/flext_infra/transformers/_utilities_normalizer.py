@@ -258,7 +258,7 @@ class FlextInfraUtilitiesImportNormalizer:
         *,
         file_path: Path,
         project_package: str,
-        alias_map: Mapping[str, t.Infra.Pair[str, ...]] | None,
+        alias_map: Mapping[str, t.Infra.VariadicTuple[str]] | None,
     ) -> FlextInfraNormalizerContext:
         """Build normalized analysis context for a target file."""
         package_name = (

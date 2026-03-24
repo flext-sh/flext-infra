@@ -101,7 +101,7 @@ class FlextInfraRefactorAstGrepModels:
             Field(default="c", description="Facade alias letter"),
         ] = "c"
         candidates: Annotated[
-            t.Infra.Pair[FlextInfraRefactorAstGrepModels.MROSymbolCandidate, ...],
+            t.Infra.VariadicTuple[FlextInfraRefactorAstGrepModels.MROSymbolCandidate],
             Field(
                 default_factory=tuple,
                 description="Module-level symbol candidates",
@@ -114,14 +114,14 @@ class FlextInfraRefactorAstGrepModels:
         file: Annotated[t.NonEmptyStr, Field(description="Absolute file path")]
         module: Annotated[t.NonEmptyStr, Field(description="Import module path")]
         moved_symbols: Annotated[
-            t.Infra.Pair[str, ...],
+            t.Infra.VariadicTuple[str],
             Field(
                 default_factory=tuple,
                 description="Symbols moved to facade class",
             ),
         ]
         created_classes: Annotated[
-            t.Infra.Pair[str, ...],
+            t.Infra.VariadicTuple[str],
             Field(
                 default_factory=tuple,
                 description="Facade classes created during migration",
@@ -158,14 +158,14 @@ class FlextInfraRefactorAstGrepModels:
             ),
         ]
         migrations: Annotated[
-            t.Infra.Pair[FlextInfraRefactorAstGrepModels.MROFileMigration, ...],
+            t.Infra.VariadicTuple[FlextInfraRefactorAstGrepModels.MROFileMigration],
             Field(
                 default_factory=tuple,
                 description="File migration summaries",
             ),
         ]
         rewrites: Annotated[
-            t.Infra.Pair[FlextInfraRefactorAstGrepModels.MRORewriteResult, ...],
+            t.Infra.VariadicTuple[FlextInfraRefactorAstGrepModels.MRORewriteResult],
             Field(
                 default_factory=tuple,
                 description="Reference rewrite summaries",
@@ -187,11 +187,11 @@ class FlextInfraRefactorAstGrepModels:
             Field(default="", description="Git stash rollback ref"),
         ]
         warnings: Annotated[
-            t.Infra.Pair[str, ...],
+            t.Infra.VariadicTuple[str],
             Field(default_factory=tuple, description="Warnings"),
         ]
         errors: Annotated[
-            t.Infra.Pair[str, ...],
+            t.Infra.VariadicTuple[str],
             Field(default_factory=tuple, description="Errors"),
         ]
 

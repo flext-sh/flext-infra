@@ -257,7 +257,7 @@ class FlextInfraProtocolsBase:
             self,
             project_path: Path,
             venv_bin: Path,
-        ) -> r[tuple[Sequence[t.Infra.ContainerDict], int]]:
+        ) -> r[t.Infra.Pair[Sequence[t.Infra.ContainerDict], int]]:
             """Run deptry on a project and return issues."""
             ...
 
@@ -363,7 +363,7 @@ class FlextInfraProtocolsBase:
             *,
             file_path: Path,
             project_package: str,
-            alias_map: Mapping[str, t.Infra.Pair[str, ...]] | None = None,
+            alias_map: Mapping[str, t.Infra.VariadicTuple[str]] | None = None,
         ) -> Sequence[FlextInfraProtocolsBase.ViolationWithLine]:
             """Detect import violations in a file.
 

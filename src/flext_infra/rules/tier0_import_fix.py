@@ -25,7 +25,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, Sequence[str]]:
+    ) -> t.Infra.Pair[cst.Module, Sequence[str]]:
         if _file_path is None:
             return (tree, [])
         analyzer = FlextInfraTransformerTier0ImportFixer.Analyzer(
@@ -53,13 +53,13 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
         updated = tree.visit(fixer)
         return (updated, fixer.changes)
 
-    def _tier0_modules(self) -> t.Infra.Pair[str, ...]:
+    def _tier0_modules(self) -> t.StrSequence:
         value = self.config.get("tier0_modules", [])
         if not isinstance(value, list):
             return ("constants.py", "typings.py", "protocols.py")
         return tuple(str(item) for item in value)
 
-    def _core_aliases(self) -> t.Infra.Pair[str, ...]:
+    def _core_aliases(self) -> t.StrSequence:
         value = self.config.get("core_aliases", [])
         if not isinstance(value, list):
             return tuple(c.Infra.NAMESPACE_SOURCE_UNIVERSAL_ALIASES)
