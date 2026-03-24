@@ -23,13 +23,13 @@ class EnsurePyrightConfigPhase:
         is_root: bool,
         workspace_root: Path | None,
         project_dir: Path | None = None,
-    ) -> Sequence[Mapping[str, str]]:
+    ) -> Sequence[t.StrMapping]:
         if not is_root:
             return self._expected_envs_for_project(project_dir)
         if workspace_root is None:
             return self._expected_envs_for_project(project_dir)
 
-        expected_envs: MutableSequence[Mapping[str, str]] = []
+        expected_envs: MutableSequence[t.StrMapping] = []
         root_src = workspace_root / c.Infra.Paths.DEFAULT_SRC_DIR
         root_tests = workspace_root / c.Infra.Directories.TESTS
         root_examples = workspace_root / c.Infra.Directories.EXAMPLES
@@ -91,7 +91,7 @@ class EnsurePyrightConfigPhase:
     @staticmethod
     def _expected_envs_for_project(
         project_dir: Path | None,
-    ) -> Sequence[Mapping[str, str]]:
+    ) -> Sequence[t.StrMapping]:
         """Build executionEnvironments dynamically from discovered dirs."""
         if project_dir is None:
             return [
@@ -99,7 +99,7 @@ class EnsurePyrightConfigPhase:
                 {"root": c.Infra.Directories.TESTS, "reportPrivateUsage": "none"},
             ]
         discovered = u.Infra.discover_python_dirs(project_dir)
-        envs: MutableSequence[Mapping[str, str]] = []
+        envs: MutableSequence[t.StrMapping] = []
         for dir_name in discovered:
             if dir_name == c.Infra.Paths.DEFAULT_SRC_DIR:
                 envs.append({"root": dir_name, "reportPrivateUsage": "error"})

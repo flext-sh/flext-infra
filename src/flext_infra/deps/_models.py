@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from typing import Annotated
 
 from flext_core import m, t
@@ -73,14 +73,14 @@ class FlextInfraDepsModels:
         """Ruff lint settings loaded from YAML."""
 
         select: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Ruff lint rule selectors.",
             ),
         ]
         ignore: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Ruff lint rule ignore list.",
@@ -88,7 +88,7 @@ class FlextInfraDepsModels:
         ]
         isort: FlextInfraDepsModels.RuffIsortConfig
         per_file_ignores: Annotated[
-            Mapping[str, Sequence[str]],
+            Mapping[str, t.StrSequence],
             Field(
                 alias="per-file-ignores",
                 description="Per-file ignore mapping from glob pattern to ruff rule IDs.",
@@ -99,7 +99,7 @@ class FlextInfraDepsModels:
         """Ruff top-level settings loaded from YAML."""
 
         exclude: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Directory/file globs excluded from ruff checks.",
@@ -126,7 +126,7 @@ class FlextInfraDepsModels:
             ),
         ]
         src: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Source roots used by ruff import analysis.",
@@ -146,14 +146,14 @@ class FlextInfraDepsModels:
         """Mypy baseline settings loaded from YAML."""
 
         plugins: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Mypy plugins list.",
             ),
         ]
         disabled_error_codes: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 alias="disabled-error-codes",
                 description="Mypy error codes disabled by default.",
@@ -193,14 +193,14 @@ class FlextInfraDepsModels:
         """Pyright strict settings loaded from YAML."""
 
         strict_settings: Annotated[
-            Mapping[str, str],
+            t.StrMapping,
             Field(
                 alias="strict-settings",
                 description="Pyright strict baseline options.",
             ),
         ]
         extended_settings: Annotated[
-            Mapping[str, str],
+            t.StrMapping,
             Field(
                 default_factory=dict,
                 alias="extended-settings",
@@ -212,14 +212,14 @@ class FlextInfraDepsModels:
         """Pyrefly strict settings loaded from YAML."""
 
         strict_errors: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 alias="strict-errors",
                 description="Pyrefly errors enabled as strict defaults.",
             ),
         ]
         disabled_errors: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 alias="disabled-errors",
                 description="Pyrefly errors disabled by default.",
@@ -230,14 +230,14 @@ class FlextInfraDepsModels:
         """Pytest baseline settings loaded from YAML."""
 
         standard_markers: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 alias="standard-markers",
                 description="Standard pytest markers enforced by modernizer.",
             ),
         ]
         standard_addopts: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 alias="standard-addopts",
                 description="Standard pytest addopts enforced by modernizer.",
@@ -250,7 +250,7 @@ class FlextInfraDepsModels:
         all: Annotated[bool, Field(description="Sort all TOML tables and entries.")]
         in_place: Annotated[bool, Field(description="Apply TOML sorting in place.")]
         sort_first: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 description="Top-level TOML sections ordered first.",
             ),
@@ -368,7 +368,7 @@ class FlextInfraDepsModels:
     class ProjectTypeOverrideConfig(m.ArbitraryTypesModel):
         """Per-project-type override settings."""
 
-        pyright: Mapping[str, str] = Field(
+        pyright: t.StrMapping = Field(
             default_factory=dict,
             description="Pyright override settings for this project type.",
         )
@@ -417,7 +417,7 @@ class FlextInfraDepsModels:
         """Pip check execution report with status and output lines."""
 
         ok: bool = True
-        lines: Annotated[Sequence[str], Field(default_factory=list)]
+        lines: Annotated[t.StrSequence, Field(default_factory=list)]
 
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for tool_config.yml."""
@@ -457,10 +457,10 @@ class FlextInfraDepsModels:
     class DeptryReport(m.ArbitraryTypesModel):
         """Deptry analysis report with categorized issue modules."""
 
-        missing: Annotated[Sequence[str], Field(default_factory=list)]
-        unused: Annotated[Sequence[str], Field(default_factory=list)]
-        transitive: Annotated[Sequence[str], Field(default_factory=list)]
-        dev_in_runtime: Annotated[Sequence[str], Field(default_factory=list)]
+        missing: Annotated[t.StrSequence, Field(default_factory=list)]
+        unused: Annotated[t.StrSequence, Field(default_factory=list)]
+        transitive: Annotated[t.StrSequence, Field(default_factory=list)]
+        dev_in_runtime: Annotated[t.StrSequence, Field(default_factory=list)]
         raw_count: Annotated[t.NonNegativeInt, Field(default=0)]
 
     class ProjectDependencyReport(m.ArbitraryTypesModel):
@@ -472,12 +472,12 @@ class FlextInfraDepsModels:
     class TypingsReport(m.ArbitraryTypesModel):
         """Typing stubs analysis report with required/current/delta packages."""
 
-        required_packages: Annotated[Sequence[str], Field(default_factory=list)]
-        hinted: Annotated[Sequence[str], Field(default_factory=list)]
-        missing_modules: Annotated[Sequence[str], Field(default_factory=list)]
-        current: Annotated[Sequence[str], Field(default_factory=list)]
-        to_add: Annotated[Sequence[str], Field(default_factory=list)]
-        to_remove: Annotated[Sequence[str], Field(default_factory=list)]
+        required_packages: Annotated[t.StrSequence, Field(default_factory=list)]
+        hinted: Annotated[t.StrSequence, Field(default_factory=list)]
+        missing_modules: Annotated[t.StrSequence, Field(default_factory=list)]
+        current: Annotated[t.StrSequence, Field(default_factory=list)]
+        to_add: Annotated[t.StrSequence, Field(default_factory=list)]
+        to_remove: Annotated[t.StrSequence, Field(default_factory=list)]
         limits_applied: bool = False
         python_version: str | None = None
 

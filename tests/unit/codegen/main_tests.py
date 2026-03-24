@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -67,7 +66,7 @@ class TestMainCommandDispatch:
 
     def test_no_command(self) -> None:
         """main() with no command returns non-zero exit code."""
-        argv: Sequence[str] = []
+        argv: t.StrSequence = []
         result = codegen_main.main(argv)
         tm.that(result, ne=0)
 
@@ -99,4 +98,4 @@ class TestMainEntryPoint:
         tm.that(result.stdout, contains="lazy-init")
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

@@ -96,7 +96,7 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
             decorators=decorators,
         )
 
-    def _categorize(self, name: str, decorators: Sequence[str]) -> str:
+    def _categorize(self, name: str, decorators: t.StrSequence) -> str:
         if any(
             decorator_name in decorators
             for decorator_name in ["property", "cached_property", "computed_field"]

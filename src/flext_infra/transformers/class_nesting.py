@@ -16,9 +16,9 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
 
     def __init__(
         self,
-        mappings: Mapping[str, str],
+        mappings: t.StrMapping,
         policy_context: t.Infra.PolicyContext,
-        class_families: Mapping[str, str],
+        class_families: t.StrMapping,
     ) -> None:
         """Store mappings and policy context used during class nesting."""
         self._mappings = mappings

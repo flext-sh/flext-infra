@@ -42,7 +42,7 @@ class FlextInfraUtilitiesTomlParse:
         return base.lower().replace("_", "-")
 
     @staticmethod
-    def dedupe_specs(specs: Sequence[str]) -> Sequence[str]:
+    def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
         """Deduplicate dependency specifications by normalized name, sorted by full spec string."""
         seen: MutableMapping[str, str] = {}
         for spec in specs:
@@ -54,17 +54,17 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def ensure_pyright_execution_envs(
         pyright: Table,
-        expected: Sequence[Mapping[str, str]],
+        expected: Sequence[t.StrMapping],
         changes: MutableSequence[str],
     ) -> None:
         """Ensure pyright executionEnvironments matches expected; append to changes if updated."""
         raw = FlextInfraUtilitiesToml.unwrap_item(
             FlextInfraUtilitiesToml.get(pyright, "executionEnvironments"),
         )
-        current: Sequence[Mapping[str, str]] = []
+        current: Sequence[t.StrMapping] = []
         if isinstance(raw, list):
             try:
-                current = TypeAdapter(Sequence[Mapping[str, str]]).validate_python(raw)
+                current = TypeAdapter(Sequence[t.StrMapping]).validate_python(raw)
             except ValidationError:
                 current = []
         if list(current) != expected:
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesTomlParse:
             )
 
     @staticmethod
-    def discover_first_party_namespaces(project_dir: Path) -> Sequence[str]:
+    def discover_first_party_namespaces(project_dir: Path) -> t.StrSequence:
         """Discover first-party namespace packages from src/ for tool configuration."""
         src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
@@ -89,7 +89,7 @@ class FlextInfraUtilitiesTomlParse:
         return namespaces
 
     @staticmethod
-    def project_dev_groups(doc: tomlkit.TOMLDocument) -> Mapping[str, Sequence[str]]:
+    def project_dev_groups(doc: tomlkit.TOMLDocument) -> Mapping[str, t.StrSequence]:
         """Extract optional-dependencies groups from project table."""
         project_raw: t.Infra.InfraValue | Item | Container | None = None
         if c.Infra.Toml.PROJECT in doc:
@@ -103,7 +103,7 @@ class FlextInfraUtilitiesTomlParse:
             return {}
         opt_deps: Table | Mapping[str, t.Infra.InfraValue] = optional_raw
 
-        def _group_values(group_key: str) -> Sequence[str]:
+        def _group_values(group_key: str) -> t.StrSequence:
             value: t.Infra.InfraValue | Item | None = None
             if group_key in opt_deps:
                 value = opt_deps[group_key]
@@ -118,7 +118,7 @@ class FlextInfraUtilitiesTomlParse:
         }
 
     @staticmethod
-    def canonical_dev_dependencies(root_doc: tomlkit.TOMLDocument) -> Sequence[str]:
+    def canonical_dev_dependencies(root_doc: tomlkit.TOMLDocument) -> t.StrSequence:
         """Merge all dev dependency groups from root pyproject."""
         groups = FlextInfraUtilitiesTomlParse.project_dev_groups(root_doc)
         merged = [

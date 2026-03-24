@@ -9,7 +9,7 @@ from __future__ import annotations
 import contextlib
 import shutil
 import time
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -269,7 +269,7 @@ class FlextInfraUtilitiesGithub(
         branch: str = "",
         checkpoint: bool = True,
         fail_fast: bool = False,
-        pr_args: Mapping[str, str] | None = None,
+        pr_args: t.StrMapping | None = None,
     ) -> r[m.Infra.PrOrchestrationResult]:
         """Run PR operations across workspace repositories."""
         projects_result = cls.resolve_projects(workspace_root, projects or [])
@@ -351,7 +351,7 @@ class FlextInfraUtilitiesGithub(
         cls,
         repo_root: Path,
         workspace_root: Path,
-        pr_args: Mapping[str, str],
+        pr_args: t.StrMapping,
     ) -> r[m.Infra.PrExecutionResultModel]:
         """Execute one PR command for a single repository."""
         return cls._github_pr_run_single(
@@ -365,7 +365,7 @@ class FlextInfraUtilitiesGithub(
         cls,
         repo_root: Path,
         workspace_root: Path,
-        pr_args: Mapping[str, str],
+        pr_args: t.StrMapping,
     ) -> r[m.Infra.PrExecutionResultModel]:
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
         report_dir = cls.get_report_dir(

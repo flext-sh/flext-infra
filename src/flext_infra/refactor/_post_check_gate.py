@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_infra import c, m, t, u
@@ -16,7 +16,7 @@ class PostCheckGate:
         self,
         result: m.Infra.Result,
         expected: t.Infra.ContainerDict,
-    ) -> tuple[bool, Sequence[str]]:
+    ) -> tuple[bool, t.StrSequence]:
         errors: MutableSequence[str] = []
         if not result.success:
             if result.error:
@@ -46,14 +46,14 @@ class PostCheckGate:
             errors.extend(self._validate_types(file_path))
         return (not errors, errors)
 
-    def _check_enabled(self, check_name: str, checks: Sequence[str]) -> bool:
+    def _check_enabled(self, check_name: str, checks: t.StrSequence) -> bool:
         return check_name in checks
 
-    def _validate_imports(self, file_path: Path) -> Sequence[str]:
+    def _validate_imports(self, file_path: Path) -> t.StrSequence:
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
             return [f"parse_error:{file_path}:parse_failed"]
-        unresolved: Sequence[str] = [
+        unresolved: t.StrSequence = [
             f"line_{node.lineno}:invalid_import_from"
             for node in ast.walk(tree)
             if isinstance(node, ast.ImportFrom)
@@ -66,8 +66,8 @@ class PostCheckGate:
         self,
         file_path: Path,
         class_name: str,
-        expected_bases: Sequence[str],
-    ) -> Sequence[str]:
+        expected_bases: t.StrSequence,
+    ) -> t.StrSequence:
         tree = u.Infra.parse_module_ast(file_path)
         if tree is None:
             return [f"mro_parse_error:{file_path}:parse_failed"]
@@ -83,7 +83,7 @@ class PostCheckGate:
                 return []
         return [f"class_not_found:{class_name}"]
 
-    def _validate_types(self, file_path: Path) -> Sequence[str]:
+    def _validate_types(self, file_path: Path) -> t.StrSequence:
         cmd = [sys.executable, "-m", "py_compile", str(file_path)]
         result = u.Infra.capture(cmd)
         return result.fold(

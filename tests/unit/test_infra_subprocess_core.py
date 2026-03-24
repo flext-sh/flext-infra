@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -56,9 +55,9 @@ def runner() -> u.Infra:
 def test_run_raw_cases(
     runner: u.Infra,
     tmp_path: Path,
-    command: Sequence[str],
+    command: t.StrSequence,
     timeout: int | None,
-    env: Mapping[str, str] | None,
+    env: t.StrMapping | None,
     use_tmp_path: bool,
     expect_success: bool,
     stdout_has: str,
@@ -116,9 +115,9 @@ def test_run_raw_cases(
 def test_run_cases(
     runner: u.Infra,
     tmp_path: Path,
-    command: Sequence[str],
+    command: t.StrSequence,
     timeout: int | None,
-    env: Mapping[str, str] | None,
+    env: t.StrMapping | None,
     use_tmp_path: bool,
     expect_success: bool,
     stdout_has: str,
@@ -167,9 +166,9 @@ def test_run_cases(
 def test_capture_cases(
     runner: u.Infra,
     tmp_path: Path,
-    command: Sequence[str],
+    command: t.StrSequence,
     timeout: int | None,
-    env: Mapping[str, str] | None,
+    env: t.StrMapping | None,
     use_tmp_path: bool,
     expect_success: bool,
     expected: str,

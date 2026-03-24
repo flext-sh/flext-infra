@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import importlib
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from types import MappingProxyType
 
 from flext_infra import output, u
 
-_SUBCOMMAND_MODULES: Mapping[str, str] = MappingProxyType({
+_SUBCOMMAND_MODULES: t.StrMapping = MappingProxyType({
     "detect": "flext_infra.deps.detector",
     "extra-paths": "flext_infra.deps.extra_paths",
     "internal-sync": "flext_infra.deps.internal_sync",

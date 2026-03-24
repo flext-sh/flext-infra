@@ -79,7 +79,7 @@ class TestSync:
         monkeypatch.setenv("FLEXT_STANDALONE", "")
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
 
-        def _git_run(_cmd: Sequence[str], cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
             _ = cwd
             return r[str].ok("")
 
@@ -119,7 +119,7 @@ class TestSync:
         monkeypatch.setenv("FLEXT_STANDALONE", "")
         monkeypatch.setenv("FLEXT_WORKSPACE_ROOT", "")
 
-        def _git_run(_cmd: Sequence[str], cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
             _ = cwd
             return r[str].ok("")
 

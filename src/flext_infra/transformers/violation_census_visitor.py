@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import override
 

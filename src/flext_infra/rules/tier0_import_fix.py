@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 
 from flext_infra import (
     FlextInfraRefactorRule,
@@ -67,7 +68,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
     def _core_package(self) -> str:
         return str(self.config.get("core_package", "flext_core"))
 
-    def _alias_to_submodule(self) -> Mapping[str, str]:
+    def _alias_to_submodule(self) -> t.StrMapping:
         value = self.config.get("alias_to_submodule", {})
         if not isinstance(value, dict):
             return {}

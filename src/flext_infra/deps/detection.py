@@ -18,7 +18,7 @@ class FlextInfraDependencyDetectionService:
 
     _log = FlextLogger.create_module_logger(__name__)
 
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: Mapping[str, str] = (
+    DEFAULT_MODULE_TO_TYPES_PACKAGE: t.StrMapping = (
         c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE
     )
 
@@ -31,7 +31,7 @@ class FlextInfraDependencyDetectionService:
     def _resolve_projects(
         self,
         workspace_root: Path,
-        names: Sequence[str],
+        names: t.StrSequence,
     ) -> r[Sequence[m.Infra.ProjectInfo]]:
         if self.selector is not None:
             return self.selector.resolve_projects(workspace_root, names)
@@ -44,11 +44,11 @@ class FlextInfraDependencyDetectionService:
 
     def _run_raw(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         *,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[m.Infra.CommandOutput]:
         if self.runner is not None:
             return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
@@ -217,7 +217,7 @@ class FlextInfraDependencyDetectionService:
     def discover_project_paths(
         self,
         workspace_root: Path,
-        projects_filter: Sequence[str] | None = None,
+        projects_filter: t.StrSequence | None = None,
     ) -> r[Sequence[Path]]:
         """Discover project paths with pyproject.toml in workspace.
 
@@ -236,7 +236,7 @@ class FlextInfraDependencyDetectionService:
         ]
         return r[Sequence[Path]].ok(sorted(projects))
 
-    def get_current_typings_from_pyproject(self, project_path: Path) -> Sequence[str]:
+    def get_current_typings_from_pyproject(self, project_path: Path) -> t.StrSequence:
         """Extract currently declared typing packages from project pyproject.toml."""
         pyproject = project_path / c.Infra.Files.PYPROJECT_FILENAME
         read_result = self._read_plain(pyproject)
@@ -259,11 +259,11 @@ class FlextInfraDependencyDetectionService:
         typings = optional.get(c.Infra.Directories.TYPINGS)
         if isinstance(typings, list):
             try:
-                typed_typings = TypeAdapter(Sequence[str]).validate_python([
+                typed_typings = TypeAdapter(t.StrSequence).validate_python([
                     str(s) for s in typings
                 ])
             except ValidationError:
-                typed_typings: Sequence[str] = []
+                typed_typings: t.StrSequence = []
             for spec in typed_typings:
                 spec_text = str(spec)
                 names.add(
@@ -275,11 +275,11 @@ class FlextInfraDependencyDetectionService:
                 )
         elif isinstance(typings, Mapping):
             try:
-                typed_typings_map = TypeAdapter(Mapping[str, str]).validate_python({
+                typed_typings_map = TypeAdapter(t.StrMapping).validate_python({
                     k: str(v) for k, v in typings.items()
                 })
             except ValidationError:
-                typed_typings_map: Mapping[str, str] = {}
+                typed_typings_map: t.StrMapping = {}
             names.update(typed_typings_map.keys())
         return sorted(names)
 
@@ -299,21 +299,21 @@ class FlextInfraDependencyDetectionService:
             excluded = typing_libraries.get(c.Infra.Toml.EXCLUDE)
             if isinstance(excluded, list):
                 try:
-                    typed_excluded = TypeAdapter(Sequence[str]).validate_python([
+                    typed_excluded = TypeAdapter(t.StrSequence).validate_python([
                         str(e) for e in excluded
                     ])
                 except ValidationError:
-                    typed_excluded: Sequence[str] = []
+                    typed_excluded: t.StrSequence = []
                 exclude_set = set(typed_excluded)
-        hinted: Sequence[str] = []
-        missing_modules: Sequence[str] = []
+        hinted: t.StrSequence = []
+        missing_modules: t.StrSequence = []
         if include_mypy:
             hints_result = self.run_mypy_stub_hints(project_path, venv_bin)
             if hints_result.is_failure:
                 return r[m.Infra.TypingsReport].fail(
                     hints_result.error or "typing hint detection failed",
                 )
-            typed_hints: tuple[Sequence[str], Sequence[str]] = hints_result.value
+            typed_hints: tuple[t.StrSequence, t.StrSequence] = hints_result.value
             hinted, missing_modules = typed_hints
         required_set: set[str] = set(hinted)
         for module_name in missing_modules:
@@ -378,11 +378,11 @@ class FlextInfraDependencyDetectionService:
                 and (root in module_to_package)
             ):
                 try:
-                    module_to_package_map = TypeAdapter(
-                        Mapping[str, str]
-                    ).validate_python({k: str(v) for k, v in module_to_package.items()})
+                    module_to_package_map = TypeAdapter(t.StrMapping).validate_python({
+                        k: str(v) for k, v in module_to_package.items()
+                    })
                 except ValidationError:
-                    module_to_package_map: Mapping[str, str] = {}
+                    module_to_package_map: t.StrMapping = {}
                 value = module_to_package_map.get(root)
                 if value is None:
                     return None
@@ -396,7 +396,7 @@ class FlextInfraDependencyDetectionService:
         *,
         config_path: Path | None = None,
         json_output_path: Path | None = None,
-        extend_exclude: Sequence[str] | None = None,
+        extend_exclude: t.StrSequence | None = None,
     ) -> r[tuple[Sequence[t.Infra.IssueMap], int]]:
         """Run deptry analysis on a project and parse JSON output."""
         config = config_path or project_path / c.Infra.Files.PYPROJECT_FILENAME
@@ -465,12 +465,12 @@ class FlextInfraDependencyDetectionService:
         venv_bin: Path,
         *,
         timeout: int = c.Infra.Timeouts.DEFAULT,
-    ) -> r[tuple[Sequence[str], Sequence[str]]]:
+    ) -> r[tuple[t.StrSequence, t.StrSequence]]:
         """Run mypy to detect missing type stubs and hinted packages."""
         mypy_bin = venv_bin / c.Infra.Toml.MYPY
         if not mypy_bin.exists():
-            return r[tuple[Sequence[str], Sequence[str]]].ok(([], []))
-        cmd: Sequence[str] = [
+            return r[tuple[t.StrSequence, t.StrSequence]].ok(([], []))
+        cmd: t.StrSequence = [
             str(mypy_bin),
             c.Infra.Paths.DEFAULT_SRC_DIR,
             "--config-file",
@@ -484,7 +484,7 @@ class FlextInfraDependencyDetectionService:
         }
         result = self._run_raw(cmd, cwd=project_path, timeout=timeout, env=env)
         if result.is_failure:
-            return r[tuple[Sequence[str], Sequence[str]]].fail(
+            return r[tuple[t.StrSequence, t.StrSequence]].fail(
                 result.error or "mypy execution failed",
             )
         cmd_result: m.Infra.CommandOutput = result.value
@@ -499,7 +499,7 @@ class FlextInfraDependencyDetectionService:
             for match in u.Infra.MYPY_STUB_RE.finditer(output)
             if match.group(1).strip()
         }
-        return r[tuple[Sequence[str], Sequence[str]]].ok((
+        return r[tuple[t.StrSequence, t.StrSequence]].ok((
             sorted(hinted),
             sorted(missing),
         ))
@@ -508,11 +508,11 @@ class FlextInfraDependencyDetectionService:
         self,
         workspace_root: Path,
         venv_bin: Path,
-    ) -> r[tuple[Sequence[str], int]]:
+    ) -> r[tuple[t.StrSequence, int]]:
         """Run pip check to detect dependency conflicts in workspace."""
         pip = venv_bin / "pip"
         if not pip.exists():
-            return r[tuple[Sequence[str], int]].ok(([], 0))
+            return r[tuple[t.StrSequence, int]].ok(([], 0))
         env = {**os.environ, "VIRTUAL_ENV": str(venv_bin.parent)}
         result = self._run_raw(
             [str(pip), c.Infra.Verbs.CHECK],
@@ -521,11 +521,11 @@ class FlextInfraDependencyDetectionService:
             env=env,
         )
         if result.is_failure:
-            return r[tuple[Sequence[str], int]].fail(result.error or "pip check failed")
+            return r[tuple[t.StrSequence, int]].fail(result.error or "pip check failed")
         cmd_result: m.Infra.CommandOutput = result.value
         output = cmd_result.stdout
         lines = output.strip().splitlines() if output else []
-        return r[tuple[Sequence[str], int]].ok((lines, cmd_result.exit_code))
+        return r[tuple[t.StrSequence, int]].ok((lines, cmd_result.exit_code))
 
 
 __all__ = [

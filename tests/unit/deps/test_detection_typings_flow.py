@@ -38,10 +38,10 @@ class _StubRunRaw:
 
     def __call__(
         self,
-        cmd: Sequence[str],
+        cmd: t.StrSequence,
         cwd: Path | None = None,
         timeout: int | None = None,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> r[m.Infra.CommandOutput]:
         _ = cmd, cwd, timeout, env
         return self._result

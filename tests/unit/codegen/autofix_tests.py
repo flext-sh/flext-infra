@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -119,4 +118,4 @@ def test_syntax_error_files_skipped(tmp_path: Path) -> None:
     tm.that(len(typevar_violations), eq=1)
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

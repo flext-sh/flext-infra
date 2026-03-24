@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -52,10 +51,10 @@ def _patch_gate_run(
 
     def _stub_run(
         _self: FlextInfraGate,
-        _cmd: Sequence[str],
+        _cmd: t.StrSequence,
         _cwd: Path,
         timeout: int = 120,
-        env: Mapping[str, str] | None = None,
+        env: t.StrMapping | None = None,
     ) -> m.Infra.CommandOutput:
         del _self, _cmd, _cwd, timeout, env
         return m.Infra.CommandOutput(stdout=stdout, stderr="", exit_code=returncode)

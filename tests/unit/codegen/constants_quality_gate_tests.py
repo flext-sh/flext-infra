@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -100,4 +99,4 @@ class TestConstantsQualityGateVerdict:
         assert "verdict" in report
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

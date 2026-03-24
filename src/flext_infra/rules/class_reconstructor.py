@@ -159,7 +159,7 @@ class FlextInfraRefactorClassNestingReconstructor:
     """Reconstruct class nesting by applying rename mappings and propagation."""
 
     @staticmethod
-    def class_rename_mappings(entries: Sequence[t.StrMapping]) -> Mapping[str, str]:
+    def class_rename_mappings(entries: Sequence[t.StrMapping]) -> t.StrMapping:
         """Build a mapping of loose class names to their nested target names."""
         mappings: MutableMapping[str, str] = {}
         for entry in entries:
@@ -178,7 +178,7 @@ class FlextInfraRefactorClassNestingReconstructor:
     @staticmethod
     def apply_nested_class_propagation(
         tree: cst.Module,
-        mappings: Mapping[str, str],
+        mappings: t.StrMapping,
         changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
         class_families: t.Infra.ClassFamilyMap,

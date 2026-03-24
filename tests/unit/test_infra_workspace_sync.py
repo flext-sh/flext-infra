@@ -3,7 +3,7 @@ from __future__ import annotations
 import fcntl
 import sys
 import tempfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from pathlib import Path
 from typing import override
 
@@ -101,7 +101,7 @@ def test_sync_root_validation(project_root: Path | None, expected_error: str) ->
 def test_cli_result_by_project_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    argv: Sequence[str],
+    argv: t.StrSequence,
     expected: int,
 ) -> None:
     monkeypatch.setattr(
@@ -203,7 +203,7 @@ def test_sync_basemk_scenarios(
 def test_gitignore_entry_scenarios(
     tmp_path: Path,
     initial_content: str,
-    entries: Sequence[str],
+    entries: t.StrSequence,
     expected: bool,
 ) -> None:
     tf.create_in(initial_content, ".gitignore", tmp_path)

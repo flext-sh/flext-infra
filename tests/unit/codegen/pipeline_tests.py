@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -181,4 +180,4 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     tm.that(not flexcore_package.joinpath("constants.py").exists(), eq=True)
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

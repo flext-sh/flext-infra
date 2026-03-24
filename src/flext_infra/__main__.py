@@ -24,11 +24,11 @@ from __future__ import annotations
 
 import importlib
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from types import MappingProxyType
 from typing import ClassVar, override
 
-from flext_core import FlextService, r
+from flext_core import FlextService, FlextTypes as t, r
 
 from flext_infra import c, output, u
 
@@ -40,7 +40,7 @@ class FlextInfraMainCLI(FlextService[int]):
     for the top-level ``python -m flext_infra`` entry point.
     """
 
-    GROUPS: ClassVar[Mapping[str, str]] = MappingProxyType({
+    GROUPS: ClassVar[t.StrMapping] = MappingProxyType({
         "basemk": "flext_infra.basemk.__main__",
         c.Infra.Verbs.CHECK: "flext_infra.check.__main__",
         "codegen": "flext_infra.codegen.__main__",
@@ -53,7 +53,7 @@ class FlextInfraMainCLI(FlextService[int]):
         c.Infra.ReportKeys.RELEASE: "flext_infra.release.__main__",
         c.Infra.ReportKeys.WORKSPACE: "flext_infra.workspace.__main__",
     })
-    DESCRIPTIONS: ClassVar[Mapping[str, str]] = MappingProxyType({
+    DESCRIPTIONS: ClassVar[t.StrMapping] = MappingProxyType({
         "basemk": "Base.mk template generation",
         c.Infra.Verbs.CHECK: "Lint gates and pyrefly config management",
         "codegen": "Code generation (lazy-init, standardization)",

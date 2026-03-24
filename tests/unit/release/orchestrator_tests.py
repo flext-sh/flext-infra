@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -27,8 +26,8 @@ def _make_config(
     workspace_root: Path,
     version: str = "1.0.0",
     tag: str = "v1.0.0",
-    phases: Sequence[str] | None = None,
-    project_names: Sequence[str] | None = None,
+    phases: t.StrSequence | None = None,
+    project_names: t.StrSequence | None = None,
     dry_run: bool = False,
     push: bool = False,
     dev_suffix: bool = False,

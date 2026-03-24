@@ -14,7 +14,7 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextRuntime, r
+from flext_core import FlextRuntime, FlextTypes as t, r
 
 from flext_infra import m, output
 
@@ -51,7 +51,7 @@ class FlextInfraUtilitiesCli:
             """Return human-readable mode label."""
             return "apply" if self.apply else "dry-run"
 
-        def project_names(self) -> Sequence[str] | None:
+        def project_names(self) -> t.StrSequence | None:
             """Extract project names from single or comma-separated project string.
 
             Combines --project (single) and --projects (comma-separated) arguments.
@@ -160,7 +160,7 @@ class FlextInfraUtilitiesCli:
         prog: str,
         description: str,
         *,
-        subcommands: Mapping[str, str],
+        subcommands: t.StrMapping,
         include_apply: bool = True,
         include_format: bool = False,
         include_check: bool = False,
@@ -338,8 +338,8 @@ class FlextInfraUtilitiesCli:
 
     @staticmethod
     def run_cli(
-        main_fn: Callable[[Sequence[str] | None], int],
-        argv: Sequence[str] | None = None,
+        main_fn: Callable[[t.StrSequence | None], int],
+        argv: t.StrSequence | None = None,
     ) -> int:
         try:
             FlextRuntime.ensure_structlog_configured()

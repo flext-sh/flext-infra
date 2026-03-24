@@ -85,10 +85,10 @@ class TestModernizerUncoveredLines:
 
         def _process_file(
             _path: Path,
-            canonical_dev: Sequence[str],
+            canonical_dev: t.StrSequence,
             dry_run: bool,
             skip_comments: bool,
-        ) -> Sequence[str]:
+        ) -> t.StrSequence:
             _ = (_path, canonical_dev, dry_run, skip_comments)
             return []
 

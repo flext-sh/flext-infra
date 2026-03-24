@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 
@@ -23,7 +22,7 @@ class FlextInfraCodegenTestProjectFactory:
         tmp_path: Path,
         name: str,
         pkg_name: str,
-        files: Mapping[str, str],
+        files: t.StrMapping,
     ) -> Path:
         project = tmp_path / name
         project.mkdir()

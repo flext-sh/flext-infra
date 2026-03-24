@@ -110,7 +110,7 @@ class TestRunMake:
         output = _m.Infra.CommandOutput(exit_code=0, stdout="ok", stderr="")
 
         def _fake_run_raw(
-            cmd: Sequence[str],
+            cmd: t.StrSequence,
             **kw: t.Scalar,
         ) -> r[_m.Infra.CommandOutput]:
             return r[_m.Infra.CommandOutput].ok(output)
@@ -123,7 +123,7 @@ class TestRunMake:
 
     def test_failure(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         def _fake_run_raw(
-            cmd: Sequence[str],
+            cmd: t.StrSequence,
             **kw: t.Scalar,
         ) -> r[_m.Infra.CommandOutput]:
             return r[_m.Infra.CommandOutput].fail("failed")

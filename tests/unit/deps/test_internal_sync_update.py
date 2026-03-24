@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -85,7 +84,7 @@ class TestEnsureCheckout:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _git_run_checked(_cmd: Sequence[str]) -> r[bool]:
+        def _git_run_checked(_cmd: t.StrSequence) -> r[bool]:
             return r[bool].ok(True)
 
         monkeypatch.setattr(
@@ -105,7 +104,7 @@ class TestEnsureCheckout:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _git_run_checked(_cmd: Sequence[str]) -> r[bool]:
+        def _git_run_checked(_cmd: t.StrSequence) -> r[bool]:
             return r[bool].fail("fatal: repo not found")
 
         monkeypatch.setattr(
@@ -237,7 +236,7 @@ class TestEnsureCheckout:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _git_run_checked(_cmd: Sequence[str]) -> r[bool]:
+        def _git_run_checked(_cmd: t.StrSequence) -> r[bool]:
             return r[bool].ok(True)
 
         monkeypatch.setattr(

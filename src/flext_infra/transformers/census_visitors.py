@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 
 from flext_infra import c, m, u
 
@@ -80,9 +81,9 @@ class CensusUsageCollector(cst.CSTVisitor):
         *,
         method_index: Mapping[str, set[str]],
         flat_aliases: Mapping[str, tuple[str, str]],
-        inner_class_map: Mapping[str, str],
+        inner_class_map: t.StrMapping,
         alias_locals: set[str],
-        direct_imports: Mapping[str, str],
+        direct_imports: t.StrMapping,
         file_path: Path,
         project_name: str,
     ) -> None:

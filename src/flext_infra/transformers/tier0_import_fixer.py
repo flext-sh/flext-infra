@@ -9,12 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar, override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 
 from flext_infra import u
 
@@ -28,7 +29,7 @@ class FlextInfraTransformerTier0ImportFixer:
 
         package_name: str
         file_path: Path
-        alias_to_module: Mapping[str, str] = field(default_factory=dict)
+        alias_to_module: t.StrMapping = field(default_factory=dict)
         category_a: set[str] = field(default_factory=set)
         category_b: set[str] = field(default_factory=set)
         category_c: set[str] = field(default_factory=set)
@@ -160,7 +161,7 @@ class FlextInfraTransformerTier0ImportFixer:
     class Transformer(cst.CSTTransformer):
         """Rewrite Tier 0 imports to remove circularity and enforce order."""
 
-        _CLASS_IMPORTS_MAP: ClassVar[Mapping[str, str]] = {
+        _CLASS_IMPORTS_MAP: ClassVar[t.StrMapping] = {
             "FlextRuntime": "flext_core.runtime",
             "FlextUtilitiesGuardsTypeCore": "flext_core._utilities.guards_type_core",
             "FlextUtilitiesGuards": "flext_core._utilities.guards",
@@ -178,7 +179,7 @@ class FlextInfraTransformerTier0ImportFixer:
             self,
             *,
             analysis: FlextInfraTransformerTier0ImportFixer.Analysis,
-            alias_to_submodule: Mapping[str, str],
+            alias_to_submodule: t.StrMapping,
             core_package: str,
         ) -> None:
             """Initialize transformer with analysis and insertion configuration."""

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import override
 
@@ -297,7 +297,7 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
         self,
         tree: cst.Module,
         _file_path: Path | None = None,
-    ) -> tuple[cst.Module, Sequence[str]]:
+    ) -> tuple[cst.Module, t.StrSequence]:
         fix_action = (
             str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
         )

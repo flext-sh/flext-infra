@@ -54,14 +54,14 @@ class FlextInfraCodegenModels:
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         files_created: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Newly created file paths",
             ),
         ]
         files_skipped: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Skipped (already existing) file paths",
@@ -87,7 +87,7 @@ class FlextInfraCodegenModels:
             ),
         ]
         files_modified: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Modified file paths",
@@ -209,7 +209,7 @@ class FlextInfraCodegenModels:
         value: int | str = Field(...)
         type: str = Field(...)
         canonical_ref: str = Field(...)
-        semantic_names: Sequence[str] = Field(default_factory=list)
+        semantic_names: t.StrSequence = Field(default_factory=list)
 
     class NsRule(FlextModels.ArbitraryTypesModel):
         id: str = Field(...)

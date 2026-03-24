@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -17,8 +16,8 @@ class _StubRunner:
 
     def run_raw(
         self,
-        *args: Sequence[str],
-        **kwargs: Path | int | Mapping[str, str],
+        *args: t.StrSequence,
+        **kwargs: Path | int | t.StrMapping,
     ) -> r[m.Infra.CommandOutput]:
         _ = args
         _ = kwargs

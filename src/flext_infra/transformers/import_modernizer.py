@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Callable, MutableMapping, MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
 from flext_infra import c, u
@@ -19,7 +20,7 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
     def __init__(
         self,
         imports_to_remove: Sequence[str],
-        symbols_to_replace: Mapping[str, str],
+        symbols_to_replace: t.StrMapping,
         runtime_aliases: set[str],
         blocked_aliases: set[str],
         on_change: Callable[[str], None] | None = None,

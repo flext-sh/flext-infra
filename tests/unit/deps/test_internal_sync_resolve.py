@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -52,7 +51,7 @@ class TestResolveRef:
         def _git_current_branch(_cwd: Path) -> r[str]:
             return r[str].ok("HEAD")
 
-        def _git_run(_cmd: Sequence[str], cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
             _ = cwd
             return r[str].ok("v1.0.0")
 
@@ -71,7 +70,7 @@ class TestResolveRef:
         def _git_current_branch(_cwd: Path) -> r[str]:
             return r[str].fail("not a git repo")
 
-        def _git_run(_cmd: Sequence[str], cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
             _ = cwd
             return r[str].fail("not a git repo")
 
@@ -92,7 +91,7 @@ class TestInferOwnerFromOrigin:
     def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         service = FlextInfraInternalDependencySyncService()
 
-        def _git_run(_cmd: Sequence[str], cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
             _ = cwd
             return r[str].ok("git@github.com:flext-sh/flext-core.git")
 
@@ -106,7 +105,7 @@ class TestInferOwnerFromOrigin:
     def test_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         service = FlextInfraInternalDependencySyncService()
 
-        def _git_run(_cmd: Sequence[str], cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
             _ = cwd
             return r[str].fail("no remote")
 
@@ -120,7 +119,7 @@ class TestInferOwnerFromOrigin:
     def test_nonzero_exit(self, monkeypatch: pytest.MonkeyPatch) -> None:
         service = FlextInfraInternalDependencySyncService()
 
-        def _git_run(_cmd: Sequence[str], cwd: Path) -> r[str]:
+        def _git_run(_cmd: t.StrSequence, cwd: Path) -> r[str]:
             _ = cwd
             return r[str].ok("")
 

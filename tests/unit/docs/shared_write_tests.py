@@ -52,7 +52,7 @@ class TestWriteJson:
     def test_with_dict_payload(self, tmp_path: Path) -> None:
         """Test write_json with dictionary payload."""
         json_file = tmp_path / "test.json"
-        payload: Mapping[str, str] = {
+        payload: t.StrMapping = {
             "key": "value",
         }
         result = u.Infra.write_json(json_file, payload)
@@ -74,7 +74,7 @@ class TestWriteJson:
     def test_with_nested_structure(self, tmp_path: Path) -> None:
         """Test write_json with nested dictionary."""
         json_file = tmp_path / "nested.json"
-        payload: Mapping[str, str] = {"level1": "value"}
+        payload: t.StrMapping = {"level1": "value"}
         result = u.Infra.write_json(json_file, payload)
         tm.ok(result)
 

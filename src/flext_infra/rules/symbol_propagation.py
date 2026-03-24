@@ -35,16 +35,16 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         module_renames_raw = typed_cfg.get("module_renames", {})
         symbol_renames_raw = typed_cfg.get("import_symbol_renames", {})
         target_modules = set(u.Infra.string_list(target_modules_raw))
-        module_renames: Mapping[str, str]
+        module_renames: t.StrMapping
         try:
-            module_renames = TypeAdapter(Mapping[str, str]).validate_python(
+            module_renames = TypeAdapter(t.StrMapping).validate_python(
                 module_renames_raw,
             )
         except ValidationError:
             module_renames = {}
-        symbol_renames: Mapping[str, str]
+        symbol_renames: t.StrMapping
         try:
-            symbol_renames = TypeAdapter(Mapping[str, str]).validate_python(
+            symbol_renames = TypeAdapter(t.StrMapping).validate_python(
                 symbol_renames_raw,
             )
         except ValidationError:
@@ -146,7 +146,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
     def _add_keywords(
         self,
         migration: m.Infra.SignatureMigration,
-    ) -> Mapping[str, str]:
+    ) -> t.StrMapping:
         return migration.add_keywords
 
     def _keyword_name(self, arg: cst.Arg) -> str | None:
@@ -157,7 +157,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
     def _keyword_renames(
         self,
         migration: m.Infra.SignatureMigration,
-    ) -> Mapping[str, str]:
+    ) -> t.StrMapping:
         return migration.keyword_renames
 
     def _literal_expr(self, value: str) -> cst.BaseExpression:

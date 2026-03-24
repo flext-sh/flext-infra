@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -152,7 +152,7 @@ class FlextInfraValidateCommand:
             match_mode=match,
         )
         if result.is_success:
-            data: Mapping[str, t.Scalar] = result.value
+            data: t.ConfigurationMapping = result.value
             violation_count = data.get("violation_count", 0)
             return 1 if isinstance(violation_count, int) and violation_count > 0 else 0
         output.error(result.error or "unknown error")

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 from datetime import UTC, datetime
 from pathlib import Path
 

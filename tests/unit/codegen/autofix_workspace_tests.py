@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_tests import tm
@@ -81,4 +80,4 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
     tm.that(modified_str, contains="typings.py")
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

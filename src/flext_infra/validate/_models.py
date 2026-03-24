@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import Annotated
 
 from flext_core import FlextModels
@@ -38,7 +37,7 @@ class FlextInfraCoreModels:
 
         passed: Annotated[bool, Field(description="Validation status")]
         violations: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Collected validation violations",
@@ -57,21 +56,21 @@ class FlextInfraCoreModels:
 
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
         mypy_hints: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="types- package hints from mypy output",
             ),
         ]
         internal_missing: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Missing internal imports",
             ),
         ]
         unresolved_missing: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Missing external imports without stubs",
@@ -96,35 +95,35 @@ class FlextInfraCoreModels:
             Field(description="Skipped test case count"),
         ]
         failed_cases: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Failed test labels",
             ),
         ]
         error_traces: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Collected error traces",
             ),
         ]
         warning_lines: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Captured warning lines",
             ),
         ]
         skip_cases: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Skipped test labels",
             ),
         ]
         slow_entries: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Slow test entries",
@@ -139,7 +138,7 @@ class FlextInfraCoreModels:
             Field(description="Total discovered scripts"),
         ]
         reports_written: Annotated[
-            Sequence[str],
+            t.StrSequence,
             Field(
                 default_factory=list,
                 description="Written report file paths",

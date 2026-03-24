@@ -151,7 +151,7 @@ class FlextInfraRefactorConstants:
     "Compiled naming pattern for module-level constant candidates."
     DEFAULT_FACADE_ALIAS: ClassVar[str] = "c"
     "Default facade alias inserted during import rewrite."
-    FAMILY_SUFFIXES: ClassVar[Mapping[str, str]] = {
+    FAMILY_SUFFIXES: ClassVar[t.StrMapping] = {
         "c": "Constants",
         "t": "Types",
         "p": "Protocols",
@@ -159,7 +159,7 @@ class FlextInfraRefactorConstants:
         "u": "Utilities",
     }
     "Facade family letter → class suffix mapping."
-    FAMILY_FILES: ClassVar[Mapping[str, str]] = {
+    FAMILY_FILES: ClassVar[t.StrMapping] = {
         "c": "*constants.py",
         "t": "*typings.py",
         "p": "*protocols.py",
@@ -169,7 +169,7 @@ class FlextInfraRefactorConstants:
     "Facade family letter → file glob mapping."
     MRO_FAMILIES: ClassVar[frozenset[str]] = frozenset({"c", "t", "p", "m", "u"})
     "All MRO families."
-    MRO_FAMILY_PACKAGE_DIRS: ClassVar[Mapping[str, str]] = {
+    MRO_FAMILY_PACKAGE_DIRS: ClassVar[t.StrMapping] = {
         "c": "flext_core/constants.py",
         "t": "flext_core/typings.py",
         "p": "flext_core/protocols.py",
@@ -177,7 +177,7 @@ class FlextInfraRefactorConstants:
         "u": "flext_core/_utilities",
     }
     "Family letter → relative package dir/file."
-    MRO_FAMILY_FACADE_MODULES: ClassVar[Mapping[str, str]] = {
+    MRO_FAMILY_FACADE_MODULES: ClassVar[t.StrMapping] = {
         "c": "flext_core/constants.py",
         "t": "flext_core/typings.py",
         "p": "flext_core/protocols.py",
@@ -245,7 +245,7 @@ class FlextInfraRefactorConstants:
         "event",
     )
     "Tokens indicating dispatcher-related code."
-    NAMESPACE_PREFIXES: ClassVar[Mapping[str, str]] = {
+    NAMESPACE_PREFIXES: ClassVar[t.StrMapping] = {
         "utility": "FlextUtilities",
         "models": "FlextModels",
         "decorators": "FlextDecorators",
@@ -282,7 +282,7 @@ class FlextInfraRefactorConstants:
     NAMESPACE_MIN_ALIAS_LENGTH: ClassVar[int] = 2
     NAMESPACE_MAX_RENDERED_LOOSE_OBJECTS: ClassVar[int] = 10
     NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS: ClassVar[int] = 5
-    NAMESPACE_FILE_TO_FAMILY: ClassVar[Mapping[str, str]] = {
+    NAMESPACE_FILE_TO_FAMILY: ClassVar[t.StrMapping] = {
         f"{suffix.lower()}.py": alias for alias, suffix in FAMILY_SUFFIXES.items()
     }
     NAMESPACE_FAMILY_EXPECTED_ALIAS: ClassVar[Mapping[str, tuple[str, str]]] = {

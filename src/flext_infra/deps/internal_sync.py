@@ -353,9 +353,9 @@ class FlextInfraInternalDependencySyncService:
             return {}
 
     @staticmethod
-    def _normalize_string_list(value: t.Infra.InfraValue) -> Sequence[str]:
+    def _normalize_string_list(value: t.Infra.InfraValue) -> t.StrSequence:
         try:
-            adapter: TypeAdapter[Sequence[str]] = TypeAdapter(Sequence[str])
+            adapter: TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
             return adapter.validate_python(value)
         except ValidationError:
             if not isinstance(value, list):

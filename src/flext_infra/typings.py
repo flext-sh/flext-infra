@@ -38,7 +38,7 @@ class FlextInfraTypes(FlextTypes):
         for infrastructure payload contracts and common patterns.
         """
 
-        type StrMap = Mapping[str, str]
+        type StrMap = t.StrMapping
         "Mutable string-to-string mapping (symbol replacements, renames)."
         type InfraValue = (
             str
@@ -52,21 +52,13 @@ class FlextInfraTypes(FlextTypes):
         "Recursive infrastructure value: primitive, nested dict/list, or null."
         type ContainerDict = Mapping[str, InfraValue]
         "Dict with string keys and infra values (project reports, etc.)."
-        type TomlValue = (
-            str
-            | int
-            | float
-            | bool
-            | None
-            | Mapping[str, InfraValue]
-            | Sequence[InfraValue]
-        )
+        type TomlValue = InfraValue
         "Recursive TOML value (scalar, table, or array)."
-        type TomlConfig = Mapping[str, InfraValue]
+        type TomlConfig = ContainerDict
         "Top-level TOML document mapping."
-        type IssueMap = Mapping[str, InfraValue]
+        type IssueMap = ContainerDict
         "Dependency issue mapping: string-keyed mapping of infra values."
-        type RuleConfig = Mapping[str, InfraValue]
+        type RuleConfig = ContainerDict
         "A single rule configuration dict (parsed from TOML/YAML)."
         type FacadeFamily = c.FacadeFamily
         "Facade family identifier for MRO chain resolution."
@@ -74,7 +66,7 @@ class FlextInfraTypes(FlextTypes):
         "Expected MRO base: a class or its qualified name."
         type PolicyContext = Mapping[str, ContainerDict]
         "Class-nesting policy matrix keyed by module family."
-        type ClassFamilyMap = Mapping[str, str]
+        type ClassFamilyMap = t.StrMapping
         "Mapping from symbol name to resolved module family."
         type MetricValue = FlextTypes.Scalar | Path | None
         "Output metric value: scalar (str/int/float/bool/datetime), path, or null."

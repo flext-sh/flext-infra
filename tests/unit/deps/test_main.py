@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable
 from types import ModuleType, SimpleNamespace
 
 import pytest
@@ -39,7 +39,7 @@ def _stub_import(mod: ModuleType) -> Callable[[str], ModuleType]:
 
 def _patch_dispatch(
     mp: pytest.MonkeyPatch,
-    argv: Sequence[str],
+    argv: t.StrSequence,
     ret: t.Infra.TomlValue = 0,
 ) -> None:
     """Patch sys.argv and importlib for dispatch tests."""
@@ -54,7 +54,7 @@ def _patch_dispatch(
 class TestSubcommandMapping:
     """Test subcommand mapping completeness."""
 
-    EXPECTED_SUBCOMMAND_MODULES: Mapping[str, str] = {
+    EXPECTED_SUBCOMMAND_MODULES: t.StrMapping = {
         "detect": "flext_infra.deps.detector",
         "extra-paths": "flext_infra.deps.extra_paths",
         "internal-sync": "flext_infra.deps.internal_sync",

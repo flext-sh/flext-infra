@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 import pytest
 from flext_tests import tm
 
@@ -38,4 +36,4 @@ class TestCoreModuleInit:
         tm.that(hasattr(FlextInfraBaseMkValidator, "validate"), eq=True)
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

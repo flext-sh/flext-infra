@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
@@ -325,7 +325,7 @@ class FlextInfraCodegenFixer(s[bool]):
             for file_path in py_files
             if c.Infra.Paths.DEFAULT_SRC_DIR in file_path.parts
         ]
-        before_snapshot: Mapping[str, str] = FlextInfraCodegenSnapshot.snapshot_files(
+        before_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_files(
             file_paths=src_files,
         )
         package_name = NamespaceSourceDetector.discover_project_package_name(
@@ -435,16 +435,12 @@ class FlextInfraCodegenFixer(s[bool]):
         project_path: Path,
         files_modified: set[str],
     ) -> None:
-        before_snapshot: Mapping[str, str] = (
-            FlextInfraCodegenSnapshot.snapshot_init_files(
-                project_path=project_path,
-            )
+        before_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_init_files(
+            project_path=project_path,
         )
         _ = FlextInfraCodegenLazyInit(workspace_root=project_path).run(check_only=False)
-        after_snapshot: Mapping[str, str] = (
-            FlextInfraCodegenSnapshot.snapshot_init_files(
-                project_path=project_path,
-            )
+        after_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_init_files(
+            project_path=project_path,
         )
         for path_str, updated in after_snapshot.items():
             previous = before_snapshot.get(path_str)

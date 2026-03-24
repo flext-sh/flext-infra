@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence
 from pathlib import Path
 
 from flext_infra import (
@@ -36,7 +36,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         warnings: Sequence[str] = []
         errors: MutableSequence[str] = []
         stash_ref = ""
-        moved_index: MutableMapping[str, Mapping[str, str]] = {}
+        moved_index: MutableMapping[str, t.StrMapping] = {}
         module_facade_aliases: MutableMapping[str, str] = {}
         migrations: MutableSequence[m.Infra.MROFileMigration] = []
         for scan_result in scan_results:

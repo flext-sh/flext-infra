@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
 from typing import Final
 
 
@@ -66,7 +65,7 @@ class FlextInfraDepsConstants:
         ("[tool.pyright]", "# [MANAGED] pyright"),
     )
     MIN_ARGV: Final[int] = 2
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: Mapping[str, str] = {
+    DEFAULT_MODULE_TO_TYPES_PACKAGE: t.StrMapping = {
         "yaml": "types-pyyaml",
         "ldap3": "types-ldap3",
         "redis": "types-redis",

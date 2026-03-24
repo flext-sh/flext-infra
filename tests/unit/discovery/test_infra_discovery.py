@@ -154,4 +154,4 @@ class TestFlextInfraDiscoveryService:
         assert result.value == []
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

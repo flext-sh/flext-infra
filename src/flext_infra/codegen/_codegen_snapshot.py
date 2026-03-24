@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import operator
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -29,7 +29,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         return None
 
     @staticmethod
-    def _snapshot_init_files(*, project_path: Path) -> Mapping[str, str]:
+    def _snapshot_init_files(*, project_path: Path) -> t.StrMapping:
         snapshot: MutableMapping[str, str] = {}
         for root_name in c.Infra.MRO_SCAN_DIRECTORIES:
             root = project_path / root_name
@@ -48,7 +48,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         return snapshot
 
     @staticmethod
-    def _snapshot_files(*, file_paths: Sequence[Path]) -> Mapping[str, str]:
+    def _snapshot_files(*, file_paths: Sequence[Path]) -> t.StrMapping:
         snapshot: MutableMapping[str, str] = {}
         for file_path in file_paths:
             try:
@@ -62,7 +62,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
     @staticmethod
     def _detect_changed_files(
         *,
-        before_snapshot: Mapping[str, str],
+        before_snapshot: t.StrMapping,
         file_paths: Sequence[Path],
     ) -> set[str]:
         changed: set[str] = set()
@@ -144,17 +144,17 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         FlextInfraUtilitiesFormatting.run_ruff_fix(target_path)
 
     @staticmethod
-    def snapshot_init_files(*, project_path: Path) -> Mapping[str, str]:
+    def snapshot_init_files(*, project_path: Path) -> t.StrMapping:
         return FlextInfraCodegenSnapshot._snapshot_init_files(project_path=project_path)
 
     @staticmethod
-    def snapshot_files(*, file_paths: Sequence[Path]) -> Mapping[str, str]:
+    def snapshot_files(*, file_paths: Sequence[Path]) -> t.StrMapping:
         return FlextInfraCodegenSnapshot._snapshot_files(file_paths=file_paths)
 
     @staticmethod
     def detect_changed_files(
         *,
-        before_snapshot: Mapping[str, str],
+        before_snapshot: t.StrMapping,
         file_paths: Sequence[Path],
     ) -> set[str]:
         return FlextInfraCodegenSnapshot._detect_changed_files(

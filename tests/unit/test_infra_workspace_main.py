@@ -102,10 +102,10 @@ class TestRunOrchestrate:
     def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _orchestrate_success(
             _self: FlextInfraOrchestratorService,
-            projects: Sequence[str],
+            projects: t.StrSequence,
             verb: str,
             fail_fast: bool = False,
-            make_args: Sequence[str] | None = None,
+            make_args: t.StrSequence | None = None,
         ) -> r[Sequence[m.Infra.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
             return r[Sequence[m.Infra.CommandOutput]].ok([_cmd_out(0), _cmd_out(0)])
@@ -139,10 +139,10 @@ class TestRunOrchestrate:
     def test_with_failures(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _orchestrate_partial(
             _self: FlextInfraOrchestratorService,
-            projects: Sequence[str],
+            projects: t.StrSequence,
             verb: str,
             fail_fast: bool = False,
-            make_args: Sequence[str] | None = None,
+            make_args: t.StrSequence | None = None,
         ) -> r[Sequence[m.Infra.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
             return r[Sequence[m.Infra.CommandOutput]].ok([_cmd_out(0), _cmd_out(1)])
@@ -165,10 +165,10 @@ class TestRunOrchestrate:
     def test_orchestration_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def _orchestrate_failure(
             _self: FlextInfraOrchestratorService,
-            projects: Sequence[str],
+            projects: t.StrSequence,
             verb: str,
             fail_fast: bool = False,
-            make_args: Sequence[str] | None = None,
+            make_args: t.StrSequence | None = None,
         ) -> r[Sequence[m.Infra.CommandOutput]]:
             del _self, projects, verb, fail_fast, make_args
             return r[Sequence[m.Infra.CommandOutput]].fail("Orchestration failed")
@@ -266,15 +266,15 @@ class TestRunMigrate:
 
 def _capture(
     monkeypatch: pytest.MonkeyPatch,
-) -> Sequence[tuple[Sequence[str], str, bool, Sequence[str]]]:
-    captured: Sequence[tuple[Sequence[str], str, bool, Sequence[str]]] = []
+) -> Sequence[tuple[t.StrSequence, str, bool, t.StrSequence]]:
+    captured: Sequence[tuple[t.StrSequence, str, bool, t.StrSequence]] = []
 
     def _capture_orchestrate(
-        projects: Sequence[str],
+        projects: t.StrSequence,
         verb: str,
         *,
         fail_fast: bool,
-        make_args: Sequence[str],
+        make_args: t.StrSequence,
     ) -> int:
         captured.append((projects, verb, fail_fast, make_args))
         return 0

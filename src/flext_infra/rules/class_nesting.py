@@ -464,7 +464,7 @@ class ClassNestingRefactorRule:
     def _apply_class_nesting(
         self,
         tree: cst.Module,
-        mappings: Mapping[str, str],
+        mappings: t.StrMapping,
         changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
         class_families: t.Infra.ClassFamilyMap,
@@ -484,7 +484,7 @@ class ClassNestingRefactorRule:
     def _apply_helper_consolidation(
         self,
         tree: cst.Module,
-        mappings: Mapping[str, str],
+        mappings: t.StrMapping,
         changes: MutableSequence[str],
         policy_context: t.Infra.PolicyContext,
         helper_families: t.Infra.ClassFamilyMap,

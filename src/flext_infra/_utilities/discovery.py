@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
-from flext_core import r
+from flext_core import FlextTypes as t, r
 
 from flext_infra import FlextInfraUtilitiesParsing, c, m
 
@@ -162,7 +162,7 @@ class FlextInfraUtilitiesDiscovery:
         return "flext_core"
 
     @staticmethod
-    def discover_project_aliases(project_root: Path) -> Mapping[str, str]:
+    def discover_project_aliases(project_root: Path) -> t.StrMapping:
         """Discover all single-char aliases in a project."""
         src_package = FlextInfraUtilitiesDiscovery.discover_src_package_dir(
             project_root
@@ -210,7 +210,7 @@ class FlextInfraUtilitiesDiscovery:
         return ""
 
     @staticmethod
-    def extract_lazy_import_map(init_path: Path) -> Mapping[str, str]:
+    def extract_lazy_import_map(init_path: Path) -> t.StrMapping:
         """Extract PEP 562 lazy import map from an __init__.py file."""
         if not init_path.is_file():
             return {}
@@ -235,7 +235,7 @@ class FlextInfraUtilitiesDiscovery:
         return {}
 
     @staticmethod
-    def _extract_lazy_aliases(value: cst.Dict) -> Mapping[str, str]:
+    def _extract_lazy_aliases(value: cst.Dict) -> t.StrMapping:
         result: MutableMapping[str, str] = {}
         for element in value.elements:
             if not isinstance(element, cst.DictElement):

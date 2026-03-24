@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import fnmatch
 import re
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, r, t
@@ -29,8 +29,8 @@ class FlextInfraTextPatternScanner:
     @staticmethod
     def _collect_files(
         root: Path,
-        includes: Sequence[str],
-        excludes: Sequence[str],
+        includes: t.StrSequence,
+        excludes: t.StrSequence,
     ) -> Sequence[Path]:
         """Collect files matching include/exclude globs."""
         selected: MutableSequence[Path] = []
@@ -64,10 +64,10 @@ class FlextInfraTextPatternScanner:
         root: Path,
         pattern: str,
         *,
-        includes: Sequence[str],
-        excludes: Sequence[str] | None = None,
+        includes: t.StrSequence,
+        excludes: t.StrSequence | None = None,
         match_mode: str = c.Infra.MatchModes.PRESENT,
-    ) -> r[Mapping[str, t.Scalar]]:
+    ) -> r[t.ConfigurationMapping]:
         """Scan files under root for regex matches.
 
         Args:
@@ -108,7 +108,7 @@ class FlextInfraTextPatternScanner:
                 if matches > 0
                 else 1
             )
-            result: MutableMapping[str, t.Scalar] = {
+            result: t.MutableConfigurationMapping = {
                 "violation_count": violation_count,
                 "match_count": matches,
                 "files_scanned": len(files),

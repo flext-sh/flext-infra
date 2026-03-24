@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import MutableSequence
 
 from flext_infra import c
 

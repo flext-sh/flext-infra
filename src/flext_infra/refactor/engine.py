@@ -86,7 +86,7 @@ class FlextInfraRefactorEngine:
     @staticmethod
     def build_impact_map(
         results: Sequence[m.Infra.Result],
-    ) -> Sequence[Mapping[str, str]]:
+    ) -> Sequence[t.StrMapping]:
         """Build a normalized impact-map payload from refactor results."""
         return u.Infra.build_impact_map(results)
 

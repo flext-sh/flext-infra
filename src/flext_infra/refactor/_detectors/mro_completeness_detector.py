@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -35,7 +35,7 @@ class MROCompletenessDetector(
     ensuring complete composition of constants, types, protocols, models, and utilities.
     """
 
-    FAMILY_DIR_BY_ALIAS: ClassVar[Mapping[str, str]] = {
+    FAMILY_DIR_BY_ALIAS: ClassVar[t.StrMapping] = {
         "c": "_constants",
         "t": "_typings",
         "p": "_protocols",

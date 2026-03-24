@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableMapping, MutableSequence
+from collections.abc import Callable, MutableMapping, MutableSequence
 from typing import override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
 from flext_infra import u
@@ -20,8 +21,8 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
         self,
         *,
         target_modules: set[str],
-        module_renames: Mapping[str, str],
-        import_symbol_renames: Mapping[str, str],
+        module_renames: t.StrMapping,
+        import_symbol_renames: t.StrMapping,
         on_change: Callable[[str], None] | None = None,
     ) -> None:
         """Initialize symbol propagation configuration and change collector."""

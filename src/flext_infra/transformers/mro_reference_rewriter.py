@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import override
 
 import libcst as cst
+from flext_core import FlextTypes as t
 
 from flext_infra import m, u
 
@@ -17,9 +18,9 @@ class FlextInfraRefactorMROReferenceRewriter(cst.CSTTransformer):
         self,
         *,
         imported_symbols: Mapping[str, m.Infra.MROImportRewrite],
-        module_aliases: Mapping[str, str],
-        module_facades: Mapping[str, str],
-        moved_index: Mapping[str, Mapping[str, str]],
+        module_aliases: t.StrMapping,
+        module_facades: t.StrMapping,
+        moved_index: Mapping[str, t.StrMapping],
     ) -> None:
         """Initialize with symbol mappings for rewriting."""
         self._imported_symbols = imported_symbols

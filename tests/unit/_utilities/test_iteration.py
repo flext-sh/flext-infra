@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import u
@@ -104,4 +103,4 @@ class TestIterWorkspacePythonModules:
             assert True
 
 
-__all__: Sequence[str] = []
+__all__: t.StrSequence = []

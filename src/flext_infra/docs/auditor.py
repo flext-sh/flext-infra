@@ -101,7 +101,7 @@ class FlextInfraDocAuditor:
     def to_markdown(
         scope: m.Infra.DocScope,
         issues: Sequence[m.Infra.AuditIssue],
-    ) -> Sequence[str]:
+    ) -> t.StrSequence:
         """Format audit issues as a markdown report."""
         return [
             "# Docs Audit Report",
