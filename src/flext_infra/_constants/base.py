@@ -10,7 +10,7 @@ import re
 from enum import StrEnum, unique
 from typing import Final
 
-from flext_core import FlextConstants
+
 class FlextInfraConstantsBase:
     """Base constants for flext-infra project."""
 

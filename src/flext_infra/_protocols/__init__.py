@@ -16,7 +16,10 @@ if TYPE_CHECKING:
     from flext_infra._protocols.base import FlextInfraProtocolsBase
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "FlextInfraProtocolsBase": ("flext_infra._protocols.base", "FlextInfraProtocolsBase"),
+    "FlextInfraProtocolsBase": (
+        "flext_infra._protocols.base",
+        "FlextInfraProtocolsBase",
+    ),
 }
 
 __all__ = [

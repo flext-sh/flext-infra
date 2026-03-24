@@ -37,17 +37,50 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
     "ANSI_RE": ("tests.unit.io.test_infra_output_formatting", "ANSI_RE"),
     "OutputBackend": ("tests.unit.io.test_infra_output_formatting", "OutputBackend"),
     "SampleModel": ("tests.unit.io.test_infra_json_io", "SampleModel"),
-    "TestFlextInfraJsonService": ("tests.unit.io.test_infra_json_io", "TestFlextInfraJsonService"),
-    "TestInfraOutputEdgeCases": ("tests.unit.io.test_infra_output_edge_cases", "TestInfraOutputEdgeCases"),
-    "TestInfraOutputHeader": ("tests.unit.io.test_infra_output_formatting", "TestInfraOutputHeader"),
-    "TestInfraOutputMessages": ("tests.unit.io.test_infra_output_formatting", "TestInfraOutputMessages"),
-    "TestInfraOutputNoColor": ("tests.unit.io.test_infra_output_edge_cases", "TestInfraOutputNoColor"),
-    "TestInfraOutputProgress": ("tests.unit.io.test_infra_output_formatting", "TestInfraOutputProgress"),
-    "TestInfraOutputStatus": ("tests.unit.io.test_infra_output_formatting", "TestInfraOutputStatus"),
-    "TestInfraOutputSummary": ("tests.unit.io.test_infra_output_formatting", "TestInfraOutputSummary"),
-    "TestMroFacadeMethods": ("tests.unit.io.test_infra_output_edge_cases", "TestMroFacadeMethods"),
-    "TestShouldUseColor": ("tests.unit.io.test_infra_terminal_detection", "TestShouldUseColor"),
-    "TestShouldUseUnicode": ("tests.unit.io.test_infra_terminal_detection", "TestShouldUseUnicode"),
+    "TestFlextInfraJsonService": (
+        "tests.unit.io.test_infra_json_io",
+        "TestFlextInfraJsonService",
+    ),
+    "TestInfraOutputEdgeCases": (
+        "tests.unit.io.test_infra_output_edge_cases",
+        "TestInfraOutputEdgeCases",
+    ),
+    "TestInfraOutputHeader": (
+        "tests.unit.io.test_infra_output_formatting",
+        "TestInfraOutputHeader",
+    ),
+    "TestInfraOutputMessages": (
+        "tests.unit.io.test_infra_output_formatting",
+        "TestInfraOutputMessages",
+    ),
+    "TestInfraOutputNoColor": (
+        "tests.unit.io.test_infra_output_edge_cases",
+        "TestInfraOutputNoColor",
+    ),
+    "TestInfraOutputProgress": (
+        "tests.unit.io.test_infra_output_formatting",
+        "TestInfraOutputProgress",
+    ),
+    "TestInfraOutputStatus": (
+        "tests.unit.io.test_infra_output_formatting",
+        "TestInfraOutputStatus",
+    ),
+    "TestInfraOutputSummary": (
+        "tests.unit.io.test_infra_output_formatting",
+        "TestInfraOutputSummary",
+    ),
+    "TestMroFacadeMethods": (
+        "tests.unit.io.test_infra_output_edge_cases",
+        "TestMroFacadeMethods",
+    ),
+    "TestShouldUseColor": (
+        "tests.unit.io.test_infra_terminal_detection",
+        "TestShouldUseColor",
+    ),
+    "TestShouldUseUnicode": (
+        "tests.unit.io.test_infra_terminal_detection",
+        "TestShouldUseUnicode",
+    ),
 }
 
 __all__ = [

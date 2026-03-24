@@ -169,39 +169,13 @@ class FlextInfraUtilitiesRefactorNamespace:
             if chain:
                 lines: MutableSequence[str] = []
                 for base_class_name in chain:
-                    module = FlextInfraUtilitiesRefactorNamespace._class_name_to_module(
+                    module = FlextInfraUtilitiesFormatting.class_name_to_module(
                         base_class_name,
                     )
                     lines.append(f"from {module} import {base_class_name}")
                 return "\n".join(lines)
         class_name = f"Flext{c.Infra.FAMILY_SUFFIXES.get(family, 'Utilities')}"
         return f"from flext_core import {class_name}"
-
-    @staticmethod
-    def _class_name_to_module(class_name: str) -> str:
-        """Convert a facade class name like ``FlextMeltanoModels`` to its module.
-
-        E.g. ``FlextMeltanoModels`` → ``flext_meltano``,
-        ``FlextDbOracleModels`` → ``flext_db_oracle``.
-        """
-        # Strip suffix (Models, Constants, etc.) to get the stem
-        for suffix in c.Infra.FAMILY_SUFFIXES.values():
-            if class_name.endswith(suffix):
-                stem = class_name[: -len(suffix)]
-                break
-        else:
-            stem = class_name
-        # Flext → flext_core, FlextXyz → flext_xyz
-        if stem == "Flext":
-            return "flext_core"
-        # Convert PascalCase stem to snake_case module
-        # FlextMeltano → flext_meltano, FlextDbOracle → flext_db_oracle
-        chars: MutableSequence[str] = []
-        for i, ch in enumerate(stem):
-            if ch.isupper() and i > 0:
-                chars.append("_")
-            chars.append(ch.lower())
-        return "".join(chars)
 
     @staticmethod
     def _namespace_base_class_for_family(
@@ -247,10 +221,6 @@ class FlextInfraUtilitiesRefactorNamespace:
         )
         file_path.parent.mkdir(parents=True, exist_ok=True)
         _ = file_path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
-
-    @staticmethod
-    def _namespace_extract_base_name(base_expr: ast.expr) -> str:
-        return FlextInfraUtilitiesParsing.ast_extract_base_name(base_expr)
 
     @staticmethod
     def _namespace_canonical_target_file(
@@ -364,7 +334,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         if not source_target_names:
             return
         for py_file in py_files:
-            parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
+            parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
                 py_file,
             )
             if parsed is None:
@@ -406,7 +376,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         source_file: Path,
         protocol_names: set[str],
     ) -> tuple[Path, Path, tuple[str, ...]] | None:
-        parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
+        parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
             source_file,
         )
         if parsed is None:
@@ -469,7 +439,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         alias_names: set[str],
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
     ) -> None:
-        parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
+        parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
             source_file,
             stage="manual-typing-rewrite",
             parse_failures=parse_failures,
@@ -757,7 +727,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             modified_source = modified_tree.code
             lines = modified_source.splitlines(keepends=True)
             # Use ast to find existing imports and last import line
-            parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
+            parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
                 file_path,
                 stage="mro-completeness-imports",
                 parse_failures=parse_failures,
@@ -767,16 +737,14 @@ class FlextInfraUtilitiesRefactorNamespace:
             if parsed is not None:
                 for stmt in parsed.tree.body:
                     if isinstance(stmt, ast.ImportFrom) and stmt.names:
-                        existing_imports.update(
-                            alias.name for alias in stmt.names
-                        )
+                        existing_imports.update(alias.name for alias in stmt.names)
                     if isinstance(stmt, (ast.Import, ast.ImportFrom)):
                         insert_line = stmt.end_lineno or stmt.lineno
             new_imports: MutableSequence[str] = []
             for base_name in sorted(rewriter.new_bases):
                 if base_name in existing_imports:
                     continue
-                module = FlextInfraUtilitiesRefactorNamespace._class_name_to_module(
+                module = FlextInfraUtilitiesFormatting.class_name_to_module(
                     base_name,
                 )
                 new_imports.append(f"from {module} import {base_name}\n")
@@ -803,7 +771,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             if expected is None:
                 continue
             alias_name, expected_suffix = expected
-            parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
+            parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
                 file_path,
             )
             if parsed is None:
@@ -936,7 +904,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         for violation in violations:
             grouped[Path(violation.file)][violation.alias_name] = violation.target_name
         for file_path, alias_map in grouped.items():
-            parsed = FlextInfraUtilitiesRefactorNamespace._namespace_load_python_module(
+            parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
                 file_path,
                 stage="compatibility-alias-rewrite",
                 parse_failures=parse_failures,
@@ -1004,20 +972,6 @@ class FlextInfraUtilitiesRefactorNamespace:
             rewritten = "".join(line_buffer)
             if rewritten != source:
                 _ = file_path.write_text(rewritten, encoding=c.Infra.Encoding.DEFAULT)
-
-    @staticmethod
-    def _namespace_load_python_module(
-        file_path: Path,
-        *,
-        stage: str = "scan",
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
-    ) -> m.Infra.ParsedPythonModule | None:
-        """Load and parse a Python module while recording parse failures."""
-        return FlextInfraUtilitiesRefactorLoader.load_python_module(
-            file_path,
-            stage=stage,
-            parse_failures=parse_failures,
-        )
 
 
 class _MROBaseRewriter(cst.CSTTransformer):

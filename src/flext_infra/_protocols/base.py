@@ -5,15 +5,18 @@ SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
+
 import argparse
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_core import FlextProtocols, r
+from flext_core import r
 from pydantic import JsonValue
+
 if TYPE_CHECKING:
     from flext_infra import m, t, u
+
 
 class FlextInfraProtocolsBase:
     """Base protocols for flext-infra project."""

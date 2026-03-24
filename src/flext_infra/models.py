@@ -20,11 +20,11 @@ from flext_infra import (
     FlextInfraDocsModels,
     FlextInfraGatesModels,
     FlextInfraGithubModels,
+    FlextInfraModelsBase,
     FlextInfraModelsScan,
     FlextInfraRefactorModels,
     FlextInfraReleaseModels,
     FlextInfraWorkspaceModels,
-    FlextInfraModelsBase,
 )
 
 

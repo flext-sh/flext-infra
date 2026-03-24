@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import contextlib
+from collections.abc import MutableSequence
 from pathlib import Path
 
 from flext_infra import FlextInfraUtilitiesSubprocess, c
@@ -58,6 +59,28 @@ class FlextInfraUtilitiesFormatting:
                 c.Infra.Cli.RuffCmd.FORMAT,
                 str(path),
             ])
+
+    @staticmethod
+    def class_name_to_module(class_name: str) -> str:
+        """Convert a facade class name like ``FlextMeltanoModels`` to its module.
+
+        E.g. ``FlextMeltanoModels`` → ``flext_meltano``,
+        ``FlextDbOracleModels`` → ``flext_db_oracle``.
+        """
+        for suffix in c.Infra.FAMILY_SUFFIXES.values():
+            if class_name.endswith(suffix):
+                stem = class_name[: -len(suffix)]
+                break
+        else:
+            stem = class_name
+        if stem == "Flext":
+            return "flext_core"
+        chars: MutableSequence[str] = []
+        for i, ch in enumerate(stem):
+            if ch.isupper() and i > 0:
+                chars.append("_")
+            chars.append(ch.lower())
+        return "".join(chars)
 
 
 __all__ = ["FlextInfraUtilitiesFormatting"]

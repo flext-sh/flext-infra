@@ -13,6 +13,7 @@ from flext_core import FlextUtilities
 
 from flext_infra import (
     FlextInfraRefactorTransformerPolicyUtilities,
+    FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCli,
     FlextInfraUtilitiesCodegen,
     FlextInfraUtilitiesDiscovery,
@@ -40,7 +41,6 @@ from flext_infra import (
     FlextInfraUtilitiesTomlParse,
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
-    FlextInfraUtilitiesBase,
 )
 
 
