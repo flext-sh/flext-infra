@@ -55,7 +55,9 @@ class FlextInfraDependencyDetectorRuntime:
         apply_typings = bool(args.apply_typings)
         do_typings = bool(args.typings) or apply_typings
         limits_path = Path(args.limits) if args.limits else limits_default
-        projects_report: MutableMapping[str, t.Infra.InfraValue] = {}
+        projects_report: MutableMapping[
+            str, MutableMapping[str, t.Infra.InfraValue]
+        ] = {}
         report_model = self._workspace_report_factory(
             workspace=str(root),
             projects=projects_report,

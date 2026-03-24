@@ -105,11 +105,13 @@ class FlextInfraDocValidator:
                 configured = docs_validation.get("required_skills")
                 if isinstance(configured, list):
                     try:
-                        required_items = TypeAdapter(t.StrSequence).validate_python(
+                        required_items: t.StrSequence = TypeAdapter(
+                            t.StrSequence
+                        ).validate_python(
                             configured,
                             strict=True,
                         )
-                        required = [item for item in required_items if item]
+                        required = [str(item) for item in required_items if item]
                     except ValidationError:
                         required = []
         if not required:

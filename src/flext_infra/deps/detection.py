@@ -259,11 +259,11 @@ class FlextInfraDependencyDetectionService:
         typings = optional.get(c.Infra.Directories.TYPINGS)
         if isinstance(typings, list):
             try:
-                typed_typings = TypeAdapter(t.StrSequence).validate_python([
-                    str(s) for s in typings
-                ])
+                typed_typings: t.StrSequence = TypeAdapter(
+                    t.StrSequence
+                ).validate_python([str(s) for s in typings])
             except ValidationError:
-                typed_typings: t.StrSequence = []
+                typed_typings = []
             for spec in typed_typings:
                 spec_text = str(spec)
                 names.add(
@@ -275,11 +275,11 @@ class FlextInfraDependencyDetectionService:
                 )
         elif isinstance(typings, Mapping):
             try:
-                typed_typings_map = TypeAdapter(t.StrMapping).validate_python({
-                    k: str(v) for k, v in typings.items()
-                })
+                typed_typings_map: t.StrMapping = TypeAdapter(
+                    t.StrMapping
+                ).validate_python({k: str(v) for k, v in typings.items()})
             except ValidationError:
-                typed_typings_map: t.StrMapping = {}
+                typed_typings_map = {}
             names.update(typed_typings_map.keys())
         return sorted(names)
 
@@ -299,11 +299,11 @@ class FlextInfraDependencyDetectionService:
             excluded = typing_libraries.get(c.Infra.Toml.EXCLUDE)
             if isinstance(excluded, list):
                 try:
-                    typed_excluded = TypeAdapter(t.StrSequence).validate_python([
-                        str(e) for e in excluded
-                    ])
+                    typed_excluded: t.StrSequence = TypeAdapter(
+                        t.StrSequence
+                    ).validate_python([str(e) for e in excluded])
                 except ValidationError:
-                    typed_excluded: t.StrSequence = []
+                    typed_excluded = []
                 exclude_set = set(typed_excluded)
         hinted: t.StrSequence = []
         missing_modules: t.StrSequence = []
@@ -378,11 +378,11 @@ class FlextInfraDependencyDetectionService:
                 and (root in module_to_package)
             ):
                 try:
-                    module_to_package_map = TypeAdapter(t.StrMapping).validate_python({
-                        k: str(v) for k, v in module_to_package.items()
-                    })
+                    module_to_package_map: t.StrMapping = TypeAdapter(
+                        t.StrMapping
+                    ).validate_python({k: str(v) for k, v in module_to_package.items()})
                 except ValidationError:
-                    module_to_package_map: t.StrMapping = {}
+                    module_to_package_map = {}
                 value = module_to_package_map.get(root)
                 if value is None:
                     return None

@@ -69,7 +69,11 @@ class FlextInfraUtilitiesIo:
     @staticmethod
     def write_json(
         path: Path,
-        payload: JsonValue | BaseModel | Mapping[str, JsonValue] | Sequence[JsonValue],
+        payload: JsonValue
+        | BaseModel
+        | Mapping[str, JsonValue]
+        | Sequence[JsonValue]
+        | Mapping[str, t.Infra.InfraValue],
         *,
         sort_keys: bool = False,
         ensure_ascii: bool = False,

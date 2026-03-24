@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from pydantic import JsonValue
-
-from flext_infra import c
+from flext_infra import c, t
 
 
 class FlextInfraRefactorRuleDefinitionValidator:
@@ -14,7 +12,7 @@ class FlextInfraRefactorRuleDefinitionValidator:
 
     def validate_rule_definition(
         self,
-        rule_def: Mapping[str, JsonValue],
+        rule_def: Mapping[str, t.Infra.InfraValue],
     ) -> str | None:
         """Return validation error text or None when rule definition is valid."""
         rule_id = str(rule_def.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN))

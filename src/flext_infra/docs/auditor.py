@@ -61,7 +61,7 @@ class FlextInfraDocAuditor:
             return (None, {})
         default_budget = audit_gate_value.get("max_issues_default")
         by_scope_raw_value = audit_gate_value.get("max_issues_by_scope")
-        by_scope_raw: Mapping[str, JsonValue] = {}
+        by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
         if isinstance(by_scope_raw_value, Mapping):
             try:
                 by_scope_raw = TypeAdapter(

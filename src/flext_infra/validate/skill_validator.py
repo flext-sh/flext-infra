@@ -39,7 +39,7 @@ class FlextInfraSkillValidator:
 
     @staticmethod
     def _normalize_str_object_mapping(
-        value: Mapping[str, JsonValue] | JsonValue,
+        value: t.Infra.InfraValue | Mapping[str, t.Infra.InfraValue],
     ) -> Mapping[str, t.Infra.InfraValue]:
         try:
             adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(

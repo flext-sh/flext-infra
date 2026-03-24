@@ -37,11 +37,11 @@ class FlextInfraEnsureFormattingToolingPhase:
             current = u.Infra.unwrap_item(u.Infra.get(tomlsort, key))
             if isinstance(value, list) and isinstance(current, list):
                 try:
-                    current_values = TypeAdapter(t.StrSequence).validate_python([
-                        str(x) for x in current
-                    ])
+                    current_values: t.StrSequence = TypeAdapter(
+                        t.StrSequence
+                    ).validate_python([str(x) for x in current])
                 except ValidationError:
-                    current_values: t.StrSequence = []
+                    current_values = []
                 if sorted(str(i) for i in current_values) != sorted(
                     str(i) for i in value
                 ):

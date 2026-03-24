@@ -6,7 +6,7 @@ import fnmatch
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
@@ -27,7 +27,7 @@ class FlextInfraRefactorRuleLoader:
         """Initialize with path to the refactor engine configuration file."""
         self.config_path = config_path
 
-    def load_config(self) -> r[Mapping[str, JsonValue]]:
+    def load_config(self) -> r[Mapping[str, t.Infra.InfraValue]]:
         """Load and validate the refactor engine configuration."""
         try:
             loaded = u.Infra.safe_load_yaml(self.config_path)
@@ -40,9 +40,11 @@ class FlextInfraRefactorRuleLoader:
             scope_map = self._normalize_str_object_mapping(scope_raw)
             scope = m.Infra.EngineConfig.model_validate(scope_map)
             normalized["refactor_engine"] = scope.model_dump(mode="python")
-            return r[Mapping[str, JsonValue]].ok(normalized)
+            return r[Mapping[str, t.Infra.InfraValue]].ok(normalized)
         except (OSError, TypeError, ValueError) as exc:
-            return r[Mapping[str, JsonValue]].fail(f"Failed to load config: {exc}")
+            return r[Mapping[str, t.Infra.InfraValue]].fail(
+                f"Failed to load config: {exc}"
+            )
 
     def extract_engine_file_filters(
         self,
@@ -166,8 +168,8 @@ class FlextInfraRefactorRuleLoader:
         value: t.Infra.InfraValue | None,
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         try:
-            entries: Sequence[JsonValue] = TypeAdapter(
-                Sequence[JsonValue],
+            entries: Sequence[t.Infra.InfraValue] = TypeAdapter(
+                Sequence[t.Infra.InfraValue],
             ).validate_python(value)
         except ValidationError:
             return []
