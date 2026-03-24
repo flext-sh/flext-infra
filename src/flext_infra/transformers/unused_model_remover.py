@@ -44,6 +44,3 @@ class FlextInfraUnusedModelRemover(cst.CSTTransformer):
 
 
 __all__ = ["FlextInfraUnusedModelRemover"]
-
-
-UnusedModelRemover = FlextInfraUnusedModelRemover

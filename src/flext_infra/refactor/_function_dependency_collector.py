@@ -15,6 +15,3 @@ class FlextInfraFunctionDependencyCollector(cst.CSTVisitor):
 
 
 __all__ = ["FlextInfraFunctionDependencyCollector"]
-
-
-FunctionDependencyCollector = FlextInfraFunctionDependencyCollector

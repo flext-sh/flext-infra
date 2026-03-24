@@ -32,6 +32,3 @@ class FlextInfraTopLevelClassCollector(cst.CSTVisitor):
 
 
 __all__ = ["FlextInfraTopLevelClassCollector"]
-
-
-TopLevelClassCollector = FlextInfraTopLevelClassCollector

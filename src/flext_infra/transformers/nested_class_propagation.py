@@ -187,6 +187,3 @@ class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
 
 
 __all__ = ["FlextInfraNestedClassPropagationTransformer"]
-
-
-NestedClassPropagationTransformer = FlextInfraNestedClassPropagationTransformer

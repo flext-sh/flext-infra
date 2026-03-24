@@ -15,63 +15,49 @@ if TYPE_CHECKING:
 
     from flext_infra.refactor import _detectors
     from flext_infra.refactor._detectors.class_placement_detector import (
-        ClassPlacementDetector,
         FlextInfraClassPlacementDetector,
     )
     from flext_infra.refactor._detectors.compatibility_alias_detector import (
-        CompatibilityAliasDetector,
         FlextInfraCompatibilityAliasDetector,
     )
     from flext_infra.refactor._detectors.cyclic_import_detector import (
-        CyclicImportDetector,
         FlextInfraCyclicImportDetector,
     )
     from flext_infra.refactor._detectors.dependency_analyzer_base import (
-        DependencyAnalyzer,
         FlextInfraDependencyAnalyzer,
     )
     from flext_infra.refactor._detectors.future_annotations_detector import (
         FlextInfraFutureAnnotationsDetector,
-        FutureAnnotationsDetector,
     )
     from flext_infra.refactor._detectors.import_alias_detector import (
         FlextInfraImportAliasDetector,
-        ImportAliasDetector,
     )
     from flext_infra.refactor._detectors.import_collector import (
         FlextInfraImportCollector,
     )
     from flext_infra.refactor._detectors.internal_import_detector import (
         FlextInfraInternalImportDetector,
-        InternalImportDetector,
     )
     from flext_infra.refactor._detectors.loose_object_detector import (
         FlextInfraLooseObjectDetector,
-        LooseObjectDetector,
     )
     from flext_infra.refactor._detectors.manual_protocol_detector import (
         FlextInfraManualProtocolDetector,
-        ManualProtocolDetector,
     )
     from flext_infra.refactor._detectors.manual_typing_alias_detector import (
         FlextInfraManualTypingAliasDetector,
-        ManualTypingAliasDetector,
     )
     from flext_infra.refactor._detectors.mro_completeness_detector import (
         FlextInfraMROCompletenessDetector,
-        MROCompletenessDetector,
     )
     from flext_infra.refactor._detectors.namespace_facade_scanner import (
         FlextInfraNamespaceFacadeScanner,
-        NamespaceFacadeScanner,
     )
     from flext_infra.refactor._detectors.namespace_source_detector import (
         FlextInfraNamespaceSourceDetector,
-        NamespaceSourceDetector,
     )
     from flext_infra.refactor._detectors.runtime_alias_detector import (
         FlextInfraRuntimeAliasDetector,
-        RuntimeAliasDetector,
     )
     from flext_infra.refactor.census import FlextInfraRefactorCensus
     from flext_infra.refactor.class_nesting_analyzer import (
@@ -105,22 +91,6 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "ClassPlacementDetector": (
-        "flext_infra.refactor._detectors.class_placement_detector",
-        "ClassPlacementDetector",
-    ),
-    "CompatibilityAliasDetector": (
-        "flext_infra.refactor._detectors.compatibility_alias_detector",
-        "CompatibilityAliasDetector",
-    ),
-    "CyclicImportDetector": (
-        "flext_infra.refactor._detectors.cyclic_import_detector",
-        "CyclicImportDetector",
-    ),
-    "DependencyAnalyzer": (
-        "flext_infra.refactor._detectors.dependency_analyzer_base",
-        "DependencyAnalyzer",
-    ),
     "FlextInfraClassPlacementDetector": (
         "flext_infra.refactor._detectors.class_placement_detector",
         "FlextInfraClassPlacementDetector",
@@ -242,55 +212,11 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.refactor._detectors.runtime_alias_detector",
         "FlextInfraRuntimeAliasDetector",
     ),
-    "FutureAnnotationsDetector": (
-        "flext_infra.refactor._detectors.future_annotations_detector",
-        "FutureAnnotationsDetector",
-    ),
-    "ImportAliasDetector": (
-        "flext_infra.refactor._detectors.import_alias_detector",
-        "ImportAliasDetector",
-    ),
-    "InternalImportDetector": (
-        "flext_infra.refactor._detectors.internal_import_detector",
-        "InternalImportDetector",
-    ),
-    "LooseObjectDetector": (
-        "flext_infra.refactor._detectors.loose_object_detector",
-        "LooseObjectDetector",
-    ),
-    "MROCompletenessDetector": (
-        "flext_infra.refactor._detectors.mro_completeness_detector",
-        "MROCompletenessDetector",
-    ),
-    "ManualProtocolDetector": (
-        "flext_infra.refactor._detectors.manual_protocol_detector",
-        "ManualProtocolDetector",
-    ),
-    "ManualTypingAliasDetector": (
-        "flext_infra.refactor._detectors.manual_typing_alias_detector",
-        "ManualTypingAliasDetector",
-    ),
-    "NamespaceFacadeScanner": (
-        "flext_infra.refactor._detectors.namespace_facade_scanner",
-        "NamespaceFacadeScanner",
-    ),
-    "NamespaceSourceDetector": (
-        "flext_infra.refactor._detectors.namespace_source_detector",
-        "NamespaceSourceDetector",
-    ),
     "PostCheckGate": ("flext_infra.refactor.validation", "PostCheckGate"),
-    "RuntimeAliasDetector": (
-        "flext_infra.refactor._detectors.runtime_alias_detector",
-        "RuntimeAliasDetector",
-    ),
     "_detectors": ("flext_infra.refactor._detectors", ""),
 }
 
 __all__ = [
-    "ClassPlacementDetector",
-    "CompatibilityAliasDetector",
-    "CyclicImportDetector",
-    "DependencyAnalyzer",
     "FlextInfraClassPlacementDetector",
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraCyclicImportDetector",
@@ -322,17 +248,7 @@ __all__ = [
     "FlextInfraRefactorSafetyManager",
     "FlextInfraRefactorViolationAnalyzer",
     "FlextInfraRuntimeAliasDetector",
-    "FutureAnnotationsDetector",
-    "ImportAliasDetector",
-    "InternalImportDetector",
-    "LooseObjectDetector",
-    "MROCompletenessDetector",
-    "ManualProtocolDetector",
-    "ManualTypingAliasDetector",
-    "NamespaceFacadeScanner",
-    "NamespaceSourceDetector",
     "PostCheckGate",
-    "RuntimeAliasDetector",
     "_detectors",
 ]
 

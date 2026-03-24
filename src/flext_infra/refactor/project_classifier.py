@@ -322,6 +322,3 @@ class FlextInfraProjectClassifier:
 
 
 __all__ = ["FlextInfraProjectClassifier"]
-
-
-ProjectClassifier = FlextInfraProjectClassifier

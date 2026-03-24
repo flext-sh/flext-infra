@@ -12,6 +12,7 @@ from __future__ import annotations
 import operator
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import ClassVar
 
 from flext_core import r
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
@@ -32,6 +33,14 @@ class FlextInfraUtilitiesIo:
         result = u.Infra.read_json(path)
     """
 
+    _json_value_adapter: ClassVar[TypeAdapter[JsonValue]] = TypeAdapter(JsonValue)
+    _json_dict_adapter: ClassVar[TypeAdapter[Mapping[str, JsonValue]]] = TypeAdapter(
+        Mapping[str, JsonValue],
+    )
+    _json_list_adapter: ClassVar[TypeAdapter[Sequence[JsonValue]]] = TypeAdapter(
+        Sequence[JsonValue],
+    )
+
     @staticmethod
     def read_json(path: Path) -> r[Mapping[str, JsonValue]]:
         """Read and parse a JSON file.
@@ -47,8 +56,9 @@ class FlextInfraUtilitiesIo:
             return r[Mapping[str, JsonValue]].ok({})
         try:
             raw_content = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            value_parser: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
-            loaded_obj: JsonValue = value_parser.validate_json(raw_content)
+            loaded_obj: JsonValue = (
+                FlextInfraUtilitiesIo._json_value_adapter.validate_json(raw_content)
+            )
         except (ValidationError, OSError) as exc:
             return r[Mapping[str, JsonValue]].fail(f"JSON read error: {exc}")
         if not isinstance(loaded_obj, dict):
@@ -56,10 +66,7 @@ class FlextInfraUtilitiesIo:
                 "JSON root must be t.NormalizedValue",
             )
         try:
-            parser: TypeAdapter[Mapping[str, JsonValue]] = TypeAdapter(
-                Mapping[str, JsonValue],
-            )
-            data = parser.validate_python(loaded_obj)
+            data = FlextInfraUtilitiesIo._json_dict_adapter.validate_python(loaded_obj)
             return r[Mapping[str, JsonValue]].ok(data)
         except ValidationError as exc:
             return r[Mapping[str, JsonValue]].fail(
@@ -104,15 +111,16 @@ class FlextInfraUtilitiesIo:
                 materialized = list(payload)
             else:
                 materialized = payload
-            parser: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
-            validated_payload: JsonValue = parser.validate_python(materialized)
+            validated_payload: JsonValue = (
+                FlextInfraUtilitiesIo._json_value_adapter.validate_python(materialized)
+            )
             normalized_payload: JsonValue = (
                 FlextInfraUtilitiesIo._sort_json_keys(validated_payload)
                 if sort_keys
                 else validated_payload
             )
             content = (
-                parser.dump_json(
+                FlextInfraUtilitiesIo._json_value_adapter.dump_json(
                     normalized_payload,
                     indent=indent,
                     ensure_ascii=ensure_ascii,
@@ -127,10 +135,7 @@ class FlextInfraUtilitiesIo:
     @staticmethod
     def _sort_json_keys(data: JsonValue) -> JsonValue:
         if isinstance(data, dict):
-            dict_parser: TypeAdapter[Mapping[str, JsonValue]] = TypeAdapter(
-                Mapping[str, JsonValue],
-            )
-            mapped_data = dict_parser.validate_python(data)
+            mapped_data = FlextInfraUtilitiesIo._json_dict_adapter.validate_python(data)
             sorted_items: Sequence[tuple[str, JsonValue]] = sorted(
                 mapped_data.items(),
                 key=operator.itemgetter(0),
@@ -140,10 +145,7 @@ class FlextInfraUtilitiesIo:
                 for key, value in sorted_items
             }
         if isinstance(data, list):
-            list_parser: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(
-                Sequence[JsonValue],
-            )
-            items = list_parser.validate_python(data)
+            items = FlextInfraUtilitiesIo._json_list_adapter.validate_python(data)
             return [FlextInfraUtilitiesIo._sort_json_keys(item) for item in items]
         return data
 
@@ -159,8 +161,9 @@ class FlextInfraUtilitiesIo:
 
         """
         try:
-            ta: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
-            parsed: JsonValue = ta.validate_json(text)
+            parsed: JsonValue = FlextInfraUtilitiesIo._json_value_adapter.validate_json(
+                text
+            )
             return r[JsonValue].ok(parsed)
         except (ValidationError, ValueError) as exc:
             return r[JsonValue].fail(f"JSON parse error: {exc}")
@@ -189,14 +192,15 @@ class FlextInfraUtilitiesIo:
             raw_data: t.Infra.InfraValue = (
                 data.model_dump() if isinstance(data, BaseModel) else data
             )
-            parser: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
-            validated_data: JsonValue = parser.validate_python(raw_data)
+            validated_data: JsonValue = (
+                FlextInfraUtilitiesIo._json_value_adapter.validate_python(raw_data)
+            )
             normalized_data: JsonValue = (
                 FlextInfraUtilitiesIo._sort_json_keys(validated_data)
                 if sort_keys
                 else validated_data
             )
-            serialized = parser.dump_json(
+            serialized = FlextInfraUtilitiesIo._json_value_adapter.dump_json(
                 normalized_data,
                 indent=indent,
                 ensure_ascii=ensure_ascii,

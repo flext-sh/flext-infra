@@ -134,7 +134,3 @@ class FlextInfraModelReferenceCollector(cst.CSTVisitor):
 
 
 __all__ = ["FlextInfraModelDefinitionCollector", "FlextInfraModelReferenceCollector"]
-
-
-ModelDefinitionCollector = FlextInfraModelDefinitionCollector
-ModelReferenceCollector = FlextInfraModelReferenceCollector

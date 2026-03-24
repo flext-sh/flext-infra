@@ -8,11 +8,11 @@ from flext_infra import (
     FlextInfraRefactorRuleDefinitionValidator,
 )
 
+PostCheckGate = FlextInfraPostCheckGate
+
 __all__ = [
     "FlextInfraPostCheckGate",
     "FlextInfraRefactorMROMigrationValidator",
     "FlextInfraRefactorRuleDefinitionValidator",
     "PostCheckGate",
 ]
-
-PostCheckGate = FlextInfraPostCheckGate

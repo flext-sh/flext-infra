@@ -232,6 +232,3 @@ __all__ = [
     "FlextInfraRefactorClassNestingReconstructor",
     "FlextInfraRefactorClassReconstructorRule",
 ]
-
-
-PreCheckGate = FlextInfraPreCheckGate

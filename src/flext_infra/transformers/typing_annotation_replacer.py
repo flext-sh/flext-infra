@@ -284,6 +284,3 @@ class FlextInfraTypingAnnotationReplacer(cst.CSTTransformer):
 
 
 __all__ = ["FlextInfraTypingAnnotationReplacer"]
-
-
-TypingAnnotationReplacer = FlextInfraTypingAnnotationReplacer

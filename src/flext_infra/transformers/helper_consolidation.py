@@ -251,6 +251,3 @@ class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
 
 
 __all__ = ["FlextInfraHelperConsolidationTransformer"]
-
-
-HelperConsolidationTransformer = FlextInfraHelperConsolidationTransformer

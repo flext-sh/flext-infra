@@ -134,49 +134,30 @@ if TYPE_CHECKING:
         FlextInfraConsolidateGroupsPhase,
     )
     from flext_infra.deps._phases.ensure_coverage import (
-        EnsureCoverageConfigPhase,
         FlextInfraEnsureCoverageConfigPhase,
     )
     from flext_infra.deps._phases.ensure_extra_paths import (
-        EnsureExtraPathsPhase,
         FlextInfraEnsureExtraPathsPhase,
     )
     from flext_infra.deps._phases.ensure_formatting import (
-        EnsureFormattingToolingPhase,
         FlextInfraEnsureFormattingToolingPhase,
     )
-    from flext_infra.deps._phases.ensure_mypy import (
-        EnsureMypyConfigPhase,
-        FlextInfraEnsureMypyConfigPhase,
-    )
+    from flext_infra.deps._phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
     from flext_infra.deps._phases.ensure_namespace import (
-        EnsureNamespaceToolingPhase,
         FlextInfraEnsureNamespaceToolingPhase,
     )
     from flext_infra.deps._phases.ensure_pydantic_mypy import (
-        EnsurePydanticMypyConfigPhase,
         FlextInfraEnsurePydanticMypyConfigPhase,
     )
     from flext_infra.deps._phases.ensure_pyrefly import (
-        EnsurePyreflyConfigPhase,
         FlextInfraEnsurePyreflyConfigPhase,
     )
     from flext_infra.deps._phases.ensure_pyright import (
-        EnsurePyrightConfigPhase,
         FlextInfraEnsurePyrightConfigPhase,
     )
-    from flext_infra.deps._phases.ensure_pytest import (
-        EnsurePytestConfigPhase,
-        FlextInfraEnsurePytestConfigPhase,
-    )
-    from flext_infra.deps._phases.ensure_ruff import (
-        EnsureRuffConfigPhase,
-        FlextInfraEnsureRuffConfigPhase,
-    )
-    from flext_infra.deps._phases.inject_comments import (
-        FlextInfraInjectCommentsPhase,
-        InjectCommentsPhase,
-    )
+    from flext_infra.deps._phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
+    from flext_infra.deps._phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+    from flext_infra.deps._phases.inject_comments import FlextInfraInjectCommentsPhase
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -212,63 +193,49 @@ if TYPE_CHECKING:
     from flext_infra.refactor._base_rule import FlextInfraRefactorRule
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
     from flext_infra.refactor._detectors.class_placement_detector import (
-        ClassPlacementDetector,
         FlextInfraClassPlacementDetector,
     )
     from flext_infra.refactor._detectors.compatibility_alias_detector import (
-        CompatibilityAliasDetector,
         FlextInfraCompatibilityAliasDetector,
     )
     from flext_infra.refactor._detectors.cyclic_import_detector import (
-        CyclicImportDetector,
         FlextInfraCyclicImportDetector,
     )
     from flext_infra.refactor._detectors.dependency_analyzer_base import (
-        DependencyAnalyzer,
         FlextInfraDependencyAnalyzer,
     )
     from flext_infra.refactor._detectors.future_annotations_detector import (
         FlextInfraFutureAnnotationsDetector,
-        FutureAnnotationsDetector,
     )
     from flext_infra.refactor._detectors.import_alias_detector import (
         FlextInfraImportAliasDetector,
-        ImportAliasDetector,
     )
     from flext_infra.refactor._detectors.import_collector import (
         FlextInfraImportCollector,
     )
     from flext_infra.refactor._detectors.internal_import_detector import (
         FlextInfraInternalImportDetector,
-        InternalImportDetector,
     )
     from flext_infra.refactor._detectors.loose_object_detector import (
         FlextInfraLooseObjectDetector,
-        LooseObjectDetector,
     )
     from flext_infra.refactor._detectors.manual_protocol_detector import (
         FlextInfraManualProtocolDetector,
-        ManualProtocolDetector,
     )
     from flext_infra.refactor._detectors.manual_typing_alias_detector import (
         FlextInfraManualTypingAliasDetector,
-        ManualTypingAliasDetector,
     )
     from flext_infra.refactor._detectors.mro_completeness_detector import (
         FlextInfraMROCompletenessDetector,
-        MROCompletenessDetector,
     )
     from flext_infra.refactor._detectors.namespace_facade_scanner import (
         FlextInfraNamespaceFacadeScanner,
-        NamespaceFacadeScanner,
     )
     from flext_infra.refactor._detectors.namespace_source_detector import (
         FlextInfraNamespaceSourceDetector,
-        NamespaceSourceDetector,
     )
     from flext_infra.refactor._detectors.runtime_alias_detector import (
         FlextInfraRuntimeAliasDetector,
-        RuntimeAliasDetector,
     )
     from flext_infra.refactor._function_dependency_collector import (
         FlextInfraFunctionDependencyCollector,
@@ -473,65 +440,9 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
-    "ClassPlacementDetector": (
-        "flext_infra.refactor._detectors.class_placement_detector",
-        "ClassPlacementDetector",
-    ),
-    "CompatibilityAliasDetector": (
-        "flext_infra.refactor._detectors.compatibility_alias_detector",
-        "CompatibilityAliasDetector",
-    ),
     "ConsolidateGroupsPhase": (
         "flext_infra.deps._phases.consolidate_groups",
         "ConsolidateGroupsPhase",
-    ),
-    "CyclicImportDetector": (
-        "flext_infra.refactor._detectors.cyclic_import_detector",
-        "CyclicImportDetector",
-    ),
-    "DependencyAnalyzer": (
-        "flext_infra.refactor._detectors.dependency_analyzer_base",
-        "DependencyAnalyzer",
-    ),
-    "EnsureCoverageConfigPhase": (
-        "flext_infra.deps._phases.ensure_coverage",
-        "EnsureCoverageConfigPhase",
-    ),
-    "EnsureExtraPathsPhase": (
-        "flext_infra.deps._phases.ensure_extra_paths",
-        "EnsureExtraPathsPhase",
-    ),
-    "EnsureFormattingToolingPhase": (
-        "flext_infra.deps._phases.ensure_formatting",
-        "EnsureFormattingToolingPhase",
-    ),
-    "EnsureMypyConfigPhase": (
-        "flext_infra.deps._phases.ensure_mypy",
-        "EnsureMypyConfigPhase",
-    ),
-    "EnsureNamespaceToolingPhase": (
-        "flext_infra.deps._phases.ensure_namespace",
-        "EnsureNamespaceToolingPhase",
-    ),
-    "EnsurePydanticMypyConfigPhase": (
-        "flext_infra.deps._phases.ensure_pydantic_mypy",
-        "EnsurePydanticMypyConfigPhase",
-    ),
-    "EnsurePyreflyConfigPhase": (
-        "flext_infra.deps._phases.ensure_pyrefly",
-        "EnsurePyreflyConfigPhase",
-    ),
-    "EnsurePyrightConfigPhase": (
-        "flext_infra.deps._phases.ensure_pyright",
-        "EnsurePyrightConfigPhase",
-    ),
-    "EnsurePytestConfigPhase": (
-        "flext_infra.deps._phases.ensure_pytest",
-        "EnsurePytestConfigPhase",
-    ),
-    "EnsureRuffConfigPhase": (
-        "flext_infra.deps._phases.ensure_ruff",
-        "EnsureRuffConfigPhase",
     ),
     "FlextInfraBanditGate": ("flext_infra.gates.bandit", "FlextInfraBanditGate"),
     "FlextInfraBaseMkGenerator": (
@@ -1298,52 +1209,8 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
         "flext_infra.workspace._models",
         "FlextInfraWorkspaceModels",
     ),
-    "FutureAnnotationsDetector": (
-        "flext_infra.refactor._detectors.future_annotations_detector",
-        "FutureAnnotationsDetector",
-    ),
-    "ImportAliasDetector": (
-        "flext_infra.refactor._detectors.import_alias_detector",
-        "ImportAliasDetector",
-    ),
-    "InjectCommentsPhase": (
-        "flext_infra.deps._phases.inject_comments",
-        "InjectCommentsPhase",
-    ),
-    "InternalImportDetector": (
-        "flext_infra.refactor._detectors.internal_import_detector",
-        "InternalImportDetector",
-    ),
-    "LooseObjectDetector": (
-        "flext_infra.refactor._detectors.loose_object_detector",
-        "LooseObjectDetector",
-    ),
-    "MROCompletenessDetector": (
-        "flext_infra.refactor._detectors.mro_completeness_detector",
-        "MROCompletenessDetector",
-    ),
-    "ManualProtocolDetector": (
-        "flext_infra.refactor._detectors.manual_protocol_detector",
-        "ManualProtocolDetector",
-    ),
-    "ManualTypingAliasDetector": (
-        "flext_infra.refactor._detectors.manual_typing_alias_detector",
-        "ManualTypingAliasDetector",
-    ),
-    "NamespaceFacadeScanner": (
-        "flext_infra.refactor._detectors.namespace_facade_scanner",
-        "NamespaceFacadeScanner",
-    ),
-    "NamespaceSourceDetector": (
-        "flext_infra.refactor._detectors.namespace_source_detector",
-        "NamespaceSourceDetector",
-    ),
     "OutputBackend": ("flext_infra._utilities.output", "OutputBackend"),
     "PostCheckGate": ("flext_infra.refactor.validation", "PostCheckGate"),
-    "RuntimeAliasDetector": (
-        "flext_infra.refactor._detectors.runtime_alias_detector",
-        "RuntimeAliasDetector",
-    ),
     "__all__": ("flext_infra.__version__", "__all__"),
     "__author__": ("flext_infra.__version__", "__author__"),
     "__author_email__": ("flext_infra.__version__", "__author_email__"),
@@ -1387,21 +1254,7 @@ _LAZY_IMPORTS: Mapping[str, tuple[str, str]] = {
 }
 
 __all__ = [
-    "ClassPlacementDetector",
-    "CompatibilityAliasDetector",
     "ConsolidateGroupsPhase",
-    "CyclicImportDetector",
-    "DependencyAnalyzer",
-    "EnsureCoverageConfigPhase",
-    "EnsureExtraPathsPhase",
-    "EnsureFormattingToolingPhase",
-    "EnsureMypyConfigPhase",
-    "EnsureNamespaceToolingPhase",
-    "EnsurePydanticMypyConfigPhase",
-    "EnsurePyreflyConfigPhase",
-    "EnsurePyrightConfigPhase",
-    "EnsurePytestConfigPhase",
-    "EnsureRuffConfigPhase",
     "FlextInfraBanditGate",
     "FlextInfraBaseMkGenerator",
     "FlextInfraBaseMkTemplateEngine",
@@ -1618,19 +1471,8 @@ __all__ = [
     "FlextInfraWorkspaceMakefileGenerator",
     "FlextInfraWorkspaceMode",
     "FlextInfraWorkspaceModels",
-    "FutureAnnotationsDetector",
-    "ImportAliasDetector",
-    "InjectCommentsPhase",
-    "InternalImportDetector",
-    "LooseObjectDetector",
-    "MROCompletenessDetector",
-    "ManualProtocolDetector",
-    "ManualTypingAliasDetector",
-    "NamespaceFacadeScanner",
-    "NamespaceSourceDetector",
     "OutputBackend",
     "PostCheckGate",
-    "RuntimeAliasDetector",
     "__all__",
     "__author__",
     "__author_email__",

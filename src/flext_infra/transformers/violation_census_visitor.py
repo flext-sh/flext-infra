@@ -272,6 +272,3 @@ class FlextInfraViolationCensusVisitor(cst.CSTVisitor):
 
 
 __all__ = ["FlextInfraViolationCensusVisitor"]
-
-
-ViolationCensusVisitor = FlextInfraViolationCensusVisitor

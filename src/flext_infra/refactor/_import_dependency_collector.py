@@ -46,6 +46,3 @@ class FlextInfraImportDependencyCollector(cst.CSTVisitor):
 
 
 __all__ = ["FlextInfraImportDependencyCollector"]
-
-
-ImportDependencyCollector = FlextInfraImportDependencyCollector
