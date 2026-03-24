@@ -20,7 +20,7 @@ class FlextInfraUtilitiesCodegenGovernance:
         cached = FlextInfraUtilitiesCodegenGovernance._config_cache.get("config")
         if cached is not None:
             return cached
-        raw: Mapping[str, t.NormalizedValue] = (
+        raw: t.ContainerMapping = (
             safe_load(
                 FlextInfraUtilitiesCodegenGovernance.GOVERNANCE_FILE.read_text("utf-8"),
             )

@@ -26,11 +26,11 @@ class TestShouldUseColor:
 
     def test_no_color_env_disables(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setenv("NO_COLOR", "1")
-        tm.that(_should_use_color(), eq=False)
+        tm.that(not _should_use_color(), eq=True)
 
     def test_no_color_empty_string_disables(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setenv("NO_COLOR", "")
-        tm.that(_should_use_color(), eq=False)
+        tm.that(not _should_use_color(), eq=True)
 
     def test_force_color_enables(self, monkeypatch: MonkeyPatch) -> None:
         for key in list(os.environ):
@@ -43,7 +43,7 @@ class TestShouldUseColor:
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("NO_COLOR", "1")
         monkeypatch.setenv("FORCE_COLOR", "1")
-        tm.that(_should_use_color(), eq=False)
+        tm.that(not _should_use_color(), eq=True)
 
     def test_ci_env_disables(self, monkeypatch: MonkeyPatch) -> None:
         for var in ("CI", "GITHUB_ACTIONS", "GITLAB_CI"):
@@ -70,7 +70,7 @@ class TestShouldUseColor:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("TERM", "dumb")
-        tm.that(_should_use_color(stream), eq=False)
+        tm.that(not _should_use_color(stream), eq=True)
 
     def test_tty_with_empty_term_disables(self, monkeypatch: MonkeyPatch) -> None:
         stream = io.StringIO()
@@ -78,13 +78,13 @@ class TestShouldUseColor:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("TERM", "")
-        tm.that(_should_use_color(stream), eq=False)
+        tm.that(not _should_use_color(stream), eq=True)
 
     def test_non_tty_disables(self, monkeypatch: MonkeyPatch) -> None:
         stream = io.StringIO()
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
-        tm.that(_should_use_color(stream), eq=False)
+        tm.that(not _should_use_color(stream), eq=True)
 
 
 class TestShouldUseUnicode:
@@ -106,12 +106,12 @@ class TestShouldUseUnicode:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
         monkeypatch.setenv("LANG", "C")
-        tm.that(_should_use_unicode(), eq=False)
+        tm.that(not _should_use_unicode(), eq=True)
 
     def test_empty_env_disables(self, monkeypatch: MonkeyPatch) -> None:
         for key in list(os.environ):
             monkeypatch.delenv(key, raising=False)
-        tm.that(_should_use_unicode(), eq=False)
+        tm.that(not _should_use_unicode(), eq=True)
 
     def test_lc_all_takes_priority(self, monkeypatch: MonkeyPatch) -> None:
         for key in list(os.environ):

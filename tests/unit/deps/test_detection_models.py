@@ -63,7 +63,7 @@ class TestFlextInfraDependencyDetectionModels:
         tm.that(report.current, eq=[])
         tm.that(report.to_add, eq=[])
         tm.that(report.to_remove, eq=[])
-        tm.that(report.limits_applied, eq=False)
+        tm.that(not report.limits_applied, eq=True)
         tm.that(report.python_version, eq=None)
 
 

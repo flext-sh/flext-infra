@@ -96,11 +96,11 @@ class TestIsRelativeTo:
 
     def test_relative_to_false(self, tmp_path: Path) -> None:
         tm.that(
-            FlextInfraInternalDependencySyncService.is_relative_to(
+            not FlextInfraInternalDependencySyncService.is_relative_to(
                 Path("/completely/different"),
                 tmp_path,
             ),
-            eq=False,
+            eq=True,
         )
 
 

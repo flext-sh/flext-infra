@@ -76,7 +76,7 @@ class TestRunGo:
         fmt = h.stub_run()
         monkeypatch.setattr(FlextInfraGate, "_run", _stub_run_seq([vet, fmt]))
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
 
     def test_run_go_with_format_errors(
         self,
@@ -91,7 +91,7 @@ class TestRunGo:
         fmt = h.stub_run(stdout="main.go", returncode=1)
         monkeypatch.setattr(FlextInfraGate, "_run", _stub_run_seq([vet, fmt]))
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_go_skips_empty_lines(
@@ -107,5 +107,5 @@ class TestRunGo:
         fmt = h.stub_run(stdout="src/file.go\n\nsrc/other.go\n", returncode=1)
         monkeypatch.setattr(FlextInfraGate, "_run", _stub_run_seq([vet, fmt]))
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)

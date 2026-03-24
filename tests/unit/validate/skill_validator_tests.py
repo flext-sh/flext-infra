@@ -80,7 +80,7 @@ class TestSkillValidatorCore:
         skills = tmp_path / ".claude" / "skills" / "test-skill"
         skills.mkdir(parents=True)
         report = tm.ok(validator.validate(tmp_path, "test-skill"))
-        tm.that(report.passed, eq=False)
+        tm.that(not report.passed, eq=True)
         tm.that(report.summary, contains="no rules.yml")
 
     def test_validate_invalid_scan_targets(self, tmp_path: Path) -> None:

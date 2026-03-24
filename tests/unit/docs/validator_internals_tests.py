@@ -123,7 +123,7 @@ class TestAdrHelpers:
     ) -> None:
         sf = tmp_path / "SKILL.md"
         sf.write_text("# Skill\n\nNo architecture decision record here.\n")
-        tm.that(validator._has_adr_reference(sf), eq=False)
+        tm.that(not validator._has_adr_reference(sf), eq=True)
 
     def test_adr_check_no_config(
         self,
@@ -163,11 +163,11 @@ class TestMaybeWriteTodo:
         tmp_path: Path,
     ) -> None:
         tm.that(
-            validator._maybe_write_todo(
+            not validator._maybe_write_todo(
                 _scope(tmp_path, "root"),
                 apply_mode=True,
             ),
-            eq=False,
+            eq=True,
         )
 
     def test_apply_false(
@@ -176,11 +176,11 @@ class TestMaybeWriteTodo:
         tmp_path: Path,
     ) -> None:
         tm.that(
-            validator._maybe_write_todo(
+            not validator._maybe_write_todo(
                 _scope(tmp_path),
                 apply_mode=False,
             ),
-            eq=False,
+            eq=True,
         )
 
     def test_creates_file(

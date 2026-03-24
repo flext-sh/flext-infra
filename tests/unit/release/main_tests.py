@@ -48,8 +48,8 @@ class TestReleaseMainParsing:
         tm.that(args.version, eq="")
         tm.that(args.tag, eq="")
         tm.that(args.interactive, eq=1)
-        tm.that(args.push, eq=False)
-        tm.that(args.dry_run, eq=False)
+        tm.that(not args.push, eq=True)
+        tm.that(not args.dry_run, eq=True)
 
     def test_parse_args_with_root(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", "--workspace", "/tmp/workspace"])

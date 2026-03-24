@@ -53,7 +53,7 @@ class TestProcessDirectory:
         tm.that(result, eq=0)
         tm.that(exports, contains="TestModel")
         # __init__.py should NOT have been created
-        tm.that((src_dir / "__init__.py").exists(), eq=False)
+        tm.that(not (src_dir / "__init__.py").exists(), eq=True)
 
     def test_skips_directory_without_package(self, tmp_path: Path) -> None:
         """Test _process_directory skips dirs that can't infer package."""

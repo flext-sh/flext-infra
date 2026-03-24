@@ -64,7 +64,7 @@ def _run_failed_gate_check(
 
 
 def _assert_failed_single_issue(result: m.Infra.GateExecution) -> None:
-    tm.that(result.result.passed, eq=False)
+    tm.that(not result.result.passed, eq=True)
     tm.that(len(result.issues), eq=1)
 
 
@@ -93,7 +93,7 @@ class TestWorkspaceCheckerRunBandit:
             returncode=1,
         )
         result = checker._run_bandit(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_bandit_with_invalid_json(
@@ -110,7 +110,7 @@ class TestWorkspaceCheckerRunBandit:
             gate_runner=FlextInfraWorkspaceChecker._run_bandit,
             stdout="invalid json",
         )
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
 
 
 class TestWorkspaceCheckerRunMarkdown:

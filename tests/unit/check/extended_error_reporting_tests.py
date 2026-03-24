@@ -155,7 +155,7 @@ class TestMypyEmptyLinesInOutput:
             FlextInfraMypyGate, "_dirs_with_py", staticmethod(_fake_dirs_with_py)
         )
         result = checker._run_mypy(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
 
@@ -195,7 +195,7 @@ class TestGoFmtEmptyLinesInOutput:
 
         monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
 
@@ -228,5 +228,5 @@ class TestRuffFormatDuplicateFiles:
 
         monkeypatch.setattr(FlextInfraGate, "_run", _fake_run)
         result = checker._run_ruff_format(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)

@@ -37,7 +37,7 @@ class TestIterMarkdownFiles:
         hidden_dir.mkdir(parents=True, exist_ok=True)
         (hidden_dir / "test.md").write_text("# Hidden\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(any(".hidden" in str(f) for f in files), eq=False)
+        tm.that(not any(".hidden" in str(f) for f in files), eq=True)
 
     def test_nested_structure(self, tmp_path: Path) -> None:
         """Test iter_markdown_files with nested directory structure."""
@@ -79,7 +79,7 @@ class TestIterMarkdownFiles:
         nm_dir.mkdir(parents=True, exist_ok=True)
         (nm_dir / "test.md").write_text("# Test")
         files = u.Infra.iter_markdown_files(tmp_path)
-        tm.that(any("node_modules" in str(f) for f in files), eq=False)
+        tm.that(not any("node_modules" in str(f) for f in files), eq=True)
 
 
 class TestSelectedProjectNames:

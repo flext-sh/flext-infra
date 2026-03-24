@@ -179,5 +179,5 @@ class TestExtractExports:
         code = "x = 1"
         tree = ast.parse(code)
         has_all, exports = u.Infra.extract_exports(tree)
-        tm.that(has_all, eq=False)
+        tm.that(not has_all, eq=True)
         tm.that(exports, eq=[])

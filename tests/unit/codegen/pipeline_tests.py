@@ -137,7 +137,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     flexcore_package = flexcore / "src" / "flexcore"
-    tm.that(flexcore_package.joinpath("constants.py").exists(), eq=False)
+    tm.that(not flexcore_package.joinpath("constants.py").exists(), eq=True)
     census_service = FlextInfraCodegenCensus(workspace_root=tmp_path)
     scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
     fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
@@ -178,7 +178,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         source = py_file.read_text(encoding="utf-8")
         tree = ast.parse(source)
         tm.that(type(tree).__name__, eq="Module")
-    tm.that(flexcore_package.joinpath("constants.py").exists(), eq=False)
+    tm.that(not flexcore_package.joinpath("constants.py").exists(), eq=True)
 
 
 __all__: Sequence[str] = []

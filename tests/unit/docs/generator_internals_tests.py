@@ -203,7 +203,7 @@ class TestGeneratorHelpers:
     ) -> None:
         path = tmp_path / "test.md"
         path.write_text("# Test\n")
-        tm.that(gen._write_if_needed(path, "# Test\n", apply=True).written, eq=False)
+        tm.that(not gen._write_if_needed(path, "# Test\n", apply=True).written, eq=True)
 
     def test_write_if_needed_with_apply(
         self,
@@ -222,6 +222,6 @@ class TestGeneratorHelpers:
     ) -> None:
         path = tmp_path / "test.md"
         tm.that(
-            gen._write_if_needed(path, "# New Content\n", apply=False).written,
-            eq=False,
+            not gen._write_if_needed(path, "# New Content\n", apply=False).written,
+            eq=True,
         )

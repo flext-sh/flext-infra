@@ -103,7 +103,7 @@ class TestWorkspaceCheckerRunMypy:
             returncode=1,
         )
         result = checker._run_mypy(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
 
@@ -148,7 +148,7 @@ class TestWorkspaceCheckerRunPyright:
             returncode=1,
         )
         result = checker._run_pyright(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_pyright_with_invalid_json(
@@ -169,4 +169,4 @@ class TestWorkspaceCheckerRunPyright:
             returncode=1,
         )
         result = checker._run_pyright(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)

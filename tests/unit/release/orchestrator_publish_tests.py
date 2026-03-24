@@ -88,7 +88,7 @@ class TestPhasePublish:
             staticmethod(fake_changelog),
         )
         tm.ok(_CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=True))
-        tm.that(changelog_called, eq=False)
+        tm.that(not changelog_called, eq=True)
 
     def test_updates_changelog(
         self,

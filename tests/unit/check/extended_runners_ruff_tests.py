@@ -61,7 +61,7 @@ class TestRunRuffLint:
             returncode=1,
         )
         result = checker._run_ruff_lint(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_ruff_lint_with_invalid_json(
@@ -77,7 +77,7 @@ class TestRunRuffLint:
             returncode=1,
         )
         result = checker._run_ruff_lint(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
 
 
 class TestRunRuffFormat:
@@ -96,7 +96,7 @@ class TestRunRuffFormat:
             returncode=1,
         )
         result = checker._run_ruff_format(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_ruff_format_with_simple_path(
@@ -112,7 +112,7 @@ class TestRunRuffFormat:
             returncode=1,
         )
         result = checker._run_ruff_format(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_ruff_format_deduplicates_files(
@@ -128,7 +128,7 @@ class TestRunRuffFormat:
             returncode=1,
         )
         result = checker._run_ruff_format(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
     def test_run_ruff_format_skips_empty_lines(
@@ -183,7 +183,7 @@ class TestRunCommand:
             tmp_path,
             FlextInfraRuffLintGate,
         )
-        tm.that(passed, eq=False)
+        tm.that(not passed, eq=True)
         tm.that(raw_output, contains="execution failed")
 
 

@@ -95,7 +95,7 @@ class TestIsWorkspaceMode:
         is_ws, root = FlextInfraInternalDependencySyncService().is_workspace_mode(
             tmp_path,
         )
-        tm.that(is_ws, eq=False)
+        tm.that(not is_ws, eq=True)
         tm.that(root, eq=None)
 
     def test_env_workspace_root(
@@ -178,5 +178,5 @@ class TestIsWorkspaceMode:
         is_ws, root = FlextInfraInternalDependencySyncService().is_workspace_mode(
             project,
         )
-        tm.that(is_ws, eq=False)
+        tm.that(not is_ws, eq=True)
         tm.that(root, eq=None)

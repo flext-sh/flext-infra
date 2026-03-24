@@ -97,16 +97,16 @@ class TestShouldBubbleUp:
 
     def test_private_name_filtered(self) -> None:
         """Test that private names are filtered."""
-        tm.that(_should_bubble_up("_internal"), eq=False)
+        tm.that(not _should_bubble_up("_internal"), eq=True)
 
     def test_main_filtered(self) -> None:
         """Test that 'main' entry point is filtered."""
-        tm.that(_should_bubble_up("main"), eq=False)
+        tm.that(not _should_bubble_up("main"), eq=True)
 
     def test_all_caps_filtered(self) -> None:
         """Test that ALL_CAPS constants are filtered."""
-        tm.that(_should_bubble_up("BLUE"), eq=False)
-        tm.that(_should_bubble_up("SYM_ARROW"), eq=False)
+        tm.that(not _should_bubble_up("BLUE"), eq=True)
+        tm.that(not _should_bubble_up("SYM_ARROW"), eq=True)
 
     def test_singleton_name_passes(self) -> None:
         """Test that lowercase singleton names pass."""

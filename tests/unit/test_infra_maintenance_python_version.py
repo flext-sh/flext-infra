@@ -172,8 +172,7 @@ class TestEnsurePythonVersionFile:
         )
         enforcer.check_only = True
         tm.that(
-            enforcer._ensure_python_version_file(p, required_minor=_MINOR),
-            eq=False,
+            not enforcer._ensure_python_version_file(p, required_minor=_MINOR), eq=True
         )
 
     def test_match(
@@ -204,8 +203,7 @@ class TestEnsurePythonVersionFile:
         )
         enforcer.check_only = False
         tm.that(
-            enforcer._ensure_python_version_file(p, required_minor=_MINOR),
-            eq=False,
+            not enforcer._ensure_python_version_file(p, required_minor=_MINOR), eq=True
         )
 
 

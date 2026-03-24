@@ -13,7 +13,7 @@ from flext_infra import EnsurePyreflyConfigPhase, m, u
 
 def _test_tool_config() -> m.Infra.ToolConfigDocument:
     result = u.Infra.load_tool_config()
-    tm.that(result.is_failure, eq=False)
+    tm.that(not result.is_failure, eq=True)
     if result.is_failure:
         msg = "failed to load tool config"
         raise ValueError(msg)

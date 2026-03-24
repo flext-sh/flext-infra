@@ -138,7 +138,7 @@ class TestGeneratorCore:
             applied=False,
             source="test-source",
         )
-        tm.that(report.applied, eq=False)
+        tm.that(not report.applied, eq=True)
 
     def test_generate_report_source_field(self) -> None:
         """Test GenerateReport source field."""
@@ -179,8 +179,7 @@ class TestGeneratorCore:
             eq=True,
         )
         tm.that(
-            m.Infra.GeneratedFile(path="test2.md", written=False).written,
-            eq=False,
+            not m.Infra.GeneratedFile(path="test2.md", written=False).written, eq=True
         )
 
     def test_generate_with_scope_failure_returns_failure(

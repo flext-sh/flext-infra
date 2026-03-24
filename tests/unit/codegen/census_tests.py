@@ -115,7 +115,7 @@ class TestFixabilityClassification:
         )
         tm.that(result, none=False)
         assert result is not None
-        tm.that(result.fixable, eq=False)
+        tm.that(not result.fixable, eq=True)
 
     def test_ns001_fixable(self) -> None:
         result = FlextInfraCodegenCensus._parse_violation(
@@ -140,7 +140,7 @@ class TestFixabilityClassification:
             )
             tm.that(result, none=False)
             assert result is not None
-            tm.that(result.fixable, eq=False)
+            tm.that(not result.fixable, eq=True)
 
 
 __all__: Sequence[str] = []

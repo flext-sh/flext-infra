@@ -125,7 +125,7 @@ class TestWorkspaceCheckerRunGo:
             ],
         )
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
 
     def test_run_go_with_format_errors(
         self,
@@ -145,7 +145,7 @@ class TestWorkspaceCheckerRunGo:
             ],
         )
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_go_fallback_error_message(
@@ -166,7 +166,7 @@ class TestWorkspaceCheckerRunGo:
             ],
         )
         result = checker._run_go(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
 
@@ -208,7 +208,7 @@ class TestWorkspaceCheckerRunCommand:
             tmp_path,
             FlextInfraGoGate,
         )
-        tm.that(passed, eq=False)
+        tm.that(not passed, eq=True)
         tm.that(raw_output, contains="execution failed")
 
 

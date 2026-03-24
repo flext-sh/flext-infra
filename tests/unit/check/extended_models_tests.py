@@ -131,7 +131,7 @@ class TestProjectResultProperties:
         project = m.Infra.ProjectResult(
             project="p", gates={"lint": exec1, "format": exec2}
         )
-        tm.that(project.passed, eq=False)
+        tm.that(not project.passed, eq=True)
 
 
 class TestWorkspaceCheckerErrorSummary:

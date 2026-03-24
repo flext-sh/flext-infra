@@ -216,4 +216,4 @@ class TestRunDeptry:
             eq=True,
         )
         tm.that(service.run_deptry(project, venv_bin).is_success, eq=True)
-        tm.that(default_out.exists(), eq=False)
+        tm.that(not default_out.exists(), eq=True)

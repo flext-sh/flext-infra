@@ -96,11 +96,11 @@ class TestFlextInfraConstantsImmutability:
 
     def test_excluded_dirs_are_immutable(self) -> None:
         excluded = c.Infra.Excluded.COMMON_EXCLUDED_DIRS
-        tm.that(hasattr(excluded, "add"), eq=False)
+        tm.that(not hasattr(excluded, "add"), eq=True)
 
     def test_check_dirs_are_immutable(self) -> None:
         dirs = c.Infra.DEFAULT_CHECK_DIRS
-        tm.that(hasattr(dirs, "append"), eq=False)
+        tm.that(not hasattr(dirs, "append"), eq=True)
 
 
 class TestFlextInfraConstantsConsistency:

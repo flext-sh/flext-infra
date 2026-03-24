@@ -19,7 +19,7 @@ class TestReadDoc:
         toml_file = tmp_path / "test.toml"
         toml_file.write_text('key = "value"\n')
         result = u.Infra.read(toml_file)
-        tm.that(result is None, eq=False)
+        tm.that(result is not None, eq=True)
         if result is not None:
             tm.that(
                 cast("str", result["key"]),

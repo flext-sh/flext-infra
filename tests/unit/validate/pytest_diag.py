@@ -112,9 +112,9 @@ class TestPytestDiagParseXml:
         """Missing/invalid file returns False."""
         diag = _DiagResult()
         parse = FlextInfraPytestDiagExtractor._parse_xml
-        tm.that(parse(tmp_path / "missing.xml", diag), eq=False)
+        tm.that(not parse(tmp_path / "missing.xml", diag), eq=True)
         (tmp_path / "bad.xml").write_text("not valid xml")
-        tm.that(parse(tmp_path / "bad.xml", diag), eq=False)
+        tm.that(not parse(tmp_path / "bad.xml", diag), eq=True)
 
     def test_parse_xml_extracts_timing(self, tmp_path: Path) -> None:
         """Test timing data is extracted."""

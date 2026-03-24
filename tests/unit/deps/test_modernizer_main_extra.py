@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -16,7 +16,7 @@ from flext_infra.deps import modernizer as modernizer_module
 
 def _modernizer_args(**overrides: t.NormalizedValue) -> argparse.Namespace:
     """Create standard modernizer args namespace with defaults."""
-    defaults: Mapping[str, t.NormalizedValue] = {
+    defaults: t.ContainerMapping = {
         "project": None,
         "dry_run": True,
         "verbose": False,

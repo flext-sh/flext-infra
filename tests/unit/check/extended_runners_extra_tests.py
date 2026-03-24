@@ -109,7 +109,7 @@ class TestRunPyright:
             has_python_dirs=True,
         )
         result = checker._run_pyright(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_pyright_with_invalid_json(
@@ -131,7 +131,7 @@ class TestRunPyright:
             has_python_dirs=True,
         )
         result = checker._run_pyright(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
 
 
 class TestRunBandit:
@@ -157,7 +157,7 @@ class TestRunBandit:
             returncode=1,
         )
         result = checker._run_bandit(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_bandit_with_invalid_json(
@@ -173,7 +173,7 @@ class TestRunBandit:
             returncode=1,
         )
         result = checker._run_bandit(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
 
 
 class TestRunMarkdown:
@@ -199,7 +199,7 @@ class TestRunMarkdown:
             returncode=1,
         )
         result = checker._run_markdown(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_markdown_fallback_error(
@@ -216,5 +216,5 @@ class TestRunMarkdown:
             returncode=1,
         )
         result = checker._run_markdown(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)

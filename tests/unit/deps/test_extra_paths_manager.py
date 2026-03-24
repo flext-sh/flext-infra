@@ -99,14 +99,16 @@ class TestGetDepPaths:
 
 class TestSyncOne:
     def test_sync_one_missing_file(self, tmp_path: Path) -> None:
-        tm.that(_manager().sync_one(tmp_path / "nonexistent.toml").is_success, eq=False)
+        tm.that(
+            not _manager().sync_one(tmp_path / "nonexistent.toml").is_success, eq=True
+        )
 
     def test_sync_one_no_tool_section(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         doc = tomlkit.document()
         doc["project"] = {"name": "test"}
         pyproject.write_text(doc.as_string(), encoding="utf-8")
-        tm.that(_manager().sync_one(pyproject).is_success, eq=False)
+        tm.that(not _manager().sync_one(pyproject).is_success, eq=True)
 
     def test_sync_one_no_pyright_section(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -115,7 +117,7 @@ class TestSyncOne:
         tool["other"] = tomlkit.table()
         doc["tool"] = tool
         pyproject.write_text(doc.as_string(), encoding="utf-8")
-        tm.that(_manager().sync_one(pyproject).is_success, eq=False)
+        tm.that(not _manager().sync_one(pyproject).is_success, eq=True)
 
     @pytest.mark.parametrize(
         "tool_doc",

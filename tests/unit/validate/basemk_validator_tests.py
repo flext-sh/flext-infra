@@ -43,7 +43,7 @@ class TestBaseMkValidatorCore:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         report = tm.ok(v.validate(tmp_path))
-        tm.that(report.passed, eq=False)
+        tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="missing root base.mk")
 
     def test_matching_basemk_returns_report_model(
@@ -66,7 +66,7 @@ class TestBaseMkValidatorCore:
     ) -> None:
         tf.create_in("# stale content", "base.mk", tmp_path)
         report = tm.ok(v.validate(tmp_path))
-        tm.that(report.passed, eq=False)
+        tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="out of sync")
 
     def test_matching_basemk_passes(
@@ -88,7 +88,7 @@ class TestBaseMkValidatorCore:
         v: FlextInfraBaseMkValidator,
     ) -> None:
         report = tm.ok(v.validate(tmp_path))
-        tm.that(report.passed, eq=False)
+        tm.that(not report.passed, eq=True)
 
 
 class TestBaseMkValidatorEdgeCases:
@@ -101,7 +101,7 @@ class TestBaseMkValidatorEdgeCases:
     ) -> None:
         tf.create_in("# different", "base.mk", tmp_path)
         report = tm.ok(v.validate(tmp_path))
-        tm.that(report.passed, eq=False)
+        tm.that(not report.passed, eq=True)
         tm.that(report.violations[0], has="stale")
 
     def test_stale_report_has_violations(
@@ -111,7 +111,7 @@ class TestBaseMkValidatorEdgeCases:
     ) -> None:
         tf.create_in("# mismatch", "base.mk", tmp_path)
         report = tm.ok(v.validate(tmp_path))
-        tm.that(report.passed, eq=False)
+        tm.that(not report.passed, eq=True)
         tm.that(report.violations, length=1)
 
     def test_oserror_returns_failure(

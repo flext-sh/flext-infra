@@ -107,7 +107,7 @@ class TestStubChainIsInternal:
 
     def test_external_module(self) -> None:
         """External module is not internal."""
-        tm.that(self.is_internal("requests", "my_project"), eq=False)
+        tm.that(not self.is_internal("requests", "my_project"), eq=True)
 
 
 class TestStubChainStubExists:
@@ -138,7 +138,7 @@ class TestStubChainStubExists:
 
     def test_missing_returns_false(self, tmp_path: Path) -> None:
         """Missing stubs return False."""
-        tm.that(self.stub_exists("requests", tmp_path), eq=False)
+        tm.that(not self.stub_exists("requests", tmp_path), eq=True)
 
 
 class TestStubChainDiscoverProjects:

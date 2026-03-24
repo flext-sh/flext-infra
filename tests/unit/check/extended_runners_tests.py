@@ -126,7 +126,7 @@ class TestRunPyrefly:
             has_python_dirs=True,
         )
         result = checker._run_pyrefly(proj_dir, reports_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_pyrefly_with_invalid_json(
@@ -150,7 +150,7 @@ class TestRunPyrefly:
             has_python_dirs=True,
         )
         result = checker._run_pyrefly(proj_dir, reports_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
 
     def test_run_pyrefly_with_error_count_fallback(
         self,
@@ -171,7 +171,7 @@ class TestRunPyrefly:
             has_python_dirs=True,
         )
         result = checker._run_pyrefly(proj_dir, reports_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=3)
 
     def test_run_pyrefly_with_list_output(
@@ -237,7 +237,7 @@ class TestRunMypy:
             has_python_dirs=True,
         )
         result = checker._run_mypy(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_mypy_skips_empty_lines(
@@ -260,5 +260,5 @@ class TestRunMypy:
             has_python_dirs=True,
         )
         result = checker._run_mypy(proj_dir)
-        tm.that(result.result.passed, eq=False)
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)

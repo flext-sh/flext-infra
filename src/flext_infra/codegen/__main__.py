@@ -33,8 +33,8 @@ from flext_infra import (
     u,
 )
 
-_JSON_OUTPUT_ADAPTER: TypeAdapter[Mapping[str, t.NormalizedValue]] = TypeAdapter(
-    Mapping[str, t.NormalizedValue],
+_JSON_OUTPUT_ADAPTER: TypeAdapter[t.ContainerMapping] = TypeAdapter(
+    t.ContainerMapping,
 )
 
 

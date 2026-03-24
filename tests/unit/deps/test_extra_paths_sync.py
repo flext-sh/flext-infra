@@ -201,10 +201,10 @@ def test_sync_one_edge_cases(
 ) -> None:
     if mode == "nonexistent":
         tm.that(
-            _manager()
+            not _manager()
             .sync_one(Path("/nonexistent/pyproject.toml"), dry_run=dry_run)
             .is_success,
-            eq=False,
+            eq=True,
         )
         return
     if mode == "invalid":

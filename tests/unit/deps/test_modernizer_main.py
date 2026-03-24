@@ -81,7 +81,7 @@ class TestFlextInfraPyprojectModernizer:
             dry_run=True,
             skip_comments=True,
         )
-        tm.that(any("banner" in item for item in changes), eq=False)
+        tm.that(not any("banner" in item for item in changes), eq=True)
 
     def test_process_file_removes_empty_poetry_groups(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"

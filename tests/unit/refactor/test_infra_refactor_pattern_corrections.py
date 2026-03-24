@@ -19,11 +19,11 @@ def test_pattern_rule_converts_dict_annotations_to_mapping() -> None:
     updated_tree, _ = rule.apply(tree)
     updated = updated_tree.code
     assert "from collections.abc import Mapping" in updated
-    assert "data: Mapping[str, t.NormalizedValue]" in updated
+    assert "data: t.ContainerMapping" in updated
 
 
 def test_pattern_rule_optionally_converts_return_annotations_to_mapping() -> None:
-    source = "def f(data: Mapping[str, t.NormalizedValue]) -> Mapping[str, t.NormalizedValue]:\n    return data\n"
+    source = "def f(data: t.ContainerMapping) -> t.ContainerMapping:\n    return data\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorPatternCorrectionsRule({
         "id": "fix-container-invariance-annotations",
@@ -32,12 +32,12 @@ def test_pattern_rule_optionally_converts_return_annotations_to_mapping() -> Non
     })
     updated_tree, _ = rule.apply(tree)
     updated = updated_tree.code
-    assert "data: Mapping[str, t.NormalizedValue]" in updated
-    assert "-> Mapping[str, t.NormalizedValue]" in updated
+    assert "data: t.ContainerMapping" in updated
+    assert "-> t.ContainerMapping" in updated
 
 
 def test_pattern_rule_keeps_dict_param_when_subscript_mutated() -> None:
-    source = 'def f(data: Mapping[str, t.NormalizedValue]) -> Mapping[str, t.NormalizedValue]:\n    data["k"] = "v"\n    return data\n'
+    source = 'def f(data: t.ContainerMapping) -> t.ContainerMapping:\n    data["k"] = "v"\n    return data\n'
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorPatternCorrectionsRule({
         "id": "fix-container-invariance-annotations",
@@ -50,7 +50,7 @@ def test_pattern_rule_keeps_dict_param_when_subscript_mutated() -> None:
 
 
 def test_pattern_rule_keeps_dict_param_when_copy_used() -> None:
-    source = "def f(data: Mapping[str, t.NormalizedValue]) -> Mapping[str, t.NormalizedValue]:\n    clone = data.copy()\n    return clone\n"
+    source = "def f(data: t.ContainerMapping) -> t.ContainerMapping:\n    clone = data.copy()\n    return clone\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorPatternCorrectionsRule({
         "id": "fix-container-invariance-annotations",
@@ -63,7 +63,7 @@ def test_pattern_rule_keeps_dict_param_when_copy_used() -> None:
 
 
 def test_pattern_rule_skips_overload_signatures() -> None:
-    source = "from typing import overload\n\n@overload\ndef f(data: Mapping[str, t.NormalizedValue]) -> str: ...\n\ndef f(data: Mapping[str, t.NormalizedValue]) -> str:\n    return str(data)\n"
+    source = "from typing import overload\n\n@overload\ndef f(data: t.ContainerMapping) -> str: ...\n\ndef f(data: t.ContainerMapping) -> str:\n    return str(data)\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorPatternCorrectionsRule({
         "id": "fix-container-invariance-annotations",
@@ -72,8 +72,8 @@ def test_pattern_rule_skips_overload_signatures() -> None:
     updated_tree, _ = rule.apply(tree)
     updated = updated_tree.code
     assert "@overload" in updated
-    assert "def f(data: Mapping[str, t.NormalizedValue]) -> str: ..." in updated
-    assert "def f(data: Mapping[str, t.NormalizedValue]) -> str:" in updated
+    assert "def f(data: t.ContainerMapping) -> str: ..." in updated
+    assert "def f(data: t.ContainerMapping) -> str:" in updated
 
 
 def test_pattern_rule_removes_configured_redundant_casts() -> None:
