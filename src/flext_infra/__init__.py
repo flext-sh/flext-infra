@@ -54,9 +54,12 @@ if TYPE_CHECKING:
     from flext_infra._constants.base import FlextInfraConstantsBase
     from flext_infra._constants.rope import FlextInfraConstantsRope
     from flext_infra._models.base import FlextInfraModelsBase
+    from flext_infra._models.rope import FlextInfraModelsRope
     from flext_infra._models.scan import FlextInfraModelsScan
     from flext_infra._protocols.base import FlextInfraProtocolsBase
+    from flext_infra._protocols.rope import FlextInfraProtocolsRope
     from flext_infra._typings.base import FlextInfraTypesBase
+    from flext_infra._typings.rope import FlextInfraTypesRope
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
@@ -716,6 +719,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "FlextInfraModels": ["flext_infra.models", "FlextInfraModels"],
     "FlextInfraModelsBase": ["flext_infra._models.base", "FlextInfraModelsBase"],
+    "FlextInfraModelsRope": ["flext_infra._models.rope", "FlextInfraModelsRope"],
     "FlextInfraModelsScan": ["flext_infra._models.scan", "FlextInfraModelsScan"],
     "FlextInfraMypyGate": ["flext_infra.gates.mypy", "FlextInfraMypyGate"],
     "FlextInfraNamespaceEnforcer": [
@@ -774,6 +778,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraProtocolsBase": [
         "flext_infra._protocols.base",
         "FlextInfraProtocolsBase",
+    ],
+    "FlextInfraProtocolsRope": [
+        "flext_infra._protocols.rope",
+        "FlextInfraProtocolsRope",
     ],
     "FlextInfraPyprojectModernizer": [
         "flext_infra.deps.modernizer",
@@ -1026,6 +1034,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "FlextInfraTypes": ["flext_infra.typings", "FlextInfraTypes"],
     "FlextInfraTypesBase": ["flext_infra._typings.base", "FlextInfraTypesBase"],
+    "FlextInfraTypesRope": ["flext_infra._typings.rope", "FlextInfraTypesRope"],
     "FlextInfraTypingAnnotationCensusVisitor": [
         "flext_infra.transformers.typing_census_visitor",
         "FlextInfraTypingAnnotationCensusVisitor",
@@ -1359,6 +1368,7 @@ __all__ = [
     "FlextInfraModelReferenceCollector",
     "FlextInfraModels",
     "FlextInfraModelsBase",
+    "FlextInfraModelsRope",
     "FlextInfraModelsScan",
     "FlextInfraMypyGate",
     "FlextInfraNamespaceEnforcer",
@@ -1376,6 +1386,7 @@ __all__ = [
     "FlextInfraProjectMigrator",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
+    "FlextInfraProtocolsRope",
     "FlextInfraPyprojectModernizer",
     "FlextInfraPyreflyGate",
     "FlextInfraPyrightGate",
@@ -1444,6 +1455,7 @@ __all__ = [
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraTypesBase",
+    "FlextInfraTypesRope",
     "FlextInfraTypingAnnotationCensusVisitor",
     "FlextInfraTypingAnnotationReplacer",
     "FlextInfraUnusedModelRemover",

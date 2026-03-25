@@ -22,6 +22,7 @@ from flext_infra import (
     FlextInfraRuntimeAliasDetector,
     c,
     m,
+    t,
     u,
 )
 
@@ -33,6 +34,9 @@ class FlextInfraNamespaceEnforcer:
         """Initialize with the workspace root path."""
         super().__init__()
         self._workspace_root = workspace_root.resolve()
+        self._rope_project: t.Infra.RopeProject = u.Infra.init_rope_project(
+            self._workspace_root,
+        )
 
     def enforce(
         self,
@@ -280,6 +284,7 @@ class FlextInfraNamespaceEnforcer:
             detect_fn=lambda f: FlextInfraMROCompletenessDetector.detect_file(
                 file_path=f,
                 parse_failures=parse_failures,
+                rope_project=self._rope_project,
             ),
             rewrite_fn=lambda vs: u.Infra.namespace_rewrite_mro_completeness_violations(
                 violations=vs,

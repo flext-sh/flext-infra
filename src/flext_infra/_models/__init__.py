@@ -14,15 +14,18 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes
 
     from flext_infra._models.base import FlextInfraModelsBase
+    from flext_infra._models.rope import FlextInfraModelsRope
     from flext_infra._models.scan import FlextInfraModelsScan
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraModelsBase": ["flext_infra._models.base", "FlextInfraModelsBase"],
+    "FlextInfraModelsRope": ["flext_infra._models.rope", "FlextInfraModelsRope"],
     "FlextInfraModelsScan": ["flext_infra._models.scan", "FlextInfraModelsScan"],
 }
 
 __all__ = [
     "FlextInfraModelsBase",
+    "FlextInfraModelsRope",
     "FlextInfraModelsScan",
 ]
 

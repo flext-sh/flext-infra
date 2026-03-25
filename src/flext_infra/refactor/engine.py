@@ -8,7 +8,6 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter
-from rope.base.project import Project as RopeProject
 
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
@@ -51,14 +50,14 @@ class FlextInfraRefactorEngine:
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
         self.rule_validator = FlextInfraRefactorRuleDefinitionValidator()
         self.safety_manager = self._build_safety_manager()
-        self._rope_project: RopeProject | None = None
+        self._rope_project: t.Infra.RopeProject | None = None
 
     @staticmethod
     def _build_safety_manager() -> FlextInfraRefactorSafetyManager:
         return FlextInfraRefactorSafetyManager()
 
     @property
-    def rope_project(self) -> RopeProject | None:
+    def rope_project(self) -> t.Infra.RopeProject | None:
         """Return the active rope Project, or None if not yet initialized."""
         return self._rope_project
 

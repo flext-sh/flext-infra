@@ -21,6 +21,7 @@ from flext_infra import (
     FlextInfraGatesModels,
     FlextInfraGithubModels,
     FlextInfraModelsBase,
+    FlextInfraModelsRope,
     FlextInfraModelsScan,
     FlextInfraRefactorModels,
     FlextInfraReleaseModels,
@@ -43,6 +44,7 @@ class FlextInfraModels(FlextModels):
         FlextInfraReleaseModels,
         FlextInfraCoreModels,
         FlextInfraWorkspaceModels,
+        FlextInfraModelsRope,
         FlextInfraModelsScan,
         FlextInfraModelsBase,
     ):

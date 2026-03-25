@@ -21,6 +21,15 @@ if TYPE_CHECKING:
         engine,
         fake_workspace,
     )
+    from tests.refactor.test_rope_semantic import (
+        TestGetClassBases,
+        TestGetClassMethods,
+        TestGetModuleClasses,
+        TestGetModuleImports,
+        models_resource,
+        rope_workspace,
+        services_resource,
+    )
     from tests.refactor.test_rope_stubs import (
         test_rope_find_occurrences_import,
         test_rope_import,
@@ -28,6 +37,16 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "TestGetClassBases": ["tests.refactor.test_rope_semantic", "TestGetClassBases"],
+    "TestGetClassMethods": ["tests.refactor.test_rope_semantic", "TestGetClassMethods"],
+    "TestGetModuleClasses": [
+        "tests.refactor.test_rope_semantic",
+        "TestGetModuleClasses",
+    ],
+    "TestGetModuleImports": [
+        "tests.refactor.test_rope_semantic",
+        "TestGetModuleImports",
+    ],
     "TestHookCallOrdering": [
         "tests.refactor.test_rope_project",
         "TestHookCallOrdering",
@@ -40,6 +59,9 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "engine": ["tests.refactor.test_rope_project", "engine"],
     "fake_workspace": ["tests.refactor.test_rope_project", "fake_workspace"],
+    "models_resource": ["tests.refactor.test_rope_semantic", "models_resource"],
+    "rope_workspace": ["tests.refactor.test_rope_semantic", "rope_workspace"],
+    "services_resource": ["tests.refactor.test_rope_semantic", "services_resource"],
     "test_rope_find_occurrences_import": [
         "tests.refactor.test_rope_stubs",
         "test_rope_find_occurrences_import",
@@ -52,12 +74,19 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 }
 
 __all__ = [
+    "TestGetClassBases",
+    "TestGetClassMethods",
+    "TestGetModuleClasses",
+    "TestGetModuleImports",
     "TestHookCallOrdering",
     "TestInitRopeProject",
     "TestRopeHooks",
     "TestRopeProjectProperty",
     "engine",
     "fake_workspace",
+    "models_resource",
+    "rope_workspace",
+    "services_resource",
     "test_rope_find_occurrences_import",
     "test_rope_import",
     "test_rope_rename_import",

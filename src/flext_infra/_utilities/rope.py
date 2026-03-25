@@ -12,10 +12,10 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
+from typing import cast
 
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 from rope.base.project import Project as RopeProject
-from rope.base.pycore import PyCore
 from rope.base.pynames import DefinedName, ImportedName
 from rope.base.pyobjects import AbstractClass, AbstractFunction
 from rope.base.pyobjectsdef import PyClass, PyFunction
@@ -31,7 +31,7 @@ from rope.refactor.move import MoveGlobal
 from rope.refactor.rename import Rename
 from rope.refactor.restructure import Restructure
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 
 
 class FlextInfraUtilitiesRope:
@@ -46,14 +46,14 @@ class FlextInfraUtilitiesRope:
         project_prefix: str = c.Infra.ROPE_PROJECT_PREFIX,
         src_dir: str = c.Infra.ROPE_SRC_DIR,
         ignored_resources: tuple[str, ...] = c.Infra.ROPE_IGNORED_RESOURCES,
-    ) -> RopeProject:
+    ) -> t.Infra.RopeProject:
         """Create a rope Project over workspace_root with no disk artifacts.
 
         ropefolder=None prevents .ropeproject creation.
         Orchestrator controls project_prefix, src_dir, and ignored_resources.
         """
         source_folders = sorted(
-            str(p / src_dir)
+            f"{p.name}/{src_dir}"
             for p in workspace_root.iterdir()
             if p.name.startswith(project_prefix) and (p / src_dir).is_dir()
         )
@@ -69,9 +69,9 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def get_file_resource(
-        rope_project: RopeProject,
+        rope_project: t.Infra.RopeProject,
         module_name: str,
-    ) -> RopeFile | None:
+    ) -> t.Infra.RopeResource | None:
         """Return rope File for a dotted module name, or None if not found."""
         rel = module_name.replace(".", "/") + ".py"
         try:
@@ -82,9 +82,9 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def get_resource_from_path(
-        rope_project: RopeProject,
+        rope_project: t.Infra.RopeProject,
         file_path: Path,
-    ) -> RopeFile | None:
+    ) -> t.Infra.RopeResource | None:
         """Return rope File for a filesystem Path, or None if outside project."""
         try:
             project_root = Path(rope_project.root.real_path)
@@ -98,8 +98,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def find_definition_offset(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         symbol: str,
     ) -> int | None:
         """Return offset of symbol's definition via semantic analysis.
@@ -131,8 +131,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def get_module_imports(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
     ) -> Mapping[str, str]:
         """Return {local_name: fully_qualified_name} for all imports in a module.
 
@@ -158,8 +158,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def get_module_classes(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
     ) -> Sequence[str]:
         """Return names of all classes defined (not imported/aliased) in a module."""
         classes: MutableSequence[str] = []
@@ -178,8 +178,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def get_module_class_lines(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
     ) -> Mapping[str, int]:
         """Return {class_name: line_number} for all classes defined in a module.
 
@@ -204,8 +204,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def get_class_bases(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         class_name: str,
     ) -> Sequence[str]:
         """Return base class names for a class defined in this module.
@@ -229,8 +229,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def get_class_methods(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         class_name: str,
         *,
         include_private: bool = False,
@@ -268,8 +268,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def rename_symbol_workspace(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         offset: int,
         new_name: str,
         *,
@@ -292,8 +292,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def find_occurrences(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         offset: int,
         *,
         in_hierarchy: bool = False,
@@ -314,8 +314,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def move_global(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         offset: int,
         dest_module: str,
         *,
@@ -337,8 +337,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def organize_imports(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         *,
         apply: bool,
     ) -> str | None:
@@ -362,7 +362,7 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def restructure(
-        rope_project: RopeProject,
+        rope_project: t.Infra.RopeProject,
         pattern: str,
         goal: str,
         *,
@@ -392,8 +392,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def extract_method(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         start_offset: int,
         end_offset: int,
         extracted_name: str,
@@ -422,8 +422,8 @@ class FlextInfraUtilitiesRope:
 
     @staticmethod
     def inline_symbol(
-        rope_project: RopeProject,
-        resource: RopeFile,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
         offset: int,
         *,
         remove: bool = True,
@@ -459,13 +459,14 @@ class FlextInfraUtilitiesRope:
     # ── Private helpers ────────────────────────────────────────────
 
     @staticmethod
-    def _get_pycore(rope_project: RopeProject) -> PyCore:
-        """Extract PyCore — workaround for pyrefly mistyping pycore property."""
-        result: PyCore = rope_project.pycore
-        return result
+    def _get_pycore(rope_project: t.Infra.RopeProject) -> p.Infra.RopePyCoreLike:
+        """Extract PyCore via protocol — cast needed at rope boundary (no stubs)."""
+        return cast("p.Infra.RopePyCoreLike", rope_project.pycore)
 
     @staticmethod
-    def _collect_changed_paths(changes: Sequence[object]) -> MutableSequence[str]:
+    def _collect_changed_paths(
+        changes: Sequence[p.Infra.RopeChangeLike],
+    ) -> MutableSequence[str]:
         """Extract file paths from a rope ChangeSet.changes list."""
         return [change.resource.path for change in changes]
 
