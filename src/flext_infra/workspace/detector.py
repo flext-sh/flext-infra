@@ -21,7 +21,7 @@ from flext_infra import c, output, r, s, u
 class FlextInfraWorkspaceMode(StrEnum):
     """Workspace execution mode enumeration."""
 
-    WORKSPACE = c.Infra.ReportKeys.WORKSPACE
+    WORKSPACE = "workspace"
     STANDALONE = "standalone"
 
 

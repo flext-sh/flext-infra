@@ -25,7 +25,9 @@ def _make_backend(
 ) -> FlextInfraUtilitiesOutput.OutputBackend:
     """Create a backend with test-friendly settings."""
     buf = stream or io.StringIO()
-    return FlextInfraUtilitiesOutput.OutputBackend(use_color=use_color, use_unicode=use_unicode, stream=buf)
+    return FlextInfraUtilitiesOutput.OutputBackend(
+        use_color=use_color, use_unicode=use_unicode, stream=buf
+    )
 
 
 class TestInfraOutputNoColor:
