@@ -1,0 +1,23 @@
+src/flext_infra/transformers/nested_class_propagation.py
+  ade56594904d6940 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "6757756e63b7d2f48e21b567b562cdd33344b08c",
+  "prompts": {
+    "ade56594904d6940": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31066624-84c8-4541-8ea4-a35eb07efef5",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
