@@ -60,7 +60,7 @@ class FlextInfraCheckModels:
         """Execution result for a single quality gate."""
 
         result: Annotated[
-            FlextInfraCheckModels.FlextInfraCheckModels.GateResult,
+            FlextInfraCheckModels.GateResult,
             Field(
                 description="Gate result model",
             ),

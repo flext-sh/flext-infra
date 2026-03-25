@@ -103,7 +103,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 symbol_map.update(class_symbol_map)
                 continue
             transformed_body.append(retained_stmt)
-        created_classes: t.StrSequence = ()
+        created_classes: tuple[str, ...] = ()
         if not class_found:
             new_class, class_symbol_map = (
                 FlextInfraUtilitiesRefactorMroTransform._mro_create_constants_class(

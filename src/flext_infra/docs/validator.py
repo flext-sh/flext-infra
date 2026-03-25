@@ -115,7 +115,7 @@ class FlextInfraDocValidator:
                         )
                         required = [str(item) for item in required_items if item]
                     except ValidationError:
-                        required: t.StrSequence = []
+                        required = []
         if not required:
             required = ["rules-docs", "scripts-maintenance", "readme-standardization"]
         missing: MutableSequence[str] = []
@@ -150,7 +150,7 @@ class FlextInfraDocValidator:
                 status = c.Infra.Status.FAIL
                 message = f"missing adr references in skills: {', '.join(missing)}"
         wrote_todo = self._maybe_write_todo(scope, apply_mode=apply_mode)
-        adr_skills_json: Sequence[JsonValue] = list(missing_adr_skills)
+        adr_skills_json: list[JsonValue] = list(missing_adr_skills)
         payload: Mapping[str, JsonValue] = {
             c.Infra.ReportKeys.SUMMARY: {
                 c.Infra.ReportKeys.SCOPE: scope.name,

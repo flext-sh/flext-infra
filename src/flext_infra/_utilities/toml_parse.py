@@ -55,7 +55,7 @@ class FlextInfraUtilitiesTomlParse:
     @staticmethod
     def ensure_pyright_execution_envs(
         pyright: Table,
-        expected: Sequence[t.StrMapping],
+        expected: Sequence[Mapping[str, t.Infra.InfraValue]],
         changes: MutableSequence[str],
     ) -> None:
         """Ensure pyright executionEnvironments matches expected; append to changes if updated."""

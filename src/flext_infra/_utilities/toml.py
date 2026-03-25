@@ -141,7 +141,7 @@ class FlextInfraUtilitiesToml:
         return arr.multiline(True)
 
     @staticmethod
-    def ensure_table(parent: Table, key: str) -> Table:
+    def ensure_table(parent: Table | TOMLDocument, key: str) -> Table:
         """Get or create a TOML table in parent.
 
         When the key already exists as a dotted-key implicit ("super") table,

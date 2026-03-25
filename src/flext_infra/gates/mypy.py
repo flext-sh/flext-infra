@@ -76,7 +76,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             if not stripped:
                 continue
             try:
-                line_data = TypeAdapter(
+                line_data: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
                     Mapping[str, t.Infra.InfraValue],
                 ).validate_json(stripped)
             except ValidationError:

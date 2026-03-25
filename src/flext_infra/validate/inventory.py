@@ -54,7 +54,7 @@ class FlextInfraInventoryService:
                     and path.suffix in {c.Infra.Extensions.PYTHON, ".sh"}
                 )
             now = datetime.now(UTC).isoformat()
-            scripts_infra: Sequence[JsonValue] = list(scripts)
+            scripts_infra: list[JsonValue] = list(scripts)
             inventory: Mapping[str, JsonValue] = {
                 "generated_at": now,
                 "repo_root": str(root),

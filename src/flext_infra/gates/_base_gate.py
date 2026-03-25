@@ -117,13 +117,13 @@ class FlextInfraGate(ABC):
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         if not isinstance(value, list):
             return []
-        typed_items = TypeAdapter(Sequence[t.Infra.InfraValue]).validate_python(
+        typed_items: Sequence[t.Infra.InfraValue] = TypeAdapter(Sequence[t.Infra.InfraValue]).validate_python(
             value,
         )
         normalized: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
         for raw_item in typed_items:
             try:
-                typed_item = TypeAdapter(
+                typed_item: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
                     Mapping[str, t.Infra.InfraValue],
                 ).validate_python(raw_item)
             except ValidationError:
@@ -162,7 +162,7 @@ class FlextInfraGate(ABC):
         for key in keys:
             if not isinstance(current, Mapping):
                 return {}
-            typed_current = TypeAdapter(
+            typed_current: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
                 Mapping[str, t.Infra.InfraValue],
             ).validate_python(current)
             if key not in typed_current:

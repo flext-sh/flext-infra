@@ -104,6 +104,7 @@ class FlextInfraUtilitiesIo:
         """
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
+            materialized: JsonValue | Mapping[str, t.Infra.InfraValue]
             if isinstance(payload, BaseModel):
                 materialized = payload.model_dump()
             elif isinstance(payload, Mapping):

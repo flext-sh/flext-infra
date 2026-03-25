@@ -21,12 +21,6 @@ class FlextInfraCodegenConstants:
 
     EXCLUDED_PROJECTS: Final[frozenset[str]] = frozenset({"flexcore"})
     "Projects excluded from all codegen operations (Go/Python hybrid)."
-    TYPEVAR_CALLABLES: Final[frozenset[str]] = frozenset({
-        "TypeVar",
-        "ParamSpec",
-        "TypeVarTuple",
-    })
-    "Callable names that create type variables (for standalone detection)."
     SRC_MODULES: Final[t.Infra.VariadicTuple[t.Infra.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
         ("typings.py", "Types", "FlextTypes", "Type aliases"),

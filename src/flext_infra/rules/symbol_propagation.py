@@ -42,7 +42,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
                 module_renames_raw,
             )
         except ValidationError:
-            module_renames: Mapping[str, str] = {}
+            module_renames = {}
         try:
             symbol_renames: Mapping[str, str] = TypeAdapter(
                 Mapping[str, str],
@@ -50,7 +50,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
                 symbol_renames_raw,
             )
         except ValidationError:
-            symbol_renames: Mapping[str, str] = {}
+            symbol_renames = {}
         if not target_modules and (not module_renames) and (not symbol_renames):
             return (tree, [])
         transformer = FlextInfraRefactorSymbolPropagator(
@@ -225,7 +225,7 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         migrations_raw = self.config.get("signature_migrations", [])
         try:
-            parsed = TypeAdapter(
+            parsed: Sequence[m.Infra.SignatureMigration] = TypeAdapter(
                 Sequence[m.Infra.SignatureMigration],
             ).validate_python(migrations_raw)
         except ValidationError:

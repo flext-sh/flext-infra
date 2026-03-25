@@ -71,7 +71,6 @@ class FlextInfraScanFileMixin:
 
         """
 
-    @override
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
         """Scan a file and return a standardized ScanResult.
 

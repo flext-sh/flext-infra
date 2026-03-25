@@ -134,7 +134,7 @@ class FlextInfraUtilitiesReporting:
                 ),
             )
         sarif_report = m.Infra.SarifReport(runs=sarif_runs)
-        sarif_dict: Mapping[str, JsonValue] = sarif_report.model_dump(by_alias=True)
+        sarif_dict: dict[str, JsonValue] = sarif_report.model_dump(by_alias=True)
         return sarif_dict
 
     @staticmethod

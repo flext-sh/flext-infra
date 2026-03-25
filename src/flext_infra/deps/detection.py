@@ -80,7 +80,7 @@ class FlextInfraDependencyDetectionService:
                 converted.append(converted_item)
             return converted
         try:
-            mapping_value = TypeAdapter(
+            mapping_value: Mapping[str, JsonValue] = TypeAdapter(
                 Mapping[str, t.Infra.InfraValue],
             ).validate_python(
                 value,
@@ -137,7 +137,7 @@ class FlextInfraDependencyDetectionService:
             if not isinstance(error_obj, Mapping):
                 continue
             try:
-                error_data = TypeAdapter(
+                error_data: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
                     Mapping[str, t.Infra.InfraValue],
                 ).validate_python(
                     error_obj,
@@ -263,7 +263,7 @@ class FlextInfraDependencyDetectionService:
                     Sequence[str],
                 ).validate_python([str(s) for s in typings])
             except ValidationError:
-                typed_typings: Sequence[str] = []
+                typed_typings = []
             for spec in typed_typings:
                 spec_text = str(spec)
                 names.add(
@@ -279,7 +279,7 @@ class FlextInfraDependencyDetectionService:
                     Mapping[str, str],
                 ).validate_python({k: str(v) for k, v in typings.items()})
             except ValidationError:
-                typed_typings_map: Mapping[str, str] = {}
+                typed_typings_map = {}
             names.update(typed_typings_map.keys())
         return sorted(names)
 
@@ -303,7 +303,7 @@ class FlextInfraDependencyDetectionService:
                         Sequence[str],
                     ).validate_python([str(e) for e in excluded])
                 except ValidationError:
-                    typed_excluded: Sequence[str] = []
+                    typed_excluded = []
                 exclude_set = set(typed_excluded)
         hinted: Sequence[str] = []
         missing_modules: Sequence[str] = []
@@ -382,7 +382,7 @@ class FlextInfraDependencyDetectionService:
                         Mapping[str, str],
                     ).validate_python({k: str(v) for k, v in module_to_package.items()})
                 except ValidationError:
-                    module_to_package_map: Mapping[str, str] = {}
+                    module_to_package_map = {}
                 value = module_to_package_map.get(root)
                 if value is None:
                     return None

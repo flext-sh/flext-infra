@@ -250,7 +250,7 @@ class FlextInfraUtilitiesRefactor(
         if not isinstance(definitions_raw, dict):
             return False
         try:
-            definitions = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
+            definitions: Mapping[str, t.Infra.InfraValue] = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
                 definitions_raw,
             )
         except ValidationError:
@@ -261,10 +261,10 @@ class FlextInfraUtilitiesRefactor(
             return False
         if not isinstance(class_rule_raw, dict):
             return False
-        policy_entry = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
+        policy_entry: Mapping[str, t.Infra.InfraValue] = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
             policy_entry_raw,
         )
-        class_rule = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
+        class_rule: Mapping[str, t.Infra.InfraValue] = TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
             class_rule_raw,
         )
         policy_entry_required = FlextInfraUtilitiesRefactor.string_list(

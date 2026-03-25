@@ -215,7 +215,7 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
             [],
         )
         try:
-            order_config = TypeAdapter(Sequence[t.Infra.ContainerDict]).validate_python(
+            order_config: Sequence[t.Infra.ContainerDict] = TypeAdapter(Sequence[t.Infra.ContainerDict]).validate_python(
                 order_config_raw,
             )
         except ValidationError:

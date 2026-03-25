@@ -78,7 +78,7 @@ class TestFlextInfraConstantsAlias:
         tm.that(hasattr(c, "Infra"), eq=True)
         tm.that(hasattr(c.Infra, "Paths"), eq=True)
         tm.that(hasattr(c.Infra, "Files"), eq=True)
-        tm.that(hasattr(c.Infra, "Gates"), eq=True)
+        tm.that(hasattr(c.Infra, "Census"), eq=True)
         tm.that(hasattr(c.Infra, "Status"), eq=True)
         tm.that(hasattr(c.Infra, "Excluded"), eq=True)
         tm.that(hasattr(c.Infra, "Encoding"), eq=True)

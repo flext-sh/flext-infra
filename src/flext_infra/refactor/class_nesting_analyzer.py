@@ -134,7 +134,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 Mapping[t.Infra.Pair[str, str], m.Infra.ClassNestingMapping]
             ].ok({})
         try:
-            entries = TypeAdapter(
+            entries: Sequence[m.Infra.ClassNestingMapping] = TypeAdapter(
                 Sequence[m.Infra.ClassNestingMapping],
             ).validate_python(raw_nesting)
         except ValidationError as exc:

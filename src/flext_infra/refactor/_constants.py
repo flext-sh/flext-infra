@@ -213,7 +213,7 @@ class FlextInfraRefactorConstants:
         "flext-grpc",
     })
     "Known platform-layer packages."
-    INTEGRATION_CLASS_PREFIXES: ClassVar[t.StrSequence] = (
+    INTEGRATION_CLASS_PREFIXES: ClassVar[tuple[str, ...]] = (
         "FlextTap",
         "FlextTarget",
         "FlextDbt",

@@ -189,7 +189,7 @@ class FlextInfraRefactorLooseClassScanner:
             return out2
         try:
             json_raw: str | bytes | bytearray = capture.value
-            entries = TypeAdapter(
+            entries: Sequence[m.Infra.AstGrepMatchEnvelope] = TypeAdapter(
                 Sequence[m.Infra.AstGrepMatchEnvelope],
             ).validate_json(json_raw)
         except ValidationError as exc:

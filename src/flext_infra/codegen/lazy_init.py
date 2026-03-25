@@ -397,8 +397,8 @@ class FlextInfraCodegenLazyInit(s[int]):
                         for target in node.targets
                         if isinstance(target, ast.Name)
                     )
-                case ast.AnnAssign(target=ast.Name()):
-                    names.append(node.target.id)
+                case ast.AnnAssign(target=ast.Name() as ann_target):
+                    names.append(ann_target.id)
             for name in names:
                 if not name.startswith("_"):
                     index[name] = (mod_path, name)

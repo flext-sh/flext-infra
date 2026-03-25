@@ -71,7 +71,7 @@ class FlextInfraDocAuditor:
                     strict=True,
                 )
             except ValidationError:
-                by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
+                by_scope_raw = {}
         by_scope: MutableMapping[str, int] = {}
         for name, value in by_scope_raw.items():
             if isinstance(value, (int, float)):
@@ -183,8 +183,8 @@ class FlextInfraDocAuditor:
             issues.extend(self.broken_link_issues(scope))
         if "forbidden-terms" in checks:
             issues.extend(self.forbidden_term_issues(scope))
-        sorted_checks: Sequence[JsonValue] = [str(ck) for ck in sorted(checks)]
-        summary: Mapping[str, JsonValue] = {
+        sorted_checks: list[JsonValue] = [str(ck) for ck in sorted(checks)]
+        summary: dict[str, JsonValue] = {
             c.Infra.ReportKeys.SCOPE: scope.name,
             "issues": len(issues),
             c.Infra.Verbs.CHECKS: sorted_checks,
@@ -200,7 +200,7 @@ class FlextInfraDocAuditor:
             }
             for issue in issues
         ]
-        summary_payload: JsonValue = {
+        summary_payload: dict[str, JsonValue] = {
             c.Infra.ReportKeys.SUMMARY: summary,
             "issues": issues_payload,
         }

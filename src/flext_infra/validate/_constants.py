@@ -58,7 +58,7 @@ class FlextInfraCoreConstants:
     MYPY_STUB_RE: Final[re.Pattern[str]] = re.compile(
         r"Library stubs not installed for ['\"](\S+?)['\"]",
     )
-    INTERNAL_PREFIXES: Final[t.StrSequence] = ("flext_", "flext-")
+    INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
 
 
 class FlextInfraSharedInfraConstants:

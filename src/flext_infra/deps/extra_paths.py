@@ -170,14 +170,13 @@ class FlextInfraExtraPathsManager:
         For each direct dep, reads its pyproject.toml and collects its
         path deps too, with cycle detection.
         """
-        if visited is None:
-            visited: t.Infra.StrSet = set()
-        all_paths: t.Infra.StrSet = set(direct_paths)
+        resolved_visited: set[str] = visited if visited is not None else set()
+        all_paths: set[str] = set(direct_paths)
         for path_value in direct_paths:
             name = FlextInfraDependencyPathSync.extract_dep_name(path_value)
-            if name in visited:
+            if name in resolved_visited:
                 continue
-            visited.add(name)
+            resolved_visited.add(name)
             dep_pyproject = self.root / name / c.Infra.Files.PYPROJECT_FILENAME
             if not dep_pyproject.exists():
                 continue
@@ -190,7 +189,7 @@ class FlextInfraExtraPathsManager:
                 all_paths.update(transitive)
                 deeper = self._resolve_transitive_deps(
                     transitive,
-                    visited=visited,
+                    visited=resolved_visited,
                 )
                 all_paths.update(deeper)
         return sorted(all_paths)

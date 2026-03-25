@@ -85,7 +85,7 @@ class FlextInfraInjectCommentsPhase:
         out: MutableSequence[str] = [*banner_lines]
         if lines[: len(banner_lines)] != banner_lines:
             changes.append("managed banner injected")
-        emitted_markers = t.Infra.StrSet()
+        emitted_markers: set[str] = set()
         for line in cleaned_lines:
             stripped = line.strip()
             marker = self._marker_for_section(stripped)

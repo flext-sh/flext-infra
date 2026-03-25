@@ -194,7 +194,7 @@ class FlextInfraDependencyDetectorRuntime:
             deptry_obj = payload.get(c.Infra.DEPTRY)
             if isinstance(deptry_obj, dict):
                 try:
-                    deptry_payload = TypeAdapter(
+                    deptry_payload: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
                         Mapping[str, t.Infra.InfraValue],
                     ).validate_python(deptry_obj)
                 except ValidationError:

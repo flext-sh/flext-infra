@@ -230,9 +230,9 @@ class FlextInfraMROCompletenessDetector(
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
         if not suffix:
             return None
-        for stmt in tree.body:
-            if isinstance(stmt, cst.ClassDef) and stmt.name.value.endswith(suffix):
-                return stmt.name.value
+        for body_stmt in tree.body:
+            if isinstance(body_stmt, cst.ClassDef) and body_stmt.name.value.endswith(suffix):
+                return body_stmt.name.value
         return None
 
     @classmethod

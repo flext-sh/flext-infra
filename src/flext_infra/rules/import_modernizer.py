@@ -65,7 +65,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         value: t.Infra.InfraValue,
     ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         try:
-            raw_items = TypeAdapter(Sequence[t.Infra.ContainerDict]).validate_python(
+            raw_items: Sequence[t.Infra.ContainerDict] = TypeAdapter(Sequence[t.Infra.ContainerDict]).validate_python(
                 value,
             )
         except ValidationError:

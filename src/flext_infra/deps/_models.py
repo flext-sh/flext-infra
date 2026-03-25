@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from typing import Annotated
 
 from flext_core import m
@@ -620,25 +620,25 @@ class FlextInfraDepsModels:
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 
         dep001: Annotated[
-            Sequence[Mapping[str, t.Primitives | None]],
+            MutableSequence[Mapping[str, t.Primitives | None]],
             Field(
                 description="DEP001 issues",
             ),
         ] = Field(default_factory=list)
         dep002: Annotated[
-            Sequence[Mapping[str, t.Primitives | None]],
+            MutableSequence[Mapping[str, t.Primitives | None]],
             Field(
                 description="DEP002 issues",
             ),
         ] = Field(default_factory=list)
         dep003: Annotated[
-            Sequence[Mapping[str, t.Primitives | None]],
+            MutableSequence[Mapping[str, t.Primitives | None]],
             Field(
                 description="DEP003 issues",
             ),
         ] = Field(default_factory=list)
         dep004: Annotated[
-            Sequence[Mapping[str, t.Primitives | None]],
+            MutableSequence[Mapping[str, t.Primitives | None]],
             Field(
                 description="DEP004 issues",
             ),
@@ -681,7 +681,7 @@ class FlextInfraDepsModels:
         """Workspace-level dependency analysis report aggregating all projects."""
 
         workspace: str
-        projects: Annotated[Mapping[str, FlextInfraDepsModels.ProjectRuntimeReport]] = (
+        projects: Annotated[Mapping[str, FlextInfraDepsModels.ProjectRuntimeReport], Field(description="Per-project reports")] = (
             Field(default_factory=dict)
         )
         pip_check: FlextInfraDepsModels.PipCheckReport | None = None
