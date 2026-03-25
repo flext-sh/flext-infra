@@ -49,4 +49,4 @@ class TestScanModels:
         assert len(violations) == 1
         assert violations[0]["message"] == "rule hit"
         assert violations[0]["rule_id"] is None
-        assert c.Cli.GIT == "git"
+        assert c.Infra.GIT == "git"

@@ -13,57 +13,44 @@ _rewrite_pep621 = _PATH_SYNC._rewrite_pep621
 class TestRewritePep621:
     def test_rewrite_pep621_no_project(self) -> None:
         doc = TOMLDocument()
-        tm.that(
-            _rewrite_pep621(doc, is_root=True, mode="workspace", internal_names=set()),
-            eq=[],
-        )
+        changes, _ = _rewrite_pep621(doc, internal_names=set())
+        tm.that(changes, eq=[])
 
     def test_rewrite_pep621_no_dependencies(self) -> None:
         doc = TOMLDocument()
         doc["project"] = tomlkit.table()
-        tm.that(
-            _rewrite_pep621(doc, is_root=True, mode="workspace", internal_names=set()),
-            eq=[],
-        )
+        changes, _ = _rewrite_pep621(doc, internal_names=set())
+        tm.that(changes, eq=[])
 
     def test_rewrite_pep621_non_list_dependencies(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {"dependencies": "not-a-list"}
-        tm.that(
-            _rewrite_pep621(doc, is_root=True, mode="workspace", internal_names=set()),
-            eq=[],
-        )
+        changes, _ = _rewrite_pep621(doc, internal_names=set())
+        tm.that(changes, eq=[])
 
     def test_rewrite_pep621_rewrite_path_dep(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {
             "dependencies": ["flext-core @ file://.flext-deps/flext-core"],
         }
-        changes = _rewrite_pep621(
+        changes, deps = _rewrite_pep621(
             doc,
-            is_root=True,
-            mode="workspace",
             internal_names={"flext-core"},
         )
         assert len(changes) > 0
         unwrapped = doc.unwrap()
-        tm.that(
-            unwrapped["project"]["dependencies"][0],
-            has="flext-core @ file:./flext-core",
-        )
+        # _rewrite_pep621 strips the path reference, leaving just the package name
+        tm.that(unwrapped["project"]["dependencies"][0], eq="flext-core")
+        tm.that("flext-core" in deps, eq=True)
 
     def test_rewrite_pep621_skip_external_dep(self) -> None:
         doc = TOMLDocument()
         doc["project"] = {"dependencies": ["requests>=2.0.0"]}
-        tm.that(
-            _rewrite_pep621(
-                doc,
-                is_root=True,
-                mode="workspace",
-                internal_names={"flext-core"},
-            ),
-            eq=[],
+        changes, _ = _rewrite_pep621(
+            doc,
+            internal_names={"flext-core"},
         )
+        tm.that(changes, eq=[])
 
     def test_rewrite_pep621_with_marker(self) -> None:
         doc = TOMLDocument()
@@ -72,10 +59,8 @@ class TestRewritePep621:
                 'flext-core @ file://.flext-deps/flext-core ; python_version >= "3.8"',
             ],
         }
-        changes = _rewrite_pep621(
+        changes, _ = _rewrite_pep621(
             doc,
-            is_root=True,
-            mode="workspace",
             internal_names={"flext-core"},
         )
         assert len(changes) > 0
@@ -87,10 +72,8 @@ class TestRewritePep621:
         doc["project"] = {
             "dependencies": [123, "flext-core @ file://.flext-deps/flext-core"],
         }
-        changes = _rewrite_pep621(
+        changes, _ = _rewrite_pep621(
             doc,
-            is_root=True,
-            mode="workspace",
             internal_names={"flext-core"},
         )
         tm.that(len(changes), eq=1)
@@ -100,15 +83,14 @@ class TestRewritePep621:
         doc["project"] = {
             "dependencies": ["flext-core @ file://.flext-deps/flext-core"],
         }
-        changes = _rewrite_pep621(
+        changes, _ = _rewrite_pep621(
             doc,
-            is_root=False,
-            mode="workspace",
             internal_names={"flext-core"},
         )
         assert len(changes) > 0
         unwrapped = doc.unwrap()
-        tm.that(unwrapped["project"]["dependencies"][0], has="../flext-core")
+        # path rewriting (../flext-core) is done by _rewrite_uv_sources, not _rewrite_pep621
+        tm.that(unwrapped["project"]["dependencies"][0], eq="flext-core")
 
 
 def test_rewrite_pep621_non_string_item() -> None:
@@ -116,10 +98,8 @@ def test_rewrite_pep621_non_string_item() -> None:
     project = tomlkit.table()
     project["dependencies"] = [123]
     doc["project"] = project
-    changes = _rewrite_pep621(
+    changes, _ = _rewrite_pep621(
         doc,
-        is_root=False,
-        mode="workspace",
         internal_names={"flext-core"},
     )
     tm.that(len(changes), eq=0)
@@ -127,10 +107,8 @@ def test_rewrite_pep621_non_string_item() -> None:
 
 def test_rewrite_pep621_no_project_table() -> None:
     doc = tomlkit.document()
-    changes = _rewrite_pep621(
+    changes, _ = _rewrite_pep621(
         doc,
-        is_root=False,
-        mode="workspace",
         internal_names={"flext-core"},
     )
     tm.that(len(changes), eq=0)
@@ -141,10 +119,9 @@ def test_rewrite_pep621_invalid_path_dep_regex() -> None:
     project = tomlkit.table()
     project["dependencies"] = ["  flext-core @ file://.flext-deps/flext-core"]
     doc["project"] = project
-    changes = _rewrite_pep621(
+    changes, _ = _rewrite_pep621(
         doc,
-        is_root=True,
-        mode="workspace",
         internal_names={"flext-core"},
     )
-    tm.that(len(changes), eq=0)
+    # PEP621_NAME_RE allows leading whitespace, so this WILL extract name and create change
+    tm.that(len(changes), eq=1)

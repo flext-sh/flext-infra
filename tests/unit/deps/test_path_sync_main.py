@@ -125,10 +125,19 @@ class TestMain:
             *,
             mode: str,
             internal_names: set[str],
+            workspace_members: t.StrSequence = (),
             is_root: bool = False,
             dry_run: bool = False,
         ) -> r[t.StrSequence]:
-            _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
+            _ = (
+                _self,
+                _pyproject_path,
+                mode,
+                internal_names,
+                workspace_members,
+                is_root,
+                dry_run,
+            )
             return r[t.StrSequence].fail("rewrite failed")
 
         monkeypatch.setattr(FlextInfraDependencyPathSync, "ROOT", tmp_path)
@@ -170,10 +179,19 @@ class TestMain:
             *,
             mode: str,
             internal_names: set[str],
+            workspace_members: t.StrSequence = (),
             is_root: bool = False,
             dry_run: bool = False,
         ) -> r[t.StrSequence]:
-            _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
+            _ = (
+                _self,
+                _pyproject_path,
+                mode,
+                internal_names,
+                workspace_members,
+                is_root,
+                dry_run,
+            )
             calls["n"] += 1
             if calls["n"] == 1:
                 return r[t.StrSequence].ok([])
@@ -184,5 +202,5 @@ class TestMain:
             "rewrite_dep_paths",
             rewrite_stub,
         )
-        monkeypatch.setattr(sys, "argv", ["prog"])
+        monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
         tm.that(path_sync_module.main(), eq=1)

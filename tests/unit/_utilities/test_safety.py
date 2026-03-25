@@ -8,7 +8,7 @@ from flext_infra import c, u
 
 def _run_git(repo: Path, *args: str) -> None:
     subprocess.run(
-        [c.Cli.GIT, *args],
+        [c.Infra.GIT, *args],
         cwd=repo,
         check=True,
         capture_output=True,

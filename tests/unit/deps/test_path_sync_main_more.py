@@ -53,7 +53,7 @@ def test_main_project_invalid_toml(
         "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
         _discover_project,
     )
-    monkeypatch.setattr(sys, "argv", ["prog"])
+    monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
     tm.that(path_sync_module.main(), eq=1)
 
 
@@ -73,7 +73,7 @@ def test_main_project_no_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
         _discover_project,
     )
-    monkeypatch.setattr(sys, "argv", ["prog"])
+    monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
     tm.that(path_sync_module.main(), eq=0)
 
 
@@ -96,7 +96,7 @@ def test_main_project_non_string_name(
         "flext_infra.FlextInfraUtilitiesDiscovery.discover_projects",
         _discover_project,
     )
-    monkeypatch.setattr(sys, "argv", ["prog"])
+    monkeypatch.setattr(sys, "argv", ["prog", "--workspace", str(tmp_path)])
     tm.that(path_sync_module.main(), eq=0)
 
 
@@ -126,10 +126,19 @@ def test_main_no_changes_needed(monkeypatch: pytest.MonkeyPatch) -> None:
         *,
         mode: str,
         internal_names: set[str],
+        workspace_members: t.StrSequence = (),
         is_root: bool = False,
         dry_run: bool = False,
     ) -> r[t.StrSequence]:
-        _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
+        _ = (
+            _self,
+            _pyproject_path,
+            mode,
+            internal_names,
+            workspace_members,
+            is_root,
+            dry_run,
+        )
         return r[t.StrSequence].ok([])
 
     monkeypatch.setattr(sys, "argv", ["sync-paths"])
@@ -169,10 +178,19 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         *,
         mode: str,
         internal_names: set[str],
+        workspace_members: t.StrSequence = (),
         is_root: bool = False,
         dry_run: bool = False,
     ) -> r[t.StrSequence]:
-        _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
+        _ = (
+            _self,
+            _pyproject_path,
+            mode,
+            internal_names,
+            workspace_members,
+            is_root,
+            dry_run,
+        )
         return r[t.StrSequence].ok(["  PEP621: old -> new"])
 
     monkeypatch.setattr(sys, "argv", ["sync-paths", "--dry-run"])
@@ -204,10 +222,19 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         *,
         mode: str,
         internal_names: set[str],
+        workspace_members: t.StrSequence = (),
         is_root: bool = False,
         dry_run: bool = False,
     ) -> r[t.StrSequence]:
-        _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
+        _ = (
+            _self,
+            _pyproject_path,
+            mode,
+            internal_names,
+            workspace_members,
+            is_root,
+            dry_run,
+        )
         return r[t.StrSequence].ok(["  PEP621: old -> new"])
 
     monkeypatch.setattr(sys, "argv", ["sync-paths"])

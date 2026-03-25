@@ -378,9 +378,6 @@ if TYPE_CHECKING:
         FlextInfraRefactorMROPrivateInlineTransformer,
         FlextInfraRefactorMROQualifiedReferenceTransformer,
     )
-    from flext_infra.transformers.mro_reference_rewriter import (
-        FlextInfraRefactorMROReferenceRewriter,
-    )
     from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
     from flext_infra.transformers.nested_class_propagation import (
         FlextInfraNestedClassPropagationTransformer,
@@ -888,10 +885,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraRefactorMRORedundancyChecker": [
         "flext_infra.rules.mro_redundancy_checker",
         "FlextInfraRefactorMRORedundancyChecker",
-    ],
-    "FlextInfraRefactorMROReferenceRewriter": [
-        "flext_infra.transformers.mro_reference_rewriter",
-        "FlextInfraRefactorMROReferenceRewriter",
     ],
     "FlextInfraRefactorMRORemover": [
         "flext_infra.transformers.mro_remover",
@@ -1413,7 +1406,6 @@ __all__ = [
     "FlextInfraRefactorMROPrivateInlineTransformer",
     "FlextInfraRefactorMROQualifiedReferenceTransformer",
     "FlextInfraRefactorMRORedundancyChecker",
-    "FlextInfraRefactorMROReferenceRewriter",
     "FlextInfraRefactorMRORemover",
     "FlextInfraRefactorMROResolver",
     "FlextInfraRefactorMigrateToClassMRO",

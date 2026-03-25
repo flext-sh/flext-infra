@@ -53,7 +53,6 @@ if TYPE_CHECKING:
         WorkspaceScenarios,
     )
     from tests.test_infra_refactor_rope_migrations import (
-        TestMROReferenceRewriterRopeMigration,
         TestNestedClassPropagationRopeMigration,
         TestSymbolPropagatorRopeMigration,
     )
@@ -1785,10 +1784,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestLoadDependencyLimits": [
         "tests.unit.deps.test_detection_typings",
         "TestLoadDependencyLimits",
-    ],
-    "TestMROReferenceRewriterRopeMigration": [
-        "tests.test_infra_refactor_rope_migrations",
-        "TestMROReferenceRewriterRopeMigration",
     ],
     "TestMain": ["tests.unit.github.main_integration_tests", "TestMain"],
     "TestMainBaseMkValidate": [
@@ -3883,7 +3878,6 @@ __all__ = [
     "TestLintAndFormatPublicMethods",
     "TestLoadAuditBudgets",
     "TestLoadDependencyLimits",
-    "TestMROReferenceRewriterRopeMigration",
     "TestMain",
     "TestMainBaseMkValidate",
     "TestMainCli",

@@ -46,9 +46,6 @@ if TYPE_CHECKING:
         FlextInfraRefactorMROPrivateInlineTransformer,
         FlextInfraRefactorMROQualifiedReferenceTransformer,
     )
-    from flext_infra.transformers.mro_reference_rewriter import (
-        FlextInfraRefactorMROReferenceRewriter,
-    )
     from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
     from flext_infra.transformers.nested_class_propagation import (
         FlextInfraNestedClassPropagationTransformer,
@@ -141,10 +138,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.transformers.mro_private_inline",
         "FlextInfraRefactorMROQualifiedReferenceTransformer",
     ],
-    "FlextInfraRefactorMROReferenceRewriter": [
-        "flext_infra.transformers.mro_reference_rewriter",
-        "FlextInfraRefactorMROReferenceRewriter",
-    ],
     "FlextInfraRefactorMRORemover": [
         "flext_infra.transformers.mro_remover",
         "FlextInfraRefactorMRORemover",
@@ -203,7 +196,6 @@ __all__ = [
     "FlextInfraRefactorLazyImportFixer",
     "FlextInfraRefactorMROPrivateInlineTransformer",
     "FlextInfraRefactorMROQualifiedReferenceTransformer",
-    "FlextInfraRefactorMROReferenceRewriter",
     "FlextInfraRefactorMRORemover",
     "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTransformerPolicyUtilities",

@@ -1,4 +1,4 @@
-"""Tests for rope-migrated transformers: symbol_propagator, mro_reference_rewriter, nested_class_propagation."""
+"""Tests for rope-migrated transformers: symbol_propagator, nested_class_propagation."""
 
 from __future__ import annotations
 
@@ -7,14 +7,8 @@ import pathlib
 import libcst as cst
 import libcst.metadata as meta
 
-from flext_infra import m
-from flext_infra.transformers.mro_reference_rewriter import (
-    FlextInfraRefactorMROReferenceRewriter,
-)
-from flext_infra.transformers.nested_class_propagation import (
+from flext_infra import (
     FlextInfraNestedClassPropagationTransformer,
-)
-from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
 
@@ -108,58 +102,6 @@ class TestSymbolPropagatorRopeMigration:
         assert len(lines) < 117, f"Expected < 117 lines, got {len(lines)}"
 
 
-class TestMROReferenceRewriterRopeMigration:
-    """Verify mro_reference_rewriter contains Rename and is shorter than baseline."""
-
-    def test_bare_name_rewrite(self) -> None:
-        """Transformer rewrites bare imported names to facade.symbol form."""
-        source = "OldConst\n"
-        tree = cst.parse_module(source)
-        imported_symbols = {
-            "OldConst": m.Infra.MROImportRewrite(
-                module="flext_infra",
-                import_name="OldConst",
-                facade_name="c.Infra",
-                symbol="OldConst",
-            ),
-        }
-        transformer = FlextInfraRefactorMROReferenceRewriter(
-            imported_symbols=imported_symbols,
-            module_aliases={},
-            module_facades={},
-            moved_index={},
-        )
-        result = tree.visit(transformer)
-        assert "c.Infra.OldConst" in result.code
-        assert transformer.replacements == 1
-
-    def test_no_change_when_no_match(self) -> None:
-        """Transformer returns unchanged tree when no symbols match."""
-        source = "UnknownName\n"
-        tree = cst.parse_module(source)
-        transformer = FlextInfraRefactorMROReferenceRewriter(
-            imported_symbols={},
-            module_aliases={},
-            module_facades={},
-            moved_index={},
-        )
-        result = tree.visit(transformer)
-        assert result.code == source
-        assert transformer.replacements == 0
-
-    def test_file_shorter_than_baseline(self) -> None:
-        """mro_reference_rewriter.py is shorter than 79-line baseline."""
-        path = (
-            pathlib.Path(__file__).parent.parent
-            / "src"
-            / "flext_infra"
-            / "transformers"
-            / "mro_reference_rewriter.py"
-        )
-        lines = path.read_text().splitlines()
-        assert len(lines) < 79, f"Expected < 79 lines, got {len(lines)}"
-
-
 class TestNestedClassPropagationRopeMigration:
     """Verify nested_class_propagation uses rope and removes ParentNodeProvider."""
 
@@ -200,8 +142,7 @@ class TestNestedClassPropagationRopeMigration:
         )
         files = [
             "symbol_propagator.py",
-            "mro_reference_rewriter.py",
             "nested_class_propagation.py",
         ]
         total = sum(len((transformers_dir / f).read_text().splitlines()) for f in files)
-        assert total < 385, f"Expected combined LOC < 385, got {total}"
+        assert total < 310, f"Expected combined LOC < 310, got {total}"

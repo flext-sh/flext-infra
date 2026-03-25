@@ -38,7 +38,6 @@ class FlextInfraRefactorMigrateToClassMRO:
         errors: MutableSequence[str] = []
         stash_ref = ""
         moved_index: MutableMapping[str, Mapping[str, str]] = {}
-        module_facade_aliases: MutableMapping[str, str] = {}
         migrations: MutableSequence[m.Infra.MROFileMigration] = []
         for scan_result in scan_results:
             try:
@@ -52,7 +51,6 @@ class FlextInfraRefactorMigrateToClassMRO:
                 continue
             migrations.append(migration)
             moved_index[scan_result.module] = symbol_alias_map
-            module_facade_aliases[scan_result.module] = scan_result.facade_alias
             if apply:
                 Path(scan_result.file).write_text(
                     updated_source,
@@ -61,7 +59,6 @@ class FlextInfraRefactorMigrateToClassMRO:
         rewrite_results = FlextInfraRefactorMROImportRewriter.rewrite_workspace(
             workspace_root=self._workspace_root,
             moved_index=moved_index,
-            module_facade_aliases=module_facade_aliases,
             apply=apply,
         )
         rewrites = tuple(rewrite_results)

@@ -43,8 +43,8 @@ class FlextInfraTypesBase:
         | int
         | float
         | bool
-        | Mapping[str, InfraValue]
-        | Sequence[InfraValue]
+        | Mapping[str, FlextInfraTypesBase.InfraValue]
+        | Sequence[FlextInfraTypesBase.InfraValue]
         | None
     )
     "Recursive infrastructure value: primitive, nested dict/list, or null."

@@ -76,10 +76,19 @@ class TestMainEdgeCases:
             *,
             mode: str,
             internal_names: set[str],
+            workspace_members: t.StrSequence = (),
             is_root: bool = False,
             dry_run: bool = False,
         ) -> r[t.StrSequence]:
-            _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
+            _ = (
+                _self,
+                _pyproject_path,
+                mode,
+                internal_names,
+                workspace_members,
+                is_root,
+                dry_run,
+            )
             calls["n"] += 1
             if calls["n"] == 1:
                 return r[t.StrSequence].ok([])
@@ -144,10 +153,19 @@ class TestMainEdgeCases:
             *,
             mode: str,
             internal_names: set[str],
+            workspace_members: t.StrSequence = (),
             is_root: bool = False,
             dry_run: bool = False,
         ) -> r[t.StrSequence]:
-            _ = _self, _pyproject_path, mode, internal_names, is_root, dry_run
+            _ = (
+                _self,
+                _pyproject_path,
+                mode,
+                internal_names,
+                workspace_members,
+                is_root,
+                dry_run,
+            )
             return r[t.StrSequence].ok([])
 
         monkeypatch.setattr(

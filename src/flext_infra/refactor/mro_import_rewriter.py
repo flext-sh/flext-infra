@@ -20,7 +20,6 @@ class FlextInfraRefactorMROImportRewriter:
         *,
         workspace_root: Path,
         moved_index: Mapping[str, t.StrMapping],
-        module_facade_aliases: t.StrMapping,  # noqa: ARG003 — kept for interface compat
         apply: bool,
     ) -> Sequence[m.Infra.MRORewriteResult]:
         """Rename all moved symbols workspace-wide via u.Infra.rename_symbol_workspace."""
@@ -32,10 +31,9 @@ class FlextInfraRefactorMROImportRewriter:
                 if resource is None:
                     continue
                 for old_symbol, new_path in symbol_map.items():
-                    source = (
-                        resource.read()
-                    )  # re-read: prior rename may have changed offsets
-                    offset = u.Infra.find_definition_offset(source, old_symbol)
+                    offset = u.Infra.find_definition_offset(
+                        rope_project, resource, old_symbol
+                    )
                     if offset is None:
                         continue
                     new_name = new_path.split(".")[-1]
@@ -43,6 +41,11 @@ class FlextInfraRefactorMROImportRewriter:
                         rope_project, resource, offset, new_name, apply=apply
                     ):
                         file_replacements[path] = file_replacements.get(path, 0) + 1
+                    # Re-fetch resource after rename: rope_project.do() updates index
+                    # and resource objects may become stale
+                    refreshed = u.Infra.get_file_resource(rope_project, module_name)
+                    if refreshed is not None:
+                        resource = refreshed
         finally:
             rope_project.close()
         return [

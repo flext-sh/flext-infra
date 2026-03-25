@@ -5,13 +5,12 @@ from __future__ import annotations
 import argparse
 from collections.abc import Sequence
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import FlextInfraPyprojectModernizer, t, u
+from flext_infra import FlextInfraPyprojectModernizer, u
 
 
 class TestFlextInfraPyprojectModernizer:
@@ -156,7 +155,7 @@ class TestModernizerRunAndMain:
 
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
         monkeypatch.setattr(u.Infra, "read", _read_doc)
-        monkeypatch.setattr(modernizer, "_run_poetry_check", _check)
+        monkeypatch.setattr(modernizer, "_run_build_check", _check)
         tm.that(
             modernizer.run(
                 args,
@@ -165,48 +164,30 @@ class TestModernizerRunAndMain:
             eq=0,
         )
 
-    def test_run_poetry_check_paths(
+    def test_run_build_check_paths(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text("[project]\nname = 'test'")
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
 
-        def _run_ok(
-            _cmd: t.StrSequence,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> SimpleNamespace:
-            _ = (cwd, timeout, env)
-            return SimpleNamespace(is_failure=False, value=SimpleNamespace(exit_code=0))
+        valid = tmp_path / "valid" / "pyproject.toml"
+        valid.parent.mkdir()
+        valid.write_text(
+            '[build-system]\nbuild-backend = "hatchling.build"\nrequires = ["hatchling"]\n'
+        )
+        tm.that(modernizer._run_build_check([valid]), eq=0)
 
-        def _run_fail(
-            _cmd: t.StrSequence,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> SimpleNamespace:
-            _ = (cwd, timeout, env)
-            return SimpleNamespace(is_failure=True)
+        missing_build = tmp_path / "missing" / "pyproject.toml"
+        missing_build.parent.mkdir()
+        missing_build.write_text("[project]\nname = 'test'\n")
+        tm.that(modernizer._run_build_check([missing_build]), eq=1)
 
-        def _run_non_zero(
-            _cmd: t.StrSequence,
-            cwd: Path | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-        ) -> SimpleNamespace:
-            _ = (cwd, timeout, env)
-            return SimpleNamespace(is_failure=False, value=SimpleNamespace(exit_code=1))
-
-        monkeypatch.setattr(u.Infra, "run_raw", _run_ok)
-        tm.that(modernizer._run_poetry_check([pyproject]), eq=0)
-        monkeypatch.setattr(u.Infra, "run_raw", _run_fail)
-        tm.that(modernizer._run_poetry_check([pyproject]), eq=1)
-        monkeypatch.setattr(u.Infra, "run_raw", _run_non_zero)
-        tm.that(modernizer._run_poetry_check([pyproject]), eq=1)
+        wrong_backend = tmp_path / "wrong" / "pyproject.toml"
+        wrong_backend.parent.mkdir()
+        wrong_backend.write_text(
+            '[build-system]\nbuild-backend = "setuptools.build_meta"\nrequires = ["setuptools"]\n'
+        )
+        tm.that(modernizer._run_build_check([wrong_backend]), eq=1)
 
     def test_main_cli_paths(self, monkeypatch: pytest.MonkeyPatch) -> None:
         class _ModernizerAdapter(FlextInfraPyprojectModernizer):

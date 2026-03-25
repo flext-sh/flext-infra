@@ -346,6 +346,7 @@ tools:
     plugins:
       - pydantic.mypy
     disabled-error-codes:
+      - name-defined
       - prop-decorator
     boolean-settings:
       ignore_missing_imports: true

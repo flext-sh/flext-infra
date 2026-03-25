@@ -34,14 +34,14 @@ class TestFormattingRunRuffFix:
         u.Infra.run_ruff_fix(target)
 
         assert calls[0] == [
-            c.Cli.RUFF,
-            c.Cli.RuffCmd.CHECK,
+            c.Infra.RUFF,
+            c.Infra.CHECK,
             "--fix",
             str(target),
         ]
         assert calls[1] == [
-            c.Cli.RUFF,
-            c.Cli.RuffCmd.FORMAT,
+            c.Infra.RUFF,
+            c.Infra.FORMAT,
             str(target),
         ]
 
@@ -71,8 +71,8 @@ class TestFormattingRunRuffFix:
 
         assert calls == [
             [
-                c.Cli.RUFF,
-                c.Cli.RuffCmd.CHECK,
+                c.Infra.RUFF,
+                c.Infra.CHECK,
                 "--fix",
                 "--quiet",
                 str(target),

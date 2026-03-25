@@ -17,11 +17,8 @@ from flext_infra import (
     FlextInfraBanditGate,
     FlextInfraMarkdownGate,
     FlextInfraWorkspaceChecker,
-    t,
 )
-from tests import m
-
-from ._shared_fixtures import create_checker_project, patch_gate_run
+from tests import create_checker_project, m, patch_gate_run, t
 
 GateClass = type[FlextInfraBanditGate] | type[FlextInfraMarkdownGate]
 

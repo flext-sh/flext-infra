@@ -13,6 +13,7 @@ def rewrite_dep_paths(
     *,
     mode: str,
     internal_names: set[str],
+    workspace_members: t.StrSequence = (),
     is_root: bool = False,
     dry_run: bool = False,
 ) -> r[t.StrSequence]:
@@ -20,6 +21,7 @@ def rewrite_dep_paths(
         pyproject_path,
         mode=mode,
         internal_names=internal_names,
+        workspace_members=workspace_members,
         is_root=is_root,
         dry_run=dry_run,
     )
