@@ -49,6 +49,8 @@ class TestEnsurePyrightConfigPhase:
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
+        tm.that(u.Infra.unwrap_item(pyright["venv"]), eq=".venv")
+        tm.that(u.Infra.unwrap_item(pyright["venvPath"]), eq=".")
         exclude = u.Infra.unwrap_item(pyright["exclude"])
         rules = _test_tool_config().tools.pyright.path_rules
         expected_exclude = sorted(
@@ -111,6 +113,8 @@ class TestEnsurePyrightConfigPhase:
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
+        tm.that(u.Infra.unwrap_item(pyright["venv"]), eq=".venv")
+        tm.that(u.Infra.unwrap_item(pyright["venvPath"]), eq="..")
         envs = u.Infra.unwrap_item(pyright["executionEnvironments"])
         tm.that(envs, is_=list)
         tm.that(
