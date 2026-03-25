@@ -1,0 +1,27 @@
+tests/refactor/test_rope_project.py
+  ade56594904d6940 12
+tests/refactor/test_rope_stubs.py
+  ade56594904d6940 5-7
+src/flext_infra/refactor/engine.py
+  ade56594904d6940 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "c2c69e2f7cd1d4e7f765b1cdf30a1a2a33c819b8",
+  "prompts": {
+    "ade56594904d6940": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31066624-84c8-4541-8ea4-a35eb07efef5",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 9,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
