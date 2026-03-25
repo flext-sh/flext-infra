@@ -571,7 +571,8 @@ class FlextInfraCodegenLazyInit(s[int]):
             if matched:
                 continue
             # Phase 2: no local facade — delegate to parent package
-            if pkg_dir is not None:
+            # Only delegate if alias has no local mapping already (e.g. s from tests.base)
+            if pkg_dir is not None and alias not in lazy_map:
                 parent_pkg = FlextInfraCodegenLazyInit._discover_parent_package(
                     pkg_dir,
                 )

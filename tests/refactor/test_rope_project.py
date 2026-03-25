@@ -37,7 +37,7 @@ class TestInitRopeProject:
         self, engine: FlextInfraRefactorEngine, fake_workspace: Path
     ) -> None:
         """_init_rope_project creates Project with ropefolder=None."""
-        with patch("flext_infra.refactor.engine.RopeProject") as mock_project:
+        with patch("flext_infra._utilities.rope.RopeProject") as mock_project:
             engine._init_rope_project(fake_workspace)
             call_kwargs = mock_project.call_args
             assert call_kwargs.kwargs.get("ropefolder") is None
@@ -46,7 +46,7 @@ class TestInitRopeProject:
         self, engine: FlextInfraRefactorEngine, fake_workspace: Path
     ) -> None:
         """_init_rope_project sets save_objectdb=False."""
-        with patch("flext_infra.refactor.engine.RopeProject") as mock_project:
+        with patch("flext_infra._utilities.rope.RopeProject") as mock_project:
             engine._init_rope_project(fake_workspace)
             call_kwargs = mock_project.call_args
             assert call_kwargs.kwargs.get("save_objectdb") is False
@@ -55,7 +55,7 @@ class TestInitRopeProject:
         self, engine: FlextInfraRefactorEngine, fake_workspace: Path
     ) -> None:
         """_init_rope_project ignored_resources includes .venv, *.pyc, dist/, __pycache__, .mypy_cache, .git."""
-        with patch("flext_infra.refactor.engine.RopeProject") as mock_project:
+        with patch("flext_infra._utilities.rope.RopeProject") as mock_project:
             engine._init_rope_project(fake_workspace)
             ignored = mock_project.call_args.kwargs.get("ignored_resources", [])
             for pattern in (
@@ -72,7 +72,7 @@ class TestInitRopeProject:
         self, engine: FlextInfraRefactorEngine, fake_workspace: Path
     ) -> None:
         """_init_rope_project source_folders includes all flext-*/src dirs that exist."""
-        with patch("flext_infra.refactor.engine.RopeProject") as mock_project:
+        with patch("flext_infra._utilities.rope.RopeProject") as mock_project:
             engine._init_rope_project(fake_workspace)
             source_folders = mock_project.call_args.kwargs.get("source_folders", [])
             expected = sorted([
@@ -86,7 +86,7 @@ class TestInitRopeProject:
         self, engine: FlextInfraRefactorEngine, fake_workspace: Path
     ) -> None:
         """Non-flext dirs and flext dirs without src/ are excluded from source_folders."""
-        with patch("flext_infra.refactor.engine.RopeProject") as mock_project:
+        with patch("flext_infra._utilities.rope.RopeProject") as mock_project:
             engine._init_rope_project(fake_workspace)
             source_folders = mock_project.call_args.kwargs.get("source_folders", [])
             assert str(fake_workspace / "docs" / "src") not in source_folders
@@ -106,7 +106,7 @@ class TestRopeProjectProperty:
         self, engine: FlextInfraRefactorEngine, fake_workspace: Path
     ) -> None:
         """rope_project returns Project instance after _init_rope_project."""
-        with patch("flext_infra.refactor.engine.RopeProject") as mock_project:
+        with patch("flext_infra._utilities.rope.RopeProject") as mock_project:
             mock_instance = MagicMock()
             mock_project.return_value = mock_instance
             engine._init_rope_project(fake_workspace)

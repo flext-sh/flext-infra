@@ -63,58 +63,20 @@ class FlextInfraRefactorEngine:
         return self._rope_project
 
     def _init_rope_project(self, workspace_root: Path) -> None:
-        """Initialize a monorepo-rooted rope Project with no disk artifacts.
-
-        Creates a single Project covering all flext-*/src directories.
-        ropefolder=None prevents .ropeproject creation.
-        save_objectdb=False (default) avoids any persistent object db.
-        """
-        source_folders = sorted(
-            str(p / "src")
-            for p in workspace_root.iterdir()
-            if p.name.startswith("flext-") and (p / "src").is_dir()
-        )
-        self._rope_project = RopeProject(
-            str(workspace_root),
-            ropefolder=None,
-            save_objectdb=False,
-            ignored_resources=[
-                ".venv",
-                "*.pyc",
-                "dist/",
-                "__pycache__",
-                ".mypy_cache",
-                ".git",
-            ],
-            source_folders=source_folders,
-        )
+        """Initialize a monorepo-rooted rope Project with no disk artifacts."""
+        self._rope_project = u.Infra.init_rope_project(workspace_root)
 
     def _run_rope_pre_hooks(
-        self,
-        path: Path,
-        *,
-        dry_run: bool,
+        self, path: Path, *, dry_run: bool
     ) -> Sequence[m.Infra.Result]:
-        """Run rope-based pre-hooks before LibCST rules execute.
-
-        Stub for Plan 02: symbol_propagator, mro_reference_rewriter,
-        nested_class_propagation will be wired here.
-        """
-        del path, dry_run
-        return []
+        """Run rope-based pre-hooks before LibCST rules execute."""
+        return u.Infra.run_rope_pre_hooks(path, dry_run=dry_run)
 
     def _run_rope_post_hooks(
-        self,
-        path: Path,
-        *,
-        dry_run: bool,
+        self, path: Path, *, dry_run: bool
     ) -> Sequence[m.Infra.Result]:
-        """Run rope-based post-hooks after LibCST rules execute.
-
-        Stub for Plan 02 post-pass cleanup if needed.
-        """
-        del path, dry_run
-        return []
+        """Run rope-based post-hooks after LibCST rules execute."""
+        return u.Infra.run_rope_post_hooks(path, dry_run=dry_run)
 
     def _try_safety_stash(
         self,

@@ -12,7 +12,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes
-    from flext_tests import d, e, h, r, s, x
+    from flext_tests import d, e, r, s, x
 
     from tests import refactor, unit
     from tests.constants import FlextInfraTestConstants, FlextInfraTestConstants as c
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     )
     from tests.fixtures_git import real_git_repo
     from tests.git_service import RealGitService
-    from tests.helpers import FlextInfraTestHelpers
+    from tests.helpers import FlextInfraTestHelpers, h
     from tests.models import FlextInfraTestModels, FlextInfraTestModels as m
     from tests.protocols import FlextInfraTestProtocols, FlextInfraTestProtocols as p
     from tests.refactor.test_rope_project import (
@@ -2424,7 +2424,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "gen": ["tests.unit.docs.generator_internals_tests", "gen"],
     "git_repo": ["tests.unit.test_infra_git", "git_repo"],
     "github": ["tests.unit.github", ""],
-    "h": ["flext_tests", "h"],
+    "h": ["tests.helpers", "h"],
     "io": ["tests.unit.io", ""],
     "is_external": ["tests.unit.docs.auditor_tests", "is_external"],
     "m": ["tests.models", "FlextInfraTestModels"],

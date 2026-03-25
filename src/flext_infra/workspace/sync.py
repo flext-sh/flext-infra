@@ -222,17 +222,13 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         *,
         canonical_root: Path | None = None,
     ) -> r[bool]:
-        """Sync base.mk only for workspace root; subprojects use bootstrap.
+        """Sync base.mk for workspace root and subprojects.
 
-        When canonical_root differs from workspace_root this is a subproject
-        call — base.mk is served by the Makefile bootstrap pattern, so skip.
+        All projects receive a generated local ``base.mk`` so regeneration is
+        fully deterministic from ``make gen`` without relying on deferred
+        bootstrap.
         """
-        is_subproject = (
-            canonical_root is not None
-            and canonical_root.resolve() != workspace_root.resolve()
-        )
-        if is_subproject:
-            return r[bool].ok(False)
+        _ = canonical_root
         gen_result = self._generator.generate_basemk(config)
         if gen_result.is_failure:
             return r[bool].fail(gen_result.error or "base.mk generation failed")

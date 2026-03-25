@@ -52,6 +52,7 @@ if TYPE_CHECKING:
         __version_info__,
     )
     from flext_infra._constants.base import FlextInfraConstantsBase
+    from flext_infra._constants.rope import FlextInfraConstantsRope
     from flext_infra._models.base import FlextInfraModelsBase
     from flext_infra._models.scan import FlextInfraModelsScan
     from flext_infra._protocols.base import FlextInfraProtocolsBase
@@ -72,6 +73,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
+    from flext_infra._utilities.rope import FlextInfraUtilitiesRope
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
     from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
     from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
@@ -548,6 +550,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraConstantsBase": [
         "flext_infra._constants.base",
         "FlextInfraConstantsBase",
+    ],
+    "FlextInfraConstantsRope": [
+        "flext_infra._constants.rope",
+        "FlextInfraConstantsRope",
     ],
     "FlextInfraCoreConstants": [
         "flext_infra.validate._constants",
@@ -1159,6 +1165,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra._utilities.reporting",
         "FlextInfraUtilitiesReporting",
     ],
+    "FlextInfraUtilitiesRope": [
+        "flext_infra._utilities.rope",
+        "FlextInfraUtilitiesRope",
+    ],
     "FlextInfraUtilitiesSafety": [
         "flext_infra._utilities.safety",
         "FlextInfraUtilitiesSafety",
@@ -1302,6 +1312,7 @@ __all__ = [
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraConstants",
     "FlextInfraConstantsBase",
+    "FlextInfraConstantsRope",
     "FlextInfraCoreConstants",
     "FlextInfraCoreModels",
     "FlextInfraCyclicImportDetector",
@@ -1477,6 +1488,7 @@ __all__ = [
     "FlextInfraUtilitiesRefactorPydanticAnalysis",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",
+    "FlextInfraUtilitiesRope",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesSelection",
     "FlextInfraUtilitiesSubprocess",

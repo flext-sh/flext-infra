@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
+    from flext_infra._utilities.rope import FlextInfraUtilitiesRope
     from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
     from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
     from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
@@ -102,6 +103,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra._utilities.reporting",
         "FlextInfraUtilitiesReporting",
     ],
+    "FlextInfraUtilitiesRope": [
+        "flext_infra._utilities.rope",
+        "FlextInfraUtilitiesRope",
+    ],
     "FlextInfraUtilitiesSafety": [
         "flext_infra._utilities.safety",
         "FlextInfraUtilitiesSafety",
@@ -158,6 +163,7 @@ __all__ = [
     "FlextInfraUtilitiesPatterns",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesReporting",
+    "FlextInfraUtilitiesRope",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesSelection",
     "FlextInfraUtilitiesSubprocess",

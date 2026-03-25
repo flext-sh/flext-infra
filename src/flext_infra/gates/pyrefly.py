@@ -39,6 +39,8 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             ".",
             "--config",
             c.Infra.Files.PYPROJECT_FILENAME,
+            "--python-interpreter-path",
+            sys.executable,
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "-o",
