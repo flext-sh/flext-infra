@@ -16,7 +16,7 @@ from flext_tests import FlextTestsConstants
 from flext_infra import FlextInfraConstants
 
 
-class FlextInfraTestConstants(FlextTestsConstants):
+class FlextInfraTestConstants(FlextTestsConstants, FlextInfraConstants):
     """Constants for FLEXT infra tests - extends FlextTestsConstants.
 
     Architecture layer: Layer 0 foundation constants with infra test extensions.
