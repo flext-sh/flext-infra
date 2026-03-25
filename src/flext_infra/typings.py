@@ -15,7 +15,8 @@ from __future__ import annotations
 
 from flext_core import FlextTypes
 
-from flext_infra import FlextInfraProtocolsBase, FlextInfraTypesBase
+from flext_infra._protocols.base import FlextInfraProtocolsBase
+from flext_infra._typings.base import FlextInfraTypesBase
 
 
 class FlextInfraTypes(FlextTypes):
