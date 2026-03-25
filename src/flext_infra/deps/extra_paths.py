@@ -139,7 +139,12 @@ class FlextInfraExtraPathsManager:
             if source_table is None:
                 continue
             workspace_item: Item | None = self._table_get(source_table, "workspace")
-            workspace_val = workspace_item.unwrap() if isinstance(workspace_item, Item) and hasattr(workspace_item, "unwrap") else None
+            workspace_val = (
+                workspace_item.unwrap()
+                if isinstance(workspace_item, Item)
+                and hasattr(workspace_item, "unwrap")
+                else None
+            )
             if workspace_val is True:
                 paths.append(dep_name)
                 continue

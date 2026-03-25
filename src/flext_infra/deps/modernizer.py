@@ -90,10 +90,7 @@ class FlextInfraPyprojectModernizer:
             build_system["requires"] = u.Infra.array(expected_requires)
             changes.append("build-system.requires set to ['hatchling']")
         backend_item2 = self._item_get(build_system, "build-backend")
-        if (
-            backend_item2 is not None
-            and str(backend_item2).strip() == expected_backend
-        ):
+        if backend_item2 is not None and str(backend_item2).strip() == expected_backend:
             tool_table = u.Infra.ensure_table(doc, c.Infra.TOOL)
             hatch_table = u.Infra.ensure_table(tool_table, "hatch")
             metadata_table = u.Infra.ensure_table(hatch_table, "metadata")
@@ -112,7 +109,8 @@ class FlextInfraPyprojectModernizer:
         if project_table is None:
             return False
         deps_item = FlextInfraPyprojectModernizer._item_get(
-            project_table, c.Infra.DEPENDENCIES,
+            project_table,
+            c.Infra.DEPENDENCIES,
         )
         dependencies = u.Infra.as_string_list(deps_item)
         return any(" @ " in dep for dep in dependencies)

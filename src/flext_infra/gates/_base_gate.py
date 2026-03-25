@@ -79,12 +79,13 @@ class FlextInfraGate(ABC):
         )
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
-        dirs = (
-            c.Infra.DEFAULT_CHECK_DIRS
-            if project_dir.resolve() == self._workspace_root.resolve()
-            else c.Infra.CHECK_DIRS_SUBPROJECT
+        has_root_python = any(project_dir.glob("*.py")) or any(
+            project_dir.glob("*.pyi"),
         )
-        return [d for d in dirs if (project_dir / d).is_dir()]
+        discovered_dirs = u.Infra.discover_python_dirs(project_dir)
+        if has_root_python or discovered_dirs:
+            return ["."]
+        return []
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:

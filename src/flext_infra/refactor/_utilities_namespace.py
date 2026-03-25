@@ -114,7 +114,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         """
         dep_names: t.Infra.StrSet = set()
         # PEP 621: project.dependencies with " @ file:" path refs
-        project_raw = doc["project"] if "project" in doc else None  # noqa: SIM401
+        project_raw = doc.get("project", None)
         if isinstance(project_raw, Table):
             project_dict: Mapping[str, Sequence[str]] = project_raw.unwrap()
             deps_list: Sequence[str] = project_dict.get("dependencies", [])
@@ -128,20 +128,24 @@ class FlextInfraUtilitiesRefactorNamespace:
                     # path_part like "flext-meltano" or "../flext-meltano"
                     dep_names.add(Path(path_part).name)
         # Poetry: tool.poetry.dependencies with path = "..."
-        tool_raw = doc["tool"] if "tool" in doc else None  # noqa: SIM401
+        tool_raw = doc.get("tool", None)
         if isinstance(tool_raw, Table):
-            poetry_raw = tool_raw["poetry"] if "poetry" in tool_raw else None  # noqa: SIM401
+            poetry_raw = tool_raw.get("poetry", None)
             if isinstance(poetry_raw, Table):
-                deps_tbl_raw = poetry_raw["dependencies"] if "dependencies" in poetry_raw else None  # noqa: SIM401
+                deps_tbl_raw = poetry_raw.get("dependencies", None)
                 if isinstance(deps_tbl_raw, Table):
                     for dep_key in [str(k) for k in deps_tbl_raw]:
                         dep_value_raw = deps_tbl_raw[dep_key]
                         if not isinstance(dep_value_raw, Table):
                             continue
-                        dep_path_raw = dep_value_raw["path"] if "path" in dep_value_raw else None  # noqa: SIM401
-                        dep_path_str = str(dep_path_raw) if dep_path_raw is not None else ""
+                        dep_path_raw = dep_value_raw.get("path", None)
+                        dep_path_str = (
+                            str(dep_path_raw) if dep_path_raw is not None else ""
+                        )
                         if dep_path_str:
-                            dep_path_clean = dep_path_str.strip().removeprefix("./").strip()
+                            dep_path_clean = (
+                                dep_path_str.strip().removeprefix("./").strip()
+                            )
                             if dep_path_clean:
                                 dep_names.add(Path(dep_path_clean).name)
         return sorted(dep_names)

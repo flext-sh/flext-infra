@@ -193,7 +193,9 @@ class FlextInfraDependencyPathSync:
             current_item = self._table_get(sources, dep_name)
             empty: t.Infra.ContainerDict = {}
             current_map: t.Infra.ContainerDict = (
-                dict(current_item.unwrap()) if isinstance(current_item, Table) else empty
+                dict(current_item.unwrap())
+                if isinstance(current_item, Table)
+                else empty
             )
             if current_map == expected:
                 continue

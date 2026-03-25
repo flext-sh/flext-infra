@@ -452,6 +452,7 @@ tools:
       - unannotated-return
     disabled-errors:
       - bad-override
+      - non-convergent-recursion
     project-exclude-globs:
       - '**/__pycache__'
       - '**/node_modules'

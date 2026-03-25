@@ -36,6 +36,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             "-m",
             c.Infra.PYREFLY,
             c.Infra.CHECK,
+            ".",
             "--config",
             c.Infra.Files.PYPROJECT_FILENAME,
             "--output-format",

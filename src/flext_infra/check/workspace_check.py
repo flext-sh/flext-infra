@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import time
 from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
@@ -148,7 +149,11 @@ class FlextInfraWorkspaceChecker(s[bool]):
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
         if args.command == c.Infra.Verbs.RUN:
-            checker = FlextInfraWorkspaceChecker(workspace_root=cli.workspace)
+            env_workspace = os.getenv("FLEXT_WORKSPACE_ROOT")
+            checker_workspace = (
+                Path(env_workspace).resolve() if env_workspace else cli.workspace
+            )
+            checker = FlextInfraWorkspaceChecker(workspace_root=checker_workspace)
             gates = FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
             reports_dir = Path(args.reports_dir).expanduser()
             if not reports_dir.is_absolute():
