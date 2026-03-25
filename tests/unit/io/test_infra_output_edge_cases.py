@@ -16,18 +16,16 @@ from flext_tests import tm
 from flext_infra import u as iu
 from flext_infra._utilities.output import FlextInfraUtilitiesOutput
 
-OutputBackend = FlextInfraUtilitiesOutput.OutputBackend
-
 
 def _make_backend(
     *,
     use_color: bool = False,
     use_unicode: bool = False,
     stream: io.StringIO | None = None,
-) -> OutputBackend:
+) -> FlextInfraUtilitiesOutput.OutputBackend:
     """Create a backend with test-friendly settings."""
     buf = stream or io.StringIO()
-    return OutputBackend(use_color=use_color, use_unicode=use_unicode, stream=buf)
+    return FlextInfraUtilitiesOutput.OutputBackend(use_color=use_color, use_unicode=use_unicode, stream=buf)
 
 
 class TestInfraOutputNoColor:
