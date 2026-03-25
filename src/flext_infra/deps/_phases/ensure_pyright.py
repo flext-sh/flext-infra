@@ -249,10 +249,11 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> t.StrSequence:
         if base_dir is None:
             return []
-        existing: MutableSequence[str] = []
-        for relative_path in configured_paths:
-            if (base_dir / relative_path).is_dir():
-                existing.append(relative_path)
+        existing: Sequence[str] = [
+            relative_path
+            for relative_path in configured_paths
+            if (base_dir / relative_path).is_dir()
+        ]
         return existing
 
     def _expected_ignores(

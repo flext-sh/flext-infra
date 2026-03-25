@@ -39,10 +39,9 @@ class FlextInfraCoreModels:
         violations: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Collected validation violations",
             ),
-        ]
+        ] = Field(default_factory=list)
         summary: Annotated[
             str,
             Field(
@@ -58,24 +57,21 @@ class FlextInfraCoreModels:
         mypy_hints: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="types- package hints from mypy output",
             ),
-        ]
+        ] = Field(default_factory=list)
         internal_missing: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Missing internal imports",
             ),
-        ]
+        ] = Field(default_factory=list)
         unresolved_missing: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Missing external imports without stubs",
             ),
-        ]
+        ] = Field(default_factory=list)
         total_missing: Annotated[
             t.NonNegativeInt,
             Field(description="Total missing imports"),
@@ -100,38 +96,33 @@ class FlextInfraCoreModels:
         failed_cases: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Failed test labels",
             ),
-        ]
+        ] = Field(default_factory=list)
         error_traces: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Collected error traces",
             ),
-        ]
+        ] = Field(default_factory=list)
         warning_lines: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Captured warning lines",
             ),
-        ]
+        ] = Field(default_factory=list)
         skip_cases: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Skipped test labels",
             ),
-        ]
+        ] = Field(default_factory=list)
         slow_entries: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Slow test entries",
             ),
-        ]
+        ] = Field(default_factory=list)
 
     class InventoryReport(FlextModels.ArbitraryTypesModel):
         """Summary of written inventory report artifacts."""
@@ -143,10 +134,9 @@ class FlextInfraCoreModels:
         reports_written: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Written report file paths",
             ),
-        ]
+        ] = Field(default_factory=list)
 
 
 __all__ = ["FlextInfraCoreModels"]

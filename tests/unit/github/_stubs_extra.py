@@ -131,7 +131,9 @@ class StubSyncer:
             if sync_returns is not None
             else r[list[m.Infra.SyncOperation]].ok(list[m.Infra.SyncOperation]())
         )
-        self.sync_workspace_calls: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
+        self.sync_workspace_calls: MutableSequence[
+            Mapping[str, t.Infra.InfraValue]
+        ] = []
 
     def sync_workspace(
         self,

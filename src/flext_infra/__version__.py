@@ -13,6 +13,8 @@ from collections.abc import Mapping
 from importlib.metadata import PackageMetadata, PackageNotFoundError, metadata
 from typing import Final
 
+from flext_infra import t
+
 _MAJOR_INDEX: Final[int] = 0
 _MINOR_INDEX: Final[int] = 1
 _PATCH_INDEX: Final[int] = 2

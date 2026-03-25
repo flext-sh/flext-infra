@@ -46,10 +46,9 @@ class FlextInfraRefactorModels(
         changes: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Human-readable change descriptions",
             ),
-        ]
+        ] = Field(default_factory=list)
         refactored_code: Annotated[
             str | None,
             Field(
@@ -65,26 +64,23 @@ class FlextInfraRefactorModels(
         package_roots: Annotated[
             t.Infra.StrSet,
             Field(
-                default_factory=set,
                 description="Top-level Python package roots in src/",
             ),
-        ]
+        ] = Field(default_factory=set)
 
     class FileImportData(m.ArbitraryTypesModel):
         imported_modules: Annotated[
             t.Infra.StrSet,
             Field(
-                default_factory=set,
                 description="Imported module roots",
             ),
-        ]
+        ] = Field(default_factory=set)
         imported_symbols: Annotated[
             t.Infra.StrSet,
             Field(
-                default_factory=set,
                 description="Imported symbol names",
             ),
-        ]
+        ] = Field(default_factory=set)
 
     class MethodInfo(m.ArbitraryTypesModel):
         """Metadata about a method used for ordering inside classes."""
@@ -101,10 +97,9 @@ class FlextInfraRefactorModels(
         decorators: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Decorator names applied to this method",
             ),
-        ]
+        ] = Field(default_factory=list)
 
     class Checkpoint(m.ArbitraryTypesModel):
         """Serialisable checkpoint state for refactor safety recovery."""
@@ -124,17 +119,15 @@ class FlextInfraRefactorModels(
         processed_targets: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Already-processed file targets",
             ),
-        ]
+        ] = Field(default_factory=list)
         updated_at: Annotated[
             str,
             Field(
-                default_factory=lambda: datetime.now(UTC).isoformat(),
                 description="ISO 8601 timestamp of last update",
             ),
-        ]
+        ] = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""
@@ -282,24 +275,21 @@ class FlextInfraRefactorModels(
         allowed_operations: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Enabled operation identifiers for this family",
             ),
-        ]
+        ] = Field(default_factory=list)
         forbidden_operations: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Disabled operation identifiers for this family",
             ),
-        ]
+        ] = Field(default_factory=list)
         forbidden_targets: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Target namespaces forbidden for this family",
             ),
-        ]
+        ] = Field(default_factory=list)
         enable_class_nesting: Annotated[
             bool,
             Field(
@@ -345,17 +335,15 @@ class FlextInfraRefactorModels(
         required_parameters: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Function parameters that must exist in helper signatures",
             ),
-        ]
+        ] = Field(default_factory=list)
         forbidden_parameters: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Function parameters that must not exist in helper signatures",
             ),
-        ]
+        ] = Field(default_factory=list)
         allow_vararg: Annotated[
             bool,
             Field(
@@ -408,17 +396,15 @@ class FlextInfraRefactorModels(
         blocked_reference_prefixes: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Name prefixes blocked from rewrite propagation",
             ),
-        ]
+        ] = Field(default_factory=list)
         allowed_targets: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Explicitly allowed target namespaces",
             ),
-        ]
+        ] = Field(default_factory=list)
 
     class ClassNestingReport(m.ArbitraryTypesModel):
         """Aggregated class-nesting analysis report."""
@@ -430,24 +416,21 @@ class FlextInfraRefactorModels(
         confidence_counts: Annotated[
             Mapping[str, int],
             Field(
-                default_factory=dict,
                 description="Confidence histogram",
             ),
-        ]
+        ] = Field(default_factory=dict)
         violations: Annotated[
             Sequence[FlextInfraRefactorModels.ClassNestingViolation],
             Field(
-                default_factory=lambda: (),
                 description="Violation details",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
         per_file_counts: Annotated[
             Mapping[str, int],
             Field(
-                default_factory=dict,
                 description="Violation counts per file",
             ),
-        ]
+        ] = Field(default_factory=dict)
 
     class HelperClassification(m.ArbitraryTypesModel):
         """Classification result for a helper function."""
@@ -462,10 +445,9 @@ class FlextInfraRefactorModels(
         dependencies: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Imported dependencies used by function",
             ),
-        ]
+        ] = Field(default_factory=list)
         manual_review: Annotated[
             bool,
             Field(
@@ -487,47 +469,41 @@ class FlextInfraRefactorModels(
         totals: Annotated[
             Mapping[str, int],
             Field(
-                default_factory=dict,
                 description="Category totals",
             ),
-        ]
+        ] = Field(default_factory=dict)
         suggestions: Annotated[
             Sequence[FlextInfraRefactorModels.HelperClassification],
             Field(
-                default_factory=lambda: (),
                 description="Classification suggestions",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
         manual_review: Annotated[
             Sequence[FlextInfraRefactorModels.HelperClassification],
             Field(
-                default_factory=lambda: (),
                 description="Manual-review candidates",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
 
     class HelperFileAnalysis(m.ArbitraryTypesModel):
         suggestions: Annotated[
             Sequence[FlextInfraRefactorModels.HelperClassification],
             Field(
-                default_factory=lambda: (),
                 description="Helper classifications from one file",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
         totals: Annotated[
             Mapping[str, int],
             Field(
-                default_factory=dict,
                 description="Category totals for file helpers",
             ),
-        ]
+        ] = Field(default_factory=dict)
         manual_review: Annotated[
             Sequence[FlextInfraRefactorModels.HelperClassification],
             Field(
-                default_factory=lambda: (),
                 description="Helpers requiring manual review",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
 
     class ViolationTopFileSection(m.ArbitraryTypesModel):
         """One ranked hotspot entry in violation analysis output."""
@@ -540,10 +516,9 @@ class FlextInfraRefactorModels(
         counts: Annotated[
             Mapping[str, int],
             Field(
-                default_factory=dict,
                 description="Per-pattern counts",
             ),
-        ]
+        ] = Field(default_factory=dict)
 
     class ViolationAnalysisReport(m.ArbitraryTypesModel):
         """Full violation analysis report for refactor diagnostics."""
@@ -551,24 +526,21 @@ class FlextInfraRefactorModels(
         totals: Annotated[
             Mapping[str, int],
             Field(
-                default_factory=dict,
                 description="Aggregate counts by pattern",
             ),
-        ]
+        ] = Field(default_factory=dict)
         files: Annotated[
             Mapping[str, Mapping[str, int]],
             Field(
-                default_factory=dict,
                 description="Per-file per-pattern counts",
             ),
-        ]
+        ] = Field(default_factory=dict)
         top_files: Annotated[
             Sequence[FlextInfraRefactorModels.ViolationTopFileSection],
             Field(
-                default_factory=lambda: (),
                 description="Top hotspot files",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
         files_scanned: Annotated[t.NonNegativeInt, Field(description="Files scanned")]
         helper_classification: Annotated[
             FlextInfraRefactorModels.HelperClassificationReport,
@@ -752,10 +724,9 @@ class FlextInfraRefactorModels(
         methods: Annotated[
             Sequence[FlextInfraRefactorModels.CensusMethodSummary],
             Field(
-                default_factory=lambda: (),
                 description="Method summaries",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
 
     class CensusProjectMethodUsage(m.ArbitraryTypesModel):
         """Usage of a method within a specific project."""
@@ -782,10 +753,9 @@ class FlextInfraRefactorModels(
         usages: Annotated[
             Sequence[FlextInfraRefactorModels.CensusProjectMethodUsage],
             Field(
-                default_factory=lambda: (),
                 description="Per-method usages",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
         total: Annotated[t.NonNegativeInt, Field(description="Total usages in project")]
 
     class UtilitiesCensusReport(m.ArbitraryTypesModel):
@@ -794,17 +764,15 @@ class FlextInfraRefactorModels(
         classes: Annotated[
             Sequence[FlextInfraRefactorModels.CensusClassSummary],
             Field(
-                default_factory=lambda: (),
                 description="Per-class summaries",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
         projects: Annotated[
             Sequence[FlextInfraRefactorModels.CensusProjectSummary],
             Field(
-                default_factory=lambda: (),
                 description="Per-project breakdowns",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
         total_classes: Annotated[
             t.NonNegativeInt,
             Field(description="Number of utility classes"),

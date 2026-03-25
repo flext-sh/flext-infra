@@ -50,10 +50,9 @@ class FlextInfraWorkspaceModels:
         timestamp: Annotated[
             datetime,
             Field(
-                default_factory=lambda: datetime.now(UTC),
                 description="Execution timestamp in UTC",
             ),
-        ]
+        ] = Field(default_factory=lambda: datetime.now(UTC))
 
     class MigrationResult(FlextModels.ArbitraryTypesModel):
         """Migration operation outcome with applied changes and errors."""
@@ -61,12 +60,12 @@ class FlextInfraWorkspaceModels:
         project: Annotated[t.NonEmptyStr, Field(description="Project identifier")]
         changes: Annotated[
             t.StrSequence,
-            Field(default_factory=list, description="Applied changes"),
-        ]
+            Field(description="Applied changes"),
+        ] = Field(default_factory=list)
         errors: Annotated[
             t.StrSequence,
-            Field(default_factory=list, description="Migration errors"),
-        ]
+            Field(description="Migration errors"),
+        ] = Field(default_factory=list)
 
 
 __all__ = ["FlextInfraWorkspaceModels"]

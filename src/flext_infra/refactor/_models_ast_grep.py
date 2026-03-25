@@ -103,10 +103,9 @@ class FlextInfraRefactorAstGrepModels:
         candidates: Annotated[
             t.Infra.VariadicTuple[FlextInfraRefactorAstGrepModels.MROSymbolCandidate],
             Field(
-                default_factory=tuple,
                 description="Module-level symbol candidates",
             ),
-        ]
+        ] = Field(default_factory=tuple)
 
     class MROFileMigration(FlextModels.ArbitraryTypesModel):
         """Migration summary for one transformed file."""
@@ -116,17 +115,15 @@ class FlextInfraRefactorAstGrepModels:
         moved_symbols: Annotated[
             t.Infra.VariadicTuple[str],
             Field(
-                default_factory=tuple,
                 description="Symbols moved to facade class",
             ),
-        ]
+        ] = Field(default_factory=tuple)
         created_classes: Annotated[
             t.Infra.VariadicTuple[str],
             Field(
-                default_factory=tuple,
                 description="Facade classes created during migration",
             ),
-        ]
+        ] = Field(default_factory=tuple)
 
     class MRORewriteResult(FlextModels.ArbitraryTypesModel):
         """Reference rewrite summary for one file."""
@@ -160,17 +157,15 @@ class FlextInfraRefactorAstGrepModels:
         migrations: Annotated[
             t.Infra.VariadicTuple[FlextInfraRefactorAstGrepModels.MROFileMigration],
             Field(
-                default_factory=tuple,
                 description="File migration summaries",
             ),
-        ]
+        ] = Field(default_factory=tuple)
         rewrites: Annotated[
             t.Infra.VariadicTuple[FlextInfraRefactorAstGrepModels.MRORewriteResult],
             Field(
-                default_factory=tuple,
                 description="Reference rewrite summaries",
             ),
-        ]
+        ] = Field(default_factory=tuple)
         remaining_violations: Annotated[
             int,
             Field(
@@ -188,12 +183,12 @@ class FlextInfraRefactorAstGrepModels:
         ]
         warnings: Annotated[
             t.Infra.VariadicTuple[str],
-            Field(default_factory=tuple, description="Warnings"),
-        ]
+            Field(description="Warnings"),
+        ] = Field(default_factory=tuple)
         errors: Annotated[
             t.Infra.VariadicTuple[str],
-            Field(default_factory=tuple, description="Errors"),
-        ]
+            Field(description="Errors"),
+        ] = Field(default_factory=tuple)
 
     class EngineConfig(FlextModels.FrozenStrictModel):
         model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
@@ -201,24 +196,21 @@ class FlextInfraRefactorAstGrepModels:
         project_scan_dirs: Annotated[
             t.StrSequence,
             Field(
-                default_factory=lambda: ["src", "tests", "scripts", "examples"],
                 description="Relative directories scanned for candidate files",
             ),
-        ]
+        ] = Field(default_factory=lambda: ["src", "tests", "scripts", "examples"])
         ignore_patterns: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Glob/file patterns ignored during scan",
             ),
-        ]
+        ] = Field(default_factory=list)
         file_extensions: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Allowed file extensions (empty = all by pattern)",
             ),
-        ]
+        ] = Field(default_factory=list)
 
     class MethodOrderRule(FlextModels.FrozenStrictModel):
         """A declarative method ordering rule for class reconstruction."""
@@ -239,31 +231,27 @@ class FlextInfraRefactorAstGrepModels:
         exclude_decorators: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Decorators to exclude",
             ),
-        ]
+        ] = Field(default_factory=list)
         decorators: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Decorators to match",
             ),
-        ]
+        ] = Field(default_factory=list)
         patterns: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Pattern rules",
             ),
-        ]
+        ] = Field(default_factory=list)
         order: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Explicit method order",
             ),
-        ]
+        ] = Field(default_factory=list)
 
     class SignatureMigration(FlextModels.FrozenStrictModel):
         """Declarative signature migration rule for callsite propagation."""
@@ -282,38 +270,33 @@ class FlextInfraRefactorAstGrepModels:
         target_qualified_names: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Qualified names to match",
             ),
-        ]
+        ] = Field(default_factory=list)
         target_simple_names: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Simple names to match",
             ),
-        ]
+        ] = Field(default_factory=list)
         keyword_renames: Annotated[
             t.StrMapping,
             Field(
-                default_factory=dict,
                 description="Keyword rename mapping",
             ),
-        ]
+        ] = Field(default_factory=dict)
         remove_keywords: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Keywords to remove",
             ),
-        ]
+        ] = Field(default_factory=list)
         add_keywords: Annotated[
             t.StrMapping,
             Field(
-                default_factory=dict,
                 description="Keywords to add",
             ),
-        ]
+        ] = Field(default_factory=dict)
 
     class ImportModernizerRuleConfig(FlextModels.FrozenStrictModel):
         """Configuration for a single import modernizer rule."""
@@ -325,10 +308,9 @@ class FlextInfraRefactorAstGrepModels:
         symbol_mapping: Annotated[
             t.StrMapping,
             Field(
-                default_factory=dict,
                 description="Symbol-to-alias mapping",
             ),
-        ]
+        ] = Field(default_factory=dict)
 
 
 __all__ = ["FlextInfraRefactorAstGrepModels"]

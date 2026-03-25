@@ -388,14 +388,17 @@ class FlextInfraCodegenLazyInit(s[int]):
         """Scan AST for public classes, functions, and assignments."""
         for node in ast.iter_child_nodes(tree):
             names: MutableSequence[str] = []
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                names.append(node.name)
-            elif isinstance(node, ast.Assign):
-                names.extend(
-                    target.id for target in node.targets if isinstance(target, ast.Name)
-                )
-            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-                names.append(node.target.id)
+            match node:
+                case ast.FunctionDef() | ast.AsyncFunctionDef() | ast.ClassDef():
+                    names.append(node.name)
+                case ast.Assign():
+                    names.extend(
+                        target.id
+                        for target in node.targets
+                        if isinstance(target, ast.Name)
+                    )
+                case ast.AnnAssign(target=ast.Name()):
+                    names.append(node.target.id)
             for name in names:
                 if not name.startswith("_"):
                     index[name] = (mod_path, name)

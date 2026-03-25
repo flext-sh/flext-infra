@@ -53,10 +53,16 @@ class StubRunner:
         run_checked_returns: Sequence[r[bool]] | None = None,
         run_to_file_returns: Sequence[r[int]] | None = None,
     ) -> None:
-        self._run_returns: MutableSequence[r[m.Infra.CommandOutput]] = list(run_returns or [])
+        self._run_returns: MutableSequence[r[m.Infra.CommandOutput]] = list(
+            run_returns or []
+        )
         self._capture_returns: MutableSequence[r[str]] = list(capture_returns or [])
-        self._run_checked_returns: MutableSequence[r[bool]] = list(run_checked_returns or [])
-        self._run_to_file_returns: MutableSequence[r[int]] = list(run_to_file_returns or [])
+        self._run_checked_returns: MutableSequence[r[bool]] = list(
+            run_checked_returns or []
+        )
+        self._run_to_file_returns: MutableSequence[r[int]] = list(
+            run_to_file_returns or []
+        )
         self.run_calls: MutableSequence[t.StrSequence] = []
         self.capture_calls: MutableSequence[t.StrSequence] = []
         self.run_checked_calls: MutableSequence[t.StrSequence] = []

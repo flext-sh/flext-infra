@@ -253,10 +253,11 @@ class FlextInfraExtraPathsManager:
         project_dir: Path,
         configured_paths: t.StrSequence,
     ) -> t.StrSequence:
-        existing: MutableSequence[str] = []
-        for relative_path in configured_paths:
-            if (project_dir / relative_path).is_dir():
-                existing.append(relative_path)
+        existing: Sequence[str] = [
+            relative_path
+            for relative_path in configured_paths
+            if (project_dir / relative_path).is_dir()
+        ]
         return existing
 
     @staticmethod

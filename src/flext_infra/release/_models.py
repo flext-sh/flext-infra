@@ -51,10 +51,9 @@ class FlextInfraReleaseModels:
         records: Annotated[
             Sequence[FlextInfraReleaseModels.BuildRecord],
             Field(
-                default_factory=list,
                 description="Per-project build records",
             ),
-        ]
+        ] = Field(default_factory=list)
 
     class ReleaseOrchestratorConfig(FlextModels.ArbitraryTypesModel):
         """Configuration for release workflow execution."""
@@ -78,7 +77,7 @@ class FlextInfraReleaseModels:
         workspace_root: Annotated[Path, Field(description="Workspace root")]
         version: Annotated[t.NonEmptyStr, Field(description="Release version")]
         tag: Annotated[t.NonEmptyStr, Field(description="Git tag")]
-        project_names: Annotated[t.StrSequence, Field(default_factory=list)]
+        project_names: t.StrSequence = Field(default_factory=list)
         dry_run: Annotated[bool, Field(default=False)]
         push: Annotated[bool, Field(default=False)]
         dev_suffix: Annotated[bool, Field(default=False)]

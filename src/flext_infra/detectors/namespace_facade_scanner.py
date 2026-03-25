@@ -17,6 +17,7 @@ import libcst as cst
 from flext_infra import (
     c,
     m,
+    t,
 )
 from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 

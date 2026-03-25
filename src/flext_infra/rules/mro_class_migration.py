@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableSequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -37,22 +37,17 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
         module_ast = u.Infra.parse_ast_from_source(source)
         if module_ast is None:
             return (tree, [])
-        candidates: MutableSequence[m.Infra.MROSymbolCandidate] = []
-        for stmt in module_ast.body:
-            if not isinstance(stmt, ast.AnnAssign):
-                continue
-            if not isinstance(stmt.target, ast.Name):
-                continue
-            if not self._is_constant_candidate(stmt.target.id):
-                continue
-            if not self._is_final_annotation(stmt.annotation):
-                continue
-            candidates.append(
-                m.Infra.MROSymbolCandidate(
-                    symbol=stmt.target.id,
-                    line=stmt.lineno,
-                ),
+        candidates: Sequence[m.Infra.MROSymbolCandidate] = [
+            m.Infra.MROSymbolCandidate(
+                symbol=stmt.target.id,
+                line=stmt.lineno,
             )
+            for stmt in module_ast.body
+            if isinstance(stmt, ast.AnnAssign)
+            and isinstance(stmt.target, ast.Name)
+            and self._is_constant_candidate(stmt.target.id)
+            and self._is_final_annotation(stmt.annotation)
+        ]
         if not candidates:
             return (tree, [])
         constants_class = self._first_constants_class_name(module_ast)

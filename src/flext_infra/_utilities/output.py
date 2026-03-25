@@ -248,18 +248,26 @@ class FlextInfraUtilitiesOutput:
             skipped: int,
             elapsed: float,
         ) -> None:
-            hdr = f"── {verb} summary ──" if self._use_unicode else f"-- {verb} summary --"
+            hdr = (
+                f"── {verb} summary ──"
+                if self._use_unicode
+                else f"-- {verb} summary --"
+            )
             self._stream.write(
                 f"\n{hdr}\nTotal: {total}  Success: {success}  Failed: {failed}  Skipped: {skipped}  ({elapsed:.2f}s)\n",
             )
 
-        def gate_result(self, gate: str, count: int, passed: bool, elapsed: float) -> None:
+        def gate_result(
+            self, gate: str, count: int, passed: bool, elapsed: float
+        ) -> None:
             sym = (
                 (c.Infra.OK if passed else c.Infra.FAIL)
                 if self._use_unicode
                 else ("[OK]" if passed else "[FAIL]")
             )
-            self._stream.write(f"    {sym} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n")
+            self._stream.write(
+                f"    {sym} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n"
+            )
 
     @staticmethod
     def _render_violation_section[V](

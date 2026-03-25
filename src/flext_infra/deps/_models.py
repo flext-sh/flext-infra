@@ -75,17 +75,15 @@ class FlextInfraDepsModels:
         select: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Ruff lint rule selectors.",
             ),
-        ]
+        ] = Field(default_factory=list)
         ignore: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Ruff lint rule ignore list.",
             ),
-        ]
+        ] = Field(default_factory=list)
         isort: FlextInfraDepsModels.RuffIsortConfig
         per_file_ignores: Annotated[
             Mapping[str, t.StrSequence],
@@ -101,10 +99,9 @@ class FlextInfraDepsModels:
         exclude: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Directory/file globs excluded from ruff checks.",
             ),
-        ]
+        ] = Field(default_factory=list)
         fix: Annotated[bool, Field(description="Enable automatic ruff fixes")]
         line_length: Annotated[
             int,
@@ -128,10 +125,9 @@ class FlextInfraDepsModels:
         src: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Source roots used by ruff import analysis.",
             ),
-        ]
+        ] = Field(default_factory=list)
         target_version: Annotated[
             str,
             Field(
@@ -148,10 +144,9 @@ class FlextInfraDepsModels:
         plugins: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Mypy plugins list.",
             ),
-        ]
+        ] = Field(default_factory=list)
         disabled_error_codes: Annotated[
             t.StrSequence,
             Field(
@@ -283,11 +278,10 @@ class FlextInfraDepsModels:
         extended_settings: Annotated[
             t.StrMapping,
             Field(
-                default_factory=dict,
                 alias="extended-settings",
                 description="Pyright extended settings options.",
             ),
-        ]
+        ] = Field(default_factory=dict)
         path_rules: Annotated[
             PathRulesConfig,
             Field(
@@ -568,10 +562,9 @@ class FlextInfraDepsModels:
         pyright: Annotated[
             t.StrMapping,
             Field(
-                default_factory=dict,
                 description="Pyright override settings for this project type.",
             ),
-        ]
+        ] = Field(default_factory=dict)
 
     class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
         """Project-type-specific override matrix from tool_config.yml."""
@@ -607,7 +600,7 @@ class FlextInfraDepsModels:
         """Pip check execution report with status and output lines."""
 
         ok: bool = True
-        lines: Annotated[t.StrSequence, Field(default_factory=list)]
+        lines: t.StrSequence = Field(default_factory=list)
 
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for tool_config.yml."""
@@ -627,39 +620,35 @@ class FlextInfraDepsModels:
         dep001: Annotated[
             Sequence[Mapping[str, t.Primitives | None]],
             Field(
-                default_factory=list,
                 description="DEP001 issues",
             ),
-        ]
+        ] = Field(default_factory=list)
         dep002: Annotated[
             Sequence[Mapping[str, t.Primitives | None]],
             Field(
-                default_factory=list,
                 description="DEP002 issues",
             ),
-        ]
+        ] = Field(default_factory=list)
         dep003: Annotated[
             Sequence[Mapping[str, t.Primitives | None]],
             Field(
-                default_factory=list,
                 description="DEP003 issues",
             ),
-        ]
+        ] = Field(default_factory=list)
         dep004: Annotated[
             Sequence[Mapping[str, t.Primitives | None]],
             Field(
-                default_factory=list,
                 description="DEP004 issues",
             ),
-        ]
+        ] = Field(default_factory=list)
 
     class DeptryReport(m.ArbitraryTypesModel):
         """Deptry analysis report with categorized issue modules."""
 
-        missing: Annotated[t.StrSequence, Field(default_factory=list)]
-        unused: Annotated[t.StrSequence, Field(default_factory=list)]
-        transitive: Annotated[t.StrSequence, Field(default_factory=list)]
-        dev_in_runtime: Annotated[t.StrSequence, Field(default_factory=list)]
+        missing: t.StrSequence = Field(default_factory=list)
+        unused: t.StrSequence = Field(default_factory=list)
+        transitive: t.StrSequence = Field(default_factory=list)
+        dev_in_runtime: t.StrSequence = Field(default_factory=list)
         raw_count: Annotated[t.NonNegativeInt, Field(default=0)]
 
     class ProjectDependencyReport(m.ArbitraryTypesModel):
@@ -671,12 +660,12 @@ class FlextInfraDepsModels:
     class TypingsReport(m.ArbitraryTypesModel):
         """Typing stubs analysis report with required/current/delta packages."""
 
-        required_packages: Annotated[t.StrSequence, Field(default_factory=list)]
-        hinted: Annotated[t.StrSequence, Field(default_factory=list)]
-        missing_modules: Annotated[t.StrSequence, Field(default_factory=list)]
-        current: Annotated[t.StrSequence, Field(default_factory=list)]
-        to_add: Annotated[t.StrSequence, Field(default_factory=list)]
-        to_remove: Annotated[t.StrSequence, Field(default_factory=list)]
+        required_packages: t.StrSequence = Field(default_factory=list)
+        hinted: t.StrSequence = Field(default_factory=list)
+        missing_modules: t.StrSequence = Field(default_factory=list)
+        current: t.StrSequence = Field(default_factory=list)
+        to_add: t.StrSequence = Field(default_factory=list)
+        to_remove: t.StrSequence = Field(default_factory=list)
         limits_applied: bool = False
         python_version: str | None = None
 
@@ -690,10 +679,9 @@ class FlextInfraDepsModels:
         """Workspace-level dependency analysis report aggregating all projects."""
 
         workspace: str
-        projects: Annotated[
-            Mapping[str, FlextInfraDepsModels.ProjectRuntimeReport],
-            Field(default_factory=dict),
-        ]
+        projects: Annotated[Mapping[str, FlextInfraDepsModels.ProjectRuntimeReport]] = (
+            Field(default_factory=dict)
+        )
         pip_check: FlextInfraDepsModels.PipCheckReport | None = None
         dependency_limits: FlextInfraDepsModels.DependencyLimitsInfo | None = None
 

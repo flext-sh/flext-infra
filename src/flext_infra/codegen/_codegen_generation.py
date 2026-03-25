@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping, MutableSequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Protocol
 
@@ -113,12 +113,12 @@ class FlextInfraCodegenGeneration:
                 lines.append(alias_line)
             if not sorted_items:
                 return
-            parts: MutableSequence[str] = []
-            for export_name, attr_name in sorted_items:
-                if export_name == attr_name:
-                    parts.append(export_name)
-                else:
-                    parts.append(f"{attr_name} as {export_name}")
+            parts: Sequence[str] = [
+                export_name
+                if export_name == attr_name
+                else f"{attr_name} as {export_name}"
+                for export_name, attr_name in sorted_items
+            ]
             joined = ", ".join(parts)
             line = f"    from {rendered_mod} import {joined}"
             if len(line) > c.Infra.MAX_LINE_LENGTH:

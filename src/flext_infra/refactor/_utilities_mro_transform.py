@@ -174,21 +174,22 @@ class FlextInfraUtilitiesRefactorMroTransform:
         if len(statement.body) != 1:
             return None
         first_stmt = statement.body[0]
-        if isinstance(first_stmt, cst.AnnAssign):
-            if not isinstance(first_stmt.target, cst.Name):
+        match first_stmt:
+            case cst.AnnAssign():
+                if not isinstance(first_stmt.target, cst.Name):
+                    return None
+                symbol = first_stmt.target.value
+            case cst.Assign():
+                if len(first_stmt.targets) != 1:
+                    return None
+                assign_target = first_stmt.targets[0].target
+                if not isinstance(assign_target, cst.Name):
+                    return None
+                symbol = assign_target.value
+            case cst.TypeAlias():
+                symbol = first_stmt.name.value
+            case _:
                 return None
-            symbol = first_stmt.target.value
-        elif isinstance(first_stmt, cst.Assign):
-            if len(first_stmt.targets) != 1:
-                return None
-            assign_target = first_stmt.targets[0].target
-            if not isinstance(assign_target, cst.Name):
-                return None
-            symbol = assign_target.value
-        elif isinstance(first_stmt, cst.TypeAlias):
-            symbol = first_stmt.name.value
-        else:
-            return None
         if symbol not in candidate_symbols:
             return None
         return (symbol, first_stmt)

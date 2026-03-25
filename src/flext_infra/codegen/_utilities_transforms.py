@@ -211,27 +211,29 @@ class FlextInfraUtilitiesCodegenTransforms:
             return
         source_imports: MutableMapping[str, ast.stmt] = {}
         for stmt in source_tree.body:
-            if isinstance(stmt, ast.Import):
-                for alias in stmt.names:
-                    imported_name = alias.asname or alias.name
-                    top_name = imported_name.split(".")[0]
-                    source_imports[top_name] = stmt
-            elif isinstance(stmt, ast.ImportFrom):
-                for alias in stmt.names:
-                    imported_name = alias.asname or alias.name
-                    if imported_name != "*":
-                        source_imports[imported_name] = stmt
+            match stmt:
+                case ast.Import():
+                    for alias in stmt.names:
+                        imported_name = alias.asname or alias.name
+                        top_name = imported_name.split(".")[0]
+                        source_imports[top_name] = stmt
+                case ast.ImportFrom():
+                    for alias in stmt.names:
+                        imported_name = alias.asname or alias.name
+                        if imported_name != "*":
+                            source_imports[imported_name] = stmt
         target_available: t.Infra.StrSet = set()
         for stmt in target_tree.body:
-            if isinstance(stmt, ast.Import):
-                for alias in stmt.names:
-                    imported_name = alias.asname or alias.name
-                    target_available.add(imported_name.split(".")[0])
-            elif isinstance(stmt, ast.ImportFrom):
-                for alias in stmt.names:
-                    imported_name = alias.asname or alias.name
-                    if imported_name != "*":
-                        target_available.add(imported_name)
+            match stmt:
+                case ast.Import():
+                    for alias in stmt.names:
+                        imported_name = alias.asname or alias.name
+                        target_available.add(imported_name.split(".")[0])
+                case ast.ImportFrom():
+                    for alias in stmt.names:
+                        imported_name = alias.asname or alias.name
+                        if imported_name != "*":
+                            target_available.add(imported_name)
         seen_modules: t.Infra.StrSet = set()
         imports_to_add: MutableSequence[ast.stmt] = []
         for name in sorted(names_used):

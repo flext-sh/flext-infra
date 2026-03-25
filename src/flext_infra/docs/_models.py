@@ -107,8 +107,8 @@ class FlextInfraDocsModels:
         ] = ""
         checks: Annotated[
             t.StrSequence,
-            Field(default_factory=list, description="Executed checks"),
-        ]
+            Field(description="Executed checks"),
+        ] = Field(default_factory=list)
         strict: Annotated[
             bool,
             Field(default=False, description="Strict-mode flag"),
@@ -139,10 +139,9 @@ class FlextInfraDocsModels:
         missing_adr_skills: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Missing ADR skill references",
             ),
-        ]
+        ] = Field(default_factory=list)
         todo_written: Annotated[
             bool,
             Field(
@@ -153,10 +152,9 @@ class FlextInfraDocsModels:
         items: Annotated[
             Sequence[FlextInfraDocsModels.DocsPhaseItemModel],
             Field(
-                default_factory=list,
                 description="Phase-specific item payloads",
             ),
-        ]
+        ] = Field(default_factory=list)
 
 
 __all__ = ["FlextInfraDocsModels"]

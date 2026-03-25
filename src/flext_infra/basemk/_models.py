@@ -52,10 +52,9 @@ class FlextInfraBasemkModels:
         lint_gates: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Enabled quality gates",
             ),
-        ]
+        ] = Field(default_factory=list)
         test_command: Annotated[
             str,
             Field(

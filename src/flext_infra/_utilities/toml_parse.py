@@ -78,13 +78,14 @@ class FlextInfraUtilitiesTomlParse:
         src_dir = project_dir / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return []
-        namespaces: MutableSequence[str] = []
-        for entry in sorted(src_dir.iterdir()):
-            if not entry.is_dir() or entry.name == "__pycache__":
-                continue
-            if not entry.name.isidentifier() or "-" in entry.name:
-                continue
-            namespaces.append(entry.name)
+        namespaces: Sequence[str] = [
+            entry.name
+            for entry in sorted(src_dir.iterdir())
+            if entry.is_dir()
+            and entry.name != "__pycache__"
+            and entry.name.isidentifier()
+            and "-" not in entry.name
+        ]
         return namespaces
 
     @staticmethod

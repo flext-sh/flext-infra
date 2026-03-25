@@ -39,24 +39,6 @@ class FlextInfraCheckModels:
                 f"{self.file}:{self.line}:{self.column} {code_part}{self.message}"
             ).strip()
 
-    class GateExecution(FlextModels.ArbitraryTypesModel):
-        """Execution result for a single quality gate."""
-
-        result: Annotated[
-            GateResult,
-            Field(
-                description="Gate result model",
-            ),
-        ]
-        issues: Annotated[
-            Sequence[Issue],
-            Field(
-                default_factory=lambda: (),
-                description="Detected issues",
-            ),
-        ]
-        raw_output: Annotated[str, Field(default="", description="Raw tool output")]
-
     class GateResult(FlextModels.ArbitraryTypesModel):
         """Result summary for a single quality gate execution."""
 
@@ -66,26 +48,41 @@ class FlextInfraCheckModels:
         errors: Annotated[
             Sequence[str],
             Field(
-                default_factory=lambda: (),
                 description="Gate error messages",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
         duration: Annotated[
             float,
             Field(default=0.0, description="Duration in seconds"),
         ]
+
+    class GateExecution(FlextModels.ArbitraryTypesModel):
+        """Execution result for a single quality gate."""
+
+        result: Annotated[
+            FlextInfraCheckModels.FlextInfraCheckModels.GateResult,
+            Field(
+                description="Gate result model",
+            ),
+        ]
+        issues: Annotated[
+            Sequence[FlextInfraCheckModels.Issue],
+            Field(
+                description="Detected issues",
+            ),
+        ] = Field(default_factory=lambda: ())
+        raw_output: Annotated[str, Field(default="", description="Raw tool output")]
 
     class ProjectResult(FlextModels.ArbitraryTypesModel):
         """Aggregated gate results for a single project."""
 
         project: Annotated[str, Field(description="Project name")]
         gates: Annotated[
-            MutableMapping[str, GateExecution],
+            MutableMapping[str, FlextInfraCheckModels.GateExecution],
             Field(
-                default_factory=dict,
                 description="Gate name to execution mapping",
             ),
-        ]
+        ] = Field(default_factory=dict)
 
         @computed_field
         @property
@@ -153,7 +150,7 @@ class FlextInfraCheckModels:
         level: Annotated[str, Field(description="Result level (error/warning)")]
         message: Annotated[str, Field(description="Result message")]
         locations: Annotated[
-            Sequence[SarifLocation],
+            Sequence[FlextInfraCheckModels.SarifLocation],
             Field(
                 description="Result locations",
             ),
@@ -182,19 +179,17 @@ class FlextInfraCheckModels:
             ),
         ] = ""
         rules: Annotated[
-            Sequence[SarifRule],
+            Sequence[FlextInfraCheckModels.SarifRule],
             Field(
-                default_factory=lambda: (),
                 description="Rule descriptors",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
         results: Annotated[
-            Sequence[SarifResult],
+            Sequence[FlextInfraCheckModels.SarifResult],
             Field(
-                default_factory=lambda: (),
                 description="Run results",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
 
         @model_serializer(mode="plain")
         def _serialize(self) -> Mapping[str, JsonValue]:
@@ -231,12 +226,11 @@ class FlextInfraCheckModels:
             Field(default="2.1.0", description="SARIF version"),
         ] = "2.1.0"
         runs: Annotated[
-            Sequence[SarifRun],
+            Sequence[FlextInfraCheckModels.SarifRun],
             Field(
-                default_factory=lambda: (),
                 description="SARIF runs",
             ),
-        ]
+        ] = Field(default_factory=lambda: ())
 
 
 __all__ = ["FlextInfraCheckModels"]

@@ -21,7 +21,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestMain": ["tests.unit.github.main_integration_tests", "TestMain"],
     "TestRunLint": ["tests.unit.github.main_tests", "TestRunLint"],
     "TestRunPr": ["tests.unit.github.main_tests", "TestRunPr"],
-    "TestRunPrWorkspace": ["tests.unit.github.main_dispatch_tests", "TestRunPrWorkspace"],
+    "TestRunPrWorkspace": [
+        "tests.unit.github.main_dispatch_tests",
+        "TestRunPrWorkspace",
+    ],
     "TestRunWorkflows": ["tests.unit.github.main_tests", "TestRunWorkflows"],
     "main": ["tests.unit.github.main_integration_tests", "main"],
 }

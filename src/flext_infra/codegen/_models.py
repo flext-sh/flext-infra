@@ -39,10 +39,9 @@ class FlextInfraCodegenModels:
         violations: Annotated[
             Sequence[FlextInfraCodegenModels.CensusViolation],
             Field(
-                default_factory=list,
                 description="Detected violations",
             ),
-        ]
+        ] = Field(default_factory=list)
         total: Annotated[t.NonNegativeInt, Field(description="Total violation count")]
         fixable: Annotated[
             t.NonNegativeInt,
@@ -56,17 +55,15 @@ class FlextInfraCodegenModels:
         files_created: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Newly created file paths",
             ),
-        ]
+        ] = Field(default_factory=list)
         files_skipped: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Skipped (already existing) file paths",
             ),
-        ]
+        ] = Field(default_factory=list)
 
     class AutoFixResult(FlextModels.ArbitraryTypesModel):
         """Result of auto-fixing namespace violations for a project."""
@@ -75,24 +72,21 @@ class FlextInfraCodegenModels:
         violations_fixed: Annotated[
             Sequence[FlextInfraCodegenModels.CensusViolation],
             Field(
-                default_factory=list,
                 description="Fixed violations",
             ),
-        ]
+        ] = Field(default_factory=list)
         violations_skipped: Annotated[
             Sequence[FlextInfraCodegenModels.CensusViolation],
             Field(
-                default_factory=list,
                 description="Skipped violations (not auto-fixable)",
             ),
-        ]
+        ] = Field(default_factory=list)
         files_modified: Annotated[
             t.StrSequence,
             Field(
-                default_factory=list,
                 description="Modified file paths",
             ),
-        ]
+        ] = Field(default_factory=list)
 
     class QualityGateCheck(FlextModels.ArbitraryTypesModel):
         """A single quality gate check result entry."""
@@ -211,7 +205,7 @@ class FlextInfraCodegenModels:
         value: Annotated[int | str, Field(...)]
         type: Annotated[str, Field(...)]
         canonical_ref: Annotated[str, Field(...)]
-        semantic_names: Annotated[t.StrSequence, Field(default_factory=list)]
+        semantic_names: t.StrSequence = Field(default_factory=list)
 
     class NsRule(FlextModels.ArbitraryTypesModel):
         id: Annotated[str, Field(...)]
