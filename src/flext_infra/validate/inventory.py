@@ -13,10 +13,9 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flext_core import FlextTypes as t
 from pydantic import JsonValue
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, r, t, u
 
 
 class FlextInfraInventoryService:

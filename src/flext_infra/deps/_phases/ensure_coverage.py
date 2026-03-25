@@ -5,10 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableSequence
 
 import tomlkit
-from flext_core import FlextTypes as t
 from tomlkit.items import Item, Table
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraEnsureCoverageConfigPhase:

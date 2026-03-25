@@ -6,10 +6,9 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 import tomlkit
-from flext_core import FlextTypes as t
 from tomlkit.items import Item, Table
 
-from flext_infra import FlextInfraExtraPathsManager, c, m, u
+from flext_infra import FlextInfraExtraPathsManager, c, m, t, u
 
 
 class FlextInfraEnsurePyreflyConfigPhase:

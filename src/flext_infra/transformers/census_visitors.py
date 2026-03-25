@@ -11,9 +11,8 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
-from flext_core import FlextTypes as t
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraCensusImportDiscoveryVisitor(cst.CSTVisitor):

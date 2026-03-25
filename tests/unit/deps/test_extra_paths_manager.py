@@ -9,7 +9,7 @@ from flext_core import r
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraExtraPathsManager, u as infra_u
+from flext_infra import FlextInfraExtraPathsManager, u
 from tests import t
 
 
@@ -164,7 +164,7 @@ class TestSyncOne:
             return r[bool].fail("write error")
 
         monkeypatch.setattr(
-            infra_u.Infra,
+            u.Infra,
             "write_document",
             staticmethod(_broken_write),
         )

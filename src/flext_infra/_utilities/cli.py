@@ -16,10 +16,10 @@ from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, 
 from pathlib import Path
 
 import orjson
-from flext_core import FlextRuntime, FlextTypes as t, r
+from flext_core import FlextRuntime, r
 from pydantic import BaseModel
 
-from flext_infra import m, output
+from flext_infra import m, output, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 
 

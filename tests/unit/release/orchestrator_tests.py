@@ -12,7 +12,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraReleaseOrchestrator, m as infra_models
+from flext_infra import FlextInfraReleaseOrchestrator, m
 from tests import t
 
 if TYPE_CHECKING:
@@ -35,9 +35,9 @@ def _make_config(
     create_branches: bool = True,
     next_dev: bool = False,
     next_bump: str = "minor",
-) -> infra_models.Infra.ReleaseOrchestratorConfig:
+) -> m.Infra.ReleaseOrchestratorConfig:
     """Create a ReleaseOrchestratorConfig with test defaults."""
-    return infra_models.Infra.ReleaseOrchestratorConfig(
+    return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
         version=version,
         tag=tag,
@@ -183,7 +183,7 @@ class TestReleaseOrchestratorExecute:
 
         def fake_dispatch(
             _self: FlextInfraReleaseOrchestrator,
-            dispatch_config: infra_models.Infra.ReleasePhaseDispatchConfig,
+            dispatch_config: m.Infra.ReleasePhaseDispatchConfig,
         ) -> r[bool]:
             nonlocal call_count
             call_count += 1

@@ -6,9 +6,8 @@ from collections.abc import Mapping
 from typing import override
 
 import libcst as cst
-from flext_core import FlextTypes as t
 
-from flext_infra import m, u
+from flext_infra import m, t, u
 
 
 class FlextInfraRefactorMROReferenceRewriter(cst.CSTTransformer):

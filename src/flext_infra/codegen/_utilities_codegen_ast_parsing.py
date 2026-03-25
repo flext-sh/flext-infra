@@ -4,9 +4,7 @@ import ast
 from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
-from flext_core import FlextTypes as t
-
-from flext_infra import FlextInfraCodegenSnapshot
+from flext_infra import FlextInfraCodegenSnapshot, t
 
 
 class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):

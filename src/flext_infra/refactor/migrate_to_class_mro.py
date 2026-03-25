@@ -5,13 +5,12 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
-from flext_core import FlextTypes as t
-
 from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRefactorMROMigrationValidator,
     c,
     m,
+    t,
     u,
 )
 

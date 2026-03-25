@@ -7,9 +7,9 @@ from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
-from flext_core import FlextTypes as t, r
+from flext_core import r
 
-from flext_infra import FlextInfraUtilitiesParsing, c, m
+from flext_infra import FlextInfraUtilitiesParsing, c, m, t
 
 
 class FlextInfraUtilitiesDiscovery:

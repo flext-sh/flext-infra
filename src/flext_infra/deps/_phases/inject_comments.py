@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence
 
-from flext_core import FlextTypes as t
-
-from flext_infra import c
+from flext_infra import c, t
 
 
 class FlextInfraInjectCommentsPhase:

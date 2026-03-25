@@ -15,9 +15,8 @@ from pathlib import Path
 from typing import ClassVar, override
 
 import libcst as cst
-from flext_core import FlextTypes as t
 
-from flext_infra import u
+from flext_infra import t, u
 
 
 class FlextInfraTransformerTier0ImportFixer:

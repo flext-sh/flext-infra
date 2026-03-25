@@ -6,10 +6,9 @@ from collections.abc import MutableMapping, MutableSequence
 from typing import override
 
 import libcst as cst
-from flext_core import FlextTypes as t
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
-from flext_infra import t as infra_t, u
+from flext_infra import t, u
 
 
 class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
@@ -23,7 +22,7 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
         target_modules: t.Infra.StrSet,
         module_renames: t.StrMapping,
         import_symbol_renames: t.StrMapping,
-        on_change: infra_t.Infra.ChangeCallback = None,
+        on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize symbol propagation configuration and change collector."""
         self._target_modules = target_modules

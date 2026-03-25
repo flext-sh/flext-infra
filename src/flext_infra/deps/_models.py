@@ -5,8 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Annotated
 
-from flext_core import m, t
+from flext_core import m
 from pydantic import Field
+
+from flext_infra import t
 
 
 class FlextInfraDepsModels:
