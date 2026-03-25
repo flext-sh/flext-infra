@@ -58,6 +58,8 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
+        rope_find_symbol_occurrences,
+        rope_rename_symbol,
     )
     from flext_infra.transformers.tier0_import_fixer import (
         FlextInfraTransformerTier0ImportFixer,
@@ -185,6 +187,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.transformers.violation_census_visitor",
         "FlextInfraViolationCensusVisitor",
     ],
+    "rope_find_symbol_occurrences": [
+        "flext_infra.transformers.symbol_propagator",
+        "rope_find_symbol_occurrences",
+    ],
+    "rope_rename_symbol": [
+        "flext_infra.transformers.symbol_propagator",
+        "rope_rename_symbol",
+    ],
 }
 
 __all__ = [
@@ -214,6 +224,8 @@ __all__ = [
     "FlextInfraTypingAnnotationReplacer",
     "FlextInfraUnusedModelRemover",
     "FlextInfraViolationCensusVisitor",
+    "rope_find_symbol_occurrences",
+    "rope_rename_symbol",
 ]
 
 

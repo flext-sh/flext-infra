@@ -58,8 +58,7 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
             module_renames=module_renames,
             import_symbol_renames=symbol_renames,
         )
-        wrapper = MetadataWrapper(tree)
-        return (wrapper.visit(transformer), transformer.changes)
+        return (tree.visit(transformer), transformer.changes)
 
 
 class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):

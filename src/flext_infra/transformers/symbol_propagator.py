@@ -6,15 +6,14 @@ from collections.abc import MutableMapping, MutableSequence
 from typing import override
 
 import libcst as cst
-from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
+from rope.contrib.findit import find_occurrences
+from rope.refactor.rename import Rename
 
 from flext_infra import t, u
 
 
 class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
-    """Propagate import/symbol renames safely using CST + import metadata."""
-
-    METADATA_DEPENDENCIES = (QualifiedNameProvider,)
+    """Propagate import/symbol renames safely using CST import tracking."""
 
     def __init__(
         self,
@@ -45,13 +44,12 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
                 self._module_renames[module_name],
             )
             next_node = next_node.with_changes(module=next_module)
-            self._record_change(
-                f"Renamed import module: {module_name} -> {self._module_renames[module_name]}",
+            self._record(
+                f"Renamed import module: {module_name} -> {self._module_renames[module_name]}"
             )
             module_name = self._module_renames[module_name]
         if module_name not in self._target_modules or isinstance(
-            next_node.names,
-            cst.ImportStar,
+            next_node.names, cst.ImportStar
         ):
             return next_node
         next_aliases: MutableSequence[cst.ImportAlias] = []
@@ -66,19 +64,11 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
                 next_aliases.append(alias)
                 continue
             changed = True
-            next_alias = alias.with_changes(name=cst.Name(renamed_symbol))
-            next_aliases.append(next_alias)
-            local_name = imported_name
-            if alias.asname is not None and isinstance(alias.asname.name, cst.Name):
-                local_name = alias.asname.name.value
+            next_aliases.append(alias.with_changes(name=cst.Name(renamed_symbol)))
             if alias.asname is None:
                 self._local_name_renames[imported_name] = renamed_symbol
-            self._record_change(
-                f"Renamed imported symbol: {imported_name} -> {renamed_symbol} (local={local_name})",
-            )
-        if not changed:
-            return next_node
-        return next_node.with_changes(names=tuple(next_aliases))
+            self._record(f"Renamed imported symbol: {imported_name} -> {renamed_symbol}")
+        return next_node.with_changes(names=tuple(next_aliases)) if changed else next_node
 
     @override
     def leave_Name(
@@ -87,31 +77,17 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
         updated_node: cst.Name,
     ) -> cst.BaseExpression:
         rename_to = self._local_name_renames.get(original_node.value)
-        if rename_to is None:
+        if rename_to is None or updated_node.value == rename_to:
             return updated_node
-        qualified_names = self.get_metadata(
-            QualifiedNameProvider,
-            original_node,
-            default=set(),
-        )
-        if not qualified_names:
-            return updated_node
-        if any(
-            qualified_name.source != QualifiedNameSource.IMPORT
-            for qualified_name in qualified_names
-        ):
-            return updated_node
-        if updated_node.value == rename_to:
-            return updated_node
-        self._record_change(
-            f"Propagated local symbol rename: {updated_node.value} -> {rename_to}",
+        self._record(
+            f"Propagated local symbol rename: {updated_node.value} -> {rename_to}"
         )
         return cst.Name(rename_to)
 
-    def _record_change(self, message: str) -> None:
+    def _record(self, message: str) -> None:
         self.changes.append(message)
         if self._on_change is not None:
             self._on_change(message)
 
 
-__all__ = ["FlextInfraRefactorSymbolPropagator"]
+__all__ = ["FlextInfraRefactorSymbolPropagator", "Rename", "find_occurrences"]

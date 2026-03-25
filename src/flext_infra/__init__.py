@@ -388,6 +388,8 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
+        rope_find_symbol_occurrences,
+        rope_rename_symbol,
     )
     from flext_infra.transformers.tier0_import_fixer import (
         FlextInfraTransformerTier0ImportFixer,
@@ -1258,6 +1260,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "r": ["flext_core", "r"],
     "refactor": ["flext_infra.refactor", ""],
     "release": ["flext_infra.release", ""],
+    "rope_find_symbol_occurrences": [
+        "flext_infra.transformers.symbol_propagator",
+        "rope_find_symbol_occurrences",
+    ],
+    "rope_rename_symbol": [
+        "flext_infra.transformers.symbol_propagator",
+        "rope_rename_symbol",
+    ],
     "rules": ["flext_infra.rules", ""],
     "run_cli": ["flext_infra.check.workspace_check", "run_cli"],
     "s": ["flext_core", "s"],
@@ -1528,6 +1538,8 @@ __all__ = [
     "r",
     "refactor",
     "release",
+    "rope_find_symbol_occurrences",
+    "rope_rename_symbol",
     "rules",
     "run_cli",
     "s",
