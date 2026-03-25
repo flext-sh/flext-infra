@@ -645,25 +645,25 @@ class FlextInfraDepsModels:
             Field(
                 description="DEP001 issues",
             ),
-        ] = Field(default_factory=list)
+        ] = Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
         dep002: Annotated[
             MutableSequence[Mapping[str, t.Primitives | None]],
             Field(
                 description="DEP002 issues",
             ),
-        ] = Field(default_factory=list)
+        ] = Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
         dep003: Annotated[
             MutableSequence[Mapping[str, t.Primitives | None]],
             Field(
                 description="DEP003 issues",
             ),
-        ] = Field(default_factory=list)
+        ] = Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
         dep004: Annotated[
             MutableSequence[Mapping[str, t.Primitives | None]],
             Field(
                 description="DEP004 issues",
             ),
-        ] = Field(default_factory=list)
+        ] = Field(default_factory=lambda: list[Mapping[str, t.Primitives | None]]())
 
     class DeptryReport(m.ArbitraryTypesModel):
         """Deptry analysis report with categorized issue modules."""

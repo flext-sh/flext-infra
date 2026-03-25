@@ -154,7 +154,7 @@ class FlextInfraDocsModels:
             Field(
                 description="Phase-specific item payloads",
             ),
-        ] = Field(default_factory=list)
+        ] = []
 
 
 __all__ = ["FlextInfraDocsModels"]

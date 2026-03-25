@@ -41,7 +41,7 @@ class FlextInfraCodegenModels:
             Field(
                 description="Detected violations",
             ),
-        ] = Field(default_factory=list)
+        ] = []
         total: Annotated[t.NonNegativeInt, Field(description="Total violation count")]
         fixable: Annotated[
             t.NonNegativeInt,
@@ -74,13 +74,13 @@ class FlextInfraCodegenModels:
             Field(
                 description="Fixed violations",
             ),
-        ] = Field(default_factory=list)
+        ] = []
         violations_skipped: Annotated[
             Sequence[FlextInfraCodegenModels.CensusViolation],
             Field(
                 description="Skipped violations (not auto-fixable)",
             ),
-        ] = Field(default_factory=list)
+        ] = []
         files_modified: Annotated[
             t.StrSequence,
             Field(

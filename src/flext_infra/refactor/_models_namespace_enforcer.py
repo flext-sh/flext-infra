@@ -332,59 +332,59 @@ class FlextInfraNamespaceEnforcerModels:
         facade_statuses: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.FacadeStatus],
             Field(description="Facade status list"),
-        ] = Field(default_factory=list)
+        ] = []
         loose_objects: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.LooseObjectViolation],
             Field(description="Loose object violations"),
-        ] = Field(default_factory=list)
+        ] = []
         import_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.ImportAliasViolation],
             Field(description="Import alias violations"),
-        ] = Field(default_factory=list)
+        ] = []
         namespace_source_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.NamespaceSourceViolation],
             Field(description="Namespace source violations"),
-        ] = Field(default_factory=list)
+        ] = []
         internal_import_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.InternalImportViolation],
             Field(description="Internal import violations"),
-        ] = Field(default_factory=list)
+        ] = []
         manual_protocol_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.ManualProtocolViolation],
             Field(description="Manual protocol violations"),
-        ] = Field(default_factory=list)
+        ] = []
         cyclic_imports: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.CyclicImportViolation],
             Field(description="Cyclic import violations"),
-        ] = Field(default_factory=list)
+        ] = []
         runtime_alias_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.RuntimeAliasViolation],
             Field(description="Runtime alias violations"),
-        ] = Field(default_factory=list)
+        ] = []
         future_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.FutureAnnotationsViolation],
             Field(description="Future annotations violations"),
-        ] = Field(default_factory=list)
+        ] = []
         manual_typing_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.ManualTypingAliasViolation],
             Field(description="Manual typing alias violations"),
-        ] = Field(default_factory=list)
+        ] = []
         compatibility_alias_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.CompatibilityAliasViolation],
             Field(description="Compatibility alias violations"),
-        ] = Field(default_factory=list)
+        ] = []
         class_placement_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.ClassPlacementViolation],
             Field(description="Class placement violations"),
-        ] = Field(default_factory=list)
+        ] = []
         mro_completeness_violations: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.MROCompletenessViolation],
             Field(description="MRO completeness violations"),
-        ] = Field(default_factory=list)
+        ] = []
         parse_failures: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.ParseFailureViolation],
             Field(description="Parse failures"),
-        ] = Field(default_factory=list)
+        ] = []
         files_scanned: Annotated[
             t.NonNegativeInt,
             Field(default=0, description="Files scanned"),
@@ -463,7 +463,7 @@ class FlextInfraNamespaceEnforcerModels:
         projects: Annotated[
             Sequence[FlextInfraNamespaceEnforcerModels.ProjectEnforcementReport],
             Field(description="Project enforcement reports"),
-        ] = Field(default_factory=list)
+        ] = []
         total_facades_missing: Annotated[
             t.NonNegativeInt,
             Field(default=0, description="Total missing facades"),

@@ -43,54 +43,18 @@ if TYPE_CHECKING:
     from flext_infra.deps._phases.inject_comments import FlextInfraInjectCommentsPhase
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraConsolidateGroupsPhase": [
-        "flext_infra.deps._phases.consolidate_groups",
-        "FlextInfraConsolidateGroupsPhase",
-    ],
-    "FlextInfraEnsureCoverageConfigPhase": [
-        "flext_infra.deps._phases.ensure_coverage",
-        "FlextInfraEnsureCoverageConfigPhase",
-    ],
-    "FlextInfraEnsureExtraPathsPhase": [
-        "flext_infra.deps._phases.ensure_extra_paths",
-        "FlextInfraEnsureExtraPathsPhase",
-    ],
-    "FlextInfraEnsureFormattingToolingPhase": [
-        "flext_infra.deps._phases.ensure_formatting",
-        "FlextInfraEnsureFormattingToolingPhase",
-    ],
-    "FlextInfraEnsureMypyConfigPhase": [
-        "flext_infra.deps._phases.ensure_mypy",
-        "FlextInfraEnsureMypyConfigPhase",
-    ],
-    "FlextInfraEnsureNamespaceToolingPhase": [
-        "flext_infra.deps._phases.ensure_namespace",
-        "FlextInfraEnsureNamespaceToolingPhase",
-    ],
-    "FlextInfraEnsurePydanticMypyConfigPhase": [
-        "flext_infra.deps._phases.ensure_pydantic_mypy",
-        "FlextInfraEnsurePydanticMypyConfigPhase",
-    ],
-    "FlextInfraEnsurePyreflyConfigPhase": [
-        "flext_infra.deps._phases.ensure_pyrefly",
-        "FlextInfraEnsurePyreflyConfigPhase",
-    ],
-    "FlextInfraEnsurePyrightConfigPhase": [
-        "flext_infra.deps._phases.ensure_pyright",
-        "FlextInfraEnsurePyrightConfigPhase",
-    ],
-    "FlextInfraEnsurePytestConfigPhase": [
-        "flext_infra.deps._phases.ensure_pytest",
-        "FlextInfraEnsurePytestConfigPhase",
-    ],
-    "FlextInfraEnsureRuffConfigPhase": [
-        "flext_infra.deps._phases.ensure_ruff",
-        "FlextInfraEnsureRuffConfigPhase",
-    ],
-    "FlextInfraInjectCommentsPhase": [
-        "flext_infra.deps._phases.inject_comments",
-        "FlextInfraInjectCommentsPhase",
-    ],
+    "FlextInfraConsolidateGroupsPhase": ["flext_infra.deps._phases.consolidate_groups", "FlextInfraConsolidateGroupsPhase"],
+    "FlextInfraEnsureCoverageConfigPhase": ["flext_infra.deps._phases.ensure_coverage", "FlextInfraEnsureCoverageConfigPhase"],
+    "FlextInfraEnsureExtraPathsPhase": ["flext_infra.deps._phases.ensure_extra_paths", "FlextInfraEnsureExtraPathsPhase"],
+    "FlextInfraEnsureFormattingToolingPhase": ["flext_infra.deps._phases.ensure_formatting", "FlextInfraEnsureFormattingToolingPhase"],
+    "FlextInfraEnsureMypyConfigPhase": ["flext_infra.deps._phases.ensure_mypy", "FlextInfraEnsureMypyConfigPhase"],
+    "FlextInfraEnsureNamespaceToolingPhase": ["flext_infra.deps._phases.ensure_namespace", "FlextInfraEnsureNamespaceToolingPhase"],
+    "FlextInfraEnsurePydanticMypyConfigPhase": ["flext_infra.deps._phases.ensure_pydantic_mypy", "FlextInfraEnsurePydanticMypyConfigPhase"],
+    "FlextInfraEnsurePyreflyConfigPhase": ["flext_infra.deps._phases.ensure_pyrefly", "FlextInfraEnsurePyreflyConfigPhase"],
+    "FlextInfraEnsurePyrightConfigPhase": ["flext_infra.deps._phases.ensure_pyright", "FlextInfraEnsurePyrightConfigPhase"],
+    "FlextInfraEnsurePytestConfigPhase": ["flext_infra.deps._phases.ensure_pytest", "FlextInfraEnsurePytestConfigPhase"],
+    "FlextInfraEnsureRuffConfigPhase": ["flext_infra.deps._phases.ensure_ruff", "FlextInfraEnsureRuffConfigPhase"],
+    "FlextInfraInjectCommentsPhase": ["flext_infra.deps._phases.inject_comments", "FlextInfraInjectCommentsPhase"],
 }
 
 __all__ = [

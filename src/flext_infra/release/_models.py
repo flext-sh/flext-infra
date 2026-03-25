@@ -53,7 +53,7 @@ class FlextInfraReleaseModels:
             Field(
                 description="Per-project build records",
             ),
-        ] = Field(default_factory=list)
+        ] = []
 
     class ReleaseOrchestratorConfig(FlextModels.ArbitraryTypesModel):
         """Configuration for release workflow execution."""

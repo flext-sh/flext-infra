@@ -134,8 +134,6 @@ class FlextInfraRuntimeDevDependencyDetector:
             if isinstance(root_type, type):
                 detector_type = root_type
         detector_obj = detector_type()
-        if not isinstance(detector_obj, p.Infra.RunnableDetector):
-            return 1
         detector = detector_obj
         result = detector.run()
         if result.is_failure:

@@ -46,6 +46,14 @@ class FlextInfraPyprojectModernizer:
         self._tool_config = tool_config_result.value
 
     @staticmethod
+    def _item_get(parent: tomlkit.TOMLDocument | Table, key: str) -> Item | None:
+        """Safely get an Item from a tomlkit container."""
+        if key not in parent:
+            return None
+        raw = parent[key]
+        return raw if isinstance(raw, Item) else None
+
+    @staticmethod
     def _table_child(parent: tomlkit.TOMLDocument | Table, key: str) -> Table | None:
         if key not in parent:
             return None
@@ -68,23 +76,29 @@ class FlextInfraPyprojectModernizer:
             doc["build-system"] = build_system
             changes.append("created [build-system]")
         expected_backend = "hatchling.build"
-        current_backend = str(build_system.get("build-backend", "")).strip()
+        backend_item = self._item_get(build_system, "build-backend")
+        current_backend = str(backend_item).strip() if backend_item is not None else ""
         if current_backend != expected_backend:
             build_system["build-backend"] = expected_backend
             changes.append("build-system.build-backend set to hatchling.build")
         expected_requires = ["hatchling"]
+        requires_item = self._item_get(build_system, "requires")
         current_requires = sorted(
-            u.Infra.as_string_list(build_system.get("requires", [])),
+            u.Infra.as_string_list(requires_item),
         )
         if current_requires != expected_requires:
             build_system["requires"] = u.Infra.array(expected_requires)
             changes.append("build-system.requires set to ['hatchling']")
-        if str(build_system.get("build-backend", "")).strip() == expected_backend:
+        backend_item2 = self._item_get(build_system, "build-backend")
+        if (
+            backend_item2 is not None
+            and str(backend_item2).strip() == expected_backend
+        ):
             tool_table = u.Infra.ensure_table(doc, c.Infra.TOOL)
             hatch_table = u.Infra.ensure_table(tool_table, "hatch")
             metadata_table = u.Infra.ensure_table(hatch_table, "metadata")
-            current_allow = metadata_table.get("allow-direct-references")
-            if current_allow is not True:
+            allow_item = self._item_get(metadata_table, "allow-direct-references")
+            if allow_item is None or str(allow_item).strip().lower() != "true":
                 metadata_table["allow-direct-references"] = True
                 changes.append(
                     "tool.hatch.metadata.allow-direct-references set to true"
@@ -97,7 +111,10 @@ class FlextInfraPyprojectModernizer:
         project_table = FlextInfraPyprojectModernizer._table_child(doc, c.Infra.PROJECT)
         if project_table is None:
             return False
-        dependencies = u.Infra.as_string_list(project_table.get(c.Infra.DEPENDENCIES))
+        deps_item = FlextInfraPyprojectModernizer._item_get(
+            project_table, c.Infra.DEPENDENCIES,
+        )
+        dependencies = u.Infra.as_string_list(deps_item)
         return any(" @ " in dep for dep in dependencies)
 
     @staticmethod
@@ -133,9 +150,8 @@ class FlextInfraPyprojectModernizer:
                 if isinstance(value, Table):
                     cls._reorder_table_inplace(value)
                 elif isinstance(value, AoT):
-                    for entry in value:
-                        if isinstance(entry, Table):
-                            cls._reorder_table_inplace(entry)
+                    for entry in value.body:
+                        cls._reorder_table_inplace(entry)
             return
         items: MutableMapping[str, Item] = {key: table[key] for key in original_keys}
         for key in original_keys:
@@ -145,9 +161,8 @@ class FlextInfraPyprojectModernizer:
             if isinstance(value, Table):
                 cls._reorder_table_inplace(value)
             elif isinstance(value, AoT):
-                for entry in value:
-                    if isinstance(entry, Table):
-                        cls._reorder_table_inplace(entry)
+                for entry in value.body:
+                    cls._reorder_table_inplace(entry)
             table[key] = value
 
     @classmethod
@@ -166,8 +181,9 @@ class FlextInfraPyprojectModernizer:
                 del doc[key]
             for key in ordered_root:
                 doc[key] = root_items[key]
-        if "tool" in doc and isinstance(doc["tool"], Table):
-            cls._reorder_table_inplace(doc["tool"])
+        tool_child = cls._table_child(doc, "tool")
+        if tool_child is not None:
+            cls._reorder_table_inplace(tool_child)
         for key in ordered_root:
             if key == "tool":
                 continue
@@ -175,9 +191,8 @@ class FlextInfraPyprojectModernizer:
             if isinstance(value, Table):
                 cls._reorder_table_inplace(value)
             elif isinstance(value, AoT):
-                for entry in value:
-                    if isinstance(entry, Table):
-                        cls._reorder_table_inplace(entry)
+                for entry in value.body:
+                    cls._reorder_table_inplace(entry)
 
     def find_pyproject_files(self) -> Sequence[Path]:
         """Find all workspace pyproject.toml files."""
@@ -342,7 +357,8 @@ class FlextInfraPyprojectModernizer:
                 u.Infra.info(f"{path}: missing [build-system]")
                 has_warning = True
                 continue
-            backend = build_sys.get("build-backend", "")
+            backend_item = self._item_get(build_sys, "build-backend")
+            backend = str(backend_item).strip() if backend_item is not None else ""
             if backend != "hatchling.build":
                 u.Infra.info(f"{path}: expected hatchling.build, got {backend}")
                 has_warning = True

@@ -153,7 +153,7 @@ class FlextInfraRefactorMROResolver:
     ) -> t.Infra.VariadicTuple[str]:
         namespace_order: MutableSequence[str] = []
         for current in inspect.getmro(facade_class):
-            if current is t.NormalizedValue:
+            if current.__name__ == "NormalizedValue":
                 continue
             class_namespace = cls._namespace_from_class_name(
                 class_name=current.__name__,

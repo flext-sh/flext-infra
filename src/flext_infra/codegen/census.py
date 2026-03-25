@@ -127,7 +127,7 @@ class FlextInfraCodegenCensus(s[bool]):
                     by_type_val if isinstance(by_type_val, dict) else {}
                 )
                 type_stats: MutableSequence[str] = []
-                if isinstance(by_type, dict):
+                if by_type:
                     for type_key in sorted(by_type.keys())[:3]:
                         type_info_val = by_type[type_key]
                         if isinstance(type_info_val, dict):
@@ -271,8 +271,7 @@ class FlextInfraCodegenCensus(s[bool]):
                     for type_name in sorted(type_breakdown.keys())[:3]:
                         type_info_val = type_breakdown[type_name]
                         if isinstance(type_info_val, dict):
-                            cnt_val = type_info_val.get("total", 0)
-                            cnt = int(cnt_val) if isinstance(cnt_val, int) else 0
+                            cnt: int = type_info_val.get("total", 0)
                             type_stats.append(f"{type_name}:{cnt}")
                 type_detail = f" [{', '.join(type_stats)}]" if type_stats else ""
 

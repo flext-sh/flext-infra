@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core import lazy_getattr
+from flext_core.lazy import lazy_getattr
 
 if TYPE_CHECKING:
     from flext_core import FlextTypes

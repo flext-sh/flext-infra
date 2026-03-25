@@ -148,9 +148,7 @@ class FlextInfraRefactorMROImportRewriter:
             module_facades=facade_aliases,
             moved_index=moved_index,
         )
-        rewritten_cst = cst_tree.visit(rewriter)
-        if not isinstance(rewritten_cst, cst.Module):
-            return None
+        rewritten_cst: cst.Module = cst_tree.visit(rewriter)
         if rewriter.replacements == 0 and not facade_imports_needed:
             return None
         rendered = rewritten_cst.code

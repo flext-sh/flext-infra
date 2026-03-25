@@ -80,7 +80,7 @@ class FlextInfraDependencyDetectionService:
                 converted.append(converted_item)
             return converted
         try:
-            mapping_value: Mapping[str, JsonValue] = TypeAdapter(
+            mapping_value: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
                 Mapping[str, t.Infra.InfraValue],
             ).validate_python(
                 value,

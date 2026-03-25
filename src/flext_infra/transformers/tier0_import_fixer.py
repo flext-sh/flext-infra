@@ -29,12 +29,12 @@ class FlextInfraTransformerTier0ImportFixer:
         package_name: str
         file_path: Path
         alias_to_module: MutableMapping[str, str] = field(
-            default_factory=dict,
+            default_factory=lambda: dict[str, str](),
         )
-        category_a: t.Infra.StrSet = field(default_factory=set)
-        category_b: t.Infra.StrSet = field(default_factory=set)
-        category_c: t.Infra.StrSet = field(default_factory=set)
-        category_d: t.Infra.StrSet = field(default_factory=set)
+        category_a: t.Infra.StrSet = field(default_factory=lambda: set[str]())
+        category_b: t.Infra.StrSet = field(default_factory=lambda: set[str]())
+        category_c: t.Infra.StrSet = field(default_factory=lambda: set[str]())
+        category_d: t.Infra.StrSet = field(default_factory=lambda: set[str]())
 
         @property
         def has_violations(self) -> bool:

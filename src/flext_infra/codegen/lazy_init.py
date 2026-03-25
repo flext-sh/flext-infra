@@ -399,6 +399,8 @@ class FlextInfraCodegenLazyInit(s[int]):
                     )
                 case ast.AnnAssign(target=ast.Name() as ann_target):
                     names.append(ann_target.id)
+                case _:
+                    pass
             for name in names:
                 if not name.startswith("_"):
                     index[name] = (mod_path, name)

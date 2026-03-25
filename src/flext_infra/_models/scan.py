@@ -42,7 +42,7 @@ class FlextInfraModelsScan:
             Field(
                 description="Violations found in the file",
             ),
-        ] = Field(default_factory=list)
+        ] = []
         detector_name: Annotated[
             str,
             Field(description="Name of the detector that produced this result"),

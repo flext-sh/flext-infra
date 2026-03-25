@@ -222,6 +222,8 @@ class FlextInfraUtilitiesCodegenTransforms:
                         imported_name = alias.asname or alias.name
                         if imported_name != "*":
                             source_imports[imported_name] = stmt
+                case _:
+                    pass
         target_available: t.Infra.StrSet = set()
         for stmt in target_tree.body:
             match stmt:
@@ -234,6 +236,8 @@ class FlextInfraUtilitiesCodegenTransforms:
                         imported_name = alias.asname or alias.name
                         if imported_name != "*":
                             target_available.add(imported_name)
+                case _:
+                    pass
         seen_modules: t.Infra.StrSet = set()
         imports_to_add: MutableSequence[ast.stmt] = []
         for name in sorted(names_used):

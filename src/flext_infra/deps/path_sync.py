@@ -179,8 +179,7 @@ class FlextInfraDependencyPathSync:
         tool_section = self._ensure_table(doc, c.Infra.TOOL)
         uv_section = self._ensure_table(tool_section, "uv")
         sources = self._ensure_table(uv_section, "sources")
-        for source_key_raw in list(sources):
-            source_key = str(source_key_raw)
+        for source_key in [str(k) for k in sources]:
             if source_key in internal_names and source_key not in internal_deps:
                 del sources[source_key]
                 changes.append(f"  uv.sources: removed stale source {source_key}")
@@ -191,9 +190,10 @@ class FlextInfraDependencyPathSync:
             else:
                 path_value = self._target_path(dep_name, is_root=is_root, mode=mode)
                 expected = {"path": path_value, "editable": True}
-            current_value = sources.get(dep_name)
-            current_map = (
-                dict(current_value.unwrap()) if isinstance(current_value, Table) else {}
+            current_item = self._table_get(sources, dep_name)
+            empty: t.Infra.ContainerDict = {}
+            current_map: t.Infra.ContainerDict = (
+                dict(current_item.unwrap()) if isinstance(current_item, Table) else empty
             )
             if current_map == expected:
                 continue
@@ -218,7 +218,8 @@ class FlextInfraDependencyPathSync:
         uv_section = self._ensure_table(tool_section, "uv")
         workspace_section = self._ensure_table(uv_section, "workspace")
         expected_members = sorted(set(members))
-        current_members = u.Infra.as_string_list(workspace_section.get("members", []))
+        members_item = self._table_get(workspace_section, "members")
+        current_members = u.Infra.as_string_list(members_item)
         if current_members != expected_members:
             workspace_section["members"] = u.Infra.array(expected_members)
             changes.append("  uv.workspace: members synchronized")

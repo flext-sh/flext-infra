@@ -118,14 +118,14 @@ class FlextInfraExtraPathsManager:
         if sources_table is None:
             return []
         project_table = self._as_table(self._table_get(doc, c.Infra.PROJECT))
-        project_deps = (
+        project_deps: t.StrSequence = (
             self._as_string_list(self._table_get(project_table, c.Infra.DEPENDENCIES))
             if project_table is not None
             else []
         )
         project_dep_names: t.Infra.StrSet = set()
         for dep_entry in project_deps:
-            dep_name = FlextInfraDependencyPathSync.extract_dep_name(
+            dep_name: str = FlextInfraDependencyPathSync.extract_dep_name(
                 dep_entry.split(" ", 1)[0]
             )
             if dep_name:
@@ -138,11 +138,12 @@ class FlextInfraExtraPathsManager:
             source_table = self._as_table(self._table_get(sources_table, dep_name))
             if source_table is None:
                 continue
-            workspace_enabled = source_table.get("workspace") is True
-            if workspace_enabled:
+            workspace_item: Item | None = self._table_get(source_table, "workspace")
+            workspace_val = workspace_item.unwrap() if isinstance(workspace_item, Item) and hasattr(workspace_item, "unwrap") else None
+            if workspace_val is True:
                 paths.append(dep_name)
                 continue
-            source_path = source_table.get(c.Infra.PATH)
+            source_path: Item | None = self._table_get(source_table, c.Infra.PATH)
             if isinstance(source_path, str):
                 normalized_path = source_path.strip().removeprefix("./")
                 if normalized_path:
