@@ -10,26 +10,17 @@ import libcst.metadata as meta
 from flext_infra import m
 from flext_infra.transformers.mro_reference_rewriter import (
     FlextInfraRefactorMROReferenceRewriter,
-    Rename as MRORewriterRename,
 )
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
-    Rename as NestedRename,
 )
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
-    Rename,
-    find_occurrences,
 )
 
 
 class TestSymbolPropagatorRopeMigration:
     """Verify symbol_propagator uses rope APIs and no longer needs QualifiedNameProvider."""
-
-    def test_rope_apis_importable(self) -> None:
-        """find_occurrences and Rename are importable from symbol_propagator module."""
-        assert find_occurrences is not None
-        assert Rename is not None
 
     def test_no_qualified_name_provider(self) -> None:
         """FlextInfraRefactorSymbolPropagator does not declare QualifiedNameProvider dependency."""
@@ -120,10 +111,6 @@ class TestSymbolPropagatorRopeMigration:
 class TestMROReferenceRewriterRopeMigration:
     """Verify mro_reference_rewriter contains Rename and is shorter than baseline."""
 
-    def test_rope_rename_importable(self) -> None:
-        """Rename is importable from mro_reference_rewriter module."""
-        assert MRORewriterRename is not None
-
     def test_bare_name_rewrite(self) -> None:
         """Transformer rewrites bare imported names to facade.symbol form."""
         source = "OldConst\n"
@@ -175,10 +162,6 @@ class TestMROReferenceRewriterRopeMigration:
 
 class TestNestedClassPropagationRopeMigration:
     """Verify nested_class_propagation uses rope and removes ParentNodeProvider."""
-
-    def test_rope_rename_importable(self) -> None:
-        """Rename is importable from nested_class_propagation module."""
-        assert NestedRename is not None
 
     def test_no_parent_node_provider(self) -> None:
         """FlextInfraNestedClassPropagationTransformer has no ParentNodeProvider dependency."""

@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from typing import override
 
 import libcst as cst
-from rope.refactor.rename import Rename
 
 from flext_infra import m, t, u
 
@@ -71,4 +70,4 @@ class FlextInfraRefactorMROReferenceRewriter(cst.CSTTransformer):
         return u.Infra.module_expr_from_dotted(new_symbol)
 
 
-__all__ = ["FlextInfraRefactorMROReferenceRewriter", "Rename"]
+__all__ = ["FlextInfraRefactorMROReferenceRewriter"]

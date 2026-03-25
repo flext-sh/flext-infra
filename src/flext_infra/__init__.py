@@ -378,7 +378,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.mro_reference_rewriter import (
         FlextInfraRefactorMROReferenceRewriter,
-        Rename,
     )
     from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
     from flext_infra.transformers.nested_class_propagation import (
@@ -389,7 +388,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
-        find_occurrences,
     )
     from flext_infra.transformers.tier0_import_fixer import (
         FlextInfraTransformerTier0ImportFixer,
@@ -1225,7 +1223,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.workspace._models",
         "FlextInfraWorkspaceModels",
     ],
-    "Rename": ["flext_infra.transformers.mro_reference_rewriter", "Rename"],
     "__all__": ["flext_infra.__version__", "__all__"],
     "__author__": ["flext_infra.__version__", "__author__"],
     "__author_email__": ["flext_infra.__version__", "__author_email__"],
@@ -1250,10 +1247,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "detectors": ["flext_infra.detectors", ""],
     "docs": ["flext_infra.docs", ""],
     "e": ["flext_core", "e"],
-    "find_occurrences": [
-        "flext_infra.transformers.symbol_propagator",
-        "find_occurrences",
-    ],
     "gates": ["flext_infra.gates", ""],
     "h": ["flext_core", "h"],
     "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
@@ -1500,7 +1493,6 @@ __all__ = [
     "FlextInfraWorkspaceMakefileGenerator",
     "FlextInfraWorkspaceMode",
     "FlextInfraWorkspaceModels",
-    "Rename",
     "__all__",
     "__author__",
     "__author_email__",
@@ -1525,7 +1517,6 @@ __all__ = [
     "detectors",
     "docs",
     "e",
-    "find_occurrences",
     "gates",
     "h",
     "logger",

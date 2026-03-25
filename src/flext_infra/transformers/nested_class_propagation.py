@@ -6,7 +6,6 @@ from collections.abc import MutableMapping, MutableSequence
 from typing import override
 
 import libcst as cst
-from rope.refactor.rename import Rename
 
 from flext_infra import t, u
 
@@ -58,7 +57,7 @@ class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.ImportFrom:
-        _ = original_node
+        del original_node
         if isinstance(updated_node.names, cst.ImportStar):
             return updated_node
         updated_aliases: MutableSequence[cst.ImportAlias] = []
@@ -173,4 +172,4 @@ class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
         return any(symbol_name.startswith(p) for p in policy.blocked_reference_prefixes)
 
 
-__all__ = ["FlextInfraNestedClassPropagationTransformer", "Rename"]
+__all__ = ["FlextInfraNestedClassPropagationTransformer"]

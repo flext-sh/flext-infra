@@ -6,8 +6,6 @@ from collections.abc import MutableMapping, MutableSequence
 from typing import override
 
 import libcst as cst
-from rope.contrib.findit import find_occurrences
-from rope.refactor.rename import Rename
 
 from flext_infra import t, u
 
@@ -94,4 +92,4 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
             self._on_change(message)
 
 
-__all__ = ["FlextInfraRefactorSymbolPropagator", "Rename", "find_occurrences"]
+__all__ = ["FlextInfraRefactorSymbolPropagator"]
