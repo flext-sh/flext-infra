@@ -12,8 +12,6 @@ from __future__ import annotations
 import re
 from typing import ClassVar, TypeIs
 
-from flext_infra import t
-
 
 class FlextInfraUtilitiesPatterns:
     """Centralized regex patterns for infrastructure operations.

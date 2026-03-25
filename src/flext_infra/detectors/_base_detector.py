@@ -18,7 +18,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar, override
+from typing import ClassVar
 
 from pydantic import BaseModel
 

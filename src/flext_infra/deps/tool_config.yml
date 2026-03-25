@@ -394,6 +394,14 @@ tools:
         - '**/__pycache__'
         - '**/.*'
         - .venv
+        - '**/.venv'
+        - '**/.venv/**'
+        - '**/venv'
+        - '**/venv/**'
+        - '**/site-packages'
+        - '**/site-packages/**'
+        - '**/dist-packages'
+        - '**/dist-packages/**'
       dynamic-exclude-dirs:
         - .git
         - .mypy_cache
@@ -410,6 +418,9 @@ tools:
       source-report-private-usage: error
       test-like-report-private-usage: none
       other-report-private-usage: none
+      root-venv-path: .
+      project-venv-path: ..
+      venv-name: .venv
   coverage:
     fail-under:
       core: 45

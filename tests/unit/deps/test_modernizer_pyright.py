@@ -50,10 +50,16 @@ class TestEnsurePyrightConfigPhase:
         if not isinstance(pyright, MutableMapping):
             return
         exclude = u.Infra.unwrap_item(pyright["exclude"])
-        tm.that(
-            exclude,
-            eq=["**/.*", "**/__pycache__", "**/node_modules", ".venv", "vendor"],
+        rules = _test_tool_config().tools.pyright.path_rules
+        expected_exclude = sorted(
+            set(rules.default_excludes)
+            | {
+                directory
+                for directory in rules.dynamic_exclude_dirs
+                if (tmp_path / directory).is_dir()
+            },
         )
+        tm.that(exclude, eq=expected_exclude)
         ignore = u.Infra.unwrap_item(pyright["ignore"])
         tm.that(ignore, eq=["typings", "typings/generated"])
         envs = u.Infra.unwrap_item(pyright["executionEnvironments"])

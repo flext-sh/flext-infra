@@ -6,8 +6,6 @@ import re
 from pathlib import Path
 from typing import Final
 
-from flext_infra import t
-
 
 class FlextInfraCoreConstants:
     """Core infrastructure constants."""

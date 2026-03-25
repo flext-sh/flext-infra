@@ -229,6 +229,18 @@ class FlextInfraEnsurePyrightConfigPhase:
         }
         return kind_map.get(project_kind)
 
+    def _venv_settings(
+        self,
+        *,
+        is_root: bool,
+    ) -> t.StrMapping:
+        rules = self._path_rules()
+        venv_path = rules.root_venv_path if is_root else rules.project_venv_path
+        return {
+            "venvPath": venv_path,
+            "venv": rules.venv_name,
+        }
+
     def _expected_excludes(self, project_root: Path | None) -> t.StrSequence:
         """Build pyright exclude list from discovered workspace/project dirs."""
         rules = self._path_rules()
@@ -335,13 +347,15 @@ class FlextInfraEnsurePyrightConfigPhase:
             workspace_root=workspace_root,
             project_dir=project_dir,
         )
+        for key, value in self._venv_settings(is_root=is_root).items():
+            if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
+                pyright[key] = value
+                changes.append(f"tool.pyright.{key} set to {value}")
         if is_root:
-            if (
-                u.Infra.unwrap_item(u.Infra.get(pyright, "typeCheckingMode"))
-                != c.Infra.Modes.STRICT
-            ):
-                pyright["typeCheckingMode"] = c.Infra.Modes.STRICT
-                changes.append("tool.pyright.typeCheckingMode set to strict")
+            for key, value in self._tool_config.tools.pyright.strict_settings.items():
+                if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
+                    pyright[key] = value
+                    changes.append(f"tool.pyright.{key} set to {value}")
             for key, value in self._tool_config.tools.pyright.extended_settings.items():
                 if u.Infra.unwrap_item(u.Infra.get(pyright, key)) != value:
                     pyright[key] = value

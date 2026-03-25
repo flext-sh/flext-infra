@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence
 from typing import Annotated
 
 from flext_core import m
@@ -267,6 +267,27 @@ class FlextInfraDepsModels:
                 Field(
                     alias="other-report-private-usage",
                     description="reportPrivateUsage value for non-source/non-test-like envs.",
+                ),
+            ]
+            root_venv_path: Annotated[
+                str,
+                Field(
+                    alias="root-venv-path",
+                    description="venvPath to use in workspace-root pyright config.",
+                ),
+            ]
+            project_venv_path: Annotated[
+                str,
+                Field(
+                    alias="project-venv-path",
+                    description="venvPath to use in subproject pyright config.",
+                ),
+            ]
+            venv_name: Annotated[
+                str,
+                Field(
+                    alias="venv-name",
+                    description="Virtualenv directory name shared across pyright configs.",
                 ),
             ]
 
@@ -681,9 +702,10 @@ class FlextInfraDepsModels:
         """Workspace-level dependency analysis report aggregating all projects."""
 
         workspace: str
-        projects: Annotated[Mapping[str, FlextInfraDepsModels.ProjectRuntimeReport], Field(description="Per-project reports")] = (
-            Field(default_factory=dict)
-        )
+        projects: Annotated[
+            Mapping[str, FlextInfraDepsModels.ProjectRuntimeReport],
+            Field(description="Per-project reports"),
+        ] = Field(default_factory=dict)
         pip_check: FlextInfraDepsModels.PipCheckReport | None = None
         dependency_limits: FlextInfraDepsModels.DependencyLimitsInfo | None = None
 

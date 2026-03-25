@@ -117,7 +117,9 @@ class FlextInfraGate(ABC):
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         if not isinstance(value, list):
             return []
-        typed_items: Sequence[t.Infra.InfraValue] = TypeAdapter(Sequence[t.Infra.InfraValue]).validate_python(
+        typed_items: Sequence[t.Infra.InfraValue] = TypeAdapter(
+            Sequence[t.Infra.InfraValue]
+        ).validate_python(
             value,
         )
         normalized: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
