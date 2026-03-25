@@ -169,7 +169,9 @@ class FlextInfraUtilitiesReporting:
                 gate_result = project.gates.get(gate)
                 row += f" {(len(gate_result.issues) if gate_result else 0)} |"
             status = (
-                c.Infra.Status.PASS if project.passed else f"**{c.Infra.Status.FAIL}**"
+                c.Infra.Status.PASSED
+                if project.passed
+                else f"**{c.Infra.Status.FAIL}**"
             )
             if not project.passed:
                 failed_count += 1

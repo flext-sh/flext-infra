@@ -84,7 +84,7 @@ class TestFlextInfraConstantsStatusNamespace:
     """Tests for Status namespace constants."""
 
     def test_pass_status_constant(self) -> None:
-        tm.that(c.Infra.Status.PASS, eq="PASS")
+        tm.that(c.Infra.Status.PASSED, eq="PASS")
 
     def test_fail_status_constant(self) -> None:
         tm.that(c.Infra.Status.FAIL, eq="FAIL")
@@ -96,7 +96,7 @@ class TestFlextInfraConstantsStatusNamespace:
         tm.that(c.Infra.Status.WARN, eq="WARN")
 
     def test_status_constants_are_strings(self) -> None:
-        tm.that(c.Infra.Status.PASS, is_=str)
+        tm.that(c.Infra.Status.PASSED, is_=str)
         tm.that(c.Infra.Status.FAIL, is_=str)
         tm.that(c.Infra.Status.OK, is_=str)
         tm.that(c.Infra.Status.WARN, is_=str)

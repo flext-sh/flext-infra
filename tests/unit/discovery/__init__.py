@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make codegen
+# Regenerate with: make gen
 #
 """Discovery package."""
 
@@ -19,14 +19,8 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "TestFlextInfraDiscoveryService": [
-        "tests.unit.discovery.test_infra_discovery",
-        "TestFlextInfraDiscoveryService",
-    ],
-    "TestFlextInfraDiscoveryServiceUncoveredLines": [
-        "tests.unit.discovery.test_infra_discovery_edge_cases",
-        "TestFlextInfraDiscoveryServiceUncoveredLines",
-    ],
+    "TestFlextInfraDiscoveryService": ["tests.unit.discovery.test_infra_discovery", "TestFlextInfraDiscoveryService"],
+    "TestFlextInfraDiscoveryServiceUncoveredLines": ["tests.unit.discovery.test_infra_discovery_edge_cases", "TestFlextInfraDiscoveryServiceUncoveredLines"],
 }
 
 __all__ = [

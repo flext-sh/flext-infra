@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
-from libcst.metadata import MetadataWrapper
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import (
@@ -191,8 +190,7 @@ class FlextInfraRefactorClassNestingReconstructor:
             policy_context=policy_context,
             class_families=class_families,
         )
-        wrapped_tree = MetadataWrapper(tree)
-        updated_tree = wrapped_tree.visit(transformer)
+        updated_tree = tree.visit(transformer)
         if updated_tree.code != tree.code:
             changes.append(
                 f"Applied FlextInfraNestedClassPropagationTransformer ({len(mappings)} renames)",

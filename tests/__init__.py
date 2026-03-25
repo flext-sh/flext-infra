@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make codegen
+# Regenerate with: make gen
 #
 """Infra package."""
 
@@ -51,6 +51,11 @@ if TYPE_CHECKING:
         SubprocessScenarios,
         WorkspaceScenario,
         WorkspaceScenarios,
+    )
+    from tests.test_infra_refactor_rope_migrations import (
+        TestMROReferenceRewriterRopeMigration,
+        TestNestedClassPropagationRopeMigration,
+        TestSymbolPropagatorRopeMigration,
     )
     from tests.typings import FlextInfraTestTypes, FlextInfraTestTypes as t
     from tests.unit import (
@@ -1781,6 +1786,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.deps.test_detection_typings",
         "TestLoadDependencyLimits",
     ],
+    "TestMROReferenceRewriterRopeMigration": [
+        "tests.test_infra_refactor_rope_migrations",
+        "TestMROReferenceRewriterRopeMigration",
+    ],
     "TestMain": ["tests.unit.github.main_integration_tests", "TestMain"],
     "TestMainBaseMkValidate": [
         "tests.unit.validate.main_tests",
@@ -1904,6 +1913,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestMypyEmptyLinesInOutput": [
         "tests.unit.check.extended_error_reporting_tests",
         "TestMypyEmptyLinesInOutput",
+    ],
+    "TestNestedClassPropagationRopeMigration": [
+        "tests.test_infra_refactor_rope_migrations",
+        "TestNestedClassPropagationRopeMigration",
     ],
     "TestOrchestratorBasic": [
         "tests.unit.test_infra_workspace_orchestrator",
@@ -2222,6 +2235,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "TestStubChainValidate",
     ],
     "TestSubcommandMapping": ["tests.unit.deps.test_main", "TestSubcommandMapping"],
+    "TestSymbolPropagatorRopeMigration": [
+        "tests.test_infra_refactor_rope_migrations",
+        "TestSymbolPropagatorRopeMigration",
+    ],
     "TestSync": ["tests.unit.deps.test_internal_sync_sync", "TestSync"],
     "TestSyncMethodEdgeCases": [
         "tests.unit.deps.test_internal_sync_sync_edge",
@@ -3866,6 +3883,7 @@ __all__ = [
     "TestLintAndFormatPublicMethods",
     "TestLoadAuditBudgets",
     "TestLoadDependencyLimits",
+    "TestMROReferenceRewriterRopeMigration",
     "TestMain",
     "TestMainBaseMkValidate",
     "TestMainCli",
@@ -3906,6 +3924,7 @@ __all__ = [
     "TestModuleAndTypingsFlow",
     "TestMroFacadeMethods",
     "TestMypyEmptyLinesInOutput",
+    "TestNestedClassPropagationRopeMigration",
     "TestOrchestratorBasic",
     "TestOrchestratorFailures",
     "TestOrchestratorGateNormalization",
@@ -4010,6 +4029,7 @@ __all__ = [
     "TestStubChainStubExists",
     "TestStubChainValidate",
     "TestSubcommandMapping",
+    "TestSymbolPropagatorRopeMigration",
     "TestSync",
     "TestSyncMethodEdgeCases",
     "TestSyncMethodEdgeCasesMore",

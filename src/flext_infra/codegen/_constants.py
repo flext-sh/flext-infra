@@ -58,9 +58,7 @@ class FlextInfraCodegenConstants:
     MAX_LINE_LENGTH: Final[int] = 88
     "Maximum line length for generated import lines."
     AUTOGEN_HEADER: Final[str] = (
-        "# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.\n"
-        "# Regenerate with: make codegen\n"
-        "#"
+        "# AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.\n# Regenerate with: make gen\n#"
     )
     "Header prepended to every auto-generated ``__init__.py`` file."
     ALL_SCAN_PATTERNS: Final[t.StrSequence] = (

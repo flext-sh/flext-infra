@@ -165,12 +165,12 @@ class TestHookCallOrdering:
             call_order.append("post")
             return []
 
-        engine._run_rope_pre_hooks = mock_pre  # type: ignore[assignment]
-        engine.refactor_files = mock_refactor_files  # type: ignore[assignment]
-        engine._run_rope_post_hooks = mock_post  # type: ignore[assignment]
+        engine._run_rope_pre_hooks = mock_pre
+        engine.refactor_files = mock_refactor_files
+        engine._run_rope_post_hooks = mock_post
 
         # Patch safety stash and file iteration to avoid real filesystem ops
-        engine._try_safety_stash = MagicMock(return_value=("", None))  # type: ignore[assignment]
+        engine._try_safety_stash = MagicMock(return_value=("", None))
 
         with (
             patch.object(
@@ -209,10 +209,10 @@ class TestHookCallOrdering:
             call_order.append("post")
             return []
 
-        engine._run_rope_pre_hooks = mock_pre  # type: ignore[assignment]
-        engine.refactor_project = mock_refactor_project  # type: ignore[assignment]
-        engine._run_rope_post_hooks = mock_post  # type: ignore[assignment]
-        engine._try_safety_stash = MagicMock(return_value=("", None))  # type: ignore[assignment]
+        engine._run_rope_pre_hooks = mock_pre
+        engine.refactor_project = mock_refactor_project
+        engine._run_rope_post_hooks = mock_post
+        engine._try_safety_stash = MagicMock(return_value=("", None))
 
         with patch("flext_infra.refactor.engine.u") as mock_u:
             mock_u.Infra.discover_project_roots.return_value = [

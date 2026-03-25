@@ -86,7 +86,7 @@ class TestFlextInfraConstantsAlias:
 
     def test_c_alias_access_to_constants(self) -> None:
         tm.that(c.Infra.Paths.VENV_BIN_REL, eq=".venv/bin")
-        tm.that(c.Infra.Status.PASS, eq="PASS")
+        tm.that(c.Infra.Status.PASSED, eq="PASS")
         tm.that(c.Infra.Files.PYPROJECT_FILENAME, eq="pyproject.toml")
 
 
@@ -106,7 +106,7 @@ class TestFlextInfraConstantsConsistency:
     """Tests for consistency across namespaces."""
 
     def test_all_status_values_are_uppercase(self) -> None:
-        tm.that(c.Infra.Status.PASS.isupper(), eq=True)
+        tm.that(c.Infra.Status.PASSED.isupper(), eq=True)
         tm.that(c.Infra.Status.FAIL.isupper(), eq=True)
         tm.that(c.Infra.Status.OK.isupper(), eq=True)
         tm.that(c.Infra.Status.WARN.isupper(), eq=True)

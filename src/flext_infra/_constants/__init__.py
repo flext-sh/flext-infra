@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make codegen
+# Regenerate with: make gen
 #
 """Constants package."""
 
@@ -16,10 +16,7 @@ if TYPE_CHECKING:
     from flext_infra._constants.base import FlextInfraConstantsBase
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraConstantsBase": [
-        "flext_infra._constants.base",
-        "FlextInfraConstantsBase",
-    ],
+    "FlextInfraConstantsBase": ["flext_infra._constants.base", "FlextInfraConstantsBase"],
 }
 
 __all__ = [

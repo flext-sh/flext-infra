@@ -184,7 +184,7 @@ class FlextInfraConstantsBase:
     class Status:
         """Status strings for check results."""
 
-        PASS: Final[str] = "PASS"
+        PASSED: Final[str] = "PASS"
         "Status string for checks that passed."
         FAIL: Final[str] = "FAIL"
         "Status string for checks that failed."

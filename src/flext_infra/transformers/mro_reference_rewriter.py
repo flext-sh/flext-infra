@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import override
 
 import libcst as cst
+from rope.refactor.rename import Rename
 
 from flext_infra import m, t, u
 
@@ -52,28 +53,22 @@ class FlextInfraRefactorMROReferenceRewriter(cst.CSTTransformer):
     ) -> cst.BaseExpression:
         """Rewrite attribute access on module aliases to their moved location."""
         del original_node
-        # Walk up to get the root name
         root_name = u.Infra.cst_root_name(updated_node.value)
         if not root_name:
             return updated_node
-
-        # Check if root is a module alias or facade alias
-        module_name = self._module_aliases.get(root_name)
-        if module_name is None:
-            module_name = self._module_facades.get(root_name)
+        module_name = self._module_aliases.get(root_name) or self._module_facades.get(
+            root_name
+        )
         if module_name is None:
             return updated_node
-
         symbol_map = self._moved_index.get(module_name)
         if symbol_map is None:
             return updated_node
-
         new_symbol = symbol_map.get(updated_node.attr.value)
         if new_symbol is None:
             return updated_node
-
         self.replacements += 1
         return u.Infra.module_expr_from_dotted(new_symbol)
 
 
-__all__ = ["FlextInfraRefactorMROReferenceRewriter"]
+__all__ = ["FlextInfraRefactorMROReferenceRewriter", "Rename"]

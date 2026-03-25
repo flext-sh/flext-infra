@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make codegen
+# Regenerate with: make gen
 #
 """Public API for flext-infra.
 
@@ -378,6 +378,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.mro_reference_rewriter import (
         FlextInfraRefactorMROReferenceRewriter,
+        Rename,
     )
     from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
     from flext_infra.transformers.nested_class_propagation import (
@@ -388,8 +389,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.transformers.symbol_propagator import (
         FlextInfraRefactorSymbolPropagator,
-        rope_find_symbol_occurrences,
-        rope_rename_symbol,
+        find_occurrences,
     )
     from flext_infra.transformers.tier0_import_fixer import (
         FlextInfraTransformerTier0ImportFixer,
@@ -1225,6 +1225,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.workspace._models",
         "FlextInfraWorkspaceModels",
     ],
+    "Rename": ["flext_infra.transformers.mro_reference_rewriter", "Rename"],
     "__all__": ["flext_infra.__version__", "__all__"],
     "__author__": ["flext_infra.__version__", "__author__"],
     "__author_email__": ["flext_infra.__version__", "__author_email__"],
@@ -1249,6 +1250,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "detectors": ["flext_infra.detectors", ""],
     "docs": ["flext_infra.docs", ""],
     "e": ["flext_core", "e"],
+    "find_occurrences": [
+        "flext_infra.transformers.symbol_propagator",
+        "find_occurrences",
+    ],
     "gates": ["flext_infra.gates", ""],
     "h": ["flext_core", "h"],
     "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
@@ -1260,14 +1265,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "r": ["flext_core", "r"],
     "refactor": ["flext_infra.refactor", ""],
     "release": ["flext_infra.release", ""],
-    "rope_find_symbol_occurrences": [
-        "flext_infra.transformers.symbol_propagator",
-        "rope_find_symbol_occurrences",
-    ],
-    "rope_rename_symbol": [
-        "flext_infra.transformers.symbol_propagator",
-        "rope_rename_symbol",
-    ],
     "rules": ["flext_infra.rules", ""],
     "run_cli": ["flext_infra.check.workspace_check", "run_cli"],
     "s": ["flext_core", "s"],
@@ -1503,6 +1500,7 @@ __all__ = [
     "FlextInfraWorkspaceMakefileGenerator",
     "FlextInfraWorkspaceMode",
     "FlextInfraWorkspaceModels",
+    "Rename",
     "__all__",
     "__author__",
     "__author_email__",
@@ -1527,6 +1525,7 @@ __all__ = [
     "detectors",
     "docs",
     "e",
+    "find_occurrences",
     "gates",
     "h",
     "logger",
@@ -1538,8 +1537,6 @@ __all__ = [
     "r",
     "refactor",
     "release",
-    "rope_find_symbol_occurrences",
-    "rope_rename_symbol",
     "rules",
     "run_cli",
     "s",

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make codegen
+# Regenerate with: make gen
 #
 """Code generation services.
 
@@ -30,27 +30,12 @@ if TYPE_CHECKING:
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraCodegenCensus": [
-        "flext_infra.codegen.census",
-        "FlextInfraCodegenCensus",
-    ],
-    "FlextInfraCodegenConstantsQualityGate": [
-        "flext_infra.codegen.constants_quality_gate",
-        "FlextInfraCodegenConstantsQualityGate",
-    ],
+    "FlextInfraCodegenCensus": ["flext_infra.codegen.census", "FlextInfraCodegenCensus"],
+    "FlextInfraCodegenConstantsQualityGate": ["flext_infra.codegen.constants_quality_gate", "FlextInfraCodegenConstantsQualityGate"],
     "FlextInfraCodegenFixer": ["flext_infra.codegen.fixer", "FlextInfraCodegenFixer"],
-    "FlextInfraCodegenLazyInit": [
-        "flext_infra.codegen.lazy_init",
-        "FlextInfraCodegenLazyInit",
-    ],
-    "FlextInfraCodegenPyTyped": [
-        "flext_infra.codegen.py_typed",
-        "FlextInfraCodegenPyTyped",
-    ],
-    "FlextInfraCodegenScaffolder": [
-        "flext_infra.codegen.scaffolder",
-        "FlextInfraCodegenScaffolder",
-    ],
+    "FlextInfraCodegenLazyInit": ["flext_infra.codegen.lazy_init", "FlextInfraCodegenLazyInit"],
+    "FlextInfraCodegenPyTyped": ["flext_infra.codegen.py_typed", "FlextInfraCodegenPyTyped"],
+    "FlextInfraCodegenScaffolder": ["flext_infra.codegen.scaffolder", "FlextInfraCodegenScaffolder"],
 }
 
 __all__ = [

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make codegen
+# Regenerate with: make gen
 #
 """Quality gate implementations for the check library."""
 
@@ -29,10 +29,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraMypyGate": ["flext_infra.gates.mypy", "FlextInfraMypyGate"],
     "FlextInfraPyreflyGate": ["flext_infra.gates.pyrefly", "FlextInfraPyreflyGate"],
     "FlextInfraPyrightGate": ["flext_infra.gates.pyright", "FlextInfraPyrightGate"],
-    "FlextInfraRuffFormatGate": [
-        "flext_infra.gates.ruff_format",
-        "FlextInfraRuffFormatGate",
-    ],
+    "FlextInfraRuffFormatGate": ["flext_infra.gates.ruff_format", "FlextInfraRuffFormatGate"],
     "FlextInfraRuffLintGate": ["flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"],
 }
 

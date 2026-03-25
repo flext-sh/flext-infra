@@ -2,8 +2,20 @@
 
 from __future__ import annotations
 
-import libcst as cst
+import pathlib
 
+import libcst as cst
+import libcst.metadata as meta
+
+from flext_infra import m
+from flext_infra.transformers.mro_reference_rewriter import (
+    FlextInfraRefactorMROReferenceRewriter,
+    Rename as MRORewriterRename,
+)
+from flext_infra.transformers.nested_class_propagation import (
+    FlextInfraNestedClassPropagationTransformer,
+    Rename as NestedRename,
+)
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
     Rename,
@@ -21,8 +33,6 @@ class TestSymbolPropagatorRopeMigration:
 
     def test_no_qualified_name_provider(self) -> None:
         """FlextInfraRefactorSymbolPropagator does not declare QualifiedNameProvider dependency."""
-        import libcst.metadata as meta
-
         deps = getattr(FlextInfraRefactorSymbolPropagator, "METADATA_DEPENDENCIES", ())
         assert meta.QualifiedNameProvider not in deps
 
@@ -96,8 +106,119 @@ class TestSymbolPropagatorRopeMigration:
 
     def test_file_shorter_than_baseline(self) -> None:
         """symbol_propagator.py is shorter than the 117-line baseline."""
-        import pathlib
-
-        path = pathlib.Path(__file__).parent.parent / "src" / "flext_infra" / "transformers" / "symbol_propagator.py"
+        path = (
+            pathlib.Path(__file__).parent.parent
+            / "src"
+            / "flext_infra"
+            / "transformers"
+            / "symbol_propagator.py"
+        )
         lines = path.read_text().splitlines()
         assert len(lines) < 117, f"Expected < 117 lines, got {len(lines)}"
+
+
+class TestMROReferenceRewriterRopeMigration:
+    """Verify mro_reference_rewriter contains Rename and is shorter than baseline."""
+
+    def test_rope_rename_importable(self) -> None:
+        """Rename is importable from mro_reference_rewriter module."""
+        assert MRORewriterRename is not None
+
+    def test_bare_name_rewrite(self) -> None:
+        """Transformer rewrites bare imported names to facade.symbol form."""
+        source = "OldConst\n"
+        tree = cst.parse_module(source)
+        imported_symbols = {
+            "OldConst": m.Infra.MROImportRewrite(
+                module="flext_infra",
+                import_name="OldConst",
+                facade_name="c.Infra",
+                symbol="OldConst",
+            ),
+        }
+        transformer = FlextInfraRefactorMROReferenceRewriter(
+            imported_symbols=imported_symbols,
+            module_aliases={},
+            module_facades={},
+            moved_index={},
+        )
+        result = tree.visit(transformer)
+        assert "c.Infra.OldConst" in result.code
+        assert transformer.replacements == 1
+
+    def test_no_change_when_no_match(self) -> None:
+        """Transformer returns unchanged tree when no symbols match."""
+        source = "UnknownName\n"
+        tree = cst.parse_module(source)
+        transformer = FlextInfraRefactorMROReferenceRewriter(
+            imported_symbols={},
+            module_aliases={},
+            module_facades={},
+            moved_index={},
+        )
+        result = tree.visit(transformer)
+        assert result.code == source
+        assert transformer.replacements == 0
+
+    def test_file_shorter_than_baseline(self) -> None:
+        """mro_reference_rewriter.py is shorter than 79-line baseline."""
+        path = (
+            pathlib.Path(__file__).parent.parent
+            / "src"
+            / "flext_infra"
+            / "transformers"
+            / "mro_reference_rewriter.py"
+        )
+        lines = path.read_text().splitlines()
+        assert len(lines) < 79, f"Expected < 79 lines, got {len(lines)}"
+
+
+class TestNestedClassPropagationRopeMigration:
+    """Verify nested_class_propagation uses rope and removes ParentNodeProvider."""
+
+    def test_rope_rename_importable(self) -> None:
+        """Rename is importable from nested_class_propagation module."""
+        assert NestedRename is not None
+
+    def test_no_parent_node_provider(self) -> None:
+        """FlextInfraNestedClassPropagationTransformer has no ParentNodeProvider dependency."""
+        deps = getattr(
+            FlextInfraNestedClassPropagationTransformer, "METADATA_DEPENDENCIES", ()
+        )
+        assert meta.ParentNodeProvider not in deps
+
+    def test_class_name_not_renamed(self) -> None:
+        """Class definition names are NOT renamed (definition sites are skipped)."""
+        source = "class OldName:\n    pass\n"
+        tree = cst.parse_module(source)
+        transformer = FlextInfraNestedClassPropagationTransformer(
+            class_renames={"OldName": "Namespace.OldName"},
+        )
+        result = tree.visit(transformer)
+        assert "class OldName" in result.code
+
+    def test_usage_site_renamed(self) -> None:
+        """Usage sites of renamed class ARE updated."""
+        source = "x = OldName()\n"
+        tree = cst.parse_module(source)
+        transformer = FlextInfraNestedClassPropagationTransformer(
+            class_renames={"OldName": "Namespace.OldName"},
+        )
+        result = tree.visit(transformer)
+        assert "Namespace.OldName" in result.code
+
+    def test_combined_loc_under_baseline(self) -> None:
+        """Combined LOC of all 3 transformer files is < 385 (the baseline)."""
+        transformers_dir = (
+            pathlib.Path(__file__).parent.parent
+            / "src"
+            / "flext_infra"
+            / "transformers"
+        )
+        files = [
+            "symbol_propagator.py",
+            "mro_reference_rewriter.py",
+            "nested_class_propagation.py",
+        ]
+        total = sum(len((transformers_dir / f).read_text().splitlines()) for f in files)
+        assert total < 385, f"Expected combined LOC < 385, got {total}"

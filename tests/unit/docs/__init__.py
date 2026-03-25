@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make codegen
+# Regenerate with: make gen
 #
 """Docs package."""
 
@@ -74,83 +74,41 @@ if TYPE_CHECKING:
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestAdrHelpers": ["tests.unit.docs.validator_internals_tests", "TestAdrHelpers"],
-    "TestAuditorBrokenLinks": [
-        "tests.unit.docs.auditor_links_tests",
-        "TestAuditorBrokenLinks",
-    ],
+    "TestAuditorBrokenLinks": ["tests.unit.docs.auditor_links_tests", "TestAuditorBrokenLinks"],
     "TestAuditorCore": ["tests.unit.docs.auditor_tests", "TestAuditorCore"],
-    "TestAuditorForbiddenTerms": [
-        "tests.unit.docs.auditor_scope_tests",
-        "TestAuditorForbiddenTerms",
-    ],
+    "TestAuditorForbiddenTerms": ["tests.unit.docs.auditor_scope_tests", "TestAuditorForbiddenTerms"],
     "TestAuditorMainCli": ["tests.unit.docs.auditor_cli_tests", "TestAuditorMainCli"],
     "TestAuditorNormalize": ["tests.unit.docs.auditor_tests", "TestAuditorNormalize"],
     "TestAuditorScope": ["tests.unit.docs.auditor_scope_tests", "TestAuditorScope"],
-    "TestAuditorScopeFailure": [
-        "tests.unit.docs.auditor_cli_tests",
-        "TestAuditorScopeFailure",
-    ],
-    "TestAuditorToMarkdown": [
-        "tests.unit.docs.auditor_links_tests",
-        "TestAuditorToMarkdown",
-    ],
+    "TestAuditorScopeFailure": ["tests.unit.docs.auditor_cli_tests", "TestAuditorScopeFailure"],
+    "TestAuditorToMarkdown": ["tests.unit.docs.auditor_links_tests", "TestAuditorToMarkdown"],
     "TestBuildScopes": ["tests.unit.docs.shared_tests", "TestBuildScopes"],
     "TestBuilderCore": ["tests.unit.docs.builder_tests", "TestBuilderCore"],
     "TestBuilderScope": ["tests.unit.docs.builder_scope_tests", "TestBuilderScope"],
     "TestFixerCore": ["tests.unit.docs.fixer_tests", "TestFixerCore"],
-    "TestFixerMaybeFixLink": [
-        "tests.unit.docs.fixer_internals_tests",
-        "TestFixerMaybeFixLink",
-    ],
-    "TestFixerProcessFile": [
-        "tests.unit.docs.fixer_internals_tests",
-        "TestFixerProcessFile",
-    ],
+    "TestFixerMaybeFixLink": ["tests.unit.docs.fixer_internals_tests", "TestFixerMaybeFixLink"],
+    "TestFixerProcessFile": ["tests.unit.docs.fixer_internals_tests", "TestFixerProcessFile"],
     "TestFixerScope": ["tests.unit.docs.fixer_internals_tests", "TestFixerScope"],
     "TestFixerToc": ["tests.unit.docs.fixer_internals_tests", "TestFixerToc"],
-    "TestFlextInfraDocScope": [
-        "tests.unit.docs.shared_tests",
-        "TestFlextInfraDocScope",
-    ],
+    "TestFlextInfraDocScope": ["tests.unit.docs.shared_tests", "TestFlextInfraDocScope"],
     "TestFlextInfraDocs": ["tests.unit.docs.init_tests", "TestFlextInfraDocs"],
     "TestGeneratorCore": ["tests.unit.docs.generator_tests", "TestGeneratorCore"],
-    "TestGeneratorHelpers": [
-        "tests.unit.docs.generator_internals_tests",
-        "TestGeneratorHelpers",
-    ],
-    "TestGeneratorScope": [
-        "tests.unit.docs.generator_internals_tests",
-        "TestGeneratorScope",
-    ],
-    "TestIterMarkdownFiles": [
-        "tests.unit.docs.shared_iter_tests",
-        "TestIterMarkdownFiles",
-    ],
-    "TestLoadAuditBudgets": [
-        "tests.unit.docs.auditor_budgets_tests",
-        "TestLoadAuditBudgets",
-    ],
+    "TestGeneratorHelpers": ["tests.unit.docs.generator_internals_tests", "TestGeneratorHelpers"],
+    "TestGeneratorScope": ["tests.unit.docs.generator_internals_tests", "TestGeneratorScope"],
+    "TestIterMarkdownFiles": ["tests.unit.docs.shared_iter_tests", "TestIterMarkdownFiles"],
+    "TestLoadAuditBudgets": ["tests.unit.docs.auditor_budgets_tests", "TestLoadAuditBudgets"],
     "TestMainRouting": ["tests.unit.docs.main_entry_tests", "TestMainRouting"],
     "TestMainWithFlags": ["tests.unit.docs.main_entry_tests", "TestMainWithFlags"],
-    "TestMaybeWriteTodo": [
-        "tests.unit.docs.validator_internals_tests",
-        "TestMaybeWriteTodo",
-    ],
+    "TestMaybeWriteTodo": ["tests.unit.docs.validator_internals_tests", "TestMaybeWriteTodo"],
     "TestRunAudit": ["tests.unit.docs.main_tests", "TestRunAudit"],
     "TestRunBuild": ["tests.unit.docs.main_commands_tests", "TestRunBuild"],
     "TestRunFix": ["tests.unit.docs.main_tests", "TestRunFix"],
     "TestRunGenerate": ["tests.unit.docs.main_commands_tests", "TestRunGenerate"],
     "TestRunValidate": ["tests.unit.docs.main_commands_tests", "TestRunValidate"],
-    "TestSelectedProjectNames": [
-        "tests.unit.docs.shared_iter_tests",
-        "TestSelectedProjectNames",
-    ],
+    "TestSelectedProjectNames": ["tests.unit.docs.shared_iter_tests", "TestSelectedProjectNames"],
     "TestValidateCore": ["tests.unit.docs.validator_tests", "TestValidateCore"],
     "TestValidateReport": ["tests.unit.docs.validator_tests", "TestValidateReport"],
-    "TestValidateScope": [
-        "tests.unit.docs.validator_internals_tests",
-        "TestValidateScope",
-    ],
+    "TestValidateScope": ["tests.unit.docs.validator_internals_tests", "TestValidateScope"],
     "TestWriteJson": ["tests.unit.docs.shared_write_tests", "TestWriteJson"],
     "TestWriteMarkdown": ["tests.unit.docs.shared_write_tests", "TestWriteMarkdown"],
     "auditor": ["tests.unit.docs.auditor_tests", "auditor"],

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
-# Regenerate with: make codegen
+# Regenerate with: make gen
 #
 """Maintenance services.
 
@@ -25,10 +25,7 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraPythonVersionEnforcer": [
-        "flext_infra.workspace.maintenance.python_version",
-        "FlextInfraPythonVersionEnforcer",
-    ],
+    "FlextInfraPythonVersionEnforcer": ["flext_infra.workspace.maintenance.python_version", "FlextInfraPythonVersionEnforcer"],
     "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
 }
 
