@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes
     from flext_tests import d, e, h, r, s, x
 
-    from tests import unit
+    from tests import refactor, unit
     from tests.constants import FlextInfraTestConstants, FlextInfraTestConstants as c
     from tests.fixtures import (
         real_docs_project,
@@ -28,6 +28,19 @@ if TYPE_CHECKING:
     from tests.helpers import FlextInfraTestHelpers
     from tests.models import FlextInfraTestModels, FlextInfraTestModels as m
     from tests.protocols import FlextInfraTestProtocols, FlextInfraTestProtocols as p
+    from tests.refactor.test_rope_project import (
+        TestHookCallOrdering,
+        TestInitRopeProject,
+        TestRopeHooks,
+        TestRopeProjectProperty,
+        engine,
+        fake_workspace,
+    )
+    from tests.refactor.test_rope_stubs import (
+        test_rope_find_occurrences_import,
+        test_rope_import,
+        test_rope_rename_import,
+    )
     from tests.runner_service import RealSubprocessRunner
     from tests.scenarios import (
         DependencyScenario,
@@ -50,7 +63,6 @@ if TYPE_CHECKING:
         docs,
         github,
         io,
-        refactor,
         release,
         validate,
     )
@@ -1664,6 +1676,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "TestGoFmtEmptyLinesInOutput",
     ],
     "TestHandleLazyInit": ["tests.unit.codegen.main_tests", "TestHandleLazyInit"],
+    "TestHookCallOrdering": [
+        "tests.refactor.test_rope_project",
+        "TestHookCallOrdering",
+    ],
     "TestInferOwnerFromOrigin": [
         "tests.unit.deps.test_internal_sync_resolve",
         "TestInferOwnerFromOrigin",
@@ -1712,6 +1728,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.container.test_infra_container",
         "TestInfraServiceRetrieval",
     ],
+    "TestInitRopeProject": ["tests.refactor.test_rope_project", "TestInitRopeProject"],
     "TestInjectCommentsPhase": [
         "tests.unit.deps.test_modernizer_comments",
         "TestInjectCommentsPhase",
@@ -2034,6 +2051,11 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestRewritePoetry": [
         "tests.unit.deps.test_path_sync_rewrite_poetry",
         "TestRewritePoetry",
+    ],
+    "TestRopeHooks": ["tests.refactor.test_rope_project", "TestRopeHooks"],
+    "TestRopeProjectProperty": [
+        "tests.refactor.test_rope_project",
+        "TestRopeProjectProperty",
     ],
     "TestRuffFormatDuplicateFiles": [
         "tests.unit.check.extended_error_reporting_tests",
@@ -2378,7 +2400,9 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "doc": ["tests.unit.deps.test_modernizer_helpers", "doc"],
     "docs": ["tests.unit.docs", ""],
     "e": ["flext_tests", "e"],
+    "engine": ["tests.refactor.test_rope_project", "engine"],
     "extract_dep_name": ["tests.unit.deps.test_path_sync_helpers", "extract_dep_name"],
+    "fake_workspace": ["tests.refactor.test_rope_project", "fake_workspace"],
     "fixer": ["tests.unit.docs.fixer_internals_tests", "fixer"],
     "gen": ["tests.unit.docs.generator_internals_tests", "gen"],
     "git_repo": ["tests.unit.test_infra_git", "git_repo"],
@@ -2408,7 +2432,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "real_python_package": ["tests.fixtures", "real_python_package"],
     "real_toml_project": ["tests.fixtures", "real_toml_project"],
     "real_workspace": ["tests.fixtures", "real_workspace"],
-    "refactor": ["tests.unit.refactor", ""],
+    "refactor": ["tests.refactor", ""],
     "release": ["tests.unit.release", ""],
     "rewrite_dep_paths": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
@@ -3358,6 +3382,15 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "test_rewriter_splits_mixed_imports_correctly",
     ],
+    "test_rope_find_occurrences_import": [
+        "tests.refactor.test_rope_stubs",
+        "test_rope_find_occurrences_import",
+    ],
+    "test_rope_import": ["tests.refactor.test_rope_stubs", "test_rope_import"],
+    "test_rope_rename_import": [
+        "tests.refactor.test_rope_stubs",
+        "test_rope_rename_import",
+    ],
     "test_rule_dispatch_fails_on_invalid_pattern_rule_config": [
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_rule_dispatch_fails_on_invalid_pattern_rule_config",
@@ -3806,6 +3839,7 @@ __all__ = [
     "TestGitTagOperations",
     "TestGoFmtEmptyLinesInOutput",
     "TestHandleLazyInit",
+    "TestHookCallOrdering",
     "TestInferOwnerFromOrigin",
     "TestInferPackage",
     "TestInfraContainerFunctions",
@@ -3818,6 +3852,7 @@ __all__ = [
     "TestInfraOutputStatus",
     "TestInfraOutputSummary",
     "TestInfraServiceRetrieval",
+    "TestInitRopeProject",
     "TestInjectCommentsPhase",
     "TestInventoryServiceCore",
     "TestInventoryServiceReports",
@@ -3913,6 +3948,8 @@ __all__ = [
     "TestRewriteDepPaths",
     "TestRewritePep621",
     "TestRewritePoetry",
+    "TestRopeHooks",
+    "TestRopeProjectProperty",
     "TestRuffFormatDuplicateFiles",
     "TestRunAudit",
     "TestRunBandit",
@@ -4037,7 +4074,9 @@ __all__ = [
     "doc",
     "docs",
     "e",
+    "engine",
     "extract_dep_name",
+    "fake_workspace",
     "fixer",
     "gen",
     "git_repo",
@@ -4309,6 +4348,9 @@ __all__ = [
     "test_rewriter_namespace_source_is_idempotent_with_ruff",
     "test_rewriter_preserves_non_alias_symbols",
     "test_rewriter_splits_mixed_imports_correctly",
+    "test_rope_find_occurrences_import",
+    "test_rope_import",
+    "test_rope_rename_import",
     "test_rule_dispatch_fails_on_invalid_pattern_rule_config",
     "test_rule_dispatch_fails_on_unknown_rule_mapping",
     "test_rule_dispatch_keeps_legacy_id_fallback_mapping",

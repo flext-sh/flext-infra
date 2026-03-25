@@ -8,6 +8,7 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from pydantic import TypeAdapter
+from rope.base.project import Project as RopeProject
 
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
@@ -50,10 +51,70 @@ class FlextInfraRefactorEngine:
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
         self.rule_validator = FlextInfraRefactorRuleDefinitionValidator()
         self.safety_manager = self._build_safety_manager()
+        self._rope_project: RopeProject | None = None
 
     @staticmethod
     def _build_safety_manager() -> FlextInfraRefactorSafetyManager:
         return FlextInfraRefactorSafetyManager()
+
+    @property
+    def rope_project(self) -> RopeProject | None:
+        """Return the active rope Project, or None if not yet initialized."""
+        return self._rope_project
+
+    def _init_rope_project(self, workspace_root: Path) -> None:
+        """Initialize a monorepo-rooted rope Project with no disk artifacts.
+
+        Creates a single Project covering all flext-*/src directories.
+        ropefolder=None prevents .ropeproject creation.
+        save_objectdb=False (default) avoids any persistent object db.
+        """
+        source_folders = sorted(
+            str(p / "src")
+            for p in workspace_root.iterdir()
+            if p.name.startswith("flext-") and (p / "src").is_dir()
+        )
+        self._rope_project = RopeProject(
+            str(workspace_root),
+            ropefolder=None,
+            save_objectdb=False,
+            ignored_resources=[
+                ".venv",
+                "*.pyc",
+                "dist/",
+                "__pycache__",
+                ".mypy_cache",
+                ".git",
+            ],
+            source_folders=source_folders,
+        )
+
+    def _run_rope_pre_hooks(
+        self,
+        path: Path,
+        *,
+        dry_run: bool,
+    ) -> Sequence[m.Infra.Result]:
+        """Run rope-based pre-hooks before LibCST rules execute.
+
+        Stub for Plan 02: symbol_propagator, mro_reference_rewriter,
+        nested_class_propagation will be wired here.
+        """
+        del path, dry_run
+        return []
+
+    def _run_rope_post_hooks(
+        self,
+        path: Path,
+        *,
+        dry_run: bool,
+    ) -> Sequence[m.Infra.Result]:
+        """Run rope-based post-hooks after LibCST rules execute.
+
+        Stub for Plan 02 post-pass cleanup if needed.
+        """
+        del path, dry_run
+        return []
 
     def _try_safety_stash(
         self,
@@ -534,8 +595,10 @@ class FlextInfraRefactorEngine:
         ]
         u.Infra.refactor_info(f"Found {len(files)} files to process")
         results: MutableSequence[m.Infra.Result] = list(
-            self.refactor_files(files, dry_run=dry_run),
+            self._run_rope_pre_hooks(project_path, dry_run=dry_run),
         )
+        results.extend(self.refactor_files(files, dry_run=dry_run))
+        results.extend(self._run_rope_post_hooks(project_path, dry_run=dry_run))
         if apply_safety and (not dry_run):
             checkpoint_result = self.safety_manager.save_checkpoint_state(
                 project_path,
@@ -591,6 +654,7 @@ class FlextInfraRefactorEngine:
         )
         if stash_error is not None:
             return stash_error
+        results.extend(self._run_rope_pre_hooks(root, dry_run=dry_run))
         for project in project_paths:
             if apply_safety and self.safety_manager.is_emergency_stop_requested():
                 break
@@ -614,6 +678,7 @@ class FlextInfraRefactorEngine:
                     u.Infra.refactor_error(
                         checkpoint_result.error or "checkpoint save failed",
                     )
+        results.extend(self._run_rope_post_hooks(root, dry_run=dry_run))
         if apply_safety and (not dry_run):
             self._run_safety_validation_and_finalize(
                 target_path=root,

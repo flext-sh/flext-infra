@@ -408,7 +408,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
                 _OBJECT_LIST_ADAPTER.validate_python([*dependencies_raw])
             )
             dependencies = [str(dep_raw) for dep_raw in dependency_items]
-        dependency_spec = "flext-core @ ../flext-core"
+        dependency_spec = "flext-core"
         if dependency_spec not in dependencies:
             dependencies.append(dependency_spec)
         project_table[c.Infra.DEPENDENCIES] = dependencies
