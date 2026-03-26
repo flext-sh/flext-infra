@@ -39,20 +39,38 @@ if TYPE_CHECKING:
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestGetClassBases": ["tests.refactor.test_rope_semantic", "TestGetClassBases"],
     "TestGetClassMethods": ["tests.refactor.test_rope_semantic", "TestGetClassMethods"],
-    "TestGetModuleClasses": ["tests.refactor.test_rope_semantic", "TestGetModuleClasses"],
-    "TestGetModuleImports": ["tests.refactor.test_rope_semantic", "TestGetModuleImports"],
-    "TestHookCallOrdering": ["tests.refactor.test_rope_project", "TestHookCallOrdering"],
+    "TestGetModuleClasses": [
+        "tests.refactor.test_rope_semantic",
+        "TestGetModuleClasses",
+    ],
+    "TestGetModuleImports": [
+        "tests.refactor.test_rope_semantic",
+        "TestGetModuleImports",
+    ],
+    "TestHookCallOrdering": [
+        "tests.refactor.test_rope_project",
+        "TestHookCallOrdering",
+    ],
     "TestInitRopeProject": ["tests.refactor.test_rope_project", "TestInitRopeProject"],
     "TestRopeHooks": ["tests.refactor.test_rope_project", "TestRopeHooks"],
-    "TestRopeProjectProperty": ["tests.refactor.test_rope_project", "TestRopeProjectProperty"],
+    "TestRopeProjectProperty": [
+        "tests.refactor.test_rope_project",
+        "TestRopeProjectProperty",
+    ],
     "engine": ["tests.refactor.test_rope_project", "engine"],
     "fake_workspace": ["tests.refactor.test_rope_project", "fake_workspace"],
     "models_resource": ["tests.refactor.test_rope_semantic", "models_resource"],
     "rope_workspace": ["tests.refactor.test_rope_semantic", "rope_workspace"],
     "services_resource": ["tests.refactor.test_rope_semantic", "services_resource"],
-    "test_rope_find_occurrences_import": ["tests.refactor.test_rope_stubs", "test_rope_find_occurrences_import"],
+    "test_rope_find_occurrences_import": [
+        "tests.refactor.test_rope_stubs",
+        "test_rope_find_occurrences_import",
+    ],
     "test_rope_import": ["tests.refactor.test_rope_stubs", "test_rope_import"],
-    "test_rope_rename_import": ["tests.refactor.test_rope_stubs", "test_rope_rename_import"],
+    "test_rope_rename_import": [
+        "tests.refactor.test_rope_stubs",
+        "test_rope_rename_import",
+    ],
 }
 
 __all__ = [
