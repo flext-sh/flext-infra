@@ -7,7 +7,8 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import t, u
+from flext_infra import t
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
@@ -35,10 +36,10 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraChangeTrackingTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.ImportFrom:
-        module_name = u.Infra.cst_module_name(original_node.module)
+        module_name = FlextInfraUtilitiesParsing.cst_module_name(original_node.module)
         next_node = updated_node
         if module_name in self._module_renames:
-            next_module = u.Infra.module_expr_from_dotted(
+            next_module = FlextInfraUtilitiesParsing.module_expr_from_dotted(
                 self._module_renames[module_name],
             )
             next_node = next_node.with_changes(module=next_module)

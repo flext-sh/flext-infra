@@ -8,8 +8,9 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import m, t, u
+from flext_infra import m, t
 from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
+from flext_infra.transformers.policy import FlextInfraRefactorTransformerPolicyUtilities
 
 
 class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
@@ -183,7 +184,7 @@ class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
             return True
         if not policy.allow_helper_call_rewrite:
             return False
-        return u.Infra.target_allowed(
+        return FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
             policy=policy,
             target_namespace=target_namespace,
         )
@@ -194,7 +195,7 @@ class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
             return True
         if not policy.enable_helper_consolidation:
             return False
-        return u.Infra.target_allowed(
+        return FlextInfraRefactorTransformerPolicyUtilities.target_allowed(
             policy=policy,
             target_namespace=target_namespace,
         )
@@ -238,7 +239,7 @@ class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
         self,
         helper_name: str,
     ) -> m.Infra.ClassNestingPolicy | None:
-        return u.Infra.policy_for_symbol(
+        return FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._helper_families,
             symbol_name=helper_name,

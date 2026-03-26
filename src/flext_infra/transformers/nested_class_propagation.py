@@ -7,7 +7,9 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import t, u
+from flext_infra import t
+from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra.transformers.policy import FlextInfraRefactorTransformerPolicyUtilities
 
 
 class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
@@ -103,7 +105,7 @@ class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
             return updated_node
         if self._blocked_by_prefix(original_node.value):
             return updated_node
-        return u.Infra.module_expr_from_dotted(rename_to)
+        return FlextInfraUtilitiesParsing.module_expr_from_dotted(rename_to)
 
     @override
     def leave_Attribute(
@@ -146,7 +148,7 @@ class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
         return expr
 
     def _should_propagate(self, symbol_name: str, policy_key: str) -> bool:
-        policy = u.Infra.policy_for_symbol(
+        policy = FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,
@@ -162,7 +164,7 @@ class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
         return False
 
     def _blocked_by_prefix(self, symbol_name: str) -> bool:
-        policy = u.Infra.policy_for_symbol(
+        policy = FlextInfraRefactorTransformerPolicyUtilities.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,
