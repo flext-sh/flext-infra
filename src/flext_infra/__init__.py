@@ -224,7 +224,6 @@ if TYPE_CHECKING:
     from flext_infra.docs.builder import FlextInfraDocBuilder
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
-    from flext_infra.docs.shared import FlextInfraDocsShared
     from flext_infra.docs.validator import FlextInfraDocValidator
     from flext_infra.gates._base_gate import FlextInfraGate
     from flext_infra.gates._gate_registry import FlextInfraGateRegistry
@@ -308,7 +307,6 @@ if TYPE_CHECKING:
     )
     from flext_infra.release._constants import FlextInfraReleaseConstants
     from flext_infra.release._models import FlextInfraReleaseModels
-    from flext_infra.release._reporting import FlextInfraReleaseReporting
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
     from flext_infra.rules.class_nesting import FlextInfraClassNestingRefactorRule
     from flext_infra.rules.class_reconstructor import (
@@ -599,7 +597,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "FlextInfraDocsConstants",
     ],
     "FlextInfraDocsModels": ["flext_infra.docs._models", "FlextInfraDocsModels"],
-    "FlextInfraDocsShared": ["flext_infra.docs.shared", "FlextInfraDocsShared"],
     "FlextInfraEnsureCoverageConfigPhase": [
         "flext_infra.deps._phases.ensure_coverage",
         "FlextInfraEnsureCoverageConfigPhase",
@@ -986,10 +983,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.release.orchestrator",
         "FlextInfraReleaseOrchestrator",
     ],
-    "FlextInfraReleaseReporting": [
-        "flext_infra.release._reporting",
-        "FlextInfraReleaseReporting",
-    ],
     "FlextInfraRuffFormatGate": [
         "flext_infra.gates.ruff_format",
         "FlextInfraRuffFormatGate",
@@ -1335,7 +1328,6 @@ __all__ = [
     "FlextInfraDocValidator",
     "FlextInfraDocsConstants",
     "FlextInfraDocsModels",
-    "FlextInfraDocsShared",
     "FlextInfraEnsureCoverageConfigPhase",
     "FlextInfraEnsureExtraPathsPhase",
     "FlextInfraEnsureFormattingToolingPhase",
@@ -1443,7 +1435,6 @@ __all__ = [
     "FlextInfraReleaseConstants",
     "FlextInfraReleaseModels",
     "FlextInfraReleaseOrchestrator",
-    "FlextInfraReleaseReporting",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
     "FlextInfraRuntimeAliasDetector",
