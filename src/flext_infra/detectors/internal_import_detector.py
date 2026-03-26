@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar, override
-
-from pydantic import BaseModel
+from typing import ClassVar
 
 from flext_infra import FlextInfraScanFileMixin, m, p, t, u
 
@@ -19,17 +17,7 @@ class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
     """Detect private module/symbol imports via rope semantic resolution."""
 
     _rule_id: ClassVar[str] = "namespace.internal_import"
-
-    @override
-    def _build_message(self, violation: BaseModel) -> str:
-        d = violation.model_dump()
-        return f"Internal import '{d['current_import']}': {d['detail']}"
-
-    @override
-    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
-        return self.detect_file(
-            file_path=file_path, rope_project=self._rope, parse_failures=self._pf
-        )
+    _MESSAGE_TEMPLATE: ClassVar[str] = "Internal import '{current_import}': {detail}"
 
     @classmethod
     def detect_file(

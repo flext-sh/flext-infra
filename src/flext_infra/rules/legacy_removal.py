@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar, override
+from typing import override
 
 import libcst as cst
 from pydantic import TypeAdapter, ValidationError
@@ -17,18 +17,15 @@ from flext_infra import (
     c,
     t,
 )
+from flext_infra.refactor._base_rule import INFRA_MAPPING_ADAPTER
 
 
 class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     """Remove aliases, deprecated classes, wrappers and import bypass blocks."""
 
-    _CONFIG_ADAPTER: ClassVar[TypeAdapter[Mapping[str, t.Infra.InfraValue]]] = (
-        TypeAdapter(Mapping[str, t.Infra.InfraValue])
-    )
-
     def _typed_config(self) -> Mapping[str, t.Infra.InfraValue]:
         """Get self.config validated as Mapping[str, InfraValue]."""
-        return self._CONFIG_ADAPTER.validate_python(self.config)
+        return INFRA_MAPPING_ADAPTER.validate_python(self.config)
 
     @staticmethod
     def _is_forwarding_compatible(

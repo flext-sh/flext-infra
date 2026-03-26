@@ -10,8 +10,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from pydantic import BaseModel
-
 from flext_infra import (
     FlextInfraNamespaceFacadeScanner,
     FlextInfraScanFileMixin,
@@ -38,6 +36,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detect loose top-level objects outside namespace classes via rope."""
 
     _rule_id: ClassVar[str] = "namespace.loose_object"
+    _MESSAGE_TEMPLATE: ClassVar[str] = "Loose {kind} '{name}' outside namespace"
 
     def __init__(
         self,
@@ -51,12 +50,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         self._project_name = project_name
 
     @override
-    def _build_message(self, violation: BaseModel) -> str:
-        d = violation.model_dump()
-        return f"Loose {d['kind']} '{d['name']}' outside namespace"
-
-    @override
-    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+    def _collect_violations(self, file_path: Path) -> Sequence[m.Infra.LooseObjectViolation]:
         return self.detect_file(
             file_path=file_path,
             project_name=self._project_name,

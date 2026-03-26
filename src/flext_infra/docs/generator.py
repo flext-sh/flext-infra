@@ -28,15 +28,6 @@ class FlextInfraDocGenerator:
     """
 
     @staticmethod
-    def _normalize_anchor(value: str) -> str:
-        """Convert a heading to a GitHub-compatible anchor slug."""
-        text = value.strip().lower()
-        text = re.sub(r"[^a-z0-9\s-]", "", text)
-        text = re.sub(r"\s+", "-", text)
-        text = re.sub(r"-+", "-", text)
-        return text.strip("-")
-
-    @staticmethod
     def _sanitize_internal_anchor_links(content: str) -> str:
         """Normalize generated guides by stripping non-external markdown links."""
 
@@ -107,19 +98,6 @@ class FlextInfraDocGenerator:
             )
             reports.append(report)
         return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
-
-    def _build_toc(self, content: str) -> str:
-        """Build a markdown TOC from level-2 and level-3 headings."""
-        items: MutableSequence[str] = []
-        for level, title in u.Infra.HEADING_H2_H3_RE.findall(content):
-            anchor = self._normalize_anchor(title)
-            if not anchor:
-                continue
-            indent = "  " if level == "###" else ""
-            items.append(f"{indent}- [{title}](#{anchor})")
-        if not items:
-            items = ["- No sections found"]
-        return f"{u.Infra.TOC_START}\n" + "\n".join(items) + f"\n{u.Infra.TOC_END}"
 
     def _generate_project_guides(
         self,
@@ -325,27 +303,11 @@ class FlextInfraDocGenerator:
         rendered = "\n".join(out).rstrip() + "\n"
         return self._update_toc(self._sanitize_internal_anchor_links(rendered))
 
-    def _update_toc(self, content: str) -> str:
+    @staticmethod
+    def _update_toc(content: str) -> str:
         """Insert or replace TOC markers in markdown content."""
-        toc = self._build_toc(content)
-        if u.Infra.TOC_START in content and u.Infra.TOC_END in content:
-            return re.sub(
-                r"<!-- TOC START -->.*?<!-- TOC END -->",
-                toc,
-                content,
-                count=1,
-                flags=re.DOTALL,
-            )
-        lines = content.splitlines()
-        if lines and lines[0].startswith("# "):
-            insert_at = 1
-            while insert_at < len(lines) and (not lines[insert_at].strip()):
-                insert_at += 1
-            lines.insert(insert_at, "")
-            lines.insert(insert_at + 1, toc)
-            lines.insert(insert_at + 2, "")
-            return "\n".join(lines).rstrip() + "\n"
-        return toc + "\n\n" + content.rstrip() + "\n"
+        updated, _ = u.Infra.update_toc(content)
+        return updated
 
 
 __all__ = ["FlextInfraDocGenerator"]

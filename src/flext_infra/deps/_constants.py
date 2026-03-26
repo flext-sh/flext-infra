@@ -41,8 +41,6 @@ class FlextInfraDepsConstants:
         "vendor",
     })
     DEP_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
-    RECENT_LINES_FOR_MARKER: Final[int] = 3
-    RECENT_LINES_FOR_DEV_DEP: Final[int] = 4
     FLEXT_DEPS_DIR: Final[str] = ".flext-deps"
     PEP621_PATH_DEP_RE: Final[re.Pattern[str]] = re.compile(
         r"^(?P<name>[A-Za-z0-9_.-]+)\s*@\s*(?:file:(?://)?)?(?P<path>.+)$",

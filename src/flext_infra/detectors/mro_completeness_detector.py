@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar, override
-
-from pydantic import BaseModel
+from typing import ClassVar
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
 
@@ -19,17 +17,9 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
     """Detect facade classes missing MRO bases via rope."""
 
     _rule_id: ClassVar[str] = "namespace.mro_completeness"
-
-    @override
-    def _build_message(self, violation: BaseModel) -> str:
-        d = violation.model_dump()
-        return f"Facade '{d['facade_class']}' missing base '{d['missing_base']}' for family '{d['family']}'"
-
-    @override
-    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
-        return self.detect_file(
-            file_path=file_path, rope_project=self._rope, parse_failures=self._pf
-        )
+    _MESSAGE_TEMPLATE: ClassVar[str] = (
+        "Facade '{facade_class}' missing base '{missing_base}' for family '{family}'"
+    )
 
     @classmethod
     def detect_file(

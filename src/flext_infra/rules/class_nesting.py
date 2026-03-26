@@ -6,7 +6,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_infra import (
     FlextInfraHelperConsolidationTransformer,
@@ -19,10 +19,7 @@ from flext_infra import (
     t,
     u,
 )
-
-_INFRA_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.InfraValue]] = TypeAdapter(
-    Sequence[t.Infra.InfraValue],
-)
+from flext_infra.refactor._base_rule import INFRA_SEQ_ADAPTER
 
 
 class FlextInfraClassNestingRefactorRule:
@@ -208,7 +205,7 @@ class FlextInfraClassNestingRefactorRule:
         if isinstance(class_nesting_raw, list):
             try:
                 typed_class_nesting: Sequence[t.Infra.InfraValue] = (
-                    _INFRA_SEQ_ADAPTER.validate_python(class_nesting_raw)
+                    INFRA_SEQ_ADAPTER.validate_python(class_nesting_raw)
                 )
                 coerced_nesting: Sequence[t.Infra.InfraValue] = [
                     dict(e)
@@ -223,7 +220,7 @@ class FlextInfraClassNestingRefactorRule:
         if isinstance(helper_raw, list):
             try:
                 typed_helper_entries: Sequence[t.Infra.InfraValue] = (
-                    _INFRA_SEQ_ADAPTER.validate_python(helper_raw)
+                    INFRA_SEQ_ADAPTER.validate_python(helper_raw)
                 )
                 coerced_helpers: Sequence[t.Infra.InfraValue] = [
                     dict(e)
@@ -454,9 +451,9 @@ class FlextInfraClassNestingRefactorRule:
             post_checks: MutableSequence[t.Infra.InfraValue] = []
             if not isinstance(post_checks_raw, list):
                 continue
-            typed_post_checks: Sequence[t.Infra.InfraValue] = TypeAdapter(
-                Sequence[t.Infra.InfraValue],
-            ).validate_python(post_checks_raw)
+            typed_post_checks: Sequence[t.Infra.InfraValue] = (
+                INFRA_SEQ_ADAPTER.validate_python(post_checks_raw)
+            )
             checks = u.Infra.mapping_list(typed_post_checks)
             for check in checks:
                 check_type = check.get("type")

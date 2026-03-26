@@ -12,6 +12,11 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import c, m, p, t, u
 
+_JSON_SEQ_ADAPTER: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(Sequence[JsonValue])
+_STR_INFRA_MAP_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+
 
 class FlextInfraDependencyDetectionService:
     """Runtime vs dev dependency detector using deptry, pip-check, and mypy stub analysis."""
@@ -61,11 +66,10 @@ class FlextInfraDependencyDetectionService:
         """Convert container value to namespaced infra value."""
         if value is None or isinstance(value, (str, int, float, bool)):
             return value
+        _scalar = (str, int, float, bool, type(None))
         if isinstance(value, list):
             try:
-                sequence: Sequence[JsonValue] = TypeAdapter(
-                    Sequence[JsonValue],
-                ).validate_python(value)
+                sequence = _JSON_SEQ_ADAPTER.validate_python(value)
             except ValidationError:
                 return None
             converted: MutableSequence[t.Infra.InfraValue] = []
@@ -73,26 +77,22 @@ class FlextInfraDependencyDetectionService:
                 converted_item = FlextInfraDependencyDetectionService.to_infra_value(
                     item,
                 )
-                if converted_item is None and item is not None:
-                    return None
-                if not isinstance(converted_item, (str, int, float, bool, type(None))):
+                if (converted_item is None and item is not None) or not isinstance(
+                    converted_item, _scalar
+                ):
                     return None
                 converted.append(converted_item)
             return converted
         try:
-            mapping_value: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            ).validate_python(
-                value,
-            )
+            mapping_value = _STR_INFRA_MAP_ADAPTER.validate_python(value)
         except ValidationError:
             return None
         converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, item in mapping_value.items():
             converted_item = FlextInfraDependencyDetectionService.to_infra_value(item)
-            if converted_item is None and item is not None:
-                return None
-            if not isinstance(converted_item, (str, int, float, bool, type(None))):
+            if (converted_item is None and item is not None) or not isinstance(
+                converted_item, _scalar
+            ):
                 return None
             converted_map[str(key)] = converted_item
         return converted_map
@@ -131,11 +131,7 @@ class FlextInfraDependencyDetectionService:
             if not isinstance(error_obj, Mapping):
                 continue
             try:
-                error_data: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-                    Mapping[str, t.Infra.InfraValue],
-                ).validate_python(
-                    error_obj,
-                )
+                error_data = _STR_INFRA_MAP_ADAPTER.validate_python(error_obj)
             except ValidationError:
                 continue
             code = error_data.get(c.Infra.CODE)

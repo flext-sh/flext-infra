@@ -29,14 +29,6 @@ class FlextInfraDocFixer:
     """
 
     @staticmethod
-    def _anchorize(text: str) -> str:
-        """Convert a heading title to a GitHub-compatible anchor slug."""
-        value = text.strip().lower()
-        value = re.sub(r"[^a-z0-9\s-]", "", value)
-        value = re.sub(r"\s+", "-", value)
-        return re.sub(r"-+", "-", value).strip("-")
-
-    @staticmethod
     def _maybe_fix_link(md_file: Path, raw_link: str) -> str | None:
         """Return a corrected link target or None if no fix is needed."""
         if raw_link.startswith(("http://", "https://", "mailto:", "tel:", "#")):
@@ -90,19 +82,6 @@ class FlextInfraDocFixer:
             report = self._fix_scope(scope, apply=apply)
             reports.append(report)
         return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
-
-    def _build_toc(self, content: str) -> str:
-        """Generate a TOC block from ## and ### headings in content."""
-        items: MutableSequence[str] = []
-        for level, title in u.Infra.HEADING_H2_H3_RE.findall(content):
-            anchor = self._anchorize(title)
-            if not anchor:
-                continue
-            indent = "  " if level == "###" else ""
-            items.append(f"{indent}- [{title}](#{anchor})")
-        if not items:
-            items = ["- No sections found"]
-        return f"{u.Infra.TOC_START}\n" + "\n".join(items) + f"\n{u.Infra.TOC_END}"
 
     def _fix_scope(
         self,
@@ -204,28 +183,10 @@ class FlextInfraDocFixer:
             toc=toc_changed,
         )
 
-    def _update_toc(self, content: str) -> t.Infra.StrIntPair:
+    @staticmethod
+    def _update_toc(content: str) -> t.Infra.StrIntPair:
         """Insert or replace the TOC in content, returning (updated, changed)."""
-        toc = self._build_toc(content)
-        if u.Infra.TOC_START in content and u.Infra.TOC_END in content:
-            updated = re.sub(
-                r"<!-- TOC START -->.*?<!-- TOC END -->",
-                toc,
-                content,
-                count=1,
-                flags=re.DOTALL,
-            )
-            return (updated, int(updated != content))
-        lines = content.splitlines()
-        if lines and lines[0].startswith("# "):
-            insert_at = 1
-            while insert_at < len(lines) and (not lines[insert_at].strip()):
-                insert_at += 1
-            lines.insert(insert_at, "")
-            lines.insert(insert_at + 1, toc)
-            lines.insert(insert_at + 2, "")
-            return ("\n".join(lines) + ("\n" if content.endswith("\n") else ""), 1)
-        return (toc + "\n\n" + content, 1)
+        return u.Infra.update_toc(content)
 
 
 __all__ = ["FlextInfraDocFixer"]

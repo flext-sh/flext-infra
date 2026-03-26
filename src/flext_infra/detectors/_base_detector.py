@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from abc import abstractmethod
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
@@ -20,9 +19,21 @@ from flext_infra import m, t, u
 
 
 class FlextInfraScanFileMixin:
-    """Base mixin: stores rope_project + parse_failures, provides scan_file()."""
+    """Base mixin: stores rope_project + parse_failures, provides scan_file().
+
+    Subclasses MUST define ``_rule_id``.
+
+    Boilerplate elimination hooks:
+
+    * **_MESSAGE_TEMPLATE** — if set, ``_build_message`` formats the template with
+      ``violation.model_dump()`` so subclasses can skip overriding it entirely.
+    * **_collect_violations** — default delegates to ``cls.detect_file(file_path=...,
+      rope_project=self._rope, parse_failures=self._pf)`` which covers the majority
+      of detectors.  Override only when ``detect_file`` needs extra parameters.
+    """
 
     _rule_id: ClassVar[str]
+    _MESSAGE_TEMPLATE: ClassVar[str] = ""
 
     def __init__(
         self,
@@ -35,13 +46,46 @@ class FlextInfraScanFileMixin:
         self._rope = rope_project
         self._pf = parse_failures
 
-    @abstractmethod
-    def _build_message(self, violation: BaseModel) -> str:
-        """Format a single violation into a human-readable message."""
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
-    @abstractmethod
+    @staticmethod
+    def _get_source_or_empty(
+        rope_project: t.Infra.RopeProject, file_path: Path
+    ) -> str | None:
+        """Read source text via rope, returning *None* when the resource is missing."""
+        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        if res is None:
+            return None
+        return res.read()
+
+    # ------------------------------------------------------------------
+    # Template hooks
+    # ------------------------------------------------------------------
+
+    def _build_message(self, violation: BaseModel) -> str:
+        """Format a single violation into a human-readable message.
+
+        If ``_MESSAGE_TEMPLATE`` is set, uses ``str.format(**violation.model_dump())``.
+        Subclasses with non-trivial formatting should override this method.
+        """
+        if self._MESSAGE_TEMPLATE:
+            return self._MESSAGE_TEMPLATE.format(**violation.model_dump())
+        msg = f"[{self._rule_id}] violation"
+        return msg
+
     def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
-        """Collect violations for the given file."""
+        """Collect violations for the given file.
+
+        Default: delegates to ``cls.detect_file(file_path=..., rope_project=...,
+        parse_failures=...)``.  Override when ``detect_file`` requires extra params.
+        """
+        return self.detect_file(  # type: ignore[attr-defined]
+            file_path=file_path,
+            rope_project=self._rope,
+            parse_failures=self._pf,
+        )
 
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
         """Scan a file and return a standardized ScanResult."""

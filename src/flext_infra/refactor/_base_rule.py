@@ -10,11 +10,26 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Protocol, override, runtime_checkable
 
 import libcst as cst
+from pydantic import TypeAdapter
 
 from flext_infra import c, t
+
+# ── Shared TypeAdapter constants ──────────────────────────────────────
+# Defined once here; imported by rules/ modules that need them.
+
+INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+CONTAINER_DICT_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.ContainerDict]] = TypeAdapter(
+    Sequence[t.Infra.ContainerDict],
+)
+STR_MAPPING_ADAPTER: TypeAdapter[Mapping[str, str]] = TypeAdapter(Mapping[str, str])
+INFRA_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.InfraValue]] = TypeAdapter(
+    Sequence[t.Infra.InfraValue],
+)
 
 
 @runtime_checkable
@@ -64,4 +79,33 @@ class FlextInfraRefactorRule:
         return (new_tree, changes)
 
 
-__all__ = ["FlextInfraChangeTracker", "FlextInfraRefactorRule"]
+class FlextInfraGenericTransformerRule(FlextInfraRefactorRule):
+    """Base for rules that simply delegate to a single transformer class.
+
+    Subclasses set ``TRANSFORMER_CLASS`` and optionally ``CONFIG_KEY``.
+    The ``apply()`` method instantiates the transformer (no args) and
+    delegates to ``_apply_transformer``.
+    """
+
+    TRANSFORMER_CLASS: type[cst.CSTTransformer]
+    """The transformer class to instantiate and apply."""
+
+    @override
+    def apply(
+        self,
+        tree: cst.Module,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+        """Instantiate TRANSFORMER_CLASS and apply it."""
+        return self._apply_transformer(self.TRANSFORMER_CLASS(), tree)
+
+
+__all__ = [
+    "CONTAINER_DICT_SEQ_ADAPTER",
+    "FlextInfraChangeTracker",
+    "FlextInfraGenericTransformerRule",
+    "FlextInfraRefactorRule",
+    "INFRA_MAPPING_ADAPTER",
+    "INFRA_SEQ_ADAPTER",
+    "STR_MAPPING_ADAPTER",
+]

@@ -90,33 +90,25 @@ class FlextInfraDocsCommand:
             parser.print_help()
             return 1
 
+        output_dir = str(getattr(args, "output_dir", ""))
         if args.command == "audit":
-            return _run_audit(
+            return FlextInfraDocsCommand.run_audit(
                 cli,
                 check=cli.check,
                 strict=bool(getattr(args, "strict", False)),
-                output_dir=str(getattr(args, "output_dir", "")),
+                output_dir=output_dir,
             )
         if args.command == "fix":
-            return _run_fix(
-                cli,
-                output_dir=str(getattr(args, "output_dir", "")),
-            )
+            return FlextInfraDocsCommand.run_fix(cli, output_dir=output_dir)
         if args.command == c.Infra.Directories.BUILD:
-            return _run_build(
-                cli,
-                output_dir=str(getattr(args, "output_dir", "")),
-            )
+            return FlextInfraDocsCommand.run_build(cli, output_dir=output_dir)
         if args.command == "generate":
-            return _run_generate(
-                cli,
-                output_dir=str(getattr(args, "output_dir", "")),
-            )
+            return FlextInfraDocsCommand.run_generate(cli, output_dir=output_dir)
         if args.command == c.Infra.Verbs.VALIDATE:
-            return _run_validate(
+            return FlextInfraDocsCommand.run_validate(
                 cli,
                 check=cli.check,
-                output_dir=str(getattr(args, "output_dir", "")),
+                output_dir=output_dir,
             )
         parser.print_help()
         return 1
@@ -214,46 +206,6 @@ class FlextInfraDocsCommand:
             1 for report in result.value if report.result == c.Infra.Status.FAIL
         )
         return 1 if failures else 0
-
-
-def _run_audit(
-    cli: u.Infra.CliArgs,
-    *,
-    check: bool = False,
-    strict: bool = False,
-    output_dir: str = "",
-) -> int:
-    return FlextInfraDocsCommand.run_audit(
-        cli,
-        check=check,
-        strict=strict,
-        output_dir=output_dir,
-    )
-
-
-def _run_fix(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
-    return FlextInfraDocsCommand.run_fix(cli, output_dir=output_dir)
-
-
-def _run_build(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
-    return FlextInfraDocsCommand.run_build(cli, output_dir=output_dir)
-
-
-def _run_generate(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
-    return FlextInfraDocsCommand.run_generate(cli, output_dir=output_dir)
-
-
-def _run_validate(
-    cli: u.Infra.CliArgs,
-    *,
-    check: bool = False,
-    output_dir: str = "",
-) -> int:
-    return FlextInfraDocsCommand.run_validate(
-        cli,
-        check=check,
-        output_dir=output_dir,
-    )
 
 
 def _main_inner(argv: t.StrSequence | None = None) -> int:

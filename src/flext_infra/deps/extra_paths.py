@@ -277,15 +277,6 @@ class FlextInfraExtraPathsManager:
         typings_paths = self._existing_relative_paths(project_dir, configured_typings)
         return sorted({rules.project_root, source_root, *typings_paths})
 
-    def mypy_paths(
-        self,
-        *,
-        project_dir: Path,
-        is_root: bool,
-    ) -> t.StrSequence:
-        """Compute mypy search paths for a project."""
-        return self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
-
     def pyrefly_search_paths(
         self,
         *,
@@ -366,6 +357,50 @@ class FlextInfraExtraPathsManager:
             )
         return sorted(includes)
 
+    def _apply_paths_to_doc(
+        self,
+        doc: TOMLDocument,
+        *,
+        project_dir: Path,
+        is_root: bool,
+    ) -> t.StrSequence:
+        """Apply computed extra paths to an in-memory TOMLDocument.
+
+        Returns list of change descriptions (empty if nothing changed).
+        """
+        expected = self.pyright_extra_paths(
+            project_dir=project_dir,
+            is_root=is_root,
+        )
+        tool_table = self._as_table(self._table_get(doc, c.Infra.TOOL))
+        if tool_table is None:
+            return []
+        pyright_table = self._as_table(
+            self._table_get(tool_table, c.Infra.PYRIGHT),
+        )
+        if pyright_table is None:
+            return []
+        mypy_table = self._as_table(self._table_get(tool_table, c.Infra.MYPY))
+        changes: MutableSequence[str] = []
+        current_pyright = self._as_string_list(
+            self._table_get(pyright_table, "extraPaths"),
+        )
+        if current_pyright != expected:
+            pyright_table["extraPaths"] = expected
+            changes.append("synchronized pyright extraPaths")
+        if mypy_table is not None:
+            current_mypy = self._as_string_list(
+                self._table_get(mypy_table, "mypy_path"),
+            )
+            if current_mypy != expected:
+                mypy_table["mypy_path"] = expected
+                tool_table[c.Infra.MYPY] = mypy_table
+                changes.append("synchronized mypy mypy_path")
+        if changes:
+            tool_table[c.Infra.PYRIGHT] = pyright_table
+            doc[c.Infra.TOOL] = tool_table
+        return changes
+
     def sync_one(
         self,
         pyproject_path: Path,
@@ -380,53 +415,18 @@ class FlextInfraExtraPathsManager:
         if doc_result.is_failure:
             return r[bool].fail(doc_result.error or f"failed to read {pyproject_path}")
         doc: TOMLDocument = doc_result.value
-        project_dir = pyproject_path.parent
-        pyright_extra = self.pyright_extra_paths(
-            project_dir=project_dir,
+        changes = self._apply_paths_to_doc(
+            doc,
+            project_dir=pyproject_path.parent,
             is_root=is_root,
         )
-        mypy_path = self.mypy_paths(
-            project_dir=project_dir,
-            is_root=is_root,
-        )
-        tool_table = self._as_table(self._table_get(doc, c.Infra.TOOL))
-        if tool_table is None:
-            return r[bool].fail(f"no [tool] section in {pyproject_path}")
-        pyright_table = self._as_table(
-            self._table_get(tool_table, c.Infra.PYRIGHT),
-        )
-        if pyright_table is None:
-            return r[bool].fail(f"no [tool.pyright] section in {pyproject_path}")
-        mypy_table = self._as_table(self._table_get(tool_table, c.Infra.MYPY))
-        self._as_table(
-            self._table_get(tool_table, c.Infra.PYREFLY),
-        )
-        changed = False
-        current_pyright = self._as_string_list(
-            self._table_get(pyright_table, "extraPaths"),
-        )
-        if current_pyright != pyright_extra:
-            pyright_table["extraPaths"] = pyright_extra
-            changed = True
-        if mypy_table is not None:
-            current_mypy = self._as_string_list(
-                self._table_get(mypy_table, "mypy_path"),
-            )
-            if current_mypy != mypy_path:
-                mypy_table["mypy_path"] = mypy_path
-                tool_table[c.Infra.MYPY] = mypy_table
-                changed = True
-        # NOTE: pyrefly search-path is handled by FlextInfraEnsurePyreflyConfigPhase (SSOT).
-        if changed:
-            tool_table[c.Infra.PYRIGHT] = pyright_table
-            doc[c.Infra.TOOL] = tool_table
-        if changed and (not dry_run):
+        if changes and (not dry_run):
             write_result = u.Infra.write_document(pyproject_path, doc)
             if write_result.is_failure:
                 return r[bool].fail(
                     write_result.error or f"failed to write {pyproject_path}",
                 )
-        return r[bool].ok(changed)
+        return r[bool].ok(bool(changes))
 
     def sync_doc(
         self,
@@ -444,46 +444,11 @@ class FlextInfraExtraPathsManager:
             List of change descriptions.
 
         """
-        changes: MutableSequence[str] = []
-        pyright_extra = self.pyright_extra_paths(
+        return self._apply_paths_to_doc(
+            doc,
             project_dir=project_dir,
             is_root=is_root,
         )
-        mypy_path = self.mypy_paths(
-            project_dir=project_dir,
-            is_root=is_root,
-        )
-        tool_table = self._as_table(self._table_get(doc, c.Infra.TOOL))
-        if tool_table is None:
-            return changes
-        pyright_table = self._as_table(
-            self._table_get(tool_table, c.Infra.PYRIGHT),
-        )
-        if pyright_table is None:
-            return changes
-        mypy_table = self._as_table(self._table_get(tool_table, c.Infra.MYPY))
-        self._as_table(
-            self._table_get(tool_table, c.Infra.PYREFLY),
-        )
-        current_pyright = self._as_string_list(
-            self._table_get(pyright_table, "extraPaths"),
-        )
-        if current_pyright != pyright_extra:
-            pyright_table["extraPaths"] = pyright_extra
-            changes.append("synchronized pyright extraPaths")
-        if mypy_table is not None:
-            current_mypy = self._as_string_list(
-                self._table_get(mypy_table, "mypy_path"),
-            )
-            if current_mypy != mypy_path:
-                mypy_table["mypy_path"] = mypy_path
-                tool_table[c.Infra.MYPY] = mypy_table
-                changes.append("synchronized mypy mypy_path")
-        # NOTE: pyrefly search-path is handled by FlextInfraEnsurePyreflyConfigPhase (SSOT).
-        if changes:
-            tool_table[c.Infra.PYRIGHT] = pyright_table
-            doc[c.Infra.TOOL] = tool_table
-        return changes
 
     def sync_extra_paths(
         self,
@@ -518,10 +483,6 @@ class FlextInfraExtraPathsManager:
         return r[int].ok(0)
 
     @staticmethod
-    def _resolve_project_dirs(cli: u.Infra.CliArgs) -> Sequence[Path] | None:
-        return cli.project_dirs()
-
-    @staticmethod
     def main(argv: t.StrSequence | None = None) -> int:
         """Execute extra paths synchronization from command line."""
         parser = u.Infra.create_parser(
@@ -533,10 +494,9 @@ class FlextInfraExtraPathsManager:
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
         manager = FlextInfraExtraPathsManager(workspace_root=cli.workspace)
-        project_dirs = FlextInfraExtraPathsManager._resolve_project_dirs(cli)
         result = manager.sync_extra_paths(
             dry_run=cli.dry_run,
-            project_dirs=project_dirs,
+            project_dirs=cli.project_dirs(),
         )
         if result.is_success:
             return result.value

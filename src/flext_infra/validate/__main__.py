@@ -274,13 +274,14 @@ class FlextInfraValidateCommand:
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
 
+        run = FlextInfraValidateCommand
         commands = {
-            "basemk-validate": lambda: _run_basemk_validate(cli),
-            "inventory": lambda: _run_inventory(
+            "basemk-validate": lambda: run.run_basemk_validate(cli),
+            "inventory": lambda: run.run_inventory(
                 cli,
                 getattr(args, "output_dir", None),
             ),
-            "pytest-diag": lambda: _run_pytest_diag(
+            "pytest-diag": lambda: run.run_pytest_diag(
                 getattr(args, "junit", ""),
                 getattr(args, "log", ""),
                 getattr(args, "failed", None),
@@ -289,19 +290,19 @@ class FlextInfraValidateCommand:
                 getattr(args, "slowest", None),
                 getattr(args, "skips", None),
             ),
-            "scan": lambda: _run_scan(
+            "scan": lambda: run.run_scan(
                 cli,
                 getattr(args, "pattern", ""),
                 getattr(args, "include", None) or [],
                 getattr(args, "exclude", None) or [],
                 getattr(args, "match", "present"),
             ),
-            "skill-validate": lambda: _run_skill_validate(
+            "skill-validate": lambda: run.run_skill_validate(
                 cli,
                 getattr(args, "skill", ""),
                 getattr(args, "mode", "baseline"),
             ),
-            "stub-validate": lambda: _run_stub_validate(
+            "stub-validate": lambda: run.run_stub_validate(
                 cli,
                 getattr(args, "project", None),
             ),
@@ -311,58 +312,6 @@ class FlextInfraValidateCommand:
             parser.print_help()
             return 1
         return handler()
-
-
-def _run_basemk_validate(cli: u.Infra.CliArgs) -> int:
-    return FlextInfraValidateCommand.run_basemk_validate(cli)
-
-
-def _run_inventory(cli: u.Infra.CliArgs, output_dir: str | None) -> int:
-    return FlextInfraValidateCommand.run_inventory(cli, output_dir)
-
-
-def _run_pytest_diag(
-    junit: str,
-    log: str,
-    failed: str | None,
-    errors: str | None,
-    warnings: str | None,
-    slowest: str | None,
-    skips: str | None,
-) -> int:
-    return FlextInfraValidateCommand.run_pytest_diag(
-        junit,
-        log,
-        failed,
-        errors,
-        warnings,
-        slowest,
-        skips,
-    )
-
-
-def _run_scan(
-    cli: u.Infra.CliArgs,
-    pattern: str,
-    include: t.StrSequence,
-    exclude: t.StrSequence,
-    match: str,
-) -> int:
-    return FlextInfraValidateCommand.run_scan(
-        cli,
-        pattern,
-        include,
-        exclude,
-        match,
-    )
-
-
-def _run_skill_validate(cli: u.Infra.CliArgs, skill: str, mode: str) -> int:
-    return FlextInfraValidateCommand.run_skill_validate(cli, skill, mode)
-
-
-def _run_stub_validate(cli: u.Infra.CliArgs, project: t.StrSequence | None) -> int:
-    return FlextInfraValidateCommand.run_stub_validate(cli, project)
 
 
 def _main_inner(argv: t.StrSequence | None = None) -> int:

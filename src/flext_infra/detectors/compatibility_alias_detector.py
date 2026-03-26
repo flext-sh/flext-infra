@@ -8,28 +8,18 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar, override
+from typing import ClassVar
 
-from pydantic import BaseModel
-
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
+from flext_infra import FlextInfraScanFileMixin, c, m, p, t
 
 
 class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detect compatibility alias assignments (CapName = CapName)."""
 
     _rule_id: ClassVar[str] = "namespace.compatibility_alias"
-
-    @override
-    def _build_message(self, violation: BaseModel) -> str:
-        d = violation.model_dump()
-        return f"Compatibility alias '{d['alias_name']}' -> '{d['target_name']}'"
-
-    @override
-    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
-        return self.detect_file(
-            file_path=file_path, rope_project=self._rope, parse_failures=self._pf
-        )
+    _MESSAGE_TEMPLATE: ClassVar[str] = (
+        "Compatibility alias '{alias_name}' -> '{target_name}'"
+    )
 
     @classmethod
     def detect_file(
@@ -43,10 +33,9 @@ class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scan
         del parse_failures
         if file_path.suffix != ".py":
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
-        if res is None:
+        source = cls._get_source_or_empty(rope_project, file_path)
+        if source is None:
             return []
-        source = res.read()
         violations: list[m.Infra.CompatibilityAliasViolation] = []
         for hit in c.Infra.COMPAT_ALIAS_RE.finditer(source):
             alias_name, target_name = hit.group(1), hit.group(2)

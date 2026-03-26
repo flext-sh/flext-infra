@@ -10,8 +10,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from pydantic import BaseModel
-
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
 
 
@@ -19,6 +17,7 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detect missing/duplicate runtime aliases (e.g. m = FlextFooModels) via rope."""
 
     _rule_id: ClassVar[str] = "namespace.runtime_alias"
+    _MESSAGE_TEMPLATE: ClassVar[str] = "Runtime alias '{alias}' {kind}: {detail}"
 
     def __init__(
         self,
@@ -32,12 +31,7 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         self._project_name = project_name
 
     @override
-    def _build_message(self, violation: BaseModel) -> str:
-        d = violation.model_dump()
-        return f"Runtime alias '{d['alias']}' {d['kind']}: {d['detail']}"
-
-    @override
-    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+    def _collect_violations(self, file_path: Path) -> Sequence[m.Infra.RuntimeAliasViolation]:
         return self.detect_file(
             file_path=file_path,
             project_name=self._project_name,

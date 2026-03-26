@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar, override
+from typing import ClassVar
 
-from pydantic import BaseModel
-
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
+from flext_infra import FlextInfraScanFileMixin, c, m, p, t
 
 _PEP695_RE = c.Infra.PEP695_RE
 _TYPEALIAS_ANNOT_RE = c.Infra.TYPEALIAS_ANNOT_RE
@@ -22,17 +20,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
     """Detect type aliases outside canonical typings files via rope."""
 
     _rule_id: ClassVar[str] = "namespace.manual_typing_alias"
-
-    @override
-    def _build_message(self, violation: BaseModel) -> str:
-        d = violation.model_dump()
-        return f"Typing alias '{d['name']}': {d['detail']}"
-
-    @override
-    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
-        return self.detect_file(
-            file_path=file_path, rope_project=self._rope, parse_failures=self._pf
-        )
+    _MESSAGE_TEMPLATE: ClassVar[str] = "Typing alias '{name}': {detail}"
 
     @classmethod
     def detect_file(
@@ -50,10 +38,9 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
             or c.Infra.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts
         ):
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
-        if res is None:
+        source = cls._get_source_or_empty(rope_project, file_path)
+        if source is None:
             return []
-        source = res.read()
         violations: MutableSequence[m.Infra.ManualTypingAliasViolation] = []
         # PEP 695: type Foo = ...
         for hit in _PEP695_RE.finditer(source):

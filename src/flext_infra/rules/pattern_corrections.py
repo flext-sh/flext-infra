@@ -7,13 +7,9 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
-from pydantic import TypeAdapter
 
 from flext_infra import FlextInfraRefactorRule, c, t, u
-
-_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
+from flext_infra.refactor._base_rule import INFRA_MAPPING_ADAPTER
 
 
 class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
@@ -315,7 +311,7 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
             )
         if fix_action == "remove_redundant_casts":
             typed_cfg: Mapping[str, t.Infra.InfraValue] = (
-                _INFRA_MAPPING_ADAPTER.validate_python(self.config)
+                INFRA_MAPPING_ADAPTER.validate_python(self.config)
             )
             raw_types = typed_cfg.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))

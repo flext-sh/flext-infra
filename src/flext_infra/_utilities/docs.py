@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
 
-from flext_infra import FlextInfraUtilitiesDiscovery, c, m, t
+from flext_infra import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesPatterns,
+    FlextInfraUtilitiesTemplates,
+    c,
+    m,
+    t,
+)
 
 
 class FlextInfraUtilitiesDocs:
@@ -104,6 +112,52 @@ class FlextInfraUtilitiesDocs:
             return r[bool].ok(True)
         except OSError as exc:
             return r[bool].fail(f"markdown write error: {exc}")
+
+    @staticmethod
+    def anchorize(text: str) -> str:
+        """Convert a heading title to a GitHub-compatible anchor slug."""
+        value = text.strip().lower()
+        value = re.sub(r"[^a-z0-9\s-]", "", value)
+        value = re.sub(r"\s+", "-", value)
+        return re.sub(r"-+", "-", value).strip("-")
+
+    @staticmethod
+    def build_toc(content: str) -> str:
+        """Generate a TOC block from ## and ### headings in content."""
+        items: MutableSequence[str] = []
+        for level, title in FlextInfraUtilitiesPatterns.HEADING_H2_H3_RE.findall(content):
+            anchor = FlextInfraUtilitiesDocs.anchorize(title)
+            if not anchor:
+                continue
+            indent = "  " if level == "###" else ""
+            items.append(f"{indent}- [{title}](#{anchor})")
+        if not items:
+            items = ["- No sections found"]
+        return f"{FlextInfraUtilitiesTemplates.TOC_START}\n" + "\n".join(items) + f"\n{FlextInfraUtilitiesTemplates.TOC_END}"
+
+    @staticmethod
+    def update_toc(content: str) -> t.Infra.StrIntPair:
+        """Insert or replace the TOC in content, returning (updated, changed)."""
+        toc = FlextInfraUtilitiesDocs.build_toc(content)
+        if FlextInfraUtilitiesTemplates.TOC_START in content and FlextInfraUtilitiesTemplates.TOC_END in content:
+            updated = re.sub(
+                r"<!-- TOC START -->.*?<!-- TOC END -->",
+                toc,
+                content,
+                count=1,
+                flags=re.DOTALL,
+            )
+            return (updated, int(updated != content))
+        lines = content.splitlines()
+        if lines and lines[0].startswith("# "):
+            insert_at = 1
+            while insert_at < len(lines) and (not lines[insert_at].strip()):
+                insert_at += 1
+            lines.insert(insert_at, "")
+            lines.insert(insert_at + 1, toc)
+            lines.insert(insert_at + 2, "")
+            return ("\n".join(lines) + ("\n" if content.endswith("\n") else ""), 1)
+        return (toc + "\n\n" + content, 1)
 
 
 __all__ = ["FlextInfraUtilitiesDocs"]

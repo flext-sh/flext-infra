@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic import JsonValue, ValidationError
 
 from flext_infra import (
     FlextInfraNestedClassPropagationTransformer,
@@ -18,12 +18,9 @@ from flext_infra import (
     t,
     u,
 )
-
-_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
-_CONTAINER_DICT_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.ContainerDict]] = TypeAdapter(
-    Sequence[t.Infra.ContainerDict]
+from flext_infra.refactor._base_rule import (
+    CONTAINER_DICT_SEQ_ADAPTER,
+    INFRA_MAPPING_ADAPTER,
 )
 
 
@@ -112,7 +109,7 @@ class FlextInfraPreCheckGate:
         except (OSError, TypeError):
             return {}
         loaded_dict: Mapping[str, t.Infra.InfraValue] = (
-            _INFRA_MAPPING_ADAPTER.validate_python(dict(loaded.items()))
+            INFRA_MAPPING_ADAPTER.validate_python(dict(loaded.items()))
         )
         if not self._schema_valid(loaded_dict):
             return {}
@@ -221,7 +218,7 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
         )
         try:
             order_config: Sequence[t.Infra.ContainerDict] = (
-                _CONTAINER_DICT_SEQ_ADAPTER.validate_python(order_config_raw)
+                CONTAINER_DICT_SEQ_ADAPTER.validate_python(order_config_raw)
             )
         except ValidationError:
             return (tree, [])

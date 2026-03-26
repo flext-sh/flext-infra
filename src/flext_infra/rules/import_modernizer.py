@@ -19,10 +19,8 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.refactor._base_rule import CONTAINER_DICT_SEQ_ADAPTER
 
-_CONTAINER_DICT_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.ContainerDict]] = TypeAdapter(
-    Sequence[t.Infra.ContainerDict]
-)
 _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.ImportModernizerRuleConfig]] = (
     TypeAdapter(Sequence[m.Infra.ImportModernizerRuleConfig])
 )
@@ -73,7 +71,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         try:
             raw_items: Sequence[t.Infra.ContainerDict] = (
-                _CONTAINER_DICT_SEQ_ADAPTER.validate_python(value)
+                CONTAINER_DICT_SEQ_ADAPTER.validate_python(value)
             )
         except ValidationError:
             return []

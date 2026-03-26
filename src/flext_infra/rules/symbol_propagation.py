@@ -17,11 +17,8 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.refactor._base_rule import INFRA_MAPPING_ADAPTER, STR_MAPPING_ADAPTER
 
-_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
-_STR_MAPPING_ADAPTER: TypeAdapter[Mapping[str, str]] = TypeAdapter(Mapping[str, str])
 _SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
     TypeAdapter(Sequence[m.Infra.SignatureMigration])
 )
@@ -37,20 +34,20 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         typed_cfg: Mapping[str, t.Infra.InfraValue] = (
-            _INFRA_MAPPING_ADAPTER.validate_python(self.config)
+            INFRA_MAPPING_ADAPTER.validate_python(self.config)
         )
         target_modules_raw = typed_cfg.get("target_modules", [])
         module_renames_raw = typed_cfg.get("module_renames", {})
         symbol_renames_raw = typed_cfg.get("import_symbol_renames", {})
         target_modules = set(u.Infra.string_list(target_modules_raw))
         try:
-            module_renames: Mapping[str, str] = _STR_MAPPING_ADAPTER.validate_python(
+            module_renames: Mapping[str, str] = STR_MAPPING_ADAPTER.validate_python(
                 module_renames_raw,
             )
         except ValidationError:
             module_renames = {}
         try:
-            symbol_renames: Mapping[str, str] = _STR_MAPPING_ADAPTER.validate_python(
+            symbol_renames: Mapping[str, str] = STR_MAPPING_ADAPTER.validate_python(
                 symbol_renames_raw,
             )
         except ValidationError:

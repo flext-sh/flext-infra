@@ -12,8 +12,6 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from pydantic import BaseModel
-
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t
 
 
@@ -21,6 +19,9 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
     """Detect alias imports from wrong source packages."""
 
     _rule_id: ClassVar[str] = "namespace.source_alias"
+    _MESSAGE_TEMPLATE: ClassVar[str] = (
+        "Wrong source for alias '{alias}': '{current_source}' -> '{correct_source}'"
+    )
 
     def __init__(
         self,
@@ -36,12 +37,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         self._project_root = project_root
 
     @override
-    def _build_message(self, violation: BaseModel) -> str:
-        d = violation.model_dump()
-        return f"Wrong source for alias '{d['alias']}': '{d['current_source']}' -> '{d['correct_source']}'"
-
-    @override
-    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
+    def _collect_violations(self, file_path: Path) -> Sequence[m.Infra.NamespaceSourceViolation]:
         return self.detect_file(
             file_path=file_path,
             project_name=self._project_name,

@@ -76,15 +76,6 @@ class FlextInfraInternalDependencySyncService:
             return normalized
         return None
 
-    @staticmethod
-    def is_relative_to(path: Path, parent: Path) -> bool:
-        """Return whether path is located under parent."""
-        try:
-            _ = path.relative_to(parent)
-        except ValueError:
-            return False
-        return True
-
     @classmethod
     def owner_from_remote_url(cls, remote_url: str) -> str | None:
         """Extract GitHub owner from supported remote URL formats."""
@@ -443,7 +434,7 @@ class FlextInfraInternalDependencySyncService:
         candidate = Path(env_root).expanduser().resolve()
         if not candidate.exists() or not candidate.is_dir():
             return None
-        if self.is_relative_to(project_root, candidate):
+        if project_root.is_relative_to(candidate):
             return candidate
         return None
 

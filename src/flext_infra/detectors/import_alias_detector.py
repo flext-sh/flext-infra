@@ -10,9 +10,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar, override
-
-from pydantic import BaseModel
+from typing import ClassVar
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t
 
@@ -21,19 +19,9 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     """Detect deep import paths that should use top-level aliases."""
 
     _rule_id: ClassVar[str] = "namespace.import_alias"
-
-    @override
-    def _build_message(self, violation: BaseModel) -> str:
-        d = violation.model_dump()
-        return (
-            f"Deep import '{d['current_import']}' should use '{d['suggested_import']}'"
-        )
-
-    @override
-    def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
-        return self.detect_file(
-            file_path=file_path, rope_project=self._rope, parse_failures=self._pf
-        )
+    _MESSAGE_TEMPLATE: ClassVar[str] = (
+        "Deep import '{current_import}' should use '{suggested_import}'"
+    )
 
     @classmethod
     def detect_file(
