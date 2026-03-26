@@ -76,9 +76,9 @@ class TestInitRopeProject:
             engine._init_rope_project(fake_workspace)
             source_folders = mock_project.call_args.kwargs.get("source_folders", [])
             expected = sorted([
-                str(fake_workspace / "flext-api" / "src"),
-                str(fake_workspace / "flext-cli" / "src"),
-                str(fake_workspace / "flext-core" / "src"),
+                "flext-api/src",
+                "flext-cli/src",
+                "flext-core/src",
             ])
             assert sorted(source_folders) == expected
 
@@ -89,8 +89,8 @@ class TestInitRopeProject:
         with patch("flext_infra._utilities.rope.RopeProject") as mock_project:
             engine._init_rope_project(fake_workspace)
             source_folders = mock_project.call_args.kwargs.get("source_folders", [])
-            assert str(fake_workspace / "docs" / "src") not in source_folders
-            assert str(fake_workspace / "flext-empty" / "src") not in source_folders
+            assert "docs/src" not in source_folders
+            assert "flext-empty/src" not in source_folders
 
 
 class TestRopeProjectProperty:

@@ -8,12 +8,20 @@ This module has no dependencies on any rules/ submodule.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 import libcst as cst
 
 from flext_infra import c, t
+
+
+@runtime_checkable
+class FlextInfraChangeTracker(Protocol):
+    """Protocol for objects that track applied changes."""
+
+    changes: MutableSequence[str]
 
 
 class FlextInfraRefactorRule:
@@ -48,8 +56,12 @@ class FlextInfraRefactorRule:
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         """Apply a single transformer and return (tree, changes)."""
         new_tree = tree.visit(transformer)
-        changes: t.StrSequence = getattr(transformer, "changes", [])
+        changes: Sequence[str] = (
+            transformer.changes
+            if isinstance(transformer, FlextInfraChangeTracker)
+            else []
+        )
         return (new_tree, changes)
 
 
-__all__ = ["FlextInfraRefactorRule"]
+__all__ = ["FlextInfraChangeTracker", "FlextInfraRefactorRule"]

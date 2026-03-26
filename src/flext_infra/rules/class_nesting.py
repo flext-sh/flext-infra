@@ -20,6 +20,10 @@ from flext_infra import (
     u,
 )
 
+_INFRA_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.InfraValue]] = TypeAdapter(
+    Sequence[t.Infra.InfraValue],
+)
+
 
 class FlextInfraClassNestingRefactorRule:
     """Apply class-nesting transforms driven by YAML mapping files."""
@@ -203,9 +207,9 @@ class FlextInfraClassNestingRefactorRule:
         class_nesting_raw = loaded.get(c.Infra.ReportKeys.CLASS_NESTING)
         if isinstance(class_nesting_raw, list):
             try:
-                typed_class_nesting: Sequence[t.Infra.InfraValue] = TypeAdapter(
-                    Sequence[t.Infra.InfraValue],
-                ).validate_python(class_nesting_raw)
+                typed_class_nesting: Sequence[t.Infra.InfraValue] = (
+                    _INFRA_SEQ_ADAPTER.validate_python(class_nesting_raw)
+                )
                 coerced_nesting: Sequence[t.Infra.InfraValue] = [
                     dict(e)
                     for e in self._coerce_entries(
@@ -218,9 +222,9 @@ class FlextInfraClassNestingRefactorRule:
         helper_raw = loaded.get(c.Infra.ReportKeys.HELPER_CONSOLIDATION)
         if isinstance(helper_raw, list):
             try:
-                typed_helper_entries: Sequence[t.Infra.InfraValue] = TypeAdapter(
-                    Sequence[t.Infra.InfraValue],
-                ).validate_python(helper_raw)
+                typed_helper_entries: Sequence[t.Infra.InfraValue] = (
+                    _INFRA_SEQ_ADAPTER.validate_python(helper_raw)
+                )
                 coerced_helpers: Sequence[t.Infra.InfraValue] = [
                     dict(e)
                     for e in self._coerce_entries(
@@ -420,7 +424,7 @@ class FlextInfraClassNestingRefactorRule:
     ) -> t.Infra.ContainerDict:
         payload: MutableMapping[str, t.Infra.InfraValue] = {
             c.Infra.ReportKeys.SOURCE_SYMBOL: "",
-            "expected_base_chain": [],
+            "expected_base_chain": list[str](),
             c.Infra.ReportKeys.POST_CHECKS: ["imports_resolve", "mro_valid"],
             "quality_gates": ["lsp_diagnostics_clean"],
         }

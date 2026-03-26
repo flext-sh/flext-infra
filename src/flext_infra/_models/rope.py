@@ -34,6 +34,15 @@ class FlextInfraModelsRope:
         destination: Annotated[str, Field(description="Destination module path")]
         changed_files: Annotated[int, Field(description="Number of files updated")]
 
+    class ClassInfo(FlextModels.FrozenStrictModel):
+        """Semantic class info from rope — name, line, bases in one shot."""
+
+        name: Annotated[str, Field(description="Class name")]
+        line: Annotated[int, Field(description="Definition line number")]
+        bases: Annotated[
+            tuple[str, ...], Field(default=(), description="Base class names")
+        ]
+
     class RefactorSummary(FlextModels.FrozenStrictModel):
         """Summary of a rope refactoring operation."""
 

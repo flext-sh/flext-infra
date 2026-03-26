@@ -295,6 +295,58 @@ class FlextInfraRefactorConstants:
     NAMESPACE_MAX_RENDERED_IMPORT_VIOLATIONS: ClassVar[int] = 5
     NAMESPACE_NO_RENDER_LIMIT: ClassVar[int] = 10_000
     MAX_SCAN_FILES: ClassVar[int] = 10_000
+    FACADE_ALIAS_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(\w)\s*=\s*(\w+)",
+        re.MULTILINE,
+    )
+    "Matches ``m = FlextFooModels`` alias assignments in facade files."
+
+    # --- Detector regex constants ---
+    FUNC_DEF_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(def\s+(\w+)\s*\()",
+        re.MULTILINE,
+    )
+    "Matches top-level function definitions for loose object detection."
+    ASSIGN_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^([A-Z_]\w*)\s*[:=]",
+        re.MULTILINE,
+    )
+    "Matches top-level UPPER_CASE assignments for loose constant detection."
+    TYPE_ALIAS_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^type\s+(\w+)\s*=",
+        re.MULTILINE,
+    )
+    "Matches PEP 695 type alias definitions."
+    PEP695_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^type\s+(\w+)\s*=",
+        re.MULTILINE,
+    )
+    "Matches PEP 695 type alias syntax for typing alias detection."
+    TYPEALIAS_ANNOT_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(\w+)\s*:\s*(?:\w+\.)*TypeAlias\s*=",
+        re.MULTILINE,
+    )
+    "Matches TypeAlias annotation syntax for typing alias detection."
+    COMPAT_ALIAS_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^([A-Z]\w+)\s*=\s*([A-Z]\w+)\s*$",
+        re.MULTILINE,
+    )
+    "Matches compatibility alias assignments (CapitalName = CapitalName)."
+    COMPAT_SKIP_NAMES: ClassVar[frozenset[str]] = frozenset({
+        "__all__",
+        "__version__",
+        "__version_info__",
+    })
+    "Names to skip during compatibility alias detection."
+    FUTURE_ANNOTATIONS_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^from\s+__future__\s+import\s+annotations\b",
+        re.MULTILINE,
+    )
+    "Matches 'from __future__ import annotations' import statement."
+    ONLY_DOCSTRING_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r'^("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*$',
+    )
+    "Matches files that contain only a module docstring."
     NAMESPACE_FILE_TO_FAMILY: ClassVar[t.StrMapping] = {
         f"{suffix.lower()}.py": alias for alias, suffix in FAMILY_SUFFIXES.items()
     }

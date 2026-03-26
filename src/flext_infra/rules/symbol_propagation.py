@@ -18,6 +18,14 @@ from flext_infra import (
     u,
 )
 
+_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+_STR_MAPPING_ADAPTER: TypeAdapter[Mapping[str, str]] = TypeAdapter(Mapping[str, str])
+_SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
+    TypeAdapter(Sequence[m.Infra.SignatureMigration])
+)
+
 
 class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
     """Apply declarative module/symbol renames for workspace-wide propagation."""
@@ -28,25 +36,21 @@ class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
         tree: cst.Module,
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        typed_cfg: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-            Mapping[str, t.Infra.InfraValue],
-        ).validate_python(self.config)
+        typed_cfg: Mapping[str, t.Infra.InfraValue] = (
+            _INFRA_MAPPING_ADAPTER.validate_python(self.config)
+        )
         target_modules_raw = typed_cfg.get("target_modules", [])
         module_renames_raw = typed_cfg.get("module_renames", {})
         symbol_renames_raw = typed_cfg.get("import_symbol_renames", {})
         target_modules = set(u.Infra.string_list(target_modules_raw))
         try:
-            module_renames: Mapping[str, str] = TypeAdapter(
-                Mapping[str, str],
-            ).validate_python(
+            module_renames: Mapping[str, str] = _STR_MAPPING_ADAPTER.validate_python(
                 module_renames_raw,
             )
         except ValidationError:
             module_renames = {}
         try:
-            symbol_renames: Mapping[str, str] = TypeAdapter(
-                Mapping[str, str],
-            ).validate_python(
+            symbol_renames: Mapping[str, str] = _STR_MAPPING_ADAPTER.validate_python(
                 symbol_renames_raw,
             )
         except ValidationError:
@@ -224,9 +228,9 @@ class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         migrations_raw = self.config.get("signature_migrations", [])
         try:
-            parsed: Sequence[m.Infra.SignatureMigration] = TypeAdapter(
-                Sequence[m.Infra.SignatureMigration],
-            ).validate_python(migrations_raw)
+            parsed: Sequence[m.Infra.SignatureMigration] = (
+                _SIG_MIGRATION_SEQ_ADAPTER.validate_python(migrations_raw)
+            )
         except ValidationError:
             return (tree, [])
         migrations = [item for item in parsed if item.enabled]

@@ -64,11 +64,11 @@ class FlextInfraInventoryService:
             wiring: Mapping[str, JsonValue] = {
                 "generated_at": now,
                 "root_makefile": [c.Infra.Files.MAKEFILE_FILENAME],
-                "unwired_scripts": [],
+                "unwired_scripts": list[JsonValue](),
             }
             external: Mapping[str, JsonValue] = {
                 "generated_at": now,
-                "candidates": [],
+                "candidates": list[JsonValue](),
             }
             reports_dir = output_dir or root / c.Infra.Reporting.REPORTS_DIR_NAME
             written: MutableSequence[str] = []

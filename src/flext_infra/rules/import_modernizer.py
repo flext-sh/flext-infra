@@ -20,6 +20,13 @@ from flext_infra import (
     u,
 )
 
+_CONTAINER_DICT_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.ContainerDict]] = TypeAdapter(
+    Sequence[t.Infra.ContainerDict]
+)
+_RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.ImportModernizerRuleConfig]] = (
+    TypeAdapter(Sequence[m.Infra.ImportModernizerRuleConfig])
+)
+
 
 class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     """Modernize forbidden imports and map symbols to runtime aliases."""
@@ -65,10 +72,8 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         value: t.Infra.InfraValue,
     ) -> Sequence[m.Infra.ImportModernizerRuleConfig]:
         try:
-            raw_items: Sequence[t.Infra.ContainerDict] = TypeAdapter(
-                Sequence[t.Infra.ContainerDict]
-            ).validate_python(
-                value,
+            raw_items: Sequence[t.Infra.ContainerDict] = (
+                _CONTAINER_DICT_SEQ_ADAPTER.validate_python(value)
             )
         except ValidationError:
             return []
@@ -80,9 +85,7 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
             for item_mapping in raw_items
         ]
         try:
-            return TypeAdapter(
-                Sequence[m.Infra.ImportModernizerRuleConfig],
-            ).validate_python(normalized)
+            return _RULE_CONFIG_SEQ_ADAPTER.validate_python(normalized)
         except ValidationError:
             return []
 

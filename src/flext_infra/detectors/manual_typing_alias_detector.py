@@ -1,7 +1,4 @@
-"""Detector for identifying type aliases outside canonical typings locations.
-
-This module detects type alias definitions (TypeAlias, PEP 695) that are located
-outside the canonical typing files/directories where they should be centralized.
+"""Detect type aliases outside canonical typings locations via rope.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,75 +10,28 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-import libcst as cst
 from pydantic import BaseModel
 
-from flext_infra import (
-    c,
-    m,
-    p,
-    u,
-)
+from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
 
-from ._base_detector import FlextInfraScanFileMixin
+_PEP695_RE = c.Infra.PEP695_RE
+_TYPEALIAS_ANNOT_RE = c.Infra.TYPEALIAS_ANNOT_RE
 
 
-class FlextInfraManualTypingAliasDetector(
-    FlextInfraScanFileMixin,
-    p.Infra.Scanner,
-):
-    """Detector for type aliases outside canonical typings locations.
-
-    Identifies PEP 695 type aliases and TypeAlias assignments defined outside
-    the canonical typing files/directories where they should be centralized.
-    """
+class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
+    """Detect type aliases outside canonical typings files via rope."""
 
     _rule_id: ClassVar[str] = "namespace.manual_typing_alias"
 
-    def __init__(
-        self,
-        *,
-        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
-    ) -> None:
-        """Initialize the FlextInfraManualTypingAliasDetector scanner.
-
-        Args:
-            parse_failures: Optional list of previous parse failures to track.
-
-        """
-        super().__init__()
-        self._parse_failures = parse_failures
-
     @override
     def _build_message(self, violation: BaseModel) -> str:
-        """Format a typing alias violation message.
-
-        Args:
-            violation: The violation model with name and detail fields.
-
-        Returns:
-            Human-readable message for the typing alias violation.
-
-        """
-        fields = violation.model_dump()
-        name = fields.get("name", "")
-        detail = fields.get("detail", "")
-        return f"Typing alias '{name}': {detail}"
+        d = violation.model_dump()
+        return f"Typing alias '{d['name']}': {d['detail']}"
 
     @override
     def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
-        """Collect typing alias violations for the given file.
-
-        Args:
-            file_path: Path to the Python file to scan.
-
-        Returns:
-            Sequence of ManualTypingAliasViolation objects found.
-
-        """
-        return type(self).scan_file_impl(
-            file_path=file_path,
-            _parse_failures=self._parse_failures,
+        return self.detect_file(
+            file_path=file_path, rope_project=self._rope, parse_failures=self._pf
         )
 
     @classmethod
@@ -89,126 +39,43 @@ class FlextInfraManualTypingAliasDetector(
         cls,
         *,
         file_path: Path,
+        rope_project: t.Infra.RopeProject,
         parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
-        """Detect type alias placement violations in a file.
-
-        Args:
-            file_path: Path to the Python file to analyze.
-            parse_failures: Optional list of previous parse failures.
-
-        Returns:
-            List of ManualTypingAliasViolation objects found in the file.
-
-        """
-        return cls.scan_file_impl(
-            file_path=file_path,
-            _parse_failures=parse_failures,
-        )
-
-    @classmethod
-    def scan_file_impl(
-        cls,
-        *,
-        file_path: Path,
-        _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
-    ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
-        """Scan a file for type aliases outside canonical locations.
-
-        Args:
-            file_path: Path to the Python file to scan.
-            _parse_failures: Unused parameter for interface compatibility.
-
-        Returns:
-            List of ManualTypingAliasViolation for each misplaced alias found.
-
-        """
-        _ = _parse_failures
-        if file_path.suffix != ".py":
+        """Detect type alias placement violations in a single file."""
+        del parse_failures
+        if (
+            file_path.suffix != ".py"
+            or file_path.name in c.Infra.NAMESPACE_CANONICAL_TYPINGS_FILES
+            or c.Infra.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts
+        ):
             return []
-        if file_path.name in c.Infra.NAMESPACE_CANONICAL_TYPINGS_FILES:
+        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        if res is None:
             return []
-        if c.Infra.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts:
-            return []
-        tree = u.Infra.parse_module_cst(file_path)
-        if tree is None:
-            return []
-        module, positions = u.Infra.cst_resolve_positions(tree)
+        source = res.read()
         violations: MutableSequence[m.Infra.ManualTypingAliasViolation] = []
-        for stmt in module.body:
-            if not isinstance(stmt, cst.SimpleStatementLine):
-                continue
-            for small_stmt in stmt.body:
-                alias_name = cls._type_alias_name(stmt=small_stmt)
-                if alias_name:
-                    violations.append(
-                        m.Infra.ManualTypingAliasViolation.create(
-                            file=str(file_path),
-                            line=u.Infra.cst_line_for(
-                                node=small_stmt,
-                                positions=positions,
-                            ),
-                            name=alias_name,
-                            detail=(
-                                "PEP695 alias must be centralized under typings scope"
-                            ),
-                        ),
-                    )
-                    continue
-                if (
-                    isinstance(small_stmt, cst.AnnAssign)
-                    and isinstance(small_stmt.target, cst.Name)
-                    and cls._annotation_contains_type_alias(
-                        annotation=small_stmt.annotation.annotation,
-                    )
-                ):
-                    violations.append(
-                        m.Infra.ManualTypingAliasViolation.create(
-                            file=str(file_path),
-                            line=u.Infra.cst_line_for(
-                                node=small_stmt,
-                                positions=positions,
-                            ),
-                            name=small_stmt.target.value,
-                            detail=(
-                                "TypeAlias assignment must be centralized "
-                                "under typings scope"
-                            ),
-                        ),
-                    )
-        return violations
-
-    @staticmethod
-    def _type_alias_name(*, stmt: cst.BaseSmallStatement) -> str:
-        """Extract the name of a PEP 695 type alias statement.
-
-        Args:
-            stmt: The statement to check for a type alias.
-
-        Returns:
-            The name of the type alias, or empty string if not a type alias.
-
-        """
-        if hasattr(cst, "TypeAlias") and isinstance(stmt, cst.TypeAlias):
-            return stmt.name.value
-        return ""
-
-    @staticmethod
-    def _annotation_contains_type_alias(*, annotation: cst.BaseExpression) -> bool:
-        """Check if an annotation contains a TypeAlias reference.
-
-        Args:
-            annotation: The annotation expression to check.
-
-        Returns:
-            True if the annotation references TypeAlias, False otherwise.
-
-        """
-        if isinstance(annotation, cst.Subscript):
-            return FlextInfraManualTypingAliasDetector._annotation_contains_type_alias(
-                annotation=annotation.value,
+        # PEP 695: type Foo = ...
+        for hit in _PEP695_RE.finditer(source):
+            violations.append(
+                m.Infra.ManualTypingAliasViolation.create(
+                    file=str(file_path),
+                    line=source[: hit.start()].count("\n") + 1,
+                    name=hit.group(1),
+                    detail="PEP695 alias must be centralized under typings scope",
+                )
             )
-        return u.Infra.cst_module_to_str(annotation).endswith("TypeAlias")
+        # TypeAlias annotation: Foo: TypeAlias = ...
+        for hit in _TYPEALIAS_ANNOT_RE.finditer(source):
+            violations.append(
+                m.Infra.ManualTypingAliasViolation.create(
+                    file=str(file_path),
+                    line=source[: hit.start()].count("\n") + 1,
+                    name=hit.group(1),
+                    detail="TypeAlias assignment must be centralized under typings scope",
+                )
+            )
+        return violations
 
 
 __all__ = ["FlextInfraManualTypingAliasDetector"]

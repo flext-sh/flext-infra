@@ -19,6 +19,13 @@ from flext_infra import (
     u,
 )
 
+_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+_CONTAINER_DICT_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.ContainerDict]] = TypeAdapter(
+    Sequence[t.Infra.ContainerDict]
+)
+
 
 class FlextInfraPreCheckGate:
     """Gate that validates class nesting entries against a YAML policy matrix."""
@@ -104,9 +111,9 @@ class FlextInfraPreCheckGate:
             loaded = u.Infra.safe_load_yaml(self._policy_path)
         except (OSError, TypeError):
             return {}
-        loaded_dict: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-            Mapping[str, t.Infra.InfraValue],
-        ).validate_python(dict(loaded.items()))
+        loaded_dict: Mapping[str, t.Infra.InfraValue] = (
+            _INFRA_MAPPING_ADAPTER.validate_python(dict(loaded.items()))
+        )
         if not self._schema_valid(loaded_dict):
             return {}
         policy_matrix = u.Infra.mapping_list(loaded_dict.get("policy_matrix"))
@@ -213,10 +220,8 @@ class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
             [],
         )
         try:
-            order_config: Sequence[t.Infra.ContainerDict] = TypeAdapter(
-                Sequence[t.Infra.ContainerDict]
-            ).validate_python(
-                order_config_raw,
+            order_config: Sequence[t.Infra.ContainerDict] = (
+                _CONTAINER_DICT_SEQ_ADAPTER.validate_python(order_config_raw)
             )
         except ValidationError:
             return (tree, [])

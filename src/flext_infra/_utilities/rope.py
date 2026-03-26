@@ -264,6 +264,73 @@ class FlextInfraUtilitiesRope:
             pass
         return result
 
+    @staticmethod
+    def find_facade_alias(
+        resource: t.Infra.RopeResource,
+        family: str,
+    ) -> str | None:
+        """Find facade alias assignment (e.g. ``m = FlextFooModels``) in a module.
+
+        Returns the class name or None if no alias for this family exists.
+        Uses c.Infra.FACADE_ALIAS_RE — no CST needed.
+        """
+        for hit in c.Infra.FACADE_ALIAS_RE.finditer(resource.read()):
+            if hit.group(1) == family:
+                return hit.group(2)
+        return None
+
+    @staticmethod
+    def get_class_info(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+    ) -> Sequence[m.Infra.ClassInfo]:
+        """Return ClassInfo (name, line, bases) for all classes in a module.
+
+        Combines get_module_class_lines + get_class_bases in one pass.
+        """
+        result: MutableSequence[m.Infra.ClassInfo] = []
+        try:
+            pycore = FlextInfraUtilitiesRope._get_pycore(rope_project)
+            pymodule = pycore.resource_to_pyobject(resource)
+            for name, pyname in pymodule.get_attributes().items():
+                if not isinstance(pyname, DefinedName):
+                    continue
+                obj = pyname.get_object()
+                if not isinstance(obj, AbstractClass):
+                    continue
+                _res, line = pyname.get_definition_location()
+                bases = [b.get_name() for b in obj.get_superclasses()]
+                result.append(
+                    m.Infra.ClassInfo(
+                        name=name,
+                        line=line,
+                        bases=tuple(bases),
+                    )
+                )
+        except (RefactoringError, ResourceNotFoundError, AttributeError):
+            pass
+        return result
+
+    @staticmethod
+    def get_class_symbol_count(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        class_name: str,
+    ) -> int:
+        """Return total attribute count (methods, nested classes, assignments) for a class."""
+        try:
+            pycore = FlextInfraUtilitiesRope._get_pycore(rope_project)
+            pymodule = pycore.resource_to_pyobject(resource)
+            attrs = pymodule.get_attributes()
+            if class_name not in attrs:
+                return 0
+            obj = attrs[class_name].get_object()
+            if not isinstance(obj, (PyClass, AbstractClass)):
+                return 0
+            return len(obj.get_attributes())
+        except (RefactoringError, ResourceNotFoundError, AttributeError):
+            return 0
+
     # ── Refactoring operations (inspired by pylsp-rope) ────────────
 
     @staticmethod

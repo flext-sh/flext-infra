@@ -212,6 +212,7 @@ class FlextInfraExtraPathsManager:
         (not just src/) and includes all of them in extraPaths.
         Resolves transitive dependencies automatically.
         """
+        dep_skip = c.Infra.SKIP_DIRS | frozenset({"tests"})
         raw_paths = self._resolve_transitive_deps(self.path_dep_paths(doc))
         resolved: MutableSequence[str] = []
         for path_value in raw_paths:
@@ -219,39 +220,14 @@ class FlextInfraExtraPathsManager:
                 continue
             name = FlextInfraDependencyPathSync.extract_dep_name(path_value)
             prefix = f"{name}" if is_root else f"../{name}"
-
-            # Dynamically discover all directories with Python files
             dep_dir = self.root / name
             if dep_dir.is_dir():
-                for subdir in sorted(dep_dir.iterdir()):
-                    if not subdir.is_dir():
-                        continue
-                    if subdir.name.startswith(".") or subdir.name in {
-                        "__pycache__",
-                        "node_modules",
-                        "vendor",
-                        "build",
-                        "dist",
-                        ".venv",
-                        "tests",
-                    }:
-                        continue
-                    # Check if this directory contains Python files
-                    has_py = any(subdir.rglob("*.py"))
-                    if has_py:
-                        resolved.append(f"{prefix}/{subdir.name}")
+                py_dirs = u.Infra.discover_python_dirs(dep_dir, skip_dirs=dep_skip)
+                for dir_name in py_dirs:
+                    resolved.append(f"{prefix}/{dir_name}")
             else:
-                # Fallback: just add src/ if directory doesn't exist
                 resolved.append(f"{prefix}/src")
         return resolved
-
-    @staticmethod
-    def _discover_local_python_dirs(project_dir: Path) -> t.StrSequence:
-        """Dynamically discover directories with Python files in a project.
-
-        Delegates to the SSOT discovery in u.Infra.
-        """
-        return u.Infra.discover_python_dirs(project_dir)
 
     @staticmethod
     def _existing_relative_paths(
@@ -308,17 +284,7 @@ class FlextInfraExtraPathsManager:
         is_root: bool,
     ) -> t.StrSequence:
         """Compute mypy search paths for a project."""
-        rules = self._pyright_path_rules()
-        source_root = self._source_root(
-            project_dir,
-            source_dir=rules.source_dir,
-            project_root=rules.project_root,
-        )
-        configured_typings = (
-            rules.root_typings_paths if is_root else rules.project_typings_paths
-        )
-        typings_paths = self._existing_relative_paths(project_dir, configured_typings)
-        return sorted({rules.project_root, source_root, *typings_paths})
+        return self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
 
     def pyrefly_search_paths(
         self,

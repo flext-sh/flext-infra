@@ -50,13 +50,19 @@ class FlextInfraDepsConstants:
     PEP621_NAME_RE: Final[re.Pattern[str]] = re.compile(
         r"^\s*(?P<name>[A-Za-z0-9_.-]+)",
     )
-    BANNER: str = "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Run `make mod` to regenerate all managed pyproject sections.\n# Sections with [CUSTOM] are project-specific extension points.\n"
-    DEV_OPTIONAL_DEPS_MARKER: str = "# [MANAGED] consolidated development dependencies"
-    LEGACY_AUTO_MARKER: str = "# [AUTO] merged from dev/docs/security/test/typings"
-    LEGACY_AUTO_BANNER_LINE: str = (
+    BANNER: Final[str] = (
+        "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Run `make mod` to regenerate all managed pyproject sections.\n# Sections with [CUSTOM] are project-specific extension points.\n"
+    )
+    DEV_OPTIONAL_DEPS_MARKER: Final[str] = (
+        "# [MANAGED] consolidated development dependencies"
+    )
+    LEGACY_AUTO_MARKER: Final[str] = (
+        "# [AUTO] merged from dev/docs/security/test/typings"
+    )
+    LEGACY_AUTO_BANNER_LINE: Final[str] = (
         "# Sections with [AUTO] are derived from workspace layout and dependencies."
     )
-    COMMENT_MARKERS: t.Infra.VariadicTuple[t.Infra.StrPair] = (
+    COMMENT_MARKERS: Final[t.Infra.VariadicTuple[t.Infra.StrPair]] = (
         ("[build-system]", "# [MANAGED] build system"),
         ("[project]", "# [CUSTOM] project metadata"),
         ("[tool.poetry.group.dev.dependencies]", "# [CUSTOM] poetry dev extensions"),
@@ -72,7 +78,7 @@ class FlextInfraDepsConstants:
         ("[tool.pyrefly]", "# [MANAGED] pyrefly"),
         ("[tool.pyright]", "# [MANAGED] pyright"),
     )
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: Mapping[str, str] = {
+    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[Mapping[str, str]] = {
         "yaml": "types-pyyaml",
         "ldap3": "types-ldap3",
         "redis": "types-redis",
@@ -89,7 +95,7 @@ class FlextInfraDepsConstants:
         "openpyxl": "types-openpyxl",
         "xlrd": "types-xlrd",
     }
-    "Default mapping from module name to ``types-*`` stub package."
+    """Default mapping from module name to ``types-*`` stub package."""
 
 
 __all__ = ["FlextInfraDepsConstants"]

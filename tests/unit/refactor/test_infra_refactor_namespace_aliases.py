@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from rope.base.project import Project as RopeProject
 
 try:
     from flext_infra import FlextInfraImportAliasDetector, u
@@ -10,7 +11,16 @@ except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
 
-def test_import_alias_detector_skips_private_and_class_imports(tmp_path: Path) -> None:
+@pytest.fixture
+def rope_project(tmp_path: Path) -> RopeProject:
+    """Minimal rope project rooted at tmp_path."""
+    return RopeProject(str(tmp_path), ropefolder=None, save_objectdb=False)
+
+
+def test_import_alias_detector_skips_private_and_class_imports(
+    tmp_path: Path,
+    rope_project: RopeProject,
+) -> None:
     sample_file = tmp_path / "sample.py"
     sample_file.write_text(
         "from __future__ import annotations\n"
@@ -20,12 +30,16 @@ def test_import_alias_detector_skips_private_and_class_imports(tmp_path: Path) -
         encoding="utf-8",
     )
 
-    violations = FlextInfraImportAliasDetector.detect_file(file_path=sample_file)
+    violations = FlextInfraImportAliasDetector.detect_file(
+        file_path=sample_file,
+        rope_project=rope_project,
+    )
     assert violations == []
 
 
 def test_import_alias_detector_skips_nested_private_and_as_renames(
     tmp_path: Path,
+    rope_project: RopeProject,
 ) -> None:
     sample_file = tmp_path / "sample.py"
     sample_file.write_text(
@@ -35,11 +49,17 @@ def test_import_alias_detector_skips_nested_private_and_as_renames(
         encoding="utf-8",
     )
 
-    violations = FlextInfraImportAliasDetector.detect_file(file_path=sample_file)
+    violations = FlextInfraImportAliasDetector.detect_file(
+        file_path=sample_file,
+        rope_project=rope_project,
+    )
     assert violations == []
 
 
-def test_import_alias_detector_skips_facade_and_subclass_files(tmp_path: Path) -> None:
+def test_import_alias_detector_skips_facade_and_subclass_files(
+    tmp_path: Path,
+    rope_project: RopeProject,
+) -> None:
     sample_file = tmp_path / "models.py"
     sample_file.write_text(
         "from __future__ import annotations\n"
@@ -50,7 +70,10 @@ def test_import_alias_detector_skips_facade_and_subclass_files(tmp_path: Path) -
         encoding="utf-8",
     )
 
-    violations = FlextInfraImportAliasDetector.detect_file(file_path=sample_file)
+    violations = FlextInfraImportAliasDetector.detect_file(
+        file_path=sample_file,
+        rope_project=rope_project,
+    )
     assert violations == []
 
 

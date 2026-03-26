@@ -1,13 +1,7 @@
-"""Base mixin providing the scan_file() template method for namespace detectors.
+"""Base mixin for rope-powered namespace detectors.
 
-All concrete detectors share the same scan_file() body: collect violations via
-scan_file_impl, then format them with build_scan_result. This mixin captures that
-shared logic via a template method pattern so subclasses only need to declare:
-
-- ``_rule_id: ClassVar[str]`` — the rule identifier string
-- ``_build_message(violation) -> str`` — formats one violation into a message
-- ``_collect_violations(file_path) -> Sequence[...]`` — calls scan_file_impl
-  with the correct signature (and any extra instance args like project_name)
+Provides scan_file() template method + shared rope_project/parse_failures storage.
+Subclasses declare _rule_id, _build_message, _collect_violations.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,74 +10,41 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
 from pydantic import BaseModel
 
-from flext_infra import m, u
+from flext_infra import m, t, u
 
 
 class FlextInfraScanFileMixin:
-    """Mixin that provides the concrete scan_file() via template method pattern.
-
-    Subclasses must:
-    1. Declare ``_rule_id: ClassVar[str]`` — the rule ID for ScanViolation
-    2. Implement ``_build_message(violation) -> str`` — formats the message
-    3. Implement ``_collect_violations(file_path) -> Sequence[BaseModel]`` —
-       collects violations by calling scan_file_impl with the correct arguments
-
-    Subclasses manage their own ``__init__`` and ``_parse_failures`` attribute
-    with the precise concrete type required by their scan_file_impl signature.
-    The mixin does not store parse_failures to avoid type widening.
-
-    The mixin's scan_file() calls _collect_violations and _build_message,
-    then delegates formatting to u.Infra.build_scan_result.
-    """
+    """Base mixin: stores rope_project + parse_failures, provides scan_file()."""
 
     _rule_id: ClassVar[str]
 
+    def __init__(
+        self,
+        *,
+        rope_project: t.Infra.RopeProject,
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> None:
+        """Initialize with mandatory rope project and optional parse failure tracker."""
+        super().__init__()
+        self._rope = rope_project
+        self._pf = parse_failures
+
     @abstractmethod
     def _build_message(self, violation: BaseModel) -> str:
-        """Format a single violation into a human-readable message.
-
-        Args:
-            violation: The Pydantic violation model to format.
-
-        Returns:
-            Human-readable message string describing the violation.
-
-        """
+        """Format a single violation into a human-readable message."""
 
     @abstractmethod
     def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
-        """Collect violations for the given file.
-
-        Implementations call scan_file_impl with the appropriate arguments,
-        including any extra instance-level parameters (e.g. project_name).
-
-        Args:
-            file_path: Path to the Python file to scan.
-
-        Returns:
-            Sequence of Pydantic violation models found in the file.
-
-        """
+        """Collect violations for the given file."""
 
     def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
-        """Scan a file and return a standardized ScanResult.
-
-        Uses _collect_violations() and _build_message() as template hooks,
-        then delegates formatting to u.Infra.build_scan_result.
-
-        Args:
-            file_path: Path to the Python file to scan.
-
-        Returns:
-            ScanResult containing detected violations.
-
-        """
+        """Scan a file and return a standardized ScanResult."""
         violations = self._collect_violations(file_path)
         return u.Infra.build_scan_result(
             file_path=file_path,

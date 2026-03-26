@@ -151,6 +151,7 @@ class FlextInfraNamespaceEnforcer:
         facade_statuses = self._scan_facades(
             project_root=project_root,
             project_name=project_name,
+            rope_project=self._rope_project,
             parse_failures=parse_failures,
             apply=apply,
             workspace_root=self._workspace_root,
@@ -164,6 +165,7 @@ class FlextInfraNamespaceEnforcer:
             detect_fn=lambda f: FlextInfraLooseObjectDetector.detect_file(
                 file_path=f,
                 project_name=project_name,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=None,
@@ -173,6 +175,7 @@ class FlextInfraNamespaceEnforcer:
             py_files=py_files,
             detect_fn=lambda f: FlextInfraImportAliasDetector.detect_file(
                 file_path=f,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_import_violations(
@@ -187,6 +190,7 @@ class FlextInfraNamespaceEnforcer:
                 file_path=f,
                 project_name=project_name,
                 project_root=project_root,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=lambda _vs: None,
@@ -194,12 +198,14 @@ class FlextInfraNamespaceEnforcer:
         )
         cyclic_imports = FlextInfraCyclicImportDetector.scan_project(
             project_root=project_root,
+            rope_project=self._rope_project,
             _parse_failures=parse_failures,
         )
         internal_import_violations = self._detect_and_apply(
             py_files=py_files,
             detect_fn=lambda f: FlextInfraInternalImportDetector.detect_file(
                 file_path=f,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=None,
@@ -210,6 +216,7 @@ class FlextInfraNamespaceEnforcer:
             detect_fn=lambda f: FlextInfraRuntimeAliasDetector.detect_file(
                 file_path=f,
                 project_name=project_name,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_runtime_alias_violations(
@@ -221,6 +228,7 @@ class FlextInfraNamespaceEnforcer:
             py_files=py_files,
             detect_fn=lambda f: FlextInfraFutureAnnotationsDetector.detect_file(
                 file_path=f,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_missing_future_annotations(
@@ -232,6 +240,7 @@ class FlextInfraNamespaceEnforcer:
             py_files=py_files,
             detect_fn=lambda f: FlextInfraManualProtocolDetector.detect_file(
                 file_path=f,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=lambda vs: u.Infra.namespace_rewrite_manual_protocol_violations(
@@ -245,6 +254,7 @@ class FlextInfraNamespaceEnforcer:
             py_files=py_files,
             detect_fn=lambda f: FlextInfraManualTypingAliasDetector.detect_file(
                 file_path=f,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=lambda vs: (
@@ -260,6 +270,7 @@ class FlextInfraNamespaceEnforcer:
             py_files=py_files,
             detect_fn=lambda f: FlextInfraCompatibilityAliasDetector.detect_file(
                 file_path=f,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=lambda vs: (
@@ -274,6 +285,7 @@ class FlextInfraNamespaceEnforcer:
             py_files=py_files,
             detect_fn=lambda f: FlextInfraClassPlacementDetector.detect_file(
                 file_path=f,
+                rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
             rewrite_fn=None,
@@ -317,6 +329,7 @@ class FlextInfraNamespaceEnforcer:
         *,
         project_root: Path,
         project_name: str,
+        rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
         apply: bool,
         workspace_root: Path,
@@ -325,6 +338,7 @@ class FlextInfraNamespaceEnforcer:
         facade_statuses = FlextInfraNamespaceFacadeScanner.scan_project(
             project_root=project_root,
             project_name=project_name,
+            rope_project=rope_project,
             parse_failures=parse_failures,
         )
         if not apply:
@@ -338,6 +352,7 @@ class FlextInfraNamespaceEnforcer:
         return FlextInfraNamespaceFacadeScanner.scan_project(
             project_root=project_root,
             project_name=project_name,
+            rope_project=rope_project,
             parse_failures=parse_failures,
         )
 

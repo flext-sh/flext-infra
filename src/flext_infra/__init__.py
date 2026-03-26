@@ -171,10 +171,7 @@ if TYPE_CHECKING:
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from flext_infra.deps.internal_sync import (
-        FlextInfraInternalDependencySyncService,
-        shutil,
-    )
+    from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
     from flext_infra.detectors._base_detector import FlextInfraScanFileMixin
@@ -244,7 +241,10 @@ if TYPE_CHECKING:
     from flext_infra.github._models import FlextInfraGithubModels
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
-    from flext_infra.refactor._base_rule import FlextInfraRefactorRule
+    from flext_infra.refactor._base_rule import (
+        FlextInfraChangeTracker,
+        FlextInfraRefactorRule,
+    )
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
     from flext_infra.refactor._function_dependency_collector import (
         FlextInfraFunctionDependencyCollector,
@@ -470,6 +470,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraCensusUsageCollector": [
         "flext_infra.transformers.census_visitors",
         "FlextInfraCensusUsageCollector",
+    ],
+    "FlextInfraChangeTracker": [
+        "flext_infra.refactor._base_rule",
+        "FlextInfraChangeTracker",
     ],
     "FlextInfraCheckConstants": [
         "flext_infra.check._constants",
@@ -1273,7 +1277,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "rules": ["flext_infra.rules", ""],
     "run_cli": ["flext_infra.check.workspace_check", "run_cli"],
     "s": ["flext_core", "s"],
-    "shutil": ["flext_infra.deps.internal_sync", "shutil"],
     "t": ["flext_infra.typings", "FlextInfraTypes"],
     "transformers": ["flext_infra.transformers", ""],
     "u": ["flext_infra.utilities", "FlextInfraUtilities"],
@@ -1291,6 +1294,7 @@ __all__ = [
     "FlextInfraBasemkModels",
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
+    "FlextInfraChangeTracker",
     "FlextInfraCheckConstants",
     "FlextInfraCheckModels",
     "FlextInfraClassNestingRefactorRule",
@@ -1547,7 +1551,6 @@ __all__ = [
     "rules",
     "run_cli",
     "s",
-    "shutil",
     "t",
     "transformers",
     "u",

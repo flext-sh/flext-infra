@@ -22,6 +22,10 @@ from flext_infra import c, m, output, r, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
+_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+
 
 class FlextInfraDocAuditor:
     """Infrastructure service for documentation auditing.
@@ -64,9 +68,7 @@ class FlextInfraDocAuditor:
         by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
         if isinstance(by_scope_raw_value, Mapping):
             try:
-                by_scope_raw = TypeAdapter(
-                    Mapping[str, t.Infra.InfraValue],
-                ).validate_python(
+                by_scope_raw = _INFRA_MAPPING_ADAPTER.validate_python(
                     by_scope_raw_value,
                     strict=True,
                 )

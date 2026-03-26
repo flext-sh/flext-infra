@@ -19,6 +19,13 @@ from flext_infra import (
     u,
 )
 
+_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+_INFRA_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.InfraValue]] = TypeAdapter(
+    Sequence[t.Infra.InfraValue],
+)
+
 
 class FlextInfraRefactorRuleLoader:
     """Load and resolve refactor rules from YAML configuration files."""
@@ -32,9 +39,7 @@ class FlextInfraRefactorRuleLoader:
         try:
             loaded = u.Infra.safe_load_yaml(self.config_path)
             normalized: MutableMapping[str, t.Infra.InfraValue] = dict(
-                TypeAdapter(
-                    Mapping[str, t.Infra.InfraValue],
-                ).validate_python(dict(loaded.items())),
+                _INFRA_MAPPING_ADAPTER.validate_python(dict(loaded.items())),
             )
             scope_raw = normalized.get("refactor_engine")
             scope_map = self._normalize_str_object_mapping(scope_raw)
@@ -82,9 +87,11 @@ class FlextInfraRefactorRuleLoader:
             unknown_rules: MutableSequence[str] = []
             for rule_file in sorted(rules_dir.glob("*.yml")):
                 try:
-                    rule_config: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-                        Mapping[str, t.Infra.InfraValue],
-                    ).validate_python(dict(u.Infra.safe_load_yaml(rule_file).items()))
+                    rule_config: Mapping[str, t.Infra.InfraValue] = (
+                        _INFRA_MAPPING_ADAPTER.validate_python(
+                            dict(u.Infra.safe_load_yaml(rule_file).items())
+                        )
+                    )
                 except (OSError, TypeError):
                     continue
                 typed_rules = self._coerce_rule_definitions(
@@ -168,9 +175,9 @@ class FlextInfraRefactorRuleLoader:
         value: t.Infra.InfraValue | None,
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         try:
-            entries: Sequence[t.Infra.InfraValue] = TypeAdapter(
-                Sequence[t.Infra.InfraValue],
-            ).validate_python(value)
+            entries: Sequence[t.Infra.InfraValue] = _INFRA_SEQ_ADAPTER.validate_python(
+                value
+            )
         except ValidationError:
             return []
         definitions: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
@@ -188,10 +195,7 @@ class FlextInfraRefactorRuleLoader:
         value: t.Infra.InfraValue | None,
     ) -> Mapping[str, t.Infra.InfraValue]:
         try:
-            adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            )
-            return adapter.validate_python(value)
+            return _INFRA_MAPPING_ADAPTER.validate_python(value)
         except ValidationError:
             return {}
 

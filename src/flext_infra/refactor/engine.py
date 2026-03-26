@@ -6,6 +6,7 @@ import argparse
 import fnmatch
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
+from typing import ClassVar
 
 from pydantic import TypeAdapter
 
@@ -38,6 +39,49 @@ from flext_infra import (
 
 class FlextInfraRefactorEngine:
     """Engine de refatoracao que orquestra regras declarativas."""
+
+    _RULE_ACTION_REGISTRY: ClassVar[
+        Sequence[tuple[frozenset[str], type[FlextInfraRefactorRule]]]
+    ] = [
+        (
+            c.Infra.FUTURE_FIX_ACTIONS | c.Infra.FUTURE_CHECKS,
+            FlextInfraRefactorEnsureFutureAnnotationsRule,
+        ),
+        (c.Infra.LEGACY_FIX_ACTIONS, FlextInfraRefactorLegacyRemovalRule),
+        (c.Infra.IMPORT_FIX_ACTIONS, FlextInfraRefactorImportModernizerRule),
+        (c.Infra.CLASS_FIX_ACTIONS, FlextInfraRefactorClassReconstructorRule),
+        (c.Infra.PATTERN_FIX_ACTIONS, FlextInfraRefactorPatternCorrectionsRule),
+        (c.Infra.TYPE_ALIAS_FIX_ACTIONS, FlextInfraRefactorTypingUnificationRule),
+        (c.Infra.TYPING_FIX_ACTIONS, FlextInfraRefactorTypingAnnotationFixRule),
+        (c.Infra.TIER0_FIX_ACTIONS, FlextInfraRefactorTier0ImportFixRule),
+    ]
+
+    _RULE_SUBDISPATCH_REGISTRY: ClassVar[Mapping[str, type[FlextInfraRefactorRule]]] = {
+        "migrate_to_class_mro": FlextInfraRefactorMROClassMigrationRule,
+        "propagate_signature_migrations": FlextInfraRefactorSignaturePropagationRule,
+    }
+
+    _RULE_ID_FALLBACKS: ClassVar[
+        Sequence[tuple[frozenset[str], type[FlextInfraRefactorRule]]]
+    ] = [
+        (
+            frozenset({"ensure-future", "future-annotations"}),
+            FlextInfraRefactorEnsureFutureAnnotationsRule,
+        ),
+        (
+            frozenset({"legacy", "alias", "deprecated", "wrapper", "bypass"}),
+            FlextInfraRefactorLegacyRemovalRule,
+        ),
+        (frozenset({"import", "modernize"}), FlextInfraRefactorImportModernizerRule),
+        (
+            frozenset({"class", "reorder", "method"}),
+            FlextInfraRefactorClassReconstructorRule,
+        ),
+        (
+            frozenset({"redundant-cast", "dict-to-mapping", "container-invariance"}),
+            FlextInfraRefactorPatternCorrectionsRule,
+        ),
+    ]
 
     def __init__(self, config_path: Path | None = None) -> None:
         """Initialize engine state and config file path."""
@@ -714,57 +758,38 @@ class FlextInfraRefactorEngine:
             .lower()
         )
         check = str(rule_def.get(c.Infra.Verbs.CHECK, "")).strip().lower()
-        if fix_action in c.Infra.FUTURE_FIX_ACTIONS or check in c.Infra.FUTURE_CHECKS:
-            return FlextInfraRefactorEnsureFutureAnnotationsRule(rule_def)
-        if fix_action in c.Infra.LEGACY_FIX_ACTIONS:
-            return FlextInfraRefactorLegacyRemovalRule(rule_def)
-        if fix_action in c.Infra.IMPORT_FIX_ACTIONS:
-            return FlextInfraRefactorImportModernizerRule(rule_def)
-        if fix_action in c.Infra.CLASS_FIX_ACTIONS:
-            return FlextInfraRefactorClassReconstructorRule(rule_def)
+
+        # Direct subdispatch for specific actions
+        if fix_action in self._RULE_SUBDISPATCH_REGISTRY:
+            return self._RULE_SUBDISPATCH_REGISTRY[fix_action](rule_def)
+
+        # Action-set registry lookup
+        for action_set, rule_class in self._RULE_ACTION_REGISTRY:
+            if fix_action in action_set or check in action_set:
+                return rule_class(rule_def)
+
+        # MRO/Propagation default dispatch
         if fix_action in c.Infra.MRO_FIX_ACTIONS:
-            if fix_action == "migrate_to_class_mro":
-                return FlextInfraRefactorMROClassMigrationRule(rule_def)
             return FlextInfraRefactorMRORedundancyChecker(rule_def)
         if fix_action in c.Infra.PROPAGATION_FIX_ACTIONS:
-            if fix_action == "propagate_signature_migrations":
-                return FlextInfraRefactorSignaturePropagationRule(rule_def)
             return FlextInfraRefactorSymbolPropagationRule(rule_def)
-        if fix_action in c.Infra.PATTERN_FIX_ACTIONS:
-            return FlextInfraRefactorPatternCorrectionsRule(rule_def)
-        if fix_action in c.Infra.TYPE_ALIAS_FIX_ACTIONS:
-            return FlextInfraRefactorTypingUnificationRule(rule_def)
-        if fix_action in c.Infra.TYPING_FIX_ACTIONS:
-            return FlextInfraRefactorTypingAnnotationFixRule(rule_def)
-        if fix_action in c.Infra.TIER0_FIX_ACTIONS:
-            return FlextInfraRefactorTier0ImportFixRule(rule_def)
+
+        # Fallback: rule_id heuristics
         rule_id_lower = rule_id.lower()
-        if "ensure-future" in rule_id_lower or "future-annotations" in rule_id_lower:
-            return FlextInfraRefactorEnsureFutureAnnotationsRule(rule_def)
-        if any(
-            key in rule_id_lower
-            for key in ["legacy", "alias", "deprecated", "wrapper", "bypass"]
-        ):
-            return FlextInfraRefactorLegacyRemovalRule(rule_def)
-        if any(key in rule_id_lower for key in ["import", "modernize"]):
-            return FlextInfraRefactorImportModernizerRule(rule_def)
-        if any(key in rule_id_lower for key in ["class", "reorder", "method"]):
-            return FlextInfraRefactorClassReconstructorRule(rule_def)
+        for keywords, rule_class in self._RULE_ID_FALLBACKS:
+            if any(kw in rule_id_lower for kw in keywords):
+                return rule_class(rule_def)
+
+        # MRO/propagation fallbacks
         if "mro" in rule_id_lower:
             if "migrate-to-class-mro" in rule_id_lower:
                 return FlextInfraRefactorMROClassMigrationRule(rule_def)
             return FlextInfraRefactorMRORedundancyChecker(rule_def)
-        if any(
-            key in rule_id_lower for key in ["propagate", "symbol-rename", "rename"]
-        ):
+        if any(kw in rule_id_lower for kw in ("propagate", "symbol-rename", "rename")):
             if "signature" in rule_id_lower:
                 return FlextInfraRefactorSignaturePropagationRule(rule_def)
             return FlextInfraRefactorSymbolPropagationRule(rule_def)
-        if any(
-            key in rule_id_lower
-            for key in ["redundant-cast", "dict-to-mapping", "container-invariance"]
-        ):
-            return FlextInfraRefactorPatternCorrectionsRule(rule_def)
+
         return None
 
     def _default_config_path(self) -> Path:

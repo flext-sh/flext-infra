@@ -19,6 +19,8 @@ from flext_infra import c, m, r, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
+_STR_SEQ_ADAPTER: TypeAdapter[Sequence[str]] = TypeAdapter(Sequence[str])
+
 
 class FlextInfraDocValidator:
     """Infrastructure service for documentation validation.
@@ -107,11 +109,11 @@ class FlextInfraDocValidator:
                 configured = docs_validation.get("required_skills")
                 if isinstance(configured, list):
                     try:
-                        required_items: Sequence[str] = TypeAdapter(
-                            Sequence[str],
-                        ).validate_python(
-                            configured,
-                            strict=True,
+                        required_items: Sequence[str] = (
+                            _STR_SEQ_ADAPTER.validate_python(
+                                configured,
+                                strict=True,
+                            )
                         )
                         required = [str(item) for item in required_items if item]
                     except ValidationError:

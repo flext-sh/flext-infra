@@ -9,7 +9,7 @@ from collections.abc import Mapping, MutableSequence
 from pathlib import Path
 from typing import override
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_infra import FlextInfraGate, c, m, t
 
@@ -76,9 +76,9 @@ class FlextInfraMypyGate(FlextInfraGate):
             if not stripped:
                 continue
             try:
-                line_data: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-                    Mapping[str, t.Infra.InfraValue],
-                ).validate_json(stripped)
+                line_data: Mapping[str, t.Infra.InfraValue] = (
+                    self._MAPPING_ADAPTER.validate_json(stripped)
+                )
             except ValidationError:
                 continue
             try:

@@ -33,6 +33,16 @@ from flext_infra import (
 )
 from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
+_STR_MAPPING_ADAPTER: TypeAdapter[Sequence[t.StrMapping]] = TypeAdapter(
+    Sequence[t.StrMapping],
+)
+_INFRA_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.InfraValue]] = TypeAdapter(
+    Sequence[t.Infra.InfraValue],
+)
+_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+
 
 class FlextInfraUtilitiesRefactor(
     FlextInfraUtilitiesRefactorMroScan,
@@ -51,17 +61,6 @@ class FlextInfraUtilitiesRefactor(
 
         name = FlextInfraUtilitiesParsing.cst_module_name(cst_expr)
     """
-
-    _CONTAINER_DICT_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] | None = None
-
-    @staticmethod
-    def _get_container_dict_adapter() -> TypeAdapter[Mapping[str, t.Infra.InfraValue]]:
-        """Get or create TypeAdapter for Mapping[str, t.Infra.InfraValue]."""
-        if FlextInfraUtilitiesRefactor._CONTAINER_DICT_ADAPTER is None:
-            FlextInfraUtilitiesRefactor._CONTAINER_DICT_ADAPTER = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            )
-        return FlextInfraUtilitiesRefactor._CONTAINER_DICT_ADAPTER
 
     @staticmethod
     def module_path(*, file_path: Path, project_root: Path) -> str:
@@ -103,7 +102,7 @@ class FlextInfraUtilitiesRefactor(
         if value is None:
             return []
         try:
-            return TypeAdapter(Sequence[t.StrMapping]).validate_python(value)
+            return _STR_MAPPING_ADAPTER.validate_python(value)
         except ValidationError:
             msg = "class nesting entries must be a list"
             raise ValueError(msg) from None
@@ -117,9 +116,9 @@ class FlextInfraUtilitiesRefactor(
             return [value]
         if isinstance(value, list):
             try:
-                value_items: Sequence[t.Infra.InfraValue] = TypeAdapter(
-                    Sequence[t.Infra.InfraValue],
-                ).validate_python(value)
+                value_items: Sequence[t.Infra.InfraValue] = (
+                    _INFRA_SEQ_ADAPTER.validate_python(value)
+                )
             except ValidationError as exc:
                 msg = "expected list value"
                 raise ValueError(msg) from exc
@@ -142,9 +141,9 @@ class FlextInfraUtilitiesRefactor(
             return []
         if isinstance(value, list):
             try:
-                value_items: Sequence[t.Infra.InfraValue] = TypeAdapter(
-                    Sequence[t.Infra.InfraValue],
-                ).validate_python(value)
+                value_items: Sequence[t.Infra.InfraValue] = (
+                    _INFRA_SEQ_ADAPTER.validate_python(value)
+                )
             except ValidationError as exc:
                 msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
                 raise ValueError(msg) from exc
@@ -153,7 +152,7 @@ class FlextInfraUtilitiesRefactor(
                 if not isinstance(item, dict):
                     continue
                 normalized.append(
-                    TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(item),
+                    _INFRA_MAPPING_ADAPTER.validate_python(item),
                 )
             return normalized
         msg = "expected Sequence[Mapping[str, t.Infra.InfraValue]] value"
@@ -250,10 +249,10 @@ class FlextInfraUtilitiesRefactor(
         if not isinstance(definitions_raw, dict):
             return False
         try:
-            definitions: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue]
-            ).validate_python(
-                definitions_raw,
+            definitions: Mapping[str, t.Infra.InfraValue] = (
+                _INFRA_MAPPING_ADAPTER.validate_python(
+                    definitions_raw,
+                )
             )
         except ValidationError:
             return False
@@ -263,15 +262,15 @@ class FlextInfraUtilitiesRefactor(
             return False
         if not isinstance(class_rule_raw, dict):
             return False
-        policy_entry: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-            Mapping[str, t.Infra.InfraValue]
-        ).validate_python(
-            policy_entry_raw,
+        policy_entry: Mapping[str, t.Infra.InfraValue] = (
+            _INFRA_MAPPING_ADAPTER.validate_python(
+                policy_entry_raw,
+            )
         )
-        class_rule: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-            Mapping[str, t.Infra.InfraValue]
-        ).validate_python(
-            class_rule_raw,
+        class_rule: Mapping[str, t.Infra.InfraValue] = (
+            _INFRA_MAPPING_ADAPTER.validate_python(
+                class_rule_raw,
+            )
         )
         policy_entry_required = FlextInfraUtilitiesRefactor.string_list(
             policy_entry.get("required", []),
@@ -305,10 +304,8 @@ class FlextInfraUtilitiesRefactor(
             msg = f"failed to read policy document: {policy_path}"
             raise ValueError(msg) from exc
         raw_dict: Mapping[str, t.Infra.InfraValue] = dict(loaded.items())
-        loaded_dict: t.Infra.ContainerDict = (
-            FlextInfraUtilitiesRefactor._get_container_dict_adapter().validate_python(
-                raw_dict,
-            )
+        loaded_dict: t.Infra.ContainerDict = _INFRA_MAPPING_ADAPTER.validate_python(
+            raw_dict,
         )
         schema_path = policy_path.with_name("class-policy-v2.schema.json")
         if not FlextInfraUtilitiesRefactor.policy_document_schema_valid(

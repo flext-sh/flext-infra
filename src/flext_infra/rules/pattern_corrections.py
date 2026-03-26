@@ -11,6 +11,10 @@ from pydantic import TypeAdapter
 
 from flext_infra import FlextInfraRefactorRule, c, t, u
 
+_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+
 
 class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
     def __init__(self, *, include_return_annotations: bool) -> None:
@@ -310,9 +314,9 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
                 tree,
             )
         if fix_action == "remove_redundant_casts":
-            typed_cfg: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            ).validate_python(self.config)
+            typed_cfg: Mapping[str, t.Infra.InfraValue] = (
+                _INFRA_MAPPING_ADAPTER.validate_python(self.config)
+            )
             raw_types = typed_cfg.get("redundant_type_targets", [])
             removable_types = set(u.Infra.string_list(raw_types))
             return self._apply_transformer(

@@ -53,11 +53,7 @@ if TYPE_CHECKING:
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector, main
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-    from flext_infra.deps.internal_sync import (
-        FlextInfraInternalDependencySyncService,
-        shutil,
-        u,
-    )
+    from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
 
@@ -140,8 +136,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "_phases": ["flext_infra.deps._phases", ""],
     "main": ["flext_infra.deps.detector", "main"],
-    "shutil": ["flext_infra.deps.internal_sync", "shutil"],
-    "u": ["flext_infra.deps.internal_sync", "u"],
 }
 
 __all__ = [
@@ -166,8 +160,6 @@ __all__ = [
     "FlextInfraRuntimeDevDependencyDetector",
     "_phases",
     "main",
-    "shutil",
-    "u",
 ]
 
 

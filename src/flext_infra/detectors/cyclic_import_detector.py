@@ -1,8 +1,4 @@
-"""Detector for identifying cyclic import dependencies in projects.
-
-This module detects circular import cycles by analyzing import statements
-across all Python files in a project and using topological sorting to identify
-dependency cycles.
+"""Detect cyclic import dependencies in projects via rope.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -14,190 +10,93 @@ from collections.abc import MutableMapping, MutableSequence, Sequence
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
-import libcst as cst
-
-from flext_infra import (
-    c,
-    m,
-    t,
-    u,
-)
+from flext_infra import c, m, t, u
 
 
 class FlextInfraCyclicImportDetector:
-    """Detector for cyclic import dependencies at project level.
-
-    Analyzes import dependencies across all Python files in a project's source
-    directories and identifies circular import cycles using topological sorting.
-    Note: This detector operates at project level, not file level.
-    """
-
-    # NOTE: FlextInfraCyclicImportDetector operates at project level, not file level — does not implement Scanner
+    """Detect cyclic imports at project level via rope semantic import resolution."""
 
     @classmethod
     def scan_project(
         cls,
         *,
         project_root: Path,
+        rope_project: t.Infra.RopeProject,
         _parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
     ) -> Sequence[m.Infra.CyclicImportViolation]:
-        """Scan a project for cyclic import dependencies.
-
-        Args:
-            project_root: Root directory of the project to scan.
-            _parse_failures: Unused parameter for interface compatibility.
-
-        Returns:
-            List of CyclicImportViolation objects for each cycle detected.
-
-        """
+        """Build import graph via rope and detect cycles with topological sort."""
+        del _parse_failures
         scan_dirs = [
-            project_root / directory_name
-            for directory_name in c.Infra.MRO_SCAN_DIRECTORIES
-            if (project_root / directory_name).is_dir()
+            project_root / d
+            for d in c.Infra.MRO_SCAN_DIRECTORIES
+            if (project_root / d).is_dir()
         ]
         if not scan_dirs:
             return []
-        graph: MutableMapping[str, t.Infra.StrSet] = {}
-        file_map: MutableMapping[str, str] = {}
-        package_roots = cls._discover_package_roots(scan_dirs=scan_dirs)
-        for scan_dir in scan_dirs:
-            for py_file in u.Infra.iter_directory_python_files(scan_dir):
-                base_module_name = cls._file_to_module(
-                    file_path=py_file,
-                    src_dir=scan_dir,
-                )
-                module_name = cls._module_name_for_scan_dir(
-                    scan_dir=scan_dir,
-                    base_module_name=base_module_name,
-                )
-                if not module_name:
-                    continue
-                if module_name not in file_map:
-                    file_map[module_name] = str(py_file)
-                graph.setdefault(module_name, set())
-                tree = u.Infra.parse_module_cst(py_file)
-                if tree is None:
-                    continue
-                for item in tree.body:
-                    if isinstance(item, cst.If):
-                        test = item.test
-                        if isinstance(test, cst.Name) and test.value == "TYPE_CHECKING":
-                            continue
-                    if isinstance(item, cst.SimpleStatementLine):
-                        for stmt in item.body:
-                            if isinstance(stmt, cst.Import) and not isinstance(
-                                stmt.names,
-                                cst.ImportStar,
-                            ):
-                                for alias in stmt.names:
-                                    imported = (
-                                        alias.name.value
-                                        if isinstance(alias.name, cst.Name)
-                                        else u.Infra.cst_module_to_str(alias.name)
-                                    )
-                                    root_pkg = imported.split(".")[0]
-                                    if root_pkg in package_roots:
-                                        graph[module_name].add(imported)
-                            elif (
-                                isinstance(stmt, cst.ImportFrom)
-                                and stmt.module is not None
-                            ):
-                                imported = u.Infra.cst_module_to_str(stmt.module)
-                                root_pkg = imported.split(".")[0]
-                                if root_pkg in package_roots:
-                                    graph[module_name].add(imported)
-        violations: MutableSequence[m.Infra.CyclicImportViolation] = []
-        try:
-            _ = list(TopologicalSorter(graph).static_order())
-        except CycleError as exc:
-            cycle_nodes = exc.args[1] if len(exc.args) > 1 else ()
-            if cycle_nodes:
-                normalized_cycle = tuple(
-                    module_name
-                    for module_name in cycle_nodes
-                    if isinstance(module_name, str)
-                )
-                cycle_files = tuple(
-                    file_map.get(module_name, module_name)
-                    for module_name in normalized_cycle
-                )
-                violations.append(
-                    m.Infra.CyclicImportViolation.create(
-                        cycle=normalized_cycle,
-                        files=cycle_files,
-                    ),
-                )
-        return violations
 
-    @staticmethod
-    def _discover_package_roots(*, scan_dirs: Sequence[Path]) -> t.Infra.StrSet:
-        """Discover Python package names from scan directories.
-
-        Args:
-            scan_dirs: List of directories to scan for packages.
-
-        Returns:
-            Set of package root names found.
-
-        """
-        roots: t.Infra.StrSet = set()
-        for scan_dir in scan_dirs:
-            if (scan_dir / "__init__.py").is_file():
-                roots.add(scan_dir.name)
-            for entry in scan_dir.iterdir():
+        # Discover local package roots for filtering
+        package_roots: set[str] = set()
+        for sd in scan_dirs:
+            if (sd / "__init__.py").is_file():
+                package_roots.add(sd.name)
+            for entry in sd.iterdir():
                 if entry.name.startswith(".") or entry.name == "__pycache__":
                     continue
                 if entry.is_dir() and (entry / "__init__.py").is_file():
-                    roots.add(entry.name)
+                    package_roots.add(entry.name)
                 elif (
                     entry.is_file()
                     and entry.suffix == c.Infra.Extensions.PYTHON
                     and entry.stem != "__init__"
                 ):
-                    roots.add(entry.stem)
-        return roots
+                    package_roots.add(entry.stem)
 
-    @staticmethod
-    def _module_name_for_scan_dir(*, scan_dir: Path, base_module_name: str) -> str:
-        """Compute fully qualified module name for a file in a scan directory.
+        graph: MutableMapping[str, set[str]] = {}
+        file_map: MutableMapping[str, str] = {}
 
-        Args:
-            scan_dir: The scan directory being analyzed.
-            base_module_name: The base module name relative to the scan directory.
+        for sd in scan_dirs:
+            is_src = sd.name == c.Infra.Paths.DEFAULT_SRC_DIR
+            is_pkg = (sd / "__init__.py").is_file()
+            for py_file in u.Infra.iter_directory_python_files(sd):
+                # File → module name
+                try:
+                    rel = py_file.relative_to(sd)
+                except ValueError:
+                    continue
+                parts = list(rel.with_suffix("").parts)
+                if parts and parts[-1] == "__init__":
+                    parts = parts[:-1]
+                if not parts:
+                    continue
+                base = ".".join(parts)
+                mod = base if is_src else f"{sd.name}.{base}" if is_pkg else base
+                file_map.setdefault(mod, str(py_file))
+                graph.setdefault(mod, set())
 
-        Returns:
-            The fully qualified module name, or empty string if not applicable.
+                # Collect imports via rope
+                res = u.Infra.get_resource_from_path(rope_project, py_file)
+                if res is None:
+                    continue
+                for fqn in u.Infra.get_module_imports(rope_project, res).values():
+                    root_pkg = fqn.split(".")[0]
+                    if root_pkg in package_roots:
+                        graph[mod].add(fqn)
 
-        """
-        if not base_module_name:
-            return ""
-        if scan_dir.name == c.Infra.Paths.DEFAULT_SRC_DIR:
-            return base_module_name
-        if (scan_dir / "__init__.py").is_file():
-            return f"{scan_dir.name}.{base_module_name}"
-        return base_module_name
-
-    @staticmethod
-    def _file_to_module(*, file_path: Path, src_dir: Path) -> str:
-        """Convert a file path to its module name.
-
-        Args:
-            file_path: The Python file path to convert.
-            src_dir: The source directory root.
-
-        Returns:
-            Dotted module name, or empty string if path is not in src_dir.
-
-        """
+        # Detect cycles via topological sort
+        violations: MutableSequence[m.Infra.CyclicImportViolation] = []
         try:
-            rel = file_path.relative_to(src_dir)
-        except ValueError:
-            return ""
-        parts = list(rel.with_suffix("").parts)
-        if parts and parts[-1] == "__init__":
-            parts = parts[:-1]
-        return ".".join(parts) if parts else ""
+            list(TopologicalSorter(graph).static_order())
+        except CycleError as exc:
+            cycle_nodes = exc.args[1] if len(exc.args) > 1 else ()
+            if cycle_nodes:
+                normalized = tuple(n for n in cycle_nodes if isinstance(n, str))
+                violations.append(
+                    m.Infra.CyclicImportViolation.create(
+                        cycle=normalized,
+                        files=tuple(file_map.get(n, n) for n in normalized),
+                    ),
+                )
+        return violations
 
 
 __all__ = ["FlextInfraCyclicImportDetector"]

@@ -694,6 +694,7 @@ if TYPE_CHECKING:
         test_skips_when_candidate_is_already_in_facade_bases,
     )
     from tests.unit.refactor.test_infra_refactor_namespace_aliases import (
+        rope_project,
         test_import_alias_detector_skips_facade_and_subclass_files,
         test_import_alias_detector_skips_nested_private_and_as_renames,
         test_import_alias_detector_skips_private_and_class_imports,
@@ -2347,6 +2348,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.deps.test_path_sync_rewrite_deps",
         "rewrite_dep_paths",
     ],
+    "rope_project": [
+        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+        "rope_project",
+    ],
     "run_command_failure_check": [
         "tests.unit.check.extended_gate_go_cmd_tests",
         "run_command_failure_check",
@@ -3962,6 +3967,7 @@ __all__ = [
     "refactor",
     "release",
     "rewrite_dep_paths",
+    "rope_project",
     "run_command_failure_check",
     "runner",
     "service",

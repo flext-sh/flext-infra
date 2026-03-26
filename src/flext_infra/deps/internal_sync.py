@@ -14,11 +14,27 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import c, m, p, r, t, u
 
+_STR_OBJECT_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = (
+    TypeAdapter(
+        Mapping[str, t.Infra.InfraValue],
+    )
+)
+_STR_SEQUENCE_ADAPTER: TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
+_JSON_VALUE_SEQUENCE_ADAPTER: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(
+    Sequence[JsonValue],
+)
+
 
 class FlextInfraInternalDependencySyncService:
     """Synchronize internal FLEXT dependencies via git clone or workspace symlinks."""
 
     log = FlextLogger.create_module_logger(__name__)
+
+    _OWNER_PATTERNS: tuple[re.Pattern[str], ...] = (
+        re.compile(r"^git@github\.com:(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
+        re.compile(r"^https://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
+        re.compile(r"^http://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
+    )
 
     def __init__(self) -> None:
         """Initialize the internal dependency sync service."""
@@ -69,16 +85,11 @@ class FlextInfraInternalDependencySyncService:
             return False
         return True
 
-    @staticmethod
-    def owner_from_remote_url(remote_url: str) -> str | None:
+    @classmethod
+    def owner_from_remote_url(cls, remote_url: str) -> str | None:
         """Extract GitHub owner from supported remote URL formats."""
-        patterns = (
-            "^git@github\\.com:(?P<owner>[^/]+)/[^/]+(?:\\.git)?$",
-            "^https://github\\.com/(?P<owner>[^/]+)/[^/]+(?:\\.git)?$",
-            "^http://github\\.com/(?P<owner>[^/]+)/[^/]+(?:\\.git)?$",
-        )
-        for pattern in patterns:
-            match = re.match(pattern, remote_url)
+        for pattern in cls._OWNER_PATTERNS:
+            match = pattern.match(remote_url)
             if match:
                 return match.group("owner")
         return None
@@ -372,24 +383,22 @@ class FlextInfraInternalDependencySyncService:
         value: t.Infra.InfraValue,
     ) -> Mapping[str, t.Infra.InfraValue]:
         try:
-            adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            )
-            return adapter.validate_python(value)
+            return _STR_OBJECT_MAPPING_ADAPTER.validate_python(value)
         except ValidationError:
             return {}
 
     @staticmethod
     def _normalize_string_list(value: t.Infra.InfraValue) -> t.StrSequence:
         try:
-            adapter: TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
-            return adapter.validate_python(value)
+            return _STR_SEQUENCE_ADAPTER.validate_python(value)
         except ValidationError:
             if not isinstance(value, list):
                 return []
-            raw_items: Sequence[JsonValue] = TypeAdapter(
-                Sequence[JsonValue],
-            ).validate_python(value)
+            raw_items: Sequence[JsonValue] = (
+                _JSON_VALUE_SEQUENCE_ADAPTER.validate_python(
+                    value,
+                )
+            )
             return [str(item) for item in raw_items]
 
     def resolve_ref(self, project_root: Path) -> str:
@@ -463,4 +472,4 @@ main = FlextInfraInternalDependencySyncService.main
 
 if __name__ == "__main__":
     raise SystemExit(FlextInfraInternalDependencySyncService.main())
-__all__ = ["FlextInfraInternalDependencySyncService", "shutil", "u"]
+__all__ = ["FlextInfraInternalDependencySyncService"]

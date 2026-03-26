@@ -231,7 +231,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             existing_lines = (
                 gitignore_path.read_text(encoding=c.Infra.Encoding.DEFAULT).splitlines()
                 if gitignore_path.exists()
-                else []
+                else list[str]()
             )
         except OSError as exc:
             return r[str].fail(f".gitignore read failed: {exc}")

@@ -11,13 +11,8 @@ from flext_core import r
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import m
+from flext_infra import m, u
 from flext_infra.deps import path_sync as path_sync_module
-
-
-class _OutputNoop:
-    def info(self, _message: str) -> None:
-        return None
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:
@@ -55,7 +50,7 @@ def test_main_project_obj_not_dict_first_loop(
         "flext_infra.FlextInfraUtilitiesToml.read_document",
         _read_document,
     )
-    monkeypatch.setattr(path_sync_module, "output", _OutputNoop())
+    monkeypatch.setattr(u.Infra, "info", lambda _msg: None)
     tm.that(path_sync_module.main(), eq=0)
 
 
@@ -83,7 +78,7 @@ def test_main_project_obj_not_dict_second_loop(
         "flext_infra.FlextInfraUtilitiesToml.read_document",
         _read_document,
     )
-    monkeypatch.setattr(path_sync_module, "output", _OutputNoop())
+    monkeypatch.setattr(u.Infra, "info", lambda _msg: None)
     tm.that(path_sync_module.main(), eq=0)
 
 

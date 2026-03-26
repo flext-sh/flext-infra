@@ -17,6 +17,11 @@ from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import c, m, p, r, t, u
 
+_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+_JSON_SEQ_ADAPTER: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(Sequence[JsonValue])
+
 
 class FlextInfraSkillValidator:
     """Validates workspace skills using rules.yml policy gates.
@@ -42,9 +47,7 @@ class FlextInfraSkillValidator:
         value: t.Infra.InfraValue | Mapping[str, t.Infra.InfraValue],
     ) -> Mapping[str, t.Infra.InfraValue]:
         try:
-            adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            )
+            adapter = _INFRA_MAPPING_ADAPTER
             return adapter.validate_python(value)
         except ValidationError:
             return {}
@@ -96,9 +99,9 @@ class FlextInfraSkillValidator:
             rules_list_obj = rules.get(c.Infra.ReportKeys.RULES, [])
             if not isinstance(rules_list_obj, list):
                 return r[m.Infra.ValidationReport].fail("rules must be a list")
-            rules_list: Sequence[JsonValue] = TypeAdapter(
-                Sequence[JsonValue],
-            ).validate_python(rules_list_obj)
+            rules_list: Sequence[JsonValue] = _JSON_SEQ_ADAPTER.validate_python(
+                rules_list_obj,
+            )
             counts: MutableMapping[str, int] = {}
             violations: MutableSequence[str] = []
             for rule_obj_raw in rules_list:

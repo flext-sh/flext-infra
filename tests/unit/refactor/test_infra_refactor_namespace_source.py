@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from flext_infra import FlextInfraNamespaceSourceDetector, u
+    from flext_infra import FlextInfraNamespaceSourceDetector, t, u
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -31,7 +31,7 @@ def _create_project_with_facades(
     *,
     tmp_path: Path,
     families: tuple[str, ...],
-) -> tuple[Path, Path, str, str]:
+) -> tuple[Path, Path, str, str, t.Infra.RopeProject]:
     project_root = tmp_path / "flext-xyz"
     package_name = "flext_xyz"
     package_dir = project_root / "src" / package_name
@@ -49,11 +49,12 @@ def _create_project_with_facades(
             f"{family} = {class_name}\n",
             encoding="utf-8",
         )
-    return project_root, package_dir, package_name, "flext-xyz"
+    rope_project = u.Infra.init_rope_project(tmp_path)
+    return project_root, package_dir, package_name, "flext-xyz", rope_project
 
 
 def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
-    project_root, package_dir, _package_name, project_name = (
+    project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m",),
@@ -68,13 +69,14 @@ def test_detects_wrong_source_m_import(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
-    project_root, package_dir, _package_name, project_name = (
+    project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("u",),
@@ -89,13 +91,14 @@ def test_detects_wrong_source_u_import(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_skips_r_alias_universal_exception(tmp_path: Path) -> None:
-    project_root, package_dir, _package_name, project_name = (
+    project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m",),
@@ -110,13 +113,14 @@ def test_skips_r_alias_universal_exception(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_skips_facade_declaration_files(tmp_path: Path) -> None:
-    project_root, package_dir, _package_name, project_name = (
+    project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m",),
@@ -135,13 +139,14 @@ def test_skips_facade_declaration_files(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_skips_init_file(tmp_path: Path) -> None:
-    project_root, package_dir, _package_name, project_name = (
+    project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m",),
@@ -154,13 +159,14 @@ def test_skips_init_file(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_skips_import_as_rename(tmp_path: Path) -> None:
-    project_root, package_dir, _package_name, project_name = (
+    project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m",),
@@ -175,13 +181,14 @@ def test_skips_import_as_rename(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_skips_non_alias_symbols(tmp_path: Path) -> None:
-    project_root, package_dir, _package_name, project_name = (
+    project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m",),
@@ -196,13 +203,14 @@ def test_skips_non_alias_symbols(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_detects_only_wrong_alias_in_mixed_import(tmp_path: Path) -> None:
-    project_root, package_dir, _package_name, project_name = (
+    project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m",),
@@ -217,13 +225,14 @@ def test_detects_only_wrong_alias_in_mixed_import(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
-    project_root, package_dir, _package_name, project_name = (
+    project_root, package_dir, _package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("u",),
@@ -238,13 +247,14 @@ def test_project_without_alias_facade_has_no_violation(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
-    _project_root, package_dir, package_name, _project_name = (
+    _project_root, package_dir, package_name, _project_name, _rope = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m", "u"),
@@ -269,7 +279,7 @@ def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
 
 
 def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
-    _project_root, package_dir, package_name, _project_name = (
+    _project_root, package_dir, package_name, _project_name, _rope = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("u",),
@@ -293,7 +303,7 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
 
 
 def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> None:
-    _project_root, package_dir, package_name, _project_name = (
+    _project_root, package_dir, package_name, _project_name, _rope = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("m", "u"),
@@ -323,7 +333,7 @@ def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> No
 
 
 def test_detects_same_project_submodule_alias_import(tmp_path: Path) -> None:
-    project_root, package_dir, package_name, project_name = (
+    project_root, package_dir, package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("c",),
@@ -338,13 +348,14 @@ def test_detects_same_project_submodule_alias_import(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_skips_same_project_submodule_class_import(tmp_path: Path) -> None:
-    project_root, package_dir, package_name, project_name = (
+    project_root, package_dir, package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("c",),
@@ -360,13 +371,14 @@ def test_skips_same_project_submodule_class_import(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []
 
 
 def test_skips_same_project_private_submodule(tmp_path: Path) -> None:
-    project_root, package_dir, package_name, project_name = (
+    project_root, package_dir, package_name, project_name, rope_project = (
         _create_project_with_facades(
             tmp_path=tmp_path,
             families=("c",),
@@ -382,6 +394,7 @@ def test_skips_same_project_private_submodule(tmp_path: Path) -> None:
         file_path=target,
         project_name=project_name,
         project_root=project_root,
+        rope_project=rope_project,
     )
 
     assert violations == []

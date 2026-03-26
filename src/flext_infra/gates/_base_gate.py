@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
+from typing import ClassVar
 
 from pydantic import TypeAdapter, ValidationError
 
@@ -10,6 +11,13 @@ from flext_infra import c, m, t, u
 
 
 class FlextInfraGate(ABC):
+    _MAPPING_ADAPTER: ClassVar[TypeAdapter[Mapping[str, t.Infra.InfraValue]]] = (
+        TypeAdapter(Mapping[str, t.Infra.InfraValue])
+    )
+    _SEQUENCE_ADAPTER: ClassVar[TypeAdapter[Sequence[t.Infra.InfraValue]]] = (
+        TypeAdapter(Sequence[t.Infra.InfraValue])
+    )
+
     gate_id: str = ""
     gate_name: str = ""
     can_fix: bool = False
@@ -107,9 +115,7 @@ class FlextInfraGate(ABC):
     ) -> Mapping[str, t.Infra.InfraValue]:
         if not isinstance(value, Mapping):
             return {}
-        return TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
-            value,
-        )
+        return FlextInfraGate._MAPPING_ADAPTER.validate_python(value)
 
     @classmethod
     def _to_mapping_list(
@@ -118,17 +124,15 @@ class FlextInfraGate(ABC):
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         if not isinstance(value, list):
             return []
-        typed_items: Sequence[t.Infra.InfraValue] = TypeAdapter(
-            Sequence[t.Infra.InfraValue]
-        ).validate_python(
-            value,
+        typed_items: Sequence[t.Infra.InfraValue] = (
+            cls._SEQUENCE_ADAPTER.validate_python(value)
         )
         normalized: MutableSequence[Mapping[str, t.Infra.InfraValue]] = []
         for raw_item in typed_items:
             try:
-                typed_item: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-                    Mapping[str, t.Infra.InfraValue],
-                ).validate_python(raw_item)
+                typed_item: Mapping[str, t.Infra.InfraValue] = (
+                    cls._MAPPING_ADAPTER.validate_python(raw_item)
+                )
             except ValidationError:
                 continue
             normalized.append(typed_item)
@@ -165,9 +169,9 @@ class FlextInfraGate(ABC):
         for key in keys:
             if not isinstance(current, Mapping):
                 return {}
-            typed_current: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            ).validate_python(current)
+            typed_current: Mapping[str, t.Infra.InfraValue] = (
+                FlextInfraGate._MAPPING_ADAPTER.validate_python(current)
+            )
             if key not in typed_current:
                 return {}
             child: t.Infra.InfraValue = typed_current[key]
@@ -176,9 +180,7 @@ class FlextInfraGate(ABC):
             current = child
         if not isinstance(current, Mapping):
             return {}
-        return TypeAdapter(Mapping[str, t.Infra.InfraValue]).validate_python(
-            current,
-        )
+        return FlextInfraGate._MAPPING_ADAPTER.validate_python(current)
 
     @classmethod
     def _nested_int(

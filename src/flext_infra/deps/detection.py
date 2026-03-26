@@ -106,13 +106,7 @@ class FlextInfraDependencyDetectionService:
         mapped_value = u.Infra.as_toml_mapping(value)
         if mapped_value is None:
             return {}
-        normalized: MutableMapping[str, t.Infra.InfraValue] = {}
-        for key, raw_value in mapped_value.items():
-            converted = FlextInfraDependencyDetectionService.to_infra_value(raw_value)
-            if converted is None and raw_value is not None:
-                continue
-            normalized[key] = converted
-        return normalized
+        return FlextInfraDependencyDetectionService._to_toml_config(mapped_value)
 
     @staticmethod
     def classify_issues(
@@ -145,14 +139,14 @@ class FlextInfraDependencyDetectionService:
             except ValidationError:
                 continue
             code = error_data.get(c.Infra.CODE)
-            if code == "DEP001":
-                groups.dep001.append(normalized_item)
-            elif code == "DEP002":
-                groups.dep002.append(normalized_item)
-            elif code == "DEP003":
-                groups.dep003.append(normalized_item)
-            elif code == "DEP004":
-                groups.dep004.append(normalized_item)
+            bucket = {
+                "DEP001": groups.dep001,
+                "DEP002": groups.dep002,
+                "DEP003": groups.dep003,
+                "DEP004": groups.dep004,
+            }.get(str(code) if code is not None else "")
+            if bucket is not None:
+                bucket.append(normalized_item)
         return groups
 
     @staticmethod
@@ -175,41 +169,22 @@ class FlextInfraDependencyDetectionService:
         """Build a project dependency report from classified deptry issues."""
         classified = self.classify_issues(deptry_issues)
 
-        def _module_name(item: Mapping[str, t.Infra.InfraValue]) -> str | None:
-            val = item.get(c.Infra.MODULE)
-            if val is None:
-                return None
-            return str(val)
-
-        missing: MutableSequence[str] = []
-        unused: MutableSequence[str] = []
-        transitive: MutableSequence[str] = []
-        dev_in_runtime: MutableSequence[str] = []
-
-        for item in classified.dep001:
-            name = _module_name(item)
-            if name is not None:
-                missing.append(name)
-        for item in classified.dep002:
-            name = _module_name(item)
-            if name is not None:
-                unused.append(name)
-        for item in classified.dep003:
-            name = _module_name(item)
-            if name is not None:
-                transitive.append(name)
-        for item in classified.dep004:
-            name = _module_name(item)
-            if name is not None:
-                dev_in_runtime.append(name)
+        def _module_names(
+            items: Sequence[Mapping[str, t.Infra.InfraValue]],
+        ) -> MutableSequence[str]:
+            return [
+                str(val)
+                for item in items
+                if (val := item.get(c.Infra.MODULE)) is not None
+            ]
 
         return m.Infra.ProjectDependencyReport(
             project=project_name,
             deptry=m.Infra.DeptryReport(
-                missing=missing,
-                unused=unused,
-                transitive=transitive,
-                dev_in_runtime=dev_in_runtime,
+                missing=_module_names(classified.dep001),
+                unused=_module_names(classified.dep002),
+                transitive=_module_names(classified.dep003),
+                dev_in_runtime=_module_names(classified.dep004),
                 raw_count=len(deptry_issues),
             ),
         )
@@ -258,13 +233,7 @@ class FlextInfraDependencyDetectionService:
         )
         typings = optional.get(c.Infra.Directories.TYPINGS)
         if isinstance(typings, list):
-            try:
-                typed_typings: Sequence[str] = TypeAdapter(
-                    Sequence[str],
-                ).validate_python([str(s) for s in typings])
-            except ValidationError:
-                typed_typings = []
-            for spec in typed_typings:
+            for spec in typings:
                 spec_text = str(spec)
                 names.add(
                     spec_text
@@ -274,13 +243,7 @@ class FlextInfraDependencyDetectionService:
                     .strip(),
                 )
         elif isinstance(typings, Mapping):
-            try:
-                typed_typings_map: Mapping[str, str] = TypeAdapter(
-                    Mapping[str, str],
-                ).validate_python({k: str(v) for k, v in typings.items()})
-            except ValidationError:
-                typed_typings_map = {}
-            names.update(typed_typings_map.keys())
+            names.update(str(k) for k in typings)
         return sorted(names)
 
     def get_required_typings(
@@ -295,16 +258,10 @@ class FlextInfraDependencyDetectionService:
         limits = self.load_dependency_limits(limits_path)
         exclude_set: t.Infra.StrSet = set()
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
-        if typing_libraries is not None and isinstance(typing_libraries, Mapping):
+        if isinstance(typing_libraries, Mapping):
             excluded = typing_libraries.get(c.Infra.EXCLUDE)
             if isinstance(excluded, list):
-                try:
-                    typed_excluded: Sequence[str] = TypeAdapter(
-                        Sequence[str],
-                    ).validate_python([str(e) for e in excluded])
-                except ValidationError:
-                    typed_excluded = []
-                exclude_set = set(typed_excluded)
+                exclude_set = {str(e) for e in excluded}
         hinted: Sequence[str] = []
         missing_modules: Sequence[str] = []
         if include_mypy:
@@ -324,13 +281,10 @@ class FlextInfraDependencyDetectionService:
         current = self.get_current_typings_from_pyproject(project_path)
         current_set = set(current)
         python_cfg = limits.get(c.Infra.PYTHON)
-        python_version = (
-            str(python_cfg.get(c.Infra.VERSION))
-            if python_cfg is not None
-            and isinstance(python_cfg, Mapping)
-            and (python_cfg.get(c.Infra.VERSION) is not None)
-            else None
+        version_val = (
+            python_cfg.get(c.Infra.VERSION) if isinstance(python_cfg, Mapping) else None
         )
+        python_version = str(version_val) if version_val is not None else None
         report = m.Infra.TypingsReport(
             required_packages=sorted(required_set),
             hinted=hinted,
@@ -352,13 +306,7 @@ class FlextInfraDependencyDetectionService:
         result = self._read_plain(path)
         if result.is_failure:
             return {}
-        limits: MutableMapping[str, t.Infra.InfraValue] = {}
-        toml_data = self._to_toml_config(result.value)
-        for key, value in toml_data.items():
-            converted = FlextInfraDependencyDetectionService.to_infra_value(value)
-            if converted is not None or value is None:
-                limits[str(key)] = converted
-        return limits
+        return self._to_toml_config(result.value)
 
     def module_to_types_package(
         self,
@@ -370,23 +318,11 @@ class FlextInfraDependencyDetectionService:
         if root.startswith(u.Infra.INTERNAL_PREFIXES):
             return None
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
-        if typing_libraries is not None and isinstance(typing_libraries, Mapping):
+        if isinstance(typing_libraries, Mapping):
             module_to_package = typing_libraries.get(c.Infra.MODULE_TO_PACKAGE)
-            if (
-                module_to_package is not None
-                and isinstance(module_to_package, Mapping)
-                and (root in module_to_package)
-            ):
-                try:
-                    module_to_package_map: Mapping[str, str] = TypeAdapter(
-                        Mapping[str, str],
-                    ).validate_python({k: str(v) for k, v in module_to_package.items()})
-                except ValidationError:
-                    module_to_package_map = {}
-                value = module_to_package_map.get(root)
-                if value is None:
-                    return None
-                return str(value)
+            if isinstance(module_to_package, Mapping) and root in module_to_package:
+                value = module_to_package.get(root)
+                return str(value) if value is not None else None
         return self.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root.lower())
 
     def run_deptry(

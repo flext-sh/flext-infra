@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import libcst as cst
 from pydantic import TypeAdapter, ValidationError
@@ -22,20 +22,13 @@ from flext_infra import (
 class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     """Remove aliases, deprecated classes, wrappers and import bypass blocks."""
 
-    _CONFIG_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] | None = None
-
-    @staticmethod
-    def _get_config_adapter() -> TypeAdapter[Mapping[str, t.Infra.InfraValue]]:
-        """Get or create TypeAdapter for Mapping[str, t.Infra.InfraValue]."""
-        if FlextInfraRefactorLegacyRemovalRule._CONFIG_ADAPTER is None:
-            FlextInfraRefactorLegacyRemovalRule._CONFIG_ADAPTER = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            )
-        return FlextInfraRefactorLegacyRemovalRule._CONFIG_ADAPTER
+    _CONFIG_ADAPTER: ClassVar[TypeAdapter[Mapping[str, t.Infra.InfraValue]]] = (
+        TypeAdapter(Mapping[str, t.Infra.InfraValue])
+    )
 
     def _typed_config(self) -> Mapping[str, t.Infra.InfraValue]:
         """Get self.config validated as Mapping[str, InfraValue]."""
-        return self._get_config_adapter().validate_python(self.config)
+        return self._CONFIG_ADAPTER.validate_python(self.config)
 
     @staticmethod
     def _is_forwarding_compatible(
@@ -82,9 +75,8 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
 
     @staticmethod
     def _name_value(expr: cst.BaseExpression) -> str | None:
-        value = getattr(expr, "value", None)
-        if isinstance(value, str):
-            return value
+        if isinstance(expr, (cst.Name, cst.SimpleString, cst.Integer, cst.Float)):
+            return expr.value
         return None
 
     @override

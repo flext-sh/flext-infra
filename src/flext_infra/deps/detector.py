@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 from flext_core import FlextLogger
@@ -36,7 +35,6 @@ class FlextInfraRuntimeDevDependencyDetector:
         self.json = infra_instance
         self.deps = FlextInfraDependencyDetectionService()
         self.runner = infra_instance
-        self.log = self.log
 
     @staticmethod
     def parser(default_limits_path: Path) -> argparse.ArgumentParser:
@@ -109,40 +107,13 @@ class FlextInfraRuntimeDevDependencyDetector:
     @staticmethod
     def main() -> int:
         """Entry point for dependency detector CLI."""
-        detector_type: type[FlextInfraRuntimeDevDependencyDetector] = (
-            FlextInfraRuntimeDevDependencyDetector
-        )
-        deps_module = sys.modules.get("flext_infra.deps")
-        if deps_module is not None:
-            deps_type = getattr(
-                deps_module,
-                "FlextInfraRuntimeDevDependencyDetector",
-                detector_type,
-            )
-            if isinstance(deps_type, type):
-                detector_type = deps_type
-        root_module = sys.modules.get("flext_infra")
-        if (
-            root_module is not None
-            and detector_type is FlextInfraRuntimeDevDependencyDetector
-        ):
-            root_type = getattr(
-                root_module,
-                "FlextInfraRuntimeDevDependencyDetector",
-                detector_type,
-            )
-            if isinstance(root_type, type):
-                detector_type = root_type
-        detector_obj = detector_type()
-        detector = detector_obj
+        detector = FlextInfraRuntimeDevDependencyDetector()
         result = detector.run()
         if result.is_failure:
-            logger = getattr(detector, "log", None)
-            if logger is not None and hasattr(logger, "error"):
-                logger.error(
-                    "deps_detector_failed",
-                    error=result.error or "unknown error",
-                )
+            detector.log.error(
+                "deps_detector_failed",
+                error=result.error or "unknown error",
+            )
             return 1
         return result.value
 

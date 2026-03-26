@@ -83,6 +83,7 @@ if TYPE_CHECKING:
         test_skips_when_candidate_is_already_in_facade_bases,
     )
     from tests.unit.refactor.test_infra_refactor_namespace_aliases import (
+        rope_project,
         test_import_alias_detector_skips_facade_and_subclass_files,
         test_import_alias_detector_skips_nested_private_and_as_renames,
         test_import_alias_detector_skips_private_and_class_imports,
@@ -169,6 +170,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FAMILY_SUFFIX_MAP": [
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "FAMILY_SUFFIX_MAP",
+    ],
+    "rope_project": [
+        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+        "rope_project",
     ],
     "test_all_three_capabilities_in_one_pass": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
@@ -632,6 +637,7 @@ __all__ = [
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
     "EngineSafetyStub",
+    "rope_project",
     "test_all_three_capabilities_in_one_pass",
     "test_build_impact_map_extracts_rename_entries",
     "test_build_impact_map_extracts_signature_entries",
