@@ -1,0 +1,25 @@
+tests/unit/codegen/autofix_workspace_tests.py
+  d10ba32fe0b7f2a6 79
+src/flext_infra/codegen/fixer.py
+  d10ba32fe0b7f2a6 216-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.20",
+  "base_commit_sha": "35718c4a410b560bc5a52021a410a283991d2458",
+  "prompts": {
+    "d10ba32fe0b7f2a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e9c95cf-74f3-4a75-aac3-79a6cb45fe9b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 7,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}
