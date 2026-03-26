@@ -43,6 +43,9 @@ from flext_infra import (
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
 )
+from flext_infra._utilities.rope_hooks import register_rope_hooks
+
+register_rope_hooks()
 
 
 class FlextInfraUtilities(FlextUtilities):

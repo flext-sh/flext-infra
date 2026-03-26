@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes
 
     from tests.refactor.test_rope_semantic import (
+        TestFindDefinitionOffset,
         TestGetClassBases,
         TestGetClassMethods,
         TestGetModuleClasses,
@@ -29,19 +30,36 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "TestFindDefinitionOffset": [
+        "tests.refactor.test_rope_semantic",
+        "TestFindDefinitionOffset",
+    ],
     "TestGetClassBases": ["tests.refactor.test_rope_semantic", "TestGetClassBases"],
     "TestGetClassMethods": ["tests.refactor.test_rope_semantic", "TestGetClassMethods"],
-    "TestGetModuleClasses": ["tests.refactor.test_rope_semantic", "TestGetModuleClasses"],
-    "TestGetModuleImports": ["tests.refactor.test_rope_semantic", "TestGetModuleImports"],
+    "TestGetModuleClasses": [
+        "tests.refactor.test_rope_semantic",
+        "TestGetModuleClasses",
+    ],
+    "TestGetModuleImports": [
+        "tests.refactor.test_rope_semantic",
+        "TestGetModuleImports",
+    ],
     "models_resource": ["tests.refactor.test_rope_semantic", "models_resource"],
     "rope_workspace": ["tests.refactor.test_rope_semantic", "rope_workspace"],
     "services_resource": ["tests.refactor.test_rope_semantic", "services_resource"],
-    "test_rope_find_occurrences_import": ["tests.refactor.test_rope_stubs", "test_rope_find_occurrences_import"],
+    "test_rope_find_occurrences_import": [
+        "tests.refactor.test_rope_stubs",
+        "test_rope_find_occurrences_import",
+    ],
     "test_rope_import": ["tests.refactor.test_rope_stubs", "test_rope_import"],
-    "test_rope_rename_import": ["tests.refactor.test_rope_stubs", "test_rope_rename_import"],
+    "test_rope_rename_import": [
+        "tests.refactor.test_rope_stubs",
+        "test_rope_rename_import",
+    ],
 }
 
 __all__ = [
+    "TestFindDefinitionOffset",
     "TestGetClassBases",
     "TestGetClassMethods",
     "TestGetModuleClasses",

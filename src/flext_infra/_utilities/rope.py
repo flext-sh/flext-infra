@@ -10,9 +10,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import cast
+from typing import ClassVar, cast
 
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 from rope.base.project import Project as RopeProject
@@ -31,6 +31,11 @@ from flext_infra import c, m, p, t
 
 class FlextInfraUtilitiesRope:
     """Rope Project lifecycle and refactor helpers — exposed via u.Infra.*."""
+
+    _ROPE_POST_HOOKS: ClassVar[
+        MutableSequence[Callable[..., Sequence[m.Infra.Result]]]
+    ] = []
+    _hooks_initialized: ClassVar[bool] = False
 
     # ── Project lifecycle ──────────────────────────────────────────
 
@@ -105,6 +110,7 @@ class FlextInfraUtilitiesRope:
         Uses rope's PyCore to perform semantic lookup, handling inheritance,
         imports, and complex patterns. Falls back to regex for edge cases.
         """
+        source = resource.read()
         try:
             pycore = FlextInfraUtilitiesRope._get_pycore(rope_project)
             pyobject = pycore.resource_to_pyobject(resource)
@@ -115,9 +121,17 @@ class FlextInfraUtilitiesRope:
             definition_loc = pyname.get_definition_location()
             if definition_loc is None:
                 return None
-            return definition_loc[1] if isinstance(definition_loc, tuple) else None
+            line_number = (
+                definition_loc[1] if isinstance(definition_loc, tuple) else None
+            )
+            if line_number is None:
+                return None
+            return FlextInfraUtilitiesRope._line_offset_for_symbol(
+                source=source,
+                line_number=line_number,
+                symbol=symbol,
+            )
         except (RefactoringError, ResourceNotFoundError, AttributeError):
-            source = resource.read()
             pattern = re.compile(
                 rf"(?:class|def)\s+({re.escape(symbol)})\b|^({re.escape(symbol)})\s*=",
                 re.MULTILINE,
@@ -341,26 +355,87 @@ class FlextInfraUtilitiesRope:
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return []
 
-    # ── Stubs for engine hook integration ──────────────────────────
+    # ── Engine hook integration ────────────────────────────────────
 
-    @staticmethod
-    def run_rope_pre_hooks(path: Path, *, dry_run: bool) -> Sequence[m.Infra.Result]:
-        """Pre-hook stub — orchestrator wires transformers here."""
-        del path, dry_run
+    @classmethod
+    def run_rope_pre_hooks(
+        cls,
+        path: Path,
+        *,
+        dry_run: bool,
+    ) -> Sequence[m.Infra.Result]:
+        """Run declarative semantic pre-hooks before local CST refactors."""
+        _ = path, dry_run  # no pre-hooks registered yet
         return []
 
-    @staticmethod
-    def run_rope_post_hooks(path: Path, *, dry_run: bool) -> Sequence[m.Infra.Result]:
-        """Post-hook stub — cleanup pass after LibCST rules."""
-        del path, dry_run
-        return []
+    @classmethod
+    def _ensure_post_hooks_registered(cls) -> None:
+        """Lazily register post-hooks on first call to avoid circular imports."""
+        if cls._hooks_initialized:
+            return
+        cls._hooks_initialized = True
+        from flext_infra._utilities.rope_hooks import (
+            run_mro_migration_hook,
+        )
+
+        cls.register_rope_post_hook(run_mro_migration_hook)
+
+    @classmethod
+    def run_rope_post_hooks(
+        cls,
+        path: Path,
+        *,
+        dry_run: bool,
+    ) -> Sequence[m.Infra.Result]:
+        """Run workspace-scale semantic passes after local CST refactors."""
+        cls._ensure_post_hooks_registered()
+        return cls._run_rope_post_hooks(path=path, dry_run=dry_run)
 
     # ── Private helpers ────────────────────────────────────────────
+
+    @classmethod
+    def _run_rope_post_hooks(
+        cls,
+        *,
+        path: Path,
+        dry_run: bool,
+    ) -> Sequence[m.Infra.Result]:
+        """Execute all registered post-hooks sequentially."""
+        results: MutableSequence[m.Infra.Result] = []
+        for hook in cls._ROPE_POST_HOOKS:
+            results.extend(hook(path, dry_run=dry_run))
+        return results
+
+    @classmethod
+    def register_rope_post_hook(
+        cls,
+        hook: Callable[..., Sequence[m.Infra.Result]],
+    ) -> None:
+        """Register one workspace-scale semantic post-hook."""
+        if hook not in cls._ROPE_POST_HOOKS:
+            cls._ROPE_POST_HOOKS.append(hook)
 
     @staticmethod
     def _get_pycore(rope_project: t.Infra.RopeProject) -> p.Infra.RopePyCoreLike:
         """Extract PyCore via protocol — cast needed at rope boundary (no stubs)."""
         return cast("p.Infra.RopePyCoreLike", rope_project.pycore)
+
+    @staticmethod
+    def _line_offset_for_symbol(
+        *,
+        source: str,
+        line_number: int,
+        symbol: str,
+    ) -> int | None:
+        """Convert rope line metadata into a character offset for refactor APIs."""
+        lines = source.splitlines(keepends=True)
+        if line_number < 1 or line_number > len(lines):
+            return None
+        line = lines[line_number - 1]
+        column = line.find(symbol)
+        if column < 0:
+            return None
+        return sum(len(item) for item in lines[: line_number - 1]) + column
 
 
 __all__ = ["FlextInfraUtilitiesRope"]

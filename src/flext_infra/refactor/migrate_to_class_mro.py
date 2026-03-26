@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraRefactorMROImportRewriter,
+from flext_infra import c, m, t
+from flext_infra.refactor._utilities_mro_scan import FlextInfraUtilitiesRefactorMroScan
+from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
+from flext_infra.refactor.mro_migration_validator import (
     FlextInfraRefactorMROMigrationValidator,
-    c,
-    m,
-    t,
-    u,
 )
 
 
@@ -30,38 +27,21 @@ class FlextInfraRefactorMigrateToClassMRO:
     ) -> m.Infra.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
         normalized_target = self._normalize_target(target=target)
-        scan_results, files_scanned = u.Infra.mro_scan_workspace(
-            workspace_root=self._workspace_root,
-            target=normalized_target,
+        scan_results, files_scanned = (
+            FlextInfraUtilitiesRefactorMroScan.mro_scan_workspace(
+                workspace_root=self._workspace_root,
+                target=normalized_target,
+            )
         )
         warnings: t.StrSequence = []
-        errors: MutableSequence[str] = []
         stash_ref = ""
-        moved_index: MutableMapping[str, Mapping[str, str]] = {}
-        migrations: MutableSequence[m.Infra.MROFileMigration] = []
-        pending_writes: MutableSequence[tuple[Path, str]] = []
-        for scan_result in scan_results:
-            try:
-                updated_source, migration, symbol_alias_map = u.Infra.mro_migrate_file(
-                    scan_result=scan_result,
-                )
-            except Exception as exc:
-                errors.append(f"{scan_result.file}: {exc}")
-                continue
-            if not migration.moved_symbols:
-                continue
-            migrations.append(migration)
-            moved_index[scan_result.module] = symbol_alias_map
-            if apply:
-                pending_writes.append((Path(scan_result.file), updated_source))
-        rewrite_results = FlextInfraRefactorMROImportRewriter.rewrite_workspace(
-            workspace_root=self._workspace_root,
-            moved_index=moved_index,
-            apply=apply,
+        migrations, rewrites, errors = (
+            FlextInfraRefactorMROImportRewriter.migrate_workspace(
+                workspace_root=self._workspace_root,
+                scan_results=scan_results,
+                apply=apply,
+            )
         )
-        for file_path, source in pending_writes:
-            file_path.write_text(source, encoding=c.Infra.Encoding.DEFAULT)
-        rewrites = tuple(rewrite_results)
         remaining_violations, mro_failures = (
             FlextInfraRefactorMROMigrationValidator.validate(
                 workspace_root=self._workspace_root,
@@ -75,7 +55,7 @@ class FlextInfraRefactorMigrateToClassMRO:
             files_scanned=files_scanned,
             files_with_candidates=len(scan_results),
             migrations=tuple(migrations),
-            rewrites=rewrites,
+            rewrites=tuple(rewrites),
             remaining_violations=remaining_violations,
             mro_failures=mro_failures,
             stash_ref=stash_ref,

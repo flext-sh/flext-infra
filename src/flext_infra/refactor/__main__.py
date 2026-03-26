@@ -64,34 +64,38 @@ class FlextInfraRefactorCommand:
 
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
-        command = str(args.command)
-
-        if command == "centralize-pydantic":
-            return FlextInfraRefactorCommand.run_centralize_pydantic(
-                cli,
-                normalize_remaining=bool(getattr(args, "normalize_remaining", False)),
-            )
-        if command == "migrate-mro":
-            return FlextInfraRefactorCommand.run_migrate_to_mro(
+        handlers = {
+            "centralize-pydantic": lambda: (
+                FlextInfraRefactorCommand.run_centralize_pydantic(
+                    cli,
+                    normalize_remaining=bool(
+                        getattr(args, "normalize_remaining", False)
+                    ),
+                )
+            ),
+            "migrate-mro": lambda: FlextInfraRefactorCommand.run_migrate_to_mro(
                 cli,
                 target=str(getattr(args, "target", "all")),
-            )
-        if command == "namespace-enforce":
-            return FlextInfraRefactorCommand.run_namespace_enforce(cli)
-        if command == "imports":
-            return FlextInfraRefactorCommand.run_imports(cli)
-        if command == "ultrawork-models":
-            return FlextInfraRefactorCommand.run_ultrawork_models(
+            ),
+            "namespace-enforce": lambda: (
+                FlextInfraRefactorCommand.run_namespace_enforce(
+                    cli,
+                )
+            ),
+            "imports": lambda: FlextInfraRefactorCommand.run_imports(cli),
+            "ultrawork-models": lambda: FlextInfraRefactorCommand.run_ultrawork_models(
                 cli,
                 normalize_remaining=bool(getattr(args, "normalize_remaining", False)),
-            )
-        if command == "census":
-            return FlextInfraRefactorCommand.run_census(
+            ),
+            "census": lambda: FlextInfraRefactorCommand.run_census(
                 cli,
                 family=str(getattr(args, "family", "u")),
                 json_output=getattr(args, "json_output", None),
-            )
-
+            ),
+        }
+        handler = handlers.get(str(args.command))
+        if handler is not None:
+            return handler()
         parser.print_help()
         return 1
 

@@ -192,3 +192,16 @@ class TestGetClassMethods:
         proj, _ = rope_workspace
         methods = R.get_class_methods(proj, models_resource, "DoesNotExist")
         assert methods == {}
+
+
+class TestFindDefinitionOffset:
+    def test_returns_character_offset_for_semantic_definition(
+        self,
+        rope_workspace: tuple[RopeProject, Path],
+        models_resource: RopeFile,
+    ) -> None:
+        proj, _ = rope_workspace
+        offset = R.find_definition_offset(proj, models_resource, "Dog")
+        source = models_resource.read()
+        assert offset is not None
+        assert source[offset : offset + 3] == "Dog"

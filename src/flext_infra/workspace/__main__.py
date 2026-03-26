@@ -153,23 +153,23 @@ class FlextInfraWorkspaceCommand:
 
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)
-
-        if args.command == "detect":
-            return _run_detect(cli)
-        if args.command == "sync":
-            return _run_sync(
+        handlers = {
+            "detect": lambda: _run_detect(cli),
+            "sync": lambda: _run_sync(
                 cli,
                 getattr(args, "canonical_root", None),
-            )
-        if args.command == "orchestrate":
-            return _run_orchestrate(
+            ),
+            "orchestrate": lambda: _run_orchestrate(
                 args.projects,
                 args.verb,
                 fail_fast=args.fail_fast,
                 make_args=args.make_arg,
-            )
-        if args.command == "migrate":
-            return _run_migrate(cli)
+            ),
+            "migrate": lambda: _run_migrate(cli),
+        }
+        handler = handlers.get(str(args.command))
+        if handler is not None:
+            return handler()
         parser.print_help()
         return 1
 
