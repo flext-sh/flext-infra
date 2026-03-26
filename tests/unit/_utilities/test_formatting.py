@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence
 from pathlib import Path
 
 import pytest
@@ -17,7 +17,7 @@ class TestFormattingRunRuffFix:
     ) -> None:
         target = tmp_path / "sample.py"
         target.write_text("x=1\n", encoding="utf-8")
-        calls: Sequence[t.StrSequence] = []
+        calls: MutableSequence[t.StrSequence] = []
 
         def _fake_run_checked(
             _self: FlextInfraUtilitiesSubprocess,
@@ -52,7 +52,7 @@ class TestFormattingRunRuffFix:
     ) -> None:
         target = tmp_path / "sample.py"
         target.write_text("x=1\n", encoding="utf-8")
-        calls: Sequence[t.StrSequence] = []
+        calls: MutableSequence[t.StrSequence] = []
 
         def _raise_missing(
             _self: FlextInfraUtilitiesSubprocess,

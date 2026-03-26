@@ -6,6 +6,7 @@ Subclasses declare _rule_id, _build_message, _collect_violations.
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false
 
 from __future__ import annotations
 
@@ -21,7 +22,7 @@ from flext_infra import m, t, u
 class FlextInfraScanFileMixin:
     """Base mixin: stores rope_project + parse_failures, provides scan_file().
 
-    Subclasses MUST define ``_rule_id``.
+    Subclasses MUST define ``_rule_id`` and ``detect_file`` classmethod.
 
     Boilerplate elimination hooks:
 
@@ -58,7 +59,8 @@ class FlextInfraScanFileMixin:
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return None
-        return res.read()
+        source: str = res.read()
+        return source
 
     # ------------------------------------------------------------------
     # Template hooks
@@ -80,7 +82,7 @@ class FlextInfraScanFileMixin:
         Default: delegates to ``cls.detect_file(file_path=..., rope_project=...,
         parse_failures=...)``.  Override when ``detect_file`` requires extra params.
         """
-        return self.detect_file(
+        return self.detect_file(  # type: ignore[attr-defined]  # duck-typed: subclasses define detect_file
             file_path=file_path,
             rope_project=self._rope,
             parse_failures=self._pf,

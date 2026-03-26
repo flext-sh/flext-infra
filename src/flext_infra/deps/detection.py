@@ -88,9 +88,11 @@ class FlextInfraDependencyDetectionService:
         except ValidationError:
             return None
         converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
-        for key, item in mapping_value.items():
-            converted_item = FlextInfraDependencyDetectionService.to_infra_value(item)
-            if (converted_item is None and item is not None) or not isinstance(
+        for key, map_item in mapping_value.items():
+            converted_item = FlextInfraDependencyDetectionService.to_infra_value(
+                map_item,
+            )
+            if (converted_item is None and map_item is not None) or not isinstance(
                 converted_item, scalar_types
             ):
                 return None

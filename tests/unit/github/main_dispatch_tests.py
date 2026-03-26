@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
@@ -30,7 +30,7 @@ def _cli(tmp_path: Path) -> u.Infra.CliArgs:
 
 
 def _pr_args(**overrides: str | bool) -> m.Infra.PrWorkspaceArgs:
-    defaults: Mapping[str, str | bool] = {
+    defaults: MutableMapping[str, str | bool] = {
         "include_root": True,
         "branch": "",
         "checkpoint": True,
@@ -83,7 +83,7 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: Mapping[str, t.StrMapping] = {}
+        captured: MutableMapping[str, t.StrMapping] = {}
 
         def _fake_orchestrate(
             **kw: t.StrMapping,
@@ -108,7 +108,7 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: t.StrMapping = {}
+        captured: MutableMapping[str, str] = {}
 
         def _fake_orchestrate(**kw: str) -> r[m.Infra.PrOrchestrationResult]:
             captured.update(kw)
@@ -128,7 +128,7 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: Mapping[str, bool] = {}
+        captured: MutableMapping[str, bool] = {}
 
         def _fake_orchestrate(**kw: bool) -> r[m.Infra.PrOrchestrationResult]:
             captured.update(kw)
@@ -148,7 +148,7 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: Mapping[str, bool] = {}
+        captured: MutableMapping[str, bool] = {}
 
         def _fake_orchestrate(**kw: bool) -> r[m.Infra.PrOrchestrationResult]:
             captured.update(kw)

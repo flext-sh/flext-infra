@@ -1,4 +1,6 @@
 """Tests for rope semantic analysis utilities (get_module_imports, get_module_classes, etc.)."""
+# pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false
+# pyright: reportArgumentType=false
 
 from __future__ import annotations
 

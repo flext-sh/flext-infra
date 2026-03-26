@@ -15,6 +15,7 @@ try:
         FlextInfraRefactorEngine,
         FlextInfraRefactorViolationAnalyzer,
     )
+    from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -29,7 +30,7 @@ def test_build_impact_map_extracts_rename_entries() -> None:
         ],
         refactored_code="",
     )
-    impact_map = FlextInfraRefactorEngine.build_impact_map([result])
+    impact_map = FlextInfraUtilitiesRefactorCli.build_impact_map([result])
     assert len(impact_map) == 1
     assert impact_map[0]["kind"] == "rename"
     assert impact_map[0]["old"] == "LegacyRemovalRule"
@@ -47,7 +48,7 @@ def test_build_impact_map_extracts_signature_entries() -> None:
         ],
         refactored_code="",
     )
-    impact_map = FlextInfraRefactorEngine.build_impact_map([result])
+    impact_map = FlextInfraUtilitiesRefactorCli.build_impact_map([result])
     kinds = {entry["kind"] for entry in impact_map}
     assert "signature_remove" in kinds
     assert "signature_add" in kinds

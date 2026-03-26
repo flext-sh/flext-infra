@@ -24,7 +24,9 @@ class FlextInfraChangeTrackingTransformer(cst.CSTTransformer):
             self._on_change(message)
 
     @staticmethod
-    def is_pass_statement(statement: cst.BaseStatement) -> bool:
+    def is_pass_statement(
+        statement: cst.BaseStatement | cst.BaseSmallStatement,
+    ) -> bool:
         """Check whether a statement is a lone ``pass``."""
         if not isinstance(statement, cst.SimpleStatementLine):
             return False

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from typing import TypeAlias
 
 import pytest
 from flext_core import r
@@ -20,7 +21,7 @@ from tests import t
 
 from ...models import m
 
-_R = m.Infra.DocsPhaseReport
+_R: TypeAlias = m.Infra.DocsPhaseReport
 
 _run_build = FlextInfraDocsCommand.run_build
 _run_generate = FlextInfraDocsCommand.run_generate

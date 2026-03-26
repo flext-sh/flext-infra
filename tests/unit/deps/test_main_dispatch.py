@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence
 from types import ModuleType, SimpleNamespace
 
 import pytest
@@ -74,7 +74,7 @@ class TestMainModuleImport:
         expected_module: str,
     ) -> None:
         monkeypatch.setattr(sys, "argv", ["prog", subcommand, "--workspace", "."])
-        imported: t.StrSequence = []
+        imported: MutableSequence[str] = []
         fake = _fake_module(0)
 
         def tracking_import(name: str) -> ModuleType:
@@ -113,7 +113,7 @@ class TestMainDelegation:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        received: Sequence[Callable[[t.StrSequence | None], int]] = []
+        received: MutableSequence[Callable[[t.StrSequence | None], int]] = []
 
         def fake_run_cli(fn: Callable[[t.StrSequence | None], int]) -> int:
             received.append(fn)

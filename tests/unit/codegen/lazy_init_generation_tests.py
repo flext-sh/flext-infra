@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -32,7 +32,7 @@ class TestResolveAliases:
 
     def test_resolves_c_alias(self) -> None:
         """Test resolving 'c' alias to Constants class."""
-        lazy_map: Mapping[str, tuple[str, str]] = {
+        lazy_map: MutableMapping[str, tuple[str, str]] = {
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
         _resolve_aliases(lazy_map)
@@ -41,7 +41,7 @@ class TestResolveAliases:
 
     def test_does_not_overwrite_canonical_existing(self) -> None:
         """Test that canonical alias pointing to correct facade is preserved."""
-        lazy_map: Mapping[str, tuple[str, str]] = {
+        lazy_map: MutableMapping[str, tuple[str, str]] = {
             "c": ("pkg.constants", "FlextConstants"),
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
@@ -50,7 +50,7 @@ class TestResolveAliases:
 
     def test_overwrites_non_canonical_existing(self) -> None:
         """Test that non-canonical alias is replaced with canonical facade."""
-        lazy_map: Mapping[str, tuple[str, str]] = {
+        lazy_map: MutableMapping[str, tuple[str, str]] = {
             "c": ("pkg.custom", "CustomConst"),
             "FlextConstants": ("pkg.constants", "FlextConstants"),
         }
@@ -59,7 +59,7 @@ class TestResolveAliases:
 
     def test_resolves_multiple_aliases(self) -> None:
         """Test resolving multiple aliases at once."""
-        lazy_map: Mapping[str, tuple[str, str]] = {
+        lazy_map: MutableMapping[str, tuple[str, str]] = {
             "FlextConstants": ("pkg.constants", "FlextConstants"),
             "FlextModels": ("pkg.models", "FlextModels"),
             "FlextTypes": ("pkg.typings", "FlextTypes"),
@@ -104,7 +104,7 @@ class TestGenerateTypeChecking:
 
     def test_with_long_import_line(self) -> None:
         """Test wraps long import lines."""
-        groups: Mapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
+        groups: MutableMapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
         groups["module"] = [
             ("VeryLongClassName1", "VeryLongClassName1"),
             ("VeryLongClassName2", "VeryLongClassName2"),
@@ -115,7 +115,7 @@ class TestGenerateTypeChecking:
 
     def test_with_multiple_modules_spacing(self) -> None:
         """Test blank lines between different top-level package groups."""
-        groups: Mapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
+        groups: MutableMapping[str, Sequence[tuple[str, str]]] = defaultdict(list)
         groups["alpha_pkg.module"] = [("Test1", "Test1")]
         groups["beta_pkg.module"] = [("Test2", "Test2")]
         lines = u.Infra.generate_type_checking(groups)

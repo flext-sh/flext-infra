@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import types
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
@@ -88,7 +88,7 @@ class TestFlextInfraRuntimeDevDependencyDetectorRunReport:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        call_paths: t.StrSequence = []
+        call_paths: MutableSequence[str] = []
 
         def _write_json(
             path: Path,

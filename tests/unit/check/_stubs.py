@@ -122,10 +122,13 @@ def make_project(
     gates: MutableMapping[str, m.Infra.GateExecution] | None = None,
 ) -> m.Infra.ProjectResult:
     """Create a _ProjectResult with defaults."""
-    return m.Infra.ProjectResult(
-        project=name,
-        gates=gates or {"lint": make_gate_exec()},
+    resolved_gates: MutableMapping[str, m.Infra.GateExecution] = (
+        gates if gates is not None else {"lint": make_gate_exec()}
     )
+    return m.Infra.ProjectResult.model_validate({
+        "project": name,
+        "gates": resolved_gates,
+    })
 
 
 __all__ = [

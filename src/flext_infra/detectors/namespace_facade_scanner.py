@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t
+from flext_infra._utilities.rope import FlextInfraUtilitiesRope
 
 
 class FlextInfraNamespaceFacadeScanner:
@@ -26,7 +27,6 @@ class FlextInfraNamespaceFacadeScanner:
     ) -> Sequence[m.Infra.FacadeStatus]:
         """Return FacadeStatus for each family (c, t, p, m, u) in a project."""
         del parse_failures
-        from flext_infra import u
 
         stem = cls.project_class_stem(project_name=project_name)
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
@@ -47,10 +47,13 @@ class FlextInfraNamespaceFacadeScanner:
             pattern = c.Infra.FAMILY_FILES[family]
             found_class, found_file, symbols = "", "", 0
             for file_path in src_dir.rglob(pattern):
-                res = u.Infra.get_resource_from_path(rope_project, file_path)
+                res = FlextInfraUtilitiesRope.get_resource_from_path(
+                    rope_project,
+                    file_path,
+                )
                 if res is None:
                     continue
-                classes = u.Infra.get_module_classes(rope_project, res)
+                classes = FlextInfraUtilitiesRope.get_module_classes(rope_project, res)
                 match = next(
                     (n for n in classes if n == expected or n.endswith(suffix)),
                     None,
@@ -58,7 +61,11 @@ class FlextInfraNamespaceFacadeScanner:
                 if match is not None:
                     found_class = match
                     found_file = str(file_path)
-                    symbols = u.Infra.get_class_symbol_count(rope_project, res, match)
+                    symbols = FlextInfraUtilitiesRope.get_class_symbol_count(
+                        rope_project,
+                        res,
+                        match,
+                    )
                     break
             results.append(
                 m.Infra.FacadeStatus.create(

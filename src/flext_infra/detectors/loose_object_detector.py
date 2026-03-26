@@ -3,6 +3,8 @@
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
+# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false
+# pyright: reportUnknownArgumentType=false
 
 from __future__ import annotations
 
@@ -79,7 +81,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
-        source = res.read()
+        source: str = res.read()
         class_stem = FlextInfraNamespaceFacadeScanner.project_class_stem(
             project_name=project_name,
         )

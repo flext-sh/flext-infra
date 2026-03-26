@@ -6,6 +6,9 @@ that return ChangeSet objects. Orchestrators decide whether to apply.
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
+# pyright: reportMissingTypeStubs=false, reportUnknownVariableType=false
+# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
+# pyright: reportUnnecessaryComparison=false, reportUnnecessaryIsInstance=false
 
 from __future__ import annotations
 
@@ -237,6 +240,58 @@ class FlextInfraUtilitiesRope:
             return len(obj.get_attributes())
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return 0
+
+    @staticmethod
+    def get_class_bases(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        class_name: str,
+    ) -> Sequence[str]:
+        """Return base class names for a given class in a module."""
+        infos = FlextInfraUtilitiesRope.get_class_info(rope_project, resource)
+        for info in infos:
+            if info.name == class_name:
+                return list(info.bases)
+        return []
+
+    @staticmethod
+    def get_class_methods(
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        class_name: str,
+        *,
+        include_private: bool = False,
+    ) -> Mapping[str, str]:
+        """Return {method_name: kind} for methods of a class.
+
+        kind is one of 'staticmethod', 'classmethod', or 'method'.
+        By default excludes private methods (starting with _).
+        """
+        result: MutableMapping[str, str] = {}
+        try:
+            pycore = FlextInfraUtilitiesRope._get_pycore(rope_project)
+            pymodule = pycore.resource_to_pyobject(resource)
+            attrs = pymodule.get_attributes()
+            if class_name not in attrs:
+                return {}
+            obj = attrs[class_name].get_object()
+            if not isinstance(obj, (PyClass, AbstractClass)):
+                return {}
+            for name, pyname in obj.get_attributes().items():
+                if not include_private and name.startswith("_"):
+                    continue
+                child = pyname.get_object()
+                kind = "method"
+                if hasattr(child, "get_kind"):
+                    raw_kind = child.get_kind()
+                    if raw_kind == "staticmethod":
+                        kind = "staticmethod"
+                    elif raw_kind == "classmethod":
+                        kind = "classmethod"
+                result[name] = kind
+        except (RefactoringError, ResourceNotFoundError, AttributeError):
+            pass
+        return result
 
     # ── Refactoring operations (inspired by pylsp-rope) ────────────
 

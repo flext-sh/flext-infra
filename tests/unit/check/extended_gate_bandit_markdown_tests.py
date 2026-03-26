@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSequence
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -143,7 +143,7 @@ class TestWorkspaceCheckerRunMarkdown:
         checker, proj_dir = _create_checker_project(tmp_path)
         (proj_dir / "README.md").write_text("# Test")
         (proj_dir / ".markdownlint.json").write_text("{}")
-        captured_args: Sequence[t.StrSequence] = []
+        captured_args: MutableSequence[t.StrSequence] = []
 
         def _fake_run(
             _self: FlextInfraMarkdownGate,

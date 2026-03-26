@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import types
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
@@ -91,7 +91,7 @@ def _setup_typings_detector(
 ]:
     project_path = tmp_path / "proj-a"
     (project_path / "src").mkdir(parents=True)
-    captured_commands: Sequence[Sequence[str | int | None]] = []
+    captured_commands: MutableSequence[Sequence[str | int | None]] = []
 
     def _run_raw(
         cmd: Sequence[str | int | None],

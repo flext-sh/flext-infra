@@ -48,9 +48,7 @@ class TestCreateBranches:
         FakeUtilsNamespace.Infra.reset()
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
 
-        @classmethod
         def _resolve_empty(
-            cls: type[object],
             ws: Path,
             names: t.StrSequence,
         ) -> r[Sequence[SimpleNamespace]]:
@@ -84,9 +82,7 @@ class TestCreateBranches:
         monkeypatch.setattr(_orch_mod, "u", FakeUtilsNamespace)
         mock_project = SimpleNamespace(name="proj1", path=workspace_root / "proj1")
 
-        @classmethod
         def _resolve_one(
-            cls: type[object],
             ws: Path,
             names: t.StrSequence,
         ) -> r[Sequence[SimpleNamespace]]:

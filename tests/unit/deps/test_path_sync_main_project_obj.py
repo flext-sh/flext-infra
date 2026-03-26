@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# pyright: reportUnknownArgumentType=false, reportUnknownLambdaType=false
 import importlib
 import sys
 from collections.abc import Sequence
