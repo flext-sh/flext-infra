@@ -10,7 +10,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
+from flext_infra import FlextInfraScanFileMixin, c, m, p, t
 
 _FUTURE_ANNOTATIONS_RE = c.Infra.FUTURE_ANNOTATIONS_RE
 _ONLY_DOCSTRING_RE = c.Infra.ONLY_DOCSTRING_RE

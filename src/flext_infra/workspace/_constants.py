@@ -47,12 +47,6 @@ class FlextInfraWorkspaceConstants:
         "scripts/",
         "/scripts/",
     })
-    GITIGNORE_REQUIRED_PATTERNS: Final[t.StrSequence] = (
-        ".reports/",
-        ".venv/",
-        "__pycache__/",
-        "base.mk",
-    )
     REQUIRED_GITIGNORE_ENTRIES: Final[t.StrSequence] = [
         ".reports/",
         ".venv/",

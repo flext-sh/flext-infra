@@ -369,17 +369,8 @@ class FlextInfraDependencyDetectionService:
                 for item in loaded_result.value:
                     if not isinstance(item, dict):
                         continue
-                    converted_issue: MutableMapping[str, t.Infra.InfraValue] = {}
-                    valid = True
-                    for key, value in item.items():
-                        converted = FlextInfraDependencyDetectionService.to_infra_value(
-                            value,
-                        )
-                        if converted is None and value is not None:
-                            valid = False
-                            break
-                        converted_issue[str(key)] = converted
-                    if valid:
+                    converted_issue = self._to_toml_config(item)
+                    if len(converted_issue) == len(item):
                         normalized_issues.append(converted_issue)
                 issues = normalized_issues
             if json_output_path is None:

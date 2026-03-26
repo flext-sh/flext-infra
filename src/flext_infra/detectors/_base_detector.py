@@ -72,8 +72,7 @@ class FlextInfraScanFileMixin:
         """
         if self._MESSAGE_TEMPLATE:
             return self._MESSAGE_TEMPLATE.format(**violation.model_dump())
-        msg = f"[{self._rule_id}] violation"
-        return msg
+        return f"[{self._rule_id}] violation"
 
     def _collect_violations(self, file_path: Path) -> Sequence[BaseModel]:
         """Collect violations for the given file.

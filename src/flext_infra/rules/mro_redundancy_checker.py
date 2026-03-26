@@ -2,25 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
-
 import libcst as cst
 
-from flext_infra import FlextInfraRefactorMRORemover, FlextInfraRefactorRule, t
+from flext_infra import FlextInfraRefactorMRORemover
+from flext_infra.refactor._base_rule import FlextInfraGenericTransformerRule
 
 
-class FlextInfraRefactorMRORedundancyChecker(FlextInfraRefactorRule):
+class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
     """Detect and fix nested classes inheriting from their parent namespace."""
 
-    @override
-    def apply(
-        self,
-        tree: cst.Module,
-        _file_path: Path | None = None,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        """Apply MRO redeclaration cleanup transformer."""
-        return self._apply_transformer(FlextInfraRefactorMRORemover(), tree)
+    TRANSFORMER_CLASS: type[cst.CSTTransformer] = FlextInfraRefactorMRORemover
 
 
 __all__ = ["FlextInfraRefactorMRORedundancyChecker"]

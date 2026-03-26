@@ -144,28 +144,20 @@ class FlextInfraDocAuditor:
             r with list of AuditReport objects.
 
         """
-        scopes_result = u.Infra.build_scopes(
-            workspace_root=workspace_root,
+        default_budget, by_scope_budget = self.load_audit_budgets(workspace_root)
+        return u.Infra.run_scoped(
+            workspace_root,
             project=project,
             projects=projects,
             output_dir=output_dir,
-        )
-        if scopes_result.is_failure:
-            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
-                scopes_result.error or "scope error",
-            )
-        default_budget, by_scope_budget = self.load_audit_budgets(workspace_root)
-        reports: MutableSequence[m.Infra.DocsPhaseReport] = []
-        for scope in scopes_result.value:
-            report = self.audit_scope(
+            handler=lambda scope: self.audit_scope(
                 scope,
                 check=check,
                 strict=strict,
                 max_issues_default=default_budget,
                 max_issues_by_scope=by_scope_budget,
-            )
-            reports.append(report)
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
+            ),
+        )
 
     def audit_scope(
         self,

@@ -67,21 +67,13 @@ class FlextInfraDocFixer:
             r with list of FixReport objects.
 
         """
-        scopes_result = u.Infra.build_scopes(
-            workspace_root=workspace_root,
+        return u.Infra.run_scoped(
+            workspace_root,
             project=project,
             projects=projects,
             output_dir=output_dir,
+            handler=lambda scope: self._fix_scope(scope, apply=apply),
         )
-        if scopes_result.is_failure:
-            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
-                scopes_result.error or "scope error",
-            )
-        reports: MutableSequence[m.Infra.DocsPhaseReport] = []
-        for scope in scopes_result.value:
-            report = self._fix_scope(scope, apply=apply)
-            reports.append(report)
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
 
     def _fix_scope(
         self,

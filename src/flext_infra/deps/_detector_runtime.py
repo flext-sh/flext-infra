@@ -11,6 +11,10 @@ from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, m, p, t, u
 
+_STR_INFRA_MAP_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
+    Mapping[str, t.Infra.InfraValue],
+)
+
 
 class FlextInfraDependencyDetectorRuntime:
     """Runtime executor for dependency detection pipeline."""

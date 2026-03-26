@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import override
 
 import libcst as cst
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_infra import (
     FlextInfraRefactorAliasRemover,
@@ -17,7 +17,7 @@ from flext_infra import (
     c,
     t,
 )
-from flext_infra.refactor._base_rule import INFRA_MAPPING_ADAPTER
+from flext_infra.refactor._base_rule import INFRA_MAPPING_ADAPTER, INFRA_SEQ_ADAPTER
 
 
 class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
@@ -106,9 +106,9 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         if not isinstance(value, (list, tuple, set)):
             return []
         try:
-            items: Sequence[t.Infra.InfraValue] = TypeAdapter(
-                Sequence[t.Infra.InfraValue],
-            ).validate_python(value)
+            items: Sequence[t.Infra.InfraValue] = (
+                INFRA_SEQ_ADAPTER.validate_python(value)
+            )
         except ValidationError:
             return []
         output: t.StrSequence = [item for item in items if isinstance(item, str)]

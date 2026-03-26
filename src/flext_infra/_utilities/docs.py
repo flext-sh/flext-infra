@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -158,6 +158,30 @@ class FlextInfraUtilitiesDocs:
             lines.insert(insert_at + 2, "")
             return ("\n".join(lines) + ("\n" if content.endswith("\n") else ""), 1)
         return (toc + "\n\n" + content, 1)
+
+    @staticmethod
+    def run_scoped(
+        workspace_root: Path,
+        *,
+        project: str | None,
+        projects: str | None,
+        output_dir: str,
+        handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
+    ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
+        """Build scopes and run handler on each, collecting reports."""
+        scopes_result = FlextInfraUtilitiesDocs.build_scopes(
+            workspace_root=workspace_root,
+            project=project,
+            projects=projects,
+            output_dir=output_dir,
+        )
+        if scopes_result.is_failure:
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
+                scopes_result.error or "scope error",
+            )
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(
+            [handler(scope) for scope in scopes_result.value],
+        )
 
 
 __all__ = ["FlextInfraUtilitiesDocs"]

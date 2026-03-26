@@ -76,21 +76,15 @@ class FlextInfraDocValidator:
             r with list of ValidateReport objects.
 
         """
-        scopes_result: r[Sequence[m.Infra.DocScope]] = u.Infra.build_scopes(
-            workspace_root=workspace_root,
+        return u.Infra.run_scoped(
+            workspace_root,
             project=project,
             projects=projects,
             output_dir=output_dir,
+            handler=lambda scope: self._validate_scope(
+                scope, check=check, apply_mode=apply,
+            ),
         )
-        if scopes_result.is_failure:
-            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
-                scopes_result.error or "scope error",
-            )
-        reports: MutableSequence[m.Infra.DocsPhaseReport] = []
-        for scope in scopes_result.value:
-            report = self._validate_scope(scope, check=check, apply_mode=apply)
-            reports.append(report)
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
 
     def _run_adr_skill_check(
         self, workspace_root: Path

@@ -243,7 +243,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         existing_patterns = {line.strip() for line in filtered if line.strip()}
         missing = [
             pattern
-            for pattern in c.Infra.GITIGNORE_REQUIRED_PATTERNS
+            for pattern in c.Infra.REQUIRED_GITIGNORE_ENTRIES
             if pattern not in existing_patterns
         ]
         if not missing and len(filtered) == len(existing_lines):

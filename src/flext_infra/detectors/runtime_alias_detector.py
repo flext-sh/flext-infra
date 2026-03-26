@@ -10,7 +10,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
+from flext_infra import FlextInfraScanFileMixin, c, m, p, t
 
 
 class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -53,12 +53,12 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
-        res = u.Infra.get_resource_from_path(rope_project, file_path)
-        if res is None:
+        source = cls._get_source_or_empty(rope_project, file_path)
+        if source is None:
             return []
         matches = [
             hit.group(2)
-            for hit in c.Infra.FACADE_ALIAS_RE.finditer(res.read())
+            for hit in c.Infra.FACADE_ALIAS_RE.finditer(source)
             if hit.group(1) == family
         ]
         if not matches:

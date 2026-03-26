@@ -79,25 +79,17 @@ class FlextInfraDocGenerator:
             r with list of GenerateReport objects.
 
         """
-        scopes_result = u.Infra.build_scopes(
-            workspace_root=workspace_root,
+        return u.Infra.run_scoped(
+            workspace_root,
             project=project,
             projects=projects,
             output_dir=output_dir,
-        )
-        if scopes_result.is_failure:
-            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
-                scopes_result.error or "scope error",
-            )
-        reports: MutableSequence[m.Infra.DocsPhaseReport] = []
-        for scope in scopes_result.value:
-            report = self._generate_scope(
+            handler=lambda scope: self._generate_scope(
                 scope,
                 apply=apply,
                 workspace_root=workspace_root,
-            )
-            reports.append(report)
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok(reports)
+            ),
+        )
 
     def _generate_project_guides(
         self,
