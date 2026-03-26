@@ -17,14 +17,8 @@ if TYPE_CHECKING:
     from flext_infra._constants.rope import FlextInfraConstantsRope
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraConstantsBase": [
-        "flext_infra._constants.base",
-        "FlextInfraConstantsBase",
-    ],
-    "FlextInfraConstantsRope": [
-        "flext_infra._constants.rope",
-        "FlextInfraConstantsRope",
-    ],
+    "FlextInfraConstantsBase": ["flext_infra._constants.base", "FlextInfraConstantsBase"],
+    "FlextInfraConstantsRope": ["flext_infra._constants.rope", "FlextInfraConstantsRope"],
 }
 
 __all__ = [
