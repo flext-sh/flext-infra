@@ -21,17 +21,6 @@ class FlextInfraUtilitiesCodegenTransforms:
     """Utility helpers for AST-based code transformations."""
 
     @staticmethod
-    def _resolve_base_class_import(base_class: str) -> str:
-        """Resolve the import statement for a base class name.
-
-        Maps base class names to their canonical import paths.
-        FlextTests* classes come from flext_tests, others from flext_core.
-        """
-        if base_class.startswith("FlextTests"):
-            return f"from flext_tests import {base_class}"
-        return f"from flext_core import {base_class}"
-
-    @staticmethod
     def find_insert_position(tree: ast.Module) -> int:
         """Find insertion point after module docstring/imports."""
         last_import_idx = 0
@@ -108,9 +97,8 @@ class FlextInfraUtilitiesCodegenTransforms:
         docstring: str,
     ) -> str:
         """Generate a minimal base module file with correct imports."""
-        import_line = FlextInfraUtilitiesCodegenTransforms._resolve_base_class_import(
-            base_class,
-        )
+        pkg = "flext_tests" if base_class.startswith("FlextTests") else "flext_core"
+        import_line = f"from {pkg} import {base_class}"
         return f'"""Module skeleton for {class_name}.\n\n{docstring}\n\nCopyright (c) 2025 FLEXT Team. All rights reserved.\nSPDX-License-Identifier: MIT\n"""\n\nfrom __future__ import annotations\n\n{import_line}\n\n\nclass {class_name}({base_class}):\n    """{docstring}"""\n'
 
     @staticmethod

@@ -33,13 +33,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         check_dirs = self._existing_check_dirs(project_dir)
         mypy_dirs = self._dirs_with_py(project_dir, check_dirs)
         if not mypy_dirs:
-            return self._build_gate_result(
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
+            return self._skip_result(project_dir, started)
         proj_py = project_dir / c.Infra.Files.PYPROJECT_FILENAME
         cfg = (
             proj_py
@@ -101,7 +95,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                 continue
         return self._build_gate_result(
             project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
+            passed=result.exit_code == 0,
             issues=issues,
             duration=time.monotonic() - started,
             raw_output=result.stderr,

@@ -253,7 +253,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     ) -> t.Infra.LazyInitWriteResult:
         """Write the generated ``__init__.py`` and run ruff fix."""
         try:
-            generated = self._generate_file(
+            generated = FlextInfraCodegenGeneration.generate_file(
                 docstring,
                 exports,
                 lazy_map,
@@ -606,29 +606,6 @@ class FlextInfraCodegenLazyInit(s[int]):
                 if name.startswith("Flext") and name.endswith("Constants"):
                     return node.module.split(".")[0]
         return None
-
-    # ---------------------------------------------------------------------------
-    # Code generation
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def _generate_file(
-        docstring_source: str,
-        exports: t.StrSequence,
-        filtered: t.Infra.LazyImportMap,
-        inline_constants: t.StrMapping,
-        current_pkg: str,
-        eager_typevar_names: frozenset[str] = frozenset(),
-    ) -> str:
-        """Generate the complete ``__init__.py`` content."""
-        return FlextInfraCodegenGeneration.generate_file(
-            docstring_source,
-            exports,
-            filtered,
-            inline_constants,
-            current_pkg,
-            eager_typevar_names,
-        )
 
     # ---------------------------------------------------------------------------
     # Post-generation cleanup

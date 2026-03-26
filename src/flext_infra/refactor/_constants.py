@@ -60,8 +60,6 @@ class FlextInfraRefactorConstants:
         "remove_unused_models",
     })
     TIER0_FIX_ACTIONS: ClassVar[frozenset[str]] = frozenset({"fix_tier0_imports"})
-    "Fix actions for Tier 0 import analyzer/fixer rules."
-    "Fix actions for typing census auto-fix rules."
     DUNDER_OBJECT_ALLOWLIST: ClassVar[frozenset[str]] = frozenset({
         "__eq__",
         "__ne__",
@@ -312,16 +310,11 @@ class FlextInfraRefactorConstants:
         re.MULTILINE,
     )
     "Matches top-level UPPER_CASE assignments for loose constant detection."
-    TYPE_ALIAS_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"^type\s+(\w+)\s*=",
-        re.MULTILINE,
-    )
-    "Matches PEP 695 type alias definitions."
     PEP695_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^type\s+(\w+)\s*=",
         re.MULTILINE,
     )
-    "Matches PEP 695 type alias syntax for typing alias detection."
+    "Matches PEP 695 type alias definitions."
     TYPEALIAS_ANNOT_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"^(\w+)\s*:\s*(?:\w+\.)*TypeAlias\s*=",
         re.MULTILINE,
@@ -354,12 +347,6 @@ class FlextInfraRefactorConstants:
         f"{suffix.lower()}.py": (alias, suffix)
         for alias, suffix in FAMILY_SUFFIXES.items()
     }
-    NAMESPACE_CANONICAL_PROTOCOL_FILES: ClassVar[frozenset[str]] = (
-        MRO_PROTOCOLS_FILE_NAMES
-    )
-    NAMESPACE_CANONICAL_PROTOCOL_DIR: ClassVar[str] = MRO_PROTOCOLS_DIRECTORY
-    NAMESPACE_CANONICAL_TYPINGS_FILES: ClassVar[frozenset[str]] = MRO_TYPINGS_FILE_NAMES
-    NAMESPACE_CANONICAL_TYPINGS_DIR: ClassVar[str] = MRO_TYPINGS_DIRECTORY
 
     class MethodCategory:
         MAGIC: ClassVar[str] = "magic"

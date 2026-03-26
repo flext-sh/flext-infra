@@ -167,18 +167,13 @@ class FlextInfraCodegenCensus(s[bool]):
         for project in discovered:
             if project.name in c.Infra.EXCLUDED_PROJECTS:
                 continue
-            report = self._census_project(project, None)
+            report = self._census_project(project)
             reports.append(report)
         return reports
 
     def _census_project(
         self,
         project: p.Infra.ProjectInfo,
-        class_analysis: Mapping[
-            str,
-            str | Mapping[str, int | Mapping[str, int | Mapping[str, int]]],
-        ]
-        | None = None,
     ) -> m.Infra.CensusReport:
         """Run census on a single project."""
         validator = FlextInfraNamespaceValidator()
@@ -238,57 +233,6 @@ class FlextInfraCodegenCensus(s[bool]):
                     fixable=False,
                 ),
             )
-
-        # Census class objects (generic - works for any class)
-        if class_analysis and project.name == "flexcore":
-            try:
-                class_name_str = str(class_analysis.get("class_name", "Unknown"))
-                census_data_obj_raw_val = class_analysis.get("census_data")
-                census_data_obj: Mapping[
-                    str,
-                    int | Mapping[str, int | Mapping[str, int]],
-                ] = {}
-                if isinstance(census_data_obj_raw_val, dict):
-                    census_data_obj = census_data_obj_raw_val
-
-                total_objs_val = census_data_obj.get("total_objects", 0)
-                total_objs = (
-                    int(total_objs_val) if isinstance(total_objs_val, int) else 0
-                )
-                total_used_val = census_data_obj.get("total_used", 0)
-                total_used = (
-                    int(total_used_val) if isinstance(total_used_val, int) else 0
-                )
-                total_unused_val = census_data_obj.get("total_unused", 0)
-                total_unused = (
-                    int(total_unused_val) if isinstance(total_unused_val, int) else 0
-                )
-
-                # Build type breakdown
-                type_breakdown = census_data_obj.get("by_type", {})
-                type_stats: MutableSequence[str] = []
-                if isinstance(type_breakdown, dict):
-                    for type_name in sorted(type_breakdown.keys())[:3]:
-                        type_info_val = type_breakdown[type_name]
-                        if isinstance(type_info_val, dict):
-                            cnt: int = type_info_val.get("total", 0)
-                            type_stats.append(f"{type_name}:{cnt}")
-                type_detail = f" [{', '.join(type_stats)}]" if type_stats else ""
-
-                violations.append(
-                    m.Infra.CensusViolation(
-                        module=f"census:{class_name_str}",
-                        rule="CENSUS",
-                        line=0,
-                        message=(
-                            f"{class_name_str}: {total_objs} objects (w/ MRO), "
-                            f"{total_used} used, {total_unused} unused{type_detail}"
-                        ),
-                        fixable=False,
-                    ),
-                )
-            except (ValueError, TypeError, AttributeError):
-                pass
 
         return m.Infra.CensusReport(
             project=project.name,

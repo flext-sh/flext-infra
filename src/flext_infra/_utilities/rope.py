@@ -17,19 +17,14 @@ from typing import cast
 from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 from rope.base.project import Project as RopeProject
 from rope.base.pynames import DefinedName, ImportedName
-from rope.base.pyobjects import AbstractClass, AbstractFunction
-from rope.base.pyobjectsdef import PyClass, PyFunction
+from rope.base.pyobjects import AbstractClass
+from rope.base.pyobjectsdef import PyClass
 from rope.base.resources import File as RopeFile
 from rope.contrib.findit import (
     Location as RopeLocation,
     find_occurrences as _rope_find_occurrences,
 )
-from rope.refactor.extract import ExtractMethod
-from rope.refactor.importutils import ImportOrganizer
-from rope.refactor.inline import create_inline as _rope_create_inline
-from rope.refactor.move import MoveGlobal
 from rope.refactor.rename import Rename
-from rope.refactor.restructure import Restructure
 
 from flext_infra import c, m, p, t
 
@@ -49,7 +44,7 @@ class FlextInfraUtilitiesRope:
     ) -> t.Infra.RopeProject:
         """Create a rope Project over workspace_root with no disk artifacts.
 
-        ropefolder=None prevents .ropeproject creation.
+        ropefolder="" prevents .ropeproject creation.
         Orchestrator controls project_prefix, src_dir, and ignored_resources.
         """
         source_folders = sorted(
@@ -59,7 +54,7 @@ class FlextInfraUtilitiesRope:
         )
         return RopeProject(
             str(workspace_root),
-            ropefolder=None,
+            ropefolder="",
             save_objectdb=False,
             ignored_resources=list(ignored_resources),
             source_folders=source_folders,
@@ -177,94 +172,6 @@ class FlextInfraUtilitiesRope:
         return classes
 
     @staticmethod
-    def get_module_class_lines(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-    ) -> Mapping[str, int]:
-        """Return {class_name: line_number} for all classes defined in a module.
-
-        Replaces LibCST MetadataWrapper + PositionProvider pattern for
-        collecting class names with their source locations.
-        """
-        result: MutableMapping[str, int] = {}
-        try:
-            pycore = FlextInfraUtilitiesRope._get_pycore(rope_project)
-            pymodule = pycore.resource_to_pyobject(resource)
-            for name, pyname in pymodule.get_attributes().items():
-                if not isinstance(pyname, DefinedName):
-                    continue
-                obj = pyname.get_object()
-                if not isinstance(obj, AbstractClass):
-                    continue
-                _resource, line = pyname.get_definition_location()
-                result[name] = line
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
-            pass
-        return result
-
-    @staticmethod
-    def get_class_bases(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        class_name: str,
-    ) -> Sequence[str]:
-        """Return base class names for a class defined in this module.
-
-        Replaces manual ast.ClassDef base inspection and ast.unparse() with
-        rope's semantic superclass resolution. Follows imports to resolve
-        qualified and aliased base names.
-        """
-        try:
-            pycore = FlextInfraUtilitiesRope._get_pycore(rope_project)
-            pymodule = pycore.resource_to_pyobject(resource)
-            attrs = pymodule.get_attributes()
-            if class_name not in attrs:
-                return []
-            obj = attrs[class_name].get_object()
-            if not isinstance(obj, (PyClass, AbstractClass)):
-                return []
-            return [base.get_name() for base in obj.get_superclasses()]
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
-            return []
-
-    @staticmethod
-    def get_class_methods(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        class_name: str,
-        *,
-        include_private: bool = False,
-    ) -> Mapping[str, str]:
-        """Return {method_name: kind} for methods in a class.
-
-        kind is one of 'staticmethod', 'classmethod', 'method'.
-        Replaces manual ast.FunctionDef + decorator inspection with rope's
-        PyFunction.get_kind() which handles inherited and decorated methods.
-        """
-        result: MutableMapping[str, str] = {}
-        try:
-            pycore = FlextInfraUtilitiesRope._get_pycore(rope_project)
-            pymodule = pycore.resource_to_pyobject(resource)
-            attrs = pymodule.get_attributes()
-            if class_name not in attrs:
-                return {}
-            obj = attrs[class_name].get_object()
-            if not isinstance(obj, (PyClass, AbstractClass)):
-                return {}
-            for name, member_pyname in obj.get_attributes().items():
-                if not include_private and name.startswith("_"):
-                    continue
-                member_obj = member_pyname.get_object()
-                if isinstance(member_obj, (PyFunction, AbstractFunction)):
-                    kind = "method"
-                    if isinstance(member_obj, PyFunction):
-                        kind = member_obj.get_kind()
-                    result[name] = kind
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
-            pass
-        return result
-
-    @staticmethod
     def find_facade_alias(
         resource: t.Infra.RopeResource,
         family: str,
@@ -379,136 +286,6 @@ class FlextInfraUtilitiesRope:
         except (RefactoringError, ResourceNotFoundError, AttributeError):
             return []
 
-    @staticmethod
-    def move_global(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        offset: int,
-        dest_module: str,
-        *,
-        apply: bool,
-    ) -> Sequence[str]:
-        """Move a top-level class/function/variable to another module.
-
-        Updates all imports and references workspace-wide.
-        Returns list of changed file paths.
-        """
-        try:
-            refactor = MoveGlobal(rope_project, resource, offset)
-            changes = refactor.get_changes(dest_module)
-        except RefactoringError:
-            return []
-        if apply:
-            rope_project.do(changes)
-        return FlextInfraUtilitiesRope._collect_changed_paths(changes.changes)
-
-    @staticmethod
-    def organize_imports(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        *,
-        apply: bool,
-    ) -> str | None:
-        """Sort and deduplicate imports in a module.
-
-        Returns new source if changes were made, None otherwise.
-        """
-        try:
-            organizer = ImportOrganizer(rope_project)
-            changes = organizer.organize_imports(resource)
-            if changes is None:
-                return None
-            if apply:
-                rope_project.do(changes)
-            for change in changes.changes:
-                if change.resource == resource:
-                    return change.new_contents  # type: ignore[union-attr]
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
-            pass
-        return None
-
-    @staticmethod
-    def restructure(
-        rope_project: t.Infra.RopeProject,
-        pattern: str,
-        goal: str,
-        *,
-        args: Mapping[str, str] | None = None,
-        imports: Sequence[str] | None = None,
-        apply: bool,
-    ) -> Sequence[str]:
-        """Pattern-based find-replace across the project.
-
-        Uses rope's wildcard pattern matching with optional type constraints.
-        Returns list of changed file paths.
-        """
-        try:
-            refactor = Restructure(
-                rope_project,
-                pattern,
-                goal,
-                args=dict(args) if args else None,
-                imports=list(imports) if imports else None,
-            )
-            changes = refactor.get_changes()
-        except RefactoringError:
-            return []
-        if apply:
-            rope_project.do(changes)
-        return FlextInfraUtilitiesRope._collect_changed_paths(changes.changes)
-
-    @staticmethod
-    def extract_method(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        start_offset: int,
-        end_offset: int,
-        extracted_name: str,
-        *,
-        similar: bool = False,
-        global_: bool = False,
-        apply: bool,
-    ) -> str | None:
-        """Extract a code range into a new method.
-
-        Returns new source if successful, None otherwise.
-        """
-        try:
-            refactor = ExtractMethod(rope_project, resource, start_offset, end_offset)
-            changes = refactor.get_changes(
-                extracted_name, similar=similar, global_=global_
-            )
-        except RefactoringError:
-            return None
-        if apply:
-            rope_project.do(changes)
-        for change in changes.changes:
-            if change.resource == resource:
-                return change.new_contents  # type: ignore[union-attr]
-        return None
-
-    @staticmethod
-    def inline_symbol(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        offset: int,
-        *,
-        remove: bool = True,
-        apply: bool,
-    ) -> Sequence[str]:
-        """Inline a variable, method, or parameter at offset.
-
-        Returns list of changed file paths.
-        """
-        try:
-            refactor = _rope_create_inline(rope_project, resource, offset)
-            changes = refactor.get_changes(remove=remove)
-        except RefactoringError:
-            return []
-        if apply:
-            rope_project.do(changes)
-        return FlextInfraUtilitiesRope._collect_changed_paths(changes.changes)
-
     # ── Stubs for engine hook integration ──────────────────────────
 
     @staticmethod
@@ -529,13 +306,6 @@ class FlextInfraUtilitiesRope:
     def _get_pycore(rope_project: t.Infra.RopeProject) -> p.Infra.RopePyCoreLike:
         """Extract PyCore via protocol — cast needed at rope boundary (no stubs)."""
         return cast("p.Infra.RopePyCoreLike", rope_project.pycore)
-
-    @staticmethod
-    def _collect_changed_paths(
-        changes: Sequence[p.Infra.RopeChangeLike],
-    ) -> MutableSequence[str]:
-        """Extract file paths from a rope ChangeSet.changes list."""
-        return [change.resource.path for change in changes]
 
 
 __all__ = ["FlextInfraUtilitiesRope"]

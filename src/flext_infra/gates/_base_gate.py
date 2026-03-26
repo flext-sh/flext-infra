@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
@@ -155,45 +156,38 @@ class FlextInfraGate(ABC):
     def _as_str(value: t.Infra.InfraValue, default: str = "") -> str:
         return value if isinstance(value, str) else default
 
-    @staticmethod
-    def _result_exit_code(result: m.Infra.CommandOutput) -> int:
-        """Extract exit code from command output."""
-        return result.exit_code
+    def _skip_result(
+        self,
+        project_dir: Path,
+        started: float,
+    ) -> m.Infra.GateExecution:
+        return self._build_gate_result(
+            project=project_dir.name,
+            passed=True,
+            issues=[],
+            duration=time.monotonic() - started,
+            raw_output="",
+        )
 
     @staticmethod
-    def _nested_mapping(
-        data: Mapping[str, t.Infra.InfraValue],
-        *keys: str,
-    ) -> Mapping[str, t.Infra.InfraValue]:
-        current: t.Infra.InfraValue = data
-        for key in keys:
-            if not isinstance(current, Mapping):
-                return {}
-            typed_current: Mapping[str, t.Infra.InfraValue] = (
-                FlextInfraGate._MAPPING_ADAPTER.validate_python(current)
-            )
-            if key not in typed_current:
-                return {}
-            child: t.Infra.InfraValue = typed_current[key]
-            if child is None:
-                return {}
-            current = child
-        if not isinstance(current, Mapping):
-            return {}
-        return FlextInfraGate._MAPPING_ADAPTER.validate_python(current)
-
-    @classmethod
     def _nested_int(
-        cls,
         data: Mapping[str, t.Infra.InfraValue],
         *keys: str,
         default: int = 0,
     ) -> int:
-        target = cls._nested_mapping(data, *keys[:-1])
-        raw: t.Infra.InfraValue = target.get(keys[-1])
+        current: t.Infra.InfraValue = data
+        for key in keys[:-1]:
+            if not isinstance(current, Mapping):
+                return default
+            current = current.get(key)
+            if current is None:
+                return default
+        if not isinstance(current, Mapping):
+            return default
+        raw: t.Infra.InfraValue = current.get(keys[-1])
         if raw is None:
             return default
-        return cls._as_int(raw, default)
+        return FlextInfraGate._as_int(raw, default)
 
 
 __all__ = ["FlextInfraGate"]

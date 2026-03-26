@@ -8,15 +8,15 @@ from typing import override
 import libcst as cst
 
 from flext_infra import t, u
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
-class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
+class FlextInfraRefactorLazyImportFixer(FlextInfraChangeTrackingTransformer):
     """Hoist function-local imports to module top while preserving ordering."""
 
     def __init__(self, on_change: t.Infra.ChangeCallback = None) -> None:
         """Initialize lazy import collector and emitted change sink."""
-        self._on_change = on_change
-        self.changes: MutableSequence[str] = []
+        super().__init__(on_change=on_change)
         self.hoisted_imports: MutableSequence[cst.SimpleStatementLine] = []
 
     @override
@@ -36,10 +36,9 @@ class FlextInfraRefactorLazyImportFixer(cst.CSTTransformer):
                 and isinstance(stmt.body[0], (cst.Import, cst.ImportFrom))
             ):
                 self.hoisted_imports.append(stmt)
-                message = f"Hoisted lazy import in function {original_node.name.value}"
-                self.changes.append(message)
-                if self._on_change is not None:
-                    self._on_change(message)
+                self._record_change(
+                    f"Hoisted lazy import in function {original_node.name.value}",
+                )
                 continue
             new_function_body.append(stmt)
         return updated_node.with_changes(

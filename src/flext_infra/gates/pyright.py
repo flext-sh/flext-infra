@@ -35,13 +35,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
             self._existing_check_dirs(project_dir),
         )
         if not check_dirs:
-            return self._build_gate_result(
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
+            return self._skip_result(project_dir, started)
         result = self._run(
             [sys.executable, "-m", c.Infra.PYRIGHT, *check_dirs, "--outputjson"],
             project_dir,
@@ -67,7 +61,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
             pass
         return self._build_gate_result(
             project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
+            passed=result.exit_code == 0,
             issues=issues,
             duration=time.monotonic() - started,
             raw_output=result.stderr,

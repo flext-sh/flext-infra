@@ -34,8 +34,8 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
         del parse_failures
         if (
             file_path.suffix != ".py"
-            or file_path.name in c.Infra.NAMESPACE_CANONICAL_TYPINGS_FILES
-            or c.Infra.NAMESPACE_CANONICAL_TYPINGS_DIR in file_path.parts
+            or file_path.name in c.Infra.MRO_TYPINGS_FILE_NAMES
+            or c.Infra.MRO_TYPINGS_DIRECTORY in file_path.parts
         ):
             return []
         source = cls._get_source_or_empty(rope_project, file_path)

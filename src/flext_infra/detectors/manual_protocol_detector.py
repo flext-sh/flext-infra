@@ -32,8 +32,8 @@ class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         """Detect Protocol classes outside canonical locations."""
         del parse_failures
         if (
-            file_path.name in c.Infra.NAMESPACE_CANONICAL_PROTOCOL_FILES
-            or c.Infra.NAMESPACE_CANONICAL_PROTOCOL_DIR in file_path.parts
+            file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES
+            or c.Infra.MRO_PROTOCOLS_DIRECTORY in file_path.parts
             or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
         ):
             return []

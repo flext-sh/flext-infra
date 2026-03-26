@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
 
 from flext_infra import t
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
-class FlextInfraRefactorImportBypassRemover(cst.CSTTransformer):
+class FlextInfraRefactorImportBypassRemover(FlextInfraChangeTrackingTransformer):
     """Replace import bypass try/except blocks with the primary import."""
 
     def __init__(self, on_change: t.Infra.ChangeCallback = None) -> None:
         """Initialize optional callback for emitted change messages."""
-        self._on_change = on_change
-        self.changes: MutableSequence[str] = []
+        super().__init__(on_change=on_change)
 
     @override
     def leave_Try(
@@ -55,8 +54,5 @@ class FlextInfraRefactorImportBypassRemover(cst.CSTTransformer):
             return updated_node
         if handler_type.value != "ImportError":
             return updated_node
-        message = "Removed import bypass fallback"
-        self.changes.append(message)
-        if self._on_change is not None:
-            self._on_change(message)
+        self._record_change("Removed import bypass fallback")
         return body_stmt

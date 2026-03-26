@@ -8,9 +8,10 @@ from typing import override
 import libcst as cst
 
 from flext_infra import t, u
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
-class FlextInfraTypingAnnotationReplacer(cst.CSTTransformer):
+class FlextInfraTypingAnnotationReplacer(FlextInfraChangeTrackingTransformer):
     """Replace legacy typing annotations (Any, object, cast) with strict t.* contracts."""
 
     DUNDER_OBJECT_ALLOWLIST = frozenset(
@@ -32,9 +33,8 @@ class FlextInfraTypingAnnotationReplacer(cst.CSTTransformer):
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize replacement state and change tracking."""
-        self._on_change = on_change
+        super().__init__(on_change=on_change)
         self.modified: bool = False
-        self.changes: MutableSequence[str] = []
         self._t_import_present: bool = False
         self._needs_t_import: bool = False
         self._current_function: str = ""
@@ -276,11 +276,6 @@ class FlextInfraTypingAnnotationReplacer(cst.CSTTransformer):
         self.modified = True
         self._needs_t_import = True
         self._record_change(message)
-
-    def _record_change(self, msg: str) -> None:
-        self.changes.append(msg)
-        if self._on_change is not None:
-            self._on_change(msg)
 
 
 __all__ = ["FlextInfraTypingAnnotationReplacer"]

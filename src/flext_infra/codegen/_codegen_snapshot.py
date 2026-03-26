@@ -30,7 +30,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         return None
 
     @staticmethod
-    def _snapshot_init_files(*, project_path: Path) -> t.StrMapping:
+    def snapshot_init_files(*, project_path: Path) -> t.StrMapping:
         snapshot: MutableMapping[str, str] = {}
         for root_name in c.Infra.MRO_SCAN_DIRECTORIES:
             root = project_path / root_name
@@ -49,7 +49,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         return snapshot
 
     @staticmethod
-    def _snapshot_files(*, file_paths: Sequence[Path]) -> t.StrMapping:
+    def snapshot_files(*, file_paths: Sequence[Path]) -> t.StrMapping:
         snapshot: MutableMapping[str, str] = {}
         for file_path in file_paths:
             try:
@@ -61,7 +61,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         return snapshot
 
     @staticmethod
-    def _detect_changed_files(
+    def detect_changed_files(
         *,
         before_snapshot: t.StrMapping,
         file_paths: Sequence[Path],
@@ -79,7 +79,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         return changed
 
     @staticmethod
-    def _write_changes(
+    def write_changes(
         *,
         source_path: Path,
         target_path: Path,
@@ -143,48 +143,6 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
 
         FlextInfraUtilitiesFormatting.run_ruff_fix(source_path)
         FlextInfraUtilitiesFormatting.run_ruff_fix(target_path)
-
-    @staticmethod
-    def snapshot_init_files(*, project_path: Path) -> t.StrMapping:
-        return FlextInfraCodegenSnapshot._snapshot_init_files(project_path=project_path)
-
-    @staticmethod
-    def snapshot_files(*, file_paths: Sequence[Path]) -> t.StrMapping:
-        return FlextInfraCodegenSnapshot._snapshot_files(file_paths=file_paths)
-
-    @staticmethod
-    def detect_changed_files(
-        *,
-        before_snapshot: t.StrMapping,
-        file_paths: Sequence[Path],
-    ) -> t.Infra.StrSet:
-        return FlextInfraCodegenSnapshot._detect_changed_files(
-            before_snapshot=before_snapshot,
-            file_paths=file_paths,
-        )
-
-    @staticmethod
-    def write_changes(
-        *,
-        source_path: Path,
-        target_path: Path,
-        nodes_moved: Sequence[ast.stmt],
-        moved_names: t.StrSequence,
-        source_tree: ast.Module,
-        pkg_name: str,
-        target_module: str,
-        dry_run: bool,
-    ) -> None:
-        FlextInfraCodegenSnapshot._write_changes(
-            source_path=source_path,
-            target_path=target_path,
-            nodes_moved=nodes_moved,
-            moved_names=moved_names,
-            source_tree=source_tree,
-            pkg_name=pkg_name,
-            target_module=target_module,
-            dry_run=dry_run,
-        )
 
 
 __all__ = ["FlextInfraCodegenSnapshot"]

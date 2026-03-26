@@ -8,15 +8,15 @@ from typing import override
 import libcst as cst
 
 from flext_infra import t
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
-class FlextInfraRefactorMRORemover(cst.CSTTransformer):
+class FlextInfraRefactorMRORemover(FlextInfraChangeTrackingTransformer):
     """Remove nested class bases that redundantly reference the parent class."""
 
     def __init__(self, on_change: t.Infra.ChangeCallback = None) -> None:
         """Initialize optional callback for emitted change messages."""
-        self._on_change = on_change
-        self.changes: MutableSequence[str] = []
+        super().__init__(on_change=on_change)
 
     @override
     def leave_ClassDef(
@@ -36,10 +36,9 @@ class FlextInfraRefactorMRORemover(cst.CSTTransformer):
                     root_name = self._attribute_root_name(base.value)
                     if root_name != updated_node.name.value:
                         continue
-                    message = f"Fixed MRO redeclaration: {stmt.name.value}"
-                    self.changes.append(message)
-                    if self._on_change is not None:
-                        self._on_change(message)
+                    self._record_change(
+                        f"Fixed MRO redeclaration: {stmt.name.value}",
+                    )
                     stmt = stmt.with_changes(bases=(), lpar=(), rpar=())
                     break
             new_body.append(stmt)

@@ -9,6 +9,7 @@ from typing import override
 import libcst as cst
 
 from flext_infra import m, t, u
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
 class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
@@ -149,10 +150,7 @@ class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
             namespace_body = [
                 statement
                 for statement in namespace_class.body.body
-                if not (
-                    isinstance(statement, cst.SimpleStatementLine)
-                    and self._is_pass_only(statement)
-                )
+                if not FlextInfraChangeTrackingTransformer.is_pass_statement(statement)
             ]
             namespace_body.extend(methods_to_insert)
             module_body[namespace_index] = namespace_class.with_changes(
@@ -178,9 +176,6 @@ class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):
             ):
                 return True
         return False
-
-    def _is_pass_only(self, statement: cst.SimpleStatementLine) -> bool:
-        return len(statement.body) == 1 and isinstance(statement.body[0], cst.Pass)
 
     def _is_call_rewrite_allowed(self, helper_name: str, target_namespace: str) -> bool:
         policy = self._policy_for_helper(helper_name)

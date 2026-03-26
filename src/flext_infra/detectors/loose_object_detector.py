@@ -29,7 +29,7 @@ _ALLOWED_TOP_LEVEL: frozenset[str] = frozenset({
 
 _FUNC_DEF_RE = c.Infra.FUNC_DEF_RE
 _ASSIGN_RE = c.Infra.ASSIGN_RE
-_TYPE_ALIAS_RE = c.Infra.TYPE_ALIAS_RE
+_TYPE_ALIAS_RE = c.Infra.PEP695_RE
 
 
 class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):

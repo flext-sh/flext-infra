@@ -9,9 +9,10 @@ import libcst as cst
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
 from flext_infra import c, t, u
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
-class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
+class FlextInfraRefactorImportModernizer(FlextInfraChangeTrackingTransformer):
     """Rewrite forbidden imports and replace symbols with runtime alias paths."""
 
     METADATA_DEPENDENCIES = (QualifiedNameProvider,)
@@ -25,16 +26,15 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize import rewrite configuration and result tracking."""
+        super().__init__(on_change=on_change)
         self._imports_to_remove = imports_to_remove
         self._symbols_to_replace = symbols_to_replace
         self._runtime_aliases = runtime_aliases
         self._blocked_aliases = blocked_aliases
-        self._on_change = on_change
         self.modified_imports = False
         self.aliases_needed: t.Infra.StrSet = set()
         self.aliases_present: t.Infra.StrSet = set()
         self.active_symbol_replacements: MutableMapping[str, str] = {}
-        self.changes: MutableSequence[str] = []
 
     @override
     def leave_ImportFrom(
@@ -165,11 +165,6 @@ class FlextInfraRefactorImportModernizer(cst.CSTTransformer):
         if isinstance(names, cst.ImportStar):
             return []
         return list(names)
-
-    def _record_change(self, message: str) -> None:
-        self.changes.append(message)
-        if self._on_change is not None:
-            self._on_change(message)
 
 
 __all__ = ["FlextInfraRefactorImportModernizer"]

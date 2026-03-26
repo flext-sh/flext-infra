@@ -71,7 +71,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             pass
         return self._build_gate_result(
             project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
+            passed=result.exit_code == 0,
             issues=issues,
             duration=time.monotonic() - started,
             raw_output=result.stderr,

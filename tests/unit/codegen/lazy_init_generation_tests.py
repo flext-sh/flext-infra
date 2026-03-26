@@ -14,16 +14,13 @@ import pytest
 from flext_tests import tm
 
 import flext_infra.codegen as mod
-from flext_infra import FlextInfraCodegenLazyInit, t, u
+from flext_infra import FlextInfraCodegenGeneration, FlextInfraCodegenLazyInit, t, u
 
 _resolve_aliases: Callable[[Mapping[str, tuple[str, str]]], None] = getattr(
     FlextInfraCodegenLazyInit,
     "_resolve_aliases",
 )
-_generate_file: Callable[
-    [str, t.StrSequence, Mapping[str, tuple[str, str]], t.StrMapping, str],
-    str,
-] = getattr(FlextInfraCodegenLazyInit, "_generate_file")
+_generate_file = FlextInfraCodegenGeneration.generate_file
 _run_ruff_fix: Callable[[Path], None] = getattr(
     FlextInfraCodegenLazyInit,
     "_run_ruff_fix",

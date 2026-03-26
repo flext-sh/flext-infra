@@ -9,6 +9,7 @@ from typing import override
 import libcst as cst
 
 from flext_infra import m, t, u
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
 class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
@@ -200,16 +201,11 @@ class FlextInfraRefactorClassNestingTransformer(cst.CSTTransformer):
             if isinstance(statement, cst.BaseSmallStatement):
                 continue
             typed_statement: cst.BaseStatement = statement
-            if self._is_pass_line(typed_statement):
+            if FlextInfraChangeTrackingTransformer.is_pass_statement(typed_statement):
                 continue
             namespace_body.append(typed_statement)
         namespace_body.extend(classes_to_insert)
         return namespace_body
-
-    def _is_pass_line(self, statement: cst.BaseStatement) -> bool:
-        if not isinstance(statement, cst.SimpleStatementLine):
-            return False
-        return len(statement.body) == 1 and isinstance(statement.body[0], cst.Pass)
 
 
 __all__ = ["FlextInfraRefactorClassNestingTransformer"]

@@ -71,6 +71,10 @@ class FlextInfraProtocolsRope:
             """Return module-level attributes as a name → pyname mapping."""
             ...
 
+        def get_name(self) -> str | None:
+            """Return the module name, or None."""
+            ...
+
     @runtime_checkable
     class RopePyNameLike(Protocol):
         """Structural contract for rope PyName objects."""

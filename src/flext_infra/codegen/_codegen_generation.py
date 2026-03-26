@@ -40,23 +40,6 @@ class FlextInfraCodegenGeneration:
     """Generate Python module files with lazy import infrastructure."""
 
     @staticmethod
-    def normalized_value_key_cases(mod: str, _current_pkg: str) -> str:
-        """Render module path for TYPE_CHECKING imports.
-
-        Returns absolute module paths for all packages (src, tests, examples,
-        scripts) to maintain consistency across the codebase.
-
-        Args:
-            mod: Module path to render.
-            _current_pkg: Current package name (unused, kept for API compat).
-
-        Returns:
-            Absolute module path.
-
-        """
-        return mod
-
-    @staticmethod
     def generate_type_checking(
         groups: Mapping[str, t.Infra.StrPairSequence],
         *,

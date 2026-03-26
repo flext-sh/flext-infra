@@ -31,13 +31,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         if not (project_dir / c.Infra.Paths.DEFAULT_SRC_DIR).exists():
-            return self._build_gate_result(
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
+            return self._skip_result(project_dir, started)
         result = self._run(
             [
                 sys.executable,
@@ -76,7 +70,7 @@ class FlextInfraBanditGate(FlextInfraGate):
             pass
         return self._build_gate_result(
             project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
+            passed=result.exit_code == 0,
             issues=issues,
             duration=time.monotonic() - started,
             raw_output=result.stderr,

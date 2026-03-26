@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from typing import override
 
 import libcst as cst
 
 from flext_infra import t
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
-class FlextInfraRefactorAliasRemover(cst.CSTTransformer):
+class FlextInfraRefactorAliasRemover(FlextInfraChangeTrackingTransformer):
     """Remove module-level ``Name = Name`` aliases with allowlist support."""
 
     def __init__(
@@ -20,11 +20,10 @@ class FlextInfraRefactorAliasRemover(cst.CSTTransformer):
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize alias remover with allow-list configuration."""
+        super().__init__(on_change=on_change)
         self._scope_depth = 0
         self._allow_aliases = allow_aliases
         self._allow_target_suffixes = allow_target_suffixes
-        self._on_change = on_change
-        self.changes: MutableSequence[str] = []
 
     @override
     def leave_Assign(
@@ -48,10 +47,7 @@ class FlextInfraRefactorAliasRemover(cst.CSTTransformer):
             ):
                 return updated_node
             if target != value and target not in {"__version__", "__all__"}:
-                message = f"Removed alias: {target} = {value}"
-                self.changes.append(message)
-                if self._on_change is not None:
-                    self._on_change(message)
+                self._record_change(f"Removed alias: {target} = {value}")
                 return cst.RemovalSentinel.REMOVE
         return updated_node
 

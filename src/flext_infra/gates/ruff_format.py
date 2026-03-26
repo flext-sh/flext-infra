@@ -43,7 +43,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
             project_dir,
         )
         issues: MutableSequence[m.Infra.Issue] = []
-        if self._result_exit_code(result) != 0 and result.stdout.strip():
+        if result.exit_code != 0 and result.stdout.strip():
             seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
                 path = line.strip()
@@ -81,7 +81,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                     )
         return self._build_gate_result(
             project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
+            passed=result.exit_code == 0,
             issues=issues,
             duration=time.monotonic() - started,
             raw_output=result.stderr,
@@ -101,7 +101,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         )
         return self._build_gate_result(
             project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
+            passed=result.exit_code == 0,
             issues=[],
             duration=time.monotonic() - started,
             raw_output=result.stderr,

@@ -28,13 +28,7 @@ class FlextInfraGoGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         if not (project_dir / c.Infra.Files.GO_MOD).exists():
-            return self._build_gate_result(
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
+            return self._skip_result(project_dir, started)
         issues: MutableSequence[m.Infra.Issue] = []
         raw_output = ""
         vet_result = self._run(
@@ -58,7 +52,7 @@ class FlextInfraGoGate(FlextInfraGate):
                     message=match.group("msg"),
                 ),
             )
-        if self._result_exit_code(vet_result) != 0 and (not issues):
+        if vet_result.exit_code != 0 and (not issues):
             issues.append(
                 m.Infra.Issue(
                     file=".",

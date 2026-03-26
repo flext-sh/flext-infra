@@ -8,9 +8,10 @@ from typing import override
 import libcst as cst
 
 from flext_infra import t
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
-class FlextInfraRefactorDeprecatedRemover(cst.CSTTransformer):
+class FlextInfraRefactorDeprecatedRemover(FlextInfraChangeTrackingTransformer):
     """Remove classes marked as deprecated by name or warning usage."""
 
     def __init__(
@@ -19,8 +20,9 @@ class FlextInfraRefactorDeprecatedRemover(cst.CSTTransformer):
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize change sinks used by the transformer."""
-        self.changes: MutableSequence[str] = changes if changes is not None else []
-        self._on_change = on_change
+        super().__init__(on_change=on_change)
+        if changes is not None:
+            self.changes = changes
 
     @override
     def leave_ClassDef(
@@ -52,8 +54,3 @@ class FlextInfraRefactorDeprecatedRemover(cst.CSTTransformer):
                                     )
                                     return cst.RemovalSentinel.REMOVE
         return updated_node
-
-    def _record_change(self, message: str) -> None:
-        self.changes.append(message)
-        if self._on_change is not None:
-            self._on_change(message)

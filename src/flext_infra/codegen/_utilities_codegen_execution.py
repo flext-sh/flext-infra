@@ -116,45 +116,25 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
     def quality_gate_modified_python_files(workspace_root: Path) -> t.StrSequence:
         """Detect modified Python files in workspace."""
         normalized: t.Infra.StrSet = set()
-        for rel in FlextInfraCodegenExecutionTools.git_lines(
-            workspace_root,
+        git_queries: Sequence[t.StrSequence] = [
             ["diff", "--name-only", "--", "*.py"],
-        ):
-            if "constants" not in rel:
-                continue
-            candidate = (workspace_root / rel).resolve()
-            if not candidate.is_file() or candidate.suffix != c.Infra.Extensions.PYTHON:
-                continue
-            try:
-                normalized.add(str(candidate.relative_to(workspace_root)))
-            except ValueError:
-                continue
-        for rel in FlextInfraCodegenExecutionTools.git_lines(
-            workspace_root,
             ["diff", "--name-only", "--cached", "--", "*.py"],
-        ):
-            if "constants" not in rel:
-                continue
-            candidate = (workspace_root / rel).resolve()
-            if not candidate.is_file() or candidate.suffix != c.Infra.Extensions.PYTHON:
-                continue
-            try:
-                normalized.add(str(candidate.relative_to(workspace_root)))
-            except ValueError:
-                continue
-        for rel in FlextInfraCodegenExecutionTools.git_lines(
-            workspace_root,
             ["ls-files", "--others", "--exclude-standard", "--", "*.py"],
-        ):
-            if "constants" not in rel:
-                continue
-            candidate = (workspace_root / rel).resolve()
-            if not candidate.is_file() or candidate.suffix != c.Infra.Extensions.PYTHON:
-                continue
-            try:
-                normalized.add(str(candidate.relative_to(workspace_root)))
-            except ValueError:
-                continue
+        ]
+        for query in git_queries:
+            for rel in FlextInfraCodegenExecutionTools.git_lines(workspace_root, query):
+                if "constants" not in rel:
+                    continue
+                candidate = (workspace_root / rel).resolve()
+                if (
+                    not candidate.is_file()
+                    or candidate.suffix != c.Infra.Extensions.PYTHON
+                ):
+                    continue
+                try:
+                    normalized.add(str(candidate.relative_to(workspace_root)))
+                except ValueError:
+                    continue
         if normalized:
             return sorted(normalized)
         fallback = (

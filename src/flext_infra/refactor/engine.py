@@ -93,33 +93,7 @@ class FlextInfraRefactorEngine:
         self.rule_filters: MutableSequence[str] = []
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
         self.rule_validator = FlextInfraRefactorRuleDefinitionValidator()
-        self.safety_manager = self._build_safety_manager()
-        self._rope_project: t.Infra.RopeProject | None = None
-
-    @staticmethod
-    def _build_safety_manager() -> FlextInfraRefactorSafetyManager:
-        return FlextInfraRefactorSafetyManager()
-
-    @property
-    def rope_project(self) -> t.Infra.RopeProject | None:
-        """Return the active rope Project, or None if not yet initialized."""
-        return self._rope_project
-
-    def _init_rope_project(self, workspace_root: Path) -> None:
-        """Initialize a monorepo-rooted rope Project with no disk artifacts."""
-        self._rope_project = u.Infra.init_rope_project(workspace_root)
-
-    def _run_rope_pre_hooks(
-        self, path: Path, *, dry_run: bool
-    ) -> Sequence[m.Infra.Result]:
-        """Run rope-based pre-hooks before LibCST rules execute."""
-        return u.Infra.run_rope_pre_hooks(path, dry_run=dry_run)
-
-    def _run_rope_post_hooks(
-        self, path: Path, *, dry_run: bool
-    ) -> Sequence[m.Infra.Result]:
-        """Run rope-based post-hooks after LibCST rules execute."""
-        return u.Infra.run_rope_post_hooks(path, dry_run=dry_run)
+        self.safety_manager = FlextInfraRefactorSafetyManager()
 
     def _try_safety_stash(
         self,
@@ -148,21 +122,6 @@ class FlextInfraRefactorEngine:
                 ),
             ]
         return stash_ref_result.value, None
-
-    @staticmethod
-    def build_impact_map(
-        results: Sequence[m.Infra.Result],
-    ) -> Sequence[t.StrMapping]:
-        """Build a normalized impact-map payload from refactor results."""
-        return u.Infra.build_impact_map(results)
-
-    @staticmethod
-    def write_impact_map(
-        results: Sequence[m.Infra.Result],
-        output_path: Path,
-    ) -> bool:
-        """Write the impact-map payload to the target output path."""
-        return u.Infra.write_impact_map(results, output_path)
 
     @staticmethod
     def main() -> int:
@@ -226,34 +185,15 @@ class FlextInfraRefactorEngine:
                 ignore_items, extension_items = (
                     engine.rule_loader.extract_engine_file_filters(engine.config)
                 )
-                ignore_patterns = {str(item) for item in ignore_items}
-                allowed_extensions = {str(item) for item in extension_items}
-                files_to_analyze = [
-                    file_path
-                    for file_path in iter_result.value
-                    if (
-                        fnmatch.fnmatch(
-                            str(file_path.relative_to(args.project)),
-                            args.pattern,
-                        )
-                        or fnmatch.fnmatch(file_path.name, args.pattern)
-                    )
-                    and (
-                        not allowed_extensions or file_path.suffix in allowed_extensions
-                    )
-                    and file_path.name not in ignore_patterns
-                    and not any(
-                        part in ignore_patterns
-                        for part in file_path.relative_to(args.project).parts
-                    )
-                    and not any(
-                        fnmatch.fnmatch(
-                            str(file_path.relative_to(args.project)),
-                            ignore_pattern,
-                        )
-                        for ignore_pattern in ignore_patterns
-                    )
-                ]
+                files_to_analyze = list(
+                    engine._filter_files(
+                        iter_result.value,
+                        base_path=args.project,
+                        pattern=args.pattern,
+                        ignore_patterns={str(item) for item in ignore_items},
+                        allowed_extensions={str(item) for item in extension_items},
+                    ),
+                )
             elif args.workspace:
                 files_to_analyze = list(
                     engine.collect_workspace_files(
@@ -321,6 +261,34 @@ class FlextInfraRefactorEngine:
         failed = sum(1 for item in results if not item.success)
         return 0 if failed == 0 else 1
 
+    @staticmethod
+    def _filter_files(
+        candidates: Sequence[Path],
+        *,
+        base_path: Path,
+        pattern: str,
+        ignore_patterns: set[str],
+        allowed_extensions: set[str],
+    ) -> Sequence[Path]:
+        """Filter candidate files by pattern, extensions, and ignore rules."""
+        return [
+            f
+            for f in candidates
+            if (
+                fnmatch.fnmatch(str(f.relative_to(base_path)), pattern)
+                or fnmatch.fnmatch(f.name, pattern)
+            )
+            and (not allowed_extensions or f.suffix in allowed_extensions)
+            and f.name not in ignore_patterns
+            and not any(
+                part in ignore_patterns for part in f.relative_to(base_path).parts
+            )
+            and not any(
+                fnmatch.fnmatch(str(f.relative_to(base_path)), ip)
+                for ip in ignore_patterns
+            )
+        ]
+
     def collect_workspace_files(
         self,
         workspace_root: Path,
@@ -354,26 +322,15 @@ class FlextInfraRefactorEngine:
                     iter_result.error or f"File iteration failed for {project}",
                 )
                 continue
-            for py_file in iter_result.value:
-                relative_path = py_file.relative_to(project)
-                relative_path_str = str(relative_path)
-                if not (
-                    fnmatch.fnmatch(relative_path_str, pattern)
-                    or fnmatch.fnmatch(py_file.name, pattern)
-                ):
-                    continue
-                if allowed_extensions and py_file.suffix not in allowed_extensions:
-                    continue
-                if py_file.name in ignore_patterns:
-                    continue
-                if any(part in ignore_patterns for part in relative_path.parts):
-                    continue
-                if any(
-                    fnmatch.fnmatch(relative_path_str, ignore_pattern)
-                    for ignore_pattern in ignore_patterns
-                ):
-                    continue
-                all_files.append(py_file)
+            all_files.extend(
+                self._filter_files(
+                    iter_result.value,
+                    base_path=project,
+                    pattern=pattern,
+                    ignore_patterns=ignore_patterns,
+                    allowed_extensions=allowed_extensions,
+                ),
+            )
         return all_files
 
     def list_rules(self) -> Sequence[Mapping[str, str | bool]]:
@@ -575,35 +532,19 @@ class FlextInfraRefactorEngine:
         ignore_items, extension_items = self.rule_loader.extract_engine_file_filters(
             self.config,
         )
-        ignore_patterns = {str(item) for item in ignore_items}
-        allowed_extensions = {str(item) for item in extension_items}
-        files = [
-            file_path
-            for file_path in iter_result.value
-            if (
-                fnmatch.fnmatch(str(file_path.relative_to(project_path)), pattern)
-                or fnmatch.fnmatch(file_path.name, pattern)
-            )
-            and (not allowed_extensions or file_path.suffix in allowed_extensions)
-            and file_path.name not in ignore_patterns
-            and not any(
-                part in ignore_patterns
-                for part in file_path.relative_to(project_path).parts
-            )
-            and not any(
-                fnmatch.fnmatch(
-                    str(file_path.relative_to(project_path)),
-                    ignore_pattern,
-                )
-                for ignore_pattern in ignore_patterns
-            )
-        ]
+        files = self._filter_files(
+            iter_result.value,
+            base_path=project_path,
+            pattern=pattern,
+            ignore_patterns={str(item) for item in ignore_items},
+            allowed_extensions={str(item) for item in extension_items},
+        )
         u.Infra.refactor_info(f"Found {len(files)} files to process")
         results: MutableSequence[m.Infra.Result] = list(
-            self._run_rope_pre_hooks(project_path, dry_run=dry_run),
+            u.Infra.run_rope_pre_hooks(project_path, dry_run=dry_run),
         )
         results.extend(self.refactor_files(files, dry_run=dry_run))
-        results.extend(self._run_rope_post_hooks(project_path, dry_run=dry_run))
+        results.extend(u.Infra.run_rope_post_hooks(project_path, dry_run=dry_run))
         if apply_safety and (not dry_run):
             checkpoint_result = self.safety_manager.save_checkpoint_state(
                 project_path,
@@ -659,7 +600,7 @@ class FlextInfraRefactorEngine:
         )
         if stash_error is not None:
             return stash_error
-        results.extend(self._run_rope_pre_hooks(root, dry_run=dry_run))
+        results.extend(u.Infra.run_rope_pre_hooks(root, dry_run=dry_run))
         for project in project_paths:
             if apply_safety and self.safety_manager.is_emergency_stop_requested():
                 break
@@ -683,7 +624,7 @@ class FlextInfraRefactorEngine:
                     u.Infra.refactor_error(
                         checkpoint_result.error or "checkpoint save failed",
                     )
-        results.extend(self._run_rope_post_hooks(root, dry_run=dry_run))
+        results.extend(u.Infra.run_rope_post_hooks(root, dry_run=dry_run))
         if apply_safety and (not dry_run):
             self._run_safety_validation_and_finalize(
                 target_path=root,

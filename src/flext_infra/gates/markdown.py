@@ -37,13 +37,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         started = time.monotonic()
         md_files = self._collect_markdown_files(project_dir)
         if not md_files:
-            return self._build_gate_result(
-                project=project_dir.name,
-                passed=True,
-                issues=[],
-                duration=time.monotonic() - started,
-                raw_output="",
-            )
+            return self._skip_result(project_dir, started)
         cmd = [c.Infra.MARKDOWNLINT]
         if fix:
             cmd.append("--fix")
@@ -70,7 +64,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                         message=match.group("msg"),
                     ),
                 )
-            if self._result_exit_code(result) != 0 and (not issues):
+            if result.exit_code != 0 and (not issues):
                 issues.append(
                     m.Infra.Issue(
                         file=".",
@@ -89,7 +83,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         )
         return self._build_gate_result(
             project=project_dir.name,
-            passed=self._result_exit_code(result) == 0,
+            passed=result.exit_code == 0,
             issues=issues,
             duration=time.monotonic() - started,
             raw_output=raw_output,

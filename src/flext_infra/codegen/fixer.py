@@ -67,21 +67,21 @@ class FlextInfraCodegenFixer(s[bool]):
         self._rules_only = rules_only
 
     # ------------------------------------------------------------------
-    # File system helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _find_package_dir(project_root: Path) -> Path | None:
-        """Wrapper for find_package_dir with explicit type annotation."""
-        return FlextInfraCodegenSnapshot.find_package_dir(project_root)
-
-    # ------------------------------------------------------------------
     # Entry points
     # ------------------------------------------------------------------
 
     @override
     def execute(self) -> r[bool]:
         return r[bool].fail("Use run() directly")
+
+    @staticmethod
+    def _empty_result(project_name: str) -> m.Infra.AutoFixResult:
+        return m.Infra.AutoFixResult(
+            project=project_name,
+            violations_fixed=[],
+            violations_skipped=[],
+            files_modified=[],
+        )
 
     def fix_project(self, project_path: Path) -> m.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project.
@@ -91,31 +91,16 @@ class FlextInfraCodegenFixer(s[bool]):
         """
         prefix = FlextInfraNamespaceValidator.derive_prefix(project_path)
         if not prefix:
-            return m.Infra.AutoFixResult(
-                project=project_path.name,
-                violations_fixed=[],
-                violations_skipped=[],
-                files_modified=[],
-            )
-        pkg_dir = self._find_package_dir(project_path)
+            return self._empty_result(project_path.name)
+        pkg_dir = FlextInfraCodegenSnapshot.find_package_dir(project_path)
         if pkg_dir is None:
-            return m.Infra.AutoFixResult(
-                project=project_path.name,
-                violations_fixed=[],
-                violations_skipped=[],
-                files_modified=[],
-            )
+            return self._empty_result(project_path.name)
         violations_fixed: MutableSequence[m.Infra.CensusViolation] = []
         violations_skipped: MutableSequence[m.Infra.CensusViolation] = []
         files_modified: t.Infra.StrSet = set()
         src_dir = project_path / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
-            return m.Infra.AutoFixResult(
-                project=project_path.name,
-                violations_fixed=[],
-                violations_skipped=[],
-                files_modified=[],
-            )
+            return self._empty_result(project_path.name)
         checkpoint_result = u.Infra.create_checkpoint(
             self._workspace_root,
             label=f"codegen-fix:{project_path.name}",
@@ -476,6 +461,136 @@ class FlextInfraCodegenFixer(s[bool]):
     # Rule implementations (parse fresh, text-based writes)
     # ------------------------------------------------------------------
 
+    def _move_nodes_to_target(
+        self,
+        *,
+        source_file: Path,
+        pkg_dir: Path,
+        rule: str,
+        target_filename: str,
+        target_module: str,
+        candidates: Sequence[ast.stmt],
+        tree: ast.Module,
+        violations_fixed: MutableSequence[m.Infra.CensusViolation],
+        violations_skipped: MutableSequence[m.Infra.CensusViolation],
+        files_modified: t.Infra.StrSet,
+        check_first_party: bool = False,
+    ) -> None:
+        """Shared logic for moving nodes from source to target module."""
+        target_path = pkg_dir / target_filename
+        if not target_path.exists():
+            return
+        target_tree = u.Infra.parse_module_ast(target_path)
+        if target_tree is None:
+            return
+        # Filter private names
+        nodes_to_move: MutableSequence[ast.stmt] = []
+        for node in candidates:
+            name = u.Infra.get_node_name(node)
+            if (
+                not name
+                and isinstance(node, ast.AnnAssign)
+                and isinstance(node.target, ast.Name)
+            ):
+                name = node.target.id
+            if not name:
+                continue
+            if name.startswith("_"):
+                violations_skipped.append(
+                    m.Infra.CensusViolation(
+                        module=str(source_file),
+                        rule=rule,
+                        line=node.lineno,
+                        message=f"'{name}' is private — skipped",
+                        fixable=False,
+                    ),
+                )
+                continue
+            nodes_to_move.append(node)
+        if not nodes_to_move:
+            return
+        actually_moved: MutableSequence[ast.stmt] = []
+        moved_names: MutableSequence[str] = []
+        for node in nodes_to_move:
+            name = u.Infra.get_node_name(node)
+            if (
+                not name
+                and isinstance(node, ast.AnnAssign)
+                and isinstance(node.target, ast.Name)
+            ):
+                name = node.target.id
+            if not name:
+                continue
+            if u.Infra.name_exists_in_module(name, target_tree):
+                violations_skipped.append(
+                    m.Infra.CensusViolation(
+                        module=str(source_file),
+                        rule=rule,
+                        line=node.lineno,
+                        message=f"'{name}' already in {target_filename} — skipped",
+                        fixable=False,
+                    ),
+                )
+                continue
+            if check_first_party and u.Infra.needs_first_party_import(
+                node, tree, target_tree
+            ):
+                violations_skipped.append(
+                    m.Infra.CensusViolation(
+                        module=str(source_file),
+                        rule=rule,
+                        line=node.lineno,
+                        message=f"'{name}' needs first-party import — circular risk, skipped",
+                        fixable=False,
+                    ),
+                )
+                continue
+            u.Infra.copy_required_imports(node, tree, target_tree)
+            if not u.Infra.all_deps_resolvable(node, target_tree):
+                violations_skipped.append(
+                    m.Infra.CensusViolation(
+                        module=str(source_file),
+                        rule=rule,
+                        line=node.lineno,
+                        message=f"'{name}' has unresolvable deps — skipped",
+                        fixable=False,
+                    ),
+                )
+                continue
+            insert_idx = u.Infra.find_insert_position(target_tree)
+            target_tree.body.insert(insert_idx, node)
+            kind = ""
+            if isinstance(node, ast.AnnAssign):
+                kind = "Final constant "
+            elif isinstance(node, ast.Assign):
+                kind = "TypeVar "
+            else:
+                kind = "TypeAlias "
+            violations_fixed.append(
+                m.Infra.CensusViolation(
+                    module=str(source_file),
+                    rule=rule,
+                    line=node.lineno,
+                    message=f"{kind}'{name}' moved to {target_filename}",
+                    fixable=True,
+                ),
+            )
+            actually_moved.append(node)
+            moved_names.append(name)
+        if actually_moved:
+            FlextInfraCodegenSnapshot.write_changes(
+                source_path=source_file,
+                target_path=target_path,
+                nodes_moved=actually_moved,
+                moved_names=moved_names,
+                source_tree=tree,
+                pkg_name=pkg_dir.name,
+                target_module=target_module,
+                dry_run=self._dry_run,
+            )
+            files_modified.add(str(source_file))
+            files_modified.add(str(target_path))
+
     def _fix_rule1(
         self,
         *,
@@ -492,91 +607,18 @@ class FlextInfraCodegenFixer(s[bool]):
         finals = u.Infra.find_standalone_finals(tree)
         if not finals:
             return
-        target_path = pkg_dir / "constants.py"
-        if not target_path.exists():
-            return
-        target_tree = u.Infra.parse_module_ast(target_path)
-        if target_tree is None:
-            return
-        nodes_to_move: MutableSequence[ast.AnnAssign] = []
-        for node in finals:
-            target_name = ""
-            if isinstance(node.target, ast.Name):
-                target_name = node.target.id
-            if target_name.startswith("_"):
-                violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule="NS-001",
-                        line=node.lineno,
-                        message=f"Final constant '{target_name}' is private — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            nodes_to_move.append(node)
-        if not nodes_to_move:
-            return
-        pkg_name = pkg_dir.name
-        actually_moved: MutableSequence[ast.AnnAssign] = []
-        moved_names: MutableSequence[str] = []
-        for node in nodes_to_move:
-            target_name = ""
-            if isinstance(node.target, ast.Name):
-                target_name = node.target.id
-            if u.Infra.name_exists_in_module(
-                target_name,
-                target_tree,
-            ):
-                violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule="NS-001",
-                        line=node.lineno,
-                        message=f"Final constant '{target_name}' already in constants.py — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            u.Infra.copy_required_imports(node, tree, target_tree)
-            if not u.Infra.all_deps_resolvable(node, target_tree):
-                violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule="NS-001",
-                        line=node.lineno,
-                        message=f"Final constant '{target_name}' has unresolvable deps — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            # Insert into target_tree for analysis accumulation
-            insert_idx = u.Infra.find_insert_position(target_tree)
-            target_tree.body.insert(insert_idx, node)
-            violations_fixed.append(
-                m.Infra.CensusViolation(
-                    module=str(source_file),
-                    rule="NS-001",
-                    line=node.lineno,
-                    message=f"Loose Final constant '{target_name}' moved to constants.py",
-                    fixable=True,
-                ),
-            )
-            actually_moved.append(node)
-            moved_names.append(target_name)
-        if actually_moved:
-            FlextInfraCodegenSnapshot.write_changes(
-                source_path=source_file,
-                target_path=target_path,
-                nodes_moved=actually_moved,
-                moved_names=moved_names,
-                source_tree=tree,
-                pkg_name=pkg_name,
-                target_module="constants",
-                dry_run=self._dry_run,
-            )
-            files_modified.add(str(source_file))
-            files_modified.add(str(target_path))
+        self._move_nodes_to_target(
+            source_file=source_file,
+            pkg_dir=pkg_dir,
+            rule="NS-001",
+            target_filename="constants.py",
+            target_module="constants",
+            candidates=finals,
+            tree=tree,
+            violations_fixed=violations_fixed,
+            violations_skipped=violations_skipped,
+            files_modified=files_modified,
+        )
 
     def _fix_rule2(
         self,
@@ -593,132 +635,22 @@ class FlextInfraCodegenFixer(s[bool]):
             return
         typevars = u.Infra.find_standalone_typevars(tree)
         typealiases = u.Infra.find_standalone_typealiases(tree)
-        if not typevars and not typealiases:
+        candidates: MutableSequence[ast.stmt] = [*typevars, *typealiases]
+        if not candidates:
             return
-        target_path = pkg_dir / "typings.py"
-        if not target_path.exists():
-            return
-        target_tree = u.Infra.parse_module_ast(target_path)
-        if target_tree is None:
-            return
-        nodes_to_move: MutableSequence[ast.stmt] = []
-        for tv_node in typevars:
-            target_name = ""
-            if tv_node.targets:
-                target = tv_node.targets[0]
-                if isinstance(target, ast.Name):
-                    target_name = target.id
-            if target_name.startswith("_"):
-                violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule="NS-002",
-                        line=tv_node.lineno,
-                        message=f"TypeVar '{target_name}' is private — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            nodes_to_move.append(tv_node)
-        for alias_node in typealiases:
-            target_name = u.Infra.get_node_name(alias_node)
-            if target_name.startswith("_"):
-                violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule="NS-002",
-                        line=alias_node.lineno,
-                        message=f"TypeAlias '{target_name}' is private — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            nodes_to_move.append(alias_node)
-        if not nodes_to_move:
-            return
-        pkg_name = pkg_dir.name
-        actually_moved: MutableSequence[ast.stmt] = []
-        moved_names: MutableSequence[str] = []
-        for move_node in nodes_to_move:
-            target_name = u.Infra.get_node_name(move_node)
-            if not target_name:
-                continue
-            if u.Infra.name_exists_in_module(
-                target_name,
-                target_tree,
-            ):
-                violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule="NS-002",
-                        line=move_node.lineno,
-                        message=f"'{target_name}' already in typings.py — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            if u.Infra.needs_first_party_import(
-                move_node,
-                tree,
-                target_tree,
-            ):
-                violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule="NS-002",
-                        line=move_node.lineno,
-                        message=f"'{target_name}' needs first-party import — circular risk, skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            u.Infra.copy_required_imports(
-                move_node,
-                tree,
-                target_tree,
-            )
-            if not u.Infra.all_deps_resolvable(
-                move_node,
-                target_tree,
-            ):
-                violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule="NS-002",
-                        line=move_node.lineno,
-                        message=f"'{target_name}' has unresolvable deps — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            # Insert into target_tree for analysis accumulation
-            insert_idx = u.Infra.find_insert_position(target_tree)
-            target_tree.body.insert(insert_idx, move_node)
-            kind = "TypeVar" if isinstance(move_node, ast.Assign) else "TypeAlias"
-            violations_fixed.append(
-                m.Infra.CensusViolation(
-                    module=str(source_file),
-                    rule="NS-002",
-                    line=move_node.lineno,
-                    message=f"{kind} '{target_name}' moved to typings.py",
-                    fixable=True,
-                ),
-            )
-            actually_moved.append(move_node)
-            moved_names.append(target_name)
-        if actually_moved:
-            FlextInfraCodegenSnapshot.write_changes(
-                source_path=source_file,
-                target_path=target_path,
-                nodes_moved=actually_moved,
-                moved_names=moved_names,
-                source_tree=tree,
-                pkg_name=pkg_name,
-                target_module=c.Infra.Directories.TYPINGS,
-                dry_run=self._dry_run,
-            )
-            files_modified.add(str(source_file))
-            files_modified.add(str(target_path))
+        self._move_nodes_to_target(
+            source_file=source_file,
+            pkg_dir=pkg_dir,
+            rule="NS-002",
+            target_filename="typings.py",
+            target_module=c.Infra.Directories.TYPINGS,
+            candidates=candidates,
+            tree=tree,
+            violations_fixed=violations_fixed,
+            violations_skipped=violations_skipped,
+            files_modified=files_modified,
+            check_first_party=True,
+        )
 
     @staticmethod
     def _resolve_parent_constants_class(constants_file: Path) -> str:

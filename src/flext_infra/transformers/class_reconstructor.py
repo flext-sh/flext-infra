@@ -10,9 +10,10 @@ import libcst as cst
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import c, m, t
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
-class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
+class FlextInfraRefactorClassReconstructor(FlextInfraChangeTrackingTransformer):
     """Reorder class methods based on declarative ordering configuration."""
 
     def __init__(
@@ -21,14 +22,13 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with rule order config and optional change callback."""
+        super().__init__(on_change=on_change)
         try:
             self._order_config: Sequence[m.Infra.MethodOrderRule] = TypeAdapter(
                 Sequence[m.Infra.MethodOrderRule],
             ).validate_python(order_config)
         except ValidationError:
             self._order_config = list[m.Infra.MethodOrderRule]()
-        self._on_change = on_change
-        self.changes: MutableSequence[str] = []
 
     @override
     def leave_ClassDef(
@@ -113,11 +113,6 @@ class FlextInfraRefactorClassReconstructor(cst.CSTTransformer):
         if name.startswith("_"):
             return c.Infra.MethodCategory.PROTECTED
         return c.Infra.MethodCategory.PUBLIC
-
-    def _record_change(self, message: str) -> None:
-        self.changes.append(message)
-        if self._on_change is not None:
-            self._on_change(message)
 
     def _sort_methods(
         self,

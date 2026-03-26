@@ -8,9 +8,10 @@ from typing import override
 import libcst as cst
 
 from flext_infra import t, u
+from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
-class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
+class FlextInfraRefactorSymbolPropagator(FlextInfraChangeTrackingTransformer):
     """Propagate import/symbol renames safely using CST import tracking."""
 
     def __init__(
@@ -22,12 +23,11 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize symbol propagation configuration and change collector."""
+        super().__init__(on_change=on_change)
         self._target_modules = target_modules
         self._module_renames = module_renames
         self._import_symbol_renames = import_symbol_renames
-        self._on_change = on_change
         self._local_name_renames: MutableMapping[str, str] = {}
-        self.changes: MutableSequence[str] = []
 
     @override
     def leave_ImportFrom(
@@ -42,7 +42,7 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
                 self._module_renames[module_name],
             )
             next_node = next_node.with_changes(module=next_module)
-            self._record(
+            self._record_change(
                 f"Renamed import module: {module_name} -> {self._module_renames[module_name]}"
             )
             module_name = self._module_renames[module_name]
@@ -65,7 +65,7 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
             next_aliases.append(alias.with_changes(name=cst.Name(renamed_symbol)))
             if alias.asname is None:
                 self._local_name_renames[imported_name] = renamed_symbol
-            self._record(
+            self._record_change(
                 f"Renamed imported symbol: {imported_name} -> {renamed_symbol}"
             )
         return (
@@ -81,15 +81,10 @@ class FlextInfraRefactorSymbolPropagator(cst.CSTTransformer):
         rename_to = self._local_name_renames.get(original_node.value)
         if rename_to is None or updated_node.value == rename_to:
             return updated_node
-        self._record(
+        self._record_change(
             f"Propagated local symbol rename: {updated_node.value} -> {rename_to}"
         )
         return cst.Name(rename_to)
-
-    def _record(self, message: str) -> None:
-        self.changes.append(message)
-        if self._on_change is not None:
-            self._on_change(message)
 
 
 __all__ = ["FlextInfraRefactorSymbolPropagator"]
