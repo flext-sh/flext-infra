@@ -1,0 +1,23 @@
+src/flext_infra/detectors/namespace_facade_scanner.py
+  c410e5f73c8a826c 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "25ed1116dc4c5bd946ac341483bfd9512ba2faa7",
+  "prompts": {
+    "c410e5f73c8a826c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687f7bdf-1496-4f2a-9abb-a2e27c434070",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
