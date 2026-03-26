@@ -90,16 +90,13 @@ class TestIsRelativeTo:
     def test_relative_to_true(self, tmp_path: Path) -> None:
         child = tmp_path / "sub" / "file.txt"
         tm.that(
-            FlextInfraInternalDependencySyncService.is_relative_to(child, tmp_path),
+            child.is_relative_to(tmp_path),
             eq=True,
         )
 
     def test_relative_to_false(self, tmp_path: Path) -> None:
         tm.that(
-            not FlextInfraInternalDependencySyncService.is_relative_to(
-                Path("/completely/different"),
-                tmp_path,
-            ),
+            not Path("/completely/different").is_relative_to(tmp_path),
             eq=True,
         )
 

@@ -109,7 +109,9 @@ class TestSyncOne:
         doc = tomlkit.document()
         doc["project"] = {"name": "test"}
         pyproject.write_text(doc.as_string(), encoding="utf-8")
-        tm.that(not _manager().sync_one(pyproject).is_success, eq=True)
+        result = _manager().sync_one(pyproject)
+        tm.that(result.is_success, eq=True)
+        tm.that(result.value, eq=False)
 
     def test_sync_one_no_pyright_section(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
@@ -118,7 +120,9 @@ class TestSyncOne:
         tool["other"] = tomlkit.table()
         doc["tool"] = tool
         pyproject.write_text(doc.as_string(), encoding="utf-8")
-        tm.that(not _manager().sync_one(pyproject).is_success, eq=True)
+        result = _manager().sync_one(pyproject)
+        tm.that(result.is_success, eq=True)
+        tm.that(result.value, eq=False)
 
     @pytest.mark.parametrize(
         "tool_doc",

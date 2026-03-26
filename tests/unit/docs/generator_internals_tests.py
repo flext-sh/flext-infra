@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraDocGenerator
+from flext_infra import FlextInfraDocGenerator, u
 from tests import m
 
 
@@ -172,19 +172,23 @@ class TestGeneratorHelpers:
         self,
         gen: FlextInfraDocGenerator,
     ) -> None:
-        tm.that(gen._normalize_anchor("Hello World"), eq="hello-world")
-        tm.that(gen._normalize_anchor("Test-Case"), eq="test-case")
+        _ = gen
+        tm.that(u.Infra.anchorize("Hello World"), eq="hello-world")
+        tm.that(u.Infra.anchorize("Test-Case"), eq="test-case")
 
     def test_normalize_anchor_empty_string(self, gen: FlextInfraDocGenerator) -> None:
-        tm.that(gen._normalize_anchor(""), eq="")
+        _ = gen
+        tm.that(u.Infra.anchorize(""), eq="")
 
     def test_build_toc_from_headings(self, gen: FlextInfraDocGenerator) -> None:
-        toc = gen._build_toc("# Main\n\n## Section 1\n\n### Subsection\n")
+        _ = gen
+        toc = u.Infra.build_toc("# Main\n\n## Section 1\n\n### Subsection\n")
         tm.that(toc, has="<!-- TOC START -->")
         tm.that(toc, has="Section 1")
 
     def test_build_toc_with_no_headings(self, gen: FlextInfraDocGenerator) -> None:
-        tm.that(gen._build_toc("# Main\n\nNo sections.\n"), has="No sections found")
+        _ = gen
+        tm.that(u.Infra.build_toc("# Main\n\nNo sections.\n"), has="No sections found")
 
     def test_update_toc_replaces_existing(self, gen: FlextInfraDocGenerator) -> None:
         result = gen._update_toc(

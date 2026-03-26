@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraDocFixer
+from flext_infra import FlextInfraDocFixer, u
 from tests import m
 
 
@@ -133,22 +133,25 @@ class TestFixerToc:
         title: str,
         expected: str,
     ) -> None:
-        tm.that(fixer._anchorize(title), eq=expected)
+        _ = fixer
+        tm.that(u.Infra.anchorize(title), eq=expected)
 
     def test_build_toc_variants(self, fixer: FlextInfraDocFixer) -> None:
-        toc = fixer._build_toc(
+        _ = fixer
+        toc = u.Infra.build_toc(
             "# Main\n\n## Section 1\n\n### Subsection\n\n## Section 2\n",
         )
         tm.that(toc, has="<!-- TOC START -->")
         tm.that(toc, has="<!-- TOC END -->")
         tm.that(toc, has="Section 1")
         tm.that(
-            fixer._build_toc("# Main\n\nNo sections here.\n"),
+            u.Infra.build_toc("# Main\n\nNo sections here.\n"),
             has="No sections found",
         )
 
     def test_build_toc_skips_empty_anchors(self, fixer: FlextInfraDocFixer) -> None:
-        toc = fixer._build_toc("## !!!\n\n## Valid Section\n")
+        _ = fixer
+        toc = u.Infra.build_toc("## !!!\n\n## Valid Section\n")
         tm.that(toc, has="Valid Section")
         tm.that("!!!" not in toc, eq=True)
 
