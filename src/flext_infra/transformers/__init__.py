@@ -65,10 +65,6 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraChangeTrackingTransformer": [
-        "flext_infra.transformers._base",
-        "FlextInfraChangeTrackingTransformer",
-    ],
     "FlextInfraCensusImportDiscoveryVisitor": [
         "flext_infra.transformers.census_visitors",
         "FlextInfraCensusImportDiscoveryVisitor",
@@ -152,7 +148,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 }
 
 __all__ = [
-    "FlextInfraChangeTrackingTransformer",
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
     "FlextInfraHelperConsolidationTransformer",

@@ -13,14 +13,6 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.refactor.test_rope_project import (
-        TestHookCallOrdering,
-        TestInitRopeProject,
-        TestRopeHooks,
-        TestRopeProjectProperty,
-        engine,
-        fake_workspace,
-    )
     from tests.refactor.test_rope_semantic import (
         TestGetClassBases,
         TestGetClassMethods,
@@ -47,18 +39,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.refactor.test_rope_semantic",
         "TestGetModuleImports",
     ],
-    "TestHookCallOrdering": [
-        "tests.refactor.test_rope_project",
-        "TestHookCallOrdering",
-    ],
-    "TestInitRopeProject": ["tests.refactor.test_rope_project", "TestInitRopeProject"],
-    "TestRopeHooks": ["tests.refactor.test_rope_project", "TestRopeHooks"],
-    "TestRopeProjectProperty": [
-        "tests.refactor.test_rope_project",
-        "TestRopeProjectProperty",
-    ],
-    "engine": ["tests.refactor.test_rope_project", "engine"],
-    "fake_workspace": ["tests.refactor.test_rope_project", "fake_workspace"],
     "models_resource": ["tests.refactor.test_rope_semantic", "models_resource"],
     "rope_workspace": ["tests.refactor.test_rope_semantic", "rope_workspace"],
     "services_resource": ["tests.refactor.test_rope_semantic", "services_resource"],
@@ -78,12 +58,6 @@ __all__ = [
     "TestGetClassMethods",
     "TestGetModuleClasses",
     "TestGetModuleImports",
-    "TestHookCallOrdering",
-    "TestInitRopeProject",
-    "TestRopeHooks",
-    "TestRopeProjectProperty",
-    "engine",
-    "fake_workspace",
     "models_resource",
     "rope_workspace",
     "services_resource",
