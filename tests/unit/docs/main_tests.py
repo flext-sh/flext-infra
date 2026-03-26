@@ -21,11 +21,10 @@ from flext_infra import (
     u,
 )
 from flext_infra.docs.__main__ import FlextInfraDocsCommand
+from tests import m
 
 _run_audit = FlextInfraDocsCommand.run_audit
 _run_fix = FlextInfraDocsCommand.run_fix
-
-from ...models import m
 
 
 def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:

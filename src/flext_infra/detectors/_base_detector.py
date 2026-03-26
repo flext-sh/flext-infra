@@ -80,7 +80,7 @@ class FlextInfraScanFileMixin:
         Default: delegates to ``cls.detect_file(file_path=..., rope_project=...,
         parse_failures=...)``.  Override when ``detect_file`` requires extra params.
         """
-        return self.detect_file(  # type: ignore[attr-defined]
+        return self.detect_file(
             file_path=file_path,
             rope_project=self._rope,
             parse_failures=self._pf,

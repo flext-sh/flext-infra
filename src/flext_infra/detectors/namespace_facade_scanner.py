@@ -26,7 +26,7 @@ class FlextInfraNamespaceFacadeScanner:
     ) -> Sequence[m.Infra.FacadeStatus]:
         """Return FacadeStatus for each family (c, t, p, m, u) in a project."""
         del parse_failures
-        from flext_infra import u  # noqa: PLC0415
+        from flext_infra import u
 
         stem = cls.project_class_stem(project_name=project_name)
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
