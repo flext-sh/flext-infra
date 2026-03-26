@@ -20,7 +20,10 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.docs.__main__ import _run_audit, _run_fix
+from flext_infra.docs.__main__ import FlextInfraDocsCommand
+
+_run_audit = FlextInfraDocsCommand.run_audit
+_run_fix = FlextInfraDocsCommand.run_fix
 
 from ...models import m
 

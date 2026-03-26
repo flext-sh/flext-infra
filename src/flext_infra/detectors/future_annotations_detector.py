@@ -20,9 +20,7 @@ class FlextInfraFutureAnnotationsDetector(FlextInfraScanFileMixin, p.Infra.Scann
     """Detect missing future annotations import via rope resource read."""
 
     _rule_id: ClassVar[str] = "namespace.future_annotations"
-    _MESSAGE_TEMPLATE: ClassVar[str] = (
-        "Missing 'from __future__ import annotations'"
-    )
+    _MESSAGE_TEMPLATE: ClassVar[str] = "Missing 'from __future__ import annotations'"
 
     @classmethod
     def detect_file(

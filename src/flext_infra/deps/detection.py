@@ -66,7 +66,7 @@ class FlextInfraDependencyDetectionService:
         """Convert container value to namespaced infra value."""
         if value is None or isinstance(value, (str, int, float, bool)):
             return value
-        _scalar = (str, int, float, bool, type(None))
+        scalar_types = (str, int, float, bool, type(None))
         if isinstance(value, list):
             try:
                 sequence = _JSON_SEQ_ADAPTER.validate_python(value)
@@ -78,7 +78,7 @@ class FlextInfraDependencyDetectionService:
                     item,
                 )
                 if (converted_item is None and item is not None) or not isinstance(
-                    converted_item, _scalar
+                    converted_item, scalar_types
                 ):
                     return None
                 converted.append(converted_item)
@@ -91,7 +91,7 @@ class FlextInfraDependencyDetectionService:
         for key, item in mapping_value.items():
             converted_item = FlextInfraDependencyDetectionService.to_infra_value(item)
             if (converted_item is None and item is not None) or not isinstance(
-                converted_item, _scalar
+                converted_item, scalar_types
             ):
                 return None
             converted_map[str(key)] = converted_item

@@ -241,7 +241,12 @@ if TYPE_CHECKING:
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor._base_rule import (
+        CONTAINER_DICT_SEQ_ADAPTER,
+        INFRA_MAPPING_ADAPTER,
+        INFRA_SEQ_ADAPTER,
+        STR_MAPPING_ADAPTER,
         FlextInfraChangeTracker,
+        FlextInfraGenericTransformerRule,
         FlextInfraRefactorRule,
     )
     from flext_infra.refactor._constants import FlextInfraRefactorConstants
@@ -443,6 +448,10 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "CONTAINER_DICT_SEQ_ADAPTER": [
+        "flext_infra.refactor._base_rule",
+        "CONTAINER_DICT_SEQ_ADAPTER",
+    ],
     "FlextInfraBanditGate": ["flext_infra.gates.bandit", "FlextInfraBanditGate"],
     "FlextInfraBaseMkGenerator": [
         "flext_infra.basemk.generator",
@@ -655,6 +664,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "FlextInfraGateRegistry",
     ],
     "FlextInfraGatesModels": ["flext_infra.gates._models", "FlextInfraGatesModels"],
+    "FlextInfraGenericTransformerRule": [
+        "flext_infra.refactor._base_rule",
+        "FlextInfraGenericTransformerRule",
+    ],
     "FlextInfraGithubConstants": [
         "flext_infra.github._constants",
         "FlextInfraGithubConstants",
@@ -1232,6 +1245,12 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.workspace._models",
         "FlextInfraWorkspaceModels",
     ],
+    "INFRA_MAPPING_ADAPTER": [
+        "flext_infra.refactor._base_rule",
+        "INFRA_MAPPING_ADAPTER",
+    ],
+    "INFRA_SEQ_ADAPTER": ["flext_infra.refactor._base_rule", "INFRA_SEQ_ADAPTER"],
+    "STR_MAPPING_ADAPTER": ["flext_infra.refactor._base_rule", "STR_MAPPING_ADAPTER"],
     "__all__": ["flext_infra.__version__", "__all__"],
     "__author__": ["flext_infra.__version__", "__author__"],
     "__author_email__": ["flext_infra.__version__", "__author_email__"],
@@ -1279,6 +1298,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 }
 
 __all__ = [
+    "CONTAINER_DICT_SEQ_ADAPTER",
+    "INFRA_MAPPING_ADAPTER",
+    "INFRA_SEQ_ADAPTER",
+    "STR_MAPPING_ADAPTER",
     "FlextInfraBanditGate",
     "FlextInfraBaseMkGenerator",
     "FlextInfraBaseMkTemplateEngine",
@@ -1344,6 +1367,7 @@ __all__ = [
     "FlextInfraGate",
     "FlextInfraGateRegistry",
     "FlextInfraGatesModels",
+    "FlextInfraGenericTransformerRule",
     "FlextInfraGithubConstants",
     "FlextInfraGithubModels",
     "FlextInfraGoGate",

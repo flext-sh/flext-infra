@@ -125,7 +125,9 @@ class FlextInfraUtilitiesDocs:
     def build_toc(content: str) -> str:
         """Generate a TOC block from ## and ### headings in content."""
         items: MutableSequence[str] = []
-        for level, title in FlextInfraUtilitiesPatterns.HEADING_H2_H3_RE.findall(content):
+        for level, title in FlextInfraUtilitiesPatterns.HEADING_H2_H3_RE.findall(
+            content
+        ):
             anchor = FlextInfraUtilitiesDocs.anchorize(title)
             if not anchor:
                 continue
@@ -133,13 +135,20 @@ class FlextInfraUtilitiesDocs:
             items.append(f"{indent}- [{title}](#{anchor})")
         if not items:
             items = ["- No sections found"]
-        return f"{FlextInfraUtilitiesTemplates.TOC_START}\n" + "\n".join(items) + f"\n{FlextInfraUtilitiesTemplates.TOC_END}"
+        return (
+            f"{FlextInfraUtilitiesTemplates.TOC_START}\n"
+            + "\n".join(items)
+            + f"\n{FlextInfraUtilitiesTemplates.TOC_END}"
+        )
 
     @staticmethod
     def update_toc(content: str) -> t.Infra.StrIntPair:
         """Insert or replace the TOC in content, returning (updated, changed)."""
         toc = FlextInfraUtilitiesDocs.build_toc(content)
-        if FlextInfraUtilitiesTemplates.TOC_START in content and FlextInfraUtilitiesTemplates.TOC_END in content:
+        if (
+            FlextInfraUtilitiesTemplates.TOC_START in content
+            and FlextInfraUtilitiesTemplates.TOC_END in content
+        ):
             updated = re.sub(
                 r"<!-- TOC START -->.*?<!-- TOC END -->",
                 toc,

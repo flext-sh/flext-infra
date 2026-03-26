@@ -106,8 +106,8 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         if not isinstance(value, (list, tuple, set)):
             return []
         try:
-            items: Sequence[t.Infra.InfraValue] = (
-                INFRA_SEQ_ADAPTER.validate_python(value)
+            items: Sequence[t.Infra.InfraValue] = INFRA_SEQ_ADAPTER.validate_python(
+                value
             )
         except ValidationError:
             return []

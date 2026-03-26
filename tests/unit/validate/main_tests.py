@@ -16,11 +16,11 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import t, u
-from flext_infra.validate.__main__ import (
-    _run_basemk_validate,
-    _run_inventory,
-    _run_scan,
-)
+from flext_infra.validate.__main__ import FlextInfraValidateCommand
+
+_run_basemk_validate = FlextInfraValidateCommand.run_basemk_validate
+_run_inventory = FlextInfraValidateCommand.run_inventory
+_run_scan = FlextInfraValidateCommand.run_scan
 
 _CWD = "/home/marlonsc/flext/flext-core"
 

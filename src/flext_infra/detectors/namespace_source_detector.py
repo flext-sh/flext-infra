@@ -37,7 +37,9 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         self._project_root = project_root
 
     @override
-    def _collect_violations(self, file_path: Path) -> Sequence[m.Infra.NamespaceSourceViolation]:
+    def _collect_violations(
+        self, file_path: Path
+    ) -> Sequence[m.Infra.NamespaceSourceViolation]:
         return self.detect_file(
             file_path=file_path,
             project_name=self._project_name,

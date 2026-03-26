@@ -1,4 +1,4 @@
-"""Tests for documentation CLI — _run_build, _run_generate, _run_validate handlers."""
+"""Tests for documentation CLI — FlextInfraDocsCommand handlers."""
 
 from __future__ import annotations
 
@@ -15,12 +15,16 @@ from flext_infra import (
     FlextInfraDocValidator,
     u,
 )
-from flext_infra.docs.__main__ import _run_build, _run_generate, _run_validate
+from flext_infra.docs.__main__ import FlextInfraDocsCommand
 from tests import t
 
 from ...models import m
 
 _R = m.Infra.DocsPhaseReport
+
+_run_build = FlextInfraDocsCommand.run_build
+_run_generate = FlextInfraDocsCommand.run_generate
+_run_validate = FlextInfraDocsCommand.run_validate
 
 
 def _cli_args(

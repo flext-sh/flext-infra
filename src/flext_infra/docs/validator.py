@@ -82,7 +82,9 @@ class FlextInfraDocValidator:
             projects=projects,
             output_dir=output_dir,
             handler=lambda scope: self._validate_scope(
-                scope, check=check, apply_mode=apply,
+                scope,
+                check=check,
+                apply_mode=apply,
             ),
         )
 

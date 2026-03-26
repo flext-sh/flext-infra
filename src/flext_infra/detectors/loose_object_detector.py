@@ -50,7 +50,9 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         self._project_name = project_name
 
     @override
-    def _collect_violations(self, file_path: Path) -> Sequence[m.Infra.LooseObjectViolation]:
+    def _collect_violations(
+        self, file_path: Path
+    ) -> Sequence[m.Infra.LooseObjectViolation]:
         return self.detect_file(
             file_path=file_path,
             project_name=self._project_name,
