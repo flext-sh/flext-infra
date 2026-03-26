@@ -1,0 +1,23 @@
+tests/unit/deps/test_modernizer_helpers.py
+  68dbd4878595068b 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "1129354e9399d071bf5486d5ecc86b7739d13854",
+  "prompts": {
+    "68dbd4878595068b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e713beea-5d5d-4f90-bbc7-9650893a58f6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
