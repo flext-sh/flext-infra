@@ -10,16 +10,15 @@ from flext_infra import FlextInfraCodegenSnapshot, t
 class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
     @staticmethod
     def infer_package(path: Path) -> str:
-        abs_path = str(path.absolute())
-        for root_dir in ("/src/", "/tests/", "/examples/", "/scripts/"):
-            idx = abs_path.rfind(root_dir)
-            if idx != -1:
-                rel = abs_path[idx + len(root_dir) :]
-                pkg_parts = rel.split("/")[:-1]
-                if root_dir == "/src/":
-                    return ".".join(pkg_parts)
-                root_name = root_dir.strip("/")
-                return ".".join([root_name, *pkg_parts]) if pkg_parts else root_name
+        root_markers = {"examples", "scripts", "src", "tests"}
+        abs_parts = path.absolute().parts
+        for index, part in enumerate(abs_parts):
+            if part not in root_markers:
+                continue
+            pkg_parts = abs_parts[index + 1 : -1]
+            if part == "src":
+                return ".".join(pkg_parts)
+            return ".".join([part, *pkg_parts]) if pkg_parts else part
         return ""
 
     @staticmethod

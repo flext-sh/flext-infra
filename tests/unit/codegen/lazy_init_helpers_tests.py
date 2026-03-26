@@ -41,6 +41,11 @@ class TestInferPackage:
         path = Path("/workspace/tests/unit/__init__.py")
         tm.that(u.Infra.infer_package(path), eq="tests.unit")
 
+    def test_examples_nested_tests_path(self) -> None:
+        """Test inference preserves examples package before nested tests."""
+        path = Path("/workspace/examples/tests/__init__.py")
+        tm.that(u.Infra.infer_package(path), eq="examples.tests")
+
     def test_without_src_directory(self) -> None:
         """Test when path doesn't contain /src/."""
         path = Path("/workspace/lib/test/__init__.py")

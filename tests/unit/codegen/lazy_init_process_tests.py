@@ -93,6 +93,29 @@ class TestProcessDirectory:
         tm.that(exports, contains="ParentModel")
         tm.that(exports, contains="ChildService")
 
+    def test_generates_examples_tests_module_paths(self, tmp_path: Path) -> None:
+        """Test nested examples/tests packages keep the examples prefix."""
+        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        examples_tests_dir = tmp_path / "examples" / "tests"
+        examples_tests_dir.mkdir(parents=True)
+        (examples_tests_dir / "test_declarative_example.py").write_text(
+            '"""Example tests."""\n\n__all__ = ["load_env_config"]\n\n'
+            "def load_env_config() -> None:\n    pass\n",
+        )
+        dir_exports: Mapping[str, Mapping[str, tuple[str, str]]] = {}
+        result, exports = generator._process_directory(
+            examples_tests_dir,
+            check_only=False,
+            dir_exports=dir_exports,
+        )
+        tm.that(result, eq=0)
+        tm.that(exports, contains="load_env_config")
+        init_content = (examples_tests_dir / "__init__.py").read_text()
+        tm.that(
+            init_content,
+            contains="examples.tests.test_declarative_example",
+        )
+
     def test_handles_version_file(self, tmp_path: Path) -> None:
         """Test _process_directory handles __version__.py correctly."""
         generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
