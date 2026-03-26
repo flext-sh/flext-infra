@@ -1,5 +1,4 @@
 """Wave 0 stub tests confirming rope is importable."""
-# pyright: reportMissingTypeStubs=false, reportUnknownVariableType=false
 
 from __future__ import annotations
 

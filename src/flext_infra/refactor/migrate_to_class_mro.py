@@ -39,6 +39,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         stash_ref = ""
         moved_index: MutableMapping[str, Mapping[str, str]] = {}
         migrations: MutableSequence[m.Infra.MROFileMigration] = []
+        pending_writes: MutableSequence[tuple[Path, str]] = []
         for scan_result in scan_results:
             try:
                 updated_source, migration, symbol_alias_map = u.Infra.mro_migrate_file(
@@ -52,15 +53,14 @@ class FlextInfraRefactorMigrateToClassMRO:
             migrations.append(migration)
             moved_index[scan_result.module] = symbol_alias_map
             if apply:
-                Path(scan_result.file).write_text(
-                    updated_source,
-                    encoding=c.Infra.Encoding.DEFAULT,
-                )
+                pending_writes.append((Path(scan_result.file), updated_source))
         rewrite_results = FlextInfraRefactorMROImportRewriter.rewrite_workspace(
             workspace_root=self._workspace_root,
             moved_index=moved_index,
             apply=apply,
         )
+        for file_path, source in pending_writes:
+            file_path.write_text(source, encoding=c.Infra.Encoding.DEFAULT)
         rewrites = tuple(rewrite_results)
         remaining_violations, mro_failures = (
             FlextInfraRefactorMROMigrationValidator.validate(

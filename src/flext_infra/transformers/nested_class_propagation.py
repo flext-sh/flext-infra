@@ -7,8 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import t
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra import FlextInfraUtilitiesParsing, t
 from flext_infra.transformers.policy import FlextInfraRefactorTransformerPolicyUtilities
 
 
@@ -44,6 +43,13 @@ class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):
     def visit_Param(self, node: cst.Param) -> bool | None:
         """Mark parameter name as definition site — skip in leave_Name."""
         self._skip_names.add(id(node.name))
+        return None
+
+    @override
+    def visit_ImportAlias(self, node: cst.ImportAlias) -> bool | None:
+        """Mark import alias names — leave_ImportFrom handles these."""
+        if isinstance(node.name, cst.Name):
+            self._skip_names.add(id(node.name))
         return None
 
     @override

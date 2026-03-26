@@ -8,7 +8,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import c, t, u
+from flext_infra import FlextInfraUtilitiesParsing, c, t
 
 _PAIR_LENGTH = 2
 
@@ -36,7 +36,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
 
     @override
     def visit_ImportFrom(self, node: cst.ImportFrom) -> bool:
-        module_name = u.Infra.cst_module_name(node.module)
+        module_name = FlextInfraUtilitiesParsing.cst_module_name(node.module)
         if module_name == "typing":
             names = node.names
             if isinstance(names, cst.ImportStar):
@@ -183,7 +183,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         only = stmt.body[0]
         if not isinstance(only, cst.ImportFrom):
             return stmt
-        module_name = u.Infra.cst_module_name(only.module)
+        module_name = FlextInfraUtilitiesParsing.cst_module_name(only.module)
         if module_name != "typing":
             return stmt
         if isinstance(only.names, cst.ImportStar):
@@ -221,8 +221,10 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
             ],
         )
         body = list(module.body)
-        insert_idx = u.Infra.index_after_docstring_and_future_imports(
-            body,
+        insert_idx = (
+            FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(
+                body,
+            )
         )
         self.changes.append("Added import: from flext_core import t")
         new_body = body[:insert_idx] + [import_stmt] + body[insert_idx:]

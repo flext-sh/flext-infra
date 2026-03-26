@@ -3,8 +3,6 @@
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
-# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false
-# pyright: reportUnknownArgumentType=false
 
 from __future__ import annotations
 
@@ -26,13 +24,13 @@ from tomlkit.items import Table
 
 from flext_infra import (
     FlextInfraNamespaceFacadeScanner,
+    FlextInfraUtilitiesFormatting,
+    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesRefactorLoader,
     c,
     m,
     t,
 )
-from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 
 class FlextInfraUtilitiesRefactorNamespace:

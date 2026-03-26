@@ -6,9 +6,6 @@ that return ChangeSet objects. Orchestrators decide whether to apply.
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
-# pyright: reportMissingTypeStubs=false, reportUnknownVariableType=false
-# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
-# pyright: reportUnnecessaryComparison=false, reportUnnecessaryIsInstance=false
 
 from __future__ import annotations
 
@@ -72,11 +69,14 @@ class FlextInfraUtilitiesRope:
     ) -> t.Infra.RopeResource | None:
         """Return rope File for a dotted module name, or None if not found."""
         rel = module_name.replace(".", "/") + ".py"
-        try:
-            resource = rope_project.get_resource(rel)
-            return resource if isinstance(resource, RopeFile) else None
-        except ResourceNotFoundError:
-            return None
+        for prefix in ("", "src/"):
+            try:
+                resource = rope_project.get_resource(prefix + rel)
+                if isinstance(resource, RopeFile):
+                    return resource
+            except ResourceNotFoundError:
+                continue
+        return None
 
     @staticmethod
     def get_resource_from_path(

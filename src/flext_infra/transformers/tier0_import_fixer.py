@@ -16,7 +16,8 @@ from typing import ClassVar, override
 
 import libcst as cst
 
-from flext_infra import t, u
+from flext_infra import FlextInfraUtilitiesParsing, t
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 
 
 class FlextInfraTransformerTier0ImportFixer:
@@ -64,7 +65,9 @@ class FlextInfraTransformerTier0ImportFixer:
 
         def build_analysis(self) -> FlextInfraTransformerTier0ImportFixer.Analysis:
             """Process visited nodes and build violation analysis."""
-            pkg_dir, pkg_name = u.Infra.package_context(self._file_path)
+            pkg_dir, pkg_name = FlextInfraUtilitiesDiscovery.package_context(
+                self._file_path
+            )
             if not pkg_name:
                 return FlextInfraTransformerTier0ImportFixer.Analysis(
                     package_name="",
@@ -72,11 +75,15 @@ class FlextInfraTransformerTier0ImportFixer:
                 )
 
             alias_map: MutableMapping[str, str] = dict(
-                u.Infra.discover_project_aliases(
+                FlextInfraUtilitiesDiscovery.discover_project_aliases(
                     pkg_dir.parent if pkg_dir.name == "src" else pkg_dir,
                 ),
             )
-            alias_map.update(u.Infra.extract_lazy_import_map(pkg_dir / "__init__.py"))
+            alias_map.update(
+                FlextInfraUtilitiesDiscovery.extract_lazy_import_map(
+                    pkg_dir / "__init__.py"
+                )
+            )
 
             analysis = FlextInfraTransformerTier0ImportFixer.Analysis(
                 package_name=pkg_name,
@@ -84,7 +91,7 @@ class FlextInfraTransformerTier0ImportFixer:
                 alias_to_module=alias_map,
             )
 
-            if u.Infra.cst_is_module_toplevel(self._file_path):
+            if FlextInfraUtilitiesParsing.cst_is_module_toplevel(self._file_path):
                 analysis.category_a.update(self._self_import_aliases)
                 return analysis
 
@@ -100,18 +107,18 @@ class FlextInfraTransformerTier0ImportFixer:
         @override
         def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
             self._import_depth += 1
-            _, pkg_name = u.Infra.package_context(self._file_path)
+            _, pkg_name = FlextInfraUtilitiesDiscovery.package_context(self._file_path)
             if (
                 not pkg_name
                 or not node.module
                 or node.relative
-                or u.Infra.cst_module_name(node.module) != pkg_name
+                or FlextInfraUtilitiesParsing.cst_module_name(node.module) != pkg_name
             ):
                 return
             if isinstance(node.names, cst.ImportStar):
                 return
             for item in node.names:
-                bound = u.Infra.cst_asname_to_local(item.asname) or (
+                bound = FlextInfraUtilitiesParsing.cst_asname_to_local(item.asname) or (
                     item.name.value if isinstance(item.name, cst.Name) else ""
                 )
                 if len(bound) == 1 and bound.islower():
@@ -141,13 +148,13 @@ class FlextInfraTransformerTier0ImportFixer:
 
         @override
         def visit_If(self, node: cst.If) -> bool:
-            if u.Infra.cst_is_type_checking_test(node.test):
+            if FlextInfraUtilitiesParsing.cst_is_type_checking_test(node.test):
                 self._type_checking_depth += 1
             return True
 
         @override
         def leave_If(self, original_node: cst.If) -> None:
-            if u.Infra.cst_is_type_checking_test(original_node.test):
+            if FlextInfraUtilitiesParsing.cst_is_type_checking_test(original_node.test):
                 self._type_checking_depth = max(0, self._type_checking_depth - 1)
 
         @override
@@ -223,9 +230,13 @@ class FlextInfraTransformerTier0ImportFixer:
             original_node: cst.ImportFrom,
             updated_node: cst.ImportFrom,
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-            mod = u.Infra.cst_module_name(updated_node.module)
-            if mod == "typing" and "TYPE_CHECKING" in u.Infra.cst_collect_bound_names(
-                updated_node,
+            mod = FlextInfraUtilitiesParsing.cst_module_name(updated_node.module)
+            if (
+                mod == "typing"
+                and "TYPE_CHECKING"
+                in FlextInfraUtilitiesParsing.cst_collect_bound_names(
+                    updated_node,
+                )
             ):
                 self._type_checking_import_present = True
             if mod == self._package_name:
@@ -247,7 +258,9 @@ class FlextInfraTransformerTier0ImportFixer:
             if not self._type_checking_import_present and self._type_checking_pending:
                 stmts.insert(
                     self._idx(stmts),
-                    u.Infra.cst_import_line("typing", ["TYPE_CHECKING"]),
+                    FlextInfraUtilitiesParsing.cst_import_line(
+                        "typing", ["TYPE_CHECKING"]
+                    ),
                 )
                 self._type_checking_import_present = True
                 self._changes.append("Added 'from typing import TYPE_CHECKING'")
@@ -263,7 +276,7 @@ class FlextInfraTransformerTier0ImportFixer:
                         test=cst.Name("TYPE_CHECKING"),
                         body=cst.IndentedBlock(
                             body=[
-                                u.Infra.cst_import_line(
+                                FlextInfraUtilitiesParsing.cst_import_line(
                                     self._package_name,
                                     list(self._type_checking_pending),
                                 ),
@@ -286,7 +299,7 @@ class FlextInfraTransformerTier0ImportFixer:
                 i
                 for i in node.names
                 if (
-                    u.Infra.cst_asname_to_local(i.asname)
+                    FlextInfraUtilitiesParsing.cst_asname_to_local(i.asname)
                     or (i.name.value if isinstance(i.name, cst.Name) else "")
                 )
                 not in self._root_remove
@@ -302,7 +315,7 @@ class FlextInfraTransformerTier0ImportFixer:
         ) -> cst.ImportFrom:
             if isinstance(node.names, cst.ImportStar):
                 return node
-            ext = u.Infra.cst_collect_bound_names(node)
+            ext = FlextInfraUtilitiesParsing.cst_collect_bound_names(node)
             add = [cst.ImportAlias(name=cst.Name(a)) for a in sorted(pnd - ext)]
             if not add:
                 return node
@@ -314,14 +327,14 @@ class FlextInfraTransformerTier0ImportFixer:
             res: MutableSequence[cst.BaseStatement] = []
             if self._core_pending:
                 res.append(
-                    u.Infra.cst_import_line(
+                    FlextInfraUtilitiesParsing.cst_import_line(
                         self._core_package,
                         sorted(self._core_pending),
                     ),
                 )
                 self._core_pending.clear()
             res.extend(
-                u.Infra.cst_import_line(
+                FlextInfraUtilitiesParsing.cst_import_line(
                     f"{self._package_name}.{sub}",
                     sorted(self._direct_pending[sub]),
                 )
@@ -329,13 +342,17 @@ class FlextInfraTransformerTier0ImportFixer:
                 if self._direct_pending[sub]
             )
             res.extend(
-                u.Infra.cst_import_line(self._CLASS_IMPORTS_MAP[n], [n])
+                FlextInfraUtilitiesParsing.cst_import_line(
+                    self._CLASS_IMPORTS_MAP[n], [n]
+                )
                 for n in sorted(self._missing_classes)
             )
             return res
 
         def _idx(self, body: Sequence[cst.BaseStatement]) -> int:
-            i = u.Infra.index_after_docstring_and_future_imports(body)
+            i = FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(
+                body
+            )
             while i < len(body):
                 stmt = body[i]
                 if not isinstance(stmt, cst.SimpleStatementLine):

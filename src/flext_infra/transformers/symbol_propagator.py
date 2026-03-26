@@ -7,8 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import t
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
+from flext_infra import FlextInfraUtilitiesParsing, t
 from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 

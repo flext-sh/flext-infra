@@ -8,7 +8,7 @@ from typing import override
 import libcst as cst
 from libcst.metadata import QualifiedNameProvider, QualifiedNameSource
 
-from flext_infra import c, t, u
+from flext_infra import FlextInfraUtilitiesParsing, c, t
 from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
@@ -43,7 +43,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraChangeTrackingTransformer):
         updated_node: cst.ImportFrom,
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
         """Replace forbidden imports and capture symbol replacement map."""
-        module_name = u.Infra.cst_module_name(original_node.module)
+        module_name = FlextInfraUtilitiesParsing.cst_module_name(original_node.module)
         if module_name == c.Infra.Packages.CORE_UNDERSCORE:
             imported_aliases = self._extract_import_aliases(original_node.names)
             for imported_alias in imported_aliases:
@@ -119,8 +119,10 @@ class FlextInfraRefactorImportModernizer(FlextInfraChangeTrackingTransformer):
                 ),
             ],
         )
-        insert_idx = u.Infra.index_after_docstring_and_future_imports(
-            updated_node.body,
+        insert_idx = (
+            FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(
+                updated_node.body,
+            )
         )
         body = list(updated_node.body)
         self._record_change(

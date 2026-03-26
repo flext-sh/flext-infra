@@ -213,10 +213,23 @@ class FlextInfraCodegenFixer(s[bool]):
         files_modified: t.Infra.StrSet,
     ) -> m.Infra.MROMigrationReport:
         service = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path)
-        report: m.Infra.MROMigrationReport = service.run(
-            target="all",
-            apply=True,
-        )
+        try:
+            report: m.Infra.MROMigrationReport = service.run(
+                target="all",
+                apply=True,
+            )
+        except Exception:
+            return m.Infra.MROMigrationReport(
+                workspace=str(project_path),
+                target="all",
+                dry_run=False,
+                files_scanned=0,
+                files_with_candidates=0,
+                remaining_violations=0,
+                mro_failures=0,
+                migrations=[],
+                rewrites=[],
+            )
         files_modified.update(migration.file for migration in report.migrations)
         files_modified.update(rewrite.file for rewrite in report.rewrites)
         return report

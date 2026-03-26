@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# pyright: reportMissingTypeStubs=false, reportArgumentType=false
 from pathlib import Path
 
 import pytest

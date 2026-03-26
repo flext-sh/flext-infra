@@ -19,6 +19,7 @@ from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
 from flext_infra import (
     FlextInfraUtilitiesIo,
+    FlextInfraUtilitiesParsing,
     FlextInfraUtilitiesRefactorCli,
     FlextInfraUtilitiesRefactorLoader,
     FlextInfraUtilitiesRefactorMroScan,
@@ -31,7 +32,6 @@ from flext_infra import (
     m,
     t,
 )
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
 
 _STR_MAPPING_ADAPTER: TypeAdapter[Sequence[t.StrMapping]] = TypeAdapter(
     Sequence[t.StrMapping],

@@ -7,7 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import t, u
+from flext_infra import FlextInfraUtilitiesParsing, t
 from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
 
 
@@ -184,8 +184,10 @@ class FlextInfraTypingAnnotationReplacer(FlextInfraChangeTrackingTransformer):
             ],
         )
         body = list(updated_node.body)
-        insert_idx = u.Infra.index_after_docstring_and_future_imports(
-            body,
+        insert_idx = (
+            FlextInfraUtilitiesParsing.index_after_docstring_and_future_imports(
+                body,
+            )
         )
         new_body = body[:insert_idx] + [new_import] + body[insert_idx:]
         self._record_change("Added import: from flext_core import t")
