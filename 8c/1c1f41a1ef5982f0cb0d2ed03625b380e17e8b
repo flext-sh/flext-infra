@@ -1,0 +1,23 @@
+src/flext_infra/refactor/migrate_to_class_mro.py
+  d10ba32fe0b7f2a6 101,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.20",
+  "base_commit_sha": "8c1c1f41a1ef5982f0cb0d2ed03625b380e17e8b",
+  "prompts": {
+    "d10ba32fe0b7f2a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e9c95cf-74f3-4a75-aac3-79a6cb45fe9b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 2,
+      "accepted_lines": 3,
+      "overriden_lines": 1
+    }
+  }
+}
