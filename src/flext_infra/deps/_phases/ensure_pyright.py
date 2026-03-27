@@ -330,9 +330,31 @@ class FlextInfraEnsurePyrightConfigPhase:
         elif c.Infra.IGNORE in pyright:
             del pyright[c.Infra.IGNORE]
             changes.append("tool.pyright.ignore removed (no discovered ignores)")
-        if "stubPath" in pyright:
+        stub_rules = self._path_rules()
+        expected_stub_path: str | None = (
+            stub_rules.root_typings_paths[0]
+            if is_root and stub_rules.root_typings_paths
+            else (
+                stub_rules.project_typings_paths[0]
+                if stub_rules.project_typings_paths
+                else None
+            )
+        )
+        if expected_stub_path is not None:
+            existing = project_root / expected_stub_path if project_root else None
+            if existing is not None and existing.is_dir():
+                current_stub = u.Infra.unwrap_item(u.Infra.get(pyright, "stubPath"))
+                if current_stub != expected_stub_path:
+                    pyright["stubPath"] = expected_stub_path
+                    changes.append(
+                        f"tool.pyright.stubPath set to {expected_stub_path}",
+                    )
+            elif "stubPath" in pyright:
+                del pyright["stubPath"]
+                changes.append("tool.pyright.stubPath removed (typings dir missing)")
+        elif "stubPath" in pyright:
             del pyright["stubPath"]
-            changes.append("tool.pyright.stubPath removed (managed by extraPaths)")
+            changes.append("tool.pyright.stubPath removed (no typings configured)")
         if project_root is not None:
             expected_extra = FlextInfraExtraPathsManager().pyright_extra_paths(
                 project_dir=project_root,

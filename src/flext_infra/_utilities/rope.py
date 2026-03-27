@@ -150,7 +150,7 @@ class FlextInfraUtilitiesRope:
                 if isinstance(pyname, ImportedName):
                     obj = pyname.get_object()
                     module = obj.get_module()
-                    if module is not None:
+                    if isinstance(module, p.Infra.RopePyModuleLike):
                         mod_name = module.get_name() or ""
                         result[name] = f"{mod_name}.{name}" if mod_name else name
                     else:
@@ -214,6 +214,8 @@ class FlextInfraUtilitiesRope:
                 if not isinstance(obj, AbstractClass):
                     continue
                 _res, line = pyname.get_definition_location()
+                if not isinstance(line, int):
+                    continue
                 bases = [
                     bname
                     for b in obj.get_superclasses()
