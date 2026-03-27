@@ -52,13 +52,13 @@ class FlextInfraUtilitiesImportNormalizer:
 
         from flext_infra import u
 
-        config = u.Infra.normalizer_load_config()
-        tiers = u.Infra.normalizer_alias_tiers()
+        config = u.Infra.load_config()
+        tiers = u.Infra.alias_tiers()
     """
 
     @staticmethod
     @lru_cache(maxsize=1)
-    def normalizer_load_config() -> Mapping[str, t.Infra.InfraValue]:
+    def load_config() -> Mapping[str, t.Infra.InfraValue]:
         """Load import normalization configuration from YAML."""
         rules_path = (
             Path(__file__).resolve().parent.parent
@@ -74,9 +74,9 @@ class FlextInfraUtilitiesImportNormalizer:
 
     @staticmethod
     @lru_cache(maxsize=1)
-    def normalizer_alias_tiers() -> Mapping[str, int]:
+    def alias_tiers() -> Mapping[str, int]:
         """Return configured alias-to-tier mapping."""
-        config = FlextInfraUtilitiesImportNormalizer.normalizer_load_config().get(
+        config = FlextInfraUtilitiesImportNormalizer.load_config().get(
             "alias_tiers",
         )
         if not isinstance(config, Mapping):
@@ -91,9 +91,9 @@ class FlextInfraUtilitiesImportNormalizer:
 
     @staticmethod
     @lru_cache(maxsize=1)
-    def normalizer_wrong_source_config() -> t.Infra.Pair[bool, frozenset[str]]:
+    def wrong_source_config() -> t.Infra.Pair[bool, frozenset[str]]:
         """Return wrong-source detection flag and universal aliases."""
-        config = FlextInfraUtilitiesImportNormalizer.normalizer_load_config().get(
+        config = FlextInfraUtilitiesImportNormalizer.load_config().get(
             "wrong_source",
         )
         if not isinstance(config, Mapping):
@@ -109,7 +109,7 @@ class FlextInfraUtilitiesImportNormalizer:
         return enabled, frozenset(universal_aliases)
 
     @staticmethod
-    def normalizer_build_alias_to_defining_module(
+    def build_alias_to_defining_module(
         *,
         package_name: str,
         package_dir: Path,
@@ -141,12 +141,12 @@ class FlextInfraUtilitiesImportNormalizer:
 
     @staticmethod
     @lru_cache(maxsize=128)
-    def normalizer_build_reachability(
+    def build_reachability(
         package_dir: Path,
         package_name: str,
     ) -> Mapping[str, frozenset[str]]:
         """Build module reachability map from import graph traversal."""
-        graph = FlextInfraUtilitiesImportNormalizer.normalizer_build_import_graph(
+        graph = FlextInfraUtilitiesImportNormalizer.build_import_graph(
             package_dir=package_dir,
             package_name=package_name,
         )
@@ -164,7 +164,7 @@ class FlextInfraUtilitiesImportNormalizer:
         return reachability
 
     @staticmethod
-    def normalizer_file_to_module(
+    def file_to_module(
         *,
         file_path: Path,
         package_dir: Path,
@@ -181,7 +181,7 @@ class FlextInfraUtilitiesImportNormalizer:
         return ".".join(module_parts)
 
     @staticmethod
-    def normalizer_build_import_graph(
+    def build_import_graph(
         *,
         package_dir: Path,
         package_name: str,
@@ -194,7 +194,7 @@ class FlextInfraUtilitiesImportNormalizer:
                 continue
             try:
                 module_name = (
-                    FlextInfraUtilitiesImportNormalizer.normalizer_file_to_module(
+                    FlextInfraUtilitiesImportNormalizer.file_to_module(
                         file_path=py_file,
                         package_dir=package_dir,
                         package_name=package_name,
@@ -219,7 +219,7 @@ class FlextInfraUtilitiesImportNormalizer:
         return {name: frozenset(imports) for name, imports in graph.items()}
 
     @staticmethod
-    def normalizer_file_tier(
+    def file_tier(
         *,
         file_path: Path,
         project_package: str,
@@ -254,7 +254,7 @@ class FlextInfraUtilitiesImportNormalizer:
         return 4
 
     @staticmethod
-    def normalizer_build_context(
+    def build_context(
         *,
         file_path: Path,
         project_package: str,
@@ -283,7 +283,7 @@ class FlextInfraUtilitiesImportNormalizer:
                         package_dir = cand
 
         alias_to_module: t.StrMapping = (
-            FlextInfraUtilitiesImportNormalizer.normalizer_build_alias_to_defining_module(
+            FlextInfraUtilitiesImportNormalizer.build_alias_to_defining_module(
                 package_name=package_name,
                 package_dir=package_dir,
                 project_root=project_root,
@@ -296,7 +296,7 @@ class FlextInfraUtilitiesImportNormalizer:
         if package_dir is not None and package_name:
             try:
                 file_module = (
-                    FlextInfraUtilitiesImportNormalizer.normalizer_file_to_module(
+                    FlextInfraUtilitiesImportNormalizer.file_to_module(
                         file_path=file_path,
                         package_dir=package_dir,
                         package_name=package_name,
@@ -311,15 +311,15 @@ class FlextInfraUtilitiesImportNormalizer:
         )
         facade_to_alias = {v: k for k, v in alias_to_facade.items()}
         declared_alias = facade_to_alias.get(file_path.name, "")
-        alias_tiers = FlextInfraUtilitiesImportNormalizer.normalizer_alias_tiers()
-        file_tier = FlextInfraUtilitiesImportNormalizer.normalizer_file_tier(
+        alias_tiers = FlextInfraUtilitiesImportNormalizer.alias_tiers()
+        file_tier = FlextInfraUtilitiesImportNormalizer.file_tier(
             file_path=file_path,
             project_package=package_name,
             facade_to_alias=facade_to_alias,
             alias_tiers=alias_tiers,
         )
         reachability: Mapping[str, frozenset[str]] = (
-            FlextInfraUtilitiesImportNormalizer.normalizer_build_reachability(
+            FlextInfraUtilitiesImportNormalizer.build_reachability(
                 package_dir,
                 package_name,
             )
@@ -333,7 +333,7 @@ class FlextInfraUtilitiesImportNormalizer:
             workspace_root,
         )
         wrong_source_enabled, universal_aliases = (
-            FlextInfraUtilitiesImportNormalizer.normalizer_wrong_source_config()
+            FlextInfraUtilitiesImportNormalizer.wrong_source_config()
         )
         project_aliases = set(alias_to_module)
         if alias_map is not None and package_name:

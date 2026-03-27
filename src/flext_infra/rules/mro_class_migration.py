@@ -57,7 +57,7 @@ class FlextInfraRefactorMROClassMigrationRule(FlextInfraRefactorRule):
             constants_class=constants_class,
             candidates=tuple(candidates),
         )
-        updated_source, migration, _ = u.Infra.mro_migrate_file(
+        updated_source, migration, _ = u.Infra.migrate_file(
             scan_result=scan_result,
         )
         if not migration.moved_symbols or updated_source == source:

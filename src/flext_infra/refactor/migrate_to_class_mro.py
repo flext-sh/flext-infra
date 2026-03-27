@@ -31,7 +31,7 @@ class FlextInfraRefactorMigrateToClassMRO:
         """Run scan, transform, rewrite, and validation phases."""
         normalized_target = self._normalize_target(target=target)
         scan_results, files_scanned = (
-            FlextInfraUtilitiesRefactorMroScan.mro_scan_workspace(
+            FlextInfraUtilitiesRefactorMroScan.scan_workspace(
                 workspace_root=self._workspace_root,
                 target=normalized_target,
             )

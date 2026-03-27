@@ -35,7 +35,7 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
     """Code execution for artifact writing and file detection."""
 
     @staticmethod
-    def quality_gate_write_artifacts(
+    def write_artifacts(
         *,
         workspace_root: Path,
         report: Mapping[str, t.Infra.InfraValue],
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
         }
 
     @staticmethod
-    def quality_gate_modified_python_files(workspace_root: Path) -> t.StrSequence:
+    def modified_python_files(workspace_root: Path) -> t.StrSequence:
         """Detect modified Python files in workspace."""
         normalized: t.Infra.StrSet = set()
         git_queries: Sequence[t.StrSequence] = [

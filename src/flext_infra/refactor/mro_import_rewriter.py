@@ -40,7 +40,7 @@ class FlextInfraRefactorMROImportRewriter:
         for scan_result in scan_results:
             try:
                 updated_source, migration, symbol_map = (
-                    FlextInfraUtilitiesRefactorMroTransform.mro_migrate_file(
+                    FlextInfraUtilitiesRefactorMroTransform.migrate_file(
                         scan_result=scan_result,
                     )
                 )

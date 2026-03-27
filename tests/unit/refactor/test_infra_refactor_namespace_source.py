@@ -268,7 +268,7 @@ def test_rewriter_splits_mixed_imports_correctly(tmp_path: Path) -> None:
         "_ = (m, r, u)\n",
     )
 
-    u.Infra.namespace_rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[target],
         project_package=package_name,
     )
@@ -292,7 +292,7 @@ def test_rewriter_preserves_non_alias_symbols(tmp_path: Path) -> None:
         "_ = (FlextLogger, u)\n",
     )
 
-    u.Infra.namespace_rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[target],
         project_package=package_name,
     )
@@ -317,13 +317,13 @@ def test_rewriter_namespace_source_is_idempotent_with_ruff(tmp_path: Path) -> No
         "_ = (FlextLogger, m, r, u)\n",
     )
 
-    u.Infra.namespace_rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[target],
         project_package=package_name,
     )
     first_result = target.read_text(encoding="utf-8")
 
-    u.Infra.namespace_rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[target],
         project_package=package_name,
     )

@@ -339,14 +339,14 @@ class FlextInfraCodegenFixer(s[bool]):
         package_name = FlextInfraNamespaceSourceDetector.discover_project_package_name(
             project_root=project_path,
         )
-        u.Infra.namespace_rewrite_import_violations(
+        u.Infra.rewrite_import_violations(
             py_files=src_files,
             project_package=package_name,
         )
-        u.Infra.namespace_rewrite_runtime_alias_violations(
+        u.Infra.rewrite_runtime_alias_violations(
             py_files=src_files,
         )
-        u.Infra.namespace_rewrite_missing_future_annotations(
+        u.Infra.rewrite_missing_future_annotations(
             py_files=src_files,
         )
         changed_paths: t.Infra.StrSet = FlextInfraCodegenSnapshot.detect_changed_files(

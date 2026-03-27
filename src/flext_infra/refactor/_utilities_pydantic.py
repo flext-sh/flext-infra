@@ -28,7 +28,7 @@ class FlextInfraUtilitiesRefactorPydantic:
 
         from flext_infra import u
 
-        stats = u.Infra.pydantic_centralize_workspace(
+        stats = u.Infra.centralize_workspace(
             workspace_root,
             apply=True,
             normalize_remaining=False,
@@ -54,7 +54,7 @@ class FlextInfraUtilitiesRefactorPydantic:
     )
 
     @staticmethod
-    def _pydantic_is_target_python(file_path: Path) -> bool:
+    def _is_target_python(file_path: Path) -> bool:
         if file_path.suffix != ".py":
             return False
         if any(
@@ -75,19 +75,19 @@ class FlextInfraUtilitiesRefactorPydantic:
         )
 
     @staticmethod
-    def _pydantic_is_allowed_model_path(file_path: Path) -> bool:
+    def _is_allowed_model_path(file_path: Path) -> bool:
         posix = file_path.as_posix()
         return posix.endswith(("/models.py", "/_models.py")) or "/models/" in posix
 
     @staticmethod
-    def _pydantic_dest_import_statement(file_path: Path, names: t.StrSequence) -> str:
+    def _dest_import_statement(file_path: Path, names: t.StrSequence) -> str:
         joined = ", ".join(sorted(set(names)))
         if (file_path.parent / "__init__.py").exists():
             return f"from ._models import {joined}"
         return f"from _models import {joined}"
 
     @staticmethod
-    def _pydantic_ensure_dest_header(dest_path: Path) -> str:
+    def _ensure_dest_header(dest_path: Path) -> str:
         if dest_path.exists():
             return dest_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         return (
@@ -108,7 +108,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         )
 
     @staticmethod
-    def _pydantic_append_unique_blocks(
+    def _append_unique_blocks(
         existing: str,
         blocks: t.StrSequence,
         names: t.StrSequence,
@@ -121,13 +121,13 @@ class FlextInfraUtilitiesRefactorPydantic:
         return updated
 
     @staticmethod
-    def _pydantic_alias_as_root_model(alias_move: m.Infra.AliasMove) -> str:
+    def _alias_as_root_model(alias_move: m.Infra.AliasMove) -> str:
         return (
             f"class {alias_move.name}(RootModel[{alias_move.alias_expr}]):\n    pass\n"
         )
 
     @staticmethod
-    def _pydantic_normalize_disallowed_bases(
+    def _normalize_disallowed_bases(
         file_path: Path,
         *,
         apply: bool,
@@ -137,11 +137,11 @@ class FlextInfraUtilitiesRefactorPydantic:
         return False
 
     @staticmethod
-    def _pydantic_can_apply_import_rewrite(file_path: Path) -> bool:
+    def _can_apply_import_rewrite(file_path: Path) -> bool:
         return (file_path.parent / "__init__.py").exists()
 
     @staticmethod
-    def _pydantic_filter_moves_for_necessity(
+    def _filter_moves_for_necessity(
         class_moves: Sequence[m.Infra.ClassMove],
         alias_moves: Sequence[m.Infra.AliasMove],
     ) -> t.Infra.Pair[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]]:
@@ -154,7 +154,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         return (filtered_classes, alias_moves)
 
     @staticmethod
-    def pydantic_centralize_workspace(
+    def centralize_workspace(
         workspace_root: Path,
         *,
         apply: bool,
@@ -195,24 +195,24 @@ class FlextInfraUtilitiesRefactorPydantic:
             }
         python_files = files_result.value
         for file_path in python_files:
-            if not FlextInfraUtilitiesRefactorPydantic._pydantic_is_target_python(
+            if not FlextInfraUtilitiesRefactorPydantic._is_target_python(
                 file_path,
             ):
                 continue
-            if FlextInfraUtilitiesRefactorPydantic._pydantic_is_allowed_model_path(
+            if FlextInfraUtilitiesRefactorPydantic._is_allowed_model_path(
                 file_path,
             ):
                 continue
             scanned_files += 1
             found_models, found_aliases = (
-                FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_scan_file_violations(
+                FlextInfraUtilitiesRefactorPydanticAnalysis.scan_file_violations(
                     file_path,
                 )
             )
             detected_model_violations += found_models
             detected_alias_violations += found_aliases
             collected_moves = (
-                FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_collect_moves_safe(
+                FlextInfraUtilitiesRefactorPydanticAnalysis.collect_moves_safe(
                     file_path,
                     failure_stats=failure_stats,
                 )
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesRefactorPydantic:
             apply_alias_moves = alias_moves
             if apply:
                 apply_class_moves, apply_alias_moves = (
-                    FlextInfraUtilitiesRefactorPydantic._pydantic_filter_moves_for_necessity(
+                    FlextInfraUtilitiesRefactorPydantic._filter_moves_for_necessity(
                         class_moves,
                         alias_moves,
                     )
@@ -238,26 +238,26 @@ class FlextInfraUtilitiesRefactorPydantic:
             class_blocks = [m.source for m in apply_class_moves]
             class_names = [m.name for m in apply_class_moves]
             alias_blocks = [
-                FlextInfraUtilitiesRefactorPydantic._pydantic_alias_as_root_model(a)
+                FlextInfraUtilitiesRefactorPydantic._alias_as_root_model(a)
                 for a in apply_alias_moves
             ]
             alias_names = [a.name for a in apply_alias_moves]
             if not dest_path.exists():
                 created_model_files += 1
             existing_dest = (
-                FlextInfraUtilitiesRefactorPydantic._pydantic_ensure_dest_header(
+                FlextInfraUtilitiesRefactorPydantic._ensure_dest_header(
                     dest_path,
                 )
             )
             updated_dest = (
-                FlextInfraUtilitiesRefactorPydantic._pydantic_append_unique_blocks(
+                FlextInfraUtilitiesRefactorPydantic._append_unique_blocks(
                     existing_dest,
                     class_blocks,
                     class_names,
                 )
             )
             updated_dest = (
-                FlextInfraUtilitiesRefactorPydantic._pydantic_append_unique_blocks(
+                FlextInfraUtilitiesRefactorPydantic._append_unique_blocks(
                     updated_dest,
                     alias_blocks,
                     alias_names,
@@ -266,11 +266,11 @@ class FlextInfraUtilitiesRefactorPydantic:
             moved_names = [m.name for m in apply_class_moves] + [
                 a.name for a in apply_alias_moves
             ]
-            updated_source = FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_rewrite_source(
+            updated_source = FlextInfraUtilitiesRefactorPydanticAnalysis.rewrite_source(
                 file_path,
                 apply_class_moves,
                 apply_alias_moves,
-                import_statement=FlextInfraUtilitiesRefactorPydantic._pydantic_dest_import_statement(
+                import_statement=FlextInfraUtilitiesRefactorPydantic._dest_import_statement(
                     file_path,
                     moved_names,
                 ),
@@ -279,7 +279,7 @@ class FlextInfraUtilitiesRefactorPydantic:
             moved_aliases += len(apply_alias_moves)
             touched_files += 1
             if apply:
-                if not FlextInfraUtilitiesRefactorPydantic._pydantic_can_apply_import_rewrite(
+                if not FlextInfraUtilitiesRefactorPydantic._can_apply_import_rewrite(
                     file_path,
                 ):
                     skipped_nonpackage_apply += 1
@@ -292,16 +292,16 @@ class FlextInfraUtilitiesRefactorPydantic:
                 )
         if normalize_remaining:
             for file_path in python_files:
-                if not FlextInfraUtilitiesRefactorPydantic._pydantic_is_target_python(
+                if not FlextInfraUtilitiesRefactorPydantic._is_target_python(
                     file_path,
                 ):
                     continue
-                if FlextInfraUtilitiesRefactorPydantic._pydantic_is_allowed_model_path(
+                if FlextInfraUtilitiesRefactorPydantic._is_allowed_model_path(
                     file_path,
                 ):
                     continue
                 try:
-                    changed = FlextInfraUtilitiesRefactorPydantic._pydantic_normalize_disallowed_bases(
+                    changed = FlextInfraUtilitiesRefactorPydantic._normalize_disallowed_bases(
                         file_path,
                         apply=apply,
                     )

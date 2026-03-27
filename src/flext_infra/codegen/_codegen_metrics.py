@@ -12,7 +12,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
     """Metrics extraction and computation for quality gate analysis."""
 
     @staticmethod
-    def quality_gate_load_before_payload(
+    def load_before_payload(
         workspace_root: Path,
         before_report: Path | None,
         baseline_file: Path | None,
@@ -47,7 +47,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
         return (raw, str(resolved), "")
 
     @staticmethod
-    def quality_gate_before_metrics(
+    def before_metrics(
         before_payload: Mapping[str, t.Infra.InfraValue] | None,
     ) -> Mapping[str, t.Infra.InfraValue]:
         if before_payload is None:
@@ -77,7 +77,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
         }
 
     @staticmethod
-    def quality_gate_after_metrics(
+    def after_metrics(
         *,
         census_reports: Sequence[m.Infra.CensusReport],
         duplicate_groups: int,
@@ -123,7 +123,7 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
         }
 
     @staticmethod
-    def quality_gate_improvement(
+    def improvement(
         before_metrics: Mapping[str, t.Infra.InfraValue],
         after_metrics: Mapping[str, t.Infra.InfraValue],
     ) -> Mapping[str, t.Infra.InfraValue]:

@@ -178,7 +178,7 @@ class FlextInfraNamespaceEnforcer:
                 rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
-            rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_import_violations(
+            rewrite_fn=lambda _vs: u.Infra.rewrite_import_violations(
                 py_files=py_files,
                 project_package=package_name,
             ),
@@ -219,7 +219,7 @@ class FlextInfraNamespaceEnforcer:
                 rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
-            rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_runtime_alias_violations(
+            rewrite_fn=lambda _vs: u.Infra.rewrite_runtime_alias_violations(
                 py_files=py_files,
             ),
             apply=apply,
@@ -231,7 +231,7 @@ class FlextInfraNamespaceEnforcer:
                 rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
-            rewrite_fn=lambda _vs: u.Infra.namespace_rewrite_missing_future_annotations(
+            rewrite_fn=lambda _vs: u.Infra.rewrite_missing_future_annotations(
                 py_files=py_files,
             ),
             apply=apply,
@@ -243,7 +243,7 @@ class FlextInfraNamespaceEnforcer:
                 rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
-            rewrite_fn=lambda vs: u.Infra.namespace_rewrite_manual_protocol_violations(
+            rewrite_fn=lambda vs: u.Infra.rewrite_manual_protocol_violations(
                 project_root=project_root,
                 py_files=py_files,
                 violations=vs,
@@ -258,7 +258,7 @@ class FlextInfraNamespaceEnforcer:
                 parse_failures=parse_failures,
             ),
             rewrite_fn=lambda vs: (
-                u.Infra.namespace_rewrite_manual_typing_alias_violations(
+                u.Infra.rewrite_manual_typing_alias_violations(
                     project_root=project_root,
                     violations=vs,
                     parse_failures=parse_failures,
@@ -274,7 +274,7 @@ class FlextInfraNamespaceEnforcer:
                 parse_failures=parse_failures,
             ),
             rewrite_fn=lambda vs: (
-                u.Infra.namespace_rewrite_compatibility_alias_violations(
+                u.Infra.rewrite_compatibility_alias_violations(
                     violations=vs,
                     parse_failures=parse_failures,
                 )
@@ -298,7 +298,7 @@ class FlextInfraNamespaceEnforcer:
                 parse_failures=parse_failures,
                 rope_project=self._rope_project,
             ),
-            rewrite_fn=lambda vs: u.Infra.namespace_rewrite_mro_completeness_violations(
+            rewrite_fn=lambda vs: u.Infra.rewrite_mro_completeness_violations(
                 violations=vs,
                 parse_failures=parse_failures,
             ),
@@ -343,7 +343,7 @@ class FlextInfraNamespaceEnforcer:
         )
         if not apply:
             return facade_statuses
-        u.Infra.namespace_ensure_missing_facades(
+        u.Infra.ensure_missing_facades(
             project_root=project_root,
             project_name=project_name,
             facade_statuses=facade_statuses,

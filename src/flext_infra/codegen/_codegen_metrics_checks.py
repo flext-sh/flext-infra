@@ -20,7 +20,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
     _MIN_DUPLICATE_PROJECT_COUNT: ClassVar[int] = 2
 
     @staticmethod
-    def quality_gate_build_checks(
+    def build_checks(
         *,
         after_metrics: Mapping[str, t.Infra.InfraValue],
         improvement: Mapping[str, t.Infra.InfraValue],
@@ -134,7 +134,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         return [item.model_dump() for item in checks]
 
     @staticmethod
-    def quality_gate_compute_verdict(
+    def compute_verdict(
         checks: Sequence[Mapping[str, t.Infra.InfraValue]],
         improvement: Mapping[str, t.Infra.InfraValue],
     ) -> str:
@@ -159,7 +159,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         return "CONDITIONAL_PASS"
 
     @staticmethod
-    def quality_gate_detect_duplicate_constant_groups(
+    def detect_duplicate_constant_groups(
         workspace_root: Path,
         census_reports: Sequence[m.Infra.CensusReport],
     ) -> Sequence[m.Infra.DuplicateConstantGroup]:
@@ -202,7 +202,7 @@ class FlextInfraCodegenMetricsChecks(FlextInfraCodegenMetrics):
         return groups
 
     @staticmethod
-    def quality_gate_project_findings(
+    def project_findings(
         census_reports: Sequence[m.Infra.CensusReport],
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         findings: MutableSequence[m.Infra.QualityGateProjectFinding] = [

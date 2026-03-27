@@ -87,7 +87,7 @@ def test_namespace_rewriter_only_rewrites_runtime_alias_imports(tmp_path: Path) 
     )
     sample_file.write_text(source, encoding="utf-8")
 
-    u.Infra.namespace_rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -103,7 +103,7 @@ def test_namespace_rewriter_keeps_contextual_alias_subset(tmp_path: Path) -> Non
     source = "from __future__ import annotations\nfrom flext_core.utilities import u\n"
     sample_file.write_text(source, encoding="utf-8")
 
-    u.Infra.namespace_rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -124,7 +124,7 @@ def test_namespace_rewriter_skips_facade_and_subclass_files(tmp_path: Path) -> N
     )
     sample_file.write_text(source, encoding="utf-8")
 
-    u.Infra.namespace_rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )
@@ -149,7 +149,7 @@ def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(
     )
     sample_file.write_text(source, encoding="utf-8")
 
-    u.Infra.namespace_rewrite_import_violations(
+    u.Infra.rewrite_import_violations(
         py_files=[sample_file],
         project_package="flext_core",
     )

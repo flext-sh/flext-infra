@@ -151,7 +151,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         return sorted(dep_names)
 
     @staticmethod
-    def _namespace_preferred_file_name(*, family: str) -> str:
+    def _preferred_file_name(*, family: str) -> str:
         pattern = c.Infra.FAMILY_FILES.get(
             family,
             "utilities.py",
@@ -159,7 +159,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         return pattern.lstrip("*")
 
     @staticmethod
-    def _namespace_base_import_for_family(
+    def _base_import_for_family(
         *,
         family: str,
         base_chains: Mapping[str, Sequence[str]] | None = None,
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         return f"from flext_core import {class_name}"
 
     @staticmethod
-    def _namespace_base_class_for_family(
+    def _base_class_for_family(
         *,
         family: str,
         base_chains: Mapping[str, Sequence[str]] | None = None,
@@ -196,7 +196,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         return f"Flext{c.Infra.FAMILY_SUFFIXES.get(family, 'Utilities')}"
 
     @staticmethod
-    def _namespace_write_missing_facade_file(
+    def _write_missing_facade_file(
         *,
         file_path: Path,
         family: str,
@@ -205,13 +205,13 @@ class FlextInfraUtilitiesRefactorNamespace:
     ) -> None:
         alias = family
         import_stmt = (
-            FlextInfraUtilitiesRefactorNamespace._namespace_base_import_for_family(
+            FlextInfraUtilitiesRefactorNamespace._base_import_for_family(
                 family=family,
                 base_chains=base_chains,
             )
         )
         base_class = (
-            FlextInfraUtilitiesRefactorNamespace._namespace_base_class_for_family(
+            FlextInfraUtilitiesRefactorNamespace._base_class_for_family(
                 family=family,
                 base_chains=base_chains,
             )
@@ -228,7 +228,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         _ = file_path.write_text(content, encoding=c.Infra.Encoding.DEFAULT)
 
     @staticmethod
-    def _namespace_canonical_target_file(
+    def _canonical_target_file(
         *,
         project_root: Path,
         source_file: Path,
@@ -249,7 +249,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         return source_file.parent / filename
 
     @staticmethod
-    def _namespace_append_typing_alias_blocks(
+    def _append_typing_alias_blocks(
         *,
         target_file: Path,
         blocks: t.StrSequence,
@@ -270,7 +270,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         _ = target_file.write_text(updated, encoding=c.Infra.Encoding.DEFAULT)
 
     @staticmethod
-    def _namespace_is_ast_protocol_class(node: ast.ClassDef) -> bool:
+    def _is_ast_protocol_class(node: ast.ClassDef) -> bool:
         for base in node.bases:
             if isinstance(base, ast.Name) and base.id == "Protocol":
                 return True
@@ -285,7 +285,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         return False
 
     @staticmethod
-    def _namespace_rewrite_moved_protocol_imports(
+    def _rewrite_moved_protocol_imports(
         *,
         project_root: Path,
         py_files: Sequence[Path],
@@ -375,7 +375,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         _ = source_file.write_text(normalized + "\n", encoding=c.Infra.Encoding.DEFAULT)
 
     @staticmethod
-    def _namespace_move_protocol_classes_to_canonical_file(
+    def _move_protocol_classes_to_canonical_file(
         *,
         project_root: Path,
         source_file: Path,
@@ -395,7 +395,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                 continue
             if stmt.name not in protocol_names:
                 continue
-            if not FlextInfraUtilitiesRefactorNamespace._namespace_is_ast_protocol_class(
+            if not FlextInfraUtilitiesRefactorNamespace._is_ast_protocol_class(
                 stmt,
             ):
                 continue
@@ -411,13 +411,13 @@ class FlextInfraUtilitiesRefactorNamespace:
         if not class_nodes:
             return None
         target_file = (
-            FlextInfraUtilitiesRefactorNamespace._namespace_canonical_target_file(
+            FlextInfraUtilitiesRefactorNamespace._canonical_target_file(
                 project_root=project_root,
                 source_file=source_file,
                 filename="protocols.py",
             )
         )
-        FlextInfraUtilitiesRefactorNamespace._namespace_append_protocol_blocks(
+        FlextInfraUtilitiesRefactorNamespace._append_protocol_blocks(
             project_root=project_root,
             target_file=target_file,
             blocks=blocks,
@@ -431,7 +431,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         return (source_file, target_file, moved_names)
 
     @staticmethod
-    def _namespace_move_typing_aliases_to_canonical_file(
+    def _move_typing_aliases_to_canonical_file(
         *,
         project_root: Path,
         source_file: Path,
@@ -479,13 +479,13 @@ class FlextInfraUtilitiesRefactorNamespace:
         if not blocks:
             return
         target_file = (
-            FlextInfraUtilitiesRefactorNamespace._namespace_canonical_target_file(
+            FlextInfraUtilitiesRefactorNamespace._canonical_target_file(
                 project_root=project_root,
                 source_file=source_file,
                 filename="typings.py",
             )
         )
-        FlextInfraUtilitiesRefactorNamespace._namespace_append_typing_alias_blocks(
+        FlextInfraUtilitiesRefactorNamespace._append_typing_alias_blocks(
             target_file=target_file,
             blocks=blocks,
         )
@@ -496,7 +496,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         )
 
     @staticmethod
-    def _namespace_append_protocol_blocks(
+    def _append_protocol_blocks(
         *,
         project_root: Path,
         target_file: Path,
@@ -539,7 +539,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         )
 
     @staticmethod
-    def namespace_ensure_missing_facades(
+    def ensure_missing_facades(
         *,
         project_root: Path,
         project_name: str,
@@ -574,7 +574,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             suffix = c.Infra.FAMILY_SUFFIXES[status.family]
             class_name = f"{stem}{suffix}"
             file_name = (
-                FlextInfraUtilitiesRefactorNamespace._namespace_preferred_file_name(
+                FlextInfraUtilitiesRefactorNamespace._preferred_file_name(
                     family=status.family,
                 )
             )
@@ -587,7 +587,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                     class_signature not in content
                     and f"class {class_name}:" not in content
                 ):
-                    base_class = FlextInfraUtilitiesRefactorNamespace._namespace_base_class_for_family(
+                    base_class = FlextInfraUtilitiesRefactorNamespace._base_class_for_family(
                         family=status.family,
                         base_chains=base_chains,
                     )
@@ -604,7 +604,7 @@ class FlextInfraUtilitiesRefactorNamespace:
                         encoding=c.Infra.Encoding.DEFAULT,
                     )
                 continue
-            FlextInfraUtilitiesRefactorNamespace._namespace_write_missing_facade_file(
+            FlextInfraUtilitiesRefactorNamespace._write_missing_facade_file(
                 file_path=target_path,
                 family=status.family,
                 class_name=class_name,
@@ -612,7 +612,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             )
 
     @staticmethod
-    def namespace_rewrite_import_violations(
+    def rewrite_import_violations(
         *,
         py_files: Sequence[Path],
         project_package: str,
@@ -629,13 +629,13 @@ class FlextInfraUtilitiesRefactorNamespace:
         for file_path in py_files:
             if file_path.name == "__init__.py":
                 continue
-            FlextInfraUtilitiesRefactorNamespace._namespace_normalize_file_imports(
+            FlextInfraUtilitiesRefactorNamespace._normalize_file_imports(
                 file_path=file_path,
                 project_package=project_package,
             )
 
     @staticmethod
-    def _namespace_normalize_file_imports(
+    def _normalize_file_imports(
         *,
         file_path: Path,
         project_package: str,
@@ -644,7 +644,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
         if tree is None:
             return
-        is_facade = FlextInfraUtilitiesRefactorNamespace._namespace_is_facade_file(
+        is_facade = FlextInfraUtilitiesRefactorNamespace._is_facade_file(
             tree=tree,
         )
         transformer = _NamespaceImportCleaner(
@@ -658,7 +658,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         FlextInfraUtilitiesFormatting.run_ruff_fix(file_path)
 
     @staticmethod
-    def _namespace_is_facade_file(
+    def _is_facade_file(
         *,
         tree: cst.Module,
     ) -> bool:
@@ -680,7 +680,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         return False
 
     @staticmethod
-    def namespace_rewrite_mro_completeness_violations(
+    def rewrite_mro_completeness_violations(
         *,
         violations: Sequence[m.Infra.MROCompletenessViolation],
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
@@ -753,7 +753,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             )
 
     @staticmethod
-    def namespace_rewrite_runtime_alias_violations(*, py_files: Sequence[Path]) -> None:
+    def rewrite_runtime_alias_violations(*, py_files: Sequence[Path]) -> None:
         """Rewrite runtime alias statements to match expected patterns."""
         for file_path in py_files:
             expected = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(
@@ -788,7 +788,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             _ = file_path.write_text(rewritten, encoding=c.Infra.Encoding.DEFAULT)
 
     @staticmethod
-    def namespace_rewrite_missing_future_annotations(
+    def rewrite_missing_future_annotations(
         *,
         py_files: Sequence[Path],
     ) -> None:
@@ -838,7 +838,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             )
 
     @staticmethod
-    def namespace_rewrite_manual_protocol_violations(
+    def rewrite_manual_protocol_violations(
         *,
         project_root: Path,
         py_files: Sequence[Path],
@@ -852,7 +852,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             t.Infra.Triple[Path, Path, t.Infra.VariadicTuple[str]]
         ] = []
         for source_file, protocol_names in grouped_names.items():
-            move_result = FlextInfraUtilitiesRefactorNamespace._namespace_move_protocol_classes_to_canonical_file(
+            move_result = FlextInfraUtilitiesRefactorNamespace._move_protocol_classes_to_canonical_file(
                 project_root=project_root,
                 source_file=source_file,
                 protocol_names=protocol_names,
@@ -861,14 +861,14 @@ class FlextInfraUtilitiesRefactorNamespace:
                 continue
             protocol_moves.append(move_result)
         if protocol_moves:
-            FlextInfraUtilitiesRefactorNamespace._namespace_rewrite_moved_protocol_imports(
+            FlextInfraUtilitiesRefactorNamespace._rewrite_moved_protocol_imports(
                 project_root=project_root,
                 py_files=py_files,
                 protocol_moves=protocol_moves,
             )
 
     @staticmethod
-    def namespace_rewrite_manual_typing_alias_violations(
+    def rewrite_manual_typing_alias_violations(
         *,
         project_root: Path,
         violations: Sequence[m.Infra.ManualTypingAliasViolation],
@@ -879,7 +879,7 @@ class FlextInfraUtilitiesRefactorNamespace:
         for violation in violations:
             grouped_names[Path(violation.file)].add(violation.name)
         for source_file, alias_names in grouped_names.items():
-            FlextInfraUtilitiesRefactorNamespace._namespace_move_typing_aliases_to_canonical_file(
+            FlextInfraUtilitiesRefactorNamespace._move_typing_aliases_to_canonical_file(
                 project_root=project_root,
                 source_file=source_file,
                 alias_names=alias_names,
@@ -887,7 +887,7 @@ class FlextInfraUtilitiesRefactorNamespace:
             )
 
     @staticmethod
-    def namespace_rewrite_compatibility_alias_violations(
+    def rewrite_compatibility_alias_violations(
         *,
         violations: Sequence[m.Infra.CompatibilityAliasViolation],
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation],

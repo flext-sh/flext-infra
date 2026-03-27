@@ -126,7 +126,7 @@ def test_rewriter_adds_missing_base_and_formats(tmp_path: Path) -> None:
         file_path=facade_file,
         rope_project=rope_project,
     )
-    u.Infra.namespace_rewrite_mro_completeness_violations(
+    u.Infra.rewrite_mro_completeness_violations(
         violations=violations,
         parse_failures=[],
     )

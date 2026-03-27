@@ -27,7 +27,7 @@ class FlextInfraUtilitiesRefactorMroScan:
     )
 
     @staticmethod
-    def mro_scan_workspace(
+    def scan_workspace(
         *,
         workspace_root: Path,
         target: str,
@@ -37,21 +37,21 @@ class FlextInfraUtilitiesRefactorMroScan:
             return ([], 0)
         results: MutableSequence[m.Infra.MROScanReport] = []
         scanned = 0
-        target_specs = FlextInfraUtilitiesRefactorMroScan._mro_scan_target_specs(
+        target_specs = FlextInfraUtilitiesRefactorMroScan._target_specs(
             target=target,
         )
-        for project_root in FlextInfraUtilitiesRefactorMroScan._mro_scan_project_roots(
+        for project_root in FlextInfraUtilitiesRefactorMroScan._project_roots(
             workspace_root=workspace_root,
         ):
             for target_spec in target_specs:
                 for (
                     file_path
-                ) in FlextInfraUtilitiesRefactorMroScan._mro_scan_iter_target_files(
+                ) in FlextInfraUtilitiesRefactorMroScan._iter_target_files(
                     project_root=project_root,
                     target_spec=target_spec,
                 ):
                     scanned += 1
-                    result = FlextInfraUtilitiesRefactorMroScan.mro_scan_file(
+                    result = FlextInfraUtilitiesRefactorMroScan.scan_file(
                         file_path=file_path,
                         project_root=project_root,
                         target_spec=target_spec,
@@ -62,7 +62,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         return (results, scanned)
 
     @staticmethod
-    def mro_scan_file(
+    def scan_file(
         *,
         file_path: Path,
         project_root: Path,
@@ -73,21 +73,21 @@ class FlextInfraUtilitiesRefactorMroScan:
         if tree is None:
             return None
         constants_class = (
-            FlextInfraUtilitiesRefactorMroScan._mro_scan_facade_class_name(
+            FlextInfraUtilitiesRefactorMroScan._facade_class_name(
                 tree=tree,
                 target_spec=target_spec,
             )
         )
         if not constants_class:
             return None
-        module = FlextInfraUtilitiesRefactorMroScan._mro_scan_module_path(
+        module = FlextInfraUtilitiesRefactorMroScan._module_path(
             file_path=file_path,
             project_root=project_root,
         )
         candidates: MutableSequence[m.Infra.MROSymbolCandidate] = []
         for stmt in tree.body:
             candidate = (
-                FlextInfraUtilitiesRefactorMroScan._mro_scan_candidate_from_statement(
+                FlextInfraUtilitiesRefactorMroScan._candidate_from_statement(
                     stmt=stmt,
                     target_spec=target_spec,
                 )
@@ -103,17 +103,17 @@ class FlextInfraUtilitiesRefactorMroScan:
         )
 
     @staticmethod
-    def _mro_scan_candidate_from_statement(
+    def _candidate_from_statement(
         *,
         stmt: ast.stmt,
         target_spec: m.Infra.MROTargetSpec,
     ) -> m.Infra.MROSymbolCandidate | None:
         if target_spec.family_alias == "t":
-            return FlextInfraUtilitiesRefactorMroScan._mro_scan_typing_candidate_from_statement(
+            return FlextInfraUtilitiesRefactorMroScan._typing_candidate_from_statement(
                 stmt=stmt,
             )
         if target_spec.family_alias == "p":
-            return FlextInfraUtilitiesRefactorMroScan._mro_scan_protocol_candidate_from_statement(
+            return FlextInfraUtilitiesRefactorMroScan._protocol_candidate_from_statement(
                 stmt=stmt,
             )
         if isinstance(stmt, ast.AnnAssign):
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesRefactorMroScan:
                 stmt.target.id,
             ):
                 return None
-            if not FlextInfraUtilitiesRefactorMroScan._mro_scan_is_final_annotation(
+            if not FlextInfraUtilitiesRefactorMroScan._is_final_annotation(
                 annotation=stmt.annotation,
             ):
                 return None
@@ -154,13 +154,13 @@ class FlextInfraUtilitiesRefactorMroScan:
         return None
 
     @staticmethod
-    def _mro_scan_project_roots(*, workspace_root: Path) -> Sequence[Path]:
+    def _project_roots(*, workspace_root: Path) -> Sequence[Path]:
         return FlextInfraUtilitiesIteration.discover_project_roots(
             workspace_root=workspace_root,
         )
 
     @staticmethod
-    def _mro_scan_target_specs(
+    def _target_specs(
         *,
         target: str,
     ) -> t.Infra.VariadicTuple[m.Infra.MROTargetSpec]:
@@ -213,7 +213,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         )
 
     @staticmethod
-    def _mro_scan_iter_target_files(
+    def _iter_target_files(
         *,
         project_root: Path,
         target_spec: m.Infra.MROTargetSpec,
@@ -234,13 +234,13 @@ class FlextInfraUtilitiesRefactorMroScan:
         return sorted(candidates)
 
     @staticmethod
-    def _mro_scan_module_path(*, file_path: Path, project_root: Path) -> str:
+    def _module_path(*, file_path: Path, project_root: Path) -> str:
         rel = file_path.relative_to(project_root)
         parts = [part for part in rel.with_suffix("").parts if part != "src"]
         return ".".join(parts)
 
     @staticmethod
-    def _mro_scan_is_final_annotation(*, annotation: ast.expr) -> bool:
+    def _is_final_annotation(*, annotation: ast.expr) -> bool:
         final_name = c.Infra.FINAL_ANNOTATION_NAME
         if isinstance(annotation, ast.Name):
             return annotation.id == final_name
@@ -255,7 +255,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         return False
 
     @staticmethod
-    def _mro_scan_facade_class_name(
+    def _facade_class_name(
         *,
         tree: ast.Module,
         target_spec: m.Infra.MROTargetSpec,
@@ -284,7 +284,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         return ""
 
     @staticmethod
-    def _mro_scan_typing_candidate_from_statement(
+    def _typing_candidate_from_statement(
         *,
         stmt: ast.stmt,
     ) -> m.Infra.MROSymbolCandidate | None:
@@ -315,7 +315,7 @@ class FlextInfraUtilitiesRefactorMroScan:
                 is None
             ):
                 return None
-            if not FlextInfraUtilitiesRefactorMroScan._mro_scan_is_type_alias_annotation(
+            if not FlextInfraUtilitiesRefactorMroScan._is_type_alias_annotation(
                 annotation=stmt.annotation,
             ):
                 return None
@@ -337,7 +337,7 @@ class FlextInfraUtilitiesRefactorMroScan:
                 is None
             ):
                 return None
-            if not FlextInfraUtilitiesRefactorMroScan._mro_scan_is_typing_factory_call(
+            if not FlextInfraUtilitiesRefactorMroScan._is_typing_factory_call(
                 expr=stmt.value,
             ):
                 return None
@@ -351,7 +351,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         return None
 
     @staticmethod
-    def _mro_scan_protocol_candidate_from_statement(
+    def _protocol_candidate_from_statement(
         *,
         stmt: ast.stmt,
     ) -> m.Infra.MROSymbolCandidate | None:
@@ -387,7 +387,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         )
 
     @staticmethod
-    def _mro_scan_is_type_alias_annotation(*, annotation: ast.expr) -> bool:
+    def _is_type_alias_annotation(*, annotation: ast.expr) -> bool:
         alias_name = "TypeAlias"
         if isinstance(annotation, ast.Name):
             return annotation.id == alias_name
@@ -402,7 +402,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         return False
 
     @staticmethod
-    def _mro_scan_is_typing_factory_call(*, expr: ast.expr) -> bool:
+    def _is_typing_factory_call(*, expr: ast.expr) -> bool:
         if not isinstance(expr, ast.Call):
             return False
         func = expr.func

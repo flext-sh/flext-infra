@@ -44,7 +44,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         return [line.strip() for line in output.stdout.splitlines() if line.strip()]
 
     @staticmethod
-    def quality_gate_run_pyrefly_check(
+    def run_pyrefly_check(
         workspace_root: Path,
         modified_files: t.StrSequence,
     ) -> Mapping[str, t.Infra.InfraValue]:
@@ -74,7 +74,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         return result
 
     @staticmethod
-    def quality_gate_run_ruff_check(
+    def run_ruff_check(
         workspace_root: Path,
         modified_files: t.StrSequence,
     ) -> Mapping[str, t.Infra.InfraValue]:
@@ -121,7 +121,7 @@ class FlextInfraCodegenExecutionTools(FlextInfraCodegenMetricsChecks):
         }
 
     @staticmethod
-    def quality_gate_scan_import_nodes(
+    def scan_import_nodes(
         workspace_root: Path,
         modified_files: t.StrSequence,
     ) -> Mapping[str, t.Infra.InfraValue]:

@@ -26,8 +26,8 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
 
         from flext_infra import u
 
-        violations = u.Infra.pydantic_scan_file_violations(path)
-        moves = u.Infra.pydantic_collect_moves(path)
+        violations = u.Infra.scan_file_violations(path)
+        moves = u.Infra.collect_moves(path)
     """
 
     _PYDANTIC_MODEL_BASES: t.StrSequence = (
@@ -41,7 +41,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     _PYDANTIC_TYPED_DICT_MIN_ARGS: int = 2
 
     @staticmethod
-    def _pydantic_class_base_names(node: ast.ClassDef) -> t.Infra.StrSet:
+    def _class_base_names(node: ast.ClassDef) -> t.Infra.StrSet:
         names: t.Infra.StrSet = set()
         for base in node.bases:
             if isinstance(base, ast.Name):
@@ -54,7 +54,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         return names
 
     @staticmethod
-    def _pydantic_is_model_like_base_name(base_name: str) -> bool:
+    def _is_model_like_base_name(base_name: str) -> bool:
         if (
             base_name
             in FlextInfraUtilitiesRefactorPydanticAnalysis._PYDANTIC_MODEL_BASES
@@ -63,35 +63,35 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         return bool(base_name.startswith("FlextModels."))
 
     @staticmethod
-    def pydantic_is_top_level_model_class(node: ast.stmt) -> bool:
+    def is_top_level_model_class(node: ast.stmt) -> bool:
         """Return True when statement is a top-level model-like class."""
         if not isinstance(node, ast.ClassDef):
             return False
         base_names = (
-            FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_class_base_names(
+            FlextInfraUtilitiesRefactorPydanticAnalysis._class_base_names(
                 node,
             )
         )
         return any(
-            FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_model_like_base_name(
+            FlextInfraUtilitiesRefactorPydanticAnalysis._is_model_like_base_name(
                 base_name,
             )
             for base_name in base_names
         )
 
     @staticmethod
-    def _pydantic_is_typings_scope(file_path: Path) -> bool:
+    def _is_typings_scope(file_path: Path) -> bool:
         posix = file_path.as_posix()
         return posix.endswith(("/typings.py", "/_typings.py")) or "/typings/" in posix
 
     @staticmethod
-    def _pydantic_is_dict_like_expr(expr: str) -> bool:
+    def _is_dict_like_expr(expr: str) -> bool:
         return any(
             marker in expr for marker in ("Mapping[", "Mapping[", "MutableMapping[")
         )
 
     @staticmethod
-    def _pydantic_is_dict_like_alias(
+    def _is_dict_like_alias(
         node: ast.stmt,
         source: str,
         *,
@@ -108,7 +108,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             "case",
         )
         is_typings_scope = (
-            FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_typings_scope(
+            FlextInfraUtilitiesRefactorPydanticAnalysis._is_typings_scope(
                 file_path,
             )
         )
@@ -122,7 +122,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                 expr = ast.get_source_segment(source, node.value)
                 if expr is None:
                     return None
-                if not FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_expr(
+                if not FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_expr(
                     expr,
                 ):
                     return None
@@ -145,7 +145,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                 expr = ast.get_source_segment(source, node.value)
                 if expr is None:
                     return None
-                if not FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_expr(
+                if not FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_expr(
                     expr,
                 ):
                     return None
@@ -171,7 +171,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                 expr = ast.get_source_segment(source, node.value)
                 if expr is None:
                     return None
-                if not FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_expr(
+                if not FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_expr(
                     expr,
                 ):
                     return None
@@ -185,7 +185,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                 return None
 
     @staticmethod
-    def _pydantic_typed_dict_factory_model(
+    def _typed_dict_factory_model(
         node: ast.Assign,
     ) -> m.Infra.ClassMove | None:
         if len(node.targets) != 1:
@@ -254,18 +254,18 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         )
 
     @staticmethod
-    def _pydantic_typed_dict_total_false(node: ast.ClassDef) -> bool:
+    def _typed_dict_total_false(node: ast.ClassDef) -> bool:
         for keyword in node.keywords:
             if keyword.arg == "total" and isinstance(keyword.value, ast.Constant):
                 return bool(keyword.value.value) is False
         return False
 
     @staticmethod
-    def _pydantic_build_model_from_typed_dict(
+    def _build_model_from_typed_dict(
         node: ast.ClassDef,
         source: str,
     ) -> str:
-        total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_typed_dict_total_false(
+        total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._typed_dict_total_false(
             node,
         )
         fields: MutableSequence[str] = []
@@ -286,7 +286,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         return f'class {node.name}(BaseModel):\n    model_config = ConfigDict(extra="forbid")\n{body}\n'
 
     @staticmethod
-    def pydantic_collect_moves(
+    def collect_moves(
         file_path: Path,
     ) -> t.Infra.Pair[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]]:
         """Collect class and alias moves required for centralization."""
@@ -300,7 +300,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         alias_moves: MutableSequence[m.Infra.AliasMove] = []
         for stmt in tree.body:
             typed_dict_factory_move = (
-                FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_typed_dict_factory_model(
+                FlextInfraUtilitiesRefactorPydanticAnalysis._typed_dict_factory_model(
                     stmt,
                 )
                 if isinstance(stmt, ast.Assign)
@@ -309,7 +309,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             if typed_dict_factory_move is not None:
                 class_moves.append(typed_dict_factory_move)
                 continue
-            if FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_is_top_level_model_class(
+            if FlextInfraUtilitiesRefactorPydanticAnalysis.is_top_level_model_class(
                 stmt,
             ):
                 if not isinstance(stmt, ast.ClassDef):
@@ -317,12 +317,12 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                 start = stmt.lineno
                 end = stmt.end_lineno or stmt.lineno
                 snippet = "\n".join(lines[start - 1 : end])
-                base_names = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_class_base_names(
+                base_names = FlextInfraUtilitiesRefactorPydanticAnalysis._class_base_names(
                     stmt,
                 )
                 kind = "typed_dict" if "TypedDict" in base_names else "base_model"
                 if kind == "typed_dict":
-                    snippet = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_build_model_from_typed_dict(
+                    snippet = FlextInfraUtilitiesRefactorPydanticAnalysis._build_model_from_typed_dict(
                         stmt,
                         source,
                     )
@@ -336,7 +336,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                     ),
                 )
                 continue
-            alias_move = FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_alias(
+            alias_move = FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_alias(
                 stmt,
                 source,
                 file_path=file_path,
@@ -346,14 +346,14 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         return (class_moves, alias_moves)
 
     @staticmethod
-    def pydantic_collect_moves_safe(
+    def collect_moves_safe(
         file_path: Path,
         *,
         failure_stats: m.Infra.CentralizerFailureStats,
     ) -> t.Infra.Pair[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]] | None:
         """Collect moves without raising, while recording parse failures."""
         try:
-            return FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_collect_moves(
+            return FlextInfraUtilitiesRefactorPydanticAnalysis.collect_moves(
                 file_path,
             )
         except SyntaxError:
@@ -367,7 +367,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             return None
 
     @staticmethod
-    def pydantic_scan_file_violations(file_path: Path) -> t.Infra.IntPair:
+    def scan_file_violations(file_path: Path) -> t.Infra.IntPair:
         """Return counts of model and dict-alias violations in one file."""
         try:
             source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -379,13 +379,13 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         model_class_count = 0
         dict_alias_count = 0
         for stmt in tree.body:
-            if FlextInfraUtilitiesRefactorPydanticAnalysis.pydantic_is_top_level_model_class(
+            if FlextInfraUtilitiesRefactorPydanticAnalysis.is_top_level_model_class(
                 stmt,
             ):
                 model_class_count += 1
                 continue
             if (
-                FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_is_dict_like_alias(
+                FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_alias(
                     stmt,
                     source,
                     file_path=file_path,
@@ -396,7 +396,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         return (model_class_count, dict_alias_count)
 
     @staticmethod
-    def pydantic_rewrite_source(
+    def rewrite_source(
         file_path: Path,
         class_moves: Sequence[m.Infra.ClassMove],
         alias_moves: Sequence[m.Infra.AliasMove],
@@ -418,7 +418,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         moved_names = [m.name for m in class_moves] + [a.name for a in alias_moves]
         if moved_names:
             updated = (
-                FlextInfraUtilitiesRefactorPydanticAnalysis._pydantic_insert_import(
+                FlextInfraUtilitiesRefactorPydanticAnalysis._insert_import(
                     updated,
                     import_statement,
                 )
@@ -428,7 +428,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         return updated
 
     @staticmethod
-    def _pydantic_insert_import(source: str, import_stmt: str) -> str:
+    def _insert_import(source: str, import_stmt: str) -> str:
         """Insert import statement preserving canonical ordering."""
         normalized = import_stmt.strip()
         if not normalized:

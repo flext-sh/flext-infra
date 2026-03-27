@@ -28,7 +28,7 @@ class FlextInfraCodegenConstantsQualityGate:
     def run(self) -> Mapping[str, t.Infra.InfraValue]:
         """Execute quality gate and return structured report payload."""
         before_payload, before_source, before_load_error = (
-            u.Infra.quality_gate_load_before_payload(
+            u.Infra.load_before_payload(
                 workspace_root=self._workspace_root,
                 before_report=self._before_report,
                 baseline_file=self._baseline_file,
@@ -37,37 +37,37 @@ class FlextInfraCodegenConstantsQualityGate:
         census_reports = FlextInfraCodegenCensus(
             workspace_root=self._workspace_root,
         ).run()
-        duplicate_groups = u.Infra.quality_gate_detect_duplicate_constant_groups(
+        duplicate_groups = u.Infra.detect_duplicate_constant_groups(
             self._workspace_root,
             census_reports,
         )
-        modified_files = u.Infra.quality_gate_modified_python_files(
+        modified_files = u.Infra.modified_python_files(
             self._workspace_root,
         )
-        pyrefly_check = u.Infra.quality_gate_run_pyrefly_check(
-            self._workspace_root,
-            modified_files,
-        )
-        ruff_check = u.Infra.quality_gate_run_ruff_check(
+        pyrefly_check = u.Infra.run_pyrefly_check(
             self._workspace_root,
             modified_files,
         )
-        import_scan = u.Infra.quality_gate_scan_import_nodes(
+        ruff_check = u.Infra.run_ruff_check(
             self._workspace_root,
             modified_files,
         )
-        before_metrics = u.Infra.quality_gate_before_metrics(before_payload)
-        after_metrics = u.Infra.quality_gate_after_metrics(
+        import_scan = u.Infra.scan_import_nodes(
+            self._workspace_root,
+            modified_files,
+        )
+        before_metrics = u.Infra.before_metrics(before_payload)
+        after_metrics = u.Infra.after_metrics(
             census_reports=census_reports,
             duplicate_groups=len(duplicate_groups),
             import_scan=import_scan,
             modified_files=modified_files,
         )
-        improvement = u.Infra.quality_gate_improvement(
+        improvement = u.Infra.improvement(
             before_metrics,
             after_metrics,
         )
-        checks = u.Infra.quality_gate_build_checks(
+        checks = u.Infra.build_checks(
             after_metrics=after_metrics,
             improvement=improvement,
             pyrefly_check=pyrefly_check,
@@ -75,7 +75,7 @@ class FlextInfraCodegenConstantsQualityGate:
             before_available=before_payload is not None,
             before_load_error=before_load_error,
         )
-        verdict = u.Infra.quality_gate_compute_verdict(checks, improvement)
+        verdict = u.Infra.compute_verdict(checks, improvement)
         checks_infra: Sequence[t.Infra.InfraValue] = list(checks)
         projects_infra: Sequence[t.Infra.InfraValue] = list(
             u.Infra.quality_gate_project_findings(census_reports),
