@@ -94,6 +94,9 @@ class FlextInfraTypesBase:
     "Mutable set of (str, str) tuples."
     type IntPairSet = set[StrIntPair]
     "Mutable set of (str, int) tuples."
+    type TomlData = dict[str, InfraValue]
+    "Unwrapped TOML table data — nested dicts of primitives from tomlkit unwrap()."
+
     type InfraMapping = Mapping[str, InfraValue]
     "Read-only string-keyed infra value mapping."
     type MutableInfraMapping = MutableMapping[str, InfraValue]

@@ -50,7 +50,11 @@ def test_main_project_obj_not_dict_first_loop(
         "flext_infra.FlextInfraUtilitiesToml.read_document",
         _read_document,
     )
-    monkeypatch.setattr(u.Infra, "info", lambda _msg: None)
+
+    def _noop_info(_msg: str) -> None:
+        pass
+
+    monkeypatch.setattr(u.Infra, "info", _noop_info)
     tm.that(path_sync_module.main(), eq=0)
 
 
@@ -78,7 +82,11 @@ def test_main_project_obj_not_dict_second_loop(
         "flext_infra.FlextInfraUtilitiesToml.read_document",
         _read_document,
     )
-    monkeypatch.setattr(u.Infra, "info", lambda _msg: None)
+
+    def _noop_info(_msg: str) -> None:
+        pass
+
+    monkeypatch.setattr(u.Infra, "info", _noop_info)
     tm.that(path_sync_module.main(), eq=0)
 
 

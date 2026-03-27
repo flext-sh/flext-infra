@@ -235,8 +235,9 @@ class FlextInfraCodegenFixer(s[bool]):
                 files_with_candidates=0,
                 remaining_violations=0,
                 mro_failures=0,
-                migrations=[],
-                rewrites=[],
+                stash_ref="",
+                migrations=(),
+                rewrites=(),
             )
         files_modified.update(migration.file for migration in report.migrations)
         files_modified.update(rewrite.file for rewrite in report.rewrites)

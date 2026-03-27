@@ -20,7 +20,6 @@ from typing import ClassVar, override
 import libcst as cst
 import tomlkit
 from tomlkit.exceptions import TOMLKitError
-from tomlkit.items import Table
 
 from flext_infra import (
     FlextInfraNamespaceFacadeScanner,
@@ -113,34 +112,35 @@ class FlextInfraUtilitiesRefactorNamespace:
         (``tool.poetry.dependencies``) path deps and returns project names.
         """
         dep_names: t.Infra.StrSet = set()
+        raw: t.Infra.TomlData = doc.unwrap()
         # PEP 621: project.dependencies with " @ file:" path refs
-        project_raw = doc.get("project", None)
-        if isinstance(project_raw, Table):
-            project_dict: Mapping[str, Sequence[str]] = project_raw.unwrap()
-            deps_list: Sequence[str] = project_dict.get("dependencies", [])
-            for item_str in deps_list:
-                if " @ " not in item_str:
-                    continue
-                _name, path_part = item_str.split(" @ ", 1)
-                path_part = path_part.strip().removeprefix("file:").strip()
-                path_part = path_part.removeprefix("./").strip()
-                if path_part:
-                    # path_part like "flext-meltano" or "../flext-meltano"
-                    dep_names.add(Path(path_part).name)
+        project_val: t.Infra.InfraValue = raw.get("project")
+        if isinstance(project_val, dict):
+            deps_val: t.Infra.InfraValue = project_val.get("dependencies")
+            if isinstance(deps_val, Sequence) and not isinstance(deps_val, str):
+                for item_val in deps_val:
+                    if not isinstance(item_val, str):
+                        continue
+                    if " @ " not in item_val:
+                        continue
+                    _name, path_part = item_val.split(" @ ", 1)
+                    path_part = path_part.strip().removeprefix("file:").strip()
+                    path_part = path_part.removeprefix("./").strip()
+                    if path_part:
+                        dep_names.add(Path(path_part).name)
         # Poetry: tool.poetry.dependencies with path = "..."
-        tool_raw = doc.get("tool", None)
-        if isinstance(tool_raw, Table):
-            poetry_raw = tool_raw.get("poetry", None)
-            if isinstance(poetry_raw, Table):
-                deps_tbl_raw = poetry_raw.get("dependencies", None)
-                if isinstance(deps_tbl_raw, Table):
-                    for dep_key in [str(k) for k in deps_tbl_raw]:
-                        dep_value_raw = deps_tbl_raw[dep_key]
-                        if not isinstance(dep_value_raw, Table):
+        tool_val: t.Infra.InfraValue = raw.get("tool")
+        if isinstance(tool_val, dict):
+            poetry_val: t.Infra.InfraValue = tool_val.get("poetry")
+            if isinstance(poetry_val, dict):
+                deps_tbl_val: t.Infra.InfraValue = poetry_val.get("dependencies")
+                if isinstance(deps_tbl_val, dict):
+                    for dep_entry in deps_tbl_val.values():
+                        if not isinstance(dep_entry, dict):
                             continue
-                        dep_path_raw = dep_value_raw.get("path", None)
+                        dep_path_val: t.Infra.InfraValue = dep_entry.get("path")
                         dep_path_str = (
-                            str(dep_path_raw) if dep_path_raw is not None else ""
+                            str(dep_path_val) if dep_path_val is not None else ""
                         )
                         if dep_path_str:
                             dep_path_clean = (

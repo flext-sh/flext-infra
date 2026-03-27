@@ -18,7 +18,7 @@ from rope.base.exceptions import RefactoringError, ResourceNotFoundError
 from rope.base.project import Project as RopeProject
 from rope.base.pynames import DefinedName, ImportedName
 from rope.base.pyobjects import AbstractClass
-from rope.base.pyobjectsdef import PyClass
+from rope.base.pyobjectsdef import PyClass, PyFunction
 from rope.base.resources import File as RopeFile
 from rope.contrib.findit import (
     Location as RopeLocation,
@@ -116,13 +116,7 @@ class FlextInfraUtilitiesRope:
                 return None
             pyname = attrs[symbol]
             definition_loc = pyname.get_definition_location()
-            if definition_loc is None:
-                return None
-            line_number = (
-                definition_loc[1] if isinstance(definition_loc, tuple) else None
-            )
-            if line_number is None:
-                return None
+            line_number = definition_loc[1]
             return FlextInfraUtilitiesRope._line_offset_for_symbol(
                 source=source,
                 line_number=line_number,
@@ -220,7 +214,11 @@ class FlextInfraUtilitiesRope:
                 if not isinstance(obj, AbstractClass):
                     continue
                 _res, line = pyname.get_definition_location()
-                bases = [b.get_name() for b in obj.get_superclasses()]
+                bases = [
+                    bname
+                    for b in obj.get_superclasses()
+                    if (bname := b.get_name()) is not None
+                ]
                 result.append(
                     m.Infra.ClassInfo(
                         name=name,
@@ -293,7 +291,7 @@ class FlextInfraUtilitiesRope:
                     continue
                 child = pyname.get_object()
                 kind = "method"
-                if hasattr(child, "get_kind"):
+                if isinstance(child, PyFunction):
                     raw_kind = child.get_kind()
                     if raw_kind == "staticmethod":
                         kind = "staticmethod"
