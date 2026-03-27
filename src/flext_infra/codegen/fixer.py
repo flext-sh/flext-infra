@@ -219,7 +219,14 @@ class FlextInfraCodegenFixer(s[bool]):
                 target="all",
                 apply=True,
             )
-        except (SyntaxError, ModuleSyntaxError, OSError, ValueError, KeyError, AttributeError):
+        except (
+            SyntaxError,
+            ModuleSyntaxError,
+            OSError,
+            ValueError,
+            KeyError,
+            AttributeError,
+        ):
             return m.Infra.MROMigrationReport(
                 workspace=str(project_path),
                 target="all",

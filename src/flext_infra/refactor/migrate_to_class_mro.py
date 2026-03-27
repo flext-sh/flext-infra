@@ -100,7 +100,14 @@ class FlextInfraRefactorMigrateToClassMRO:
         """Execute MRO migration as a rope post-hook (implements p.Infra.RopePostHook)."""
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
-        except (SyntaxError, ModuleSyntaxError, OSError, ValueError, KeyError, AttributeError):
+        except (
+            SyntaxError,
+            ModuleSyntaxError,
+            OSError,
+            ValueError,
+            KeyError,
+            AttributeError,
+        ):
             return []
         return cls._report_to_results(report=report, dry_run=dry_run)
 

@@ -36,19 +36,52 @@ if TYPE_CHECKING:
     from tests.unit._utilities.test_scanning import TestScanModels
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "TestDiscoveryDiscoverProjects": ["tests.unit._utilities.test_discovery_consolidated", "TestDiscoveryDiscoverProjects"],
-    "TestDiscoveryFindAllPyprojectFiles": ["tests.unit._utilities.test_discovery_consolidated", "TestDiscoveryFindAllPyprojectFiles"],
-    "TestDiscoveryIterPythonFiles": ["tests.unit._utilities.test_discovery_consolidated", "TestDiscoveryIterPythonFiles"],
-    "TestDiscoveryProjectRoots": ["tests.unit._utilities.test_discovery_consolidated", "TestDiscoveryProjectRoots"],
-    "TestFormattingRunRuffFix": ["tests.unit._utilities.test_formatting", "TestFormattingRunRuffFix"],
-    "TestIterWorkspacePythonModules": ["tests.unit._utilities.test_iteration", "TestIterWorkspacePythonModules"],
-    "TestParsingModuleAst": ["tests.unit._utilities.test_parsing", "TestParsingModuleAst"],
-    "TestParsingModuleCst": ["tests.unit._utilities.test_parsing", "TestParsingModuleCst"],
-    "TestSafetyCheckpoint": ["tests.unit._utilities.test_safety", "TestSafetyCheckpoint"],
+    "TestDiscoveryDiscoverProjects": [
+        "tests.unit._utilities.test_discovery_consolidated",
+        "TestDiscoveryDiscoverProjects",
+    ],
+    "TestDiscoveryFindAllPyprojectFiles": [
+        "tests.unit._utilities.test_discovery_consolidated",
+        "TestDiscoveryFindAllPyprojectFiles",
+    ],
+    "TestDiscoveryIterPythonFiles": [
+        "tests.unit._utilities.test_discovery_consolidated",
+        "TestDiscoveryIterPythonFiles",
+    ],
+    "TestDiscoveryProjectRoots": [
+        "tests.unit._utilities.test_discovery_consolidated",
+        "TestDiscoveryProjectRoots",
+    ],
+    "TestFormattingRunRuffFix": [
+        "tests.unit._utilities.test_formatting",
+        "TestFormattingRunRuffFix",
+    ],
+    "TestIterWorkspacePythonModules": [
+        "tests.unit._utilities.test_iteration",
+        "TestIterWorkspacePythonModules",
+    ],
+    "TestParsingModuleAst": [
+        "tests.unit._utilities.test_parsing",
+        "TestParsingModuleAst",
+    ],
+    "TestParsingModuleCst": [
+        "tests.unit._utilities.test_parsing",
+        "TestParsingModuleCst",
+    ],
+    "TestSafetyCheckpoint": [
+        "tests.unit._utilities.test_safety",
+        "TestSafetyCheckpoint",
+    ],
     "TestSafetyRollback": ["tests.unit._utilities.test_safety", "TestSafetyRollback"],
     "TestScanModels": ["tests.unit._utilities.test_scanning", "TestScanModels"],
-    "test_run_rope_post_hooks_applies_mro_migration": ["tests.unit._utilities.test_rope_hooks", "test_run_rope_post_hooks_applies_mro_migration"],
-    "test_run_rope_post_hooks_dry_run_is_non_mutating": ["tests.unit._utilities.test_rope_hooks", "test_run_rope_post_hooks_dry_run_is_non_mutating"],
+    "test_run_rope_post_hooks_applies_mro_migration": [
+        "tests.unit._utilities.test_rope_hooks",
+        "test_run_rope_post_hooks_applies_mro_migration",
+    ],
+    "test_run_rope_post_hooks_dry_run_is_non_mutating": [
+        "tests.unit._utilities.test_rope_hooks",
+        "test_run_rope_post_hooks_dry_run_is_non_mutating",
+    ],
 }
 
 __all__ = [
