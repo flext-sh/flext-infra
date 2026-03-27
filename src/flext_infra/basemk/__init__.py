@@ -24,8 +24,14 @@ if TYPE_CHECKING:
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraBaseMkGenerator": ["flext_infra.basemk.generator", "FlextInfraBaseMkGenerator"],
-    "FlextInfraBaseMkTemplateEngine": ["flext_infra.basemk.engine", "FlextInfraBaseMkTemplateEngine"],
+    "FlextInfraBaseMkGenerator": [
+        "flext_infra.basemk.generator",
+        "FlextInfraBaseMkGenerator",
+    ],
+    "FlextInfraBaseMkTemplateEngine": [
+        "flext_infra.basemk.engine",
+        "FlextInfraBaseMkTemplateEngine",
+    ],
 }
 
 __all__ = [

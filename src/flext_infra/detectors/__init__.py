@@ -58,21 +58,66 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraClassPlacementDetector": ["flext_infra.detectors.class_placement_detector", "FlextInfraClassPlacementDetector"],
-    "FlextInfraCompatibilityAliasDetector": ["flext_infra.detectors.compatibility_alias_detector", "FlextInfraCompatibilityAliasDetector"],
-    "FlextInfraCyclicImportDetector": ["flext_infra.detectors.cyclic_import_detector", "FlextInfraCyclicImportDetector"],
-    "FlextInfraDependencyAnalyzer": ["flext_infra.detectors.dependency_analyzer_base", "FlextInfraDependencyAnalyzer"],
-    "FlextInfraFutureAnnotationsDetector": ["flext_infra.detectors.future_annotations_detector", "FlextInfraFutureAnnotationsDetector"],
-    "FlextInfraImportAliasDetector": ["flext_infra.detectors.import_alias_detector", "FlextInfraImportAliasDetector"],
-    "FlextInfraImportCollector": ["flext_infra.detectors.import_collector", "FlextInfraImportCollector"],
-    "FlextInfraInternalImportDetector": ["flext_infra.detectors.internal_import_detector", "FlextInfraInternalImportDetector"],
-    "FlextInfraLooseObjectDetector": ["flext_infra.detectors.loose_object_detector", "FlextInfraLooseObjectDetector"],
-    "FlextInfraMROCompletenessDetector": ["flext_infra.detectors.mro_completeness_detector", "FlextInfraMROCompletenessDetector"],
-    "FlextInfraManualProtocolDetector": ["flext_infra.detectors.manual_protocol_detector", "FlextInfraManualProtocolDetector"],
-    "FlextInfraManualTypingAliasDetector": ["flext_infra.detectors.manual_typing_alias_detector", "FlextInfraManualTypingAliasDetector"],
-    "FlextInfraNamespaceFacadeScanner": ["flext_infra.detectors.namespace_facade_scanner", "FlextInfraNamespaceFacadeScanner"],
-    "FlextInfraNamespaceSourceDetector": ["flext_infra.detectors.namespace_source_detector", "FlextInfraNamespaceSourceDetector"],
-    "FlextInfraRuntimeAliasDetector": ["flext_infra.detectors.runtime_alias_detector", "FlextInfraRuntimeAliasDetector"],
+    "FlextInfraClassPlacementDetector": [
+        "flext_infra.detectors.class_placement_detector",
+        "FlextInfraClassPlacementDetector",
+    ],
+    "FlextInfraCompatibilityAliasDetector": [
+        "flext_infra.detectors.compatibility_alias_detector",
+        "FlextInfraCompatibilityAliasDetector",
+    ],
+    "FlextInfraCyclicImportDetector": [
+        "flext_infra.detectors.cyclic_import_detector",
+        "FlextInfraCyclicImportDetector",
+    ],
+    "FlextInfraDependencyAnalyzer": [
+        "flext_infra.detectors.dependency_analyzer_base",
+        "FlextInfraDependencyAnalyzer",
+    ],
+    "FlextInfraFutureAnnotationsDetector": [
+        "flext_infra.detectors.future_annotations_detector",
+        "FlextInfraFutureAnnotationsDetector",
+    ],
+    "FlextInfraImportAliasDetector": [
+        "flext_infra.detectors.import_alias_detector",
+        "FlextInfraImportAliasDetector",
+    ],
+    "FlextInfraImportCollector": [
+        "flext_infra.detectors.import_collector",
+        "FlextInfraImportCollector",
+    ],
+    "FlextInfraInternalImportDetector": [
+        "flext_infra.detectors.internal_import_detector",
+        "FlextInfraInternalImportDetector",
+    ],
+    "FlextInfraLooseObjectDetector": [
+        "flext_infra.detectors.loose_object_detector",
+        "FlextInfraLooseObjectDetector",
+    ],
+    "FlextInfraMROCompletenessDetector": [
+        "flext_infra.detectors.mro_completeness_detector",
+        "FlextInfraMROCompletenessDetector",
+    ],
+    "FlextInfraManualProtocolDetector": [
+        "flext_infra.detectors.manual_protocol_detector",
+        "FlextInfraManualProtocolDetector",
+    ],
+    "FlextInfraManualTypingAliasDetector": [
+        "flext_infra.detectors.manual_typing_alias_detector",
+        "FlextInfraManualTypingAliasDetector",
+    ],
+    "FlextInfraNamespaceFacadeScanner": [
+        "flext_infra.detectors.namespace_facade_scanner",
+        "FlextInfraNamespaceFacadeScanner",
+    ],
+    "FlextInfraNamespaceSourceDetector": [
+        "flext_infra.detectors.namespace_source_detector",
+        "FlextInfraNamespaceSourceDetector",
+    ],
+    "FlextInfraRuntimeAliasDetector": [
+        "flext_infra.detectors.runtime_alias_detector",
+        "FlextInfraRuntimeAliasDetector",
+    ],
 }
 
 __all__ = [
