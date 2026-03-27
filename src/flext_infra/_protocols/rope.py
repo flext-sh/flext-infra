@@ -6,7 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from collections.abc import Sequence
+from pathlib import Path
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from flext_infra import m
 
 
 class FlextInfraProtocolsRope:
@@ -99,6 +104,23 @@ class FlextInfraProtocolsRope:
 
         def get_name(self) -> str | None:
             """Return the name of this object, or None."""
+            ...
+
+    @runtime_checkable
+    class RopePostHook(Protocol):
+        """Contract for post-processing hooks invoked after rope refactoring.
+
+        Implementations receive a workspace path and dry_run flag,
+        and return rope-compatible Result objects.
+        """
+
+        def __call__(
+            self,
+            path: Path,
+            *,
+            dry_run: bool,
+        ) -> Sequence[m.Infra.Result]:
+            """Execute the hook and return results."""
             ...
 
 

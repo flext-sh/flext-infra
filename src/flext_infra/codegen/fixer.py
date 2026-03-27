@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import override
 
 from flext_core import r, s
+from rope.base.exceptions import ModuleSyntaxError
 
 from flext_infra import (
     FlextInfraCodegenLazyInit,
@@ -218,7 +219,7 @@ class FlextInfraCodegenFixer(s[bool]):
                 target="all",
                 apply=True,
             )
-        except (SyntaxError, OSError, ValueError, KeyError, AttributeError):
+        except (SyntaxError, ModuleSyntaxError, OSError, ValueError, KeyError, AttributeError):
             return m.Infra.MROMigrationReport(
                 workspace=str(project_path),
                 target="all",

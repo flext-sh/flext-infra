@@ -43,9 +43,6 @@ from flext_infra import (
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesYaml,
 )
-from flext_infra._utilities.rope_hooks import register_rope_hooks
-
-register_rope_hooks()
 
 
 class FlextInfraUtilities(FlextUtilities):
@@ -95,6 +92,14 @@ class FlextInfraUtilities(FlextUtilities):
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 
+
+from flext_infra.refactor.migrate_to_class_mro import (
+    FlextInfraRefactorMigrateToClassMRO,
+)
+
+FlextInfraUtilities.Infra.register_rope_post_hook(
+    FlextInfraRefactorMigrateToClassMRO.run_as_hook,
+)
 
 u = FlextInfraUtilities
 __all__ = ["FlextInfraUtilities", "u"]

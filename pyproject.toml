@@ -239,8 +239,6 @@ exclude = [
   ".ruff_cache",
   ".sisyphus",
   ".venv",
-  "typings",
-  "typings/**",
 ]
 extraPaths = [ ".", "../typings", "../typings/generated", "src" ]
 ignore = [ "../typings", "../typings/generated" ]
@@ -272,7 +270,7 @@ reportPrivateUsage = "error"
 root = "src"
 
 [[tool.pyright.executionEnvironments]]
-extraPaths = [ ".", "../flext-cli/src", "../flext-core/src", "../flext-tests/src", "src" ]
+extraPaths = [ ".", "src" ]
 reportPrivateUsage = "none"
 root = "tests"
 

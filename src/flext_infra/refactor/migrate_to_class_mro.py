@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
+
+from rope.base.exceptions import ModuleSyntaxError
 
 from flext_infra import c, m, t
 from flext_infra.refactor._utilities_mro_scan import FlextInfraUtilitiesRefactorMroScan
@@ -86,6 +89,58 @@ class FlextInfraRefactorMigrateToClassMRO:
             lines.append("Errors:")
             lines.extend(f"- {error}" for error in report.errors)
         return "\n".join(lines) + "\n"
+
+    @classmethod
+    def run_as_hook(
+        cls,
+        path: Path,
+        *,
+        dry_run: bool,
+    ) -> Sequence[m.Infra.Result]:
+        """Execute MRO migration as a rope post-hook (implements p.Infra.RopePostHook)."""
+        try:
+            report = cls(workspace_root=path).run(target="all", apply=not dry_run)
+        except (SyntaxError, ModuleSyntaxError, OSError, ValueError, KeyError, AttributeError):
+            return []
+        return cls._report_to_results(report=report, dry_run=dry_run)
+
+    @staticmethod
+    def _report_to_results(
+        *,
+        report: m.Infra.MROMigrationReport,
+        dry_run: bool,
+    ) -> Sequence[m.Infra.Result]:
+        """Convert MRO migration report into rope-compatible Result sequence."""
+        per_file_changes: MutableMapping[Path, MutableSequence[str]] = {}
+        for migration in report.migrations:
+            file_path = Path(migration.file)
+            changes = per_file_changes.setdefault(file_path, [])
+            changes.extend([
+                ("planned MRO migration" if dry_run else "applied MRO migration")
+                + f": {symbol}"
+                for symbol in migration.moved_symbols
+            ])
+        for rewrite in report.rewrites:
+            file_path = Path(rewrite.file)
+            changes = per_file_changes.setdefault(file_path, [])
+            action = "planned" if dry_run else "rewrote"
+            changes.append(
+                f"{action} {rewrite.replacements} consumer references after MRO migration",
+            )
+        return [
+            m.Infra.Result(
+                file_path=file_path,
+                success=True,
+                modified=(not dry_run),
+                error=None,
+                changes=list(changes),
+                refactored_code=None,
+            )
+            for file_path, changes in sorted(
+                per_file_changes.items(),
+                key=lambda item: str(item[0]),
+            )
+        ]
 
     @staticmethod
     def _normalize_target(*, target: str) -> str:
