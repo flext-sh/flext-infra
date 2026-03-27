@@ -248,6 +248,13 @@ class FlextInfraDepsModels:
                     description="Typings paths used in subproject configs.",
                 ),
             ]
+            ignored_diagnostic_globs: Annotated[
+                t.StrSequence,
+                Field(
+                    alias="ignored-diagnostic-globs",
+                    description="Pyright ignore globs for files that remain on search paths but must not emit diagnostics.",
+                ),
+            ]
             source_report_private_usage: Annotated[
                 str,
                 Field(

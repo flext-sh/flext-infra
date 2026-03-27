@@ -347,8 +347,6 @@ class FlextInfraCodegenCommand:
             baseline_file=baseline_file,
         )
         report = gate.run()
-        if cli.output_format == "json":
-            pass
         verdict = str(report.get("verdict", "FAIL"))
         return (
             0

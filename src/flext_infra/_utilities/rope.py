@@ -213,9 +213,8 @@ class FlextInfraUtilitiesRope:
                 obj = pyname.get_object()
                 if not isinstance(obj, AbstractClass):
                     continue
-                _res, line = pyname.get_definition_location()
-                if not isinstance(line, int):
-                    continue
+                _res, line_candidate = pyname.get_definition_location()
+                line_value: int = line_candidate
                 bases = [
                     bname
                     for b in obj.get_superclasses()
@@ -224,7 +223,7 @@ class FlextInfraUtilitiesRope:
                 result.append(
                     m.Infra.ClassInfo(
                         name=name,
-                        line=line,
+                        line=line_value,
                         bases=tuple(bases),
                     )
                 )

@@ -416,6 +416,8 @@ tools:
       project-typings-paths:
         - ../typings
         - ../typings/generated
+      ignored-diagnostic-globs:
+        - '**/*.pyi'
       source-report-private-usage: error
       test-like-report-private-usage: none
       other-report-private-usage: none

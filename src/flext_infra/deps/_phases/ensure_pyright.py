@@ -275,12 +275,20 @@ class FlextInfraEnsurePyrightConfigPhase:
         workspace_root: Path | None,
         project_dir: Path | None,
     ) -> t.StrSequence:
-        """Ignore typings diagnostics while still keeping typings available in extraPaths."""
+        """Ignore typings and stub diagnostics while still keeping them available in extraPaths."""
         rules = self._path_rules()
+        ignores: MutableSequence[str] = []
         if is_root:
             root_dir = workspace_root or project_dir
-            return sorted(self._existing_paths(root_dir, rules.root_typings_paths))
-        return sorted(self._existing_paths(project_dir, rules.project_typings_paths))
+            ignores.extend(self._existing_paths(root_dir, rules.root_typings_paths))
+        else:
+            ignores.extend(
+                self._existing_paths(project_dir, rules.project_typings_paths)
+            )
+        for pattern in rules.ignored_diagnostic_globs:
+            if pattern not in ignores:
+                ignores.append(pattern)
+        return list(ignores)
 
     def apply(
         self,

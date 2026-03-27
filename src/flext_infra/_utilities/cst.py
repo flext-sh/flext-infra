@@ -468,7 +468,7 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
     def visit_TypeAlias(self, node: cst.TypeAlias) -> bool:
         if self._depth > 0:
             return False
-        name = node.name.value if isinstance(node.name, cst.Name) else ""
+        name = node.name.value
         if not name:
             return False
 
@@ -541,7 +541,7 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
         for alias in node.names:
             imported = alias.name.value if isinstance(alias.name, cst.Name) else ""
             local = imported
-            if alias.asname and isinstance(alias.asname, cst.AsName):
+            if alias.asname is not None:
                 asname_node = alias.asname.name
                 if isinstance(asname_node, cst.Name):
                     local = asname_node.value

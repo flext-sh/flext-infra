@@ -63,7 +63,7 @@ class TestEnsurePyrightConfigPhase:
         )
         tm.that(exclude, eq=expected_exclude)
         ignore = u.Infra.unwrap_item(pyright["ignore"])
-        tm.that(ignore, eq=["typings", "typings/generated"])
+        tm.that(ignore, eq=["typings", "typings/generated", "**/*.pyi"])
         envs = u.Infra.unwrap_item(pyright["executionEnvironments"])
         tm.that(envs, is_=list)
         tm.that(
@@ -156,7 +156,7 @@ class TestEnsurePyrightConfigPhase:
         if not isinstance(pyright, MutableMapping):
             return
         ignore = u.Infra.unwrap_item(pyright["ignore"])
-        tm.that(ignore, eq=["../typings"])
+        tm.that(ignore, eq=["../typings", "**/*.pyi"])
         tm.that(
             changes,
             has="tool.pyright.ignore synchronized for typings diagnostics",
