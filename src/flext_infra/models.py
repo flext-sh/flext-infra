@@ -21,6 +21,8 @@ from flext_infra import (
     FlextInfraGatesModels,
     FlextInfraGithubModels,
     FlextInfraModelsBase,
+    FlextInfraModelsCensus,
+    FlextInfraModelsCst,
     FlextInfraModelsRope,
     FlextInfraModelsScan,
     FlextInfraRefactorModels,
@@ -33,6 +35,8 @@ class FlextInfraModels(FlextModels):
     """Merged model namespace for flext-infra domain objects."""
 
     class Infra(
+        FlextInfraModelsCensus,
+        FlextInfraModelsCst,
         FlextInfraBasemkModels,
         FlextInfraCheckModels,
         FlextInfraCodegenModels,

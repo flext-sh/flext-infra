@@ -257,12 +257,10 @@ class FlextInfraNamespaceEnforcer:
                 rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
-            rewrite_fn=lambda vs: (
-                u.Infra.rewrite_manual_typing_alias_violations(
-                    project_root=project_root,
-                    violations=vs,
-                    parse_failures=parse_failures,
-                )
+            rewrite_fn=lambda vs: u.Infra.rewrite_manual_typing_alias_violations(
+                project_root=project_root,
+                violations=vs,
+                parse_failures=parse_failures,
             ),
             apply=apply,
         )
@@ -273,11 +271,9 @@ class FlextInfraNamespaceEnforcer:
                 rope_project=self._rope_project,
                 parse_failures=parse_failures,
             ),
-            rewrite_fn=lambda vs: (
-                u.Infra.rewrite_compatibility_alias_violations(
-                    violations=vs,
-                    parse_failures=parse_failures,
-                )
+            rewrite_fn=lambda vs: u.Infra.rewrite_compatibility_alias_violations(
+                violations=vs,
+                parse_failures=parse_failures,
             ),
             apply=apply,
         )

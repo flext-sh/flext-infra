@@ -12,7 +12,11 @@ from __future__ import annotations
 
 from flext_core import FlextProtocols
 
-from flext_infra import FlextInfraProtocolsBase, FlextInfraProtocolsRope
+from flext_infra import (
+    FlextInfraProtocolsBase,
+    FlextInfraProtocolsCst,
+    FlextInfraProtocolsRope,
+)
 
 
 class FlextInfraProtocols(FlextProtocols):
@@ -23,7 +27,9 @@ class FlextInfraProtocols(FlextProtocols):
     protocols live as nested classes below.
     """
 
-    class Infra(FlextInfraProtocolsRope, FlextInfraProtocolsBase):
+    class Infra(
+        FlextInfraProtocolsCst, FlextInfraProtocolsRope, FlextInfraProtocolsBase
+    ):
         """Infra-specific structural protocol definitions."""
 
 

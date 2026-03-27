@@ -41,7 +41,9 @@ class FlextInfraModelsCst:
 
             name: Annotated[
                 t.NonEmptyStr,
-                Field(description="Decorator name (e.g. staticmethod, runtime_checkable)"),
+                Field(
+                    description="Decorator name (e.g. staticmethod, runtime_checkable)"
+                ),
             ]
             is_call: Annotated[
                 bool,
@@ -61,7 +63,9 @@ class FlextInfraModelsCst:
                 str,
                 Field(description="Method kind: static, class, instance, property"),
             ]
-            line: Annotated[t.NonNegativeInt, Field(description="Line number (1-based)")]
+            line: Annotated[
+                t.NonNegativeInt, Field(description="Line number (1-based)")
+            ]
             decorators: Annotated[
                 Sequence[FlextInfraModelsCst.Cst.ExtractedDecorator],
                 Field(description="Decorators applied to this method"),
@@ -73,7 +77,9 @@ class FlextInfraModelsCst:
             model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
             name: Annotated[t.NonEmptyStr, Field(description="Class name")]
-            line: Annotated[t.NonNegativeInt, Field(description="Line number (1-based)")]
+            line: Annotated[
+                t.NonNegativeInt, Field(description="Line number (1-based)")
+            ]
             bases: Annotated[
                 Sequence[FlextInfraModelsCst.Cst.ExtractedBase],
                 Field(description="Base class references"),
@@ -92,7 +98,9 @@ class FlextInfraModelsCst:
             ] = Field(default_factory=lambda: ())
             is_protocol: Annotated[
                 bool,
-                Field(default=False, description="Whether class inherits from Protocol"),
+                Field(
+                    default=False, description="Whether class inherits from Protocol"
+                ),
             ] = False
             is_model: Annotated[
                 bool,
@@ -115,7 +123,9 @@ class FlextInfraModelsCst:
             model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
             name: Annotated[t.NonEmptyStr, Field(description="Assignment target name")]
-            line: Annotated[t.NonNegativeInt, Field(description="Line number (1-based)")]
+            line: Annotated[
+                t.NonNegativeInt, Field(description="Line number (1-based)")
+            ]
             has_final: Annotated[
                 bool,
                 Field(
@@ -165,7 +175,9 @@ class FlextInfraModelsCst:
             model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
             name: Annotated[t.NonEmptyStr, Field(description="Function name")]
-            line: Annotated[t.NonNegativeInt, Field(description="Line number (1-based)")]
+            line: Annotated[
+                t.NonNegativeInt, Field(description="Line number (1-based)")
+            ]
             decorators: Annotated[
                 Sequence[FlextInfraModelsCst.Cst.ExtractedDecorator],
                 Field(description="Function decorators"),
@@ -197,7 +209,9 @@ class FlextInfraModelsCst:
                 bool,
                 Field(default=False, description="Whether this is a star import"),
             ] = False
-            line: Annotated[t.NonNegativeInt, Field(description="Line number (1-based)")]
+            line: Annotated[
+                t.NonNegativeInt, Field(description="Line number (1-based)")
+            ]
 
         class ExtractedObject(FlextModels.ArbitraryTypesModel):
             """Unified object extracted from a Python file.
@@ -215,7 +229,9 @@ class FlextInfraModelsCst:
                     description="Object kind: class, assignment, function, type_alias",
                 ),
             ]
-            line: Annotated[t.NonNegativeInt, Field(description="Line number (1-based)")]
+            line: Annotated[
+                t.NonNegativeInt, Field(description="Line number (1-based)")
+            ]
             # Classification signals
             bases: Annotated[
                 Sequence[str],
@@ -231,7 +247,9 @@ class FlextInfraModelsCst:
             ] = False
             is_type_alias: Annotated[
                 bool,
-                Field(default=False, description="Is a type alias (PEP 695 or TypeAlias)"),
+                Field(
+                    default=False, description="Is a type alias (PEP 695 or TypeAlias)"
+                ),
             ] = False
             is_protocol: Annotated[
                 bool,

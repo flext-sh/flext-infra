@@ -16,6 +16,8 @@ from flext_infra import (
     FlextInfraCheckConstants,
     FlextInfraCodegenConstants,
     FlextInfraConstantsBase,
+    FlextInfraConstantsCensus,
+    FlextInfraConstantsCst,
     FlextInfraConstantsRope,
     FlextInfraCoreConstants,
     FlextInfraDepsConstants,
@@ -42,6 +44,8 @@ class FlextInfraConstants(FlextConstants):
     """
 
     class Infra(
+        FlextInfraConstantsCensus,
+        FlextInfraConstantsCst,
         FlextInfraSharedInfraConstants,
         FlextInfraBasemkConstants,
         FlextInfraCheckConstants,

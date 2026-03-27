@@ -28,8 +28,12 @@ class FlextInfraModelsCensus:
                 Field(description="Object kind (constant/type/protocol/model/utility)"),
             ]
             file_path: Annotated[str, Field(description="Absolute file path")]
-            line: Annotated[t.NonNegativeInt, Field(description="Line number (1-based)")]
-            project: Annotated[t.NonEmptyStr, Field(description="Project directory name")]
+            line: Annotated[
+                t.NonNegativeInt, Field(description="Line number (1-based)")
+            ]
+            project: Annotated[
+                t.NonEmptyStr, Field(description="Project directory name")
+            ]
             actual_tier: Annotated[
                 str,
                 Field(

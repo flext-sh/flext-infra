@@ -67,10 +67,8 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         """Return True when statement is a top-level model-like class."""
         if not isinstance(node, ast.ClassDef):
             return False
-        base_names = (
-            FlextInfraUtilitiesRefactorPydanticAnalysis._class_base_names(
-                node,
-            )
+        base_names = FlextInfraUtilitiesRefactorPydanticAnalysis._class_base_names(
+            node,
         )
         return any(
             FlextInfraUtilitiesRefactorPydanticAnalysis._is_model_like_base_name(
@@ -265,8 +263,10 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         node: ast.ClassDef,
         source: str,
     ) -> str:
-        total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._typed_dict_total_false(
-            node,
+        total_false = (
+            FlextInfraUtilitiesRefactorPydanticAnalysis._typed_dict_total_false(
+                node,
+            )
         )
         fields: MutableSequence[str] = []
         for stmt in node.body:
@@ -317,8 +317,10 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                 start = stmt.lineno
                 end = stmt.end_lineno or stmt.lineno
                 snippet = "\n".join(lines[start - 1 : end])
-                base_names = FlextInfraUtilitiesRefactorPydanticAnalysis._class_base_names(
-                    stmt,
+                base_names = (
+                    FlextInfraUtilitiesRefactorPydanticAnalysis._class_base_names(
+                        stmt,
+                    )
                 )
                 kind = "typed_dict" if "TypedDict" in base_names else "base_model"
                 if kind == "typed_dict":
@@ -336,10 +338,12 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                     ),
                 )
                 continue
-            alias_move = FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_alias(
-                stmt,
-                source,
-                file_path=file_path,
+            alias_move = (
+                FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_alias(
+                    stmt,
+                    source,
+                    file_path=file_path,
+                )
             )
             if alias_move is not None:
                 alias_moves.append(alias_move)
@@ -417,11 +421,9 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         updated = "\n".join(lines)
         moved_names = [m.name for m in class_moves] + [a.name for a in alias_moves]
         if moved_names:
-            updated = (
-                FlextInfraUtilitiesRefactorPydanticAnalysis._insert_import(
-                    updated,
-                    import_statement,
-                )
+            updated = FlextInfraUtilitiesRefactorPydanticAnalysis._insert_import(
+                updated,
+                import_statement,
             )
         if source.endswith("\n") and (not updated.endswith("\n")):
             updated += "\n"

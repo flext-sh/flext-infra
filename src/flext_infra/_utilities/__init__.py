@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
+    from flext_infra._utilities.cst import FlextInfraUtilitiesCst
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
     from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
@@ -53,6 +54,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "FlextInfraUtilitiesBase",
     ],
     "FlextInfraUtilitiesCli": ["flext_infra._utilities.cli", "FlextInfraUtilitiesCli"],
+    "FlextInfraUtilitiesCst": ["flext_infra._utilities.cst", "FlextInfraUtilitiesCst"],
     "FlextInfraUtilitiesDiscovery": [
         "flext_infra._utilities.discovery",
         "FlextInfraUtilitiesDiscovery",
@@ -149,6 +151,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 __all__ = [
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCli",
+    "FlextInfraUtilitiesCst",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
     "FlextInfraUtilitiesFormatting",

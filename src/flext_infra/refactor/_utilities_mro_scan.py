@@ -44,9 +44,7 @@ class FlextInfraUtilitiesRefactorMroScan:
             workspace_root=workspace_root,
         ):
             for target_spec in target_specs:
-                for (
-                    file_path
-                ) in FlextInfraUtilitiesRefactorMroScan._iter_target_files(
+                for file_path in FlextInfraUtilitiesRefactorMroScan._iter_target_files(
                     project_root=project_root,
                     target_spec=target_spec,
                 ):
@@ -72,11 +70,9 @@ class FlextInfraUtilitiesRefactorMroScan:
         tree = FlextInfraUtilitiesParsing.parse_module_ast(file_path)
         if tree is None:
             return None
-        constants_class = (
-            FlextInfraUtilitiesRefactorMroScan._facade_class_name(
-                tree=tree,
-                target_spec=target_spec,
-            )
+        constants_class = FlextInfraUtilitiesRefactorMroScan._facade_class_name(
+            tree=tree,
+            target_spec=target_spec,
         )
         if not constants_class:
             return None
@@ -86,11 +82,9 @@ class FlextInfraUtilitiesRefactorMroScan:
         )
         candidates: MutableSequence[m.Infra.MROSymbolCandidate] = []
         for stmt in tree.body:
-            candidate = (
-                FlextInfraUtilitiesRefactorMroScan._candidate_from_statement(
-                    stmt=stmt,
-                    target_spec=target_spec,
-                )
+            candidate = FlextInfraUtilitiesRefactorMroScan._candidate_from_statement(
+                stmt=stmt,
+                target_spec=target_spec,
             )
             if candidate is not None:
                 candidates.append(candidate)
@@ -113,8 +107,10 @@ class FlextInfraUtilitiesRefactorMroScan:
                 stmt=stmt,
             )
         if target_spec.family_alias == "p":
-            return FlextInfraUtilitiesRefactorMroScan._protocol_candidate_from_statement(
-                stmt=stmt,
+            return (
+                FlextInfraUtilitiesRefactorMroScan._protocol_candidate_from_statement(
+                    stmt=stmt,
+                )
             )
         if isinstance(stmt, ast.AnnAssign):
             if not isinstance(stmt.target, ast.Name):

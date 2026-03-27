@@ -244,24 +244,18 @@ class FlextInfraUtilitiesRefactorPydantic:
             alias_names = [a.name for a in apply_alias_moves]
             if not dest_path.exists():
                 created_model_files += 1
-            existing_dest = (
-                FlextInfraUtilitiesRefactorPydantic._ensure_dest_header(
-                    dest_path,
-                )
+            existing_dest = FlextInfraUtilitiesRefactorPydantic._ensure_dest_header(
+                dest_path,
             )
-            updated_dest = (
-                FlextInfraUtilitiesRefactorPydantic._append_unique_blocks(
-                    existing_dest,
-                    class_blocks,
-                    class_names,
-                )
+            updated_dest = FlextInfraUtilitiesRefactorPydantic._append_unique_blocks(
+                existing_dest,
+                class_blocks,
+                class_names,
             )
-            updated_dest = (
-                FlextInfraUtilitiesRefactorPydantic._append_unique_blocks(
-                    updated_dest,
-                    alias_blocks,
-                    alias_names,
-                )
+            updated_dest = FlextInfraUtilitiesRefactorPydantic._append_unique_blocks(
+                updated_dest,
+                alias_blocks,
+                alias_names,
             )
             moved_names = [m.name for m in apply_class_moves] + [
                 a.name for a in apply_alias_moves
@@ -301,9 +295,11 @@ class FlextInfraUtilitiesRefactorPydantic:
                 ):
                     continue
                 try:
-                    changed = FlextInfraUtilitiesRefactorPydantic._normalize_disallowed_bases(
-                        file_path,
-                        apply=apply,
+                    changed = (
+                        FlextInfraUtilitiesRefactorPydantic._normalize_disallowed_bases(
+                            file_path,
+                            apply=apply,
+                        )
                     )
                 except (SyntaxError, UnicodeDecodeError, OSError):
                     continue

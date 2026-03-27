@@ -193,12 +193,10 @@ class FlextInfraUtilitiesImportNormalizer:
             if tree is None:
                 continue
             try:
-                module_name = (
-                    FlextInfraUtilitiesImportNormalizer.file_to_module(
-                        file_path=py_file,
-                        package_dir=package_dir,
-                        package_name=package_name,
-                    )
+                module_name = FlextInfraUtilitiesImportNormalizer.file_to_module(
+                    file_path=py_file,
+                    package_dir=package_dir,
+                    package_name=package_name,
                 )
             except ValueError:
                 continue
@@ -295,12 +293,10 @@ class FlextInfraUtilitiesImportNormalizer:
         file_module = ""
         if package_dir is not None and package_name:
             try:
-                file_module = (
-                    FlextInfraUtilitiesImportNormalizer.file_to_module(
-                        file_path=file_path,
-                        package_dir=package_dir,
-                        package_name=package_name,
-                    )
+                file_module = FlextInfraUtilitiesImportNormalizer.file_to_module(
+                    file_path=file_path,
+                    package_dir=package_dir,
+                    package_name=package_name,
                 )
             except ValueError:
                 file_module = ""

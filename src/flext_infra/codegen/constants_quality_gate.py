@@ -27,12 +27,10 @@ class FlextInfraCodegenConstantsQualityGate:
 
     def run(self) -> Mapping[str, t.Infra.InfraValue]:
         """Execute quality gate and return structured report payload."""
-        before_payload, before_source, before_load_error = (
-            u.Infra.load_before_payload(
-                workspace_root=self._workspace_root,
-                before_report=self._before_report,
-                baseline_file=self._baseline_file,
-            )
+        before_payload, before_source, before_load_error = u.Infra.load_before_payload(
+            workspace_root=self._workspace_root,
+            before_report=self._before_report,
+            baseline_file=self._baseline_file,
         )
         census_reports = FlextInfraCodegenCensus(
             workspace_root=self._workspace_root,
@@ -78,7 +76,7 @@ class FlextInfraCodegenConstantsQualityGate:
         verdict = u.Infra.compute_verdict(checks, improvement)
         checks_infra: Sequence[t.Infra.InfraValue] = list(checks)
         projects_infra: Sequence[t.Infra.InfraValue] = list(
-            u.Infra.quality_gate_project_findings(census_reports),
+            u.Infra.project_findings(census_reports),
         )
         report: MutableMapping[str, t.Infra.InfraValue] = {
             "workspace": str(self._workspace_root),
@@ -98,7 +96,7 @@ class FlextInfraCodegenConstantsQualityGate:
             ],
             "projects": projects_infra,
         }
-        report["artifacts"] = u.Infra.quality_gate_write_artifacts(
+        report["artifacts"] = u.Infra.write_artifacts(
             workspace_root=self._workspace_root,
             report=report,
             render_text=self.render_text(report),

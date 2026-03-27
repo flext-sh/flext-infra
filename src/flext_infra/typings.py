@@ -15,9 +15,12 @@ from __future__ import annotations
 
 from flext_core import FlextTypes
 
-from flext_infra._protocols.base import FlextInfraProtocolsBase
-from flext_infra._typings.base import FlextInfraTypesBase
-from flext_infra._typings.rope import FlextInfraTypesRope
+from flext_infra import (
+    FlextInfraProtocolsBase,
+    FlextInfraTypesBase,
+    FlextInfraTypesRope,
+)
+from flext_infra._typings.cst import FlextInfraTypesCst
 
 
 class FlextInfraTypes(FlextTypes):
@@ -29,7 +32,12 @@ class FlextInfraTypes(FlextTypes):
     transparently from ``FlextTypes`` via MRO.
     """
 
-    class Infra(FlextInfraTypesRope, FlextInfraTypesBase, FlextInfraProtocolsBase):
+    class Infra(
+        FlextInfraTypesCst,
+        FlextInfraTypesRope,
+        FlextInfraTypesBase,
+        FlextInfraProtocolsBase,
+    ):
         """Infrastructure-domain type aliases.
 
         These aliases compose ``FlextTypes.Scalar`` and collection generics

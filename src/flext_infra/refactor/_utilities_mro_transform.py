@@ -59,11 +59,9 @@ class FlextInfraUtilitiesRefactorMroTransform:
         moved_statements: MutableSequence[t.Infra.Pair[str, cst.CSTNode]] = []
         retained_module_body: MutableSequence[cst.CSTNode] = []
         for stmt in module.body:
-            moved = (
-                FlextInfraUtilitiesRefactorMroTransform._extract_moved_statement(
-                    statement=stmt,
-                    candidate_symbols=candidate_symbols,
-                )
+            moved = FlextInfraUtilitiesRefactorMroTransform._extract_moved_statement(
+                statement=stmt,
+                candidate_symbols=candidate_symbols,
             )
             if moved is None:
                 retained_module_body.append(stmt)
@@ -206,10 +204,8 @@ class FlextInfraUtilitiesRefactorMroTransform:
         alias_replacement_values: MutableMapping[str, cst.BaseExpression] = {}
         is_types_facade = class_def.name.value.endswith("Types")
         for statement in class_def.body.body:
-            alias = (
-                FlextInfraUtilitiesRefactorMroTransform._extract_alias_assignment(
-                    statement=statement,
-                )
+            alias = FlextInfraUtilitiesRefactorMroTransform._extract_alias_assignment(
+                statement=statement,
             )
             if alias is not None and alias[1] in moved_by_symbol:
                 alias_by_symbol[alias[1]] = alias[0]
@@ -243,12 +239,10 @@ class FlextInfraUtilitiesRefactorMroTransform:
             added_targets.add(map_target)
             symbol_map[symbol] = map_target
             replacement_value = alias_replacement_values.get(target)
-            moved_node = (
-                FlextInfraUtilitiesRefactorMroTransform._retarget_statement(
-                    statement=moved_statement,
-                    target_name=target,
-                    replacement_value=replacement_value,
-                )
+            moved_node = FlextInfraUtilitiesRefactorMroTransform._retarget_statement(
+                statement=moved_statement,
+                target_name=target,
+                replacement_value=replacement_value,
             )
             if use_core_namespace:
                 moved_core_lines.append(moved_node)
@@ -336,12 +330,10 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 cst.TypeAlias,
             )
             symbol_map[symbol] = f"Core.{target}" if use_core_namespace else target
-            moved_node = (
-                FlextInfraUtilitiesRefactorMroTransform._retarget_statement(
-                    statement=statement,
-                    target_name=target,
-                    replacement_value=None,
-                )
+            moved_node = FlextInfraUtilitiesRefactorMroTransform._retarget_statement(
+                statement=statement,
+                target_name=target,
+                replacement_value=None,
             )
             if isinstance(moved_node, cst.BaseStatement):
                 if use_core_namespace:
@@ -544,10 +536,8 @@ class FlextInfraUtilitiesRefactorMroTransform:
         for statement in class_body:
             if isinstance(statement, cst.ClassDef) and statement.name.value == "Core":
                 return True
-            alias = (
-                FlextInfraUtilitiesRefactorMroTransform._extract_alias_assignment(
-                    statement=statement,
-                )
+            alias = FlextInfraUtilitiesRefactorMroTransform._extract_alias_assignment(
+                statement=statement,
             )
             if alias == ("Core", "_Core"):
                 return True

@@ -204,17 +204,13 @@ class FlextInfraUtilitiesRefactorNamespace:
         base_chains: Mapping[str, Sequence[str]] | None = None,
     ) -> None:
         alias = family
-        import_stmt = (
-            FlextInfraUtilitiesRefactorNamespace._base_import_for_family(
-                family=family,
-                base_chains=base_chains,
-            )
+        import_stmt = FlextInfraUtilitiesRefactorNamespace._base_import_for_family(
+            family=family,
+            base_chains=base_chains,
         )
-        base_class = (
-            FlextInfraUtilitiesRefactorNamespace._base_class_for_family(
-                family=family,
-                base_chains=base_chains,
-            )
+        base_class = FlextInfraUtilitiesRefactorNamespace._base_class_for_family(
+            family=family,
+            base_chains=base_chains,
         )
         content = (
             '"""Auto-generated facade to enforce MRO namespace contracts."""\n\n'
@@ -410,12 +406,10 @@ class FlextInfraUtilitiesRefactorNamespace:
             blocks.append(block.strip("\n"))
         if not class_nodes:
             return None
-        target_file = (
-            FlextInfraUtilitiesRefactorNamespace._canonical_target_file(
-                project_root=project_root,
-                source_file=source_file,
-                filename="protocols.py",
-            )
+        target_file = FlextInfraUtilitiesRefactorNamespace._canonical_target_file(
+            project_root=project_root,
+            source_file=source_file,
+            filename="protocols.py",
         )
         FlextInfraUtilitiesRefactorNamespace._append_protocol_blocks(
             project_root=project_root,
@@ -478,12 +472,10 @@ class FlextInfraUtilitiesRefactorNamespace:
                 blocks.append(block.strip("\n"))
         if not blocks:
             return
-        target_file = (
-            FlextInfraUtilitiesRefactorNamespace._canonical_target_file(
-                project_root=project_root,
-                source_file=source_file,
-                filename="typings.py",
-            )
+        target_file = FlextInfraUtilitiesRefactorNamespace._canonical_target_file(
+            project_root=project_root,
+            source_file=source_file,
+            filename="typings.py",
         )
         FlextInfraUtilitiesRefactorNamespace._append_typing_alias_blocks(
             target_file=target_file,
@@ -573,10 +565,8 @@ class FlextInfraUtilitiesRefactorNamespace:
                 continue
             suffix = c.Infra.FAMILY_SUFFIXES[status.family]
             class_name = f"{stem}{suffix}"
-            file_name = (
-                FlextInfraUtilitiesRefactorNamespace._preferred_file_name(
-                    family=status.family,
-                )
+            file_name = FlextInfraUtilitiesRefactorNamespace._preferred_file_name(
+                family=status.family,
             )
             target_path = primary_package / file_name
             if target_path.exists():
@@ -587,9 +577,11 @@ class FlextInfraUtilitiesRefactorNamespace:
                     class_signature not in content
                     and f"class {class_name}:" not in content
                 ):
-                    base_class = FlextInfraUtilitiesRefactorNamespace._base_class_for_family(
-                        family=status.family,
-                        base_chains=base_chains,
+                    base_class = (
+                        FlextInfraUtilitiesRefactorNamespace._base_class_for_family(
+                            family=status.family,
+                            base_chains=base_chains,
+                        )
                     )
                     snippet = f"\n\nclass {class_name}({base_class}):\n    pass\n"
                     content = content.rstrip() + snippet

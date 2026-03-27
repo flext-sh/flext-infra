@@ -106,7 +106,7 @@ class FlextInfraRefactorCommand:
         normalize_remaining: bool,
     ) -> int:
         """Run pydantic centralization workflow for the workspace."""
-        summary = u.Infra.pydantic_centralize_workspace(
+        summary = u.Infra.centralize_workspace(
             cli.workspace,
             apply=cli.apply,
             normalize_remaining=normalize_remaining,
@@ -180,7 +180,7 @@ class FlextInfraRefactorCommand:
         normalize_remaining: bool,
     ) -> int:
         """Run centralization, MRO migration, and namespace enforcement together."""
-        centralize_summary = u.Infra.pydantic_centralize_workspace(
+        centralize_summary = u.Infra.centralize_workspace(
             cli.workspace,
             apply=cli.apply,
             normalize_remaining=normalize_remaining,

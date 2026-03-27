@@ -52,16 +52,23 @@ if TYPE_CHECKING:
         __version_info__,
     )
     from flext_infra._constants.base import FlextInfraConstantsBase
+    from flext_infra._constants.census import FlextInfraConstantsCensus
+    from flext_infra._constants.cst import FlextInfraConstantsCst
     from flext_infra._constants.rope import FlextInfraConstantsRope
     from flext_infra._models.base import FlextInfraModelsBase
+    from flext_infra._models.census import FlextInfraModelsCensus
+    from flext_infra._models.cst import FlextInfraModelsCst
     from flext_infra._models.rope import FlextInfraModelsRope
     from flext_infra._models.scan import FlextInfraModelsScan
     from flext_infra._protocols.base import FlextInfraProtocolsBase
+    from flext_infra._protocols.cst import FlextInfraProtocolsCst
     from flext_infra._protocols.rope import FlextInfraProtocolsRope
     from flext_infra._typings.base import FlextInfraTypesBase
+    from flext_infra._typings.cst import FlextInfraTypesCst
     from flext_infra._typings.rope import FlextInfraTypesRope
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
+    from flext_infra._utilities.cst import FlextInfraUtilitiesCst
     from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
     from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
     from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
@@ -557,6 +564,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra._constants.base",
         "FlextInfraConstantsBase",
     ],
+    "FlextInfraConstantsCensus": [
+        "flext_infra._constants.census",
+        "FlextInfraConstantsCensus",
+    ],
+    "FlextInfraConstantsCst": [
+        "flext_infra._constants.cst",
+        "FlextInfraConstantsCst",
+    ],
     "FlextInfraConstantsRope": [
         "flext_infra._constants.rope",
         "FlextInfraConstantsRope",
@@ -720,6 +735,8 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraMarkdownGate": ["flext_infra.gates.markdown", "FlextInfraMarkdownGate"],
     "FlextInfraModels": ["flext_infra.models", "FlextInfraModels"],
     "FlextInfraModelsBase": ["flext_infra._models.base", "FlextInfraModelsBase"],
+    "FlextInfraModelsCensus": ["flext_infra._models.census", "FlextInfraModelsCensus"],
+    "FlextInfraModelsCst": ["flext_infra._models.cst", "FlextInfraModelsCst"],
     "FlextInfraModelsRope": ["flext_infra._models.rope", "FlextInfraModelsRope"],
     "FlextInfraModelsScan": ["flext_infra._models.scan", "FlextInfraModelsScan"],
     "FlextInfraMypyGate": ["flext_infra.gates.mypy", "FlextInfraMypyGate"],
@@ -779,6 +796,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraProtocolsBase": [
         "flext_infra._protocols.base",
         "FlextInfraProtocolsBase",
+    ],
+    "FlextInfraProtocolsCst": [
+        "flext_infra._protocols.cst",
+        "FlextInfraProtocolsCst",
     ],
     "FlextInfraProtocolsRope": [
         "flext_infra._protocols.rope",
@@ -1314,6 +1335,8 @@ __all__ = [
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraConstants",
     "FlextInfraConstantsBase",
+    "FlextInfraConstantsCensus",
+    "FlextInfraConstantsCst",
     "FlextInfraConstantsRope",
     "FlextInfraCoreConstants",
     "FlextInfraCoreModels",
@@ -1366,6 +1389,8 @@ __all__ = [
     "FlextInfraMarkdownGate",
     "FlextInfraModels",
     "FlextInfraModelsBase",
+    "FlextInfraModelsCensus",
+    "FlextInfraModelsCst",
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",
     "FlextInfraMypyGate",
@@ -1384,6 +1409,7 @@ __all__ = [
     "FlextInfraProjectMigrator",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
+    "FlextInfraProtocolsCst",
     "FlextInfraProtocolsRope",
     "FlextInfraPyprojectModernizer",
     "FlextInfraPyreflyGate",
@@ -1452,6 +1478,7 @@ __all__ = [
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraTypesBase",
+    "FlextInfraTypesCst",
     "FlextInfraTypesRope",
     "FlextInfraTypingAnnotationReplacer",
     "FlextInfraUtilities",
@@ -1464,6 +1491,7 @@ __all__ = [
     "FlextInfraUtilitiesCodegenExecution",
     "FlextInfraUtilitiesCodegenGovernance",
     "FlextInfraUtilitiesCodegenTransforms",
+    "FlextInfraUtilitiesCst",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
     "FlextInfraUtilitiesFormatting",

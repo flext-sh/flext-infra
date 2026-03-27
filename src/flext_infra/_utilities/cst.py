@@ -140,10 +140,12 @@ class FlextInfraUtilitiesCst:
         for dec in decorators:
             name = FlextInfraUtilitiesCst.cst_dotted_name(dec.decorator)
             if name:
-                result.append(m.Infra.Cst.ExtractedDecorator(
-                    name=name,
-                    is_call=isinstance(dec.decorator, cst.Call),
-                ))
+                result.append(
+                    m.Infra.Cst.ExtractedDecorator(
+                        name=name,
+                        is_call=isinstance(dec.decorator, cst.Call),
+                    )
+                )
         return result
 
     # ── Base class extraction ───────────────────────────────────────
@@ -160,10 +162,12 @@ class FlextInfraUtilitiesCst:
             dotted = FlextInfraUtilitiesCst.cst_dotted_name(arg.value)
             simple = FlextInfraUtilitiesCst.cst_simple_name(arg.value)
             if simple:
-                result.append(m.Infra.Cst.ExtractedBase(
-                    name=simple,
-                    dotted=dotted,
-                ))
+                result.append(
+                    m.Infra.Cst.ExtractedBase(
+                        name=simple,
+                        dotted=dotted,
+                    )
+                )
         return result
 
     # ── Constant name detection ─────────────────────────────────────
@@ -247,7 +251,7 @@ class FlextInfraUtilitiesCst:
             file_path=file_path,
             project_name=project_name,
         )
-        module.walk(visitor)
+        module.visit(visitor)
 
         return m.Infra.Cst.FileResult(
             file_path=str(file_path),
@@ -291,9 +295,7 @@ class FlextInfraUtilitiesCst:
             for py_file in sorted(src_path.rglob("*.py")):
                 if py_file.name in c.Infra.Cst.SKIP_FILES:
                     continue
-                if any(
-                    skip in py_file.parts for skip in c.Infra.Cst.SKIP_DIRS
-                ):
+                if any(skip in py_file.parts for skip in c.Infra.Cst.SKIP_DIRS):
                     continue
                 result = FlextInfraUtilitiesCst.cst_extract_file(
                     py_file,
@@ -344,12 +346,14 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
                 method_decs = FlextInfraUtilitiesCst.cst_extract_decorators(
                     stmt.decorators,
                 )
-                methods.append(m.Infra.Cst.ExtractedMethod(
-                    name=stmt.name.value,
-                    kind=kind,
-                    line=0,
-                    decorators=method_decs,
-                ))
+                methods.append(
+                    m.Infra.Cst.ExtractedMethod(
+                        name=stmt.name.value,
+                        kind=kind,
+                        line=0,
+                        decorators=method_decs,
+                    )
+                )
 
         extracted = m.Infra.Cst.ExtractedClass(
             name=node.name.value,
@@ -366,23 +370,25 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
             self.classes.append(extracted)
             class_path = node.name.value if self._class_stack else ""
             base_names = [b.name for b in bases]
-            self.objects.append(m.Infra.Cst.ExtractedObject(
-                name=node.name.value,
-                kind="class",
-                line=0,
-                bases=base_names,
-                is_protocol=is_protocol,
-                is_model=is_model,
-                is_facade=is_facade,
-                class_path=class_path,
-            ))
+            self.objects.append(
+                m.Infra.Cst.ExtractedObject(
+                    name=node.name.value,
+                    kind="class",
+                    line=0,
+                    bases=base_names,
+                    is_protocol=is_protocol,
+                    is_model=is_model,
+                    is_facade=is_facade,
+                    class_path=class_path,
+                )
+            )
 
         self._depth += 1
         self._class_stack.append(node.name.value)
         return True
 
     @override
-    def leave_ClassDef(self, node: cst.ClassDef) -> None:
+    def leave_ClassDef(self, original_node: cst.ClassDef) -> None:
         self._depth -= 1
         if self._class_stack:
             self._class_stack.pop()
@@ -396,31 +402,35 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
         if not isinstance(node.target, cst.Name):
             return False
         name = node.target.value
-        has_final = FlextInfraUtilitiesCst.cst_is_final(node)
-        is_ta = FlextInfraUtilitiesCst.cst_is_type_alias_annotation(node)
+        has_final = FlextInfraUtilitiesCst.cst_is_final(node.annotation)
+        is_ta = FlextInfraUtilitiesCst.cst_is_type_alias_annotation(node.annotation)
         is_upper = FlextInfraUtilitiesCst.cst_is_upper_case_name(name)
         has_classvar = FlextInfraUtilitiesCst.cst_has_annotation(
             node.annotation.annotation,
             frozenset({c.Infra.Cst.CLASSVAR}),
         )
 
-        self.assignments.append(m.Infra.Cst.ExtractedAssignment(
-            name=name,
-            line=0,
-            has_final=has_final,
-            has_classvar=has_classvar,
-            is_type_alias=is_ta,
-            is_upper_case=is_upper,
-        ))
-        self.objects.append(m.Infra.Cst.ExtractedObject(
-            name=name,
-            kind="type_alias" if is_ta else "assignment",
-            line=0,
-            has_final=has_final,
-            has_classvar=has_classvar,
-            is_type_alias=is_ta,
-            is_upper_case=is_upper,
-        ))
+        self.assignments.append(
+            m.Infra.Cst.ExtractedAssignment(
+                name=name,
+                line=0,
+                has_final=has_final,
+                has_classvar=has_classvar,
+                is_type_alias=is_ta,
+                is_upper_case=is_upper,
+            )
+        )
+        self.objects.append(
+            m.Infra.Cst.ExtractedObject(
+                name=name,
+                kind="type_alias" if is_ta else "assignment",
+                line=0,
+                has_final=has_final,
+                has_classvar=has_classvar,
+                is_type_alias=is_ta,
+                is_upper_case=is_upper,
+            )
+        )
         return False
 
     @override
@@ -435,17 +445,21 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
         name = target.value
         is_upper = FlextInfraUtilitiesCst.cst_is_upper_case_name(name)
 
-        self.assignments.append(m.Infra.Cst.ExtractedAssignment(
-            name=name,
-            line=0,
-            is_upper_case=is_upper,
-        ))
-        self.objects.append(m.Infra.Cst.ExtractedObject(
-            name=name,
-            kind="assignment",
-            line=0,
-            is_upper_case=is_upper,
-        ))
+        self.assignments.append(
+            m.Infra.Cst.ExtractedAssignment(
+                name=name,
+                line=0,
+                is_upper_case=is_upper,
+            )
+        )
+        self.objects.append(
+            m.Infra.Cst.ExtractedObject(
+                name=name,
+                kind="assignment",
+                line=0,
+                is_upper_case=is_upper,
+            )
+        )
         return False
 
     # -- PEP 695 type alias -----------------------------------------------
@@ -458,18 +472,22 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
         if not name:
             return False
 
-        self.assignments.append(m.Infra.Cst.ExtractedAssignment(
-            name=name,
-            line=0,
-            is_pep695=True,
-            is_type_alias=True,
-        ))
-        self.objects.append(m.Infra.Cst.ExtractedObject(
-            name=name,
-            kind="type_alias",
-            line=0,
-            is_type_alias=True,
-        ))
+        self.assignments.append(
+            m.Infra.Cst.ExtractedAssignment(
+                name=name,
+                line=0,
+                is_pep695=True,
+                is_type_alias=True,
+            )
+        )
+        self.objects.append(
+            m.Infra.Cst.ExtractedObject(
+                name=name,
+                kind="type_alias",
+                line=0,
+                is_type_alias=True,
+            )
+        )
         return False
 
     # -- Function extraction ----------------------------------------------
@@ -481,18 +499,22 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
         decorators = FlextInfraUtilitiesCst.cst_extract_decorators(node.decorators)
         is_private = node.name.value.startswith("_")
 
-        self.functions.append(m.Infra.Cst.ExtractedFunction(
-            name=node.name.value,
-            line=0,
-            decorators=decorators,
-            is_private=is_private,
-        ))
-        self.objects.append(m.Infra.Cst.ExtractedObject(
-            name=node.name.value,
-            kind="function",
-            line=0,
-            is_private=is_private,
-        ))
+        self.functions.append(
+            m.Infra.Cst.ExtractedFunction(
+                name=node.name.value,
+                line=0,
+                decorators=decorators,
+                is_private=is_private,
+            )
+        )
+        self.objects.append(
+            m.Infra.Cst.ExtractedObject(
+                name=node.name.value,
+                kind="function",
+                line=0,
+                is_private=is_private,
+            )
+        )
         return False
 
     # -- Import extraction ------------------------------------------------
@@ -506,11 +528,13 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
             return False
 
         if isinstance(node.names, cst.ImportStar):
-            self.imports.append(m.Infra.Cst.ExtractedImport(
-                module=module_str,
-                is_star=True,
-                line=0,
-            ))
+            self.imports.append(
+                m.Infra.Cst.ExtractedImport(
+                    module=module_str,
+                    is_star=True,
+                    line=0,
+                )
+            )
             return False
 
         names: dict[str, str] = {}
@@ -523,11 +547,13 @@ class _CstFileExtractorVisitor(cst.CSTVisitor):
                     local = asname_node.value
             if imported:
                 names[local] = imported
-        self.imports.append(m.Infra.Cst.ExtractedImport(
-            module=module_str,
-            names=names,
-            line=0,
-        ))
+        self.imports.append(
+            m.Infra.Cst.ExtractedImport(
+                module=module_str,
+                names=names,
+                line=0,
+            )
+        )
         return False
 
 
