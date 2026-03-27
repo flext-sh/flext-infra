@@ -1,0 +1,126 @@
+"""Constants for the unified census pipeline — accessed via c.Infra.*."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import ClassVar, Final
+
+from flext_infra import t
+
+
+class FlextInfraConstantsCensus:
+    """Census pipeline constants for object detection and classification."""
+
+    class CensusObjectKind:
+        """Object kind identifiers for census classification."""
+
+        CONSTANT: Final[str] = "constant"
+        TYPE: Final[str] = "type"
+        PROTOCOL: Final[str] = "protocol"
+        MODEL: Final[str] = "model"
+        UTILITY: Final[str] = "utility"
+        ALL: ClassVar[frozenset[str]] = frozenset({
+            "constant",
+            "type",
+            "protocol",
+            "model",
+            "utility",
+        })
+
+    class CensusViolationKind:
+        """Violation kind identifiers for census analysis."""
+
+        MISPLACED: Final[str] = "misplaced"
+        DUPLICATE: Final[str] = "duplicate"
+        UNUSED: Final[str] = "unused"
+        MISSING_MRO_BASE: Final[str] = "missing_mro_base"
+        FLAT_ALIAS: Final[str] = "flat_alias"
+        WRONG_TIER: Final[str] = "wrong_tier"
+        ALL: ClassVar[frozenset[str]] = frozenset({
+            "misplaced",
+            "duplicate",
+            "unused",
+            "missing_mro_base",
+            "flat_alias",
+            "wrong_tier",
+        })
+
+    class CensusFixAction:
+        """Fix action identifiers for census auto-fix."""
+
+        MOVE_TO_TIER: Final[str] = "move_to_tier"
+        DEDUPLICATE: Final[str] = "deduplicate"
+        REMOVE_UNUSED: Final[str] = "remove_unused"
+        ADD_MRO_BASE: Final[str] = "add_mro_base"
+        REMOVE_FLAT_ALIAS: Final[str] = "remove_flat_alias"
+        ALL: ClassVar[frozenset[str]] = frozenset({
+            "move_to_tier",
+            "deduplicate",
+            "remove_unused",
+            "add_mro_base",
+            "remove_flat_alias",
+        })
+
+    CENSUS_TIER_MAP: ClassVar[Mapping[str, str]] = {
+        "constants.py": "constant",
+        "_constants.py": "constant",
+        "_constants": "constant",
+        "typings.py": "type",
+        "_typings.py": "type",
+        "_typings": "type",
+        "protocols.py": "protocol",
+        "_protocols.py": "protocol",
+        "_protocols": "protocol",
+        "models.py": "model",
+        "_models.py": "model",
+        "_models": "model",
+        "utilities.py": "utility",
+        "_utilities.py": "utility",
+        "_utilities": "utility",
+    }
+    """Filename/dirname → object kind mapping for tier resolution."""
+
+    CENSUS_TIER_FILES: ClassVar[t.StrMapping] = {
+        "constant": "constants.py",
+        "type": "typings.py",
+        "protocol": "protocols.py",
+        "model": "models.py",
+        "utility": "utilities.py",
+    }
+    """Object kind → canonical facade filename (reverse of TIER_MAP)."""
+
+    CENSUS_TIER_SUBDIRS: ClassVar[t.StrMapping] = {
+        "constant": "_constants",
+        "type": "_typings",
+        "protocol": "_protocols",
+        "model": "_models",
+        "utility": "_utilities",
+    }
+    """Object kind → canonical subpackage directory."""
+
+    CENSUS_OBJECT_MARKERS: ClassVar[Mapping[str, str]] = {
+        "Final": "constant",
+        "ClassVar": "constant",
+        "Protocol": "protocol",
+        "BaseModel": "model",
+        "TypedDict": "model",
+        "FrozenStrictModel": "model",
+        "ArbitraryTypesModel": "model",
+        "TypeAlias": "type",
+    }
+    """Base class / annotation name → object kind for classification."""
+
+    CENSUS_CONSTANT_NAME_RE: ClassVar[str] = r"^_?[A-Z][A-Z0-9_]+$"
+    """Regex for UPPER_CASE constant name detection."""
+
+    CENSUS_FACADE_SUFFIXES: ClassVar[frozenset[str]] = frozenset({
+        "Constants",
+        "Types",
+        "Protocols",
+        "Models",
+        "Utilities",
+    })
+    """Facade class name suffixes identifying namespace classes."""
+
+
+__all__ = ["FlextInfraConstantsCensus"]
