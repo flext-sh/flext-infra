@@ -16,7 +16,6 @@ from __future__ import annotations
 from flext_core import FlextTypes
 
 from flext_infra import (
-    FlextInfraProtocolsBase,
     FlextInfraTypesBase,
     FlextInfraTypesRope,
 )
@@ -36,7 +35,6 @@ class FlextInfraTypes(FlextTypes):
         FlextInfraTypesCst,
         FlextInfraTypesRope,
         FlextInfraTypesBase,
-        FlextInfraProtocolsBase,
     ):
         """Infrastructure-domain type aliases.
 
