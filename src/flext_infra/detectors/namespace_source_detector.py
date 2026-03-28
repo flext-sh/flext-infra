@@ -49,6 +49,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         )
 
     @classmethod
+    @override
     def detect_file(
         cls,
         *,

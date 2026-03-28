@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, m, p, t, u
 
@@ -20,6 +20,7 @@ class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
     _MESSAGE_TEMPLATE: ClassVar[str] = "Internal import '{current_import}': {detail}"
 
     @classmethod
+    @override
     def detect_file(
         cls,
         *,

@@ -52,7 +52,8 @@ def test_main_project_obj_not_dict_first_loop(
     )
 
     def _noop_info(_msg: str) -> None:
-        pass
+        msg = "Must use unified test helpers per Rule 3.6"
+        raise NotImplementedError(msg)
 
     monkeypatch.setattr(u.Infra, "info", _noop_info)
     tm.that(path_sync_module.main(), eq=0)
@@ -84,7 +85,8 @@ def test_main_project_obj_not_dict_second_loop(
     )
 
     def _noop_info(_msg: str) -> None:
-        pass
+        msg = "Must use unified test helpers per Rule 3.6"
+        raise NotImplementedError(msg)
 
     monkeypatch.setattr(u.Infra, "info", _noop_info)
     tm.that(path_sync_module.main(), eq=0)

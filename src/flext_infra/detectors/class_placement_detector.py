@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
 
@@ -32,6 +32,7 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
     )
 
     @classmethod
+    @override
     def detect_file(
         cls,
         *,

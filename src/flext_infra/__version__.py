@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from importlib.metadata import PackageMetadata, PackageNotFoundError, metadata
+from importlib.metadata import PackageMetadata, metadata
 from typing import Final
 
 from flext_infra import t
@@ -27,19 +27,7 @@ class FlextInfraVersion:
     metadata extraction.
     """
 
-    _metadata: PackageMetadata | Mapping[str, str]
-    try:
-        _metadata = metadata("flext-infra")
-    except PackageNotFoundError:
-        _metadata = {
-            "Version": "0.12.0-dev",
-            "Name": "flext-infra",
-            "Summary": "FLEXT infrastructure",
-            "Author": "",
-            "Author-Email": "",
-            "License": "",
-            "Home-Page": "",
-        }
+    _metadata: PackageMetadata | Mapping[str, str] = metadata("flext-infra")
     __version__ = _metadata["Version"]
     __version_info__ = tuple(
         int(part) if part.isdigit() else part for part in __version__.split(".")

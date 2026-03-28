@@ -47,6 +47,29 @@ class FlextInfraScanFileMixin:
         self._pf = parse_failures
 
     # ------------------------------------------------------------------
+    # Subclass interface
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def detect_file(
+        cls,
+        *,
+        file_path: Path,
+        rope_project: t.Infra.RopeProject,
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+    ) -> Sequence[BaseModel]:
+        """Detect violations in a single file.
+
+        Subclasses MUST override this classmethod.  Detectors that need
+        additional parameters (e.g. ``project_name``) should override
+        ``_collect_violations`` instead of relying on the default delegation.
+        """
+        msg = (
+            f"{cls.__name__} must implement detect_file or override _collect_violations"
+        )
+        raise NotImplementedError(msg)
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
@@ -81,7 +104,7 @@ class FlextInfraScanFileMixin:
         Default: delegates to ``cls.detect_file(file_path=..., rope_project=...,
         parse_failures=...)``.  Override when ``detect_file`` requires extra params.
         """
-        return self.detect_file(  # type: ignore[attr-defined]  # duck-typed: subclasses define detect_file
+        return self.detect_file(
             file_path=file_path,
             rope_project=self._rope,
             parse_failures=self._pf,

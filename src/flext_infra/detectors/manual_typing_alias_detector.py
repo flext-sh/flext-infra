@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t
 
@@ -23,6 +23,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
     _MESSAGE_TEMPLATE: ClassVar[str] = "Typing alias '{name}': {detail}"
 
     @classmethod
+    @override
     def detect_file(
         cls,
         *,

@@ -214,6 +214,8 @@ class FlextInfraUtilitiesRope:
                 if not isinstance(obj, AbstractClass):
                     continue
                 _res, line_candidate = pyname.get_definition_location()
+                if line_candidate is None:
+                    continue
                 line_value: int = line_candidate
                 bases = [
                     bname

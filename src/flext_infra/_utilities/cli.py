@@ -19,8 +19,7 @@ import orjson
 from flext_core import FlextRuntime, r
 from pydantic import BaseModel
 
-from flext_infra import m, output, t
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra import FlextInfraUtilitiesDiscovery, m, output, t
 
 
 class FlextInfraUtilitiesCli:
