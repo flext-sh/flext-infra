@@ -118,6 +118,52 @@ class FlextInfraUtilitiesTomlParse:
         }
 
     @staticmethod
+    def declared_dependency_names(doc: tomlkit.TOMLDocument) -> t.StrSequence:
+        """Extract normalized dependency names from all declared project groups."""
+        raw: t.Infra.TomlData = doc.unwrap()
+        names: set[str] = set()
+
+        def _collect(items: t.Infra.InfraValue) -> None:
+            if not isinstance(items, Sequence) or isinstance(items, str):
+                return
+            for item in items:
+                if not isinstance(item, str):
+                    continue
+                dep_name = FlextInfraUtilitiesTomlParse.dep_name(item)
+                if dep_name:
+                    names.add(dep_name)
+
+        project_val: t.Infra.InfraValue = raw.get(c.Infra.PROJECT)
+        if isinstance(project_val, dict):
+            _collect(project_val.get(c.Infra.DEPENDENCIES))
+            optional_val: t.Infra.InfraValue = project_val.get(
+                c.Infra.OPTIONAL_DEPENDENCIES,
+            )
+            if isinstance(optional_val, dict):
+                for specs in optional_val.values():
+                    _collect(specs)
+
+        groups_val: t.Infra.InfraValue = raw.get("dependency-groups")
+        if isinstance(groups_val, dict):
+            for specs in groups_val.values():
+                _collect(specs)
+
+        tool_val: t.Infra.InfraValue = raw.get(c.Infra.TOOL)
+        if not isinstance(tool_val, dict):
+            return sorted(names)
+        poetry_val: t.Infra.InfraValue = tool_val.get(c.Infra.POETRY)
+        if not isinstance(poetry_val, dict):
+            return sorted(names)
+        deps_val: t.Infra.InfraValue = poetry_val.get(c.Infra.DEPENDENCIES)
+        if not isinstance(deps_val, dict):
+            return sorted(names)
+        for dep_key in deps_val:
+            dep_name = FlextInfraUtilitiesTomlParse.dep_name(str(dep_key))
+            if dep_name and dep_name != "python":
+                names.add(dep_name)
+        return sorted(names)
+
+    @staticmethod
     def canonical_dev_dependencies(root_doc: tomlkit.TOMLDocument) -> t.StrSequence:
         """Merge all dev dependency groups from root pyproject."""
         groups = FlextInfraUtilitiesTomlParse.project_dev_groups(root_doc)

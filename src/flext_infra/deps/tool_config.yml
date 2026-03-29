@@ -485,9 +485,7 @@ tools:
       workspace-include-child-env-dirs:
         - src
       include-path-dependencies-in-search-path: true
-      project-shared-search-paths:
-        - ../flext-tests
-        - ../flext-tests/src
+      project-shared-search-paths: []
   pytest:
     standard-markers:
       - 'unit: unit tests'

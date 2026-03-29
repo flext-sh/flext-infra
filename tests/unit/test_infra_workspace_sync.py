@@ -149,6 +149,57 @@ def test_gitignore_sync_failure(
     tm.fail(service.sync(workspace_root=tmp_path), has=".gitignore sync failed")
 
 
+def test_sync_updates_workspace_makefile_for_workspace_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _S(canonical_root=tmp_path)
+    calls: list[str] = []
+
+    def _workspace_makefile(_workspace_root: Path) -> r[bool]:
+        calls.append("workspace")
+        return r[bool].ok(True)
+
+    def _project_makefile(
+        _workspace_root: Path,
+        _canonical_root: Path,
+    ) -> r[bool]:
+        calls.append("project")
+        return r[bool].ok(True)
+
+    monkeypatch.setattr(service, "_sync_workspace_makefile", _workspace_makefile)
+    monkeypatch.setattr(service, "_sync_project_makefile", _project_makefile)
+    tm.ok(service.sync(workspace_root=tmp_path))
+    tm.that(calls, eq=["workspace"])
+
+
+def test_sync_updates_project_makefile_for_standalone_project(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _S()
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nname='demo'\n", encoding="utf-8"
+    )
+    calls: list[str] = []
+
+    def _workspace_makefile(_workspace_root: Path) -> r[bool]:
+        calls.append("workspace")
+        return r[bool].ok(True)
+
+    def _project_makefile(
+        _workspace_root: Path,
+        _canonical_root: Path,
+    ) -> r[bool]:
+        calls.append("project")
+        return r[bool].ok(True)
+
+    monkeypatch.setattr(service, "_sync_workspace_makefile", _workspace_makefile)
+    monkeypatch.setattr(service, "_sync_project_makefile", _project_makefile)
+    tm.ok(service.sync(workspace_root=tmp_path))
+    tm.that(calls, eq=["project"])
+
+
 def test_atomic_write_ok(tmp_path: Path) -> None:
     target = tmp_path / "test.txt"
     tm.ok(_S._atomic_write(target, "test content"), eq=True)

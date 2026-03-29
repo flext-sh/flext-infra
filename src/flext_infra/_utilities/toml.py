@@ -18,6 +18,7 @@ from tomlkit.items import Array, Item, Table
 from tomlkit.toml_document import TOMLDocument
 
 from flext_infra import c, t
+from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
 
 
 class FlextInfraUtilitiesToml:
@@ -247,6 +248,28 @@ class FlextInfraUtilitiesToml:
         return r[TOMLDocument].ok(doc)
 
     @staticmethod
+    def _resolve_taplo_config(path: Path) -> Path | None:
+        """Return the nearest ``.taplo.toml`` config for a managed pyproject."""
+        resolved = path.resolve()
+        for candidate in (resolved.parent, *resolved.parents):
+            config_path = candidate / ".taplo.toml"
+            if config_path.is_file():
+                return config_path
+        return None
+
+    @staticmethod
+    def _format_pyproject(path: Path) -> r[bool]:
+        """Format generated ``pyproject.toml`` files with taplo."""
+        if path.name != c.Infra.Files.PYPROJECT_FILENAME:
+            return r[bool].ok(False)
+        command: list[str] = ["taplo", "format"]
+        config_path = FlextInfraUtilitiesToml._resolve_taplo_config(path)
+        if config_path is not None:
+            command.extend(["--config", str(config_path)])
+        command.append(str(path))
+        return FlextInfraUtilitiesSubprocess.run_checked(command, cwd=path.parent)
+
+    @staticmethod
     def write_document(path: Path, doc: TOMLDocument) -> r[bool]:
         """Write a TOML document to file.
 
@@ -268,6 +291,9 @@ class FlextInfraUtilitiesToml:
             )
         except OSError as exc:
             return r[bool].fail(f"TOML write error: {exc}")
+        format_result = FlextInfraUtilitiesToml._format_pyproject(path)
+        if format_result.is_failure:
+            return r[bool].fail(format_result.error or f"taplo format failed: {path}")
         return r[bool].ok(True)
 
 

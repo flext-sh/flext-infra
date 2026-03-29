@@ -11,6 +11,7 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
 import flext_infra.codegen as mod
@@ -190,6 +191,59 @@ class TestRunRuffFix:
         """Test handles nonexistent files gracefully."""
         nonexistent = tmp_path / "nonexistent.py"
         _run_ruff_fix(nonexistent)  # Should not raise
+
+    def test_runs_ruff_check_and_format(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test generated files are lint-fixed and formatted."""
+        generated = tmp_path / "__init__.py"
+        generated.write_text("__all__=[]\n", encoding="utf-8")
+        commands: list[list[str]] = []
+
+        def _run_checked(
+            cmd: t.StrSequence,
+            cwd: Path | None = None,
+            timeout: int | None = None,
+            env: Mapping[str, str] | None = None,
+        ) -> r[bool]:
+            _ = (cwd, timeout, env)
+            commands.append(list(cmd))
+            return r[bool].ok(True)
+
+        monkeypatch.setattr(u.Infra, "run_checked", _run_checked)
+        _run_ruff_fix(generated)
+        tm.that(len(commands), eq=2)
+        tm.that(commands[0], eq=["ruff", "check", "--fix", "--quiet", str(generated)])
+        tm.that(commands[1], eq=["ruff", "format", "--quiet", str(generated)])
+
+    def test_raises_when_ruff_postprocess_fails(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test generator fails when ruff post-processing fails."""
+        generated = tmp_path / "__init__.py"
+        generated.write_text("__all__=[]\n", encoding="utf-8")
+        call_count = 0
+
+        def _run_checked(
+            cmd: t.StrSequence,
+            cwd: Path | None = None,
+            timeout: int | None = None,
+            env: Mapping[str, str] | None = None,
+        ) -> r[bool]:
+            nonlocal call_count
+            _ = (cmd, cwd, timeout, env)
+            call_count += 1
+            if call_count == 1:
+                return r[bool].ok(True)
+            return r[bool].fail("ruff format failed")
+
+        monkeypatch.setattr(u.Infra, "run_checked", _run_checked)
+        with pytest.raises(ValueError, match="ruff format failed"):
+            _run_ruff_fix(generated)
 
 
 def test_codegen_init_getattr_raises_attribute_error() -> None:

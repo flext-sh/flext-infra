@@ -54,6 +54,7 @@ if TYPE_CHECKING:
         TestFlextInfraExtraPathsManager,
         TestGetDepPaths,
         TestSyncOne,
+        test_pyrefly_search_paths_include_workspace_declared_dev_dependencies,
     )
     from tests.unit.deps.test_extra_paths_pep621 import (
         TestPathDepPathsPep621,
@@ -143,6 +144,7 @@ if TYPE_CHECKING:
         test_as_string_list,
         test_as_string_list_toml_item,
         test_canonical_dev_dependencies,
+        test_declared_dependency_names_collects_all_supported_groups,
         test_dedupe_specs,
         test_dep_name,
         test_ensure_table,
@@ -520,6 +522,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.deps.test_modernizer_consolidate",
         "test_consolidate_groups_phase_apply_with_empty_poetry_group",
     ],
+    "test_declared_dependency_names_collects_all_supported_groups": [
+        "tests.unit.deps.test_modernizer_helpers",
+        "test_declared_dependency_names_collects_all_supported_groups",
+    ],
     "test_dedupe_specs": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_dedupe_specs",
@@ -672,6 +678,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_project_dev_groups_missing_sections": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_project_dev_groups_missing_sections",
+    ],
+    "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies": [
+        "tests.unit.deps.test_extra_paths_manager",
+        "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies",
     ],
     "test_rewrite_dep_paths_dry_run": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
@@ -838,6 +848,7 @@ __all__ = [
     "test_canonical_dev_dependencies",
     "test_consolidate_groups_phase_apply_removes_old_groups",
     "test_consolidate_groups_phase_apply_with_empty_poetry_group",
+    "test_declared_dependency_names_collects_all_supported_groups",
     "test_dedupe_specs",
     "test_dep_name",
     "test_detect_mode_with_nonexistent_path",
@@ -877,6 +888,7 @@ __all__ = [
     "test_main_with_changes_no_dry_run",
     "test_project_dev_groups",
     "test_project_dev_groups_missing_sections",
+    "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies",
     "test_rewrite_dep_paths_dry_run",
     "test_rewrite_dep_paths_read_failure",
     "test_rewrite_dep_paths_with_internal_names",

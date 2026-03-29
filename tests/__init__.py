@@ -407,6 +407,7 @@ if TYPE_CHECKING:
         TestFlextInfraExtraPathsManager,
         TestGetDepPaths,
         TestSyncOne,
+        test_pyrefly_search_paths_include_workspace_declared_dev_dependencies,
     )
     from tests.unit.deps.test_extra_paths_pep621 import (
         TestPathDepPathsPep621,
@@ -496,6 +497,7 @@ if TYPE_CHECKING:
         test_as_string_list,
         test_as_string_list_toml_item,
         test_canonical_dev_dependencies,
+        test_declared_dependency_names_collects_all_supported_groups,
         test_dedupe_specs,
         test_dep_name,
         test_ensure_table,
@@ -1041,6 +1043,8 @@ if TYPE_CHECKING:
         test_sync_error_scenarios,
         test_sync_root_validation,
         test_sync_success_scenarios,
+        test_sync_updates_project_makefile_for_standalone_project,
+        test_sync_updates_workspace_makefile_for_workspace_root,
     )
     from tests.unit.validate.basemk_validator_tests import (
         TestBaseMkValidatorCore,
@@ -2678,6 +2682,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.test_infra_versioning",
         "test_current_workspace_version",
     ],
+    "test_declared_dependency_names_collects_all_supported_groups": [
+        "tests.unit.deps.test_modernizer_helpers",
+        "test_declared_dependency_names_collects_all_supported_groups",
+    ],
     "test_dedupe_specs": [
         "tests.unit.deps.test_modernizer_helpers",
         "test_dedupe_specs",
@@ -3323,6 +3331,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.codegen.autofix_workspace_tests",
         "test_project_without_src_returns_empty",
     ],
+    "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies": [
+        "tests.unit.deps.test_extra_paths_manager",
+        "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies",
+    ],
     "test_read_project_metadata_preserves_pep621_dependency_order": [
         "tests.unit.refactor.test_infra_refactor_project_classifier",
         "test_read_project_metadata_preserves_pep621_dependency_order",
@@ -3652,6 +3664,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_sync_success_scenarios": [
         "tests.unit.test_infra_workspace_sync",
         "test_sync_success_scenarios",
+    ],
+    "test_sync_updates_project_makefile_for_standalone_project": [
+        "tests.unit.test_infra_workspace_sync",
+        "test_sync_updates_project_makefile_for_standalone_project",
+    ],
+    "test_sync_updates_workspace_makefile_for_workspace_root": [
+        "tests.unit.test_infra_workspace_sync",
+        "test_sync_updates_workspace_makefile_for_workspace_root",
     ],
     "test_syntax_error_files_skipped": [
         "tests.unit.codegen.autofix_tests",
@@ -4251,6 +4271,7 @@ __all__ = [
     "test_converts_multiple_aliases",
     "test_converts_typealias_to_pep695",
     "test_current_workspace_version",
+    "test_declared_dependency_names_collects_all_supported_groups",
     "test_dedupe_specs",
     "test_dep_name",
     "test_detect_mode_with_nonexistent_path",
@@ -4413,6 +4434,7 @@ __all__ = [
     "test_project_dev_groups_missing_sections",
     "test_project_without_alias_facade_has_no_violation",
     "test_project_without_src_returns_empty",
+    "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies",
     "test_read_project_metadata_preserves_pep621_dependency_order",
     "test_read_project_metadata_preserves_poetry_dependency_order",
     "test_refactor_files_skips_non_python_inputs",
@@ -4497,6 +4519,8 @@ __all__ = [
     "test_sync_one_edge_cases",
     "test_sync_root_validation",
     "test_sync_success_scenarios",
+    "test_sync_updates_project_makefile_for_standalone_project",
+    "test_sync_updates_workspace_makefile_for_workspace_root",
     "test_syntax_error_files_skipped",
     "test_target_path",
     "test_typealias_conversion_preserves_used_typing_siblings",

@@ -33,19 +33,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         canonical_root: Path | None = None,
     ) -> None:
         """Initialize the sync service."""
-        super().__init__(
-            config_type=None,
-            config_overrides=None,
-            initial_context=None,
-            subproject=None,
-            services=None,
-            factories=None,
-            resources=None,
-            container_overrides=None,
-            wire_modules=None,
-            wire_packages=None,
-            wire_classes=None,
-        )
+        super().__init__()
         self._generator = generator or FlextInfraBaseMkGenerator()
         self._canonical_root = canonical_root
 
@@ -131,14 +119,24 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
                             gitignore_result.error or ".gitignore sync failed",
                         )
                     changed += 1 if gitignore_result.value else 0
-                    if (
-                        effective_root is not None
-                        and effective_root.resolve() != resolved
-                        and (resolved / "pyproject.toml").exists()
-                    ):
+                    is_workspace_root = self._is_workspace_root(
+                        resolved,
+                        effective_root,
+                    )
+                    if is_workspace_root:
+                        workspace_makefile_result = self._sync_workspace_makefile(
+                            resolved,
+                        )
+                        if workspace_makefile_result.is_failure:
+                            return r[m.Infra.SyncResult].fail(
+                                workspace_makefile_result.error
+                                or "workspace Makefile sync failed",
+                            )
+                        changed += 1 if workspace_makefile_result.value else 0
+                    elif (resolved / c.Infra.Files.PYPROJECT_FILENAME).exists():
                         makefile_result = self._sync_project_makefile(
                             resolved,
-                            effective_root,
+                            effective_root or resolved,
                         )
                         if makefile_result.is_failure:
                             return r[m.Infra.SyncResult].fail(
@@ -172,6 +170,33 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         return FlextInfraProjectMakefileUpdater().update(
             workspace_root,
             canonical_root=canonical_root,
+        )
+
+    @staticmethod
+    def _sync_workspace_makefile(workspace_root: Path) -> r[bool]:
+        """Sync the workspace root Makefile from the canonical generator."""
+        from flext_infra.workspace.workspace_makefile import (
+            FlextInfraWorkspaceMakefileGenerator,
+        )
+
+        return FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
+
+    @staticmethod
+    def _is_workspace_root(
+        workspace_root: Path,
+        canonical_root: Path | None,
+    ) -> bool:
+        """Detect whether the sync target is the workspace root."""
+        resolved_root = workspace_root.resolve()
+        if canonical_root is not None and resolved_root == canonical_root.resolve():
+            return True
+        if (resolved_root / c.Infra.Files.GITMODULES).exists():
+            return True
+        discovered = u.Infra.discover_projects(resolved_root)
+        if discovered.is_failure:
+            return False
+        return any(
+            project.path.resolve() != resolved_root for project in discovered.value
         )
 
     def _ensure_gitignore_entries(

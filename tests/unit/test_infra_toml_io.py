@@ -11,7 +11,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
+import pytest
 import tomlkit
+from flext_core import r
 from flext_tests import tm
 from tomlkit.items import Table
 
@@ -104,6 +106,66 @@ class TestFlextInfraTomlDocument:
         tm.ok(service.write_document(toml_file, doc))
         content = toml_file.read_text(encoding="utf-8")
         tm.that(content, has="Configuration file")
+
+    def test_write_pyproject_runs_taplo(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        taplo_config = tmp_path / ".taplo.toml"
+        taplo_config.write_text("", encoding="utf-8")
+        service = FlextInfraUtilitiesToml()
+        doc = tomlkit.document()
+        doc["project"] = {"name": "demo"}
+        commands: list[tuple[list[str], Path | None]] = []
+
+        def _run_checked(
+            cmd: list[str],
+            cwd: Path | None = None,
+            timeout: int | None = None,
+            env: Mapping[str, str] | None = None,
+        ) -> r[bool]:
+            _ = (timeout, env)
+            commands.append((cmd, cwd))
+            return r[bool].ok(True)
+
+        monkeypatch.setattr(
+            "flext_infra._utilities.toml.FlextInfraUtilitiesSubprocess.run_checked",
+            _run_checked,
+        )
+        tm.ok(service.write_document(pyproject, doc))
+        tm.that(len(commands), eq=1)
+        tm.that(commands[0][0][:2], eq=["taplo", "format"])
+        tm.that(commands[0][0], contains="--config")
+        tm.that(commands[0][0], contains=str(taplo_config))
+        tm.that(commands[0][0], contains=str(pyproject))
+        tm.that(commands[0][1], eq=tmp_path)
+
+    def test_write_pyproject_propagates_taplo_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        service = FlextInfraUtilitiesToml()
+        doc = tomlkit.document()
+        doc["project"] = {"name": "demo"}
+
+        def _run_checked(
+            cmd: list[str],
+            cwd: Path | None = None,
+            timeout: int | None = None,
+            env: Mapping[str, str] | None = None,
+        ) -> r[bool]:
+            _ = (cmd, cwd, timeout, env)
+            return r[bool].fail("taplo failed")
+
+        monkeypatch.setattr(
+            "flext_infra._utilities.toml.FlextInfraUtilitiesSubprocess.run_checked",
+            _run_checked,
+        )
+        tm.fail(service.write_document(pyproject, doc), has="taplo failed")
 
     def test_write_permission_error(self, tmp_path: Path) -> None:
         readonly_dir = tmp_path / "readonly"

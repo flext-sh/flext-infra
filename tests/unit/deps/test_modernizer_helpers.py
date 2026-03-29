@@ -217,3 +217,33 @@ def test_canonical_dev_dependencies(
     tm.that(result, length=expected_length)
     if expect_pytest:
         assert any("pytest" in item for item in result)
+
+
+def test_declared_dependency_names_collects_all_supported_groups() -> None:
+    doc = tomlkit.document()
+    doc["project"] = {
+        "dependencies": ["requests>=2.0"],
+        "optional-dependencies": {
+            "dev": ["flext-infra", "pytest>=8.0"],
+            "docs": ["mkdocs>=1.6"],
+        },
+    }
+    doc["dependency-groups"] = {
+        "test": ["flext-tests", "coverage>=7.0"],
+    }
+    doc["tool"] = {
+        "poetry": {
+            "dependencies": {
+                "python": ">=3.13,<3.14",
+                "flext-api": "^0.1.0",
+            },
+        },
+    }
+
+    result = u.Infra.declared_dependency_names(doc)
+
+    tm.that(result, has="requests")
+    tm.that(result, has="flext-infra")
+    tm.that(result, has="flext-tests")
+    tm.that(result, has="flext-api")
+    tm.that(result, has="pytest")

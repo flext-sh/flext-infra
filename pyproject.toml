@@ -204,7 +204,15 @@ project-excludes = [
 ]
 project-includes = [ "src/**/*.py*", "tests/**/*.py*" ]
 python-version = "3.13"
-search-path = [ ".", "../flext-tests", "../flext-tests/src", "src" ]
+search-path = [
+  ".",
+  "../flext-cli/examples",
+  "../flext-cli/src",
+  "../flext-core/examples",
+  "../flext-core/src",
+  "../flext-tests/src",
+  "src",
+]
 use-ignore-files = false
 
 [tool.pyrefly.errors]

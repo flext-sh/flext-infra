@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import contextlib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
@@ -49,19 +48,7 @@ class FlextInfraCodegenLazyInit(s[int]):
 
     def __init__(self, workspace_root: Path) -> None:
         """Initialize lazy init generator with workspace root."""
-        super().__init__(
-            config_type=None,
-            config_overrides=None,
-            initial_context=None,
-            subproject=None,
-            services=None,
-            factories=None,
-            resources=None,
-            container_overrides=None,
-            wire_modules=None,
-            wire_packages=None,
-            wire_classes=None,
-        )
+        super().__init__()
         self._root: Path = workspace_root
 
     _TYPEVAR_CALL_NAMES: ClassVar[frozenset[str]] = frozenset({
@@ -613,15 +600,26 @@ class FlextInfraCodegenLazyInit(s[int]):
 
     @staticmethod
     def _run_ruff_fix(path: Path) -> None:
-        """Run ``ruff --fix`` on the given file to auto-fix lint issues."""
-        with contextlib.suppress(FileNotFoundError):
-            u.Infra.run_checked([
-                c.Infra.RUFF,
-                c.Infra.CHECK,
-                "--fix",
-                "--quiet",
-                str(path),
-            ])
+        """Run ``ruff check --fix`` and ``ruff format`` on a generated file."""
+        if not path.exists():
+            return
+        lint_result = u.Infra.run_checked([
+            c.Infra.RUFF,
+            c.Infra.CHECK,
+            "--fix",
+            "--quiet",
+            str(path),
+        ])
+        if lint_result.is_failure:
+            raise ValueError(lint_result.error or f"ruff check failed for {path}")
+        format_result = u.Infra.run_checked([
+            c.Infra.RUFF,
+            c.Infra.FORMAT,
+            "--quiet",
+            str(path),
+        ])
+        if format_result.is_failure:
+            raise ValueError(format_result.error or f"ruff format failed for {path}")
 
 
 __all__ = ["FlextInfraCodegenLazyInit"]

@@ -180,3 +180,44 @@ class TestConstants:
         manager = FlextInfraExtraPathsManager()
         tm.that(hasattr(manager, "ROOT"), eq=True)
         tm.that(manager.ROOT.is_absolute(), eq=True)
+
+
+def test_pyrefly_search_paths_include_workspace_declared_dev_dependencies(
+    tmp_path: Path,
+) -> None:
+    consumer = tmp_path / "flext-core"
+    consumer.mkdir()
+    (consumer / ".git").mkdir()
+    (consumer / "src").mkdir()
+    (consumer / "Makefile").write_text("", encoding="utf-8")
+    pyproject = consumer / "pyproject.toml"
+    pyproject.write_text(
+        (
+            "[project]\n"
+            "name = 'flext-core'\n"
+            "[project.optional-dependencies]\n"
+            "dev = ['flext-infra', 'flext-tests']\n"
+        ),
+        encoding="utf-8",
+    )
+    for dep_name, package_name in (
+        ("flext-infra", "flext_infra"),
+        ("flext-tests", "flext_tests"),
+    ):
+        dep_root = tmp_path / dep_name
+        dep_root.mkdir()
+        (dep_root / ".git").mkdir()
+        (dep_root / "Makefile").write_text("", encoding="utf-8")
+        dep_src = dep_root / "src" / package_name
+        dep_src.mkdir(parents=True)
+        (dep_root / "pyproject.toml").write_text(
+            f"[project]\nname = '{dep_name}'\n",
+            encoding="utf-8",
+        )
+        (dep_src / "__init__.py").write_text("", encoding="utf-8")
+
+    manager = FlextInfraExtraPathsManager(workspace_root=tmp_path)
+    result = manager.pyrefly_search_paths(project_dir=consumer, is_root=False)
+
+    tm.that(result, has="../flext-infra/src")
+    tm.that(result, has="../flext-tests/src")

@@ -170,6 +170,7 @@ def test_make_boot_works_without_existing_venv_in_workspace_mode(
         log_path.read_text(encoding="utf-8"),
         has=[
             "python -m flext_infra workspace sync --workspace",
+            "run python -m flext_infra deps path-sync --mode auto --apply --workspace",
             "python -m flext_infra deps internal-sync",
             "lock",
             "install --all-extras --all-groups",

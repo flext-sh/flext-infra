@@ -30,19 +30,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         generator: FlextInfraBaseMkGenerator | None = None,
     ) -> None:
         """Initialize migrator with optional custom discovery and generator services."""
-        super().__init__(
-            config_type=None,
-            config_overrides=None,
-            initial_context=None,
-            subproject=None,
-            services=None,
-            factories=None,
-            resources=None,
-            container_overrides=None,
-            wire_modules=None,
-            wire_packages=None,
-            wire_classes=None,
-        )
+        super().__init__()
         self._discovery = discovery
         self._generator = generator or FlextInfraBaseMkGenerator()
 
@@ -183,21 +171,8 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         dry_run: bool,
         is_workspace_root: bool = False,
     ) -> r[str]:
+        _ = is_workspace_root
         target = project_root / c.Infra.Files.BASE_MK
-        if not is_workspace_root:
-            if not target.exists():
-                return r[str].ok("")
-            if not dry_run:
-                try:
-                    target.unlink()
-                except OSError as exc:
-                    return r[str].fail(f"base.mk removal failed: {exc}")
-            return r[str].ok(
-                self._action_text(
-                    "base.mk removed (served by bootstrap now)",
-                    dry_run=dry_run,
-                ),
-            )
         generated = self._generator.generate_basemk()
         if generated.is_failure:
             return r[str].fail(generated.error or "base.mk generation failed")

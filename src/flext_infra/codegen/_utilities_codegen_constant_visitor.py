@@ -11,6 +11,7 @@ import libcst as cst
 from flext_infra import (
     FlextInfraUtilitiesCodegenGovernance,
     FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesRope,
     c,
     m,
     t,
@@ -780,8 +781,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         Uses FlextInfraUtilitiesRope.rename_symbol_workspace to safely rename
         duplicate constants to the canonical form across all workspace projects.
         """
-        from flext_infra import FlextInfraUtilitiesRope
-
         canonical_name = str(fix_proposal.get("canonical_name", ""))
         files_modified = 0
         replaced_names: MutableSequence[str] = []
@@ -790,11 +789,10 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         rope_project = FlextInfraUtilitiesRope.init_rope_project(root_path)
 
         # We need the resource where the facade class is imported or defined
-        parts = class_path.rsplit(".", 1)
-        if len(parts) != 2:
+        if "." not in class_path:
             return {"status": "error", "message": "Invalid class path"}
 
-        module_name, _class_name = parts
+        module_name, _class_name = class_path.rsplit(".", 1)
         resource = FlextInfraUtilitiesRope.get_file_resource(rope_project, module_name)
         if not resource:
             # Fall back to trying common paths if module name lacks src/ prefix structure

@@ -78,6 +78,16 @@ class TestDetectorBasicDetection:
         project_root = _setup_project_with_git(tmp_path)
         tm.ok(detector.detect(project_root))
 
+    def test_detects_workspace_from_gitmodules(
+        self,
+        detector: FlextInfraWorkspaceDetector,
+        tmp_path: Path,
+    ) -> None:
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        (tmp_path / ".gitmodules").write_text("", encoding="utf-8")
+        tm.ok(detector.detect(project_root), eq=FlextInfraWorkspaceMode.WORKSPACE)
+
     def test_execute_returns_failure(self) -> None:
         tm.fail(FlextInfraWorkspaceDetector().execute())
 

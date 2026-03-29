@@ -35,19 +35,7 @@ class FlextInfraWorkspaceDetector(s[FlextInfraWorkspaceMode]):
 
     def __init__(self) -> None:
         """Initialize the workspace detector."""
-        super().__init__(
-            config_type=None,
-            config_overrides=None,
-            initial_context=None,
-            subproject=None,
-            services=None,
-            factories=None,
-            resources=None,
-            container_overrides=None,
-            wire_modules=None,
-            wire_packages=None,
-            wire_classes=None,
-        )
+        super().__init__()
 
     @staticmethod
     def _repo_name_from_url(url: str) -> str:
@@ -77,7 +65,13 @@ class FlextInfraWorkspaceDetector(s[FlextInfraWorkspaceMode]):
 
         """
         try:
-            parent = project_root.resolve().parent
+            resolved_project_root = project_root.resolve()
+            for candidate in (resolved_project_root, *resolved_project_root.parents):
+                if (candidate / c.Infra.Files.GITMODULES).exists():
+                    return r[FlextInfraWorkspaceMode].ok(
+                        FlextInfraWorkspaceMode.WORKSPACE,
+                    )
+            parent = resolved_project_root.parent
             git_marker = parent / c.Infra.Git.DIR
             if not git_marker.exists():
                 output.info("Running in standalone mode (no parent workspace detected)")

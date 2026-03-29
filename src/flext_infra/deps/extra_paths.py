@@ -28,6 +28,9 @@ class FlextInfraExtraPathsManager:
             msg = tool_config_result.error or "failed to load deps tool config"
             raise ValueError(msg)
         self._tool_config: m.Infra.ToolConfigDocument = tool_config_result.value
+        self._workspace_project_names: t.Infra.StrSet = (
+            self._discover_workspace_project_names()
+        )
 
     @staticmethod
     def _table_get(container: TOMLDocument | Table, key: str) -> Item | None:
@@ -181,6 +184,26 @@ class FlextInfraExtraPathsManager:
             },
         )
 
+    def _discover_workspace_project_names(self) -> t.Infra.StrSet:
+        projects_result = u.Infra.discover_projects(self.root)
+        if projects_result.is_failure:
+            return set()
+        return {project.name for project in projects_result.value}
+
+    def _workspace_dependency_entries(self, doc: TOMLDocument) -> t.StrSequence:
+        declared_names = u.Infra.declared_dependency_names(doc)
+        return sorted(
+            name for name in declared_names if name in self._workspace_project_names
+        )
+
+    def _dependency_entries(self, doc: TOMLDocument) -> t.StrSequence:
+        return sorted(
+            {
+                *self.path_dep_paths(doc),
+                *self._workspace_dependency_entries(doc),
+            },
+        )
+
     def _resolve_transitive_deps(
         self,
         direct_paths: t.StrSequence,
@@ -206,7 +229,7 @@ class FlextInfraExtraPathsManager:
             if dep_doc_result.is_failure:
                 continue
             dep_doc: TOMLDocument = dep_doc_result.value
-            transitive = self.path_dep_paths(dep_doc)
+            transitive = self._dependency_entries(dep_doc)
             if transitive:
                 all_paths.update(transitive)
                 deeper = self._resolve_transitive_deps(
@@ -229,12 +252,20 @@ class FlextInfraExtraPathsManager:
         Resolves transitive dependencies automatically.
         """
         dep_skip = c.Infra.SKIP_DIRS | frozenset({"tests"})
-        raw_paths = self._resolve_transitive_deps(self.path_dep_paths(doc))
+        project_table = self._as_table(self._table_get(doc, c.Infra.PROJECT))
+        current_project_name = (
+            u.Infra.unwrap_item(self._table_get(project_table, c.Infra.NAME))
+            if project_table is not None
+            else None
+        )
+        raw_paths = self._resolve_transitive_deps(self._dependency_entries(doc))
         resolved: MutableSequence[str] = []
         for path_value in raw_paths:
             if not path_value:
                 continue
             name = FlextInfraDependencyPathSync.extract_dep_name(path_value)
+            if isinstance(current_project_name, str) and name == current_project_name:
+                continue
             prefix = f"{name}" if is_root else f"../{name}"
             dep_dir = self.root / name
             if dep_dir.is_dir():
