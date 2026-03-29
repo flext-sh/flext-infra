@@ -18,9 +18,15 @@ if TYPE_CHECKING:
     from flext_infra._protocols.rope import FlextInfraProtocolsRope
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraProtocolsBase": ["flext_infra._protocols.base", "FlextInfraProtocolsBase"],
+    "FlextInfraProtocolsBase": [
+        "flext_infra._protocols.base",
+        "FlextInfraProtocolsBase",
+    ],
     "FlextInfraProtocolsCst": ["flext_infra._protocols.cst", "FlextInfraProtocolsCst"],
-    "FlextInfraProtocolsRope": ["flext_infra._protocols.rope", "FlextInfraProtocolsRope"],
+    "FlextInfraProtocolsRope": [
+        "flext_infra._protocols.rope",
+        "FlextInfraProtocolsRope",
+    ],
 }
 
 __all__ = [
