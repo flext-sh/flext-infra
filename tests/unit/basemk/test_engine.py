@@ -142,3 +142,39 @@ def test_basemk_engine_render_all_handles_template_error(
     assert isinstance(result.error, str)
     assert isinstance(result.error, str)
     assert "template render failed" in result.error
+
+
+def test_render_all_exposes_canonical_public_targets() -> None:
+    result = FlextInfraBaseMkTemplateEngine().render_all()
+    tm.ok(result)
+    tm.that(
+        result.value,
+        has=[
+            ".PHONY: help boot build check scan fmt docs test val clean pr",
+            "STANDARD_VERBS := boot build check scan fmt docs test val clean pr",
+            "boot: ## Complete setup",
+            "scan: ## Run all security checks",
+            "fmt: ## Run code formatting",
+            "val: ## Run validate gates",
+        ],
+    )
+    assert "setup build check security format docs" not in result.value
+    assert "docs-base" not in result.value
+    assert "docs-sync-scripts" not in result.value
+
+
+def test_render_all_declares_and_documents_runtime_options() -> None:
+    result = FlextInfraBaseMkTemplateEngine().render_all()
+    tm.ok(result)
+    tm.that(
+        result.value,
+        has=[
+            "FIX ?=",
+            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,go,type"',
+            'echo "  FILE=src/foo.py             Single file for check/fmt/test"',
+            'echo "  CHANGED_ONLY=1              Git-changed Python files for check"',
+            'echo "  DIAG=1                      Emit extended pytest diagnostics"',
+            'echo "  FIX=1                       Auto-fix supported gates"',
+        ],
+    )
+    assert "check-fast" not in result.value

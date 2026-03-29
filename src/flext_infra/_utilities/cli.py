@@ -44,6 +44,7 @@ class FlextInfraUtilitiesCli:
         diff: bool = False
         project: str | None = None
         projects: str | None = None
+        class_to_analyze: str | None = None
 
         @property
         def dry_run(self) -> bool:
@@ -334,6 +335,11 @@ class FlextInfraUtilitiesCli:
         raw_projects = getattr(args, "projects", None)
         projects = raw_projects if isinstance(raw_projects, str) else None
 
+        raw_class_to_analyze = getattr(args, "class_to_analyze", None)
+        class_to_analyze = (
+            raw_class_to_analyze if isinstance(raw_class_to_analyze, str) else None
+        )
+
         # Resolve workspace path
         raw_workspace = getattr(args, "workspace", Path.cwd())
         workspace_path: Path = (
@@ -350,6 +356,7 @@ class FlextInfraUtilitiesCli:
             check=check_flag,
             project=project,
             projects=projects,
+            class_to_analyze=class_to_analyze,
         )
 
     @staticmethod

@@ -775,77 +775,68 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         *,
         dry_run: bool = True,
     ) -> Mapping[str, str | int | t.StrSequence | Sequence[Mapping[str, str | int]]]:
-        """Apply a single deduplication fix.
+        """Apply a single deduplication fix using rope.
 
-        Returns dict with: status, canonical, replaced, files_modified
+        Uses FlextInfraUtilitiesRope.rename_symbol_workspace to safely rename
+        duplicate constants to the canonical form across all workspace projects.
         """
+        from flext_infra import FlextInfraUtilitiesRope
+
         canonical_name = str(fix_proposal.get("canonical_name", ""))
-        simple_class_name = class_path.rsplit(".", 1)[-1]
-
-        # Determine access pattern
-        access_pattern = (
-            f"c.Infra.{canonical_name}"
-            if "Infra" in simple_class_name
-            else f"c.{canonical_name}"
-        )
-
         files_modified = 0
         replaced_names: MutableSequence[str] = []
-        replaced_details: MutableSequence[
-            Mapping[str, str | int]
-        ] = []  # Track file, line, old_name for each replacement
+        replaced_details: MutableSequence[Mapping[str, str | int]] = []
 
-        # Replace each duplicate
+        rope_project = FlextInfraUtilitiesRope.init_rope_project(root_path)
+
+        # We need the resource where the facade class is imported or defined
+        parts = class_path.rsplit(".", 1)
+        if len(parts) != 2:
+            return {"status": "error", "message": "Invalid class path"}
+
+        module_name, _class_name = parts
+        resource = FlextInfraUtilitiesRope.get_file_resource(rope_project, module_name)
+        if not resource:
+            # Fall back to trying common paths if module name lacks src/ prefix structure
+            resource = FlextInfraUtilitiesRope.get_file_resource(
+                rope_project, f"{module_name}.constants"
+            )
+
+        if not resource:
+            return {
+                "status": "error",
+                "message": f"Could not locate resource for {module_name}",
+            }
+
         duplicates_val = fix_proposal.get("duplicates", [])
         duplicates = duplicates_val if isinstance(duplicates_val, list) else []
+
         for dup in duplicates:
-            if isinstance(dup, dict):
-                dup_name = str(dup.get("name", ""))
-                replaced_names.append(dup_name)
-            else:
+            if not isinstance(dup, dict):
+                continue
+            dup_name = str(dup.get("name", ""))
+
+            # Use rope semantic pycore to find exact definition offset inherited or otherwise
+            offset = FlextInfraUtilitiesRope.find_definition_offset(
+                rope_project, resource, dup_name
+            )
+            if offset is None:
                 continue
 
-            # Patterns to find and replace
-            patterns = [
-                (f"{simple_class_name}.{dup_name}", access_pattern),
-                (f"c.{dup_name}", access_pattern),
-            ]
+            replaced_names.append(dup_name)
 
-            # Scan and replace files
-            for py_file in root_path.rglob("*.py"):
-                if any(
-                    excl in py_file.parts for excl in (".mypy_cache", "__pycache__")
-                ):
-                    continue
-                try:
-                    content = py_file.read_text(c.Infra.Encoding.DEFAULT)
-                except (UnicodeDecodeError, OSError):
-                    continue
+            # Collect changed files tracking
+            changed = FlextInfraUtilitiesRope.rename_symbol_workspace(
+                rope_project, resource, offset, canonical_name, apply=not dry_run
+            )
 
-                modified = False
-                new_content = content
-                lines = content.split("\n")
-
-                for old_pattern, new_pattern in patterns:
-                    if old_pattern not in new_content:
-                        continue
-
-                    # Find all occurrences with line numbers
-                    for line_idx, line in enumerate(lines, 1):
-                        if old_pattern in line:
-                            # Track this replacement
-                            replaced_details.append({
-                                "file": str(py_file),
-                                "line": line_idx,
-                                "old_name": dup_name,
-                            })
-                            # Do the replacement
-                            new_content = new_content.replace(old_pattern, new_pattern)
-                            modified = True
-
-                if modified and not dry_run:
-                    py_file.write_text(new_content, encoding=c.Infra.Encoding.DEFAULT)
-                    files_modified += 1
+            files_modified += len(changed)
+            for ch in changed:
+                replaced_details.append({
+                    "file": ch,
+                    "line": 0,
+                    "old_name": dup_name,
+                })
 
         return {
             "status": "success",

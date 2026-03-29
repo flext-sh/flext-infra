@@ -116,7 +116,15 @@ class FlextInfraUtilitiesRope:
                 return None
             pyname = attrs[symbol]
             definition_loc = pyname.get_definition_location()
-            line_number = definition_loc[1]
+            if definition_loc is None:
+                return None
+
+            def_module, line_number = definition_loc
+            if def_module is not None and hasattr(def_module, "get_resource"):
+                res = def_module.get_resource()
+                if res is not None:
+                    source = res.read()
+
             return FlextInfraUtilitiesRope._line_offset_for_symbol(
                 source=source,
                 line_number=line_number,

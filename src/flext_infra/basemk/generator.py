@@ -25,19 +25,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     def __init__(self, template_engine: p.Infra.TemplateRenderer | None = None) -> None:
         """Initialize the base.mk generator."""
-        super().__init__(
-            config_type=None,
-            config_overrides=None,
-            initial_context=None,
-            subproject=None,
-            services=None,
-            factories=None,
-            resources=None,
-            container_overrides=None,
-            wire_modules=None,
-            wire_packages=None,
-            wire_classes=None,
-        )
+        super().__init__()
         self._template_engine = template_engine or FlextInfraBaseMkTemplateEngine()
 
     @property

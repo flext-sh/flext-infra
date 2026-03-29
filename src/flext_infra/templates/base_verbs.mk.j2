@@ -21,9 +21,22 @@ help: ## Show commands
 	$(Q)printf "  %-16s %s\n" "daemon-restart" "Restart all daemons"
 	$(Q)echo "  Also: daemon-{start,stop,status}-{mypy,pyright}"
 	$(Q)echo ""
-	$(Q)echo "Other:"
-	$(Q)printf "  %-14s %s\n" "check-fast" "Parallel lint (make -j4 check-fast)"
-	$(Q)printf "  %-14s %s\n" "pr"         "Manage PRs (PR_ACTION=status)"
+	$(Q)echo "Selectors and options:"
+	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,go,type"
+	$(Q)echo "  VALIDATE_GATES=complexity,docstring"
+	$(Q)echo "  FILE=src/foo.py             Single file for check/fmt/test"
+	$(Q)echo "  FILES=\"a.py b.py\"          Multiple files for check/fmt/test"
+	$(Q)echo "  CHANGED_ONLY=1              Git-changed Python files for check"
+	$(Q)echo "  CHECK_ONLY=1                Dry-run format checks"
+	$(Q)echo "  RUFF_ARGS=\"--select E501\"   Extra args for ruff check"
+	$(Q)echo "  PYRIGHT_ARGS=\"--level basic\" Extra args for pyright"
+	$(Q)echo "  PYTEST_ARGS=\"-k expr\"       Extra pytest args"
+	$(Q)echo "  MATCH=test_name             Alias for pytest -k"
+	$(Q)echo "  FAIL_FAST=1                 Add -x to pytest"
+	$(Q)echo "  DIAG=1                      Emit extended pytest diagnostics"
+	$(Q)echo "  DOCS_PHASE=all|generate|fix|audit|build|validate"
+	$(Q)echo "  FIX=1                       Auto-fix supported gates"
+	$(Q)echo "  VERBOSE=1                   Show executed commands"
 	$(Q)echo ""
 	$(Q)echo "PR variables:"
 	$(Q)echo "  PR_ACTION=status|create|view|checks|merge|close"
@@ -135,7 +148,7 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 	else \
 		gates="lint,format,pyrefly,mypy,pyright,security,markdown,go"; \
 	fi; \
-	gates=$$(echo "$$gates" | tr ',' ' ' | sed 's/\btype\b/pyrefly/g; s/\bfmt\b/format/g; s/\bscan\b/security/g' | tr ' ' ','); \
+	gates=$$(echo "$$gates" | tr ',' ' ' | sed 's/\btype\b/pyrefly/g' | tr ' ' ','); \
 	_files=""; \
 	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
 	if [ -n "$(FILE)" ]; then \
@@ -146,6 +159,12 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 		_files=$$(git diff --name-only HEAD -- '*.py' 2>/dev/null | tr '\n' ' '); \
 	fi; \
 	if [ -n "$$_files" ]; then \
+		if [ -z "$(CHECK_GATES)" ]; then gates="lint,format,pyrefly,mypy,pyright"; fi; \
+		unsupported_gates=$$(printf '%s\n' "$$gates" | tr ',' '\n' | grep -E '^(security|markdown|go)$$' || true); \
+		if [ -n "$$unsupported_gates" ]; then \
+			echo "ERROR: FILE/FILES/CHANGED_ONLY fast-path only supports lint,format,pyrefly,mypy,pyright"; \
+			exit 2; \
+		fi; \
 		echo "Fast-path check: $$_files"; \
 		status=0; \
 		case ",$$gates," in \
@@ -159,6 +178,9 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 		esac; \
 		case ",$$gates," in \
 			*,pyrefly,*) $(POETRY) run pyrefly check $$_files || status=$$?;; \
+		esac; \
+		case ",$$gates," in \
+			*,mypy,*) $(POETRY) run mypy $$_files || status=$$?;; \
 		esac; \
 		exit $$status; \
 	fi; \
