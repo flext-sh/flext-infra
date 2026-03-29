@@ -29,7 +29,9 @@ class TestEnsureCoverageConfigPhase:
             doc,
             project_kind="integration",
         )
-        tm.that(any("tool.coverage.report.fail_under" in item for item in changes), eq=True)
+        tm.that(
+            any("tool.coverage.report.fail_under" in item for item in changes), eq=True
+        )
         tm.that(any("tool.coverage.run.omit" in item for item in changes), eq=True)
         tool = doc["tool"]
         assert isinstance(tool, MutableMapping)

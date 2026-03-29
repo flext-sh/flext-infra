@@ -324,7 +324,7 @@ test: ## Run pytest only
 		echo "duration_seconds=0" >> "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
-	$(VENV_PYTHON) -m flext_infra core pytest-diag \
+	$(VENV_PYTHON) -m flext_infra validate pytest-diag \
 		--junit "$$junit_file" --log "$$log_file" \
 		--failed "$$failed_file" --errors "$$errors_file" \
 		--warnings "$$warnings_file" --slowest "$$slowest_file" \
@@ -335,9 +335,11 @@ test: ## Run pytest only
 	echo "DIAG $$run_state | failed=$$failed_count errors=$$error_count warnings=$$warning_count skipped=$$skipped_count" >&2; \
 	echo "================================================" >&2; \
 	echo "Top test durations (from $$slowest_file):" >&2; \
-	awk 'NR<=10 {print}' "$$slowest_file" >&2; \
+	if [ -s "$$slowest_file" ]; then awk 'NR<=10 {print}' "$$slowest_file" >&2; \
+	else echo "(none)" >&2; fi; \
 	echo "Error trace excerpt (from $$errors_file):" >&2; \
-	awk 'NR<=40 {print}' "$$errors_file" >&2; \
+	if [ -s "$$errors_file" ]; then awk 'NR<=40 {print}' "$$errors_file" >&2; \
+	else echo "(none)" >&2; fi; \
 	ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
 	echo "Reports: $$report_dir (latest: $(PYTEST_REPORTS_DIR)/latest)" >&2; \
 	echo "Details: $$summary_file | $$failed_file | $$errors_file | $$warnings_file | $$slowest_file | $$skips_file | $$log_file" >&2; \

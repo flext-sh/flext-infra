@@ -151,7 +151,7 @@ class FlextInfraUtilitiesRope:
                     obj = pyname.get_object()
                     module = obj.get_module()
                     if isinstance(module, p.Infra.RopePyModuleLike):
-                        mod_name = module.get_name() or ""
+                        mod_name = module.get_name()
                         result[name] = f"{mod_name}.{name}" if mod_name else name
                     else:
                         result[name] = name

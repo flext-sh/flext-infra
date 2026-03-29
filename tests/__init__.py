@@ -481,6 +481,7 @@ if TYPE_CHECKING:
         test_consolidate_groups_phase_apply_removes_old_groups,
         test_consolidate_groups_phase_apply_with_empty_poetry_group,
     )
+    from tests.unit.deps.test_modernizer_coverage import TestEnsureCoverageConfigPhase
     from tests.unit.deps.test_modernizer_helpers import (
         doc,
         test_array,
@@ -1370,6 +1371,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestEnsureCheckoutEdgeCases": [
         "tests.unit.deps.test_internal_sync_update_checkout_edge",
         "TestEnsureCheckoutEdgeCases",
+    ],
+    "TestEnsureCoverageConfigPhase": [
+        "tests.unit.deps.test_modernizer_coverage",
+        "TestEnsureCoverageConfigPhase",
     ],
     "TestEnsurePyreflyConfigPhase": [
         "tests.unit.deps.test_modernizer_pyrefly",
@@ -3798,6 +3803,7 @@ __all__ = [
     "TestEnforcerExecute",
     "TestEnsureCheckout",
     "TestEnsureCheckoutEdgeCases",
+    "TestEnsureCoverageConfigPhase",
     "TestEnsurePyreflyConfigPhase",
     "TestEnsurePyrightConfigPhase",
     "TestEnsurePytestConfigPhase",
