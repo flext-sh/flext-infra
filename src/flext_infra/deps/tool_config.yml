@@ -434,6 +434,8 @@ tools:
     show-missing: true
     skip-covered: false
     precision: 2
+    omit:
+      - '*/dependency_injector/providers.pyx'
   pyrefly:
     disable-project-excludes-heuristics: true
     ignore-errors-in-generated-code: true

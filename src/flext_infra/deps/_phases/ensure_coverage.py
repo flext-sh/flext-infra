@@ -33,6 +33,7 @@ class FlextInfraEnsureCoverageConfigPhase:
             doc[c.Infra.TOOL] = tool
 
         coverage_tbl = u.Infra.ensure_table(tool, "coverage")
+        run_tbl = u.Infra.ensure_table(coverage_tbl, "run")
         report_tbl = u.Infra.ensure_table(coverage_tbl, "report")
 
         cov_config = self._tool_config.tools.coverage
@@ -70,6 +71,12 @@ class FlextInfraEnsureCoverageConfigPhase:
             changes.append(
                 f"tool.coverage.report.precision set to {cov_config.precision}",
             )
+
+        current_omit = u.Infra.as_string_list(u.Infra.get(run_tbl, "omit"))
+        expected_omit = sorted(set(cov_config.omit))
+        if current_omit != expected_omit:
+            run_tbl["omit"] = u.Infra.array(expected_omit)
+            changes.append(f"tool.coverage.run.omit set to {expected_omit}")
 
         return changes
 

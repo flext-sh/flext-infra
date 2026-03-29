@@ -62,6 +62,30 @@ class TestPathDepPathsPep621:
         result = _manager().path_dep_paths_pep621(doc)
         tm.that(any("flext-core" in item for item in result), eq=True)
 
+    def test_pep621_ignores_git_dependencies(self) -> None:
+        doc = tomlkit.document()
+        doc["project"] = {
+            "dependencies": [
+                "dbt-common @ git+https://github.com/flext-sh/dbt-common.git@main",
+                "flext-core @ file:../flext-core",
+            ],
+        }
+        result = _manager().path_dep_paths_pep621(doc)
+        tm.that(result, has="../flext-core")
+        tm.that(any("git+https" in item for item in result), eq=False)
+
+    def test_pep621_ignores_https_dependencies(self) -> None:
+        doc = tomlkit.document()
+        doc["project"] = {
+            "dependencies": [
+                "custom-lib @ https://example.com/custom-lib.whl",
+                "flext-core @ ../flext-core",
+            ],
+        }
+        result = _manager().path_dep_paths_pep621(doc)
+        tm.that(result, has="../flext-core")
+        tm.that(any("https://" in item for item in result), eq=False)
+
 
 class TestPathDepPathsPoetry:
     def test_poetry_empty_doc(self) -> None:

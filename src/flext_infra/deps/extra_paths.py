@@ -58,6 +58,26 @@ class FlextInfraExtraPathsManager:
         except ValidationError:
             return []
 
+    @staticmethod
+    def _normalize_pep621_path_dependency(path_part: str) -> str | None:
+        """Return a normalized local path dependency or ``None`` for non-path refs."""
+        normalized = path_part.strip()
+        if not normalized:
+            return None
+        if normalized.startswith(("git+", "git@", "http://", "https://", "ssh://")):
+            return None
+        if "://" in normalized and not normalized.startswith("file://"):
+            return None
+        if normalized.startswith("file://"):
+            normalized = normalized.removeprefix("file://").strip()
+        elif normalized.startswith("file:"):
+            normalized = normalized.removeprefix("file:").strip()
+        elif not normalized.startswith(("./", "../", "/")):
+            return None
+        if normalized.startswith("./"):
+            normalized = normalized[2:].strip()
+        return normalized or None
+
     def path_dep_paths_pep621(self, doc: TOMLDocument) -> t.StrSequence:
         """Extract path dependency paths from PEP 621 project.dependencies."""
         project_table = self._as_table(self._table_get(doc, c.Infra.PROJECT))
@@ -70,13 +90,9 @@ class FlextInfraExtraPathsManager:
             if " @ " not in item:
                 continue
             _name, path_part = item.split(" @ ", 1)
-            path_part = path_part.strip()
-            if path_part.startswith("file:"):
-                path_part = path_part[5:].strip()
-            if path_part.startswith("./"):
-                path_part = path_part[2:].strip()
-            if path_part:
-                paths.append(path_part)
+            normalized_path = self._normalize_pep621_path_dependency(path_part)
+            if normalized_path is not None:
+                paths.append(normalized_path)
         return sorted(set(paths))
 
     def path_dep_paths_poetry(self, doc: TOMLDocument) -> t.StrSequence:

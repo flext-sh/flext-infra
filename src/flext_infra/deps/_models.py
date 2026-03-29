@@ -561,6 +561,13 @@ class FlextInfraDepsModels:
                 description="Decimal precision for coverage percentages.",
             ),
         ]
+        omit: Annotated[
+            t.StrSequence,
+            Field(
+                default_factory=list,
+                description="Coverage run omit globs.",
+            ),
+        ]
 
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
