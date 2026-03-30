@@ -2,10 +2,6 @@
 {{ runtime_import_lines }}
 
 {% endif %}
-{%- if child_lazy_import_lines %}
-{{ child_lazy_import_lines }}
-
-{% endif %}
 {%- if type_checking_lines %}
 {{ type_checking_lines }}
 {% endif %}
@@ -15,15 +11,31 @@
 {%- if inline_constants %}
 
 {% endif %}
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
-{%- for alias_name in child_lazy_aliases %}
-    **{{ alias_name }},
+{%- if child_module_paths %}
+_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(
+    (
+{%- for child_module_path in child_module_paths %}
+        "{{ child_module_path }}",
 {%- endfor %}
+    ),
+    {
+{%- for name, mod, attr in lazy_entries %}
+{%- if attr == name or attr == "" %}
+        "{{ name }}": "{{ mod }}",
+{%- else %}
+        "{{ name }}": ("{{ mod }}", "{{ attr }}"),
+{%- endif %}
+{%- endfor %}
+    },
+)
+{%- else %}
+_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 {%- for name, mod, attr in lazy_entries %}
 {%- if attr == name or attr == "" %}
     "{{ name }}": "{{ mod }}",
 {%- else %}
-    "{{ name }}": ["{{ mod }}", "{{ attr }}"],
+    "{{ name }}": ("{{ mod }}", "{{ attr }}"),
 {%- endif %}
 {%- endfor %}
 }
+{%- endif %}

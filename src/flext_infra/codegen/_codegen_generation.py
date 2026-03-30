@@ -236,7 +236,11 @@ class FlextInfraCodegenGeneration:
 
         # --- preamble (from .j2 template) ---
         preamble_name = tpl.PREAMBLE_L0 if is_l0_typings else tpl.PREAMBLE_STANDARD
-        preamble_rendered: str = _render(_ENV.get_template(preamble_name))
+        children_lazy = tuple(child_packages_for_lazy or ())
+        preamble_rendered: str = _render(
+            _ENV.get_template(preamble_name),
+            include_merge_helper=bool(children_lazy),
+        )
         out.extend(preamble_rendered.splitlines())
 
         # --- eager TypeVar imports ---
@@ -262,16 +266,6 @@ class FlextInfraCodegenGeneration:
         runtime_import_lines = FlextInfraCodegenGeneration.generate_runtime_imports(
             runtime_groups,
         )
-        children_lazy = tuple(child_packages_for_lazy or ())
-        child_lazy_specs = [
-            (child_pkg, f"_CHILD_LAZY_{index}")
-            for index, child_pkg in enumerate(children_lazy)
-        ]
-        child_lazy_import_lines = [
-            f"from {child_pkg} import _LAZY_IMPORTS as {alias_name}"
-            for child_pkg, alias_name in child_lazy_specs
-        ]
-
         # --- determine child packages for TYPE_CHECKING collapse ---
         children_tc = child_packages_for_tc or []
 
@@ -304,8 +298,7 @@ class FlextInfraCodegenGeneration:
         body: str = _render(
             _ENV.get_template(tpl.BODY),
             runtime_import_lines="\n".join(runtime_import_lines),
-            child_lazy_import_lines="\n".join(child_lazy_import_lines),
-            child_lazy_aliases=[alias_name for _, alias_name in child_lazy_specs],
+            child_module_paths=children_lazy,
             type_checking_lines="\n".join(type_checking_lines),
             inline_constants=sorted(inline_constants.items()),
             eager_export_names=[

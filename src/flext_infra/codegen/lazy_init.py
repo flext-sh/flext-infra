@@ -497,6 +497,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         "cleanup_submodule_namespace",
         "install_lazy_exports",
         "lazy_getattr",
+        "merge_lazy_imports",
     })
 
     @staticmethod
