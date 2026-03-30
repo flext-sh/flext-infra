@@ -33,7 +33,10 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
+        def _sync(
+            workspace_root: Path,
+            params: m.Infra.WorkflowSyncParams,
+        ) -> r[Sequence[m.Infra.SyncOperation]]:
             return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
@@ -84,7 +87,10 @@ class TestMain:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _orchestrate(**kw: bool) -> r[m.Infra.PrOrchestrationResult]:
+        def _orchestrate(
+            workspace_root: Path,
+            params: m.Infra.PrOrchestrateParams,
+        ) -> r[m.Infra.PrOrchestrationResult]:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
@@ -134,7 +140,10 @@ class TestMain:
             ),
         ]
 
-        def _sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
+        def _sync(
+            workspace_root: Path,
+            params: m.Infra.WorkflowSyncParams,
+        ) -> r[Sequence[m.Infra.SyncOperation]]:
             return r[Sequence[m.Infra.SyncOperation]].ok(ops)
 
         monkeypatch.setattr(

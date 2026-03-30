@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraCliGithub, m, t, u
+from flext_infra import FlextInfraCliGithub, m, u
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
@@ -23,7 +22,10 @@ def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
 
 class TestRunPrWorkspace:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _ok(**kw: t.Scalar) -> r[m.Infra.PrOrchestrationResult]:
+        def _ok(
+            workspace_root: Path,
+            params: m.Infra.PrOrchestrateParams,
+        ) -> r[m.Infra.PrOrchestrationResult]:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_ok))
@@ -33,7 +35,10 @@ class TestRunPrWorkspace:
         tm.that(result.is_success, eq=True)
 
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _fail(**kw: t.Scalar) -> r[m.Infra.PrOrchestrationResult]:
+        def _fail(
+            workspace_root: Path,
+            params: m.Infra.PrOrchestrateParams,
+        ) -> r[m.Infra.PrOrchestrationResult]:
             return r[m.Infra.PrOrchestrationResult].fail("orchestration failed")
 
         monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_fail))
@@ -47,12 +52,13 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: MutableMapping[str, t.StrMapping] = {}
+        captured_params: list[m.Infra.PrOrchestrateParams] = []
 
         def _fake_orchestrate(
-            **kw: t.StrMapping,
+            workspace_root: Path,
+            params: m.Infra.PrOrchestrateParams,
         ) -> r[m.Infra.PrOrchestrationResult]:
-            captured.update(kw)
+            captured_params.append(params)
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
@@ -69,7 +75,7 @@ class TestRunPrWorkspace:
             ),
         )
         tm.that(result.is_success, eq=True)
-        pr_args_val = captured.get("pr_args", {})
+        pr_args_val = captured_params[0].pr_args or {}
         tm.that(str(pr_args_val), has="action")
         tm.that(str(pr_args_val), has="base")
         tm.that(str(pr_args_val), has="head")
@@ -79,10 +85,13 @@ class TestRunPrWorkspace:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: MutableMapping[str, str] = {}
+        captured_params: list[m.Infra.PrOrchestrateParams] = []
 
-        def _fake_orchestrate(**kw: str) -> r[m.Infra.PrOrchestrationResult]:
-            captured.update(kw)
+        def _fake_orchestrate(
+            workspace_root: Path,
+            params: m.Infra.PrOrchestrateParams,
+        ) -> r[m.Infra.PrOrchestrationResult]:
+            captured_params.append(params)
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
@@ -96,17 +105,20 @@ class TestRunPrWorkspace:
                 branch="feature/test",
             ),
         )
-        assert captured["branch"] == "feature/test"
+        assert captured_params[0].branch == "feature/test"
 
     def test_with_checkpoint(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: MutableMapping[str, bool] = {}
+        captured_params: list[m.Infra.PrOrchestrateParams] = []
 
-        def _fake_orchestrate(**kw: bool) -> r[m.Infra.PrOrchestrationResult]:
-            captured.update(kw)
+        def _fake_orchestrate(
+            workspace_root: Path,
+            params: m.Infra.PrOrchestrateParams,
+        ) -> r[m.Infra.PrOrchestrationResult]:
+            captured_params.append(params)
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
@@ -117,17 +129,20 @@ class TestRunPrWorkspace:
         FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path), checkpoint=True),
         )
-        assert captured["checkpoint"] is True
+        assert captured_params[0].checkpoint is True
 
     def test_with_fail_fast(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: MutableMapping[str, bool] = {}
+        captured_params: list[m.Infra.PrOrchestrateParams] = []
 
-        def _fake_orchestrate(**kw: bool) -> r[m.Infra.PrOrchestrationResult]:
-            captured.update(kw)
+        def _fake_orchestrate(
+            workspace_root: Path,
+            params: m.Infra.PrOrchestrateParams,
+        ) -> r[m.Infra.PrOrchestrationResult]:
+            captured_params.append(params)
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
@@ -138,23 +153,20 @@ class TestRunPrWorkspace:
         FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path), fail_fast=True),
         )
-        assert captured["fail_fast"] is True
+        assert captured_params[0].fail_fast is True
 
     def test_with_selected_projects(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured_projects: list[str] = []
+        captured_params: list[m.Infra.PrOrchestrateParams] = []
 
         def _fake_orchestrate(
-            *,
-            projects: t.StrSequence | None = None,
-            **kw: t.Scalar,
+            workspace_root: Path,
+            params: m.Infra.PrOrchestrateParams,
         ) -> r[m.Infra.PrOrchestrationResult]:
-            del kw
-            nonlocal captured_projects
-            captured_projects = list(projects or [])
+            captured_params.append(params)
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(
@@ -168,4 +180,4 @@ class TestRunPrWorkspace:
                 project=["flext-core", "flext-api"],
             ),
         )
-        assert captured_projects == ["flext-core", "flext-api"]
+        assert captured_params[0].projects == ["flext-core", "flext-api"]

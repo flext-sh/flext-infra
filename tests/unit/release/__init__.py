@@ -5,58 +5,63 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from tests.unit.release import (
-        flow_tests,
-        main_tests,
-        orchestrator_git_tests,
-        orchestrator_helpers_tests,
-        orchestrator_phases_tests,
-        orchestrator_publish_tests,
-        orchestrator_tests,
-        release_init_tests,
-        version_resolution_tests,
+        flow_tests as flow_tests,
+        main_tests as main_tests,
+        orchestrator_git_tests as orchestrator_git_tests,
+        orchestrator_helpers_tests as orchestrator_helpers_tests,
+        orchestrator_phases_tests as orchestrator_phases_tests,
+        orchestrator_publish_tests as orchestrator_publish_tests,
+        orchestrator_tests as orchestrator_tests,
+        release_init_tests as release_init_tests,
+        version_resolution_tests as version_resolution_tests,
     )
-    from tests.unit.release.flow_tests import TestReleaseMainFlow, main
-    from tests.unit.release.main_tests import TestReleaseMainParsing
+    from tests.unit.release.flow_tests import (
+        TestReleaseMainFlow as TestReleaseMainFlow,
+        main as main,
+    )
+    from tests.unit.release.main_tests import (
+        TestReleaseMainParsing as TestReleaseMainParsing,
+    )
     from tests.unit.release.orchestrator_git_tests import (
-        TestCollectChanges,
-        TestCreateBranches,
-        TestCreateTag,
-        TestPreviousTag,
-        TestPushRelease,
+        TestCollectChanges as TestCollectChanges,
+        TestCreateBranches as TestCreateBranches,
+        TestCreateTag as TestCreateTag,
+        TestPreviousTag as TestPreviousTag,
+        TestPushRelease as TestPushRelease,
     )
     from tests.unit.release.orchestrator_helpers_tests import (
-        TestBuildTargets,
-        TestBumpNextDev,
-        TestDispatchPhase,
-        TestGenerateNotes,
-        TestRunMake,
-        TestUpdateChangelog,
-        TestVersionFiles,
+        TestBuildTargets as TestBuildTargets,
+        TestBumpNextDev as TestBumpNextDev,
+        TestDispatchPhase as TestDispatchPhase,
+        TestGenerateNotes as TestGenerateNotes,
+        TestRunMake as TestRunMake,
+        TestUpdateChangelog as TestUpdateChangelog,
+        TestVersionFiles as TestVersionFiles,
     )
     from tests.unit.release.orchestrator_phases_tests import (
-        TestPhaseBuild,
-        TestPhaseValidate,
-        TestPhaseVersion,
+        TestPhaseBuild as TestPhaseBuild,
+        TestPhaseValidate as TestPhaseValidate,
+        TestPhaseVersion as TestPhaseVersion,
     )
-    from tests.unit.release.orchestrator_publish_tests import TestPhasePublish
+    from tests.unit.release.orchestrator_publish_tests import (
+        TestPhasePublish as TestPhasePublish,
+    )
     from tests.unit.release.orchestrator_tests import (
-        TestReleaseOrchestratorExecute,
-        workspace_root,
+        TestReleaseOrchestratorExecute as TestReleaseOrchestratorExecute,
+        workspace_root as workspace_root,
     )
-    from tests.unit.release.release_init_tests import TestReleaseInit
+    from tests.unit.release.release_init_tests import TestReleaseInit as TestReleaseInit
     from tests.unit.release.version_resolution_tests import (
-        TestReleaseMainTagResolution,
-        TestReleaseMainVersionResolution,
-        TestResolveVersionInteractive,
+        TestReleaseMainTagResolution as TestReleaseMainTagResolution,
+        TestReleaseMainVersionResolution as TestReleaseMainVersionResolution,
+        TestResolveVersionInteractive as TestResolveVersionInteractive,
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
@@ -147,7 +152,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "workspace_root": ["tests.unit.release.orchestrator_tests", "workspace_root"],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "TestBuildTargets",
     "TestBumpNextDev",
     "TestCollectChanges",
@@ -185,41 +190,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

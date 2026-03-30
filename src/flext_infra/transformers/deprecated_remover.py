@@ -23,6 +23,37 @@ class FlextInfraRefactorDeprecatedRemover(FlextInfraChangeTrackingTransformer):
         if changes is not None:
             self.changes = changes
 
+    @staticmethod
+    def _init_has_deprecation_warning(init_node: cst.FunctionDef) -> bool:
+        """Check if an ``__init__`` method body contains a deprecation warn() call."""
+        for sub_stmt in init_node.body.body:
+            if not isinstance(sub_stmt, cst.SimpleStatementLine):
+                continue
+            for line in sub_stmt.body:
+                if not isinstance(line, cst.Expr) or not isinstance(
+                    line.value,
+                    cst.Call,
+                ):
+                    continue
+                func = line.value.func
+                if isinstance(func, cst.Attribute) and func.attr.value == "warn":
+                    return True
+        return False
+
+    @staticmethod
+    def _class_has_deprecation_warning(node: cst.ClassDef) -> bool:
+        """Check if a class has a deprecation warning in its ``__init__``."""
+        for stmt in node.body.body:
+            if (
+                isinstance(stmt, cst.FunctionDef)
+                and stmt.name.value == "__init__"
+                and FlextInfraRefactorDeprecatedRemover._init_has_deprecation_warning(
+                    stmt,
+                )
+            ):
+                return True
+        return False
+
     @override
     def leave_ClassDef(
         self,
@@ -34,22 +65,7 @@ class FlextInfraRefactorDeprecatedRemover(FlextInfraChangeTrackingTransformer):
         if "deprecated" in class_name.lower():
             self._record_change(f"Removed deprecated class: {class_name}")
             return cst.RemovalSentinel.REMOVE
-        for stmt in original_node.body.body:
-            if isinstance(stmt, cst.FunctionDef) and stmt.name.value == "__init__":
-                for sub_stmt in stmt.body.body:
-                    if isinstance(sub_stmt, cst.SimpleStatementLine):
-                        for line in sub_stmt.body:
-                            if isinstance(line, cst.Expr) and isinstance(
-                                line.value,
-                                cst.Call,
-                            ):
-                                func = line.value.func
-                                if (
-                                    isinstance(func, cst.Attribute)
-                                    and func.attr.value == "warn"
-                                ):
-                                    self._record_change(
-                                        f"Removed deprecated class: {class_name}",
-                                    )
-                                    return cst.RemovalSentinel.REMOVE
+        if self._class_has_deprecation_warning(original_node):
+            self._record_change(f"Removed deprecated class: {class_name}")
+            return cst.RemovalSentinel.REMOVE
         return updated_node

@@ -75,7 +75,7 @@ class FlextInfraCliDeps:
                 "modernize": "Modernize workspace pyproject files",
                 "path-sync": "Rewrite internal FLEXT dependency paths",
             },
-            include_apply=False,
+            flags=u.Infra.SharedFlags(include_apply=False),
         )
         if not raw_args or raw_args[0] in {"-h", "--help"}:
             parser.print_help()

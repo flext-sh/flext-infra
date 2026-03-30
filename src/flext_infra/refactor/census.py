@@ -124,12 +124,14 @@ class FlextInfraRefactorCensus:
         output.progress(5, 5, "aggregate", "report")
         rep = u.Infra.aggregate_usage_metrics(methods, recs, len(files), errs)
         output.summary(
-            "census",
-            rep.total_methods,
-            rep.total_methods - rep.total_unused,
-            rep.total_unused,
-            errs,
-            time.monotonic() - t0,
+            m.Infra.SummaryStats(
+                verb="census",
+                total=rep.total_methods,
+                success=rep.total_methods - rep.total_unused,
+                failed=rep.total_unused,
+                skipped=errs,
+                elapsed=time.monotonic() - t0,
+            )
         )
         return r[m.Infra.UtilitiesCensusReport].ok(rep)
 

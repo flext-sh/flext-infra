@@ -17,7 +17,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 {%- endfor %}
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
 {%- for name in exports %}
     "{{ name }}",
 {%- endfor %}

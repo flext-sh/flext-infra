@@ -25,19 +25,10 @@ class FlextInfraRedundantCastRemover(cst.CSTTransformer):
         updated_node: cst.Call,
     ) -> cst.BaseExpression:
         del original_node
-        func = updated_node.func
-        if not isinstance(func, cst.Name) or func.value != "cast":
+        target_and_args = self._extract_removable_cast(updated_node)
+        if target_and_args is None:
             return updated_node
-        if len(updated_node.args) != c.Infra.CAST_ARITY:
-            return updated_node
-        type_arg, value_arg = updated_node.args
-        if type_arg.keyword is not None or value_arg.keyword is not None:
-            return updated_node
-        target = self._extract_target_string(type_arg)
-        if target is None:
-            return updated_node
-        if target not in self.removable_types:
-            return updated_node
+        target, value_arg = target_and_args
         if target == "type":
             unwrapped = self._unwrap_nested_object_cast(value_arg.value)
             if unwrapped is None:
@@ -48,6 +39,24 @@ class FlextInfraRedundantCastRemover(cst.CSTTransformer):
             return unwrapped
         self.changes.append(f"Removed redundant cast for {target}")
         return value_arg.value
+
+    def _extract_removable_cast(
+        self,
+        node: cst.Call,
+    ) -> tuple[str, cst.Arg] | None:
+        """Extract (target_type, value_arg) if this is a removable cast() call."""
+        func = node.func
+        if not isinstance(func, cst.Name) or func.value != "cast":
+            return None
+        if len(node.args) != c.Infra.CAST_ARITY:
+            return None
+        type_arg, value_arg = node.args
+        if type_arg.keyword is not None or value_arg.keyword is not None:
+            return None
+        target = self._extract_target_string(type_arg)
+        if target is None or target not in self.removable_types:
+            return None
+        return (target, value_arg)
 
     def _extract_target_string(self, node: cst.Arg) -> str | None:
         value = node.value
@@ -64,17 +73,29 @@ class FlextInfraRedundantCastRemover(cst.CSTTransformer):
     ) -> cst.BaseExpression | None:
         if not isinstance(node, cst.Call):
             return None
-        if not isinstance(node.func, cst.Name) or node.func.value != "cast":
+        target_and_args = self._extract_cast_args(node)
+        if target_and_args is None or target_and_args[0] != "t.NormalizedValue":
+            return None
+        return target_and_args[1].value
+
+    @staticmethod
+    def _extract_cast_args(node: cst.Call) -> tuple[str, cst.Arg] | None:
+        """Extract (target_string, value_arg) from a cast() call, or None."""
+        func = node.func
+        if not isinstance(func, cst.Name) or func.value != "cast":
             return None
         if len(node.args) != c.Infra.CAST_ARITY:
             return None
         type_arg, value_arg = node.args
         if type_arg.keyword is not None or value_arg.keyword is not None:
             return None
-        target = self._extract_target_string(type_arg)
-        if target != "t.NormalizedValue":
+        value = type_arg.value
+        if not isinstance(value, cst.SimpleString):
             return None
-        return value_arg.value
+        evaluated = value.evaluated_value
+        if not isinstance(evaluated, str):
+            return None
+        return (evaluated, value_arg)
 
 
 __all__ = [

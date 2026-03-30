@@ -535,8 +535,7 @@ class FlextInfraExtraPathsManager:
         parser = u.Infra.create_parser(
             "flext-infra deps extra-paths",
             "Synchronize pyright and mypy extraPaths from path dependencies",
-            include_apply=True,
-            include_project=True,
+            flags=u.Infra.SharedFlags(include_apply=True, include_project=True),
         )
         args = parser.parse_args(argv)
         cli = u.Infra.resolve(args)

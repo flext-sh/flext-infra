@@ -12,32 +12,40 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from flext_infra.codegen import (
-        census,
-        cli,
-        constants_quality_gate,
-        fixer,
-        lazy_init,
-        py_typed,
-        scaffolder,
+        census as census,
+        cli as cli,
+        constants_quality_gate as constants_quality_gate,
+        fixer as fixer,
+        lazy_init as lazy_init,
+        py_typed as py_typed,
+        scaffolder as scaffolder,
     )
-    from flext_infra.codegen.census import FlextInfraCodegenCensus
-    from flext_infra.codegen.cli import FlextInfraCliCodegen
+    from flext_infra.codegen.census import (
+        FlextInfraCodegenCensus as FlextInfraCodegenCensus,
+    )
+    from flext_infra.codegen.cli import FlextInfraCliCodegen as FlextInfraCliCodegen
     from flext_infra.codegen.constants_quality_gate import (
-        FlextInfraCodegenConstantsQualityGate,
+        FlextInfraCodegenConstantsQualityGate as FlextInfraCodegenConstantsQualityGate,
     )
-    from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-    from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-    from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-    from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+    from flext_infra.codegen.fixer import (
+        FlextInfraCodegenFixer as FlextInfraCodegenFixer,
+    )
+    from flext_infra.codegen.lazy_init import (
+        FlextInfraCodegenLazyInit as FlextInfraCodegenLazyInit,
+    )
+    from flext_infra.codegen.py_typed import (
+        FlextInfraCodegenPyTyped as FlextInfraCodegenPyTyped,
+    )
+    from flext_infra.codegen.scaffolder import (
+        FlextInfraCodegenScaffolder as FlextInfraCodegenScaffolder,
+    )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraCliCodegen": ["flext_infra.codegen.cli", "FlextInfraCliCodegen"],
@@ -71,7 +79,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "scaffolder": ["flext_infra.codegen.scaffolder", ""],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "FlextInfraCliCodegen",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConstantsQualityGate",
@@ -89,41 +97,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

@@ -83,16 +83,12 @@ class FlextInfraUtilitiesGithub(
     def github_sync_workspace_workflows(
         cls,
         workspace_root: Path,
-        *,
-        source_workflow: Path | None = None,
-        report_path: Path | None = None,
-        apply: bool = False,
-        prune: bool = False,
+        params: m.Infra.WorkflowSyncParams,
     ) -> r[Sequence[m.Infra.SyncOperation]]:
         """Sync workflows across all workspace projects."""
         source_result = cls._github_resolve_source_workflow(
             workspace_root,
-            source_workflow,
+            params.source_workflow,
         )
         if source_result.is_failure:
             return r[Sequence[m.Infra.SyncOperation]].fail(
@@ -114,16 +110,16 @@ class FlextInfraUtilitiesGithub(
                 project_name=project.name,
                 project_root=project.path,
                 rendered_template=template_result.value,
-                apply=apply,
-                prune=prune,
+                apply=params.apply,
+                prune=params.prune,
             )
             ops_result = cls._github_sync_project(ctx)
             if ops_result.is_success:
                 all_operations.extend(ops_result.value)
-        if report_path is not None:
+        if params.report_path is not None:
             cls._github_write_report(
-                report_path,
-                apply=apply,
+                params.report_path,
+                apply=params.apply,
                 operations=all_operations,
             )
         return r[Sequence[m.Infra.SyncOperation]].ok(all_operations)
@@ -279,24 +275,21 @@ class FlextInfraUtilitiesGithub(
     def github_pr_orchestrate(
         cls,
         workspace_root: Path,
-        *,
-        projects: t.StrSequence | None = None,
-        include_root: bool = True,
-        branch: str = "",
-        checkpoint: bool = True,
-        fail_fast: bool = False,
-        pr_args: t.StrMapping | None = None,
+        params: m.Infra.PrOrchestrateParams,
     ) -> r[m.Infra.PrOrchestrationResult]:
         """Run PR operations across workspace repositories."""
-        projects_result = cls.resolve_projects(workspace_root, projects or [])
+        projects_result = cls.resolve_projects(
+            workspace_root,
+            list(params.projects or []),
+        )
         if projects_result.is_failure:
             return r[m.Infra.PrOrchestrationResult].fail(
                 projects_result.error or "project resolution failed",
             )
         repos = [p.path for p in projects_result.value]
-        if include_root:
+        if params.include_root:
             repos.append(workspace_root)
-        effective_args = pr_args or {
+        effective_args = params.pr_args or {
             c.Infra.ReportKeys.ACTION: c.Infra.ReportKeys.STATUS,
             "base": c.Infra.Git.MAIN,
         }
@@ -305,15 +298,15 @@ class FlextInfraUtilitiesGithub(
         pr_ctx = m.Infra.GithubPrRepoContext(
             workspace_root=workspace_root,
             effective_args=effective_args,
-            branch=branch,
-            checkpoint=checkpoint,
+            branch=params.branch,
+            checkpoint=params.checkpoint,
             results=results,
         )
         for repo_root in repos:
             failed = cls._github_pr_process_repo(repo_root, pr_ctx)
             if failed:
                 failures += 1
-                if fail_fast:
+                if params.fail_fast:
                     break
         total = len(repos)
         orchestration_results: t.Infra.VariadicTuple[m.Infra.PrExecutionResultModel] = (

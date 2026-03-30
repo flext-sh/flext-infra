@@ -5,44 +5,46 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from tests.unit._utilities import (
-        test_discovery_consolidated,
-        test_formatting,
-        test_iteration,
-        test_parsing,
-        test_rope_hooks,
-        test_safety,
-        test_scanning,
+        test_discovery_consolidated as test_discovery_consolidated,
+        test_formatting as test_formatting,
+        test_iteration as test_iteration,
+        test_parsing as test_parsing,
+        test_rope_hooks as test_rope_hooks,
+        test_safety as test_safety,
+        test_scanning as test_scanning,
     )
     from tests.unit._utilities.test_discovery_consolidated import (
-        TestDiscoveryDiscoverProjects,
-        TestDiscoveryFindAllPyprojectFiles,
-        TestDiscoveryIterPythonFiles,
-        TestDiscoveryProjectRoots,
+        TestDiscoveryDiscoverProjects as TestDiscoveryDiscoverProjects,
+        TestDiscoveryFindAllPyprojectFiles as TestDiscoveryFindAllPyprojectFiles,
+        TestDiscoveryIterPythonFiles as TestDiscoveryIterPythonFiles,
+        TestDiscoveryProjectRoots as TestDiscoveryProjectRoots,
     )
-    from tests.unit._utilities.test_formatting import TestFormattingRunRuffFix
-    from tests.unit._utilities.test_iteration import TestIterWorkspacePythonModules
+    from tests.unit._utilities.test_formatting import (
+        TestFormattingRunRuffFix as TestFormattingRunRuffFix,
+    )
+    from tests.unit._utilities.test_iteration import (
+        TestIterWorkspacePythonModules as TestIterWorkspacePythonModules,
+    )
     from tests.unit._utilities.test_parsing import (
-        TestParsingModuleAst,
-        TestParsingModuleCst,
+        TestParsingModuleAst as TestParsingModuleAst,
+        TestParsingModuleCst as TestParsingModuleCst,
     )
     from tests.unit._utilities.test_rope_hooks import (
-        test_run_rope_post_hooks_applies_mro_migration,
-        test_run_rope_post_hooks_dry_run_is_non_mutating,
+        test_run_rope_post_hooks_applies_mro_migration as test_run_rope_post_hooks_applies_mro_migration,
+        test_run_rope_post_hooks_dry_run_is_non_mutating as test_run_rope_post_hooks_dry_run_is_non_mutating,
     )
     from tests.unit._utilities.test_safety import (
-        TestSafetyCheckpoint,
-        TestSafetyRollback,
+        TestSafetyCheckpoint as TestSafetyCheckpoint,
+        TestSafetyRollback as TestSafetyRollback,
     )
-    from tests.unit._utilities.test_scanning import TestScanModels
+    from tests.unit._utilities.test_scanning import TestScanModels as TestScanModels
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestDiscoveryDiscoverProjects": [
@@ -103,7 +105,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_scanning": ["tests.unit._utilities.test_scanning", ""],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "TestDiscoveryDiscoverProjects",
     "TestDiscoveryFindAllPyprojectFiles",
     "TestDiscoveryIterPythonFiles",
@@ -127,41 +129,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

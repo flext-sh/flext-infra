@@ -154,6 +154,112 @@ class FlextInfraUtilitiesRefactorPydantic:
         return (filtered_classes, alias_moves)
 
     @staticmethod
+    def _process_single_file(
+        file_path: Path,
+        *,
+        apply: bool,
+        failure_stats: m.Infra.CentralizerFailureStats,
+    ) -> m.Infra.CentralizerFileResult | None:
+        """Process a single file for model centralization.
+
+        Returns None if the file has no moves, or a result with move details.
+        """
+        cls = FlextInfraUtilitiesRefactorPydantic
+        found_models, found_aliases = (
+            FlextInfraUtilitiesRefactorPydanticAnalysis.scan_file_violations(file_path)
+        )
+        collected_moves = (
+            FlextInfraUtilitiesRefactorPydanticAnalysis.collect_moves_safe(
+                file_path,
+                failure_stats=failure_stats,
+            )
+        )
+        if collected_moves is None:
+            return m.Infra.CentralizerFileResult(
+                found_models=found_models,
+                found_aliases=found_aliases,
+            )
+        class_moves, alias_moves = collected_moves
+        if not class_moves and not alias_moves:
+            return m.Infra.CentralizerFileResult(
+                found_models=found_models,
+                found_aliases=found_aliases,
+            )
+        apply_class_moves = class_moves
+        apply_alias_moves = alias_moves
+        if apply:
+            apply_class_moves, apply_alias_moves = cls._filter_moves_for_necessity(
+                class_moves,
+                alias_moves,
+            )
+            if not apply_class_moves and not apply_alias_moves:
+                return m.Infra.CentralizerFileResult(
+                    found_models=found_models,
+                    found_aliases=found_aliases,
+                    skipped_non_necessary=True,
+                )
+        return m.Infra.CentralizerFileResult(
+            found_models=found_models,
+            found_aliases=found_aliases,
+            apply_class_moves=apply_class_moves,
+            apply_alias_moves=apply_alias_moves,
+        )
+
+    @staticmethod
+    def _apply_moves(
+        file_path: Path,
+        result: m.Infra.CentralizerFileResult,
+    ) -> t.Infra.Pair[str, str]:
+        """Build updated destination and source content for a file's moves."""
+        cls = FlextInfraUtilitiesRefactorPydantic
+        apply_class_moves = result.apply_class_moves
+        apply_alias_moves = result.apply_alias_moves
+        dest_path = file_path.parent / "_models.py"
+        class_blocks = [mv.source for mv in apply_class_moves]
+        class_names = [mv.name for mv in apply_class_moves]
+        alias_blocks = [cls._alias_as_root_model(a) for a in apply_alias_moves]
+        alias_names = [a.name for a in apply_alias_moves]
+        existing_dest = cls._ensure_dest_header(dest_path)
+        updated_dest = cls._append_unique_blocks(
+            existing_dest, class_blocks, class_names
+        )
+        updated_dest = cls._append_unique_blocks(
+            updated_dest, alias_blocks, alias_names
+        )
+        moved_names = [mv.name for mv in apply_class_moves] + [
+            a.name for a in apply_alias_moves
+        ]
+        updated_source = FlextInfraUtilitiesRefactorPydanticAnalysis.rewrite_source(
+            file_path,
+            apply_class_moves,
+            apply_alias_moves,
+            import_statement=cls._dest_import_statement(file_path, moved_names),
+        )
+        return updated_dest, updated_source
+
+    @staticmethod
+    def _normalize_pass(
+        python_files: Sequence[Path],
+        *,
+        apply: bool,
+    ) -> int:
+        """Run normalization pass over files, returning count of normalized files."""
+        cls = FlextInfraUtilitiesRefactorPydantic
+        normalized_files = 0
+        for file_path in python_files:
+            if not cls._is_target_python(file_path):
+                continue
+            if cls._is_allowed_model_path(file_path):
+                continue
+            try:
+                changed = cls._normalize_disallowed_bases(file_path, apply=apply)
+            except (SyntaxError, UnicodeDecodeError, OSError):
+                continue
+            if changed:
+                normalized_files += 1
+        return normalized_files
+
+    @staticmethod
     def centralize_workspace(
         workspace_root: Path,
         *,
@@ -161,6 +267,7 @@ class FlextInfraUtilitiesRefactorPydantic:
         normalize_remaining: bool,
     ) -> Mapping[str, int]:
         """Centralize model contracts and normalize namespace scaffolds."""
+        cls = FlextInfraUtilitiesRefactorPydantic
         moved_classes = 0
         moved_aliases = 0
         normalized_files = 0
@@ -195,116 +302,46 @@ class FlextInfraUtilitiesRefactorPydantic:
             }
         python_files = files_result.value
         for file_path in python_files:
-            if not FlextInfraUtilitiesRefactorPydantic._is_target_python(
-                file_path,
-            ):
+            if not cls._is_target_python(file_path):
                 continue
-            if FlextInfraUtilitiesRefactorPydantic._is_allowed_model_path(
-                file_path,
-            ):
+            if cls._is_allowed_model_path(file_path):
                 continue
             scanned_files += 1
-            found_models, found_aliases = (
-                FlextInfraUtilitiesRefactorPydanticAnalysis.scan_file_violations(
-                    file_path,
-                )
+            result = cls._process_single_file(
+                file_path,
+                apply=apply,
+                failure_stats=failure_stats,
             )
-            detected_model_violations += found_models
-            detected_alias_violations += found_aliases
-            collected_moves = (
-                FlextInfraUtilitiesRefactorPydanticAnalysis.collect_moves_safe(
-                    file_path,
-                    failure_stats=failure_stats,
-                )
-            )
-            if collected_moves is None:
+            if result is None:
                 continue
-            class_moves, alias_moves = collected_moves
-            if not class_moves and not alias_moves:
+            detected_model_violations += result.found_models
+            detected_alias_violations += result.found_aliases
+            if result.skipped_non_necessary:
+                skipped_non_necessary_apply += 1
                 continue
-            apply_class_moves = class_moves
-            apply_alias_moves = alias_moves
-            if apply:
-                apply_class_moves, apply_alias_moves = (
-                    FlextInfraUtilitiesRefactorPydantic._filter_moves_for_necessity(
-                        class_moves,
-                        alias_moves,
-                    )
-                )
-                if not apply_class_moves and not apply_alias_moves:
-                    skipped_non_necessary_apply += 1
-                    continue
+            if not result.apply_class_moves and not result.apply_alias_moves:
+                continue
             dest_path = file_path.parent / "_models.py"
-            class_blocks = [m.source for m in apply_class_moves]
-            class_names = [m.name for m in apply_class_moves]
-            alias_blocks = [
-                FlextInfraUtilitiesRefactorPydantic._alias_as_root_model(a)
-                for a in apply_alias_moves
-            ]
-            alias_names = [a.name for a in apply_alias_moves]
             if not dest_path.exists():
                 created_model_files += 1
-            existing_dest = FlextInfraUtilitiesRefactorPydantic._ensure_dest_header(
-                dest_path,
-            )
-            updated_dest = FlextInfraUtilitiesRefactorPydantic._append_unique_blocks(
-                existing_dest,
-                class_blocks,
-                class_names,
-            )
-            updated_dest = FlextInfraUtilitiesRefactorPydantic._append_unique_blocks(
-                updated_dest,
-                alias_blocks,
-                alias_names,
-            )
-            moved_names = [m.name for m in apply_class_moves] + [
-                a.name for a in apply_alias_moves
-            ]
-            updated_source = FlextInfraUtilitiesRefactorPydanticAnalysis.rewrite_source(
-                file_path,
-                apply_class_moves,
-                apply_alias_moves,
-                import_statement=FlextInfraUtilitiesRefactorPydantic._dest_import_statement(
-                    file_path,
-                    moved_names,
-                ),
-            )
-            moved_classes += len(apply_class_moves)
-            moved_aliases += len(apply_alias_moves)
+            updated_dest, updated_source = cls._apply_moves(file_path, result)
+            moved_classes += len(result.apply_class_moves)
+            moved_aliases += len(result.apply_alias_moves)
             touched_files += 1
             if apply:
-                if not FlextInfraUtilitiesRefactorPydantic._can_apply_import_rewrite(
-                    file_path,
-                ):
+                if not cls._can_apply_import_rewrite(file_path):
                     skipped_nonpackage_apply += 1
                     continue
                 _ = dest_path.write_text(
-                    updated_dest, encoding=c.Infra.Encoding.DEFAULT
+                    updated_dest,
+                    encoding=c.Infra.Encoding.DEFAULT,
                 )
                 _ = file_path.write_text(
-                    updated_source, encoding=c.Infra.Encoding.DEFAULT
+                    updated_source,
+                    encoding=c.Infra.Encoding.DEFAULT,
                 )
         if normalize_remaining:
-            for file_path in python_files:
-                if not FlextInfraUtilitiesRefactorPydantic._is_target_python(
-                    file_path,
-                ):
-                    continue
-                if FlextInfraUtilitiesRefactorPydantic._is_allowed_model_path(
-                    file_path,
-                ):
-                    continue
-                try:
-                    changed = (
-                        FlextInfraUtilitiesRefactorPydantic._normalize_disallowed_bases(
-                            file_path,
-                            apply=apply,
-                        )
-                    )
-                except (SyntaxError, UnicodeDecodeError, OSError):
-                    continue
-                if changed:
-                    normalized_files += 1
+            normalized_files = cls._normalize_pass(python_files, apply=apply)
         return {
             "scanned_files": scanned_files,
             "touched_files": touched_files,

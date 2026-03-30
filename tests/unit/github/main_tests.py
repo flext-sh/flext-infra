@@ -14,7 +14,10 @@ from flext_infra import FlextInfraCliGithub, m, u
 
 class TestRunWorkflows:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
+        def _sync(
+            workspace_root: Path,
+            params: m.Infra.WorkflowSyncParams,
+        ) -> r[Sequence[m.Infra.SyncOperation]]:
             return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
@@ -28,7 +31,10 @@ class TestRunWorkflows:
         tm.that(result.is_success, eq=True)
 
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
+        def _sync(
+            workspace_root: Path,
+            params: m.Infra.WorkflowSyncParams,
+        ) -> r[Sequence[m.Infra.SyncOperation]]:
             return r[Sequence[m.Infra.SyncOperation]].fail("sync failed")
 
         monkeypatch.setattr(
@@ -46,10 +52,13 @@ class TestRunWorkflows:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: MutableMapping[str, bool] = {}
+        captured: MutableMapping[str, m.Infra.WorkflowSyncParams] = {}
 
-        def _fake_sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
-            captured.update(kw)
+        def _fake_sync(
+            workspace_root: Path,
+            params: m.Infra.WorkflowSyncParams,
+        ) -> r[Sequence[m.Infra.SyncOperation]]:
+            captured["params"] = params
             return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
@@ -60,17 +69,20 @@ class TestRunWorkflows:
         FlextInfraCliGithub._handle_workflows(
             m.Infra.GithubWorkflowsInput(workspace=str(tmp_path), apply=True),
         )
-        assert captured["apply"] is True
+        assert captured["params"].apply is True
 
     def test_with_prune_flag(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        captured: MutableMapping[str, bool] = {}
+        captured: MutableMapping[str, m.Infra.WorkflowSyncParams] = {}
 
-        def _fake_sync(**kw: bool) -> r[Sequence[m.Infra.SyncOperation]]:
-            captured.update(kw)
+        def _fake_sync(
+            workspace_root: Path,
+            params: m.Infra.WorkflowSyncParams,
+        ) -> r[Sequence[m.Infra.SyncOperation]]:
+            captured["params"] = params
             return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
@@ -81,13 +93,16 @@ class TestRunWorkflows:
         FlextInfraCliGithub._handle_workflows(
             m.Infra.GithubWorkflowsInput(workspace=str(tmp_path), prune=True),
         )
-        assert captured["prune"] is True
+        assert captured["params"].prune is True
 
     def test_with_report(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        captured: MutableMapping[str, Path | None] = {}
+        captured: MutableMapping[str, m.Infra.WorkflowSyncParams] = {}
 
-        def _fake_sync(**kw: Path | None) -> r[Sequence[m.Infra.SyncOperation]]:
-            captured.update(kw)
+        def _fake_sync(
+            workspace_root: Path,
+            params: m.Infra.WorkflowSyncParams,
+        ) -> r[Sequence[m.Infra.SyncOperation]]:
+            captured["params"] = params
             return r[Sequence[m.Infra.SyncOperation]].ok([])
 
         monkeypatch.setattr(
@@ -102,7 +117,7 @@ class TestRunWorkflows:
                 report=str(report),
             ),
         )
-        assert captured["report_path"] == report
+        assert captured["params"].report_path == report
 
 
 class TestRunLint:

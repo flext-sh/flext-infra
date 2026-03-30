@@ -283,7 +283,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         parser = u.Infra.create_parser(
             "flext-infra workspace sync",
             "Workspace base.mk sync",
-            include_apply=False,
+            flags=u.Infra.SharedFlags(include_apply=False),
         )
         _ = parser.add_argument(
             "--canonical-root",

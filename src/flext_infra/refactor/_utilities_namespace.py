@@ -174,14 +174,6 @@ class FlextInfraUtilitiesRefactorNamespace:
                     dep_names.add(Path(dep_path_clean).name)
 
     @staticmethod
-    def _preferred_file_name(*, family: str) -> str:
-        pattern = c.Infra.FAMILY_FILES.get(
-            family,
-            "utilities.py",
-        )
-        return pattern.lstrip("*")
-
-    @staticmethod
     def _base_import_for_family(
         *,
         family: str,
@@ -493,13 +485,15 @@ class FlextInfraUtilitiesRefactorNamespace:
         remove_ranges: MutableSequence[t.Infra.IntPair] = []
         blocks: MutableSequence[str] = []
         for stmt in tree.body:
-            FlextInfraUtilitiesRefactorNamespace._collect_typing_alias_stmt(
-                stmt=stmt,
-                source=source,
-                alias_names=alias_names,
-                remove_ranges=remove_ranges,
-                blocks=blocks,
+            matched = FlextInfraUtilitiesRefactorNamespace._match_typing_alias(
+                stmt,
+                source,
+                alias_names,
             )
+            if matched is not None:
+                alias_end, block = matched
+                remove_ranges.append((stmt.lineno, alias_end))
+                blocks.append(block)
         if not blocks:
             return
         target_file = FlextInfraUtilitiesRefactorNamespace._canonical_target_file(
@@ -527,42 +521,32 @@ class FlextInfraUtilitiesRefactorNamespace:
         return block.strip("\n")
 
     @staticmethod
-    def _collect_typing_alias_stmt(
-        *,
+    def _match_typing_alias(
         stmt: ast.stmt,
         source: str,
         alias_names: t.Infra.StrSet,
-        remove_ranges: MutableSequence[t.Infra.IntPair],
-        blocks: MutableSequence[str],
-    ) -> None:
-        """Collect a single typing alias (PEP 695 or TypeAlias) if it matches."""
+    ) -> tuple[int, str] | None:
+        """Match a PEP 695 or TypeAlias stmt. Returns (end_lineno, block) or None."""
         if isinstance(stmt, ast.TypeAlias):
-            alias_name = stmt.name.id
-            if alias_name not in alias_names:
-                return
-            if stmt.end_lineno is None:
-                return
+            if stmt.name.id not in alias_names or stmt.end_lineno is None:
+                return None
             block = FlextInfraUtilitiesRefactorNamespace._extract_source_block(
                 source=source,
                 node=stmt,
             )
-            remove_ranges.append((stmt.lineno, stmt.end_lineno))
-            blocks.append(block)
-            return
+            return (stmt.end_lineno, block)
         if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
-            if stmt.target.id not in alias_names:
-                return
-            if stmt.end_lineno is None:
-                return
+            if stmt.target.id not in alias_names or stmt.end_lineno is None:
+                return None
             annotation_src = ast.get_source_segment(source, stmt.annotation) or ""
             if "TypeAlias" not in annotation_src:
-                return
+                return None
             block = FlextInfraUtilitiesRefactorNamespace._extract_source_block(
                 source=source,
                 node=stmt,
             )
-            remove_ranges.append((stmt.lineno, stmt.end_lineno))
-            blocks.append(block)
+            return (stmt.end_lineno, block)
+        return None
 
     @staticmethod
     def _append_protocol_blocks(
@@ -642,9 +626,10 @@ class FlextInfraUtilitiesRefactorNamespace:
                 continue
             suffix = c.Infra.FAMILY_SUFFIXES[status.family]
             class_name = f"{stem}{suffix}"
-            file_name = FlextInfraUtilitiesRefactorNamespace._preferred_file_name(
-                family=status.family,
-            )
+            file_name = c.Infra.FAMILY_FILES.get(
+                status.family,
+                "utilities.py",
+            ).lstrip("*")
             target_path = primary_package / file_name
             if target_path.exists():
                 FlextInfraUtilitiesRefactorNamespace._patch_existing_facade_file(
@@ -744,23 +729,16 @@ class FlextInfraUtilitiesRefactorNamespace:
     ) -> bool:
         """Check if a CST module is a facade declaration file."""
         return any(
-            FlextInfraUtilitiesRefactorNamespace._is_short_alias_assignment(item)
+            isinstance(item, cst.Assign)
+            and isinstance(item.value, cst.Name)
+            and any(
+                isinstance(target.target, cst.Name)
+                and len(target.target.value) <= _MAX_ALIAS_NAME_LEN
+                for target in item.targets
+            )
             for stmt in tree.body
             if isinstance(stmt, cst.SimpleStatementLine)
             for item in stmt.body
-        )
-
-    @staticmethod
-    def _is_short_alias_assignment(item: cst.BaseSmallStatement) -> bool:
-        """Check if a CST statement is a short alias assignment (e.g. ``m = Xyz``)."""
-        if not isinstance(item, cst.Assign):
-            return False
-        if not isinstance(item.value, cst.Name):
-            return False
-        return any(
-            isinstance(target.target, cst.Name)
-            and len(target.target.value) <= _MAX_ALIAS_NAME_LEN
-            for target in item.targets
         )
 
     @staticmethod
@@ -820,10 +798,16 @@ class FlextInfraUtilitiesRefactorNamespace:
             parse_failures=parse_failures,
         )
         if new_imports:
-            insert_line = FlextInfraUtilitiesRefactorNamespace._find_last_import_line(
-                file_path=file_path,
+            parsed_for_insert = FlextInfraUtilitiesRefactorLoader.load_python_module(
+                file_path,
+                stage="mro-completeness-imports",
                 parse_failures=parse_failures,
             )
+            insert_line = 0
+            if parsed_for_insert is not None:
+                for imp_stmt in parsed_for_insert.tree.body:
+                    if isinstance(imp_stmt, (ast.Import, ast.ImportFrom)):
+                        insert_line = imp_stmt.end_lineno or imp_stmt.lineno
             for import_line in reversed(new_imports):
                 lines.insert(insert_line, import_line)
         _ = file_path.write_text(
@@ -863,25 +847,6 @@ class FlextInfraUtilitiesRefactorNamespace:
             )
             imports.append(f"from {module} import {base_name}\n")
         return imports
-
-    @staticmethod
-    def _find_last_import_line(
-        *,
-        file_path: Path,
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
-    ) -> int:
-        """Find the line number after the last import statement."""
-        parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
-            file_path,
-            stage="mro-completeness-imports",
-            parse_failures=parse_failures,
-        )
-        insert_line = 0
-        if parsed is not None:
-            for stmt in parsed.tree.body:
-                if isinstance(stmt, (ast.Import, ast.ImportFrom)):
-                    insert_line = stmt.end_lineno or stmt.lineno
-        return insert_line
 
     @staticmethod
     def rewrite_runtime_alias_violations(*, py_files: Sequence[Path]) -> None:
@@ -1248,7 +1213,11 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
             return cst.RemovalSentinel.REMOVE
         remaining: MutableSequence[cst.ImportAlias] = []
         for alias in names:
-            name = self._alias_name(alias)
+            name = (
+                alias.name.value
+                if isinstance(alias.name, cst.Name)
+                else alias.name.attr.value
+            )
             if alias.asname is not None:
                 self.changed = True
                 continue
@@ -1264,12 +1233,6 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
             cleaned = self._normalize_commas(remaining)
             return updated_node.with_changes(names=cleaned)
         return updated_node
-
-    @staticmethod
-    def _alias_name(alias: cst.ImportAlias) -> str:
-        if isinstance(alias.name, cst.Name):
-            return alias.name.value
-        return alias.name.attr.value
 
     @staticmethod
     def _normalize_commas(

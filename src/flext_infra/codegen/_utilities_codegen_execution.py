@@ -113,8 +113,8 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
         }
 
     @staticmethod
-    def modified_python_files(workspace_root: Path) -> t.StrSequence:
-        """Detect modified Python files in workspace."""
+    def _collect_git_modified(workspace_root: Path) -> t.Infra.StrSet:
+        """Collect modified constants Python files from git queries."""
         normalized: t.Infra.StrSet = set()
         git_queries: Sequence[t.StrSequence] = [
             ["diff", "--name-only", "--", "*.py"],
@@ -135,34 +135,45 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
                     normalized.add(str(candidate.relative_to(workspace_root)))
                 except ValueError:
                     continue
-        if normalized:
-            return sorted(normalized)
+        return normalized
+
+    @staticmethod
+    def _collect_fallback_modified(workspace_root: Path) -> t.StrSequence:
+        """Collect modified files from fallback dedup-apply.json report."""
         fallback = (
             workspace_root / ".reports/codegen/constants-refactor/dedup-apply.json"
         )
-        if fallback.is_file():
-            try:
-                text = fallback.read_text(encoding=c.Infra.Encoding.DEFAULT)
-                payload = _INFRA_MAPPING_ADAPTER.validate_json(text)
-            except (OSError, UnicodeDecodeError, ValueError):
-                return []
-            try:
-                raw = _INFRA_MAPPING_ADAPTER.validate_python(
-                    payload,
-                )
-            except ValidationError:
-                return []
-            modified = raw.get("modified_files")
-            if isinstance(modified, list):
-                filtered: t.Infra.StrSet = set()
-                for entry in modified:
-                    if not isinstance(entry, str):
-                        continue
-                    if not entry.endswith(c.Infra.Extensions.PYTHON):
-                        continue
-                    filtered.add(entry)
-                return sorted(filtered)
-        return []
+        if not fallback.is_file():
+            return []
+        try:
+            text = fallback.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            payload = _INFRA_MAPPING_ADAPTER.validate_json(text)
+        except (OSError, UnicodeDecodeError, ValueError):
+            return []
+        try:
+            raw = _INFRA_MAPPING_ADAPTER.validate_python(payload)
+        except ValidationError:
+            return []
+        modified = raw.get("modified_files")
+        if not isinstance(modified, list):
+            return []
+        return sorted(
+            entry
+            for entry in modified
+            if isinstance(entry, str) and entry.endswith(c.Infra.Extensions.PYTHON)
+        )
+
+    @staticmethod
+    def modified_python_files(workspace_root: Path) -> t.StrSequence:
+        """Detect modified Python files in workspace."""
+        normalized = FlextInfraUtilitiesCodegenExecution._collect_git_modified(
+            workspace_root,
+        )
+        if normalized:
+            return sorted(normalized)
+        return FlextInfraUtilitiesCodegenExecution._collect_fallback_modified(
+            workspace_root,
+        )
 
 
 __all__ = ["FlextInfraUtilitiesCodegenExecution"]

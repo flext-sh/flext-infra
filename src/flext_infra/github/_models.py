@@ -227,5 +227,53 @@ class FlextInfraGithubModels:
             Field(description="Accumulated PR execution results"),
         ]
 
+    class WorkflowSyncParams(FlextModels.FrozenStrictModel):
+        """Bundled parameters for github_sync_workspace_workflows."""
+
+        source_workflow: Annotated[
+            Path | None,
+            Field(default=None, description="Override source workflow path"),
+        ] = None
+        report_path: Annotated[
+            Path | None,
+            Field(default=None, description="Output report file path"),
+        ] = None
+        apply: Annotated[
+            bool,
+            Field(default=False, description="Apply changes"),
+        ] = False
+        prune: Annotated[
+            bool,
+            Field(default=False, description="Remove non-canonical workflows"),
+        ] = False
+
+    class PrOrchestrateParams(FlextModels.FrozenStrictModel):
+        """Bundled parameters for github_pr_orchestrate."""
+
+        projects: Annotated[
+            t.StrSequence | None,
+            Field(default=None, description="Project filter list"),
+        ] = None
+        include_root: Annotated[
+            bool,
+            Field(default=True, description="Include workspace root"),
+        ] = True
+        branch: Annotated[
+            str,
+            Field(default="", description="Branch override"),
+        ] = ""
+        checkpoint: Annotated[
+            bool,
+            Field(default=True, description="Enable checkpoint before PR"),
+        ] = True
+        fail_fast: Annotated[
+            bool,
+            Field(default=False, description="Stop on first failure"),
+        ] = False
+        pr_args: Annotated[
+            t.StrMapping | None,
+            Field(default=None, description="PR argument overrides"),
+        ] = None
+
 
 __all__ = ["FlextInfraGithubModels"]

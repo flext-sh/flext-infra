@@ -5,69 +5,79 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from flext_infra.refactor import (
-        census,
-        class_nesting_analyzer,
-        cli,
-        engine,
-        migrate_to_class_mro,
-        mro_import_rewriter,
-        mro_migration_validator,
-        mro_resolver,
-        namespace_enforcer,
-        project_classifier,
-        rule,
-        rule_definition_validator,
-        safety,
-        scanner,
-        violation_analyzer,
+        census as census,
+        class_nesting_analyzer as class_nesting_analyzer,
+        cli as cli,
+        engine as engine,
+        migrate_to_class_mro as migrate_to_class_mro,
+        mro_import_rewriter as mro_import_rewriter,
+        mro_migration_validator as mro_migration_validator,
+        mro_resolver as mro_resolver,
+        namespace_enforcer as namespace_enforcer,
+        project_classifier as project_classifier,
+        rule as rule,
+        rule_definition_validator as rule_definition_validator,
+        safety as safety,
+        scanner as scanner,
+        violation_analyzer as violation_analyzer,
     )
-    from flext_infra.refactor.census import FlextInfraRefactorCensus
+    from flext_infra.refactor.census import (
+        FlextInfraRefactorCensus as FlextInfraRefactorCensus,
+    )
     from flext_infra.refactor.class_nesting_analyzer import (
-        FlextInfraRefactorClassNestingAnalyzer,
+        FlextInfraRefactorClassNestingAnalyzer as FlextInfraRefactorClassNestingAnalyzer,
     )
-    from flext_infra.refactor.cli import FlextInfraCliRefactor
+    from flext_infra.refactor.cli import FlextInfraCliRefactor as FlextInfraCliRefactor
     from flext_infra.refactor.engine import (
-        FlextInfraRefactorClassReconstructorRule,
-        FlextInfraRefactorEngine,
-        FlextInfraRefactorMRORedundancyChecker,
-        FlextInfraRefactorSignaturePropagationRule,
-        FlextInfraRefactorSymbolPropagationRule,
-        FlextInfraRefactorTier0ImportFixRule,
-        FlextInfraRefactorTypingAnnotationFixRule,
-        FlextInfraRefactorTypingUnificationRule,
+        FlextInfraRefactorClassReconstructorRule as FlextInfraRefactorClassReconstructorRule,
+        FlextInfraRefactorEngine as FlextInfraRefactorEngine,
+        FlextInfraRefactorMRORedundancyChecker as FlextInfraRefactorMRORedundancyChecker,
+        FlextInfraRefactorSignaturePropagationRule as FlextInfraRefactorSignaturePropagationRule,
+        FlextInfraRefactorSymbolPropagationRule as FlextInfraRefactorSymbolPropagationRule,
+        FlextInfraRefactorTier0ImportFixRule as FlextInfraRefactorTier0ImportFixRule,
+        FlextInfraRefactorTypingAnnotationFixRule as FlextInfraRefactorTypingAnnotationFixRule,
+        FlextInfraRefactorTypingUnificationRule as FlextInfraRefactorTypingUnificationRule,
     )
     from flext_infra.refactor.migrate_to_class_mro import (
-        FlextInfraRefactorMigrateToClassMRO,
+        FlextInfraRefactorMigrateToClassMRO as FlextInfraRefactorMigrateToClassMRO,
     )
     from flext_infra.refactor.mro_import_rewriter import (
-        FlextInfraRefactorMROImportRewriter,
+        FlextInfraRefactorMROImportRewriter as FlextInfraRefactorMROImportRewriter,
     )
     from flext_infra.refactor.mro_migration_validator import (
-        FlextInfraRefactorMROMigrationValidator,
+        FlextInfraRefactorMROMigrationValidator as FlextInfraRefactorMROMigrationValidator,
     )
-    from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
-    from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-    from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+    from flext_infra.refactor.mro_resolver import (
+        FlextInfraRefactorMROResolver as FlextInfraRefactorMROResolver,
+    )
+    from flext_infra.refactor.namespace_enforcer import (
+        FlextInfraNamespaceEnforcer as FlextInfraNamespaceEnforcer,
+    )
+    from flext_infra.refactor.project_classifier import (
+        FlextInfraProjectClassifier as FlextInfraProjectClassifier,
+    )
     from flext_infra.refactor.rule import (
-        FlextInfraRefactorRule,
-        FlextInfraRefactorRuleLoader,
+        FlextInfraRefactorRule as FlextInfraRefactorRule,
+        FlextInfraRefactorRuleLoader as FlextInfraRefactorRuleLoader,
     )
     from flext_infra.refactor.rule_definition_validator import (
-        FlextInfraRefactorRuleDefinitionValidator,
+        FlextInfraRefactorRuleDefinitionValidator as FlextInfraRefactorRuleDefinitionValidator,
     )
-    from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-    from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+    from flext_infra.refactor.safety import (
+        FlextInfraRefactorSafetyManager as FlextInfraRefactorSafetyManager,
+    )
+    from flext_infra.refactor.scanner import (
+        FlextInfraRefactorLooseClassScanner as FlextInfraRefactorLooseClassScanner,
+    )
     from flext_infra.refactor.violation_analyzer import (
-        FlextInfraRefactorViolationAnalyzer,
+        FlextInfraRefactorViolationAnalyzer as FlextInfraRefactorViolationAnalyzer,
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
@@ -174,7 +184,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "violation_analyzer": ["flext_infra.refactor.violation_analyzer", ""],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "FlextInfraCliRefactor",
     "FlextInfraNamespaceEnforcer",
     "FlextInfraProjectClassifier",
@@ -216,41 +226,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

@@ -105,6 +105,52 @@ class FlextInfraPytestDiagExtractor:
         diag.error_traces = block
 
     @staticmethod
+    def _build_trace_chunk(heading: str, label: str, element: DefusedET.Element) -> str:
+        """Build an error/failure trace chunk from a JUnit XML element."""
+        msg = (element.attrib.get(c.Infra.ReportKeys.MESSAGE) or "").strip()
+        trace = (element.text or "").strip()
+        chunk: MutableSequence[str] = [f"=== {heading}: {label} ==="]
+        if msg:
+            chunk.append(msg)
+        if trace:
+            chunk.append(trace)
+        return "\n".join(chunk)
+
+    @staticmethod
+    def _process_testcase(
+        case: DefusedET.Element,
+        diag: _DiagResult,
+    ) -> t.Infra.Pair[float, str]:
+        """Process a single testcase element; returns (seconds, label)."""
+        classname = case.attrib.get("classname", "")
+        name = case.attrib.get(c.Infra.NAME, "")
+        label = f"{classname}::{name}" if classname else name
+        try:
+            secs = float(case.attrib.get("time", "0") or 0.0)
+        except ValueError:
+            secs = 0.0
+        failure = case.find("failure")
+        error = case.find(c.Infra.ERROR)
+        skipped = case.find("skipped")
+        if failure is not None:
+            diag.failed_cases.append(label)
+            diag.error_traces.append(
+                FlextInfraPytestDiagExtractor._build_trace_chunk(
+                    "FAILURE", label, failure
+                ),
+            )
+        if error is not None:
+            diag.error_traces.append(
+                FlextInfraPytestDiagExtractor._build_trace_chunk("ERROR", label, error),
+            )
+        if skipped is not None:
+            reason = (
+                skipped.attrib.get(c.Infra.ReportKeys.MESSAGE) or skipped.text or ""
+            ).strip()
+            diag.skip_cases.append(f"{label} | {reason}" if reason else label)
+        return secs, label
+
+    @staticmethod
     def _parse_xml(junit_path: Path, diag: _DiagResult) -> bool:
         """Parse JUnit XML and populate diagnostics. Returns True on success."""
         if not junit_path.exists():
@@ -117,41 +163,9 @@ class FlextInfraPytestDiagExtractor:
             return False
         slow_rows: MutableSequence[t.Infra.Pair[float, str]] = []
         for case in root.iter("testcase"):
-            classname = case.attrib.get("classname", "")
-            name = case.attrib.get(c.Infra.NAME, "")
-            label = f"{classname}::{name}" if classname else name
-            try:
-                secs = float(case.attrib.get("time", "0") or 0.0)
-            except ValueError:
-                secs = 0.0
-            slow_rows.append((secs, label))
-            failure = case.find("failure")
-            error = case.find(c.Infra.ERROR)
-            skipped = case.find("skipped")
-            if failure is not None:
-                diag.failed_cases.append(label)
-                msg = (failure.attrib.get(c.Infra.ReportKeys.MESSAGE) or "").strip()
-                trace = (failure.text or "").strip()
-                chunk = [f"=== FAILURE: {label} ==="]
-                if msg:
-                    chunk.append(msg)
-                if trace:
-                    chunk.append(trace)
-                diag.error_traces.append("\n".join(chunk))
-            if error is not None:
-                msg = (error.attrib.get(c.Infra.ReportKeys.MESSAGE) or "").strip()
-                trace = (error.text or "").strip()
-                chunk = [f"=== ERROR: {label} ==="]
-                if msg:
-                    chunk.append(msg)
-                if trace:
-                    chunk.append(trace)
-                diag.error_traces.append("\n".join(chunk))
-            if skipped is not None:
-                reason = (
-                    skipped.attrib.get(c.Infra.ReportKeys.MESSAGE) or skipped.text or ""
-                ).strip()
-                diag.skip_cases.append(f"{label} | {reason}" if reason else label)
+            slow_rows.append(
+                FlextInfraPytestDiagExtractor._process_testcase(case, diag),
+            )
         if slow_rows:
             diag.slow_entries = [
                 f"{secs:.6f}s | {label}"

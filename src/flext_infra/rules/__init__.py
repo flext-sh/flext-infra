@@ -5,40 +5,42 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from flext_infra.rules import (
-        class_nesting,
-        class_reconstructor,
-        ensure_future_annotations,
-        import_modernizer,
-        legacy_removal,
-        mro_class_migration,
-        pattern_corrections,
+        class_nesting as class_nesting,
+        class_reconstructor as class_reconstructor,
+        ensure_future_annotations as ensure_future_annotations,
+        import_modernizer as import_modernizer,
+        legacy_removal as legacy_removal,
+        mro_class_migration as mro_class_migration,
+        pattern_corrections as pattern_corrections,
     )
-    from flext_infra.rules.class_nesting import FlextInfraClassNestingRefactorRule
+    from flext_infra.rules.class_nesting import (
+        FlextInfraClassNestingRefactorRule as FlextInfraClassNestingRefactorRule,
+    )
     from flext_infra.rules.class_reconstructor import (
-        FlextInfraPreCheckGate,
-        FlextInfraRefactorClassNestingReconstructor,
+        FlextInfraPreCheckGate as FlextInfraPreCheckGate,
+        FlextInfraRefactorClassNestingReconstructor as FlextInfraRefactorClassNestingReconstructor,
     )
     from flext_infra.rules.ensure_future_annotations import (
-        FlextInfraRefactorEnsureFutureAnnotationsRule,
+        FlextInfraRefactorEnsureFutureAnnotationsRule as FlextInfraRefactorEnsureFutureAnnotationsRule,
     )
     from flext_infra.rules.import_modernizer import (
-        FlextInfraRefactorImportModernizerRule,
+        FlextInfraRefactorImportModernizerRule as FlextInfraRefactorImportModernizerRule,
     )
-    from flext_infra.rules.legacy_removal import FlextInfraRefactorLegacyRemovalRule
+    from flext_infra.rules.legacy_removal import (
+        FlextInfraRefactorLegacyRemovalRule as FlextInfraRefactorLegacyRemovalRule,
+    )
     from flext_infra.rules.mro_class_migration import (
-        FlextInfraRefactorMROClassMigrationRule,
+        FlextInfraRefactorMROClassMigrationRule as FlextInfraRefactorMROClassMigrationRule,
     )
     from flext_infra.rules.pattern_corrections import (
-        FlextInfraRefactorPatternCorrectionsRule,
+        FlextInfraRefactorPatternCorrectionsRule as FlextInfraRefactorPatternCorrectionsRule,
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
@@ -83,7 +85,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "pattern_corrections": ["flext_infra.rules.pattern_corrections", ""],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "FlextInfraClassNestingRefactorRule",
     "FlextInfraPreCheckGate",
     "FlextInfraRefactorClassNestingReconstructor",
@@ -102,41 +104,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

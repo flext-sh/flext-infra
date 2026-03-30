@@ -380,9 +380,11 @@ class FlextInfraPyprojectModernizer:
         parser = u.Infra.create_parser(
             "flext-infra deps modernize",
             "Modernize workspace pyproject files",
-            include_apply=True,
-            include_check=True,
-            include_project=True,
+            flags=u.Infra.SharedFlags(
+                include_apply=True,
+                include_check=True,
+                include_project=True,
+            ),
         )
         _ = parser.add_argument("--audit", action="store_true")
         _ = parser.add_argument("--skip-comments", action="store_true")

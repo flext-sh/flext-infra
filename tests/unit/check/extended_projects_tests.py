@@ -105,7 +105,7 @@ class TestCheckProjectRunners:
         result = checker._check_project(
             tmp_path,
             ["lint", "format", "pyrefly"],
-            tmp_path,
+            m.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),
         )
         tm.that(called["lint"], eq=True)
         tm.that(called["format"], eq=True)

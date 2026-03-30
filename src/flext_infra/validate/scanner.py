@@ -85,22 +85,10 @@ class FlextInfraTextPatternScanner:
             r with violation count and match details.
 
         """
+        error = self._validate_scan_inputs(scan_root, includes, match_mode)
+        if error is not None:
+            return r[t.ScalarMapping].fail(error)
         try:
-            if not scan_root.exists() or not scan_root.is_dir():
-                return r[t.ScalarMapping].fail(
-                    f"scan_root directory does not exist: {scan_root}",
-                )
-            if not includes:
-                return r[t.ScalarMapping].fail(
-                    "at least one include glob required",
-                )
-            if match_mode not in {
-                c.Infra.MatchModes.PRESENT,
-                c.Infra.MatchModes.ABSENT,
-            }:
-                return r[t.ScalarMapping].fail(
-                    f"invalid match_mode: {match_mode}",
-                )
             regex = re.compile(pattern, flags=re.MULTILINE)
             files = self._collect_files(scan_root, includes, excludes or [])
             matches = self._count_matches(files, regex)
@@ -121,6 +109,21 @@ class FlextInfraTextPatternScanner:
             return r[t.ScalarMapping].fail(f"invalid regex pattern: {exc}")
         except (OSError, ValueError, TypeError) as exc:
             return r[t.ScalarMapping].fail(f"text pattern scan failed: {exc}")
+
+    @staticmethod
+    def _validate_scan_inputs(
+        scan_root: Path,
+        includes: t.StrSequence,
+        match_mode: str,
+    ) -> str | None:
+        """Return an error message if scan inputs are invalid, else None."""
+        if not scan_root.exists() or not scan_root.is_dir():
+            return f"scan_root directory does not exist: {scan_root}"
+        if not includes:
+            return "at least one include glob required"
+        if match_mode not in {c.Infra.MatchModes.PRESENT, c.Infra.MatchModes.ABSENT}:
+            return f"invalid match_mode: {match_mode}"
+        return None
 
 
 __all__ = ["FlextInfraTextPatternScanner"]

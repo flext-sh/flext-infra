@@ -13,6 +13,7 @@ import ast
 from collections import Counter, defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
+from typing import override
 
 import libcst as cst
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
@@ -232,19 +233,6 @@ class FlextInfraUtilitiesRefactor(
         return current_module == candidate_module
 
     @staticmethod
-    def _load_schema_definitions(
-        schema: Mapping[str, t.Infra.InfraValue],
-    ) -> Mapping[str, t.Infra.InfraValue] | None:
-        """Load and validate the 'definitions' section of a policy schema."""
-        definitions_raw = schema.get("definitions", {})
-        if not isinstance(definitions_raw, dict):
-            return None
-        try:
-            return _INFRA_MAPPING_ADAPTER.validate_python(definitions_raw)
-        except ValidationError:
-            return None
-
-    @staticmethod
     def _extract_definition_required(
         definitions: Mapping[str, t.Infra.InfraValue],
         key: str,
@@ -285,8 +273,12 @@ class FlextInfraUtilitiesRefactor(
         )
         if not FlextInfraUtilitiesRefactor.has_required_fields(loaded, top_required):
             return False
-        definitions = FlextInfraUtilitiesRefactor._load_schema_definitions(schema)
-        if definitions is None:
+        definitions_raw = schema.get("definitions", {})
+        if not isinstance(definitions_raw, dict):
+            return False
+        try:
+            definitions = _INFRA_MAPPING_ADAPTER.validate_python(definitions_raw)
+        except ValidationError:
             return False
         policy_entry_required = (
             FlextInfraUtilitiesRefactor._extract_definition_required(
@@ -331,54 +323,12 @@ class FlextInfraUtilitiesRefactor(
         return loaded_dict
 
     @staticmethod
-    def _is_docstring_statement(stmt: cst.CSTNode) -> bool:
-        if not isinstance(stmt, cst.SimpleStatementLine):
-            return False
-        if len(stmt.body) != 1:
-            return False
-        expr = stmt.body[0]
-        return isinstance(expr, cst.Expr) and isinstance(
-            expr.value,
-            (cst.SimpleString, cst.ConcatenatedString),
-        )
-
-    @staticmethod
-    def _is_import_statement(stmt: cst.CSTNode) -> bool:
-        if not isinstance(stmt, cst.SimpleStatementLine):
-            return False
-        return any(isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body)
-
-    @staticmethod
-    def _is_future_import_statement(stmt: cst.CSTNode) -> bool:
-        if not isinstance(stmt, cst.SimpleStatementLine):
-            return False
-        for small in stmt.body:
-            if not isinstance(small, cst.ImportFrom):
-                continue
-            module = small.module
-            if isinstance(module, cst.Name) and module.value == "__future__":
-                return True
-        return False
-
-    @staticmethod
-    def _parse_import_statement(
-        normalized_import: str,
-    ) -> cst.SimpleStatementLine | None:
-        """Parse a normalized import string into a CST statement node."""
-        try:
-            parsed = cst.parse_statement(f"{normalized_import}\n")
-        except cst.ParserSyntaxError:
-            return None
-        if not isinstance(parsed, cst.SimpleStatementLine):
-            return None
-        return parsed
-
-    @staticmethod
-    def _import_already_exists(module: cst.Module, normalized_import: str) -> bool:
+    @override
+    def _import_already_exists(module: cst.Module, normalized: str) -> bool:
         """Check if the import statement already exists in the module."""
         return any(
             isinstance(stmt, cst.SimpleStatementLine)
-            and cst.Module(body=[stmt]).code.strip() == normalized_import
+            and cst.Module(body=[stmt]).code.strip() == normalized
             for stmt in module.body
         )
 
@@ -387,11 +337,20 @@ class FlextInfraUtilitiesRefactor(
         """Find the index after the last docstring/future/import statement."""
         insert_idx = 0
         for idx, stmt in enumerate(module.body):
-            if (
-                FlextInfraUtilitiesRefactor._is_docstring_statement(stmt)
-                or FlextInfraUtilitiesRefactor._is_future_import_statement(stmt)
-                or FlextInfraUtilitiesRefactor._is_import_statement(stmt)
-            ):
+            if not isinstance(stmt, cst.SimpleStatementLine):
+                break
+            is_docstring = (
+                len(stmt.body) == 1
+                and isinstance(stmt.body[0], cst.Expr)
+                and isinstance(
+                    stmt.body[0].value,
+                    (cst.SimpleString, cst.ConcatenatedString),
+                )
+            )
+            is_import = any(
+                isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body
+            )
+            if is_docstring or is_import:
                 insert_idx = idx + 1
                 continue
             break
@@ -405,10 +364,11 @@ class FlextInfraUtilitiesRefactor(
         module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
         if module is None:
             return source
-        parsed_stmt = FlextInfraUtilitiesRefactor._parse_import_statement(
-            normalized_import,
-        )
-        if parsed_stmt is None:
+        try:
+            parsed_stmt = cst.parse_statement(f"{normalized_import}\n")
+        except cst.ParserSyntaxError:
+            return source
+        if not isinstance(parsed_stmt, cst.SimpleStatementLine):
             return source
         if FlextInfraUtilitiesRefactor._import_already_exists(
             module,

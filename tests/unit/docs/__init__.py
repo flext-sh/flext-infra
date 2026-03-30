@@ -5,94 +5,112 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from tests.unit.docs import (
-        auditor_budgets_tests,
-        auditor_cli_tests,
-        auditor_links_tests,
-        auditor_scope_tests,
-        auditor_tests,
-        builder_scope_tests,
-        builder_tests,
-        fixer_internals_tests,
-        fixer_tests,
-        generator_internals_tests,
-        generator_tests,
-        init_tests,
-        main_commands_tests,
-        main_entry_tests,
-        main_tests,
-        shared_iter_tests,
-        shared_tests,
-        shared_write_tests,
-        validator_internals_tests,
-        validator_tests,
+        auditor_budgets_tests as auditor_budgets_tests,
+        auditor_cli_tests as auditor_cli_tests,
+        auditor_links_tests as auditor_links_tests,
+        auditor_scope_tests as auditor_scope_tests,
+        auditor_tests as auditor_tests,
+        builder_scope_tests as builder_scope_tests,
+        builder_tests as builder_tests,
+        fixer_internals_tests as fixer_internals_tests,
+        fixer_tests as fixer_tests,
+        generator_internals_tests as generator_internals_tests,
+        generator_tests as generator_tests,
+        init_tests as init_tests,
+        main_commands_tests as main_commands_tests,
+        main_entry_tests as main_entry_tests,
+        main_tests as main_tests,
+        shared_iter_tests as shared_iter_tests,
+        shared_tests as shared_tests,
+        shared_write_tests as shared_write_tests,
+        validator_internals_tests as validator_internals_tests,
+        validator_tests as validator_tests,
     )
-    from tests.unit.docs.auditor_budgets_tests import TestLoadAuditBudgets
+    from tests.unit.docs.auditor_budgets_tests import (
+        TestLoadAuditBudgets as TestLoadAuditBudgets,
+    )
     from tests.unit.docs.auditor_cli_tests import (
-        TestAuditorMainCli,
-        TestAuditorScopeFailure,
+        TestAuditorMainCli as TestAuditorMainCli,
+        TestAuditorScopeFailure as TestAuditorScopeFailure,
     )
     from tests.unit.docs.auditor_links_tests import (
-        TestAuditorBrokenLinks,
-        TestAuditorToMarkdown,
+        TestAuditorBrokenLinks as TestAuditorBrokenLinks,
+        TestAuditorToMarkdown as TestAuditorToMarkdown,
     )
     from tests.unit.docs.auditor_scope_tests import (
-        TestAuditorForbiddenTerms,
-        TestAuditorScope,
+        TestAuditorForbiddenTerms as TestAuditorForbiddenTerms,
+        TestAuditorScope as TestAuditorScope,
     )
     from tests.unit.docs.auditor_tests import (
-        TestAuditorCore,
-        TestAuditorNormalize,
-        auditor,
-        is_external,
-        normalize_link,
-        should_skip_target,
+        TestAuditorCore as TestAuditorCore,
+        TestAuditorNormalize as TestAuditorNormalize,
+        auditor as auditor,
+        is_external as is_external,
+        normalize_link as normalize_link,
+        should_skip_target as should_skip_target,
     )
-    from tests.unit.docs.builder_scope_tests import TestBuilderScope
-    from tests.unit.docs.builder_tests import TestBuilderCore, builder
+    from tests.unit.docs.builder_scope_tests import TestBuilderScope as TestBuilderScope
+    from tests.unit.docs.builder_tests import (
+        TestBuilderCore as TestBuilderCore,
+        builder as builder,
+    )
     from tests.unit.docs.fixer_internals_tests import (
-        TestFixerMaybeFixLink,
-        TestFixerProcessFile,
-        TestFixerScope,
-        TestFixerToc,
-        fixer,
+        TestFixerMaybeFixLink as TestFixerMaybeFixLink,
+        TestFixerProcessFile as TestFixerProcessFile,
+        TestFixerScope as TestFixerScope,
+        TestFixerToc as TestFixerToc,
+        fixer as fixer,
     )
-    from tests.unit.docs.fixer_tests import TestFixerCore
+    from tests.unit.docs.fixer_tests import TestFixerCore as TestFixerCore
     from tests.unit.docs.generator_internals_tests import (
-        TestGeneratorHelpers,
-        TestGeneratorScope,
-        gen,
+        TestGeneratorHelpers as TestGeneratorHelpers,
+        TestGeneratorScope as TestGeneratorScope,
+        gen as gen,
     )
-    from tests.unit.docs.generator_tests import TestGeneratorCore
-    from tests.unit.docs.init_tests import TestFlextInfraDocs
+    from tests.unit.docs.generator_tests import TestGeneratorCore as TestGeneratorCore
+    from tests.unit.docs.init_tests import TestFlextInfraDocs as TestFlextInfraDocs
     from tests.unit.docs.main_commands_tests import (
-        TestRunBuild,
-        TestRunGenerate,
-        TestRunValidate,
+        TestRunBuild as TestRunBuild,
+        TestRunGenerate as TestRunGenerate,
+        TestRunValidate as TestRunValidate,
     )
-    from tests.unit.docs.main_entry_tests import TestMainRouting, TestMainWithFlags
-    from tests.unit.docs.main_tests import TestRunAudit, TestRunFix
+    from tests.unit.docs.main_entry_tests import (
+        TestMainRouting as TestMainRouting,
+        TestMainWithFlags as TestMainWithFlags,
+    )
+    from tests.unit.docs.main_tests import (
+        TestRunAudit as TestRunAudit,
+        TestRunFix as TestRunFix,
+    )
     from tests.unit.docs.shared_iter_tests import (
-        TestIterMarkdownFiles,
-        TestSelectedProjectNames,
+        TestIterMarkdownFiles as TestIterMarkdownFiles,
+        TestSelectedProjectNames as TestSelectedProjectNames,
     )
-    from tests.unit.docs.shared_tests import TestBuildScopes, TestFlextInfraDocScope
-    from tests.unit.docs.shared_write_tests import TestWriteJson, TestWriteMarkdown
+    from tests.unit.docs.shared_tests import (
+        TestBuildScopes as TestBuildScopes,
+        TestFlextInfraDocScope as TestFlextInfraDocScope,
+    )
+    from tests.unit.docs.shared_write_tests import (
+        TestWriteJson as TestWriteJson,
+        TestWriteMarkdown as TestWriteMarkdown,
+    )
     from tests.unit.docs.validator_internals_tests import (
-        TestAdrHelpers,
-        TestMaybeWriteTodo,
-        TestValidateScope,
-        validator,
+        TestAdrHelpers as TestAdrHelpers,
+        TestMaybeWriteTodo as TestMaybeWriteTodo,
+        TestValidateScope as TestValidateScope,
+        validator as validator,
     )
-    from tests.unit.docs.validator_tests import TestValidateCore, TestValidateReport
+    from tests.unit.docs.validator_tests import (
+        TestValidateCore as TestValidateCore,
+        TestValidateReport as TestValidateReport,
+    )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestAdrHelpers": ["tests.unit.docs.validator_internals_tests", "TestAdrHelpers"],
@@ -205,7 +223,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "validator_tests": ["tests.unit.docs.validator_tests", ""],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "TestAdrHelpers",
     "TestAuditorBrokenLinks",
     "TestAuditorCore",
@@ -275,41 +293,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

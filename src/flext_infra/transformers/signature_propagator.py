@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
-from typing import override
+from typing import ClassVar, override
 
 import libcst as cst
 from libcst.metadata import QualifiedNameProvider
@@ -26,6 +26,63 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
         self._migrations = migrations
         self._on_change = on_change
         self.changes: MutableSequence[str] = []
+
+    def _apply_existing_args(
+        self,
+        args: Sequence[cst.Arg],
+        *,
+        migration_id: str,
+        keyword_renames: t.StrMapping,
+        remove_keywords: t.Infra.StrSet,
+    ) -> t.Infra.Triple[MutableSequence[cst.Arg], t.Infra.StrSet, bool]:
+        """Process existing args: rename, remove, or keep. Returns (args, seen_names, changed)."""
+        next_args: MutableSequence[cst.Arg] = []
+        seen_keyword_names: t.Infra.StrSet = set()
+        changed = False
+        for arg in args:
+            keyword_name = self._keyword_name(arg)
+            if keyword_name is not None and keyword_name in remove_keywords:
+                changed = True
+                self._record_change(f"[{migration_id}] Removed keyword: {keyword_name}")
+                continue
+            if keyword_name is not None and keyword_name in keyword_renames:
+                renamed = keyword_renames[keyword_name]
+                next_args.append(arg.with_changes(keyword=cst.Name(renamed)))
+                seen_keyword_names.add(renamed)
+                changed = True
+                self._record_change(
+                    f"[{migration_id}] Renamed keyword: {keyword_name} -> {renamed}",
+                )
+                continue
+            next_args.append(arg)
+            if keyword_name is not None:
+                seen_keyword_names.add(keyword_name)
+        return next_args, seen_keyword_names, changed
+
+    def _append_new_keywords(
+        self,
+        next_args: MutableSequence[cst.Arg],
+        *,
+        migration_id: str,
+        add_keywords: t.StrMapping,
+        seen_keyword_names: t.Infra.StrSet,
+    ) -> bool:
+        """Append new keyword arguments. Returns True if any were added."""
+        added = False
+        for key, value_literal in add_keywords.items():
+            if key in seen_keyword_names:
+                continue
+            next_args.append(
+                cst.Arg(
+                    value=self._literal_expr(value_literal),
+                    keyword=cst.Name(key),
+                ),
+            )
+            added = True
+            self._record_change(
+                f"[{migration_id}] Added keyword: {key}={value_literal}"
+            )
+        return added
 
     @override
     def leave_Call(
@@ -54,43 +111,19 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
             keyword_renames = self._keyword_renames(migration)
             remove_keywords = self._remove_keywords(migration)
             add_keywords = self._add_keywords(migration)
-            next_args: MutableSequence[cst.Arg] = []
-            changed = False
-            seen_keyword_names: t.Infra.StrSet = set()
-            for arg in list(result_call.args):
-                keyword_name = self._keyword_name(arg)
-                if keyword_name is not None and keyword_name in remove_keywords:
-                    changed = True
-                    self._record_change(
-                        f"[{migration_id}] Removed keyword: {keyword_name}",
-                    )
-                    continue
-                if keyword_name is not None and keyword_name in keyword_renames:
-                    renamed = keyword_renames[keyword_name]
-                    next_args.append(arg.with_changes(keyword=cst.Name(renamed)))
-                    seen_keyword_names.add(renamed)
-                    changed = True
-                    self._record_change(
-                        f"[{migration_id}] Renamed keyword: {keyword_name} -> {renamed}",
-                    )
-                    continue
-                next_args.append(arg)
-                if keyword_name is not None:
-                    seen_keyword_names.add(keyword_name)
-            for key, value_literal in add_keywords.items():
-                if key in seen_keyword_names:
-                    continue
-                next_args.append(
-                    cst.Arg(
-                        value=self._literal_expr(value_literal),
-                        keyword=cst.Name(key),
-                    ),
-                )
-                changed = True
-                self._record_change(
-                    f"[{migration_id}] Added keyword: {key}={value_literal}",
-                )
-            if changed:
+            next_args, seen_keyword_names, changed = self._apply_existing_args(
+                list(result_call.args),
+                migration_id=migration_id,
+                keyword_renames=keyword_renames,
+                remove_keywords=remove_keywords,
+            )
+            added = self._append_new_keywords(
+                next_args,
+                migration_id=migration_id,
+                add_keywords=add_keywords,
+                seen_keyword_names=seen_keyword_names,
+            )
+            if changed or added:
                 result_call = result_call.with_changes(args=tuple(next_args))
         return result_call
 
@@ -111,21 +144,29 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
     ) -> t.StrMapping:
         return migration.keyword_renames
 
+    _KEYWORD_LITERALS: ClassVar[t.StrMapping] = {
+        "true": "True",
+        "false": "False",
+        "none": "None",
+    }
+
     def _literal_expr(self, value: str) -> cst.BaseExpression:
         lowered = value.strip().lower()
-        if lowered == "true":
-            return cst.Name("True")
-        if lowered == "false":
-            return cst.Name("False")
-        if lowered == "none":
-            return cst.Name("None")
+        keyword_name = self._KEYWORD_LITERALS.get(lowered)
+        if keyword_name is not None:
+            return cst.Name(keyword_name)
         if value.isdigit():
             return cst.Integer(value)
-        if value.startswith('"') and value.endswith('"'):
-            return cst.SimpleString(value)
-        if value.startswith("'") and value.endswith("'"):
+        if self._is_quoted_string(value):
             return cst.SimpleString(value)
         return cst.Name(value)
+
+    @staticmethod
+    def _is_quoted_string(value: str) -> bool:
+        """Check if value is a single- or double-quoted string literal."""
+        return (value.startswith('"') and value.endswith('"')) or (
+            value.startswith("'") and value.endswith("'")
+        )
 
     def _matches_migration(
         self,

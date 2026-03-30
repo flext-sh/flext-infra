@@ -428,9 +428,11 @@ class FlextInfraDocAuditor:
         parser = u.Infra.create_parser(
             "flext-infra docs audit",
             "Audit documentation for issues",
-            include_apply=True,
-            include_project=True,
-            include_check=True,
+            flags=u.Infra.SharedFlags(
+                include_apply=True,
+                include_project=True,
+                include_check=True,
+            ),
         )
         _ = parser.add_argument("--strict", action="store_true", help="Strict mode")
         _ = parser.add_argument(

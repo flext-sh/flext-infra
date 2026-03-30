@@ -13,7 +13,7 @@ import io
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilitiesOutput, u as iu
+from tests import m, u
 
 
 def _make_backend(
@@ -21,10 +21,10 @@ def _make_backend(
     use_color: bool = False,
     use_unicode: bool = False,
     stream: io.StringIO | None = None,
-) -> FlextInfraUtilitiesOutput.OutputBackend:
+) -> u.Infra.OutputBackend:
     """Create a backend with test-friendly settings."""
     buf = stream or io.StringIO()
-    return FlextInfraUtilitiesOutput.OutputBackend(
+    return u.Infra.OutputBackend(
         use_color=use_color, use_unicode=use_unicode, stream=buf
     )
 
@@ -41,7 +41,11 @@ class TestInfraOutputNoColor:
         backend.status("check", "proj", True, 0.1)
         backend.header("Title")
         backend.progress(1, 1, "proj", "test")
-        backend.summary("check", 1, 1, 0, 0, 0.1)
+        backend.summary(
+            m.Infra.SummaryStats(
+                verb="check", total=1, success=1, failed=0, skipped=0, elapsed=0.1
+            )
+        )
         tm.that("\x1b[" not in buf.getvalue(), eq=True)
 
 
@@ -49,15 +53,15 @@ class TestMroFacadeMethods:
     """Tests for u.Infra MRO facade methods."""
 
     def test_output_methods_accessible_via_mro(self) -> None:
-        tm.that(callable(iu.Infra.info), eq=True)
-        tm.that(callable(iu.Infra.error), eq=True)
-        tm.that(callable(iu.Infra.warning), eq=True)
-        tm.that(callable(iu.Infra.status), eq=True)
-        tm.that(callable(iu.Infra.summary), eq=True)
-        tm.that(callable(iu.Infra.header), eq=True)
-        tm.that(callable(iu.Infra.progress), eq=True)
-        tm.that(callable(iu.Infra.debug), eq=True)
-        tm.that(callable(iu.Infra.gate_result), eq=True)
+        tm.that(callable(u.Infra.info), eq=True)
+        tm.that(callable(u.Infra.error), eq=True)
+        tm.that(callable(u.Infra.warning), eq=True)
+        tm.that(callable(u.Infra.status), eq=True)
+        tm.that(callable(u.Infra.summary), eq=True)
+        tm.that(callable(u.Infra.header), eq=True)
+        tm.that(callable(u.Infra.progress), eq=True)
+        tm.that(callable(u.Infra.debug), eq=True)
+        tm.that(callable(u.Infra.gate_result), eq=True)
 
 
 class TestInfraOutputEdgeCases:
@@ -78,7 +82,11 @@ class TestInfraOutputEdgeCases:
     def test_summary_with_all_zeros(self) -> None:
         buf = io.StringIO()
         backend = _make_backend(use_unicode=False, stream=buf)
-        backend.summary("test", total=0, success=0, failed=0, skipped=0, elapsed=0.0)
+        backend.summary(
+            m.Infra.SummaryStats(
+                verb="test", total=0, success=0, failed=0, skipped=0, elapsed=0.0
+            )
+        )
         text = buf.getvalue()
         tm.that(text, contains="Total: 0")
         tm.that(text, contains="Success: 0")
@@ -87,12 +95,14 @@ class TestInfraOutputEdgeCases:
         buf = io.StringIO()
         backend = _make_backend(use_unicode=False, stream=buf)
         backend.summary(
-            "check",
-            total=1000,
-            success=950,
-            failed=40,
-            skipped=10,
-            elapsed=123.45,
+            m.Infra.SummaryStats(
+                verb="check",
+                total=1000,
+                success=950,
+                failed=40,
+                skipped=10,
+                elapsed=123.45,
+            )
         )
         text = buf.getvalue()
         tm.that(text, contains="Total: 1000")

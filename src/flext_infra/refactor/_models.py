@@ -607,6 +607,33 @@ class FlextInfraRefactorModels(
             Field(default=0, description="I/O error count"),
         ] = 0
 
+    class CentralizerFileResult(m.ArbitraryTypesModel):
+        """Result of processing a single file for model centralization."""
+
+        found_models: Annotated[
+            t.NonNegativeInt,
+            Field(default=0, description="Detected model violations"),
+        ] = 0
+        found_aliases: Annotated[
+            t.NonNegativeInt,
+            Field(default=0, description="Detected alias violations"),
+        ] = 0
+        skipped_non_necessary: Annotated[
+            bool,
+            Field(
+                default=False,
+                description="Whether the file was skipped as non-necessary",
+            ),
+        ] = False
+        apply_class_moves: Annotated[
+            Sequence[FlextInfraRefactorModels.ClassMove],
+            Field(description="Class moves to apply"),
+        ] = Field(default_factory=list)
+        apply_alias_moves: Annotated[
+            Sequence[FlextInfraRefactorModels.AliasMove],
+            Field(description="Alias moves to apply"),
+        ] = Field(default_factory=list)
+
     # -- Namespace Enforcer Models ---------------------------------------------
 
     class ParsedPythonModule(m.ArbitraryTypesModel):

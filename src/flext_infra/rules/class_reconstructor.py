@@ -51,56 +51,69 @@ class FlextInfraPreCheckGate:
         module_family = u.Infra.module_family_from_path(current_file)
         if module_family == "other_private":
             return (True, None)
+        violation = self._check_policy_violation(
+            entry_symbol=symbol,
+            module_family=module_family,
+            target_namespace=target_namespace,
+            is_helper=bool(helper_symbol),
+        )
+        if violation is not None:
+            return (False, violation)
+        return (True, None)
+
+    def _check_policy_violation(
+        self,
+        *,
+        entry_symbol: str,
+        module_family: str,
+        target_namespace: str,
+        is_helper: bool,
+    ) -> t.StrMapping | None:
+        """Return a violation dict if policy is violated, else None."""
         policy = self._policy_by_family.get(module_family)
         if policy is None:
-            return (
-                False,
-                {
-                    c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
-                    c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
-                    c.Infra.ReportKeys.VIOLATION_TYPE: "unknown_module_family",
-                    c.Infra.ReportKeys.SUGGESTED_FIX: f"declare explicit policy for {module_family}",
-                },
+            return self._violation(
+                entry_symbol,
+                "unknown_module_family",
+                f"declare explicit policy for {module_family}",
             )
         operation = (
             c.Infra.ReportKeys.HELPER_CONSOLIDATION
-            if helper_symbol
+            if is_helper
             else c.Infra.ReportKeys.CLASS_NESTING
         )
         if operation not in policy.allowed_operations:
-            return (
-                False,
-                {
-                    c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
-                    c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
-                    c.Infra.ReportKeys.VIOLATION_TYPE: "operation_not_allowed",
-                    c.Infra.ReportKeys.SUGGESTED_FIX: f"allow {operation} in policy for {module_family}",
-                },
+            return self._violation(
+                entry_symbol,
+                "operation_not_allowed",
+                f"allow {operation} in policy for {module_family}",
             )
         if operation in policy.forbidden_operations:
-            return (
-                False,
-                {
-                    c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
-                    c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
-                    c.Infra.ReportKeys.VIOLATION_TYPE: "operation_forbidden",
-                    c.Infra.ReportKeys.SUGGESTED_FIX: f"remove {operation} from forbidden_operations for {module_family}",
-                },
+            return self._violation(
+                entry_symbol,
+                "operation_forbidden",
+                f"remove {operation} from forbidden_operations for {module_family}",
             )
         if any(
             self._target_matches(target_namespace, pattern)
             for pattern in policy.forbidden_targets
         ):
-            return (
-                False,
-                {
-                    c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
-                    c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
-                    c.Infra.ReportKeys.VIOLATION_TYPE: "forbidden_target",
-                    c.Infra.ReportKeys.SUGGESTED_FIX: f"choose allowed target for family {module_family}",
-                },
+            return self._violation(
+                entry_symbol,
+                "forbidden_target",
+                f"choose allowed target for family {module_family}",
             )
-        return (True, None)
+        return None
+
+    @staticmethod
+    def _violation(symbol: str, violation_type: str, fix: str) -> t.StrMapping:
+        """Build a standardized precheck violation dict."""
+        return {
+            c.Infra.ReportKeys.RULE_ID: f"precheck:{symbol}",
+            c.Infra.ReportKeys.SOURCE_SYMBOL: symbol,
+            c.Infra.ReportKeys.VIOLATION_TYPE: violation_type,
+            c.Infra.ReportKeys.SUGGESTED_FIX: fix,
+        }
 
     def _load_policy(self) -> Mapping[str, m.Infra.ClassNestingPolicy]:
         try:
@@ -133,23 +146,49 @@ class FlextInfraPreCheckGate:
         definitions_raw: JsonValue | None = schema.get("definitions")
         if not isinstance(definitions_raw, dict):
             return False
-        policy_entry_raw: JsonValue | None = definitions_raw.get("policyEntry")
-        class_rule_raw: JsonValue | None = definitions_raw.get("classRule")
-        if not isinstance(policy_entry_raw, dict):
+        required_defs = self._extract_definition_requirements(definitions_raw)
+        if required_defs is None:
             return False
-        if not isinstance(class_rule_raw, dict):
-            return False
-        policy_entry_required = u.Infra.string_list(policy_entry_raw.get("required"))
-        class_rule_required = u.Infra.string_list(class_rule_raw.get("required"))
+        policy_entry_required, class_rule_required = required_defs
+        return self._all_entries_valid(
+            loaded,
+            policy_entry_required,
+            class_rule_required,
+        )
+
+    @staticmethod
+    def _extract_definition_requirements(
+        definitions: Mapping[str, JsonValue],
+    ) -> tuple[t.StrSequence, t.StrSequence] | None:
+        """Extract required field lists from schema definitions. None if invalid."""
+        policy_entry_raw: JsonValue | None = definitions.get("policyEntry")
+        class_rule_raw: JsonValue | None = definitions.get("classRule")
+        if not isinstance(policy_entry_raw, dict) or not isinstance(
+            class_rule_raw, dict
+        ):
+            return None
+        return (
+            u.Infra.string_list(policy_entry_raw.get("required")),
+            u.Infra.string_list(class_rule_raw.get("required")),
+        )
+
+    @staticmethod
+    def _all_entries_valid(
+        loaded: Mapping[str, t.Infra.InfraValue],
+        policy_entry_required: t.StrSequence,
+        class_rule_required: t.StrSequence,
+    ) -> bool:
+        """Validate all policy_matrix and rules entries against required fields."""
         policy_matrix = u.Infra.mapping_list(loaded.get("policy_matrix"))
-        for entry in policy_matrix:
-            if not u.Infra.has_required_fields(entry, policy_entry_required):
-                return False
+        if not all(
+            u.Infra.has_required_fields(entry, policy_entry_required)
+            for entry in policy_matrix
+        ):
+            return False
         rules = u.Infra.mapping_list(loaded.get(c.Infra.ReportKeys.RULES))
-        for rule in rules:
-            if not u.Infra.has_required_fields(rule, class_rule_required):
-                return False
-        return True
+        return all(
+            u.Infra.has_required_fields(rule, class_rule_required) for rule in rules
+        )
 
     def _target_matches(self, target_namespace: str, pattern: str) -> bool:
         if pattern.endswith(".*"):

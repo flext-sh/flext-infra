@@ -64,12 +64,13 @@ class FlextInfraCliGithub:
     @staticmethod
     def _handle_workflows(params: m.Infra.GithubWorkflowsInput) -> r[bool]:
         """Sync GitHub workflow files."""
-        report_path = Path(params.report) if params.report else None
         result = u.Infra.github_sync_workspace_workflows(
             workspace_root=Path(params.workspace),
-            apply=params.apply,
-            prune=params.prune,
-            report_path=report_path,
+            params=m.Infra.WorkflowSyncParams(
+                apply=params.apply,
+                prune=params.prune,
+                report_path=Path(params.report) if params.report else None,
+            ),
         )
         if result.is_failure:
             return r[bool].fail(result.error or "workflow sync failed")
@@ -151,10 +152,12 @@ class FlextInfraCliGithub:
         )
         return u.Infra.github_pr_orchestrate(
             workspace_root=Path(params.workspace),
-            projects=project_names,
-            include_root=pr_model.include_root,
-            branch=pr_model.branch,
-            checkpoint=pr_model.checkpoint,
-            fail_fast=pr_model.fail_fast,
-            pr_args=pr_model.as_orchestrate_dict(),
+            params=m.Infra.PrOrchestrateParams(
+                projects=project_names,
+                include_root=pr_model.include_root,
+                branch=pr_model.branch,
+                checkpoint=pr_model.checkpoint,
+                fail_fast=pr_model.fail_fast,
+                pr_args=pr_model.as_orchestrate_dict(),
+            ),
         )

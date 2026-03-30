@@ -5,32 +5,36 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from flext_infra.gates import (
-        bandit,
-        go,
-        markdown,
-        mypy,
-        pyrefly,
-        pyright,
-        ruff_format,
-        ruff_lint,
+        bandit as bandit,
+        go as go,
+        markdown as markdown,
+        mypy as mypy,
+        pyrefly as pyrefly,
+        pyright as pyright,
+        ruff_format as ruff_format,
+        ruff_lint as ruff_lint,
     )
-    from flext_infra.gates.bandit import FlextInfraBanditGate
-    from flext_infra.gates.go import FlextInfraGoGate
-    from flext_infra.gates.markdown import FlextInfraMarkdownGate
-    from flext_infra.gates.mypy import FlextInfraMypyGate
-    from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-    from flext_infra.gates.pyright import FlextInfraPyrightGate
-    from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-    from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+    from flext_infra.gates.bandit import FlextInfraBanditGate as FlextInfraBanditGate
+    from flext_infra.gates.go import FlextInfraGoGate as FlextInfraGoGate
+    from flext_infra.gates.markdown import (
+        FlextInfraMarkdownGate as FlextInfraMarkdownGate,
+    )
+    from flext_infra.gates.mypy import FlextInfraMypyGate as FlextInfraMypyGate
+    from flext_infra.gates.pyrefly import FlextInfraPyreflyGate as FlextInfraPyreflyGate
+    from flext_infra.gates.pyright import FlextInfraPyrightGate as FlextInfraPyrightGate
+    from flext_infra.gates.ruff_format import (
+        FlextInfraRuffFormatGate as FlextInfraRuffFormatGate,
+    )
+    from flext_infra.gates.ruff_lint import (
+        FlextInfraRuffLintGate as FlextInfraRuffLintGate,
+    )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraBanditGate": ["flext_infra.gates.bandit", "FlextInfraBanditGate"],
@@ -54,7 +58,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "ruff_lint": ["flext_infra.gates.ruff_lint", ""],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "FlextInfraBanditGate",
     "FlextInfraGoGate",
     "FlextInfraMarkdownGate",
@@ -74,41 +78,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

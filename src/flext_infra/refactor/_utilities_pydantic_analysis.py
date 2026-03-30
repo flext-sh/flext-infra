@@ -190,11 +190,40 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     def _typed_dict_factory_model(
         node: ast.Assign,
     ) -> m.Infra.ClassMove | None:
-        if len(node.targets) != 1:
+        extracted = (
+            FlextInfraUtilitiesRefactorPydanticAnalysis._extract_typed_dict_call(
+                node,
+            )
+        )
+        if extracted is None:
+            return None
+        target_name, field_map, keywords = extracted
+        total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._has_total_false(
+            keywords,
+        )
+        rendered_class = (
+            FlextInfraUtilitiesRefactorPydanticAnalysis._render_typed_dict_class(
+                target_name,
+                field_map,
+                total_false=total_false,
+            )
+        )
+        return m.Infra.ClassMove(
+            name=target_name,
+            start=node.lineno,
+            end=node.end_lineno or node.lineno,
+            source=rendered_class,
+            kind="typed_dict_factory",
+        )
+
+    @staticmethod
+    def _extract_typed_dict_call(
+        node: ast.Assign,
+    ) -> tuple[str, ast.Dict, Sequence[ast.keyword]] | None:
+        """Extract (target_name, field_dict, keywords) from a TypedDict factory call."""
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
             return None
         target = node.targets[0]
-        if not isinstance(target, ast.Name):
-            return None
         if not isinstance(node.value, ast.Call):
             return None
         if not FlextInfraUtilitiesRefactorPydanticAnalysis._is_typed_dict_call(
@@ -209,14 +238,21 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         field_map_arg = node.value.args[1]
         if not isinstance(field_map_arg, ast.Dict):
             return None
-        total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._has_total_false(
-            node.value.keywords,
-        )
+        return (target.id, field_map_arg, node.value.keywords)
+
+    @staticmethod
+    def _render_typed_dict_class(
+        name: str,
+        field_map: ast.Dict,
+        *,
+        total_false: bool,
+    ) -> str:
+        """Render a BaseModel class from TypedDict factory fields."""
         render = FlextInfraUtilitiesRefactorPydanticAnalysis._render_field_line
         field_lines: MutableSequence[str] = []
         for key_node, value_node in zip(
-            field_map_arg.keys,
-            field_map_arg.values,
+            field_map.keys,
+            field_map.values,
             strict=True,
         ):
             if not isinstance(key_node, ast.Constant):
@@ -230,17 +266,10 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         if not field_lines:
             field_lines.append("    pass")
         rendered_fields = "\n".join(field_lines)
-        rendered_class = (
-            f"class {target.id}(BaseModel):\n"
+        return (
+            f"class {name}(BaseModel):\n"
             '    model_config = ConfigDict(extra="forbid")\n'
             f"{rendered_fields}\n"
-        )
-        return m.Infra.ClassMove(
-            name=target.id,
-            start=node.lineno,
-            end=node.end_lineno or node.lineno,
-            source=rendered_class,
-            kind="typed_dict_factory",
         )
 
     @staticmethod
@@ -469,20 +498,19 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         normalized = import_stmt.strip()
         if not normalized:
             return source
+        parsed_import = FlextInfraUtilitiesRefactorPydanticAnalysis._parse_import_stmt(
+            normalized,
+        )
+        if parsed_import is None:
+            return source
         module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
         if module is None:
             return source
-        try:
-            parsed = cst.parse_statement(f"{normalized}\n")
-        except cst.ParserSyntaxError:
+        if FlextInfraUtilitiesRefactorPydanticAnalysis._import_already_exists(
+            module,
+            normalized,
+        ):
             return source
-        if not isinstance(parsed, cst.SimpleStatementLine):
-            return source
-        for stmt in module.body:
-            if not isinstance(stmt, cst.SimpleStatementLine):
-                continue
-            if cst.Module(body=[stmt]).code.strip() == normalized:
-                return source
         is_preamble = FlextInfraUtilitiesRefactorPydanticAnalysis._is_preamble_stmt
         insert_idx = 0
         for idx, stmt in enumerate(module.body):
@@ -490,8 +518,28 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                 insert_idx = idx + 1
                 continue
             break
-        new_body = [*module.body[:insert_idx], parsed, *module.body[insert_idx:]]
+        new_body = [*module.body[:insert_idx], parsed_import, *module.body[insert_idx:]]
         return module.with_changes(body=new_body).code
+
+    @staticmethod
+    def _parse_import_stmt(normalized: str) -> cst.SimpleStatementLine | None:
+        """Parse an import string into a CST statement, or None on failure."""
+        try:
+            parsed = cst.parse_statement(f"{normalized}\n")
+        except cst.ParserSyntaxError:
+            return None
+        if not isinstance(parsed, cst.SimpleStatementLine):
+            return None
+        return parsed
+
+    @staticmethod
+    def _import_already_exists(module: cst.Module, normalized: str) -> bool:
+        """Check if the import statement already exists in the module."""
+        return any(
+            isinstance(stmt, cst.SimpleStatementLine)
+            and cst.Module(body=[stmt]).code.strip() == normalized
+            for stmt in module.body
+        )
 
 
 __all__ = ["FlextInfraUtilitiesRefactorPydanticAnalysis"]

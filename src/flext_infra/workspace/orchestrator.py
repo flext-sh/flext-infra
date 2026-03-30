@@ -141,7 +141,16 @@ class FlextInfraOrchestratorService(s[bool]):
                     if fail_fast:
                         skipped = total - idx
             elapsed_total = time.monotonic() - started_total
-            output.summary(verb, total, success, failed, skipped, elapsed_total)
+            output.summary(
+                m.Infra.SummaryStats(
+                    verb=verb,
+                    total=total,
+                    success=success,
+                    failed=failed,
+                    skipped=skipped,
+                    elapsed=elapsed_total,
+                )
+            )
             if failed > 0:
                 failures = self._collect_failures(projects, results)
                 output.failure_summary(verb, failures)
@@ -200,11 +209,13 @@ class FlextInfraOrchestratorService(s[bool]):
         else:
             error_count, error_lines = u.Infra.extract_errors(log_path)
             output.project_failure(
-                project,
-                elapsed,
-                log_path,
-                error_count,
-                list(error_lines),
+                m.Infra.ProjectFailureInfo(
+                    project=project,
+                    elapsed=elapsed,
+                    log_path=log_path,
+                    error_count=error_count,
+                    errors=list(error_lines),
+                )
             )
             if error_lines:
                 stderr = "\n".join(error_lines)

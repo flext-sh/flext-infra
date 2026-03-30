@@ -172,6 +172,45 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             self.changes.append(f"{'.'.join(chain)} -> {rewritten}")
             return cst.parse_expression(rewritten)
 
+        def _filter_import_stmt(
+            self,
+            stmt: cst.SimpleStatementLine,
+        ) -> cst.SimpleStatementLine | None:
+            """Filter replaced-class imports from a single import statement.
+
+            Returns the updated statement, or None if the import should be removed entirely.
+            """
+            import_node = stmt.body[0]
+            if not isinstance(import_node, cst.ImportFrom) or isinstance(
+                import_node.names,
+                cst.ImportStar,
+            ):
+                return stmt
+            remaining = [
+                alias
+                for alias in import_node.names
+                if not (
+                    isinstance(alias.name, cst.Name)
+                    and alias.name.value in self._replaced_classes
+                )
+            ]
+            removed_count = len(import_node.names) - len(remaining)
+            if removed_count > 0:
+                self.changes.append(f"removed {removed_count} unused import(s)")
+            if not remaining:
+                return None
+            if removed_count > 0:
+                cleaned = [
+                    a.with_changes(comma=cst.MaybeSentinel.DEFAULT)
+                    if i == len(remaining) - 1
+                    else a
+                    for i, a in enumerate(remaining)
+                ]
+                return stmt.with_changes(
+                    body=[import_node.with_changes(names=cleaned)],
+                )
+            return stmt
+
         @override
         def leave_Module(
             self,
@@ -185,7 +224,6 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             new_body: MutableSequence[
                 cst.BaseCompoundStatement | cst.SimpleStatementLine
             ] = []
-            c_import_present = self._has_c_import
             for stmt in updated_node.body:
                 if (
                     isinstance(stmt, cst.SimpleStatementLine)
@@ -193,36 +231,12 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
                     and isinstance(stmt.body[0], cst.ImportFrom)
                     and not isinstance(stmt.body[0].names, cst.ImportStar)
                 ):
-                    import_node = stmt.body[0]
-                    if isinstance(import_node.names, cst.ImportStar):
-                        continue
-                    remaining = [
-                        alias
-                        for alias in import_node.names
-                        if not (
-                            isinstance(alias.name, cst.Name)
-                            and alias.name.value in self._replaced_classes
-                        )
-                    ]
-                    removed_count = len(import_node.names) - len(remaining)
-                    if removed_count > 0:
-                        self.changes.append(
-                            f"removed {removed_count} unused import(s)",
-                        )
-                    if not remaining:
-                        continue
-                    if removed_count > 0:
-                        cleaned = [
-                            a.with_changes(comma=cst.MaybeSentinel.DEFAULT)
-                            if i == len(remaining) - 1
-                            else a
-                            for i, a in enumerate(remaining)
-                        ]
-                        stmt = stmt.with_changes(
-                            body=[import_node.with_changes(names=cleaned)],
-                        )
+                    filtered = self._filter_import_stmt(stmt)
+                    if filtered is not None:
+                        new_body.append(filtered)
+                    continue
                 new_body.append(stmt)
-            if not c_import_present:
+            if not self._has_c_import:
                 new_body.insert(
                     t.import_insert_index(new_body),
                     cst.parse_statement(f"{self._project_import}\n"),
@@ -384,6 +398,28 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         return graph
 
     @staticmethod
+    def _deps_from_import(
+        imp: cst.ImportFrom,
+        tree: cst.Module,
+        stem: str,
+        package_name: str,
+        lazy_map: t.StrMapping,
+    ) -> t.Infra.StrSet:
+        """Extract intra-package deps from a single ``from X import ...`` node."""
+        if isinstance(imp.names, cst.ImportStar):
+            return set()
+        mod = tree.code_for_node(imp.module) if imp.module else ""
+        if mod != package_name:
+            return set()
+        deps: t.Infra.StrSet = set()
+        for alias in imp.names:
+            name = alias.name.value if isinstance(alias.name, cst.Name) else ""
+            target = lazy_map.get(name)
+            if target and target != stem:
+                deps.add(target)
+        return deps
+
+    @staticmethod
     def collect_module_deps(
         tree: cst.Module,
         stem: str,
@@ -396,18 +432,16 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             if not isinstance(stmt, cst.SimpleStatementLine):
                 continue
             for small in stmt.body:
-                if not isinstance(small, cst.ImportFrom):
-                    continue
-                if isinstance(small.names, cst.ImportStar):
-                    continue
-                mod = tree.code_for_node(small.module) if small.module else ""
-                if mod != package_name:
-                    continue
-                for alias in small.names:
-                    name = alias.name.value if isinstance(alias.name, cst.Name) else ""
-                    target = lazy_map.get(name)
-                    if target and target != stem:
-                        deps.add(target)
+                if isinstance(small, cst.ImportFrom):
+                    deps.update(
+                        FlextInfraUtilitiesCodegenConstantTransformation._deps_from_import(
+                            small,
+                            tree,
+                            stem,
+                            package_name,
+                            lazy_map,
+                        ),
+                    )
         return deps
 
     @staticmethod
@@ -465,6 +499,34 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         ]
 
     @staticmethod
+    def _is_single_import_from(
+        stmt: cst.BaseCompoundStatement | cst.SimpleStatementLine,
+    ) -> bool:
+        """Check if statement is a simple single ``from X import ...`` line."""
+        return (
+            isinstance(stmt, cst.SimpleStatementLine)
+            and len(stmt.body) == 1
+            and isinstance(stmt.body[0], cst.ImportFrom)
+            and not isinstance(stmt.body[0].names, cst.ImportStar)
+        )
+
+    @staticmethod
+    def _split_cycle_imports(
+        imp: cst.ImportFrom,
+        target_set: frozenset[str],
+    ) -> t.Infra.Pair[Sequence[str], Sequence[str]]:
+        """Split imported names into cycle aliases and keepers."""
+        names = imp.names
+        if isinstance(names, cst.ImportStar):
+            return [], []
+        imported = [
+            alias.name.value for alias in names if isinstance(alias.name, cst.Name)
+        ]
+        cycle_aliases = [a for a in imported if a in target_set]
+        keep_aliases = [a for a in imported if a not in target_set]
+        return cycle_aliases, keep_aliases
+
+    @staticmethod
     def rewrite_module_imports(
         tree: cst.Module,
         package_name: str,
@@ -478,6 +540,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
 
         Returns the new body statements and a list of change descriptions.
         """
+        cls = FlextInfraUtilitiesCodegenConstantTransformation
         new_body: MutableSequence[
             cst.BaseCompoundStatement | cst.SimpleStatementLine
         ] = []
@@ -485,28 +548,21 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         target_set = frozenset(target_aliases)
 
         for stmt in tree.body:
-            if not (
-                isinstance(stmt, cst.SimpleStatementLine)
-                and len(stmt.body) == 1
-                and isinstance(stmt.body[0], cst.ImportFrom)
-                and not isinstance(stmt.body[0].names, cst.ImportStar)
-            ):
+            if not cls._is_single_import_from(stmt):
+                new_body.append(stmt)
+                continue
+            if not isinstance(stmt, cst.SimpleStatementLine):
                 new_body.append(stmt)
                 continue
             imp = stmt.body[0]
+            if not isinstance(imp, cst.ImportFrom):
+                new_body.append(stmt)
+                continue
             mod = tree.code_for_node(imp.module) if imp.module else ""
             if mod != package_name:
                 new_body.append(stmt)
                 continue
-            names = imp.names
-            if isinstance(names, cst.ImportStar):
-                new_body.append(stmt)
-                continue
-            imported = [
-                alias.name.value for alias in names if isinstance(alias.name, cst.Name)
-            ]
-            cycle_aliases = [a for a in imported if a in target_set]
-            keep_aliases = [a for a in imported if a not in target_set]
+            cycle_aliases, keep_aliases = cls._split_cycle_imports(imp, target_set)
             if not cycle_aliases:
                 new_body.append(stmt)
                 continue

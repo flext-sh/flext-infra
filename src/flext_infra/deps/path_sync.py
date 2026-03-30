@@ -432,8 +432,7 @@ class FlextInfraDependencyPathSync:
         parser = u.Infra.create_parser(
             "flext-infra deps path-sync",
             "Rewrite internal FLEXT dependency paths for workspace/standalone mode.",
-            include_apply=True,
-            include_project=True,
+            flags=u.Infra.SharedFlags(include_apply=True, include_project=True),
         )
         _ = parser.add_argument(
             "--mode",

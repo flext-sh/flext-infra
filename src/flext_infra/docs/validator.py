@@ -117,12 +117,10 @@ class FlextInfraDocValidator:
         payload_result = u.Infra.read_json(config)
         if payload_result.is_failure:
             return None
-        payload = payload_result.value
-        docs_validation = payload.get("docs_validation")
-        if not isinstance(docs_validation, dict):
-            return []
-        configured = docs_validation.get("required_skills")
-        if not isinstance(configured, list):
+        configured = FlextInfraDocValidator._extract_required_skills_list(
+            payload_result.value,
+        )
+        if configured is None:
             return []
         try:
             required_items: Sequence[str] = _STR_SEQ_ADAPTER.validate_python(
@@ -132,6 +130,19 @@ class FlextInfraDocValidator:
             return [str(item) for item in required_items if item]
         except ValidationError:
             return []
+
+    @staticmethod
+    def _extract_required_skills_list(
+        payload: Mapping[str, JsonValue],
+    ) -> list[JsonValue] | None:
+        """Extract the required_skills list from config payload. None if absent/invalid."""
+        docs_validation = payload.get("docs_validation")
+        if not isinstance(docs_validation, dict):
+            return None
+        configured = docs_validation.get("required_skills")
+        if not isinstance(configured, list):
+            return None
+        return configured
 
     def _run_adr_skill_check(
         self, workspace_root: Path

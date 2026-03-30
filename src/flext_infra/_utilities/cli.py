@@ -75,6 +75,8 @@ class FlextInfraUtilitiesCli:
     output format, check mode, and project selection.
     """
 
+    SharedFlags = _SharedFlags
+
     class CliArgs(m.FrozenStrictModel):
         """Parsed CLI arguments with strict validation.
 
@@ -286,75 +288,28 @@ class FlextInfraUtilitiesCli:
         return base
 
     @staticmethod
-    def _resolve_shared_flags(
-        *,
-        flags: _SharedFlags | None,
-        include_apply: bool,
-        include_diff: bool | None,
-        include_format: bool,
-        include_check: bool,
-        include_project: bool,
-    ) -> _SharedFlags:
-        """Resolve legacy shared-flag kwargs into a validated bundle."""
-        if flags is not None:
-            return flags
-        return _SharedFlags.model_validate(
-            {
-                "include_apply": include_apply,
-                "include_diff": include_diff,
-                "include_format": include_format,
-                "include_check": include_check,
-                "include_project": include_project,
-            },
-        )
-
-    @staticmethod
     def create_subcommand_parser(
         prog: str,
         description: str,
         *,
         subcommands: t.StrMapping,
         flags: _SharedFlags | None = None,
-        include_apply: bool = True,
-        include_diff: bool | None = None,
-        include_format: bool = False,
-        include_check: bool = False,
-        include_project: bool = False,
         subcommand_flags: Mapping[str, Mapping[str, bool]] | None = None,
     ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags.
-
-        Builds an ArgumentParser supporting multiple subcommands (e.g., "check",
-        "fix", "report"). Each subcommand inherits shared flags from parent.
-
-        Accepts either a ``flags`` bundle or individual keyword arguments
-        for backward compatibility. When ``flags`` is provided, the individual
-        keyword arguments are ignored.
 
         Args:
             prog: Program name for parser (e.g., "flext-infra").
             description: Help text for main parser.
             subcommands: Dict mapping subcommand names to help strings.
-            flags: Bundled flag configuration (preferred).
-            include_apply: Add --dry-run/--apply group (ignored when flags is set).
-            include_diff: Add --diff flag (ignored when flags is set).
-            include_format: Add --format flag (ignored when flags is set).
-            include_check: Add --check flag (ignored when flags is set).
-            include_project: Add --project/--projects flags (ignored when flags is set).
+            flags: Bundled flag configuration. Defaults to _SharedFlags() if None.
             subcommand_flags: Per-subcommand flag overrides.
 
         Returns:
             Tuple of (main_parser, subcommand_parsers_dict).
 
         """
-        resolved_flags = FlextInfraUtilitiesCli._resolve_shared_flags(
-            flags=flags,
-            include_apply=include_apply,
-            include_diff=include_diff,
-            include_format=include_format,
-            include_check=include_check,
-            include_project=include_project,
-        )
+        resolved_flags = flags or _SharedFlags()
         base_options = resolved_flags.to_dict()
         command_options: MutableMapping[str, MutableMapping[str, bool]] = {}
         for command in subcommands:
@@ -403,40 +358,19 @@ class FlextInfraUtilitiesCli:
         description: str,
         *,
         flags: _SharedFlags | None = None,
-        include_apply: bool = True,
-        include_diff: bool | None = None,
-        include_format: bool = False,
-        include_check: bool = False,
-        include_project: bool = False,
     ) -> ArgumentParser:
         """Create a standard ArgumentParser with common CLI flags.
-
-        Accepts either a ``flags`` bundle or individual keyword arguments
-        for backward compatibility. When ``flags`` is provided, the individual
-        keyword arguments are ignored.
 
         Args:
             prog: Program name for the parser.
             description: Description of the command.
-            flags: Bundled flag configuration (preferred).
-            include_apply: Add --dry-run/--apply group (ignored when flags is set).
-            include_diff: Add --diff flag (ignored when flags is set).
-            include_format: Add --format flag (ignored when flags is set).
-            include_check: Add --check flag (ignored when flags is set).
-            include_project: Add --project/--projects flags (ignored when flags is set).
+            flags: Bundled flag configuration. Defaults to _SharedFlags() if None.
 
         Returns:
             Configured ArgumentParser instance.
 
         """
-        resolved_flags = FlextInfraUtilitiesCli._resolve_shared_flags(
-            flags=flags,
-            include_apply=include_apply,
-            include_diff=include_diff,
-            include_format=include_format,
-            include_check=include_check,
-            include_project=include_project,
-        )
+        resolved_flags = flags or _SharedFlags()
         parser = ArgumentParser(prog=prog, description=description)
         FlextInfraUtilitiesCli._add_shared_flags(parser, resolved_flags)
         return parser

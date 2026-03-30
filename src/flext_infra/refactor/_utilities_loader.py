@@ -49,9 +49,7 @@ class FlextInfraUtilitiesRefactorLoader:
         """
         if isinstance(value, bool):
             return int(value)
-        if isinstance(value, int):
-            return value
-        if isinstance(value, float):
+        if isinstance(value, (int, float)):
             return int(value)
         if isinstance(value, str):
             try:

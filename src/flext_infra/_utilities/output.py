@@ -67,25 +67,8 @@ class FlextInfraUtilitiesOutput:
                 f"  {clr}{sym}{c.Infra.RESET if self.use_color else ''} {verb:<8} {proj:<24} {elapsed:.2f}s\n",
             )
 
-        def summary(
-            self,
-            verb: str,
-            total: int = 0,
-            success: int = 0,
-            failed: int = 0,
-            skipped: int = 0,
-            elapsed: float = 0.0,
-            *,
-            stats: m.Infra.SummaryStats | None = None,
-        ) -> None:
-            s = stats or m.Infra.SummaryStats(
-                verb=verb,
-                total=total,
-                success=success,
-                failed=failed,
-                skipped=skipped,
-                elapsed=elapsed,
-            )
+        def summary(self, stats: m.Infra.SummaryStats) -> None:
+            s = stats
             hdr = (
                 f"\u2500\u2500 {s.verb} summary \u2500\u2500"
                 if self.use_unicode
@@ -186,25 +169,8 @@ class FlextInfraUtilitiesOutput:
         cls._stream.flush()
 
     @classmethod
-    def summary(
-        cls,
-        verb: str,
-        total: int = 0,
-        ok: int = 0,
-        fail: int = 0,
-        skip: int = 0,
-        elapsed: float = 0.0,
-        *,
-        stats: m.Infra.SummaryStats | None = None,
-    ) -> None:
-        s = stats or m.Infra.SummaryStats(
-            verb=verb,
-            total=total,
-            success=ok,
-            failed=fail,
-            skipped=skip,
-            elapsed=elapsed,
-        )
+    def summary(cls, stats: m.Infra.SummaryStats) -> None:
+        s = stats
         hdr = (
             f"── {s.verb} summary ──" if cls._use_unicode else f"-- {s.verb} summary --"
         )
@@ -222,26 +188,9 @@ class FlextInfraUtilitiesOutput:
         cls._stream.write(f"    {sym} {gate:<10} {count:>5} errors  ({elapsed:.2f}s)\n")
 
     @classmethod
-    def project_failure(
-        cls,
-        project: str = "",
-        elapsed: float = 0.0,
-        log_path: Path | None = None,
-        error_count: int = 0,
-        errors: t.StrSequence | None = None,
-        *,
-        max_show: int = 3,
-        info: m.Infra.ProjectFailureInfo | None = None,
-    ) -> None:
+    def project_failure(cls, info: m.Infra.ProjectFailureInfo) -> None:
         """Show failed project with error excerpt."""
-        f = info or m.Infra.ProjectFailureInfo(
-            project=project,
-            elapsed=elapsed,
-            log_path=log_path or Path(),
-            error_count=error_count,
-            errors=errors or [],
-            max_show=max_show,
-        )
+        f = info
         clr = c.Infra.RED if cls._use_color else ""
         reset = c.Infra.RESET if cls._use_color else ""
         fail_sym = c.Infra.FAIL if cls._use_unicode else "[FAIL]"

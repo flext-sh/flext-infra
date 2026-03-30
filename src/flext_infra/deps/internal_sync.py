@@ -444,7 +444,7 @@ class FlextInfraInternalDependencySyncService:
         parser = u.Infra.create_parser(
             prog="flext-infra deps internal-sync",
             description="Synchronize internal FLEXT dependencies via git clone or workspace symlinks",
-            include_apply=False,
+            flags=u.Infra.SharedFlags(include_apply=False),
         )
         args = parser.parse_args()
         cli_args = u.Infra.resolve(args)

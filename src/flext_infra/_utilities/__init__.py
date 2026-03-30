@@ -12,70 +12,120 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from flext_infra._utilities import (
-        base,
-        cli,
-        cst,
-        discovery,
-        docs,
-        formatting,
-        git,
-        github,
-        io,
-        iteration,
-        log_parser,
-        output,
-        parsing,
-        paths,
-        patterns,
-        release,
-        reporting,
-        rope,
-        safety,
-        selection,
-        subprocess,
-        templates,
-        terminal,
-        toml,
-        toml_parse,
-        versioning,
-        yaml,
+        base as base,
+        cli as cli,
+        cst as cst,
+        discovery as discovery,
+        docs as docs,
+        formatting as formatting,
+        git as git,
+        github as github,
+        io as io,
+        iteration as iteration,
+        log_parser as log_parser,
+        output as output,
+        parsing as parsing,
+        paths as paths,
+        patterns as patterns,
+        release as release,
+        reporting as reporting,
+        rope as rope,
+        safety as safety,
+        selection as selection,
+        subprocess as subprocess,
+        templates as templates,
+        terminal as terminal,
+        toml as toml,
+        toml_parse as toml_parse,
+        versioning as versioning,
+        yaml as yaml,
     )
-    from flext_infra._utilities.base import FlextInfraUtilitiesBase
-    from flext_infra._utilities.cli import FlextInfraUtilitiesCli
-    from flext_infra._utilities.cst import FlextInfraUtilitiesCst
-    from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-    from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-    from flext_infra._utilities.formatting import FlextInfraUtilitiesFormatting
-    from flext_infra._utilities.git import FlextInfraUtilitiesGit
-    from flext_infra._utilities.github import FlextInfraUtilitiesGithub
-    from flext_infra._utilities.io import FlextInfraUtilitiesIo
-    from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-    from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
-    from flext_infra._utilities.output import FlextInfraUtilitiesOutput
-    from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-    from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
-    from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
-    from flext_infra._utilities.release import FlextInfraUtilitiesRelease
-    from flext_infra._utilities.reporting import FlextInfraUtilitiesReporting
-    from flext_infra._utilities.rope import FlextInfraUtilitiesRope
-    from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-    from flext_infra._utilities.selection import FlextInfraUtilitiesSelection
-    from flext_infra._utilities.subprocess import FlextInfraUtilitiesSubprocess
-    from flext_infra._utilities.templates import FlextInfraUtilitiesTemplates
-    from flext_infra._utilities.terminal import FlextInfraUtilitiesTerminal
-    from flext_infra._utilities.toml import FlextInfraUtilitiesToml
-    from flext_infra._utilities.toml_parse import FlextInfraUtilitiesTomlParse
-    from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-    from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
+    from flext_infra._utilities.base import (
+        FlextInfraUtilitiesBase as FlextInfraUtilitiesBase,
+    )
+    from flext_infra._utilities.cli import (
+        FlextInfraUtilitiesCli as FlextInfraUtilitiesCli,
+    )
+    from flext_infra._utilities.cst import (
+        FlextInfraUtilitiesCst as FlextInfraUtilitiesCst,
+    )
+    from flext_infra._utilities.discovery import (
+        FlextInfraUtilitiesDiscovery as FlextInfraUtilitiesDiscovery,
+    )
+    from flext_infra._utilities.docs import (
+        FlextInfraUtilitiesDocs as FlextInfraUtilitiesDocs,
+    )
+    from flext_infra._utilities.formatting import (
+        FlextInfraUtilitiesFormatting as FlextInfraUtilitiesFormatting,
+    )
+    from flext_infra._utilities.git import (
+        FlextInfraUtilitiesGit as FlextInfraUtilitiesGit,
+    )
+    from flext_infra._utilities.github import (
+        FlextInfraUtilitiesGithub as FlextInfraUtilitiesGithub,
+    )
+    from flext_infra._utilities.io import FlextInfraUtilitiesIo as FlextInfraUtilitiesIo
+    from flext_infra._utilities.iteration import (
+        FlextInfraUtilitiesIteration as FlextInfraUtilitiesIteration,
+    )
+    from flext_infra._utilities.log_parser import (
+        FlextInfraUtilitiesLogParser as FlextInfraUtilitiesLogParser,
+    )
+    from flext_infra._utilities.output import (
+        FlextInfraUtilitiesOutput as FlextInfraUtilitiesOutput,
+    )
+    from flext_infra._utilities.parsing import (
+        FlextInfraUtilitiesParsing as FlextInfraUtilitiesParsing,
+    )
+    from flext_infra._utilities.paths import (
+        FlextInfraUtilitiesPaths as FlextInfraUtilitiesPaths,
+    )
+    from flext_infra._utilities.patterns import (
+        FlextInfraUtilitiesPatterns as FlextInfraUtilitiesPatterns,
+    )
+    from flext_infra._utilities.release import (
+        FlextInfraUtilitiesRelease as FlextInfraUtilitiesRelease,
+    )
+    from flext_infra._utilities.reporting import (
+        FlextInfraUtilitiesReporting as FlextInfraUtilitiesReporting,
+    )
+    from flext_infra._utilities.rope import (
+        FlextInfraUtilitiesRope as FlextInfraUtilitiesRope,
+    )
+    from flext_infra._utilities.safety import (
+        FlextInfraUtilitiesSafety as FlextInfraUtilitiesSafety,
+    )
+    from flext_infra._utilities.selection import (
+        FlextInfraUtilitiesSelection as FlextInfraUtilitiesSelection,
+    )
+    from flext_infra._utilities.subprocess import (
+        FlextInfraUtilitiesSubprocess as FlextInfraUtilitiesSubprocess,
+    )
+    from flext_infra._utilities.templates import (
+        FlextInfraUtilitiesTemplates as FlextInfraUtilitiesTemplates,
+    )
+    from flext_infra._utilities.terminal import (
+        FlextInfraUtilitiesTerminal as FlextInfraUtilitiesTerminal,
+    )
+    from flext_infra._utilities.toml import (
+        FlextInfraUtilitiesToml as FlextInfraUtilitiesToml,
+    )
+    from flext_infra._utilities.toml_parse import (
+        FlextInfraUtilitiesTomlParse as FlextInfraUtilitiesTomlParse,
+    )
+    from flext_infra._utilities.versioning import (
+        FlextInfraUtilitiesVersioning as FlextInfraUtilitiesVersioning,
+    )
+    from flext_infra._utilities.yaml import (
+        FlextInfraUtilitiesYaml as FlextInfraUtilitiesYaml,
+    )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraUtilitiesBase": [
@@ -203,7 +253,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "yaml": ["flext_infra._utilities.yaml", ""],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCli",
     "FlextInfraUtilitiesCst",
@@ -261,41 +311,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

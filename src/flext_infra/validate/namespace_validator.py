@@ -463,13 +463,21 @@ class FlextInfraNamespaceValidator:
             return True
         if self._is_module_docstring(node):
             return True
+        if isinstance(node, (ast.Assign, ast.TypeAlias, ast.AnnAssign)):
+            return self._is_allowed_assignment(node, filepath)
+        return False
+
+    def _is_allowed_assignment(
+        self,
+        node: ast.Assign | ast.TypeAlias | ast.AnnAssign,
+        filepath: Path,
+    ) -> bool:
+        """Check whether an assignment-like statement is allowed at module level."""
         if isinstance(node, ast.Assign):
             return self._is_allowed_assign(node, filepath)
         if isinstance(node, ast.TypeAlias):
             return filepath.name == "typings.py"
-        if isinstance(node, ast.AnnAssign):
-            return self._is_allowed_ann_assign(node, filepath)
-        return False
+        return self._is_allowed_ann_assign(node, filepath)
 
     @staticmethod
     def _is_module_docstring(node: ast.stmt) -> bool:

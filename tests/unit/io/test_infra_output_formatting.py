@@ -1,6 +1,6 @@
 """Tests for flext_infra output formatting — status, summary, messages, headers, progress.
 
-Tests FlextInfraUtilitiesOutput.OutputBackend formatting methods for status, summary, error/warning/info messages,
+Tests u.Infra.OutputBackend formatting methods for status, summary, error/warning/info messages,
 headers, and progress indicators.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -14,7 +14,7 @@ import re
 
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilitiesOutput
+from tests import m, u
 
 ANSI_RE = re.compile(r"\033\[\d+m")
 
@@ -28,16 +28,16 @@ def _make_backend(
     use_color: bool = False,
     use_unicode: bool = False,
     stream: io.StringIO | None = None,
-) -> FlextInfraUtilitiesOutput.OutputBackend:
+) -> u.Infra.OutputBackend:
     """Create a backend with test-friendly settings."""
     buf = stream or io.StringIO()
-    return FlextInfraUtilitiesOutput.OutputBackend(
+    return u.Infra.OutputBackend(
         use_color=use_color, use_unicode=use_unicode, stream=buf
     )
 
 
 class TestInfraOutputStatus:
-    """Tests for output status formatting using FlextInfraUtilitiesOutput.OutputBackend directly."""
+    """Tests for output status formatting using u.Infra.OutputBackend directly."""
 
     def test_success_status_contains_ok(self) -> None:
         buf = io.StringIO()
@@ -77,12 +77,14 @@ class TestInfraOutputSummary:
         buf = io.StringIO()
         backend = _make_backend(use_unicode=False, stream=buf)
         backend.summary(
-            "check",
-            total=33,
-            success=30,
-            failed=2,
-            skipped=1,
-            elapsed=12.34,
+            m.Infra.SummaryStats(
+                verb="check",
+                total=33,
+                success=30,
+                failed=2,
+                skipped=1,
+                elapsed=12.34,
+            )
         )
         text = buf.getvalue()
         tm.that(text, contains="check summary")
@@ -95,7 +97,11 @@ class TestInfraOutputSummary:
     def test_summary_no_color_for_zero_counts(self) -> None:
         buf = io.StringIO()
         backend = _make_backend(use_color=True, use_unicode=False, stream=buf)
-        backend.summary("test", total=5, success=5, failed=0, skipped=0, elapsed=1.0)
+        backend.summary(
+            m.Infra.SummaryStats(
+                verb="test", total=5, success=5, failed=0, skipped=0, elapsed=1.0
+            )
+        )
         text = buf.getvalue()
         plain = _strip_ansi(text)
         tm.that(plain, contains="Failed: 0")

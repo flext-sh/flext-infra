@@ -5,99 +5,103 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from flext_infra.transformers import (
-        alias_remover,
-        census_visitors,
-        class_nesting,
-        class_reconstructor,
-        deprecated_remover,
-        dict_to_mapping,
-        helper_consolidation,
-        import_bypass_remover,
-        import_modernizer,
-        lazy_import_fixer,
-        mro_private_inline,
-        mro_remover,
-        mro_symbol_propagator,
-        nested_class_propagation,
-        policy,
-        redundant_cast_remover,
-        signature_propagator,
-        symbol_propagator,
-        tier0_import_fixer,
-        typing_annotation_replacer,
-        typing_unifier,
-        violation_census_visitor,
+        alias_remover as alias_remover,
+        census_visitors as census_visitors,
+        class_nesting as class_nesting,
+        class_reconstructor as class_reconstructor,
+        deprecated_remover as deprecated_remover,
+        dict_to_mapping as dict_to_mapping,
+        helper_consolidation as helper_consolidation,
+        import_bypass_remover as import_bypass_remover,
+        import_modernizer as import_modernizer,
+        lazy_import_fixer as lazy_import_fixer,
+        mro_private_inline as mro_private_inline,
+        mro_remover as mro_remover,
+        mro_symbol_propagator as mro_symbol_propagator,
+        nested_class_propagation as nested_class_propagation,
+        policy as policy,
+        redundant_cast_remover as redundant_cast_remover,
+        signature_propagator as signature_propagator,
+        symbol_propagator as symbol_propagator,
+        tier0_import_fixer as tier0_import_fixer,
+        typing_annotation_replacer as typing_annotation_replacer,
+        typing_unifier as typing_unifier,
+        violation_census_visitor as violation_census_visitor,
     )
-    from flext_infra.transformers.alias_remover import FlextInfraRefactorAliasRemover
+    from flext_infra.transformers.alias_remover import (
+        FlextInfraRefactorAliasRemover as FlextInfraRefactorAliasRemover,
+    )
     from flext_infra.transformers.census_visitors import (
-        FlextInfraCensusImportDiscoveryVisitor,
-        FlextInfraCensusUsageCollector,
+        FlextInfraCensusImportDiscoveryVisitor as FlextInfraCensusImportDiscoveryVisitor,
+        FlextInfraCensusUsageCollector as FlextInfraCensusUsageCollector,
     )
     from flext_infra.transformers.class_nesting import (
-        FlextInfraRefactorClassNestingTransformer,
+        FlextInfraRefactorClassNestingTransformer as FlextInfraRefactorClassNestingTransformer,
     )
     from flext_infra.transformers.class_reconstructor import (
-        FlextInfraRefactorClassReconstructor,
+        FlextInfraRefactorClassReconstructor as FlextInfraRefactorClassReconstructor,
     )
     from flext_infra.transformers.deprecated_remover import (
-        FlextInfraRefactorDeprecatedRemover,
+        FlextInfraRefactorDeprecatedRemover as FlextInfraRefactorDeprecatedRemover,
     )
     from flext_infra.transformers.dict_to_mapping import (
-        FlextInfraDictToMappingTransformer,
+        FlextInfraDictToMappingTransformer as FlextInfraDictToMappingTransformer,
     )
     from flext_infra.transformers.helper_consolidation import (
-        FlextInfraHelperConsolidationTransformer,
+        FlextInfraHelperConsolidationTransformer as FlextInfraHelperConsolidationTransformer,
     )
     from flext_infra.transformers.import_bypass_remover import (
-        FlextInfraRefactorImportBypassRemover,
+        FlextInfraRefactorImportBypassRemover as FlextInfraRefactorImportBypassRemover,
     )
     from flext_infra.transformers.import_modernizer import (
-        FlextInfraRefactorImportModernizer,
+        FlextInfraRefactorImportModernizer as FlextInfraRefactorImportModernizer,
     )
     from flext_infra.transformers.lazy_import_fixer import (
-        FlextInfraRefactorLazyImportFixer,
+        FlextInfraRefactorLazyImportFixer as FlextInfraRefactorLazyImportFixer,
     )
     from flext_infra.transformers.mro_private_inline import (
-        FlextInfraRefactorMROPrivateInlineTransformer,
-        FlextInfraRefactorMROQualifiedReferenceTransformer,
+        FlextInfraRefactorMROPrivateInlineTransformer as FlextInfraRefactorMROPrivateInlineTransformer,
+        FlextInfraRefactorMROQualifiedReferenceTransformer as FlextInfraRefactorMROQualifiedReferenceTransformer,
     )
-    from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
+    from flext_infra.transformers.mro_remover import (
+        FlextInfraRefactorMRORemover as FlextInfraRefactorMRORemover,
+    )
     from flext_infra.transformers.mro_symbol_propagator import (
-        FlextInfraRefactorMROSymbolPropagator,
+        FlextInfraRefactorMROSymbolPropagator as FlextInfraRefactorMROSymbolPropagator,
     )
     from flext_infra.transformers.nested_class_propagation import (
-        FlextInfraNestedClassPropagationTransformer,
+        FlextInfraNestedClassPropagationTransformer as FlextInfraNestedClassPropagationTransformer,
     )
     from flext_infra.transformers.policy import (
-        FlextInfraRefactorTransformerPolicyUtilities,
+        FlextInfraRefactorTransformerPolicyUtilities as FlextInfraRefactorTransformerPolicyUtilities,
     )
     from flext_infra.transformers.redundant_cast_remover import (
-        FlextInfraRedundantCastRemover,
+        FlextInfraRedundantCastRemover as FlextInfraRedundantCastRemover,
     )
     from flext_infra.transformers.signature_propagator import (
-        FlextInfraRefactorSignaturePropagator,
+        FlextInfraRefactorSignaturePropagator as FlextInfraRefactorSignaturePropagator,
     )
     from flext_infra.transformers.symbol_propagator import (
-        FlextInfraRefactorSymbolPropagator,
+        FlextInfraRefactorSymbolPropagator as FlextInfraRefactorSymbolPropagator,
     )
     from flext_infra.transformers.tier0_import_fixer import (
-        FlextInfraTransformerTier0ImportFixer,
+        FlextInfraTransformerTier0ImportFixer as FlextInfraTransformerTier0ImportFixer,
     )
     from flext_infra.transformers.typing_annotation_replacer import (
-        FlextInfraTypingAnnotationReplacer,
+        FlextInfraTypingAnnotationReplacer as FlextInfraTypingAnnotationReplacer,
     )
-    from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+    from flext_infra.transformers.typing_unifier import (
+        FlextInfraRefactorTypingUnifier as FlextInfraRefactorTypingUnifier,
+    )
     from flext_infra.transformers.violation_census_visitor import (
-        FlextInfraViolationCensusVisitor,
+        FlextInfraViolationCensusVisitor as FlextInfraViolationCensusVisitor,
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
@@ -230,7 +234,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
     "FlextInfraDictToMappingTransformer",
@@ -280,41 +284,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

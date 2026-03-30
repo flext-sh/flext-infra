@@ -42,9 +42,11 @@ class FlextInfraRuntimeDevDependencyDetector:
         parser = u.Infra.create_parser(
             prog="flext-infra deps detect",
             description="Detect runtime vs dev dependencies (deptry + pip check).",
-            include_apply=True,
-            include_project=True,
-            include_format=True,
+            flags=u.Infra.SharedFlags(
+                include_apply=True,
+                include_project=True,
+                include_format=True,
+            ),
         )
         _ = parser.add_argument(
             "--no-pip-check",

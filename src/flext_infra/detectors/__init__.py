@@ -5,73 +5,73 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
+from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes
-
     from flext_infra.detectors import (
-        class_placement_detector,
-        compatibility_alias_detector,
-        cyclic_import_detector,
-        dependency_analyzer_base,
-        future_annotations_detector,
-        import_alias_detector,
-        import_collector,
-        internal_import_detector,
-        loose_object_detector,
-        manual_protocol_detector,
-        manual_typing_alias_detector,
-        mro_completeness_detector,
-        namespace_facade_scanner,
-        namespace_source_detector,
-        runtime_alias_detector,
+        class_placement_detector as class_placement_detector,
+        compatibility_alias_detector as compatibility_alias_detector,
+        cyclic_import_detector as cyclic_import_detector,
+        dependency_analyzer_base as dependency_analyzer_base,
+        future_annotations_detector as future_annotations_detector,
+        import_alias_detector as import_alias_detector,
+        import_collector as import_collector,
+        internal_import_detector as internal_import_detector,
+        loose_object_detector as loose_object_detector,
+        manual_protocol_detector as manual_protocol_detector,
+        manual_typing_alias_detector as manual_typing_alias_detector,
+        mro_completeness_detector as mro_completeness_detector,
+        namespace_facade_scanner as namespace_facade_scanner,
+        namespace_source_detector as namespace_source_detector,
+        runtime_alias_detector as runtime_alias_detector,
     )
     from flext_infra.detectors.class_placement_detector import (
-        FlextInfraClassPlacementDetector,
+        FlextInfraClassPlacementDetector as FlextInfraClassPlacementDetector,
     )
     from flext_infra.detectors.compatibility_alias_detector import (
-        FlextInfraCompatibilityAliasDetector,
+        FlextInfraCompatibilityAliasDetector as FlextInfraCompatibilityAliasDetector,
     )
     from flext_infra.detectors.cyclic_import_detector import (
-        FlextInfraCyclicImportDetector,
+        FlextInfraCyclicImportDetector as FlextInfraCyclicImportDetector,
     )
     from flext_infra.detectors.dependency_analyzer_base import (
-        FlextInfraDependencyAnalyzer,
+        FlextInfraDependencyAnalyzer as FlextInfraDependencyAnalyzer,
     )
     from flext_infra.detectors.future_annotations_detector import (
-        FlextInfraFutureAnnotationsDetector,
+        FlextInfraFutureAnnotationsDetector as FlextInfraFutureAnnotationsDetector,
     )
     from flext_infra.detectors.import_alias_detector import (
-        FlextInfraImportAliasDetector,
+        FlextInfraImportAliasDetector as FlextInfraImportAliasDetector,
     )
-    from flext_infra.detectors.import_collector import FlextInfraImportCollector
+    from flext_infra.detectors.import_collector import (
+        FlextInfraImportCollector as FlextInfraImportCollector,
+    )
     from flext_infra.detectors.internal_import_detector import (
-        FlextInfraInternalImportDetector,
+        FlextInfraInternalImportDetector as FlextInfraInternalImportDetector,
     )
     from flext_infra.detectors.loose_object_detector import (
-        FlextInfraLooseObjectDetector,
+        FlextInfraLooseObjectDetector as FlextInfraLooseObjectDetector,
     )
     from flext_infra.detectors.manual_protocol_detector import (
-        FlextInfraManualProtocolDetector,
+        FlextInfraManualProtocolDetector as FlextInfraManualProtocolDetector,
     )
     from flext_infra.detectors.manual_typing_alias_detector import (
-        FlextInfraManualTypingAliasDetector,
+        FlextInfraManualTypingAliasDetector as FlextInfraManualTypingAliasDetector,
     )
     from flext_infra.detectors.mro_completeness_detector import (
-        FlextInfraMROCompletenessDetector,
+        FlextInfraMROCompletenessDetector as FlextInfraMROCompletenessDetector,
     )
     from flext_infra.detectors.namespace_facade_scanner import (
-        FlextInfraNamespaceFacadeScanner,
+        FlextInfraNamespaceFacadeScanner as FlextInfraNamespaceFacadeScanner,
     )
     from flext_infra.detectors.namespace_source_detector import (
-        FlextInfraNamespaceSourceDetector,
+        FlextInfraNamespaceSourceDetector as FlextInfraNamespaceSourceDetector,
     )
     from flext_infra.detectors.runtime_alias_detector import (
-        FlextInfraRuntimeAliasDetector,
+        FlextInfraRuntimeAliasDetector as FlextInfraRuntimeAliasDetector,
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
@@ -167,7 +167,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "runtime_alias_detector": ["flext_infra.detectors.runtime_alias_detector", ""],
 }
 
-__all__ = [
+_EXPORTS: Sequence[str] = [
     "FlextInfraClassPlacementDetector",
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraCyclicImportDetector",
@@ -201,41 +201,4 @@ __all__ = [
 ]
 
 
-_LAZY_CACHE: MutableMapping[str, FlextTypes.ModuleExport] = {}
-
-
-def __getattr__(name: str) -> FlextTypes.ModuleExport:
-    """Lazy-load module attributes on first access (PEP 562).
-
-    A local cache ``_LAZY_CACHE`` persists resolved objects across repeated
-    accesses during process lifetime.
-
-    Args:
-        name: Attribute name requested by dir()/import.
-
-    Returns:
-        Lazy-loaded module export type.
-
-    Raises:
-        AttributeError: If attribute not registered.
-
-    """
-    if name in _LAZY_CACHE:
-        return _LAZY_CACHE[name]
-
-    value = lazy_getattr(name, _LAZY_IMPORTS, globals(), __name__)
-    _LAZY_CACHE[name] = value
-    return value
-
-
-def __dir__() -> Sequence[str]:
-    """Return list of available attributes for dir() and autocomplete.
-
-    Returns:
-        List of public names from module exports.
-
-    """
-    return sorted(__all__)
-
-
-cleanup_submodule_namespace(__name__, _LAZY_IMPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)

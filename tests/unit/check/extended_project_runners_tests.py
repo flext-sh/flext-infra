@@ -13,7 +13,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraUtilities, FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraUtilities, FlextInfraWorkspaceChecker, m as im
 from tests import m, t
 
 from ._shared_fixtures import create_gate_execution
@@ -54,7 +54,7 @@ class TestCheckProjectRunners:
         result = checker._check_project(
             tmp_path,
             ["lint", "format", "pyrefly"],
-            tmp_path,
+            im.Infra.GateContext(workspace_root=tmp_path, reports_dir=tmp_path),
         )
         tm.that(called["lint"], eq=True)
         tm.that(called["format"], eq=True)

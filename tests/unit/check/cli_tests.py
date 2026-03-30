@@ -120,10 +120,7 @@ def test_run_cli_with_fail_fast_flag(monkeypatch: MonkeyPatch) -> None:
 def test_run_cli_run_forwards_fix_and_tool_args(monkeypatch: MonkeyPatch) -> None:
     captured_projects: list[str] = []
     captured_gates: list[str] = []
-    captured_fix = False
-    captured_check_only = False
-    captured_ruff_args: list[str] = []
-    captured_pyright_args: list[str] = []
+    captured_ctx: list[m.Infra.GateContext] = []
 
     def _fake_run_projects(
         _self: FlextInfraWorkspaceChecker,
@@ -132,23 +129,13 @@ def test_run_cli_run_forwards_fix_and_tool_args(monkeypatch: MonkeyPatch) -> Non
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
-        fix: bool = False,
-        check_only: bool = False,
-        ruff_args: t.StrSequence | None = None,
-        pyright_args: t.StrSequence | None = None,
+        ctx: m.Infra.GateContext | None = None,
     ) -> r[list[m.Infra.ProjectResult]]:
-        nonlocal \
-            captured_fix, \
-            captured_check_only, \
-            captured_ruff_args, \
-            captured_pyright_args
         del reports_dir, fail_fast
         captured_projects.extend(projects)
         captured_gates.extend(gates)
-        captured_fix = fix
-        captured_check_only = check_only
-        captured_ruff_args = list(ruff_args or [])
-        captured_pyright_args = list(pyright_args or [])
+        if ctx is not None:
+            captured_ctx.append(ctx)
         project = m.Infra.ProjectResult(project="flext-core", gates={})
         return r[list[m.Infra.ProjectResult]].ok([project])
 
@@ -173,10 +160,11 @@ def test_run_cli_run_forwards_fix_and_tool_args(monkeypatch: MonkeyPatch) -> Non
     assert exit_code == 0
     assert captured_projects == ["flext-core"]
     assert captured_gates == ["lint", "pyright"]
-    assert captured_fix is True
-    assert captured_check_only is True
-    assert captured_ruff_args == ["--select", "E501"]
-    assert captured_pyright_args == ["--level", "basic"]
+    assert len(captured_ctx) == 1
+    assert captured_ctx[0].apply_fixes is True
+    assert captured_ctx[0].check_only is True
+    assert list(captured_ctx[0].ruff_args) == ["--select", "E501"]
+    assert list(captured_ctx[0].pyright_args) == ["--level", "basic"]
 
 
 def test_run_cli_rejects_fix_flags_for_run() -> None:
