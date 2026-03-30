@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
@@ -88,62 +89,40 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         # Get all classes defined in module (these are NOT loose)
         known_classes = set(u.Infra.get_module_classes(rope_project, res))
 
+        file_str = str(file_path)
         violations: MutableSequence[m.Infra.LooseObjectViolation] = []
 
-        # Detect loose functions (not dunder, not private)
+        def _add(hit: re.Match[str], name: str, kind: str, suffix: str) -> None:
+            violations.append(
+                m.Infra.LooseObjectViolation(
+                    file=file_str,
+                    line=source.count("\n", 0, hit.start()) + 1,
+                    name=name,
+                    kind=kind,
+                    suggestion=f"{class_stem}{suffix}",
+                )
+            )
+
         for hit in _FUNC_DEF_RE.finditer(source):
             name = hit.group(2)
-            if name.startswith("__") and name.endswith("__"):
-                continue
-            if name.startswith("_"):
-                continue
-            line = source[: hit.start()].count("\n") + 1
-            violations.append(
-                m.Infra.LooseObjectViolation(
-                    file=str(file_path),
-                    line=line,
-                    name=name,
-                    kind="function",
-                    suggestion=f"{class_stem}Utilities",
-                )
-            )
+            if not name.startswith("_"):
+                _add(hit, name, "function", "Utilities")
 
-        # Detect loose constants (UPPER_CASE assignments)
         for hit in _ASSIGN_RE.finditer(source):
             name = hit.group(1)
-            if name in _ALLOWED_TOP_LEVEL or name in known_classes:
-                continue
-            if len(name) <= c.Infra.NAMESPACE_MIN_ALIAS_LENGTH:
-                continue
-            if name.startswith("_"):
-                continue
-            if not _CONSTANT_RE.match(name):
-                continue
-            line = source[: hit.start()].count("\n") + 1
-            violations.append(
-                m.Infra.LooseObjectViolation(
-                    file=str(file_path),
-                    line=line,
-                    name=name,
-                    kind="constant",
-                    suggestion=f"{class_stem}Constants",
-                )
-            )
+            if (
+                name not in _ALLOWED_TOP_LEVEL
+                and name not in known_classes
+                and len(name) > c.Infra.NAMESPACE_MIN_ALIAS_LENGTH
+                and not name.startswith("_")
+                and _CONSTANT_RE.match(name)
+            ):
+                _add(hit, name, "constant", "Constants")
 
-        # Detect loose type aliases (PEP 695)
         for hit in _TYPE_ALIAS_RE.finditer(source):
             name = hit.group(1)
             if name not in _ALLOWED_TOP_LEVEL:
-                line = source[: hit.start()].count("\n") + 1
-                violations.append(
-                    m.Infra.LooseObjectViolation(
-                        file=str(file_path),
-                        line=line,
-                        name=name,
-                        kind="typealias",
-                        suggestion=f"{class_stem}Types",
-                    )
-                )
+                _add(hit, name, "typealias", "Types")
 
         return violations
 

@@ -229,12 +229,13 @@ class FlextInfraUtilitiesParsing:
         return ""
 
     @staticmethod
-    def _import_already_exists(module: cst.Module, normalized: str) -> bool:
+    def _import_already_exists(
+        module: cst.Module, stmt: cst.SimpleStatementLine
+    ) -> bool:
         """Check if the import statement already exists in the module."""
         return any(
-            isinstance(stmt, cst.SimpleStatementLine)
-            and cst.Module(body=[stmt]).code.strip() == normalized
-            for stmt in module.body
+            isinstance(s, cst.SimpleStatementLine) and s.deep_equals(stmt)
+            for s in module.body
         )
 
     @staticmethod
@@ -254,7 +255,7 @@ class FlextInfraUtilitiesParsing:
             return source
         if FlextInfraUtilitiesParsing._import_already_exists(
             module,
-            normalized_import,
+            parsed_stmt,
         ):
             return source
         insert_idx = 0

@@ -47,7 +47,7 @@ class FlextInfraCodegenGeneration:
     ) -> t.StrSequence:
         """Generate import lines grouped by module path."""
         if not groups:
-            return []
+            return ()
 
         lines: MutableSequence[str] = []
 
@@ -129,7 +129,7 @@ class FlextInfraCodegenGeneration:
 
         """
         if not groups:
-            return []
+            return ()
 
         # Collapse: if mod starts with a child_package prefix, replace with the child
         children = set(child_packages or [])
@@ -145,7 +145,7 @@ class FlextInfraCodegenGeneration:
                     break
             collapsed[target].extend(items)
 
-        lines: MutableSequence[str] = ["if TYPE_CHECKING:"]
+        lines: MutableSequence[str] = ["if _TYPE_CHECKING:"]
         root_name = "" if not local_package_root else local_package_root.split(".")[0]
         flext_types_in_groups = any(
             export_name == "FlextTypes"
@@ -154,6 +154,7 @@ class FlextInfraCodegenGeneration:
         )
         if include_flext_types and not flext_types_in_groups:
             lines.append("    from flext_core import FlextTypes")
+        external_imports: MutableMapping[str, MutableSequence[str]] = defaultdict(list)
 
         # Collect all mods that will get wildcard imports
         wildcard_mods: set[str] = set()
@@ -182,8 +183,31 @@ class FlextInfraCodegenGeneration:
                     )
                     if is_local_module:
                         lines.append(f"    from {mod} import *")
+                    else:
+                        external_imports[mod].extend(
+                            [
+                                exp if exp == attr else f"{attr} as {exp}"
+                                for exp, attr in attr_items
+                            ],
+                        )
+                alias_items = [exp for exp, attr in items if not attr]
+                if alias_items and not (
+                    mod.startswith(".")
+                    or (root_name and mod.split(".")[0] == root_name)
+                ):
+                    external_imports[mod].extend(alias_items)
             prev_top = top
-        return [] if len(lines) == 1 else lines
+        for mod in sorted(external_imports, key=str.lower):
+            parts = sorted(set(external_imports[mod]))
+            joined = ", ".join(parts)
+            line = f"    from {mod} import {joined}"
+            if len(line) > c.Infra.MAX_LINE_LENGTH:
+                lines.append(f"    from {mod} import (")
+                lines.extend(f"        {part}," for part in parts)
+                lines.append("    )")
+            else:
+                lines.append(line)
+        return () if len(lines) == 1 else lines
 
     @staticmethod
     def generate_file(

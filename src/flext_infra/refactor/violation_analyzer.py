@@ -7,6 +7,7 @@ from collections import Counter
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
+from typing import override
 
 import libcst as cst
 from libcst.metadata import MetadataWrapper
@@ -19,6 +20,17 @@ from flext_infra import (
     t,
     u,
 )
+
+
+class _NameCollector(cst.CSTVisitor):
+    """Collect all Name tokens from a CST subtree."""
+
+    def __init__(self) -> None:
+        self.names: t.Infra.StrSet = set()
+
+    @override
+    def visit_Name(self, node: cst.Name) -> None:
+        self.names.add(node.value)
 
 
 class FlextInfraRefactorViolationAnalyzer:
@@ -268,15 +280,7 @@ class FlextInfraRefactorViolationAnalyzer:
     @staticmethod
     def _collect_names(node: cst.CSTNode) -> t.Infra.StrSet:
         """Collect all Name tokens from a CST node."""
-
-        class _Collector(cst.CSTVisitor):
-            def __init__(self) -> None:
-                self.names: t.Infra.StrSet = set()
-
-            def visit_Name(self, node: cst.Name) -> None:
-                self.names.add(node.value)
-
-        col = _Collector()
+        col = _NameCollector()
         node.visit(col)
         return col.names
 
