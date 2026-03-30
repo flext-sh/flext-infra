@@ -18,8 +18,15 @@ from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,
 )
-from flext_infra.basemk.__main__ import main as basemk_main
+from flext_infra.cli import main as infra_main
 from tests import m as im, t
+
+
+def basemk_main(argv: list[str] | None = None) -> int:
+    args = ["basemk"]
+    if argv is not None:
+        args.extend(argv)
+    return infra_main(args)
 
 
 class _InvalidTemplateEngine:

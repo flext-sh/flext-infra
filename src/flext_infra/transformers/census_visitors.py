@@ -12,7 +12,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraUtilitiesParsing, c, m, t
+from flext_infra import c, m, t, u
 
 
 class FlextInfraCensusImportDiscoveryVisitor(cst.CSTVisitor):
@@ -39,7 +39,7 @@ class FlextInfraCensusImportDiscoveryVisitor(cst.CSTVisitor):
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         if node.module is None:
             return
-        module_str = FlextInfraUtilitiesParsing.cst_module_name(node.module)
+        module_str = u.Infra.cst_module_name(node.module)
         if not module_str:
             return
         if isinstance(node.names, cst.ImportStar):
@@ -47,7 +47,7 @@ class FlextInfraCensusImportDiscoveryVisitor(cst.CSTVisitor):
         for alias in node.names:
             imported_name = alias.name.value if isinstance(alias.name, cst.Name) else ""
             local_name = (
-                FlextInfraUtilitiesParsing.cst_asname_to_local(alias.asname)
+                u.Infra.cst_asname_to_local(alias.asname)
                 if alias.asname
                 else imported_name
             )
@@ -112,7 +112,7 @@ class FlextInfraCensusUsageCollector(cst.CSTVisitor):
 
         if (
             isinstance(value, cst.Attribute)
-            and FlextInfraUtilitiesParsing.cst_root_name(value) in self.alias_locals
+            and u.Infra.cst_root_name(value) in self.alias_locals
         ):
             inner_name = value.attr.value
             base_class = self.inner_class_map.get(inner_name, "")

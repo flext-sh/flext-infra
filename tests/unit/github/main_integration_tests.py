@@ -1,8 +1,7 @@
-"""Tests for __main__.py main() dispatch integration."""
+"""Tests for centralized github CLI dispatch integration."""
 
 from __future__ import annotations
 
-import sys
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
@@ -10,10 +9,9 @@ import pytest
 from flext_core import r
 
 from flext_infra import u
-from flext_infra.github import __main__ as github_main
+from flext_infra.cli import main
+from flext_infra.github.cli import FlextInfraCliGithub
 from tests import m
-
-main = github_main.main
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
@@ -27,20 +25,10 @@ def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
 
 class TestMain:
     def test_help_flag(self) -> None:
-        original = sys.argv.copy()
-        try:
-            sys.argv = ["flext-infra", "-h"]
-            assert main() == 0
-        finally:
-            sys.argv = original
+        assert main(["github", "--help"]) == 0
 
     def test_no_args(self) -> None:
-        original = sys.argv.copy()
-        try:
-            sys.argv = ["flext-infra"]
-            assert main() == 1
-        finally:
-            sys.argv = original
+        assert main(["github"]) == 1
 
     def test_workflows_subcommand(
         self,
@@ -55,17 +43,7 @@ class TestMain:
             "github_sync_workspace_workflows",
             staticmethod(_sync),
         )
-        original = sys.argv.copy()
-        try:
-            sys.argv = [
-                "flext-infra",
-                "workflows",
-                "--workspace",
-                str(tmp_path),
-            ]
-            assert main() == 0
-        finally:
-            sys.argv = original
+        assert main(["github", "workflows", "--workspace", str(tmp_path)]) == 0
 
     def test_lint_subcommand(
         self,
@@ -78,36 +56,30 @@ class TestMain:
             )
 
         monkeypatch.setattr(u.Infra, "github_lint_workflows", staticmethod(_lint))
-        original = sys.argv.copy()
-        try:
-            sys.argv = [
-                "flext-infra",
-                "lint",
-                "--workspace",
-                str(tmp_path),
-            ]
-            assert main() == 0
-        finally:
-            sys.argv = original
+        assert main(["github", "lint", "--workspace", str(tmp_path)]) == 0
 
     def test_pr_subcommand(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        def _run_pr(argv: Sequence[str]) -> int:
-            return 0
+        def _run_pr(
+            _params: m.Infra.GithubPrInput,
+        ) -> r[m.Infra.PrExecutionResultModel]:
+            return r[m.Infra.PrExecutionResultModel].ok(
+                m.Infra.PrExecutionResultModel(
+                    display="repo",
+                    status="ok",
+                    elapsed=0,
+                    exit_code=0,
+                ),
+            )
 
-        monkeypatch.setattr(github_main, "run_pr", _run_pr)
-        original = sys.argv.copy()
-        try:
-            sys.argv = [
-                "flext-infra",
-                "pr",
-            ]
-            assert main() == 0
-        finally:
-            sys.argv = original
+        monkeypatch.setattr(FlextInfraCliGithub, "_handle_pr", staticmethod(_run_pr))
+        assert (
+            main(["github", "pr", "--repo-root", str(tmp_path), "--action", "status"])
+            == 0
+        )
 
     def test_pr_workspace_subcommand(
         self,
@@ -122,27 +94,10 @@ class TestMain:
             "github_pr_orchestrate",
             staticmethod(_orchestrate),
         )
-        original = sys.argv.copy()
-        try:
-            sys.argv = [
-                "flext-infra",
-                "pr-workspace",
-                "--workspace",
-                str(tmp_path),
-            ]
-            assert main() == 0
-        finally:
-            sys.argv = original
+        assert main(["github", "pr-workspace", "--workspace", str(tmp_path)]) == 0
 
     def test_unknown_subcommand(self) -> None:
-        original = sys.argv.copy()
-        try:
-            sys.argv = ["flext-infra", "unknown"]
-            # argparse exits with code 2 for unrecognized arguments;
-            # run_cli catches SystemExit and forwards the exit code.
-            assert main() == 2
-        finally:
-            sys.argv = original
+        assert main(["github", "unknown"]) == 2
 
     def test_ensures_structlog_configured(
         self,
@@ -157,19 +112,9 @@ class TestMain:
             )
 
         monkeypatch.setattr(u.Infra, "github_lint_workflows", staticmethod(_lint))
-        original = sys.argv.copy()
-        try:
-            sys.argv = [
-                "flext-infra",
-                "lint",
-                "--workspace",
-                str(tmp_path),
-            ]
-            result = main()
-            called.append(result == 0)
-            assert called
-        finally:
-            sys.argv = original
+        result = main(["github", "lint", "--workspace", str(tmp_path)])
+        called.append(result == 0)
+        assert called
 
     def test_workflows_iterates_operations(
         self,
@@ -199,14 +144,4 @@ class TestMain:
             "github_sync_workspace_workflows",
             staticmethod(_sync),
         )
-        original = sys.argv.copy()
-        try:
-            sys.argv = [
-                "flext-infra",
-                "workflows",
-                "--workspace",
-                str(tmp_path),
-            ]
-            assert main() == 0
-        finally:
-            sys.argv = original
+        assert main(["github", "workflows", "--workspace", str(tmp_path)]) == 0

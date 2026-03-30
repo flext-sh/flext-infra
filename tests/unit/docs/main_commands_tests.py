@@ -16,7 +16,7 @@ from flext_infra import (
     c,
     m,
 )
-from flext_infra.docs.__main__ import FlextInfraDocsCli
+from flext_infra.docs.cli import FlextInfraDocsCli
 from tests import t
 
 _R: TypeAlias = m.Infra.DocsPhaseReport

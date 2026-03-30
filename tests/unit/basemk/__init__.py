@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes
 
     from tests.unit.basemk.test_engine import (
+        basemk_main,
         test_basemk_cli_generate_to_file,
         test_basemk_cli_generate_to_stdout,
         test_basemk_engine_execute_calls_render_all,
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
     )
     from tests.unit.basemk.test_init import TestFlextInfraBaseMk
     from tests.unit.basemk.test_main import (
+        main,
         test_basemk_build_config_with_none,
         test_basemk_build_config_with_project_name,
         test_basemk_main_ensures_structlog_configured,
@@ -82,6 +84,8 @@ if TYPE_CHECKING:
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestFlextInfraBaseMk": ["tests.unit.basemk.test_init", "TestFlextInfraBaseMk"],
+    "basemk_main": ["tests.unit.basemk.test_engine", "basemk_main"],
+    "main": ["tests.unit.basemk.test_main", "main"],
     "test_basemk_build_config_with_none": [
         "tests.unit.basemk.test_main",
         "test_basemk_build_config_with_none",
@@ -306,6 +310,8 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 
 __all__ = [
     "TestFlextInfraBaseMk",
+    "basemk_main",
+    "main",
     "test_basemk_build_config_with_none",
     "test_basemk_build_config_with_project_name",
     "test_basemk_cli_generate_to_file",

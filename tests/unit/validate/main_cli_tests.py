@@ -1,4 +1,4 @@
-"""CLI contract tests for flext_infra.validate.__main__."""
+"""CLI contract tests for the centralized validate CLI group."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from flext_core import r
 from flext_tests import tm
 
 from flext_infra import m
-from flext_infra.validate import __main__ as validate_main
-from flext_infra.validate.__main__ import FlextInfraValidateCli
+from flext_infra.cli import main as infra_main
+from flext_infra.validate.cli import FlextInfraCliValidate as FlextInfraValidateCli
 
 
 def test_stub_validate_uses_all_flag(
@@ -26,7 +26,7 @@ def test_stub_validate_uses_all_flag(
         "_handle_stub_validate",
         _mock_handler,
     )
-    validate_main.main(["stub-validate", "--all"])
+    infra_main(["validate", "stub-validate", "--all"])
     # The call captured whether --all was passed
     tm.that(len(captured), eq=1)
     tm.that(captured[0], eq=True)
@@ -34,6 +34,4 @@ def test_stub_validate_uses_all_flag(
 
 def test_stub_validate_help_returns_zero() -> None:
     """--help for stub-validate returns 0."""
-    with pytest.raises(SystemExit) as exc_info:
-        validate_main.main(["stub-validate", "--help"])
-    tm.that(exc_info.value.code, eq=0)
+    tm.that(infra_main(["validate", "stub-validate", "--help"]), eq=0)

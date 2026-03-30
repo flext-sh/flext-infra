@@ -119,6 +119,7 @@ if TYPE_CHECKING:
         TestMainModuleImport,
         TestMainSubcommandDispatch,
         TestMainSysArgvModification,
+        main,
         test_string_zero_return_value,
     )
     from tests.unit.deps.test_modernizer_comments import (
@@ -496,6 +497,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "doc": ["tests.unit.deps.test_modernizer_helpers", "doc"],
     "extract_dep_name": ["tests.unit.deps.test_path_sync_helpers", "extract_dep_name"],
+    "main": ["tests.unit.deps.test_main_dispatch", "main"],
     "pyright_content": ["tests.unit.deps.test_extra_paths_sync", "pyright_content"],
     "rewrite_dep_paths": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
@@ -840,6 +842,7 @@ __all__ = [
     "TestWorkspaceRootFromParents",
     "doc",
     "extract_dep_name",
+    "main",
     "pyright_content",
     "rewrite_dep_paths",
     "test_array",

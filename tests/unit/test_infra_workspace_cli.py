@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -14,7 +13,8 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraProjectMigrator, __main__ as workspace_cli, m
+from flext_infra import FlextInfraProjectMigrator, m
+from flext_infra.cli import main as infra_main
 
 
 def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:
@@ -38,24 +38,15 @@ def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:
         ])
 
     _ = monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _fake_migrate)
-    _ = monkeypatch.setattr(
-        sys,
-        "argv",
-        ["flext-infra", "workspace", "--workspace", ".", "--dry-run", "migrate"],
-    )
-    exit_code = workspace_cli.main()
+    exit_code = infra_main(["workspace", "migrate", "--workspace", ".", "--dry-run"])
     assert exit_code == 0
 
 
 def test_workspace_cli_rejects_migrate_flags_for_detect(
     monkeypatch: MonkeyPatch,
 ) -> None:
-    _ = monkeypatch.setattr(
-        sys,
-        "argv",
-        ["flext-infra", "workspace", "--dry-run", "detect"],
-    )
-    tm.that(workspace_cli.main(), eq=2)
+    del monkeypatch
+    tm.that(infra_main(["workspace", "detect", "--dry-run"]), eq=2)
 
 
 def test_workspace_cli_migrate_output_contains_summary(
@@ -82,10 +73,5 @@ def test_workspace_cli_migrate_output_contains_summary(
         ])
 
     _ = monkeypatch.setattr(FlextInfraProjectMigrator, "migrate", _fake_migrate)
-    _ = monkeypatch.setattr(
-        sys,
-        "argv",
-        ["flext-infra", "workspace", "--workspace", ".", "--dry-run", "migrate"],
-    )
-    exit_code = workspace_cli.main()
+    exit_code = infra_main(["workspace", "migrate", "--workspace", ".", "--dry-run"])
     assert exit_code == 0

@@ -1,4 +1,4 @@
-"""Tests for codegen CLI entry point (__main__.py).
+"""Tests for the centralized codegen CLI group.
 
 Validates CLI argument parsing, command dispatch, and exit codes
 using real service instances with temporary workspaces.
@@ -16,7 +16,8 @@ from pathlib import Path
 import pytest
 from flext_tests import t, tm
 
-from flext_infra.codegen import __main__ as codegen_main
+from flext_infra.cli import main as infra_main
+from flext_infra.codegen import cli as codegen_cli
 
 
 class TestHandleLazyInit:
@@ -24,19 +25,23 @@ class TestHandleLazyInit:
 
     def test_success(self, tmp_path: Path) -> None:
         """_handle_lazy_init returns 0 on empty workspace."""
-        result = codegen_main.main(["lazy-init", "--workspace", str(tmp_path)])
+        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
     def test_check_mode(self, tmp_path: Path) -> None:
         """_handle_lazy_init respects --check flag."""
-        result = codegen_main.main(
-            ["lazy-init", "--check", "--workspace", str(tmp_path)],
-        )
+        result = infra_main([
+            "codegen",
+            "lazy-init",
+            "--check",
+            "--workspace",
+            str(tmp_path),
+        ])
         tm.that(result, eq=0)
 
     def test_enforce_mode(self, tmp_path: Path) -> None:
         """_handle_lazy_init in enforce mode (not check)."""
-        result = codegen_main.main(["lazy-init", "--workspace", str(tmp_path)])
+        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
     def test_returns_non_zero_when_generation_reports_errors(
@@ -54,8 +59,8 @@ class TestHandleLazyInit:
                 _ = check_only
                 return 1
 
-        monkeypatch.setattr(codegen_main, "FlextInfraCodegenLazyInit", _BrokenLazyInit)
-        result = codegen_main.main(["lazy-init", "--workspace", str(tmp_path)])
+        monkeypatch.setattr(codegen_cli, "FlextInfraCodegenLazyInit", _BrokenLazyInit)
+        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=1)
 
 
@@ -64,63 +69,54 @@ class TestMainCommandDispatch:
 
     def test_lazy_init_command(self, tmp_path: Path) -> None:
         """main() with lazy-init command returns 0."""
-        result = codegen_main.main(["lazy-init", "--workspace", str(tmp_path)])
+        result = infra_main(["codegen", "lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
     def test_lazy_init_with_check_flag(self, tmp_path: Path) -> None:
         """main() lazy-init with --check flag parses correctly."""
-        result = codegen_main.main(
-            ["lazy-init", "--check", "--workspace", str(tmp_path)],
-        )
-        tm.that(result, eq=0)
-
-    def test_lazy_init_with_check_before_subcommand(self, tmp_path: Path) -> None:
-        """main() lazy-init accepts shared check flag before subcommand."""
-        result = codegen_main.main(
-            ["--check", "lazy-init", "--workspace", str(tmp_path)],
-        )
+        result = infra_main([
+            "codegen",
+            "lazy-init",
+            "--check",
+            "--workspace",
+            str(tmp_path),
+        ])
         tm.that(result, eq=0)
 
     def test_lazy_init_default_root(self) -> None:
         """main() lazy-init uses cwd as default root."""
-        result = codegen_main.main(["lazy-init"])
+        result = infra_main(["codegen", "lazy-init"])
         tm.that(result, eq=0)
-
-    def test_lazy_init_rejects_apply_before_subcommand(self) -> None:
-        """main() lazy-init rejects unrelated apply-mode flags."""
-        result = codegen_main.main(["--apply", "lazy-init"])
-        tm.that(result, eq=2)
 
     def test_unknown_command(self) -> None:
         """main() with unknown command returns non-zero exit code."""
-        result = codegen_main.main(["unknown-command"])
+        result = infra_main(["codegen", "unknown-command"])
         tm.that(result, ne=0)
 
     def test_no_command(self) -> None:
         """main() with no command returns non-zero exit code."""
-        argv: t.StrSequence = []
-        result = codegen_main.main(argv)
+        result = infra_main(["codegen"])
         tm.that(result, ne=0)
 
     def test_lazy_init_with_custom_root(self, tmp_path: Path) -> None:
         """main() lazy-init with custom root directory."""
         custom_root = tmp_path / "custom"
-        result = codegen_main.main(["lazy-init", "--workspace", str(custom_root)])
+        result = infra_main(["codegen", "lazy-init", "--workspace", str(custom_root)])
         tm.that(result, eq=0)
 
 
 class TestMainEntryPoint:
-    """Tests for __main__ module entry point."""
+    """Tests for the centralized process entrypoint."""
 
     def test_entry_point_returns_int(self) -> None:
         """main() returns an integer exit code."""
-        result = codegen_main.main(["lazy-init"])
+        result = infra_main(["codegen", "lazy-init"])
         tm.that(type(result).__name__, eq="int")
 
     def test_entry_point_via_sys_exit(self) -> None:
-        """__main__ entry point via subprocess."""
+        """The root process entrypoint works via subprocess."""
         result = subprocess.run(
-            [sys.executable, "-m", "flext_infra.codegen", "lazy-init", "--help"],
+            [sys.executable, "-m", "flext_infra", "codegen", "lazy-init", "--help"],
             capture_output=True,
             text=True,
             cwd="/home/marlonsc/flext/flext-core",

@@ -630,5 +630,43 @@ class FlextInfraUtilitiesCli:
         else:
             output.write(str(data))
 
+    @staticmethod
+    def reorder_argv(
+        cli_args: list[str],
+        *,
+        value_flags: frozenset[str],
+    ) -> list[str]:
+        """Move flags from before the subcommand to after it.
+
+        Allows ``main(["--check", "lazy-init", ...])`` to work the same as
+        ``main(["lazy-init", "--check", ...])``.
+
+        Args:
+            cli_args: Raw CLI arguments.
+            value_flags: Flags that consume the next token as a value.
+
+        Returns:
+            Reordered argument list with subcommand first.
+
+        """
+        subcmd_idx = -1
+        i = 0
+        while i < len(cli_args):
+            arg = cli_args[i]
+            if not arg.startswith("-"):
+                subcmd_idx = i
+                break
+            if arg in value_flags and i + 1 < len(cli_args):
+                i += 2
+                continue
+            i += 1
+        if subcmd_idx <= 0:
+            return cli_args
+        return [
+            cli_args[subcmd_idx],
+            *cli_args[:subcmd_idx],
+            *cli_args[subcmd_idx + 1 :],
+        ]
+
 
 __all__ = ["FlextInfraUtilitiesCli"]

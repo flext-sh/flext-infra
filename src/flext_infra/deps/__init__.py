@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from flext_infra.deps._phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
     from flext_infra.deps._phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
     from flext_infra.deps._phases.inject_comments import FlextInfraInjectCommentsPhase
+    from flext_infra.deps.cli import FlextInfraCliDeps
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector, main
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -58,6 +59,7 @@ if TYPE_CHECKING:
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraCliDeps": ["flext_infra.deps.cli", "FlextInfraCliDeps"],
     "FlextInfraConfigFixer": [
         "flext_infra.deps.fix_pyrefly_config",
         "FlextInfraConfigFixer",
@@ -139,6 +141,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 }
 
 __all__ = [
+    "FlextInfraCliDeps",
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraDependencyDetectionService",

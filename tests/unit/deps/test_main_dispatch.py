@@ -1,4 +1,4 @@
-"""Tests for flext_infra.deps.__main__ — dispatch, structlog, argv, imports.
+"""Tests for centralized deps dispatch, structlog, argv, and imports.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,9 +13,13 @@ from types import ModuleType, SimpleNamespace
 import pytest
 from flext_tests import tm
 
-from flext_infra.deps import __main__ as main_mod
-from flext_infra.deps.__main__ import _SUBCOMMAND_MODULES, _main_impl, main
+from flext_infra.deps import cli as main_mod
+from flext_infra.deps.cli import FlextInfraCliDeps
 from tests import t
+
+_SUBCOMMAND_MODULES = FlextInfraCliDeps._SUBCOMMAND_MODULES
+_main_impl = FlextInfraCliDeps.run
+main = FlextInfraCliDeps.run
 
 
 def _fake_module(return_value: t.Infra.InfraValue = 0) -> ModuleType:
@@ -123,24 +127,8 @@ class TestMainSysArgvModification:
 
 
 class TestMainDelegation:
-    def test_main_delegates_to_run_cli(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        received: MutableSequence[Callable[[t.StrSequence | None], int]] = []
-
-        def fake_run_cli(fn: Callable[[t.StrSequence | None], int]) -> int:
-            received.append(fn)
-            return 0
-
-        monkeypatch.setattr(
-            main_mod,
-            "u",
-            SimpleNamespace(Infra=SimpleNamespace(run_cli=fake_run_cli)),
-        )
-        tm.that(main(), eq=0)
-        tm.that(len(received), eq=1)
-        tm.that(received[0] is main_mod._main_impl, eq=True)
+    def test_main_alias_runs_help_path(self) -> None:
+        tm.that(main(["--help"]), eq=0)
 
 
 class TestMainExceptionHandling:

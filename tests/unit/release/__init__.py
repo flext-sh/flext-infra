@@ -13,7 +13,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.unit.release.flow_tests import TestReleaseMainFlow
+    from tests.unit.release.flow_tests import TestReleaseMainFlow, main
     from tests.unit.release.main_tests import TestReleaseMainParsing
     from tests.unit.release.orchestrator_git_tests import (
         TestCollectChanges,
@@ -123,6 +123,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.release.orchestrator_helpers_tests",
         "TestVersionFiles",
     ],
+    "main": ["tests.unit.release.flow_tests", "main"],
     "workspace_root": ["tests.unit.release.orchestrator_tests", "workspace_root"],
 }
 
@@ -150,6 +151,7 @@ __all__ = [
     "TestRunMake",
     "TestUpdateChangelog",
     "TestVersionFiles",
+    "main",
     "workspace_root",
 ]
 

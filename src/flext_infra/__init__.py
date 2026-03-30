@@ -103,12 +103,13 @@ if TYPE_CHECKING:
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
     from flext_infra.check._constants import FlextInfraCheckConstants
     from flext_infra.check._models import FlextInfraCheckModels
+    from flext_infra.check.cli import FlextInfraCliCheck
     from flext_infra.check.services import (
         FlextInfraConfigFixer,
         FlextInfraWorkspaceChecker,
     )
-    from flext_infra.check.workspace_check import build_parser, main, run_cli
-    from flext_infra.cli import FlextInfraCli
+    from flext_infra.check.workspace_check import build_parser, run_cli
+    from flext_infra.cli import FlextInfraCli, main
     from flext_infra.codegen._codegen_coercion import FlextInfraCodegenCoercion
     from flext_infra.codegen._codegen_execution_tools import (
         FlextInfraCodegenExecutionTools,
@@ -181,6 +182,7 @@ if TYPE_CHECKING:
     from flext_infra.deps._phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
     from flext_infra.deps._phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
     from flext_infra.deps._phases.inject_comments import FlextInfraInjectCommentsPhase
+    from flext_infra.deps.cli import FlextInfraCliDeps
     from flext_infra.deps.detection import FlextInfraDependencyDetectionService
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -512,7 +514,9 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "FlextInfraCli": ["flext_infra.cli", "FlextInfraCli"],
     "FlextInfraCliBasemk": ["flext_infra.basemk.cli", "FlextInfraCliBasemk"],
+    "FlextInfraCliCheck": ["flext_infra.check.cli", "FlextInfraCliCheck"],
     "FlextInfraCliCodegen": ["flext_infra.codegen.cli", "FlextInfraCliCodegen"],
+    "FlextInfraCliDeps": ["flext_infra.deps.cli", "FlextInfraCliDeps"],
     "FlextInfraCliDocs": ["flext_infra.docs.cli", "FlextInfraCliDocs"],
     "FlextInfraCliGithub": ["flext_infra.github.cli", "FlextInfraCliGithub"],
     "FlextInfraCliMaintenance": [
@@ -1307,7 +1311,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "h": ["flext_cli", "h"],
     "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
     "m": ["flext_infra.models", "FlextInfraModels"],
-    "main": ["flext_infra.check.workspace_check", "main"],
+    "main": ["flext_infra.cli", "main"],
     "maintenance": ["flext_infra.workspace.maintenance", ""],
     "output": ["flext_infra._utilities.output", "output"],
     "p": ["flext_infra.protocols", "FlextInfraProtocols"],
@@ -1346,7 +1350,9 @@ __all__ = [
     "FlextInfraClassPlacementDetector",
     "FlextInfraCli",
     "FlextInfraCliBasemk",
+    "FlextInfraCliCheck",
     "FlextInfraCliCodegen",
+    "FlextInfraCliDeps",
     "FlextInfraCliDocs",
     "FlextInfraCliGithub",
     "FlextInfraCliMaintenance",

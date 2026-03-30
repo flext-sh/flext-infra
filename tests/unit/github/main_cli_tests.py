@@ -1,4 +1,4 @@
-"""CLI contract tests for flext_infra.github.__main__."""
+"""CLI contract tests for the centralized github CLI group."""
 
 from __future__ import annotations
 
@@ -8,19 +8,20 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra.github import __main__ as github_main
+from flext_infra.cli import main as infra_main
+from flext_infra.github.cli import FlextInfraCliGithub
 from tests import m
 
 
 def test_main_returns_zero_on_help() -> None:
     """--help should exit with code 0."""
-    result = github_main.main(["--help"])
+    result = infra_main(["github", "--help"])
     tm.that(result, eq=0)
 
 
 def test_main_returns_nonzero_on_unknown() -> None:
     """Unknown subcommand returns exit code != 0."""
-    result = github_main.main(["unknown-command"])
+    result = infra_main(["github", "unknown-command"])
     tm.that(result, ne=0)
 
 
@@ -35,12 +36,13 @@ def test_pr_workspace_accepts_repeated_project_options(
         return r[bool].ok(True)
 
     monkeypatch.setattr(
-        github_main.FlextInfraGithubCli,
+        FlextInfraCliGithub,
         "_handle_pr_workspace",
         staticmethod(_capture),
     )
 
-    result = github_main.main([
+    result = infra_main([
+        "github",
         "pr-workspace",
         "--workspace",
         str(tmp_path),

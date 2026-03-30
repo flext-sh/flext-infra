@@ -1,4 +1,4 @@
-"""Tests for CLI entry points: workspace_check, fix_pyrefly_config, check __main__, run_cli.
+"""Tests for CLI entry surfaces: workspace_check, fix_pyrefly_config, check group, run_cli.
 
 Uses monkeypatch to inject controlled service behavior.
 
@@ -16,10 +16,11 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-import flext_infra.check.__main__ as check_main_mod
 import flext_infra.check.workspace_check as ws_mod
 import flext_infra.deps.fix_pyrefly_config as fix_pyrefly_mod
 from flext_infra import FlextInfraWorkspaceChecker
+from flext_infra.check.cli import FlextInfraCliCheck
+from flext_infra.cli import main as infra_main
 from tests import t
 
 from ...models import m
@@ -150,28 +151,12 @@ _fake_run_cli_42 = _const_cli_result(42)
 
 class TestCheckMainEntryPoint:
     def test_calls_run_cli(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            check_main_mod,
-            "FlextInfraCheckCommand",
-            type(
-                "FakeCmd",
-                (),
-                {"run": staticmethod(_fake_run_cli_zero)},
-            ),
-        )
-        tm.that(check_main_mod.main(), eq=0)
+        monkeypatch.setattr(FlextInfraCliCheck, "run", staticmethod(_fake_run_cli_zero))
+        tm.that(infra_main(["check", "run"]), eq=0)
 
     def test_returns_exit_code(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            check_main_mod,
-            "FlextInfraCheckCommand",
-            type(
-                "FakeCmd",
-                (),
-                {"run": staticmethod(_fake_run_cli_42)},
-            ),
-        )
-        tm.that(check_main_mod.main(), eq=42)
+        monkeypatch.setattr(FlextInfraCliCheck, "run", staticmethod(_fake_run_cli_42))
+        tm.that(infra_main(["check", "run"]), eq=42)
 
 
 class TestRunCLIExtended:

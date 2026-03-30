@@ -94,6 +94,7 @@ if TYPE_CHECKING:
     )
     from tests.unit._utilities.test_scanning import TestScanModels
     from tests.unit.basemk.test_engine import (
+        basemk_main,
         test_basemk_cli_generate_to_file,
         test_basemk_cli_generate_to_stdout,
         test_basemk_engine_execute_calls_render_all,
@@ -678,7 +679,7 @@ if TYPE_CHECKING:
         test_pr_workspace_accepts_repeated_project_options,
     )
     from tests.unit.github.main_dispatch_tests import TestRunPrWorkspace
-    from tests.unit.github.main_integration_tests import TestMain, main
+    from tests.unit.github.main_integration_tests import TestMain
     from tests.unit.github.main_tests import TestRunLint, TestRunPr, TestRunWorkflows
     from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
     from tests.unit.io.test_infra_output_edge_cases import (
@@ -847,6 +848,7 @@ if TYPE_CHECKING:
         test_typealias_conversion_preserves_used_typing_siblings,
     )
     from tests.unit.refactor.test_main_cli import (
+        refactor_main,
         test_refactor_census_rejects_apply_before_subcommand,
         test_refactor_centralize_accepts_apply_before_subcommand,
     )
@@ -919,7 +921,7 @@ if TYPE_CHECKING:
     )
     from tests.unit.test_infra_main import (
         test_main_all_groups_defined,
-        test_main_group_modules_are_valid,
+        test_main_group_descriptions_are_present,
         test_main_help_flag_returns_zero,
         test_main_returns_error_when_no_args,
         test_main_unknown_group_returns_error,
@@ -931,6 +933,7 @@ if TYPE_CHECKING:
     from tests.unit.test_infra_maintenance_main import (
         TestMaintenanceMainEnforcer,
         TestMaintenanceMainSuccess,
+        main,
     )
     from tests.unit.test_infra_maintenance_python_version import (
         TestDiscoverProjects,
@@ -1002,6 +1005,7 @@ if TYPE_CHECKING:
         TestRunMigrate,
         TestRunOrchestrate,
         TestRunSync,
+        workspace_main,
     )
     from tests.unit.test_infra_workspace_migrator import (
         test_migrator_apply_updates_project_files,
@@ -2449,6 +2453,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "WorkspaceScenarios": ["tests.scenarios", "WorkspaceScenarios"],
     "auditor": ["tests.unit.docs.auditor_tests", "auditor"],
     "basemk": ["tests.unit.basemk", ""],
+    "basemk_main": ["tests.unit.basemk.test_engine", "basemk_main"],
     "builder": ["tests.unit.docs.builder_tests", "builder"],
     "c": ["tests.constants", "FlextInfraTestConstants"],
     "census": ["tests.unit.codegen.census_tests", "census"],
@@ -2492,7 +2497,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "io": ["tests.unit.io", ""],
     "is_external": ["tests.unit.docs.auditor_tests", "is_external"],
     "m": ["tests.models", "FlextInfraTestModels"],
-    "main": ["tests.unit.github.main_integration_tests", "main"],
+    "main": ["tests.unit.test_infra_maintenance_main", "main"],
     "make_cmd_result": ["tests.unit.check._stubs", "make_cmd_result"],
     "make_gate_exec": ["tests.unit.check._stubs", "make_gate_exec"],
     "make_issue": ["tests.unit.check._stubs", "make_issue"],
@@ -2515,6 +2520,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "real_toml_project": ["tests.fixtures", "real_toml_project"],
     "real_workspace": ["tests.fixtures", "real_workspace"],
     "refactor": ["tests.refactor", ""],
+    "refactor_main": ["tests.unit.refactor.test_main_cli", "refactor_main"],
     "release": ["tests.unit.release", ""],
     "rewrite_dep_paths": [
         "tests.unit.deps.test_path_sync_rewrite_deps",
@@ -3086,9 +3092,9 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_discovery_failure",
     ],
-    "test_main_group_modules_are_valid": [
+    "test_main_group_descriptions_are_present": [
         "tests.unit.test_infra_main",
-        "test_main_group_modules_are_valid",
+        "test_main_group_descriptions_are_present",
     ],
     "test_main_help_flag_returns_zero": [
         "tests.unit.test_infra_main",
@@ -3859,6 +3865,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "v": ["tests.unit.validate.basemk_validator_tests", "v"],
     "validate": ["tests.unit.validate", ""],
     "validator": ["tests.unit.docs.validator_internals_tests", "validator"],
+    "workspace_main": ["tests.unit.test_infra_workspace_main", "workspace_main"],
     "workspace_root": ["tests.unit.release.orchestrator_tests", "workspace_root"],
     "x": ["flext_tests", "x"],
 }
@@ -4289,6 +4296,7 @@ __all__ = [
     "WorkspaceScenarios",
     "auditor",
     "basemk",
+    "basemk_main",
     "builder",
     "c",
     "census",
@@ -4337,6 +4345,7 @@ __all__ = [
     "real_toml_project",
     "real_workspace",
     "refactor",
+    "refactor_main",
     "release",
     "rewrite_dep_paths",
     "rope_project",
@@ -4488,7 +4497,7 @@ __all__ = [
     "test_main_analyze_violations_is_read_only",
     "test_main_analyze_violations_writes_json_report",
     "test_main_discovery_failure",
-    "test_main_group_modules_are_valid",
+    "test_main_group_descriptions_are_present",
     "test_main_help_flag_returns_zero",
     "test_main_no_changes_needed",
     "test_main_project_invalid_toml",
@@ -4688,6 +4697,7 @@ __all__ = [
     "v",
     "validate",
     "validator",
+    "workspace_main",
     "workspace_root",
     "x",
 ]

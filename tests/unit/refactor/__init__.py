@@ -162,6 +162,7 @@ if TYPE_CHECKING:
         test_typealias_conversion_preserves_used_typing_siblings,
     )
     from tests.unit.refactor.test_main_cli import (
+        refactor_main,
         test_refactor_census_rejects_apply_before_subcommand,
         test_refactor_centralize_accepts_apply_before_subcommand,
     )
@@ -179,6 +180,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.refactor.test_infra_refactor_namespace_source",
         "FAMILY_SUFFIX_MAP",
     ],
+    "refactor_main": ["tests.unit.refactor.test_main_cli", "refactor_main"],
     "rope_project": [
         "tests.unit.refactor.test_infra_refactor_namespace_aliases",
         "rope_project",
@@ -661,6 +663,7 @@ __all__ = [
     "FAMILY_FILE_MAP",
     "FAMILY_SUFFIX_MAP",
     "EngineSafetyStub",
+    "refactor_main",
     "rope_project",
     "test_all_three_capabilities_in_one_pass",
     "test_build_impact_map_extracts_rename_entries",

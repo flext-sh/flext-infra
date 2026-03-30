@@ -1,4 +1,4 @@
-"""Tests for flext_infra.__main__ CLI entry point.
+"""Tests for the centralized flext_infra CLI entrypoint.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,40 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
-
-import flext_infra.__main__ as main_mod
-from flext_infra.__main__ import FlextInfraMainCLI
+from flext_infra.cli import FlextInfraCli, main
 
 
 def test_main_returns_error_when_no_args() -> None:
-    original_argv = sys.argv.copy()
-    try:
-        sys.argv = ["flext-infra"]
-        result = main_mod.main_inner()
-    finally:
-        sys.argv = original_argv
-    assert result == 1
+    assert main([]) == 1
 
 
 def test_main_help_flag_returns_zero() -> None:
-    original_argv = sys.argv.copy()
-    try:
-        sys.argv = ["flext-infra", "--help"]
-        result = main_mod.main_inner()
-    finally:
-        sys.argv = original_argv
-    assert result == 0
+    assert main(["--help"]) == 0
 
 
 def test_main_unknown_group_returns_error() -> None:
-    original_argv = sys.argv.copy()
-    try:
-        sys.argv = ["flext-infra", "unknown"]
-        result = main_mod.main_inner()
-    finally:
-        sys.argv = original_argv
-    assert result == 1
+    assert main(["unknown"]) == 1
 
 
 def test_main_all_groups_defined() -> None:
@@ -56,14 +35,11 @@ def test_main_all_groups_defined() -> None:
         "release",
         "workspace",
     }
-    assert set(FlextInfraMainCLI.GROUPS.keys()) == expected_groups
+    assert set(FlextInfraCli.GROUPS.keys()) == expected_groups
 
 
-def test_main_group_modules_are_valid() -> None:
-    for group, module_path in FlextInfraMainCLI.GROUPS.items():
-        assert isinstance(module_path, str)
-        assert module_path.startswith("flext_infra.")
-        assert (
-            module_path.endswith(".__main__") or module_path == "flext_infra.refactor"
-        )
-        assert group in module_path
+def test_main_group_descriptions_are_present() -> None:
+    for group, description in FlextInfraCli.GROUPS.items():
+        assert isinstance(description, str)
+        assert description
+        assert group

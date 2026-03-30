@@ -1,4 +1,4 @@
-"""Tests for __main__.py pr-workspace dispatch."""
+"""Tests for github pr-workspace dispatch in the centralized CLI."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from flext_core import r
 from flext_tests import tm
 
 from flext_infra import m, t, u
-from flext_infra.github.__main__ import FlextInfraGithubCli
+from flext_infra.github.cli import FlextInfraCliGithub as FlextInfraGithubCli
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:

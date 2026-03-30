@@ -14,9 +14,16 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
 
-import flext_infra.release.__main__ as _main_mod
 from flext_infra import m, u
-from flext_infra.release.__main__ import main
+from flext_infra.cli import main as infra_main
+from flext_infra.release import cli as release_cli
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = ["release"]
+    if argv is not None:
+        args.extend(argv)
+    return infra_main(args)
 
 
 def _patch_main_deps(
@@ -75,7 +82,7 @@ def _patch_main_deps(
                 effective_release if effective_release is not None else r[bool].ok(True)
             )
 
-    monkeypatch.setattr(_main_mod, "FlextInfraReleaseOrchestrator", _Or)
+    monkeypatch.setattr(release_cli, "FlextInfraReleaseOrchestrator", _Or)
 
 
 def _argv(tmp_path: Path, *extra: str) -> list[str]:

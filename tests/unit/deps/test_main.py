@@ -1,4 +1,4 @@
-"""Tests for flext_infra.deps.__main__ subcommand dispatch.
+"""Tests for centralized deps subcommand dispatch.
 
 Validates subcommand mapping, help/error paths, and return-value
 normalization using real imports and pytest monkeypatch.
@@ -17,9 +17,13 @@ from types import ModuleType, SimpleNamespace
 import pytest
 from flext_tests import tm
 
-from flext_infra.deps import __main__ as deps_main
-from flext_infra.deps.__main__ import _SUBCOMMAND_MODULES, _main_impl, main
+from flext_infra.deps import cli as deps_main
+from flext_infra.deps.cli import FlextInfraCliDeps
 from tests import t
+
+_SUBCOMMAND_MODULES = FlextInfraCliDeps._SUBCOMMAND_MODULES
+_main_impl = FlextInfraCliDeps.run
+main = FlextInfraCliDeps.run
 
 
 def _fake_module(return_value: t.Infra.InfraValue = 0) -> ModuleType:

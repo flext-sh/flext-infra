@@ -19,7 +19,7 @@ if TYPE_CHECKING:
         test_pr_workspace_accepts_repeated_project_options,
     )
     from tests.unit.github.main_dispatch_tests import TestRunPrWorkspace
-    from tests.unit.github.main_integration_tests import TestMain, main
+    from tests.unit.github.main_integration_tests import TestMain
     from tests.unit.github.main_tests import TestRunLint, TestRunPr, TestRunWorkflows
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
@@ -31,7 +31,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "TestRunPrWorkspace",
     ],
     "TestRunWorkflows": ["tests.unit.github.main_tests", "TestRunWorkflows"],
-    "main": ["tests.unit.github.main_integration_tests", "main"],
     "test_main_returns_nonzero_on_unknown": [
         "tests.unit.github.main_cli_tests",
         "test_main_returns_nonzero_on_unknown",
@@ -52,7 +51,6 @@ __all__ = [
     "TestRunPr",
     "TestRunPrWorkspace",
     "TestRunWorkflows",
-    "main",
     "test_main_returns_nonzero_on_unknown",
     "test_main_returns_zero_on_help",
     "test_pr_workspace_accepts_repeated_project_options",

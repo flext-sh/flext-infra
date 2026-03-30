@@ -15,9 +15,9 @@ from flext_tests import tm
 
 from flext_infra import (
     FlextInfraCodegenConstantsQualityGate,
-    __main__ as codegen_main,
     t,
 )
+from flext_infra.cli import main as infra_main
 
 
 class TestConstantsQualityGateCLIDispatch:
@@ -25,14 +25,19 @@ class TestConstantsQualityGateCLIDispatch:
 
     def test_dispatch_returns_int(self, tmp_path: Path) -> None:
         """main() dispatches constants-quality-gate command to handler."""
-        argv = ["constants-quality-gate", "--workspace", str(tmp_path)]
-        result = codegen_main.main(argv)
+        result = infra_main([
+            "codegen",
+            "constants-quality-gate",
+            "--workspace",
+            str(tmp_path),
+        ])
         tm.that(result, is_=int)
 
     def test_parses_before_report_flag(self, tmp_path: Path) -> None:
         """main() parses baseline comparison flags for quality gate."""
         baseline = tmp_path / "before.json"
-        argv = [
+        result = infra_main([
+            "codegen",
             "constants-quality-gate",
             "--workspace",
             str(tmp_path),
@@ -40,32 +45,31 @@ class TestConstantsQualityGateCLIDispatch:
             str(baseline),
             "--format",
             "json",
-        ]
-        result = codegen_main.main(argv)
+        ])
         tm.that(result, is_=int)
 
     def test_json_format_exits_with_int(self, tmp_path: Path) -> None:
         """JSON mode returns an integer exit code."""
-        argv = [
+        result = infra_main([
+            "codegen",
             "constants-quality-gate",
             "--workspace",
             str(tmp_path),
             "--format",
             "json",
-        ]
-        result = codegen_main.main(argv)
+        ])
         tm.that(result, is_=int)
 
     def test_text_format_exits_with_int(self, tmp_path: Path) -> None:
         """Text mode returns an integer exit code."""
-        argv = [
+        result = infra_main([
+            "codegen",
             "constants-quality-gate",
             "--workspace",
             str(tmp_path),
             "--format",
             "text",
-        ]
-        result = codegen_main.main(argv)
+        ])
         tm.that(result, is_=int)
 
 

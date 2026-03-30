@@ -135,17 +135,8 @@ class FlextInfraCliCodegen:
     @staticmethod
     def _handle_lazy_init(params: m.Infra.CodegenLazyInitInput) -> r[bool]:
         """Handle lazy-init code generation."""
-        import sys
-
         workspace = Path(params.workspace).resolve()
-        # Look up through __main__ module so monkeypatching works in tests.
-        main_mod = sys.modules.get("flext_infra.codegen.__main__")
-        lazy_init_cls = (
-            getattr(main_mod, "FlextInfraCodegenLazyInit", FlextInfraCodegenLazyInit)
-            if main_mod is not None
-            else FlextInfraCodegenLazyInit
-        )
-        generator = lazy_init_cls(workspace_root=workspace)
+        generator = FlextInfraCodegenLazyInit(workspace_root=workspace)
         errors = generator.run(check_only=params.check)
         if errors > 0:
             return r[bool].fail(
@@ -394,5 +385,5 @@ class FlextInfraCliCodegen:
         report = gate.run()
         verdict = str(report.get("verdict", "FAIL"))
         if FlextInfraCodegenConstantsQualityGate.is_success_verdict(verdict):
-            return r[bool].ok(True)
+            return r[bool].ok(value=True)
         return r[bool].fail(f"quality gate verdict: {verdict}")

@@ -8,12 +8,19 @@ from flext_core import r
 from flext_tests import tm
 
 from flext_infra import m
-from flext_infra.refactor import __main__ as refactor_main
-from flext_infra.refactor.__main__ import FlextInfraRefactorCli
+from flext_infra.cli import main as infra_main
+from flext_infra.refactor.cli import FlextInfraCliRefactor as FlextInfraRefactorCli
+
+
+def refactor_main(argv: list[str] | None = None) -> int:
+    args = ["refactor"]
+    if argv is not None:
+        args.extend(argv)
+    return infra_main(args)
 
 
 def test_refactor_census_rejects_apply_before_subcommand() -> None:
-    tm.that(refactor_main.main(["--apply", "census"]), eq=2)
+    tm.that(refactor_main(["--apply", "census"]), eq=2)
 
 
 def test_refactor_centralize_accepts_apply_before_subcommand(
@@ -39,9 +46,12 @@ def test_refactor_centralize_accepts_apply_before_subcommand(
         "_handle_centralize_pydantic",
         _mock_handler,
     )
-    result = refactor_main.main(
-        ["--workspace", str(tmp_path), "--apply", "centralize-pydantic"],
-    )
+    result = refactor_main([
+        "--workspace",
+        str(tmp_path),
+        "--apply",
+        "centralize-pydantic",
+    ])
     tm.that(result, eq=0)
     tm.that(captured_apply, eq=True)
     tm.that(captured_workspace, eq=tmp_path.resolve())

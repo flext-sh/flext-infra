@@ -12,15 +12,24 @@
 - **Quality Validation**: Multi-gate validation (ruff, mypy, pyright, pyrefly) with configurable scopes.
 - **Workspace Sync**: Cross-project configuration synchronization and drift detection.
 
-## CLI Entry Points
+## CLI
 
-| Command | Description |
-|---------|-------------|
-| `flext-basemk` | Generate standardized `base.mk` for projects |
-| `flext-check` | Run quality checks across projects |
-| `flext-modernize` | Modernize `pyproject.toml` dependencies and configuration |
-| `flext-sync` | Synchronize workspace configuration across projects |
-| `flext-validate` | Run multi-gate validation pipeline |
+Use the centralized entrypoint:
+
+```bash
+flext-infra <group> <command> [options]
+```
+
+Examples:
+
+```bash
+flext-infra basemk render --project-name flext-core
+flext-infra check run --projects flext-core
+flext-infra codegen lazy-init --workspace .
+flext-infra validate inventory --workspace .
+flext-infra docs audit --workspace .
+flext-infra workspace sync --workspace .
+```
 
 ## Installation
 

@@ -7,7 +7,6 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-import flext_infra.workspace.__main__ as workspace_main
 from flext_infra import (
     FlextInfraModels as m,
     FlextInfraOrchestratorService,
@@ -16,13 +15,23 @@ from flext_infra import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceMode,
 )
-from flext_infra.workspace.__main__ import (
-    _handle_detect,
-    _handle_migrate,
-    _handle_orchestrate,
-    _handle_sync,
+from flext_infra.cli import main as infra_main
+from flext_infra.workspace.cli import (
+    FlextInfraCliWorkspace,
 )
 from tests import t
+
+_handle_detect = FlextInfraCliWorkspace.handle_detect
+_handle_sync = FlextInfraCliWorkspace.handle_sync
+_handle_orchestrate = FlextInfraCliWorkspace.handle_orchestrate
+_handle_migrate = FlextInfraCliWorkspace.handle_migrate
+
+
+def workspace_main(argv: list[str] | None = None) -> int:
+    args = ["workspace"]
+    if argv is not None:
+        args.extend(argv)
+    return infra_main(args)
 
 
 class TestRunDetect:
@@ -294,17 +303,25 @@ def _ok_stub(
 
 class TestMainCli:
     def test_detect(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(workspace_main, "_handle_detect", _ok_stub)
-        tm.that(workspace_main.main(["detect", "--workspace", str(tmp_path)]), eq=0)
+        monkeypatch.setattr(
+            FlextInfraCliWorkspace, "handle_detect", staticmethod(_ok_stub)
+        )
+        tm.that(workspace_main(["detect", "--workspace", str(tmp_path)]), eq=0)
 
     def test_sync(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(workspace_main, "_handle_sync", _ok_stub)
-        tm.that(workspace_main.main(["sync", "--workspace", str(tmp_path)]), eq=0)
+        monkeypatch.setattr(
+            FlextInfraCliWorkspace, "handle_sync", staticmethod(_ok_stub)
+        )
+        tm.that(workspace_main(["sync", "--workspace", str(tmp_path)]), eq=0)
 
     def test_orchestrate(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(workspace_main, "_handle_orchestrate", _ok_stub)
+        monkeypatch.setattr(
+            FlextInfraCliWorkspace,
+            "handle_orchestrate",
+            staticmethod(_ok_stub),
+        )
         tm.that(
-            workspace_main.main([
+            workspace_main([
                 "orchestrate",
                 "--verb",
                 "check",
@@ -325,9 +342,13 @@ class TestMainCli:
             captured.append(params)
             return r[bool].ok(True)
 
-        monkeypatch.setattr(workspace_main, "_handle_orchestrate", _capture_orchestrate)
+        monkeypatch.setattr(
+            FlextInfraCliWorkspace,
+            "handle_orchestrate",
+            staticmethod(_capture_orchestrate),
+        )
         tm.that(
-            workspace_main.main([
+            workspace_main([
                 "orchestrate",
                 "--verb",
                 "test",
@@ -343,8 +364,10 @@ class TestMainCli:
         tm.that(captured[0].make_arg, eq=["FILES=a b c.py", "VERBOSE=1"])
 
     def test_migrate(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(workspace_main, "_handle_migrate", _ok_stub)
-        tm.that(workspace_main.main(["migrate", "--workspace", str(tmp_path)]), eq=0)
+        monkeypatch.setattr(
+            FlextInfraCliWorkspace, "handle_migrate", staticmethod(_ok_stub)
+        )
+        tm.that(workspace_main(["migrate", "--workspace", str(tmp_path)]), eq=0)
 
     def test_no_command(self) -> None:
-        tm.that(workspace_main.main([]), eq=1)
+        tm.that(workspace_main([]), eq=1)

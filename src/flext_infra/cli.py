@@ -1,25 +1,28 @@
-"""FlextInfraCli — MRO-composed CLI facade for all flext-infra commands."""
+"""Canonical centralized CLI dispatcher for flext-infra."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+import sys
+from types import MappingProxyType
+from typing import ClassVar
 
 from flext_cli import cli
-from flext_core import FlextRuntime, r
 
-from flext_infra import t
+from flext_infra._utilities.output import output
 from flext_infra.basemk.cli import FlextInfraCliBasemk
+from flext_infra.check.cli import FlextInfraCliCheck
 from flext_infra.codegen.cli import FlextInfraCliCodegen
+from flext_infra.constants import FlextInfraConstants as c
+from flext_infra.deps.cli import FlextInfraCliDeps
 from flext_infra.docs.cli import FlextInfraCliDocs
 from flext_infra.github.cli import FlextInfraCliGithub
 from flext_infra.refactor.cli import FlextInfraCliRefactor
 from flext_infra.release.cli import FlextInfraCliRelease
+from flext_infra.typings import FlextInfraTypes as t
+from flext_infra.utilities import FlextInfraUtilities as u
 from flext_infra.validate.cli import FlextInfraCliValidate
 from flext_infra.workspace.cli import FlextInfraCliWorkspace
 from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
-
-if TYPE_CHECKING:
-    import typer
 
 
 class FlextInfraCli(
@@ -33,35 +36,102 @@ class FlextInfraCli(
     FlextInfraCliValidate,
     FlextInfraCliWorkspace,
 ):
-    """MRO-composed CLI — each mixin registers its group's commands."""
+    """Single CLI entry surface for every flext-infra command group."""
 
     app_name: ClassVar[str] = "flext-infra"
-    app_help: ClassVar[str] = "FLEXT Infrastructure Tooling"
+    _HELP_FLAGS: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
+    _USAGE_ERROR_MARKERS: ClassVar[tuple[str, ...]] = (
+        "No such option",
+        "No such command",
+        "Missing option",
+        "Missing argument",
+        "Got unexpected extra argument",
+        "unrecognized arguments",
+        "CLI exited with code 2",
+    )
+    GROUPS: ClassVar[t.StrMapping] = MappingProxyType({
+        "basemk": "Base.mk template generation",
+        c.Infra.Verbs.CHECK: "Lint gates and pyrefly config management",
+        "codegen": "Code generation and workspace standardization",
+        "validate": "Infrastructure validators and diagnostics",
+        "deps": "Dependency detection, sync, and modernization",
+        c.Infra.Directories.DOCS: "Documentation audit, fix, build, generate, validate",
+        "github": "GitHub workflows, linting, and PR automation",
+        "maintenance": "Python version enforcement",
+        "refactor": "Declarative refactoring and modernization",
+        c.Infra.ReportKeys.RELEASE: "Release orchestration",
+        c.Infra.ReportKeys.WORKSPACE: "Workspace detection, sync, orchestration, migration",
+    })
 
-    def __init__(self) -> None:
-        """Initialize CLI app and register all group commands via MRO mixins."""
-        FlextRuntime.ensure_structlog_configured()
-        self._app: typer.Typer = cli.create_app_with_common_params(
-            name=self.app_name,
-            help_text=self.app_help,
+    def main(self, args: t.StrSequence | None = None) -> int:
+        """Run the centralized dispatcher."""
+        u.ensure_structlog_configured()
+        cli_args = list(args) if args is not None else sys.argv[1:]
+        if not cli_args:
+            self.print_help()
+            return 1
+        if cli_args[0] in self._HELP_FLAGS:
+            self.print_help()
+            return 0
+        group, group_args = cli_args[0], cli_args[1:]
+        if group == c.Infra.Verbs.CHECK:
+            return FlextInfraCliCheck.run(group_args)
+        if group == "deps":
+            return FlextInfraCliDeps.run(group_args)
+        if group not in self.GROUPS:
+            output.error(f"unknown group '{group}'")
+            self.print_help()
+            return 1
+        return self._run_group(group, group_args)
+
+    @classmethod
+    def print_help(cls) -> None:
+        """Display the canonical command groups."""
+        output.info("Usage: flext-infra <group> [subcommand] [args...]")
+        output.header("Groups")
+        for group in sorted(cls.GROUPS):
+            output.info(f"  {group:<16}{cls.GROUPS[group]}")
+
+    def _run_group(self, group: str, args: t.StrSequence) -> int:
+        """Execute a registered flext-cli group."""
+        app = cli.create_app_with_common_params(
+            name=f"{self.app_name} {group}",
+            help_text=self.GROUPS[group],
         )
-        self._register_all(self._app)
+        if group == "basemk":
+            self.register_basemk(app)
+        elif group == "codegen":
+            self.register_codegen(app)
+        elif group == "validate":
+            self.register_validate(app)
+        elif group == c.Infra.Directories.DOCS:
+            self.register_docs(app)
+        elif group == "github":
+            self.register_github(app)
+        elif group == "maintenance":
+            self.register_maintenance(app)
+        elif group == "refactor":
+            self.register_refactor(app)
+        elif group == c.Infra.ReportKeys.RELEASE:
+            self.register_release(app)
+        elif group == c.Infra.ReportKeys.WORKSPACE:
+            self.register_workspace(app)
+        if not args:
+            _ = cli.execute_app(
+                app, prog_name=f"{self.app_name} {group}", args=["--help"]
+            )
+            return 1
+        result = cli.execute_app(app, prog_name=f"{self.app_name} {group}", args=args)
+        if result.is_success:
+            return 0
+        return 2 if self._is_usage_error(result.error or "") else 1
 
-    def _register_all(self, app: typer.Typer) -> None:
-        """Register all group commands on the app."""
-        self.register_basemk(app)
-        self.register_codegen(app)
-        self.register_docs(app)
-        self.register_github(app)
-        self.register_maintenance(app)
-        self.register_refactor(app)
-        self.register_validate(app)
-        self.register_workspace(app)
-        # Release uses handler injection — import here to avoid circular imports
-        from flext_infra.release.__main__ import _handle_run  # noqa: PLC0415
+    @classmethod
+    def _is_usage_error(cls, message: str) -> bool:
+        """Return True when the normalized error looks like a usage failure."""
+        return any(marker in message for marker in cls._USAGE_ERROR_MARKERS)
 
-        self.register_release(app, handler=_handle_run)
 
-    def run(self, args: t.StrSequence | None = None) -> r[bool]:
-        """Execute the CLI application."""
-        return cli.execute_app(self._app, prog_name=self.app_name, args=args)
+def main(args: t.StrSequence | None = None) -> int:
+    """Run the canonical flext-infra CLI."""
+    return FlextInfraCli().main(args)

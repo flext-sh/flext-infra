@@ -1,4 +1,4 @@
-"""Tests for flext_infra.validate.__main__ CLI entry point.
+"""Tests for the centralized validate CLI group.
 
 Tests CLI subcommand routing via subprocess for real integration testing.
 
@@ -15,7 +15,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import m, t
-from flext_infra.validate.__main__ import FlextInfraValidateCli
+from flext_infra.validate.cli import FlextInfraCliValidate as FlextInfraValidateCli
 
 _CWD = "/home/marlonsc/flext/flext-core"
 
@@ -23,7 +23,7 @@ _CWD = "/home/marlonsc/flext/flext-core"
 def _cli(*args: str) -> subprocess.CompletedProcess[str]:
     """Run flext_infra.validate CLI via subprocess."""
     return subprocess.run(
-        [sys.executable, "-m", "flext_infra.validate", *args],
+        [sys.executable, "-m", "flext_infra", "validate", *args],
         capture_output=True,
         text=True,
         cwd=_CWD,

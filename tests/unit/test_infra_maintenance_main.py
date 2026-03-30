@@ -18,8 +18,15 @@ from flext_tests import tm
 
 from flext_infra import (
     FlextInfraPythonVersionEnforcer,
-    main,
 )
+from flext_infra.cli import main as infra_main
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = ["maintenance"]
+    if argv is not None:
+        args.extend(argv)
+    return infra_main(args)
 
 
 def _create_workspace(root: Path, *, python_minor: int = 13) -> Path:

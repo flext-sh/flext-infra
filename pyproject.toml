@@ -38,7 +38,7 @@ maintainers = [ {email = "team@flext.sh", name = "FLEXT Team"} ]
 name = "flext-infra"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
-scripts = {"flext-basemk" = "flext_infra.basemk:main", "flext-check" = "flext_infra.check:main", "flext-modernize" = "flext_infra.deps.modernizer:main", "flext-sync" = "flext_infra.workspace.sync:main", "flext-validate" = "flext_infra.validate:main"}
+scripts = {"flext-infra" = "flext_infra.cli:main"}
 urls = {Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md", Homepage = "https://github.com/flext-sh/flext-infra", Repository = "https://github.com/flext-sh/flext-infra"}
 version = "0.12.0-dev"
 

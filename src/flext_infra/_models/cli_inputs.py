@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from flext_infra import c
 
@@ -21,6 +21,8 @@ class FlextInfraModelsCliInputs:
 
     class CliInputBase(BaseModel):
         """Base for all CLI input models."""
+
+        model_config = ConfigDict(populate_by_name=True)
 
         workspace: Annotated[
             str,

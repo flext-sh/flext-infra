@@ -1,4 +1,4 @@
-"""Tests for flext_infra.github.__main__ CLI entry point."""
+"""Tests for github CLI handlers registered by the centralized dispatcher."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from flext_core import r
 from flext_tests import tm
 
 from flext_infra import m, u
-from flext_infra.github.__main__ import FlextInfraGithubCli
+from flext_infra.github.cli import FlextInfraCliGithub as FlextInfraGithubCli
 
 
 class TestRunWorkflows:

@@ -15,24 +15,23 @@ from __future__ import annotations
 
 import sys
 
-from flext_infra import t
-
-# Re-export for backward compatibility (tests import from here).
-from flext_infra.docs.cli import FlextInfraDocsCli
+from flext_infra import t, u
+from flext_infra.docs.cli import FlextInfraCliDocs, FlextInfraDocsCli
 
 __all__ = ["FlextInfraDocsCli", "main"]
 
+_VALUE_FLAGS: frozenset[str] = frozenset({
+    "--workspace",
+    "--project",
+    "--projects",
+    "--output-dir",
+})
+
 
 def main(argv: t.StrSequence | None = None) -> int:
-    """Run docs CLI.
-
-    Invokes the Typer app in standalone mode so that usage errors
-    (e.g. unknown flags) propagate as ``SystemExit(2)`` to the caller.
-    """
+    """Run docs CLI through direct Typer invocation."""
     from flext_cli import cli
     from flext_core import FlextRuntime
-
-    from flext_infra.docs.cli import FlextInfraCliDocs
 
     FlextRuntime.ensure_structlog_configured()
     app = cli.create_app_with_common_params(
@@ -41,7 +40,10 @@ def main(argv: t.StrSequence | None = None) -> int:
     )
     mixin = FlextInfraCliDocs()
     mixin.register_docs(app)
-    cli_args = list(argv) if argv is not None else sys.argv[1:]
+    cli_args = u.Infra.reorder_argv(
+        list(argv) if argv is not None else sys.argv[1:],
+        value_flags=_VALUE_FLAGS,
+    )
     if not cli_args:
         app(["--help"], standalone_mode=False)
         return 1

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import sys
 
 from flext_infra import FlextInfraBaseMkTemplateEngine, m, t
@@ -18,11 +17,7 @@ def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
 
 
 def main(argv: t.StrSequence | None = None) -> int:
-    """Run basemk CLI.
-
-    Invokes the Typer app in standalone mode so that usage errors
-    (e.g. unknown flags) propagate as ``SystemExit(2)`` to the caller.
-    """
+    """Run basemk CLI through direct Typer invocation."""
     from flext_cli import cli
     from flext_core import FlextRuntime
 
@@ -37,13 +32,12 @@ def main(argv: t.StrSequence | None = None) -> int:
     mixin.register_basemk(app)
     cli_args = list(argv) if argv is not None else sys.argv[1:]
     if not cli_args:
-        with contextlib.suppress(SystemExit):
-            app(["--help"], standalone_mode=True)
+        app(["--help"], standalone_mode=False)
         return 1
     try:
         app(cli_args, standalone_mode=True)
     except SystemExit as exc:
-        return int(exc.code) if exc.code is not None else 0
+        return exc.code if isinstance(exc.code, int) else 1
     return 0
 
 

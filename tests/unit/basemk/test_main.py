@@ -1,4 +1,4 @@
-"""Tests for flext_infra.basemk.__main__ CLI entry point.
+"""Tests for the centralized basemk CLI group.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -14,9 +14,26 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraBaseMkGenerator
-from flext_infra.basemk.__main__ import _build_config, main
+from flext_infra import FlextInfraBaseMkGenerator, m
+from flext_infra.basemk import FlextInfraBaseMkTemplateEngine
+from flext_infra.cli import main as infra_main
 from tests import t
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = ["basemk"]
+    if argv is not None:
+        args.extend(argv)
+    return infra_main(args)
+
+
+def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
+    """Build a basemk config using the canonical template defaults."""
+    if project_name is None:
+        return None
+    return FlextInfraBaseMkTemplateEngine.default_config().model_copy(
+        update={"project_name": project_name},
+    )
 
 
 def test_basemk_main_with_no_command(monkeypatch: MonkeyPatch) -> None:

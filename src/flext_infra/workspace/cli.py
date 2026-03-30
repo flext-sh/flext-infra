@@ -33,7 +33,7 @@ class FlextInfraCliWorkspace:
                 name="detect",
                 help_text="Detect workspace or standalone mode",
                 model_cls=m.Infra.WorkspaceDetectInput,
-                handler=self._handle_detect,
+                handler=self.handle_detect,
                 failure_message="detection failed",
             ),
         )
@@ -43,7 +43,7 @@ class FlextInfraCliWorkspace:
                 name="sync",
                 help_text="Sync base.mk to project root",
                 model_cls=m.Infra.WorkspaceSyncInput,
-                handler=self._handle_sync,
+                handler=self.handle_sync,
                 failure_message="sync failed",
             ),
         )
@@ -53,7 +53,7 @@ class FlextInfraCliWorkspace:
                 name="orchestrate",
                 help_text="Run make verb across projects",
                 model_cls=m.Infra.WorkspaceOrchestrateInput,
-                handler=self._handle_orchestrate,
+                handler=self.handle_orchestrate,
                 failure_message="orchestration failed",
             ),
         )
@@ -63,13 +63,14 @@ class FlextInfraCliWorkspace:
                 name="migrate",
                 help_text="Migrate workspace projects to flext_infra tooling",
                 model_cls=m.Infra.WorkspaceMigrateInput,
-                handler=self._handle_migrate,
+                handler=self.handle_migrate,
                 failure_message="migration failed",
             ),
         )
 
     @staticmethod
-    def _handle_detect(params: m.Infra.WorkspaceDetectInput) -> r[bool]:
+    def handle_detect(params: m.Infra.WorkspaceDetectInput) -> r[bool]:
+        """Detect workspace or standalone mode."""
         ws = Path(params.workspace)
         detector = FlextInfraWorkspaceDetector()
         result = detector.detect(ws)
@@ -78,7 +79,8 @@ class FlextInfraCliWorkspace:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_sync(params: m.Infra.WorkspaceSyncInput) -> r[bool]:
+    def handle_sync(params: m.Infra.WorkspaceSyncInput) -> r[bool]:
+        """Sync base.mk to project root."""
         ws = Path(params.workspace)
         canonical_path = Path(params.canonical_root) if params.canonical_root else None
         service = FlextInfraSyncService(canonical_root=canonical_path)
@@ -88,7 +90,8 @@ class FlextInfraCliWorkspace:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_orchestrate(params: m.Infra.WorkspaceOrchestrateInput) -> r[bool]:
+    def handle_orchestrate(params: m.Infra.WorkspaceOrchestrateInput) -> r[bool]:
+        """Run make verb across projects."""
         allowed_verbs = c.Infra.Make.ORCHESTRATED_PROJECT_VERBS
         if params.verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
@@ -118,7 +121,8 @@ class FlextInfraCliWorkspace:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_migrate(params: m.Infra.WorkspaceMigrateInput) -> r[bool]:
+    def handle_migrate(params: m.Infra.WorkspaceMigrateInput) -> r[bool]:
+        """Migrate workspace projects to flext_infra tooling."""
         ws = Path(params.workspace)
         dry_run = params.dry_run or not params.apply
         service = FlextInfraProjectMigrator()

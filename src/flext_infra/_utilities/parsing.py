@@ -145,28 +145,6 @@ class FlextInfraUtilitiesParsing:
         return ""
 
     @staticmethod
-    def cst_root_name(expr: cst.BaseExpression) -> str:
-        """Extract the root (leftmost) name from a CST expression.
-
-        Handles ``Name``, ``Attribute``, and ``Call`` nodes to find the
-        base identifier.
-
-        Args:
-            expr: CST expression node.
-
-        Returns:
-            Root name string, or empty string for unsupported nodes.
-
-        """
-        if isinstance(expr, cst.Name):
-            return expr.value
-        if isinstance(expr, cst.Attribute):
-            return FlextInfraUtilitiesParsing.cst_root_name(expr.value)
-        if isinstance(expr, cst.Call):
-            return FlextInfraUtilitiesParsing.cst_root_name(expr.func)
-        return ""
-
-    @staticmethod
     def cst_is_type_checking_test(node: cst.BaseExpression) -> bool:
         """Check if a CST expression is 'TYPE_CHECKING'."""
         return isinstance(node, cst.Name) and node.value == "TYPE_CHECKING"

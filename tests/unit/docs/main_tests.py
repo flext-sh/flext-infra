@@ -18,7 +18,7 @@ from flext_infra import (
     m,
     t,
 )
-from flext_infra.docs.__main__ import FlextInfraDocsCli
+from flext_infra.docs.cli import FlextInfraDocsCli
 
 
 def _ok(
