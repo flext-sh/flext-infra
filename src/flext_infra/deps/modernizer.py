@@ -189,11 +189,16 @@ class FlextInfraPyprojectModernizer:
                 for entry in value.body:
                     cls._reorder_table_inplace(entry)
 
-    def find_pyproject_files(self) -> Sequence[Path]:
+    def find_pyproject_files(
+        self,
+        *,
+        project_paths: Sequence[Path] | None = None,
+    ) -> Sequence[Path]:
         """Find all workspace pyproject.toml files."""
         result = u.Infra.find_all_pyproject_files(
             self.root,
             skip_dirs=c.Infra.SKIP_DIRS,
+            project_paths=project_paths,
         )
         return result.fold(
             on_failure=lambda _: [],
@@ -304,7 +309,17 @@ class FlextInfraPyprojectModernizer:
         """Run pyproject modernization for the workspace."""
         check_mode = bool(args.audit or cli.check)
         dry_run = bool(cli.dry_run or check_mode)
-        files = self.find_pyproject_files()
+        project_names = cli.project_names() or []
+        project_paths: Sequence[Path] | None = None
+        if project_names:
+            selected_projects = u.Infra.resolve_projects(self.root, project_names)
+            if selected_projects.is_failure:
+                u.Infra.error(
+                    selected_projects.error or "failed to resolve selected projects",
+                )
+                return 2
+            project_paths = [project.path for project in selected_projects.value]
+        files = self.find_pyproject_files(project_paths=project_paths)
         root_doc = u.Infra.read(self.root / c.Infra.Files.PYPROJECT_FILENAME)
         if root_doc is None:
             return 2
@@ -367,6 +382,7 @@ class FlextInfraPyprojectModernizer:
             "Modernize workspace pyproject files",
             include_apply=True,
             include_check=True,
+            include_project=True,
         )
         _ = parser.add_argument("--audit", action="store_true")
         _ = parser.add_argument("--skip-comments", action="store_true")

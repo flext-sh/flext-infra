@@ -15,11 +15,9 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Annotated
 
 from flext_cli import cli
 from flext_core import FlextRuntime, r
-from pydantic import BaseModel, Field
 
 from flext_infra import (
     FlextInfraDocAuditor,
@@ -31,107 +29,6 @@ from flext_infra import (
     m,
     t,
 )
-
-_DEFAULT_OUTPUT_DIR = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs"
-
-# ── Input Models ─────────────────────────────────────────────
-
-
-class AuditInput(BaseModel):
-    """CLI input for audit — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    project: Annotated[
-        str | None, Field(default=None, description="Single project name")
-    ]
-    projects: Annotated[
-        str | None, Field(default=None, description="Comma-separated project names")
-    ]
-    check: Annotated[bool, Field(default=False, description="Enable check mode")]
-    strict: Annotated[bool, Field(default=False, description="Strict mode")]
-    output_dir: Annotated[
-        str,
-        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
-    ]
-
-
-class FixInput(BaseModel):
-    """CLI input for fix — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    project: Annotated[
-        str | None, Field(default=None, description="Single project name")
-    ]
-    projects: Annotated[
-        str | None, Field(default=None, description="Comma-separated project names")
-    ]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    output_dir: Annotated[
-        str,
-        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
-    ]
-
-
-class BuildInput(BaseModel):
-    """CLI input for build — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    project: Annotated[
-        str | None, Field(default=None, description="Single project name")
-    ]
-    projects: Annotated[
-        str | None, Field(default=None, description="Comma-separated project names")
-    ]
-    output_dir: Annotated[
-        str,
-        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
-    ]
-
-
-class GenerateInput(BaseModel):
-    """CLI input for generate — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    project: Annotated[
-        str | None, Field(default=None, description="Single project name")
-    ]
-    projects: Annotated[
-        str | None, Field(default=None, description="Comma-separated project names")
-    ]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    output_dir: Annotated[
-        str,
-        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
-    ]
-
-
-class ValidateInput(BaseModel):
-    """CLI input for validate — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    project: Annotated[
-        str | None, Field(default=None, description="Single project name")
-    ]
-    projects: Annotated[
-        str | None, Field(default=None, description="Comma-separated project names")
-    ]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    check: Annotated[bool, Field(default=False, description="Enable check mode")]
-    output_dir: Annotated[
-        str,
-        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
-    ]
-
 
 # ── Router ───────────────────────────────────────────────────
 
@@ -157,7 +54,7 @@ class FlextInfraDocsCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="audit",
                 help_text="Audit documentation for broken links and forbidden terms",
-                model_cls=AuditInput,
+                model_cls=m.Infra.DocsAuditInput,
                 handler=self._handle_audit,
                 success_message="Audit completed successfully",
                 failure_message="Audit failed",
@@ -168,7 +65,7 @@ class FlextInfraDocsCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="fix",
                 help_text="Fix documentation issues",
-                model_cls=FixInput,
+                model_cls=m.Infra.DocsFixInput,
                 handler=self._handle_fix,
                 success_message="Fix completed successfully",
                 failure_message="Fix failed",
@@ -179,7 +76,7 @@ class FlextInfraDocsCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="build",
                 help_text="Build MkDocs sites",
-                model_cls=BuildInput,
+                model_cls=m.Infra.DocsBuildInput,
                 handler=self._handle_build,
                 success_message="Build completed successfully",
                 failure_message="Build failed",
@@ -190,7 +87,7 @@ class FlextInfraDocsCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="generate",
                 help_text="Generate project docs",
-                model_cls=GenerateInput,
+                model_cls=m.Infra.DocsGenerateInput,
                 handler=self._handle_generate,
                 success_message="Generate completed successfully",
                 failure_message="Generate failed",
@@ -201,7 +98,7 @@ class FlextInfraDocsCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="validate",
                 help_text="Validate documentation",
-                model_cls=ValidateInput,
+                model_cls=m.Infra.DocsValidateInput,
                 handler=self._handle_validate,
                 success_message="Validate completed successfully",
                 failure_message="Validate failed",
@@ -209,7 +106,7 @@ class FlextInfraDocsCli:
         )
 
     @staticmethod
-    def _handle_audit(params: AuditInput) -> r[bool]:
+    def _handle_audit(params: m.Infra.DocsAuditInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         auditor = FlextInfraDocAuditor()
         result = auditor.audit(
@@ -228,7 +125,7 @@ class FlextInfraDocsCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_fix(params: FixInput) -> r[bool]:
+    def _handle_fix(params: m.Infra.DocsFixInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         fixer = FlextInfraDocFixer()
         result = fixer.fix(
@@ -243,7 +140,7 @@ class FlextInfraDocsCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_build(params: BuildInput) -> r[bool]:
+    def _handle_build(params: m.Infra.DocsBuildInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         builder = FlextInfraDocBuilder()
         result = builder.build(
@@ -262,7 +159,7 @@ class FlextInfraDocsCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_generate(params: GenerateInput) -> r[bool]:
+    def _handle_generate(params: m.Infra.DocsGenerateInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         generator = FlextInfraDocGenerator()
         result = generator.generate(
@@ -277,7 +174,7 @@ class FlextInfraDocsCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_validate(params: ValidateInput) -> r[bool]:
+    def _handle_validate(params: m.Infra.DocsValidateInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         validator = FlextInfraDocValidator()
         result = validator.validate(

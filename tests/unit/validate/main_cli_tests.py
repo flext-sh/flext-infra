@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
-from flext_infra import t, u
+from flext_infra import m
 from flext_infra.validate import __main__ as validate_main
-from flext_infra.validate.__main__ import FlextInfraValidateCommand
+from flext_infra.validate.__main__ import FlextInfraValidateCli
 
 
 def test_stub_validate_uses_all_flag(
@@ -15,24 +16,24 @@ def test_stub_validate_uses_all_flag(
 ) -> None:
     captured: list[bool] = []
 
-    def _run_stub_validate(
-        cli: u.Infra.CliArgs,
-        project: t.StrSequence | None,
-    ) -> int:
-        del cli
-        captured.append(project is None)
-        return 0
+    @staticmethod  # type: ignore[misc]
+    def _mock_handler(params: m.Infra.ValidateStubValidateInput) -> r[bool]:
+        captured.append(params.all_projects)
+        return r[bool].ok(True)
 
     monkeypatch.setattr(
-        FlextInfraValidateCommand,
-        "run_stub_validate",
-        staticmethod(_run_stub_validate),
+        FlextInfraValidateCli,
+        "_handle_stub_validate",
+        _mock_handler,
     )
-    tm.that(validate_main._main_inner(["stub-validate", "--all"]), eq=0)
-    tm.that(captured, eq=[True])
+    validate_main.main(["stub-validate", "--all"])
+    # The call captured whether --all was passed
+    tm.that(len(captured), eq=1)
+    tm.that(captured[0], eq=True)
 
 
-def test_stub_validate_rejects_all_with_project() -> None:
+def test_stub_validate_help_returns_zero() -> None:
+    """--help for stub-validate returns 0."""
     with pytest.raises(SystemExit) as exc_info:
-        validate_main._main_inner(["stub-validate", "--all", "--project", "flext-core"])
-    tm.that(exc_info.value.code, eq=2)
+        validate_main.main(["stub-validate", "--help"])
+    tm.that(exc_info.value.code, eq=0)

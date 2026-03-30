@@ -17,11 +17,10 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Annotated
 
 from flext_cli import cli
 from flext_core import FlextRuntime, r
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import TypeAdapter
 
 from flext_infra import (
     FlextInfraCodegenCensus,
@@ -44,93 +43,6 @@ _JSON_OUTPUT_ADAPTER: TypeAdapter[t.ContainerMapping] = TypeAdapter(
 def _format_text(value: str) -> str:
     """Format text result for CLI output."""
     return str(value)
-
-
-# ── Input Models ─────────────────────────────────────────────
-
-
-class LazyInitInput(BaseModel):
-    """CLI input for lazy-init — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    check: Annotated[bool, Field(default=False, description="Check mode (no writes)")]
-
-
-class CensusInput(BaseModel):
-    """CLI input for census — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    output_format: Annotated[
-        str, Field(default="text", description="Output format (json|text)")
-    ]
-    class_to_analyze: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description="Full class path to analyze (e.g. flext_core.FlextConstants)",
-        ),
-    ]
-
-
-class DeduplicateInput(BaseModel):
-    """CLI input for deduplicate — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    class_to_analyze: Annotated[
-        str,
-        Field(
-            description="Full class path to deduplicate (e.g. flext_core.FlextConstants)",
-        ),
-    ]
-
-
-class ScaffoldInput(BaseModel):
-    """CLI input for scaffold — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-
-
-class AutoFixInput(BaseModel):
-    """CLI input for auto-fix — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-
-
-class PyTypedInput(BaseModel):
-    """CLI input for py-typed — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    check: Annotated[bool, Field(default=False, description="Check mode (no writes)")]
-
-
-class PipelineInput(BaseModel):
-    """CLI input for pipeline — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    output_format: Annotated[
-        str, Field(default="text", description="Output format (json|text)")
-    ]
-
-
-class ConstantsQualityGateInput(BaseModel):
-    """CLI input for constants-quality-gate — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    before_report: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description="Path to pre-refactor report JSON for comparison",
-        ),
-    ]
-    baseline_file: Annotated[
-        str | None,
-        Field(default=None, description="Path to baseline JSON payload for comparison"),
-    ]
 
 
 # ── Router ───────────────────────────────────────────────────
@@ -157,7 +69,7 @@ class FlextInfraCodegenCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="lazy-init",
                 help_text="Generate/refresh PEP 562 lazy-import __init__.py files",
-                model_cls=LazyInitInput,
+                model_cls=m.Infra.CodegenLazyInitInput,
                 handler=self._handle_lazy_init,
                 failure_message="lazy-init failed",
                 success_message="lazy-init complete",
@@ -168,7 +80,7 @@ class FlextInfraCodegenCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="census",
                 help_text="Count namespace violations across workspace projects",
-                model_cls=CensusInput,
+                model_cls=m.Infra.CodegenCensusInput,
                 handler=self._handle_census,
                 failure_message="census failed",
                 success_formatter=_format_text,
@@ -179,7 +91,7 @@ class FlextInfraCodegenCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="deduplicate",
                 help_text="Auto-fix duplicated constants (keep most-used)",
-                model_cls=DeduplicateInput,
+                model_cls=m.Infra.CodegenDeduplicateInput,
                 handler=self._handle_deduplicate,
                 failure_message="deduplicate failed",
                 success_formatter=_format_text,
@@ -190,7 +102,7 @@ class FlextInfraCodegenCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="scaffold",
                 help_text="Generate missing base modules in src/ and tests/",
-                model_cls=ScaffoldInput,
+                model_cls=m.Infra.CodegenScaffoldInput,
                 handler=self._handle_scaffold,
                 failure_message="scaffold failed",
                 success_formatter=_format_text,
@@ -201,7 +113,7 @@ class FlextInfraCodegenCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="auto-fix",
                 help_text="Auto-fix namespace violations (move Finals/TypeVars)",
-                model_cls=AutoFixInput,
+                model_cls=m.Infra.CodegenAutoFixInput,
                 handler=self._handle_auto_fix,
                 failure_message="auto-fix failed",
                 success_formatter=_format_text,
@@ -212,7 +124,7 @@ class FlextInfraCodegenCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="py-typed",
                 help_text="Create/remove PEP 561 py.typed markers",
-                model_cls=PyTypedInput,
+                model_cls=m.Infra.CodegenPyTypedInput,
                 handler=self._handle_py_typed,
                 failure_message="py-typed failed",
                 success_message="py-typed markers updated",
@@ -223,7 +135,7 @@ class FlextInfraCodegenCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="pipeline",
                 help_text="Run full codegen pipeline",
-                model_cls=PipelineInput,
+                model_cls=m.Infra.CodegenPipelineInput,
                 handler=self._handle_pipeline,
                 failure_message="pipeline failed",
                 success_formatter=_format_text,
@@ -234,7 +146,7 @@ class FlextInfraCodegenCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="constants-quality-gate",
                 help_text="Run constants migration quality gate",
-                model_cls=ConstantsQualityGateInput,
+                model_cls=m.Infra.CodegenConstantsQualityGateInput,
                 handler=self._handle_constants_quality_gate,
                 failure_message="constants quality gate failed",
                 success_message="constants quality gate passed",
@@ -244,7 +156,7 @@ class FlextInfraCodegenCli:
     # ── Handlers ─────────────────────────────────────────────
 
     @staticmethod
-    def _handle_lazy_init(params: LazyInitInput) -> r[bool]:
+    def _handle_lazy_init(params: m.Infra.CodegenLazyInitInput) -> r[bool]:
         """Handle lazy-init code generation."""
         workspace = Path(params.workspace).resolve()
         generator = FlextInfraCodegenLazyInit(workspace_root=workspace)
@@ -256,7 +168,7 @@ class FlextInfraCodegenCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_census(params: CensusInput) -> r[str]:
+    def _handle_census(params: m.Infra.CodegenCensusInput) -> r[str]:
         """Handle namespace violation census."""
         workspace = Path(params.workspace).resolve()
         census = FlextInfraCodegenCensus(
@@ -286,7 +198,7 @@ class FlextInfraCodegenCli:
         return r[str].ok(text)
 
     @staticmethod
-    def _handle_deduplicate(params: DeduplicateInput) -> r[str]:
+    def _handle_deduplicate(params: m.Infra.CodegenDeduplicateInput) -> r[str]:
         """Handle constant deduplication with user selection."""
         workspace = Path(params.workspace).resolve()
         dry_run = not params.apply
@@ -353,7 +265,7 @@ class FlextInfraCodegenCli:
         return r[str].ok("\n".join(lines))
 
     @staticmethod
-    def _handle_scaffold(params: ScaffoldInput) -> r[str]:
+    def _handle_scaffold(params: m.Infra.CodegenScaffoldInput) -> r[str]:
         """Handle module scaffolding."""
         workspace = Path(params.workspace).resolve()
         scaffolder = FlextInfraCodegenScaffolder(workspace_root=workspace)
@@ -375,7 +287,7 @@ class FlextInfraCodegenCli:
         return r[str].ok("\n".join(lines))
 
     @staticmethod
-    def _handle_auto_fix(params: AutoFixInput) -> r[str]:
+    def _handle_auto_fix(params: m.Infra.CodegenAutoFixInput) -> r[str]:
         """Handle namespace violation auto-fix."""
         workspace = Path(params.workspace).resolve()
         dry_run = not params.apply
@@ -401,7 +313,7 @@ class FlextInfraCodegenCli:
         return r[str].ok("\n".join(lines))
 
     @staticmethod
-    def _handle_py_typed(params: PyTypedInput) -> r[bool]:
+    def _handle_py_typed(params: m.Infra.CodegenPyTypedInput) -> r[bool]:
         """Handle py.typed marker generation."""
         workspace = Path(params.workspace).resolve()
         service = FlextInfraCodegenPyTyped(workspace_root=workspace)
@@ -409,7 +321,7 @@ class FlextInfraCodegenCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_pipeline(params: PipelineInput) -> r[str]:
+    def _handle_pipeline(params: m.Infra.CodegenPipelineInput) -> r[str]:
         """Handle full codegen pipeline."""
         workspace = Path(params.workspace).resolve()
         dry_run = not params.apply
@@ -478,7 +390,7 @@ class FlextInfraCodegenCli:
 
     @staticmethod
     def _handle_constants_quality_gate(
-        params: ConstantsQualityGateInput,
+        params: m.Infra.CodegenConstantsQualityGateInput,
     ) -> r[bool]:
         """Handle constants migration quality gate."""
         workspace = Path(params.workspace).resolve()

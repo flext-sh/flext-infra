@@ -62,6 +62,12 @@ class FlextInfraOrchestratorService(s[bool]):
         """
         output.header("Workspace Orchestration")
         try:
+            allowed_verbs = c.Infra.Make.ORCHESTRATED_PROJECT_VERBS
+            if verb not in allowed_verbs:
+                allowed = ", ".join(allowed_verbs)
+                return r[Sequence[m.Infra.CommandOutput]].fail(
+                    f"unsupported orchestrate verb '{verb}' (allowed: {allowed})",
+                )
             results: MutableSequence[m.Infra.CommandOutput] = []
             total = len(projects)
             success = 0

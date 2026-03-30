@@ -13,33 +13,9 @@ TESTS_DIR ?= {{ config.tests_dir }}
 DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
 CORE_STACK ?= {{ config.core_stack }}
-PYTEST_ARGS ?=
-DIAG ?= 0
-CHECK_GATES ?=
-VALIDATE_GATES ?=
-DOCS_PHASE ?= all
-FIX ?=
-AUTO_ADJUST ?= 1
-PR_ACTION ?= status
-PR_BASE ?= main
-PR_HEAD ?=
-PR_NUMBER ?=
-PR_TITLE ?=
-PR_BODY ?=
-PR_DRAFT ?= 0
-PR_MERGE_METHOD ?= squash
-PR_AUTO ?= 0
-PR_DELETE_BRANCH ?= 0
-PR_CHECKS_STRICT ?= 0
-PR_RELEASE_ON_MERGE ?= 1
-FILE ?=
-FILES ?=
-CHANGED_ONLY ?=
-MATCH ?=
-RUFF_ARGS ?=
-PYRIGHT_ARGS ?=
-CHECK_ONLY ?=
-FAIL_FAST ?=
+{% for variable_name, default_value in make.PROJECT_VARIABLE_DEFAULTS -%}
+{{ variable_name }} ?= {{ default_value }}
+{% endfor %}
 
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals

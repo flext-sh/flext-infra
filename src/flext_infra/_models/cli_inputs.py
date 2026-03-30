@@ -17,61 +17,79 @@ from flext_infra import c
 
 
 class FlextInfraModelsCliInputs:
-    """CLI input models -- composed into m.Infra via MRO."""
+    """Namespaced CLI input models for flext-infra commands."""
 
-    # ── BaseMk ───────────────────────────────────────────
-
-    class BaseMkGenerateInput(BaseModel):
-        """CLI input for base.mk generation -- fields become CLI options."""
+    class CliInputBase(BaseModel):
+        """Base for all CLI input models."""
 
         workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
+            str,
+            Field(default=".", description="Workspace root"),
+        ] = "."
+
+    class ApplyMixin(BaseModel):
+        """Shared apply flag for mutating commands."""
+
+        apply: Annotated[
+            bool,
+            Field(default=False, description="Apply changes"),
+        ] = False
+
+    class OutputDirMixin(BaseModel):
+        """Shared output directory option for report-producing commands."""
+
+        output_dir: Annotated[
+            str,
+            Field(
+                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
+                description="Output directory for reports",
+            ),
+        ] = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs"
+
+    class BaseMkGenerateInput(CliInputBase):
+        """CLI input for base.mk generation."""
+
         output: Annotated[
             str | None,
             Field(
                 default=None,
                 description="Write generated content to file path (defaults to stdout)",
             ),
-        ]
+        ] = None
         project_name: Annotated[
             str | None,
             Field(
                 default=None,
                 description="Override project name in generated base.mk",
             ),
-        ]
+        ] = None
 
-    # ── Codegen ──────────────────────────────────────────
+    class CodegenLazyInitInput(CliInputBase):
+        """CLI input for lazy-init."""
 
-    class CodegenLazyInitInput(BaseModel):
-        """CLI input for lazy-init -- fields become CLI options."""
-
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
         check: Annotated[
-            bool, Field(default=False, description="Check mode (no writes)")
-        ]
+            bool,
+            Field(default=False, description="Check mode (no writes)"),
+        ] = False
 
-    class CodegenCensusInput(BaseModel):
-        """CLI input for census -- fields become CLI options."""
+    class CodegenCensusInput(CliInputBase):
+        """CLI input for census."""
 
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
         output_format: Annotated[
-            str, Field(default="text", description="Output format (json|text)")
-        ]
+            str,
+            Field(default="text", description="Output format (json|text)"),
+        ] = "text"
         class_to_analyze: Annotated[
             str | None,
             Field(
                 default=None,
                 description="Full class path to analyze (e.g. flext_core.FlextConstants)",
             ),
-        ]
+        ] = None
 
-    class CodegenDeduplicateInput(BaseModel):
-        """CLI input for deduplicate -- fields become CLI options."""
+    class CodegenDeduplicateInput(ApplyMixin, CliInputBase):
+        """CLI input for deduplicate."""
 
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
         class_to_analyze: Annotated[
             str,
             Field(
@@ -79,194 +97,100 @@ class FlextInfraModelsCliInputs:
             ),
         ]
 
-    class CodegenScaffoldInput(BaseModel):
-        """CLI input for scaffold -- fields become CLI options."""
+    class CodegenScaffoldInput(ApplyMixin, CliInputBase):
+        """CLI input for scaffold."""
 
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    class CodegenAutoFixInput(ApplyMixin, CliInputBase):
+        """CLI input for auto-fix."""
 
-    class CodegenAutoFixInput(BaseModel):
-        """CLI input for auto-fix -- fields become CLI options."""
+    class CodegenPyTypedInput(CliInputBase):
+        """CLI input for py-typed."""
 
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
-
-    class CodegenPyTypedInput(BaseModel):
-        """CLI input for py-typed -- fields become CLI options."""
-
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
         check: Annotated[
-            bool, Field(default=False, description="Check mode (no writes)")
-        ]
+            bool,
+            Field(default=False, description="Check mode (no writes)"),
+        ] = False
 
-    class CodegenPipelineInput(BaseModel):
-        """CLI input for pipeline -- fields become CLI options."""
+    class CodegenPipelineInput(ApplyMixin, CliInputBase):
+        """CLI input for pipeline."""
 
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
         output_format: Annotated[
-            str, Field(default="text", description="Output format (json|text)")
-        ]
+            str,
+            Field(default="text", description="Output format (json|text)"),
+        ] = "text"
 
-    class CodegenConstantsQualityGateInput(BaseModel):
-        """CLI input for constants-quality-gate -- fields become CLI options."""
+    class CodegenConstantsQualityGateInput(CliInputBase):
+        """CLI input for constants-quality-gate."""
 
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
         before_report: Annotated[
             str | None,
             Field(
                 default=None,
                 description="Path to pre-refactor report JSON for comparison",
             ),
-        ]
+        ] = None
         baseline_file: Annotated[
             str | None,
             Field(
                 default=None,
                 description="Path to baseline JSON payload for comparison",
             ),
-        ]
+        ] = None
 
-    # ── Docs ─────────────────────────────────────────────
-
-    class DocsAuditInput(BaseModel):
-        """CLI input for audit -- fields become CLI options."""
-
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
+    class DocsProjectMixin(CliInputBase):
         project: Annotated[
-            str | None, Field(default=None, description="Single project name")
-        ]
+            str | None,
+            Field(default=None, description="Single project name"),
+        ] = None
         projects: Annotated[
             str | None,
             Field(default=None, description="Comma-separated project names"),
-        ]
-        check: Annotated[bool, Field(default=False, description="Enable check mode")]
-        strict: Annotated[bool, Field(default=False, description="Strict mode")]
-        output_dir: Annotated[
-            str,
-            Field(
-                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-                description="Output directory for reports",
-            ),
-        ]
+        ] = None
 
-    class DocsFixInput(BaseModel):
-        """CLI input for fix -- fields become CLI options."""
+    class DocsAuditInput(OutputDirMixin, DocsProjectMixin):
+        check: Annotated[
+            bool,
+            Field(default=False, description="Enable check mode"),
+        ] = False
+        strict: Annotated[
+            bool,
+            Field(default=False, description="Strict mode"),
+        ] = False
 
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
-        project: Annotated[
-            str | None, Field(default=None, description="Single project name")
-        ]
-        projects: Annotated[
-            str | None,
-            Field(default=None, description="Comma-separated project names"),
-        ]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
-        output_dir: Annotated[
-            str,
-            Field(
-                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-                description="Output directory for reports",
-            ),
-        ]
+    class DocsFixInput(ApplyMixin, OutputDirMixin, DocsProjectMixin):
+        pass
 
-    class DocsBuildInput(BaseModel):
-        """CLI input for build -- fields become CLI options."""
+    class DocsBuildInput(OutputDirMixin, DocsProjectMixin):
+        pass
 
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
-        project: Annotated[
-            str | None, Field(default=None, description="Single project name")
-        ]
-        projects: Annotated[
-            str | None,
-            Field(default=None, description="Comma-separated project names"),
-        ]
-        output_dir: Annotated[
-            str,
-            Field(
-                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-                description="Output directory for reports",
-            ),
-        ]
+    class DocsGenerateInput(ApplyMixin, OutputDirMixin, DocsProjectMixin):
+        pass
 
-    class DocsGenerateInput(BaseModel):
-        """CLI input for generate -- fields become CLI options."""
+    class DocsValidateInput(ApplyMixin, OutputDirMixin, DocsProjectMixin):
+        check: Annotated[
+            bool,
+            Field(default=False, description="Enable check mode"),
+        ] = False
 
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
-        project: Annotated[
-            str | None, Field(default=None, description="Single project name")
-        ]
-        projects: Annotated[
-            str | None,
-            Field(default=None, description="Comma-separated project names"),
-        ]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
-        output_dir: Annotated[
-            str,
-            Field(
-                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-                description="Output directory for reports",
-            ),
-        ]
-
-    class DocsValidateInput(BaseModel):
-        """CLI input for validate -- fields become CLI options."""
-
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
-        project: Annotated[
-            str | None, Field(default=None, description="Single project name")
-        ]
-        projects: Annotated[
-            str | None,
-            Field(default=None, description="Comma-separated project names"),
-        ]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
-        check: Annotated[bool, Field(default=False, description="Enable check mode")]
-        output_dir: Annotated[
-            str,
-            Field(
-                default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-                description="Output directory for reports",
-            ),
-        ]
-
-    # ── GitHub ───────────────────────────────────────────
-
-    class GithubWorkflowsInput(BaseModel):
-        """CLI input for workflows sync -- fields become CLI options."""
-
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
-        prune: Annotated[bool, Field(default=False, description="Remove unknown files")]
+    class GithubReportMixin(CliInputBase):
         report: Annotated[
-            str | None, Field(default=None, description="Output report file")
-        ]
+            str | None,
+            Field(default=None, description="Output report file"),
+        ] = None
 
-    class GithubLintInput(BaseModel):
-        """CLI input for workflow lint -- fields become CLI options."""
+    class GithubWorkflowsInput(ApplyMixin, GithubReportMixin):
+        prune: Annotated[
+            bool,
+            Field(default=False, description="Remove unknown files"),
+        ] = False
 
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    class GithubLintInput(GithubReportMixin):
         strict: Annotated[
             bool,
             Field(default=False, description="Fail on strict mode warnings"),
-        ]
-        report: Annotated[
-            str | None, Field(default=None, description="Output report file")
-        ]
+        ] = False
 
-    class GithubPrInput(BaseModel):
-        """CLI input for single-project PR management -- fields become CLI options."""
-
+    class GithubPrInput(CliInputBase):
         repo_root: Annotated[str, Field(..., description="Repository root directory")]
         action: Annotated[
             str,
@@ -274,252 +198,240 @@ class FlextInfraModelsCliInputs:
                 default="status",
                 description="PR action (status/create/view/checks/merge/close)",
             ),
-        ]
-        base: Annotated[str, Field(default="main", description="Base branch")]
-        head: Annotated[str | None, Field(default=None, description="Head branch")]
-        number: Annotated[int | None, Field(default=None, description="PR number")]
-        title: Annotated[str | None, Field(default=None, description="PR title")]
-        body: Annotated[str | None, Field(default=None, description="PR body")]
-        draft: Annotated[bool, Field(default=False, description="Create as draft")]
+        ] = "status"
+        base: Annotated[str, Field(default="main", description="Base branch")] = "main"
+        head: Annotated[str | None, Field(default=None, description="Head branch")] = (
+            None
+        )
+        number: Annotated[int | None, Field(default=None, description="PR number")] = (
+            None
+        )
+        title: Annotated[str | None, Field(default=None, description="PR title")] = None
+        body: Annotated[str | None, Field(default=None, description="PR body")] = None
+        draft: Annotated[
+            bool,
+            Field(default=False, description="Create as draft"),
+        ] = False
         merge_method: Annotated[
             str,
             Field(default="squash", description="Merge method (merge/squash/rebase)"),
-        ]
-        auto: Annotated[bool, Field(default=False, description="Auto-merge")]
+        ] = "squash"
+        auto: Annotated[bool, Field(default=False, description="Auto-merge")] = False
         delete_branch: Annotated[
-            bool, Field(default=True, description="Delete head branch on merge")
-        ]
+            bool,
+            Field(default=True, description="Delete head branch on merge"),
+        ] = True
         checks_strict: Annotated[
-            bool, Field(default=True, description="Fail if checks fail")
-        ]
+            bool,
+            Field(default=True, description="Fail if checks fail"),
+        ] = True
         release_on_merge: Annotated[
             bool,
             Field(default=True, description="Run release workflow on merge"),
-        ]
+        ] = True
 
-    class GithubPrWorkspaceInput(BaseModel):
-        """CLI input for workspace-wide PR management -- fields become CLI options."""
-
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    class GithubPrWorkspaceInput(CliInputBase):
         project: Annotated[
-            str | None,
+            list[str],
             Field(
-                default=None,
-                description="Project to process (comma-separated for multiple)",
+                default_factory=list,
+                description="Project to process; repeat --project NAME as needed",
             ),
-        ]
+        ] = Field(default_factory=list)
         include_root: Annotated[
-            bool, Field(default=False, description="Include root project")
-        ]
-        branch: Annotated[str, Field(default="", description="Branch name filter")]
+            bool,
+            Field(default=False, description="Include root project"),
+        ] = False
+        branch: Annotated[
+            str,
+            Field(default="", description="Branch name filter"),
+        ] = ""
         checkpoint: Annotated[
-            bool, Field(default=True, description="Enable checkpoints")
-        ]
+            bool,
+            Field(default=True, description="Enable checkpoints"),
+        ] = True
         fail_fast: Annotated[
-            bool, Field(default=True, description="Stop on first failure")
-        ]
-        pr_action: Annotated[str, Field(default="status", description="PR action")]
-        pr_base: Annotated[str, Field(default="", description="Base branch")]
-        pr_head: Annotated[str, Field(default="", description="Head branch")]
-        pr_number: Annotated[int | None, Field(default=None, description="PR number")]
-        pr_title: Annotated[str, Field(default="", description="PR title")]
-        pr_body: Annotated[str, Field(default="", description="PR body")]
-        pr_draft: Annotated[bool, Field(default=False, description="Draft PR")]
+            bool,
+            Field(default=True, description="Stop on first failure"),
+        ] = True
+        pr_action: Annotated[str, Field(default="status", description="PR action")] = (
+            "status"
+        )
+        pr_base: Annotated[str, Field(default="", description="Base branch")] = ""
+        pr_head: Annotated[str, Field(default="", description="Head branch")] = ""
+        pr_number: Annotated[
+            int | None,
+            Field(default=None, description="PR number"),
+        ] = None
+        pr_title: Annotated[str, Field(default="", description="PR title")] = ""
+        pr_body: Annotated[str, Field(default="", description="PR body")] = ""
+        pr_draft: Annotated[bool, Field(default=False, description="Draft PR")] = False
         pr_merge_method: Annotated[
-            str, Field(default="squash", description="Merge method")
-        ]
-        pr_auto: Annotated[bool, Field(default=False, description="Auto-merge")]
+            str,
+            Field(default="squash", description="Merge method"),
+        ] = "squash"
+        pr_auto: Annotated[bool, Field(default=False, description="Auto-merge")] = False
         pr_delete_branch: Annotated[
-            bool, Field(default=True, description="Delete branch on merge")
-        ]
+            bool,
+            Field(default=True, description="Delete branch on merge"),
+        ] = True
         pr_checks_strict: Annotated[
-            bool, Field(default=True, description="Strict checks required")
-        ]
+            bool,
+            Field(default=True, description="Strict checks required"),
+        ] = True
         pr_release_on_merge: Annotated[
-            bool, Field(default=False, description="Release on merge")
-        ]
+            bool,
+            Field(default=False, description="Release on merge"),
+        ] = False
 
-    # ── Refactor ─────────────────────────────────────────
-
-    class RefactorCentralizeInput(BaseModel):
-        """CLI input for pydantic centralization -- fields become CLI options."""
-
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    class RefactorCentralizeInput(ApplyMixin, CliInputBase):
         normalize_remaining: Annotated[
             bool,
             Field(
                 default=False,
                 description="Remove remaining BaseModel/TypedDict bases in non-allowed files",
             ),
-        ]
+        ] = False
 
-    class RefactorMigrateMroInput(BaseModel):
-        """CLI input for MRO migration -- fields become CLI options."""
-
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    class RefactorMigrateMroInput(ApplyMixin, CliInputBase):
         target: Annotated[
             str,
             Field(
                 default="all",
                 description="Migration target scope (constants/typings/protocols/models/utilities/all)",
             ),
-        ]
+        ] = "all"
 
-    class RefactorNamespaceEnforceInput(BaseModel):
-        """CLI input for namespace enforcement -- fields become CLI options."""
-
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    class RefactorNamespaceEnforceInput(ApplyMixin, CliInputBase):
         diff: Annotated[
-            bool, Field(default=False, description="Show diff without applying")
-        ]
+            bool,
+            Field(default=False, description="Show diff without applying"),
+        ] = False
         project: Annotated[
             str | None,
             Field(
                 default=None,
                 description="Project to process (comma-separated for multiple)",
             ),
-        ]
+        ] = None
 
-    class RefactorUltraworkModelsInput(BaseModel):
-        """CLI input for ultrawork-models -- fields become CLI options."""
-
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    class RefactorUltraworkModelsInput(ApplyMixin, CliInputBase):
         normalize_remaining: Annotated[
             bool,
             Field(
                 default=False,
                 description="Remove remaining BaseModel/TypedDict bases in non-allowed files",
             ),
-        ]
+        ] = False
 
-    class RefactorCensusInput(BaseModel):
-        """CLI input for MRO family census -- fields become CLI options."""
-
-        workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    class RefactorCensusInput(CliInputBase):
         family: Annotated[
             str,
-            Field(
-                default="u",
-                description="MRO family to census (c/t/p/m/u)",
-            ),
-        ]
+            Field(default="u", description="MRO family to census (c/t/p/m/u)"),
+        ] = "u"
         json_output: Annotated[
             str | None,
             Field(default=None, description="Path to write JSON report"),
-        ]
+        ] = None
 
-    # ── Release ──────────────────────────────────────────
-
-    class ReleaseRunInput(BaseModel):
-        """CLI input for release orchestration -- fields become CLI options."""
-
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
-        apply: Annotated[bool, Field(default=False, description="Apply changes")]
-        phase: Annotated[str, Field(default="all", description="Release phase")]
-        version: Annotated[str, Field(default="", description="Version string")]
-        tag: Annotated[str, Field(default="", description="Git tag (e.g. v1.0.0)")]
+    class ReleaseRunInput(ApplyMixin, CliInputBase):
+        phase: Annotated[str, Field(default="all", description="Release phase")] = "all"
+        version: Annotated[str, Field(default="", description="Version string")] = ""
+        tag: Annotated[str, Field(default="", description="Git tag (e.g. v1.0.0)")] = ""
         bump: Annotated[
-            str, Field(default="", description="Bump type (major/minor/patch)")
-        ]
+            str,
+            Field(default="", description="Bump type (major/minor/patch)"),
+        ] = ""
         interactive: Annotated[
-            int, Field(default=1, description="Interactive mode (1=yes, 0=no)")
-        ]
-        push: Annotated[bool, Field(default=False, description="Push to remote")]
-        dev_suffix: Annotated[bool, Field(default=False, description="Add dev suffix")]
+            int,
+            Field(default=1, description="Interactive mode (1=yes, 0=no)"),
+        ] = 1
+        push: Annotated[bool, Field(default=False, description="Push to remote")] = (
+            False
+        )
+        dev_suffix: Annotated[
+            bool,
+            Field(default=False, description="Add dev suffix"),
+        ] = False
         next_dev: Annotated[
-            bool, Field(default=False, description="Prepare next dev version")
-        ]
+            bool,
+            Field(default=False, description="Prepare next dev version"),
+        ] = False
         next_bump: Annotated[
             str,
             Field(default="minor", description="Bump type for next dev version"),
-        ]
+        ] = "minor"
         create_branches: Annotated[
             int,
             Field(default=1, description="Create release branches (1=yes, 0=no)"),
-        ]
+        ] = 1
         projects: Annotated[
             list[str] | None,
             Field(default=None, description="Project names to release"),
-        ]
+        ] = None
 
-    # ── Validate ─────────────────────────────────────────
+    class ValidateBaseMkInput(CliInputBase):
+        """CLI input for basemk-validate."""
 
-    class ValidateBaseMkInput(BaseModel):
-        """CLI input for basemk-validate -- fields become CLI options."""
+        pass
 
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
+    class ValidateInventoryInput(CliInputBase):
+        """CLI input for inventory."""
 
-    class ValidateInventoryInput(BaseModel):
-        """CLI input for inventory -- fields become CLI options."""
-
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
         output_dir: Annotated[
-            str | None, Field(default=None, description="Output directory")
-        ]
+            str | None,
+            Field(default=None, description="Output directory"),
+        ] = None
 
-    class ValidatePytestDiagInput(BaseModel):
-        """CLI input for pytest-diag -- fields become CLI options."""
+    class ValidatePytestDiagInput(CliInputBase):
+        """CLI input for pytest-diag."""
 
         junit: Annotated[str, Field(..., description="JUnit XML path")]
         log: Annotated[str, Field(..., description="Pytest log path")]
         failed: Annotated[
             str | None,
             Field(default=None, description="Path to write failed cases"),
-        ]
+        ] = None
         errors: Annotated[
             str | None,
             Field(default=None, description="Path to write error traces"),
-        ]
+        ] = None
         warnings: Annotated[
             str | None,
             Field(default=None, description="Path to write warnings"),
-        ]
+        ] = None
         slowest: Annotated[
             str | None,
             Field(default=None, description="Path to write slowest entries"),
-        ]
+        ] = None
         skips: Annotated[
             str | None,
             Field(default=None, description="Path to write skipped cases"),
-        ]
+        ] = None
 
-    class ValidateScanInput(BaseModel):
-        """CLI input for scan -- fields become CLI options."""
+    class ValidateScanInput(CliInputBase):
+        """CLI input for scan."""
 
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
         pattern: Annotated[str, Field(..., description="Regex pattern")]
         include: Annotated[
-            list[str] | None, Field(default=None, description="Include glob")
-        ]
+            list[str] | None,
+            Field(default=None, description="Include glob"),
+        ] = None
         exclude: Annotated[
-            list[str] | None, Field(default=None, description="Exclude glob")
-        ]
+            list[str] | None,
+            Field(default=None, description="Exclude glob"),
+        ] = None
         match: Annotated[
             str,
             Field(
                 default=c.Infra.MatchModes.PRESENT,
                 description="Violation mode (present or absent)",
             ),
-        ]
+        ] = c.Infra.MatchModes.PRESENT
 
-    class ValidateSkillValidateInput(BaseModel):
-        """CLI input for skill-validate -- fields become CLI options."""
+    class ValidateSkillValidateInput(CliInputBase):
+        """CLI input for skill-validate."""
 
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
         skill: Annotated[str, Field(..., description="Skill folder name")]
         mode: Annotated[
             str,
@@ -527,77 +439,67 @@ class FlextInfraModelsCliInputs:
                 default=c.Infra.Modes.BASELINE,
                 description="Validation mode (baseline or strict)",
             ),
-        ]
+        ] = c.Infra.Modes.BASELINE
 
-    class ValidateStubValidateInput(BaseModel):
-        """CLI input for stub-validate -- fields become CLI options."""
+    class ValidateStubValidateInput(CliInputBase):
+        """CLI input for stub-validate."""
 
-        workspace: Annotated[
-            str | None, Field(default=None, description="Workspace root directory")
-        ]
         project: Annotated[
             list[str] | None,
             Field(default=None, description="Project to validate"),
-        ]
+        ] = None
         all_projects: Annotated[
             bool,
             Field(default=False, description="Validate all projects", alias="all"),
-        ]
+        ] = False
 
-    # ── Workspace ────────────────────────────────────────
-
-    class WorkspaceDetectInput(BaseModel):
+    class WorkspaceDetectInput(CliInputBase):
         """CLI input for workspace detection."""
 
-        workspace: Annotated[
-            str, Field(default=".", description="Workspace root directory")
-        ]
+        pass
 
-    class WorkspaceSyncInput(BaseModel):
+    class WorkspaceSyncInput(ApplyMixin, CliInputBase):
         """CLI input for base.mk sync."""
 
-        workspace: Annotated[
-            str, Field(default=".", description="Workspace root directory")
-        ]
         canonical_root: Annotated[
-            str, Field(default="", description="Canonical workspace root")
-        ]
-        apply: Annotated[
-            bool,
-            Field(default=False, description="Apply changes (default is dry-run)"),
-        ]
+            str,
+            Field(default="", description="Canonical workspace root"),
+        ] = ""
 
-    class WorkspaceOrchestrateInput(BaseModel):
+    class WorkspaceOrchestrateInput(CliInputBase):
         """CLI input for project orchestration."""
 
         verb: Annotated[str, Field(description="Make verb to execute")]
         projects: Annotated[
             str,
             Field(default="", description="Comma-separated project directories"),
-        ]
+        ] = ""
         fail_fast: Annotated[
-            bool, Field(default=False, description="Stop on first failure")
-        ]
-        make_arg: Annotated[
-            str,
-            Field(default="", description="Comma-separated additional make arguments"),
-        ]
-
-    class WorkspaceMigrateInput(BaseModel):
-        """CLI input for workspace migration."""
-
-        workspace: Annotated[
-            str, Field(default=".", description="Workspace root directory")
-        ]
-        apply: Annotated[
             bool,
-            Field(default=False, description="Apply changes (default is dry-run)"),
-        ]
+            Field(default=False, description="Stop on first failure"),
+        ] = False
+        make_arg: Annotated[
+            list[str],
+            Field(
+                default_factory=list,
+                description="Additional make arguments; repeat --make-arg KEY=VALUE",
+            ),
+        ] = Field(default_factory=list)
 
-    # ── Maintenance ──────────────────────────────────────
+    class WorkspaceMigrateInput(ApplyMixin, CliInputBase):
+        pass
 
-    class MaintenanceRunInput(BaseModel):
-        """CLI input for maintenance command -- fields become CLI options."""
+    class MaintenanceRunInput(CliInputBase):
+        """CLI input for maintenance command."""
 
-        check: Annotated[bool, Field(default=False, description="Run in check mode")]
-        verbose: Annotated[bool, Field(default=False, description="Verbose output")]
+        check: Annotated[
+            bool,
+            Field(default=False, description="Run in check mode"),
+        ] = False
+        verbose: Annotated[
+            bool,
+            Field(default=False, description="Verbose output"),
+        ] = False
+
+
+__all__ = ["FlextInfraModelsCliInputs"]

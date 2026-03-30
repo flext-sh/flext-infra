@@ -3,7 +3,7 @@
 Usage:
     python -m flext_infra workspace detect [--workspace PATH]
     python -m flext_infra workspace sync [--workspace PATH] [--apply]
-    python -m flext_infra workspace orchestrate --verb <verb> [--fail-fast] [projects...]
+    python -m flext_infra workspace orchestrate --verb <verb> [--fail-fast] [--make-arg KEY=VALUE ...] [projects...]
     python -m flext_infra workspace migrate [--workspace PATH] [--apply]
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -15,11 +15,9 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Annotated
 
 from flext_cli import FlextCliOutput, cli
 from flext_core import FlextRuntime, r
-from pydantic import BaseModel, Field
 
 from flext_infra import (
     FlextInfraOrchestratorService,
@@ -31,61 +29,10 @@ from flext_infra import (
     t,
 )
 
-# ── Input Models ─────────────────────────────────────────────
-
-
-class DetectInput(BaseModel):
-    """CLI input for workspace detection."""
-
-    workspace: Annotated[
-        str, Field(default=".", description="Workspace root directory")
-    ]
-
-
-class SyncInput(BaseModel):
-    """CLI input for base.mk sync."""
-
-    workspace: Annotated[
-        str, Field(default=".", description="Workspace root directory")
-    ]
-    canonical_root: Annotated[
-        str, Field(default="", description="Canonical workspace root")
-    ]
-    apply: Annotated[
-        bool, Field(default=False, description="Apply changes (default is dry-run)")
-    ]
-
-
-class OrchestrateInput(BaseModel):
-    """CLI input for project orchestration."""
-
-    verb: Annotated[str, Field(description="Make verb to execute")]
-    projects: Annotated[
-        str, Field(default="", description="Comma-separated project directories")
-    ]
-    fail_fast: Annotated[
-        bool, Field(default=False, description="Stop on first failure")
-    ]
-    make_arg: Annotated[
-        str, Field(default="", description="Comma-separated additional make arguments")
-    ]
-
-
-class MigrateInput(BaseModel):
-    """CLI input for workspace migration."""
-
-    workspace: Annotated[
-        str, Field(default=".", description="Workspace root directory")
-    ]
-    apply: Annotated[
-        bool, Field(default=False, description="Apply changes (default is dry-run)")
-    ]
-
-
 # ── Handlers ─────────────────────────────────────────────────
 
 
-def _handle_detect(params: DetectInput) -> r[bool]:
+def _handle_detect(params: m.Infra.WorkspaceDetectInput) -> r[bool]:
     ws = Path(params.workspace)
     detector = FlextInfraWorkspaceDetector()
     result = detector.detect(ws)
@@ -94,7 +41,7 @@ def _handle_detect(params: DetectInput) -> r[bool]:
     return r[bool].ok(True)
 
 
-def _handle_sync(params: SyncInput) -> r[bool]:
+def _handle_sync(params: m.Infra.WorkspaceSyncInput) -> r[bool]:
     ws = Path(params.workspace)
     canonical_path = Path(params.canonical_root) if params.canonical_root else None
     service = FlextInfraSyncService(canonical_root=canonical_path)
@@ -104,11 +51,18 @@ def _handle_sync(params: SyncInput) -> r[bool]:
     return r[bool].ok(True)
 
 
-def _handle_orchestrate(params: OrchestrateInput) -> r[bool]:
-    filtered_projects = [p for p in params.projects.split(",") if p.strip()]
+def _handle_orchestrate(params: m.Infra.WorkspaceOrchestrateInput) -> r[bool]:
+    allowed_verbs = c.Infra.Make.ORCHESTRATED_PROJECT_VERBS
+    if params.verb not in allowed_verbs:
+        allowed = ", ".join(allowed_verbs)
+        return r[bool].fail(
+            f"unsupported orchestrate verb '{params.verb}' (allowed: {allowed})",
+        )
+    raw_projects = params.projects.replace(",", " ")
+    filtered_projects = [p.strip() for p in raw_projects.split() if p.strip()]
     if not filtered_projects:
         return r[bool].fail("no projects specified")
-    make_args = [a for a in params.make_arg.split(",") if a.strip()]
+    make_args = [make_arg.strip() for make_arg in params.make_arg if make_arg.strip()]
     service = FlextInfraOrchestratorService()
     result = service.orchestrate(
         projects=filtered_projects,
@@ -125,7 +79,7 @@ def _handle_orchestrate(params: OrchestrateInput) -> r[bool]:
     return r[bool].ok(True)
 
 
-def _handle_migrate(params: MigrateInput) -> r[bool]:
+def _handle_migrate(params: m.Infra.WorkspaceMigrateInput) -> r[bool]:
     ws = Path(params.workspace)
     dry_run = not params.apply
     service = FlextInfraProjectMigrator()
@@ -181,7 +135,7 @@ class FlextInfraWorkspaceCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="detect",
                 help_text="Detect workspace or standalone mode",
-                model_cls=DetectInput,
+                model_cls=m.Infra.WorkspaceDetectInput,
                 handler=_handle_detect,
                 failure_message="detection failed",
             ),
@@ -191,7 +145,7 @@ class FlextInfraWorkspaceCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="sync",
                 help_text="Sync base.mk to project root",
-                model_cls=SyncInput,
+                model_cls=m.Infra.WorkspaceSyncInput,
                 handler=_handle_sync,
                 failure_message="sync failed",
             ),
@@ -201,7 +155,7 @@ class FlextInfraWorkspaceCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="orchestrate",
                 help_text="Run make verb across projects",
-                model_cls=OrchestrateInput,
+                model_cls=m.Infra.WorkspaceOrchestrateInput,
                 handler=_handle_orchestrate,
                 failure_message="orchestration failed",
             ),
@@ -211,7 +165,7 @@ class FlextInfraWorkspaceCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="migrate",
                 help_text="Migrate workspace projects to flext_infra tooling",
-                model_cls=MigrateInput,
+                model_cls=m.Infra.WorkspaceMigrateInput,
                 handler=_handle_migrate,
                 failure_message="migration failed",
             ),

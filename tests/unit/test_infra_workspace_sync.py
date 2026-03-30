@@ -187,9 +187,57 @@ def test_workspace_makefile_generator_sanitizes_orchestrator_env(
     )
     generator = FlextInfraWorkspaceMakefileGenerator()
     tm.ok(generator.generate(tmp_path))
+    makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
     tm.that(
-        (tmp_path / "Makefile").read_text(encoding="utf-8"),
-        has="ORCHESTRATOR := env -u PYTHONPATH -u MYPYPATH $(PY) -m flext_infra workspace orchestrate",
+        makefile_text,
+        has=[
+            'WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)',
+            'WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra',
+            "ORCHESTRATOR := $(WORKSPACE_FLEXT_INFRA) workspace orchestrate",
+            'ORCHESTRATOR_PROJECTS := --projects "$(SELECTED_PROJECTS)"',
+        ],
+    )
+
+
+def test_workspace_makefile_generator_declares_canonical_workspace_variables(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nversion='0.1.0'\n",
+        encoding="utf-8",
+    )
+    generator = FlextInfraWorkspaceMakefileGenerator()
+    tm.ok(generator.generate(tmp_path))
+    makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
+    tm.that(
+        makefile_text,
+        has=[
+            "PROJECT ?=",
+            "PROJECTS ?=",
+            "DEPS_REPORT ?= 1",
+            "PR_BRANCH ?= 0.1.0",
+        ],
+    )
+
+
+def test_workspace_makefile_generator_reuses_mod_and_boot_feedback(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nversion='0.1.0'\n",
+        encoding="utf-8",
+    )
+    generator = FlextInfraWorkspaceMakefileGenerator()
+    tm.ok(generator.generate(tmp_path))
+    makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
+    tm.that(makefile_text.count("$(MAKE) mod"), eq=2)
+    tm.that(
+        makefile_text,
+        has=[
+            "Run 'make boot'.",
+            "Run 'make boot' first to create the environment.",
+            "re-run: make boot",
+        ],
     )
 
 
@@ -218,6 +266,26 @@ def test_sync_updates_project_makefile_for_standalone_project(
     monkeypatch.setattr(service, "_sync_project_makefile", _project_makefile)
     tm.ok(service.sync(workspace_root=tmp_path))
     tm.that(calls, eq=["project"])
+
+
+def test_sync_regenerates_project_makefile_without_legacy_passthrough(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nname='demo'\nrequires-python='>=3.13'\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "Makefile").write_text(
+        "# legacy custom target\ncustom-target:\n\t@echo legacy\n",
+        encoding="utf-8",
+    )
+
+    tm.ok(_S().sync(workspace_root=tmp_path))
+
+    makefile_text = (tmp_path / "Makefile").read_text(encoding="utf-8")
+    tm.that("custom-target" in makefile_text, eq=False)
+    tm.that(makefile_text, has="-include custom.mk")
+    tm.that((tmp_path / "custom.mk").exists(), eq=False)
 
 
 def test_atomic_write_ok(tmp_path: Path) -> None:

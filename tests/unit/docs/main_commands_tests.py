@@ -1,9 +1,8 @@
-"""Tests for documentation CLI — FlextInfraDocsCommand handlers."""
+"""Tests for documentation CLI — FlextInfraDocsCli handlers."""
 
 from __future__ import annotations
 
-import argparse
-from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, MutableMapping, Sequence
 from typing import TypeAlias
 
 import pytest
@@ -14,46 +13,13 @@ from flext_infra import (
     FlextInfraDocBuilder,
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
-    u,
+    c,
+    m,
 )
-from flext_infra.docs.__main__ import FlextInfraDocsCommand
+from flext_infra.docs.__main__ import FlextInfraDocsCli
 from tests import t
 
-from ...models import m
-
 _R: TypeAlias = m.Infra.DocsPhaseReport
-
-_run_build = FlextInfraDocsCommand.run_build
-_run_generate = FlextInfraDocsCommand.run_generate
-_run_validate = FlextInfraDocsCommand.run_validate
-
-
-def _cli_args(
-    extra_defaults: Mapping[str, t.Scalar | None],
-    **overrides: t.Scalar,
-) -> u.Infra.CliArgs:
-    defaults: MutableMapping[str, t.Scalar | None] = {
-        "workspace": ".",
-        "project": None,
-        "projects": None,
-        "check": False,
-        "apply": False,
-        **extra_defaults,
-    }
-    defaults.update(overrides)
-    return u.Infra.resolve(argparse.Namespace(**defaults))
-
-
-def _build_args(**overrides: t.Scalar) -> u.Infra.CliArgs:
-    return _cli_args({}, **overrides)
-
-
-def _gen_args(**overrides: t.Scalar) -> u.Infra.CliArgs:
-    return _cli_args({"apply": False}, **overrides)
-
-
-def _val_args(**overrides: t.Scalar) -> u.Infra.CliArgs:
-    return _cli_args({"check": True, "apply": False}, **overrides)
 
 
 def _stub_ok(val: Sequence[_R]) -> Callable[..., r[Sequence[_R]]]:
@@ -71,25 +37,33 @@ class TestRunBuild:
     ) -> None:
         report = _R(phase="test", scope="test", result="OK")
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_ok([report]))
-        tm.that(_run_build(_build_args()), eq=0)
+        result = FlextInfraDocsCli._handle_build(m.Infra.DocsBuildInput())
+        tm.that(result.is_success, eq=True)
 
     def test_run_build_success_with_failures(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        report = _R(phase="test", scope="test", result="FAIL")
+        report = _R(
+            phase="test",
+            scope="test",
+            result=c.Infra.Status.FAIL,
+        )
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_ok([report]))
-        tm.that(_run_build(_build_args()), eq=1)
+        result = FlextInfraDocsCli._handle_build(m.Infra.DocsBuildInput())
+        tm.that(result.is_failure, eq=True)
 
     def test_run_build_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocBuilder, "build", _stub_fail("build error"))
-        tm.that(_run_build(_build_args()), eq=1)
+        result = FlextInfraDocsCli._handle_build(m.Infra.DocsBuildInput())
+        tm.that(result.is_failure, eq=True)
 
 
 class TestRunGenerate:
     def test_run_generate_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocGenerator, "generate", _stub_ok([]))
-        tm.that(_run_generate(_gen_args()), eq=0)
+        result = FlextInfraDocsCli._handle_generate(m.Infra.DocsGenerateInput())
+        tm.that(result.is_success, eq=True)
 
     def test_run_generate_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -97,7 +71,8 @@ class TestRunGenerate:
             "generate",
             _stub_fail("generate error"),
         )
-        tm.that(_run_generate(_gen_args()), eq=1)
+        result = FlextInfraDocsCli._handle_generate(m.Infra.DocsGenerateInput())
+        tm.that(result.is_failure, eq=True)
 
     def test_run_generate_with_apply_flag(
         self,
@@ -110,7 +85,7 @@ class TestRunGenerate:
             return r[Sequence[_R]].ok([])
 
         monkeypatch.setattr(FlextInfraDocGenerator, "generate", mock_gen)
-        _run_generate(_gen_args(apply=True))
+        FlextInfraDocsCli._handle_generate(m.Infra.DocsGenerateInput(apply=True))
         assert captured_kwargs.get("apply") is True
 
 
@@ -121,15 +96,21 @@ class TestRunValidate:
     ) -> None:
         report = _R(phase="test", scope="test", result="OK")
         monkeypatch.setattr(FlextInfraDocValidator, "validate", _stub_ok([report]))
-        tm.that(_run_validate(_val_args()), eq=0)
+        result = FlextInfraDocsCli._handle_validate(m.Infra.DocsValidateInput())
+        tm.that(result.is_success, eq=True)
 
     def test_run_validate_success_with_failures(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        report = _R(phase="test", scope="test", result="FAIL")
+        report = _R(
+            phase="test",
+            scope="test",
+            result=c.Infra.Status.FAIL,
+        )
         monkeypatch.setattr(FlextInfraDocValidator, "validate", _stub_ok([report]))
-        tm.that(_run_validate(_val_args()), eq=1)
+        result = FlextInfraDocsCli._handle_validate(m.Infra.DocsValidateInput())
+        tm.that(result.is_failure, eq=True)
 
     def test_run_validate_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -137,7 +118,8 @@ class TestRunValidate:
             "validate",
             _stub_fail("validate error"),
         )
-        tm.that(_run_validate(_val_args()), eq=1)
+        result = FlextInfraDocsCli._handle_validate(m.Infra.DocsValidateInput())
+        tm.that(result.is_failure, eq=True)
 
     def test_run_validate_with_check_parameter(
         self,
@@ -150,5 +132,5 @@ class TestRunValidate:
             return r[Sequence[_R]].ok([])
 
         monkeypatch.setattr(FlextInfraDocValidator, "validate", mock_val)
-        _run_validate(_val_args(), check=True)
+        FlextInfraDocsCli._handle_validate(m.Infra.DocsValidateInput(check=True))
         assert captured_kwargs.get("check") == "all"

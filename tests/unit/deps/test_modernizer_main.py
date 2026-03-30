@@ -42,6 +42,21 @@ class TestFlextInfraPyprojectModernizer:
         ).find_pyproject_files()
         tm.that(all(".venv" not in str(path) for path in files), eq=True)
 
+    def test_find_pyproject_files_filters_selected_project_paths(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        selected_root = tmp_path / "selected"
+        ignored_root = tmp_path / "ignored"
+        selected_root.mkdir()
+        ignored_root.mkdir()
+        (selected_root / "pyproject.toml").touch()
+        (ignored_root / "pyproject.toml").touch()
+        files = FlextInfraPyprojectModernizer(
+            workspace_root=tmp_path,
+        ).find_pyproject_files(project_paths=[selected_root])
+        tm.that(files, eq=[selected_root / "pyproject.toml"])
+
     def test_process_file_paths(self, tmp_path: Path) -> None:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[project]\nname = "test"\n')
@@ -117,7 +132,10 @@ class TestModernizerRunAndMain:
         )
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
 
-        def _find_files() -> Sequence[Path]:
+        def _find_files(
+            project_paths: Sequence[Path] | None = None,
+        ) -> Sequence[Path]:
+            tm.that(project_paths, eq=None)
             return [pyproject]
 
         def _read_doc(_path: Path) -> tomlkit.TOMLDocument:
@@ -126,6 +144,23 @@ class TestModernizerRunAndMain:
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
         monkeypatch.setattr(u.Infra, "read", _read_doc)
         assert modernizer.run(args, u.Infra.CliArgs(workspace=tmp_path)) in {0, 1}
+
+    def test_run_rejects_unknown_selected_project(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "root"\n')
+        args = argparse.Namespace(
+            dry_run=False,
+            audit=False,
+            skip_comments=False,
+            skip_check=True,
+        )
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
+        tm.that(
+            modernizer.run(
+                args,
+                u.Infra.CliArgs(workspace=tmp_path, project="missing-project"),
+            ),
+            eq=2,
+        )
 
     def test_run_with_poetry_check(
         self,
@@ -144,7 +179,10 @@ class TestModernizerRunAndMain:
         )
         modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
 
-        def _find_files() -> Sequence[Path]:
+        def _find_files(
+            project_paths: Sequence[Path] | None = None,
+        ) -> Sequence[Path]:
+            tm.that(project_paths, eq=None)
             return [pyproject]
 
         def _read_doc(_path: Path) -> tomlkit.TOMLDocument:

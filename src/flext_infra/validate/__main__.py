@@ -18,11 +18,9 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Annotated
 
 from flext_cli import cli
 from flext_core import FlextRuntime, r
-from pydantic import BaseModel, Field
 
 from flext_infra import (
     FlextInfraBaseMkValidator,
@@ -46,102 +44,6 @@ def _list_str(
 ) -> t.StrSequence:
     """Extract string list from payload attribute."""
     return [item for item in getattr(payload, key, []) if isinstance(item, str)]
-
-
-# ── Input Models ─────────────────────────────────────────────
-
-
-class BaseMkValidateInput(BaseModel):
-    """CLI input for basemk-validate — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-
-
-class InventoryInput(BaseModel):
-    """CLI input for inventory — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    output_dir: Annotated[
-        str | None, Field(default=None, description="Output directory")
-    ]
-
-
-class PytestDiagInput(BaseModel):
-    """CLI input for pytest-diag — fields become CLI options."""
-
-    junit: Annotated[str, Field(..., description="JUnit XML path")]
-    log: Annotated[str, Field(..., description="Pytest log path")]
-    failed: Annotated[
-        str | None, Field(default=None, description="Path to write failed cases")
-    ]
-    errors: Annotated[
-        str | None, Field(default=None, description="Path to write error traces")
-    ]
-    warnings: Annotated[
-        str | None, Field(default=None, description="Path to write warnings")
-    ]
-    slowest: Annotated[
-        str | None, Field(default=None, description="Path to write slowest entries")
-    ]
-    skips: Annotated[
-        str | None, Field(default=None, description="Path to write skipped cases")
-    ]
-
-
-class ScanInput(BaseModel):
-    """CLI input for scan — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    pattern: Annotated[str, Field(..., description="Regex pattern")]
-    include: Annotated[
-        list[str] | None, Field(default=None, description="Include glob")
-    ]
-    exclude: Annotated[
-        list[str] | None, Field(default=None, description="Exclude glob")
-    ]
-    match: Annotated[
-        str,
-        Field(
-            default=c.Infra.MatchModes.PRESENT,
-            description="Violation mode (present or absent)",
-        ),
-    ]
-
-
-class SkillValidateInput(BaseModel):
-    """CLI input for skill-validate — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    skill: Annotated[str, Field(..., description="Skill folder name")]
-    mode: Annotated[
-        str,
-        Field(
-            default=c.Infra.Modes.BASELINE,
-            description="Validation mode (baseline or strict)",
-        ),
-    ]
-
-
-class StubValidateInput(BaseModel):
-    """CLI input for stub-validate — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    project: Annotated[
-        list[str] | None, Field(default=None, description="Project to validate")
-    ]
-    all_projects: Annotated[
-        bool, Field(default=False, description="Validate all projects", alias="all")
-    ]
 
 
 # ── Router ───────────────────────────────────────────────────
@@ -168,7 +70,7 @@ class FlextInfraValidateCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="basemk-validate",
                 help_text="Validate base.mk sync",
-                model_cls=BaseMkValidateInput,
+                model_cls=m.Infra.ValidateBaseMkInput,
                 handler=self._handle_basemk_validate,
                 success_message="base.mk validation passed",
                 failure_message="base.mk validation failed",
@@ -179,7 +81,7 @@ class FlextInfraValidateCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="inventory",
                 help_text="Generate scripts inventory",
-                model_cls=InventoryInput,
+                model_cls=m.Infra.ValidateInventoryInput,
                 handler=self._handle_inventory,
                 success_message="Inventory generated successfully",
                 failure_message="Inventory generation failed",
@@ -190,7 +92,7 @@ class FlextInfraValidateCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="pytest-diag",
                 help_text="Extract pytest diagnostics from JUnit and log files",
-                model_cls=PytestDiagInput,
+                model_cls=m.Infra.ValidatePytestDiagInput,
                 handler=self._handle_pytest_diag,
                 success_message="Pytest diagnostics extracted",
                 failure_message="Pytest diagnostics extraction failed",
@@ -201,7 +103,7 @@ class FlextInfraValidateCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="scan",
                 help_text="Scan text files for patterns",
-                model_cls=ScanInput,
+                model_cls=m.Infra.ValidateScanInput,
                 handler=self._handle_scan,
                 success_message="Scan completed with no violations",
                 failure_message="Scan failed",
@@ -212,7 +114,7 @@ class FlextInfraValidateCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="skill-validate",
                 help_text="Validate a skill",
-                model_cls=SkillValidateInput,
+                model_cls=m.Infra.ValidateSkillValidateInput,
                 handler=self._handle_skill_validate,
                 success_message="Skill validation passed",
                 failure_message="Skill validation failed",
@@ -223,7 +125,7 @@ class FlextInfraValidateCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="stub-validate",
                 help_text="Validate stub supply chain",
-                model_cls=StubValidateInput,
+                model_cls=m.Infra.ValidateStubValidateInput,
                 handler=self._handle_stub_validate,
                 success_message="Stub validation passed",
                 failure_message="Stub validation failed",
@@ -231,7 +133,7 @@ class FlextInfraValidateCli:
         )
 
     @staticmethod
-    def _handle_basemk_validate(params: BaseMkValidateInput) -> r[bool]:
+    def _handle_basemk_validate(params: m.Infra.ValidateBaseMkInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         validator = FlextInfraBaseMkValidator()
         result = validator.validate(resolved_workspace)
@@ -243,7 +145,7 @@ class FlextInfraValidateCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_inventory(params: InventoryInput) -> r[bool]:
+    def _handle_inventory(params: m.Infra.ValidateInventoryInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         service = FlextInfraInventoryService()
         output_dir_path = (
@@ -255,7 +157,7 @@ class FlextInfraValidateCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_pytest_diag(params: PytestDiagInput) -> r[bool]:
+    def _handle_pytest_diag(params: m.Infra.ValidatePytestDiagInput) -> r[bool]:
         extractor = FlextInfraPytestDiagExtractor()
         result = extractor.extract(Path(params.junit), Path(params.log))
         if result.is_failure:
@@ -294,7 +196,7 @@ class FlextInfraValidateCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_scan(params: ScanInput) -> r[bool]:
+    def _handle_scan(params: m.Infra.ValidateScanInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         scanner = FlextInfraTextPatternScanner()
         result = scanner.scan(
@@ -313,7 +215,7 @@ class FlextInfraValidateCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_skill_validate(params: SkillValidateInput) -> r[bool]:
+    def _handle_skill_validate(params: m.Infra.ValidateSkillValidateInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         validator = FlextInfraSkillValidator()
         result = validator.validate(resolved_workspace, params.skill, mode=params.mode)
@@ -325,7 +227,7 @@ class FlextInfraValidateCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_stub_validate(params: StubValidateInput) -> r[bool]:
+    def _handle_stub_validate(params: m.Infra.ValidateStubValidateInput) -> r[bool]:
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         chain = FlextInfraStubSupplyChain()
         effective_projects = None if params.all_projects else params.project

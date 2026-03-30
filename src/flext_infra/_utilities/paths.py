@@ -28,8 +28,8 @@ class FlextInfraUtilitiesPaths:
     def workspace_root(path: str | Path = ".") -> r[Path]:
         """Resolve and return the absolute path to the workspace root.
 
-        Checks ``FLEXT_WORKSPACE_ROOT`` env var first, then falls back to
-        resolving *path*.
+        Uses ``FLEXT_WORKSPACE_ROOT`` only when the caller keeps the default
+        current-directory path. Explicit paths must be honored directly.
 
         Args:
             path: A starting path, defaults to the current directory.
@@ -39,12 +39,14 @@ class FlextInfraUtilitiesPaths:
 
         """
         try:
+            requested = Path(path)
             env_root = os.getenv("FLEXT_WORKSPACE_ROOT")
-            if env_root:
+            uses_default_path = (str(path) in {"", "."}) or (requested == Path())
+            if env_root and uses_default_path:
                 candidate = Path(env_root).expanduser().resolve()
                 if candidate.is_dir():
                     return r[Path].ok(candidate)
-            resolved = Path(path).resolve()
+            resolved = requested.expanduser().resolve()
             return r[Path].ok(resolved)
         except (OSError, RuntimeError, TypeError) as exc:
             return r[Path].fail(f"failed to resolve workspace root: {exc}")

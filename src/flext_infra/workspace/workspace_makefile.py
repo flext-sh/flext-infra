@@ -24,6 +24,14 @@ import tomllib
 from collections.abc import MutableSequence
 from pathlib import Path
 
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    StrictUndefined,
+    TemplateError,
+    select_autoescape,
+)
+
 from flext_infra import FlextInfraUtilitiesSubprocess, c, r, u
 
 _TEMPLATE_NAME = "workspace_makefile.mk.j2"
@@ -63,15 +71,11 @@ class FlextInfraWorkspaceMakefileGenerator:
         if not self.template_path.exists():
             return self._bootstrap_template(makefile)
 
-        try:
-            template_text = self.template_path.read_text(
-                encoding=c.Infra.Encoding.DEFAULT
-            )
-        except OSError as exc:
-            return r[bool].fail(f"template read failed: {exc}")
-
         pr_branch = self._current_branch(workspace_root)
-        content = template_text.replace("{{ pr_branch }}", pr_branch)
+        render_result = self._render_template(pr_branch=pr_branch)
+        if render_result.is_failure:
+            return r[bool].fail(render_result.error or "template render failed")
+        content = render_result.value
 
         if makefile.exists():
             try:
@@ -149,8 +153,42 @@ class FlextInfraWorkspaceMakefileGenerator:
             return r[bool].fail(f"template bootstrap failed: {exc}")
 
         # Now generate the Makefile from the newly created template
-        rendered = template_content.replace("{{ pr_branch }}", pr_branch)
+        render_result = self._render_template(
+            pr_branch=pr_branch,
+            template_text=template_content,
+        )
+        if render_result.is_failure:
+            return r[bool].fail(render_result.error or "template render failed")
+        rendered = render_result.value
         return self._atomic_write(makefile, rendered)
+
+    def _render_template(
+        self,
+        *,
+        pr_branch: str,
+        template_text: str | None = None,
+    ) -> r[str]:
+        """Render the workspace Makefile template with canonical make metadata."""
+        try:
+            environment = Environment(
+                loader=FileSystemLoader(str(_TEMPLATES_DIR)),
+                trim_blocks=False,
+                lstrip_blocks=False,
+                keep_trailing_newline=True,
+                undefined=StrictUndefined,
+                autoescape=select_autoescape(),
+            )
+            if template_text is None:
+                template = environment.get_template(_TEMPLATE_NAME)
+            else:
+                template = environment.from_string(template_text)
+            rendered: str = template.render(  # pyright: ignore[reportUnknownMemberType]
+                pr_branch=pr_branch,
+                make=c.Infra.Make,
+            )
+            return r[str].ok(rendered)
+        except (OSError, TemplateError, TypeError, ValueError) as exc:
+            return r[str].fail(f"template render failed: {exc}")
 
     @staticmethod
     def _current_branch(workspace_root: Path) -> str:

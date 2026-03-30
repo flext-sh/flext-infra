@@ -75,12 +75,12 @@ help: ## Show available commands
 	@echo "================================================"
 	@echo ""
 	@echo "Bootstrap targets (no base.mk required):"
-	@printf "  %-14s %s\n" "venv"   "Create virtual environment"
-	@printf "  %-14s %s\n" "setup"  "Full standalone setup"
-	@printf "  %-14s %s\n" "help"   "Show this help"
+{% for verb_name, verb_help in make.STANDALONE_BOOTSTRAP_VERBS %}
+	@printf "  %-14s %s\n" "{{ verb_name }}" "{{ verb_help }}"
+{% endfor %}
 	@echo ""
 	@echo "After 'make setup', all standard verbs become available:"
-	@echo "  check, test, fmt, build, val, clean, docs, pr"
+	@echo "  {{ make.STANDALONE_POST_SETUP_VERBS }}"
 	@echo ""
 	@echo "Run 'make setup' first, then 'make help' for full verb list."
 endif

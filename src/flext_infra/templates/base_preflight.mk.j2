@@ -44,9 +44,6 @@ elif [ "$(filter boot,$(MAKECMDGOALS))" != "boot" ] && [ ! -d "$(ACTIVE_VENV)" ]
 fi
 endef
 
-define AUTO_ADJUST_PROJECT
-endef
-
 define AUTO_SYNC_BASE_AND_SCRIPTS
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
 	python -m flext_infra workspace sync \
@@ -56,7 +53,6 @@ elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
 fi
 endef
 
-_preflight: ## Preflight: sync base.mk, check venv, auto-adjust files
+_preflight: ## Preflight: sync base.mk and enforce venv contract
 	$(Q)$(AUTO_SYNC_BASE_AND_SCRIPTS)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(AUTO_ADJUST_PROJECT)

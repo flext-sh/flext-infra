@@ -50,7 +50,7 @@ class FlextInfraBaseMkCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="generate",
                 help_text="Generate base.mk content from templates",
-                model_cls=GenerateInput,
+                model_cls=m.Infra.BaseMkGenerateInput,
                 handler=self._handle_generate,
                 success_message="base.mk generation complete",
                 failure_message="base.mk generation failed",
@@ -58,7 +58,7 @@ class FlextInfraBaseMkCli:
         )
 
     @staticmethod
-    def _handle_generate(params: GenerateInput) -> r[str]:
+    def _handle_generate(params: m.Infra.BaseMkGenerateInput) -> r[str]:
         """Generate base.mk content and optionally write to file."""
         generator = FlextInfraBaseMkGenerator()
         config = _build_config(params.project_name)

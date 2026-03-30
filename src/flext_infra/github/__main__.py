@@ -5,104 +5,11 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated
 
 from flext_cli import cli
 from flext_core import FlextRuntime, r
-from pydantic import BaseModel, Field
 
 from flext_infra import c, m, t, u
-
-# ── Input Models ─────────────────────────────────────────────
-
-
-class WorkflowsInput(BaseModel):
-    """CLI input for workflows sync — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    prune: Annotated[bool, Field(default=False, description="Remove unknown files")]
-    report: Annotated[str | None, Field(default=None, description="Output report file")]
-
-
-class LintInput(BaseModel):
-    """CLI input for workflow lint — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    strict: Annotated[
-        bool, Field(default=False, description="Fail on strict mode warnings")
-    ]
-    report: Annotated[str | None, Field(default=None, description="Output report file")]
-
-
-class PrInput(BaseModel):
-    """CLI input for single-project PR management — fields become CLI options."""
-
-    repo_root: Annotated[str, Field(..., description="Repository root directory")]
-    action: Annotated[
-        str,
-        Field(
-            default="status",
-            description="PR action (status/create/view/checks/merge/close)",
-        ),
-    ]
-    base: Annotated[str, Field(default="main", description="Base branch")]
-    head: Annotated[str | None, Field(default=None, description="Head branch")]
-    number: Annotated[int | None, Field(default=None, description="PR number")]
-    title: Annotated[str | None, Field(default=None, description="PR title")]
-    body: Annotated[str | None, Field(default=None, description="PR body")]
-    draft: Annotated[bool, Field(default=False, description="Create as draft")]
-    merge_method: Annotated[
-        str, Field(default="squash", description="Merge method (merge/squash/rebase)")
-    ]
-    auto: Annotated[bool, Field(default=False, description="Auto-merge")]
-    delete_branch: Annotated[
-        bool, Field(default=True, description="Delete head branch on merge")
-    ]
-    checks_strict: Annotated[
-        bool, Field(default=True, description="Fail if checks fail")
-    ]
-    release_on_merge: Annotated[
-        bool, Field(default=True, description="Run release workflow on merge")
-    ]
-
-
-class PrWorkspaceInput(BaseModel):
-    """CLI input for workspace-wide PR management — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    project: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description="Project to process (comma-separated for multiple)",
-        ),
-    ]
-    include_root: Annotated[
-        bool, Field(default=False, description="Include root project")
-    ]
-    branch: Annotated[str, Field(default="", description="Branch name filter")]
-    checkpoint: Annotated[bool, Field(default=True, description="Enable checkpoints")]
-    fail_fast: Annotated[bool, Field(default=True, description="Stop on first failure")]
-    pr_action: Annotated[str, Field(default="status", description="PR action")]
-    pr_base: Annotated[str, Field(default="", description="Base branch")]
-    pr_head: Annotated[str, Field(default="", description="Head branch")]
-    pr_number: Annotated[int | None, Field(default=None, description="PR number")]
-    pr_title: Annotated[str, Field(default="", description="PR title")]
-    pr_body: Annotated[str, Field(default="", description="PR body")]
-    pr_draft: Annotated[bool, Field(default=False, description="Draft PR")]
-    pr_merge_method: Annotated[str, Field(default="squash", description="Merge method")]
-    pr_auto: Annotated[bool, Field(default=False, description="Auto-merge")]
-    pr_delete_branch: Annotated[
-        bool, Field(default=True, description="Delete branch on merge")
-    ]
-    pr_checks_strict: Annotated[
-        bool, Field(default=True, description="Strict checks required")
-    ]
-    pr_release_on_merge: Annotated[
-        bool, Field(default=False, description="Release on merge")
-    ]
-
 
 # ── Router ───────────────────────────────────────────────────
 
@@ -128,7 +35,7 @@ class FlextInfraGithubCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="workflows",
                 help_text="Sync GitHub workflow files across workspace",
-                model_cls=WorkflowsInput,
+                model_cls=m.Infra.GithubWorkflowsInput,
                 handler=self._handle_workflows,
                 failure_message="Workflow sync failed",
             ),
@@ -138,7 +45,7 @@ class FlextInfraGithubCli:
             route=m.Cli.ResultCommandRouteModel(
                 name=c.Infra.LINT_SECTION,
                 help_text="Lint GitHub workflow files",
-                model_cls=LintInput,
+                model_cls=m.Infra.GithubLintInput,
                 handler=self._handle_lint,
                 failure_message="Workflow lint failed",
             ),
@@ -148,7 +55,7 @@ class FlextInfraGithubCli:
             route=m.Cli.ResultCommandRouteModel(
                 name=c.Infra.PR,
                 help_text="Manage pull requests for a single project",
-                model_cls=PrInput,
+                model_cls=m.Infra.GithubPrInput,
                 handler=self._handle_pr,
                 failure_message="PR operation failed",
             ),
@@ -158,14 +65,14 @@ class FlextInfraGithubCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="pr-workspace",
                 help_text="Manage pull requests across workspace projects",
-                model_cls=PrWorkspaceInput,
+                model_cls=m.Infra.GithubPrWorkspaceInput,
                 handler=self._handle_pr_workspace,
                 failure_message="PR workspace orchestration failed",
             ),
         )
 
     @staticmethod
-    def _handle_workflows(params: WorkflowsInput) -> r[bool]:
+    def _handle_workflows(params: m.Infra.GithubWorkflowsInput) -> r[bool]:
         """Sync GitHub workflow files."""
         report_path = Path(params.report) if params.report else None
         result = u.Infra.github_sync_workspace_workflows(
@@ -179,7 +86,7 @@ class FlextInfraGithubCli:
         return r[bool].ok(True)
 
     @staticmethod
-    def _handle_lint(params: LintInput) -> r[m.Infra.WorkflowLintResult]:
+    def _handle_lint(params: m.Infra.GithubLintInput) -> r[m.Infra.WorkflowLintResult]:
         """Lint GitHub workflow files across workspace."""
         report_path = Path(params.report) if params.report else None
         result: r[m.Infra.WorkflowLintResult] = u.Infra.github_lint_workflows(
@@ -196,7 +103,7 @@ class FlextInfraGithubCli:
         return result
 
     @staticmethod
-    def _handle_pr(params: PrInput) -> r[m.Infra.PrExecutionResultModel]:
+    def _handle_pr(params: m.Infra.GithubPrInput) -> r[m.Infra.PrExecutionResultModel]:
         """Manage pull requests for a single project."""
         repo_root = Path(params.repo_root)
         pr_args: Mapping[str, str] = {
@@ -228,7 +135,7 @@ class FlextInfraGithubCli:
 
     @staticmethod
     def _handle_pr_workspace(
-        params: PrWorkspaceInput,
+        params: m.Infra.GithubPrWorkspaceInput,
     ) -> r[m.Infra.PrOrchestrationResult]:
         """Manage PRs across workspace."""
         project_names: t.StrSequence | None = None

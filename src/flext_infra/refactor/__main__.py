@@ -5,11 +5,9 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated
 
 from flext_cli import cli
 from flext_core import FlextRuntime, r
-from pydantic import BaseModel, Field
 
 from flext_infra import (
     FlextInfraNamespaceEnforcer,
@@ -19,85 +17,6 @@ from flext_infra import (
     t,
     u,
 )
-
-# ── Input Models ─────────────────────────────────────────────
-
-
-class CentralizePydanticInput(BaseModel):
-    """CLI input for pydantic centralization — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    normalize_remaining: Annotated[
-        bool,
-        Field(
-            default=False,
-            description="Remove remaining BaseModel/TypedDict bases in non-allowed files",
-        ),
-    ]
-
-
-class MigrateMroInput(BaseModel):
-    """CLI input for MRO migration — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    target: Annotated[
-        str,
-        Field(
-            default="all",
-            description="Migration target scope (constants/typings/protocols/models/utilities/all)",
-        ),
-    ]
-
-
-class NamespaceEnforceInput(BaseModel):
-    """CLI input for namespace enforcement — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    diff: Annotated[
-        bool, Field(default=False, description="Show diff without applying")
-    ]
-    project: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description="Project to process (comma-separated for multiple)",
-        ),
-    ]
-
-
-class UltraworkModelsInput(BaseModel):
-    """CLI input for ultrawork-models — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    normalize_remaining: Annotated[
-        bool,
-        Field(
-            default=False,
-            description="Remove remaining BaseModel/TypedDict bases in non-allowed files",
-        ),
-    ]
-
-
-class CensusInput(BaseModel):
-    """CLI input for MRO family census — fields become CLI options."""
-
-    workspace: Annotated[str, Field(default=".", description="Workspace root")]
-    family: Annotated[
-        str,
-        Field(
-            default="u",
-            description="MRO family to census (c/t/p/m/u)",
-        ),
-    ]
-    json_output: Annotated[
-        str | None,
-        Field(default=None, description="Path to write JSON report"),
-    ]
-
 
 # ── Router ───────────────────────────────────────────────────
 
@@ -123,7 +42,7 @@ class FlextInfraRefactorCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="centralize-pydantic",
                 help_text="Centralize BaseModel/TypedDict/dict-like aliases into _models.py",
-                model_cls=CentralizePydanticInput,
+                model_cls=m.Infra.RefactorCentralizeInput,
                 handler=self._handle_centralize_pydantic,
                 failure_message="Pydantic centralization failed",
             ),
@@ -133,7 +52,7 @@ class FlextInfraRefactorCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="migrate-mro",
                 help_text="Migrate loose declarations into MRO facade classes",
-                model_cls=MigrateMroInput,
+                model_cls=m.Infra.RefactorMigrateMroInput,
                 handler=self._handle_migrate_mro,
                 failure_message="MRO migration failed",
             ),
@@ -143,7 +62,7 @@ class FlextInfraRefactorCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="namespace-enforce",
                 help_text="Scan workspace for namespace governance violations",
-                model_cls=NamespaceEnforceInput,
+                model_cls=m.Infra.RefactorNamespaceEnforceInput,
                 handler=self._handle_namespace_enforce,
                 failure_message="Namespace enforcement failed",
             ),
@@ -153,7 +72,7 @@ class FlextInfraRefactorCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="ultrawork-models",
                 help_text="Run full centralization + MRO + namespace workflow",
-                model_cls=UltraworkModelsInput,
+                model_cls=m.Infra.RefactorUltraworkModelsInput,
                 handler=self._handle_ultrawork_models,
                 failure_message="Ultrawork models failed",
             ),
@@ -163,7 +82,7 @@ class FlextInfraRefactorCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="census",
                 help_text="Run AST/CST census of MRO family method usage",
-                model_cls=CensusInput,
+                model_cls=m.Infra.RefactorCensusInput,
                 handler=self._handle_census,
                 failure_message="Census failed",
             ),
@@ -171,7 +90,7 @@ class FlextInfraRefactorCli:
 
     @staticmethod
     def _handle_centralize_pydantic(
-        params: CentralizePydanticInput,
+        params: m.Infra.RefactorCentralizeInput,
     ) -> r[Mapping[str, int]]:
         """Run pydantic centralization workflow for the workspace."""
         summary = u.Infra.centralize_workspace(
@@ -183,7 +102,7 @@ class FlextInfraRefactorCli:
 
     @staticmethod
     def _handle_migrate_mro(
-        params: MigrateMroInput,
+        params: m.Infra.RefactorMigrateMroInput,
     ) -> r[m.Infra.MROMigrationReport]:
         """Run MRO migration workflow for the selected target scope."""
         service = FlextInfraRefactorMigrateToClassMRO(
@@ -199,7 +118,7 @@ class FlextInfraRefactorCli:
 
     @staticmethod
     def _handle_namespace_enforce(
-        params: NamespaceEnforceInput,
+        params: m.Infra.RefactorNamespaceEnforceInput,
     ) -> r[m.Infra.WorkspaceEnforcementReport]:
         """Run namespace enforcement checks and optionally apply fixes."""
         project_names: t.StrSequence | None = None
@@ -227,7 +146,7 @@ class FlextInfraRefactorCli:
 
     @staticmethod
     def _handle_ultrawork_models(
-        params: UltraworkModelsInput,
+        params: m.Infra.RefactorUltraworkModelsInput,
     ) -> r[Mapping[str, int]]:
         """Run centralization, MRO migration, and namespace enforcement together."""
         workspace = Path(params.workspace)
@@ -266,7 +185,9 @@ class FlextInfraRefactorCli:
         return r[Mapping[str, int]].ok(combined)
 
     @staticmethod
-    def _handle_census(params: CensusInput) -> r[m.Infra.UtilitiesCensusReport]:
+    def _handle_census(
+        params: m.Infra.RefactorCensusInput,
+    ) -> r[m.Infra.UtilitiesCensusReport]:
         """Run method-usage census and optionally export JSON report."""
         census = FlextInfraRefactorCensus()
         target = u.Infra.build_mro_target(params.family)
@@ -294,6 +215,11 @@ def main(argv: t.StrSequence | None = None) -> int:
     result = FlextInfraRefactorCli().run(argv)
     return 0 if result.is_success else 1
 
+
+__all__ = [
+    "FlextInfraRefactorCli",
+    "main",
+]
 
 if __name__ == "__main__":
     sys.exit(main())

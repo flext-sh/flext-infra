@@ -87,9 +87,13 @@ help: ## Show available commands
 	@echo "================================================"
 	@echo ""
 	@echo "Bootstrap targets (no base.mk required):"
-	@printf "  %-14s %s\n" "venv"   "Create virtual environment"
-	@printf "  %-14s %s\n" "setup"  "Full standalone setup"
-	@printf "  %-14s %s\n" "help"   "Show this help"
+
+	@printf "  %-14s %s\n" "venv" "Create virtual environment"
+
+	@printf "  %-14s %s\n" "setup" "Full standalone setup"
+
+	@printf "  %-14s %s\n" "help" "Show this help"
+
 	@echo ""
 	@echo "After 'make setup', all standard verbs become available:"
 	@echo "  check, test, fmt, build, val, clean, docs, pr"

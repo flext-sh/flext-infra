@@ -1,4 +1,4 @@
-"""Tests for documentation CLI — _run_audit and _run_fix handlers.
+"""Tests for documentation CLI — _handle_audit and _handle_fix handlers.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import argparse
 from collections.abc import Callable, MutableMapping, Sequence
-from pathlib import Path
 
 import pytest
 from flext_core import r
@@ -17,38 +15,10 @@ from flext_tests import tm
 from flext_infra import (
     FlextInfraDocAuditor,
     FlextInfraDocFixer,
+    m,
     t,
-    u,
 )
-from flext_infra.docs.__main__ import FlextInfraDocsCommand
-from tests import m
-
-_run_audit = FlextInfraDocsCommand.run_audit
-_run_fix = FlextInfraDocsCommand.run_fix
-
-
-def _audit_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
-    defaults: MutableMapping[str, t.Container | None] = {
-        "workspace": Path(),
-        "project": None,
-        "projects": None,
-        "apply": False,
-        "check": False,
-    }
-    defaults.update(overrides)
-    return u.Infra.resolve(argparse.Namespace(**defaults))
-
-
-def _fix_args(**overrides: t.Scalar | None) -> u.Infra.CliArgs:
-    defaults: MutableMapping[str, t.Container | None] = {
-        "workspace": Path(),
-        "project": None,
-        "projects": None,
-        "apply": False,
-        "check": False,
-    }
-    defaults.update(overrides)
-    return u.Infra.resolve(argparse.Namespace(**defaults))
+from flext_infra.docs.__main__ import FlextInfraDocsCli
 
 
 def _ok(
@@ -120,14 +90,14 @@ def _capturing(
 
 class TestRunAudit:
     @pytest.mark.parametrize(
-        ("passed", "expected"),
-        [(True, 0), (False, 1)],
+        ("passed", "expected_success"),
+        [(True, True), (False, False)],
     )
     def test_run_audit_report_exit_code(
         self,
         monkeypatch: pytest.MonkeyPatch,
         passed: bool,
-        expected: int,
+        expected_success: bool,
     ) -> None:
         report = m.Infra.DocsPhaseReport(
             phase="audit",
@@ -138,34 +108,37 @@ class TestRunAudit:
             passed=passed,
         )
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _ok([report]))
-        tm.that(_run_audit(_audit_args(), check=True, strict=True), eq=expected)
+        result = FlextInfraDocsCli._handle_audit(
+            m.Infra.DocsAuditInput(check=True, strict=True),
+        )
+        tm.that(result.is_success, eq=expected_success)
 
     def test_run_audit_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _fail_report("audit error"))
-        tm.that(_run_audit(_audit_args(), check=True, strict=True), eq=1)
+        result = FlextInfraDocsCli._handle_audit(
+            m.Infra.DocsAuditInput(check=True, strict=True),
+        )
+        tm.that(result.is_failure, eq=True)
 
     @pytest.mark.parametrize(
-        ("kwargs", "field", "expected"),
+        ("check", "strict", "field", "expected"),
         [
-            ({"project": "test-project"}, "project", "test-project"),
-            ({"projects": "proj1,proj2"}, "projects", "proj1,proj2"),
-            ({"check": True}, "check", "all"),
-            ({"strict": 0}, "strict", False),
+            (True, False, "check", "all"),
+            (False, True, "strict", True),
         ],
     )
     def test_run_audit_forwards_arguments(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        kwargs: t.ScalarMapping,
+        check: bool,
+        strict: bool,
         field: str,
         expected: t.Scalar,
     ) -> None:
         captured_kwargs: MutableMapping[str, t.Scalar] = {}
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capturing(captured_kwargs))
-        _run_audit(
-            _audit_args(**kwargs),
-            check=bool(kwargs.get("check")),
-            strict=bool(kwargs.get("strict")),
+        FlextInfraDocsCli._handle_audit(
+            m.Infra.DocsAuditInput(check=check, strict=strict),
         )
         tm.that(captured_kwargs.get(field), eq=expected)
 
@@ -173,11 +146,13 @@ class TestRunAudit:
 class TestRunFix:
     def test_run_fix_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocFixer, "fix", _ok_list([]))
-        tm.that(_run_fix(_fix_args()), eq=0)
+        result = FlextInfraDocsCli._handle_fix(m.Infra.DocsFixInput())
+        tm.that(result.is_success, eq=True)
 
     def test_run_fix_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(FlextInfraDocFixer, "fix", _fail_list("fix error"))
-        tm.that(_run_fix(_fix_args()), eq=1)
+        result = FlextInfraDocsCli._handle_fix(m.Infra.DocsFixInput())
+        tm.that(result.is_failure, eq=True)
 
     @pytest.mark.parametrize(("apply", "expected"), [(True, True), (False, False)])
     def test_run_fix_forwards_apply_flag(
@@ -198,5 +173,5 @@ class TestRunFix:
             return r[Sequence[m.Infra.DocsPhaseReport]].ok([])
 
         monkeypatch.setattr(FlextInfraDocFixer, "fix", mock_fix)
-        _run_fix(_fix_args(apply=apply))
+        FlextInfraDocsCli._handle_fix(m.Infra.DocsFixInput(apply=apply))
         assert captured_kwargs.get("apply") == expected

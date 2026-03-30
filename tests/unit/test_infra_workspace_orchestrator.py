@@ -46,6 +46,15 @@ class TestOrchestratorBasic:
     ) -> None:
         tm.ok(orchestrator.orchestrate([], "check"), len=0)
 
+    def test_rejects_unknown_verb(
+        self,
+        orchestrator: FlextInfraOrchestratorService,
+    ) -> None:
+        tm.fail(
+            orchestrator.orchestrate(["project-a"], "legacy-check"),
+            has="unsupported orchestrate verb",
+        )
+
 
 class TestOrchestratorFailures:
     def test_fail_fast_skips_remaining(

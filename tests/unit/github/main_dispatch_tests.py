@@ -1,8 +1,7 @@
-"""Tests for __main__.py run_pr_workspace dispatch."""
+"""Tests for __main__.py pr-workspace dispatch."""
 
 from __future__ import annotations
 
-import argparse
 from collections.abc import MutableMapping
 from pathlib import Path
 
@@ -11,7 +10,7 @@ from flext_core import r
 from flext_tests import tm
 
 from flext_infra import m, t, u
-from flext_infra.github.__main__ import run_pr_workspace
+from flext_infra.github.__main__ import FlextInfraGithubCli
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
@@ -23,60 +22,26 @@ def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
     )
 
 
-def _cli(tmp_path: Path) -> u.Infra.CliArgs:
-    return u.Infra.resolve(
-        argparse.Namespace(workspace=tmp_path, apply=False, projects=None),
-    )
-
-
-def _pr_args(**overrides: str | bool) -> m.Infra.PrWorkspaceArgs:
-    defaults: MutableMapping[str, str | bool] = {
-        "include_root": True,
-        "branch": "",
-        "checkpoint": True,
-        "fail_fast": False,
-        "pr_action": "status",
-        "pr_base": "main",
-        "pr_head": "",
-        "pr_number": "",
-        "pr_title": "",
-        "pr_body": "",
-        "pr_draft": False,
-        "pr_merge_method": "squash",
-        "pr_auto": False,
-        "pr_delete_branch": False,
-        "pr_checks_strict": False,
-        "pr_release_on_merge": True,
-    }
-    defaults.update(overrides)
-    return m.Infra.PrWorkspaceArgs.model_validate(defaults)
-
-
 class TestRunPrWorkspace:
     def test_success(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         def _ok(**kw: t.Scalar) -> r[m.Infra.PrOrchestrationResult]:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_ok))
-        assert run_pr_workspace(_cli(tmp_path), _pr_args(), None) == 0
+        result = FlextInfraGithubCli._handle_pr_workspace(
+            m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path)),
+        )
+        tm.that(result.is_success, eq=True)
 
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         def _fail(**kw: t.Scalar) -> r[m.Infra.PrOrchestrationResult]:
             return r[m.Infra.PrOrchestrationResult].fail("orchestration failed")
 
         monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_fail))
-        assert run_pr_workspace(_cli(tmp_path), _pr_args(), None) == 1
-
-    def test_with_failures(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        def _fail2(**kw: t.Scalar) -> r[m.Infra.PrOrchestrationResult]:
-            return r[m.Infra.PrOrchestrationResult].fail("orchestration had failures")
-
-        monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_fail2))
-        assert run_pr_workspace(_cli(tmp_path), _pr_args(), None) == 1
+        result = FlextInfraGithubCli._handle_pr_workspace(
+            m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path)),
+        )
+        tm.that(result.is_failure, eq=True)
 
     def test_with_pr_args(
         self,
@@ -96,8 +61,15 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        pr = _pr_args(pr_action="merge", pr_base="main", pr_head="feature/test")
-        assert run_pr_workspace(_cli(tmp_path), pr, None) == 0
+        result = FlextInfraGithubCli._handle_pr_workspace(
+            m.Infra.GithubPrWorkspaceInput(
+                workspace=str(tmp_path),
+                pr_action="merge",
+                pr_base="main",
+                pr_head="feature/test",
+            ),
+        )
+        tm.that(result.is_success, eq=True)
         pr_args_val = captured.get("pr_args", {})
         tm.that(str(pr_args_val), has="action")
         tm.that(str(pr_args_val), has="base")
@@ -119,8 +91,12 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        pr = _pr_args(branch="feature/test")
-        run_pr_workspace(_cli(tmp_path), pr, None)
+        FlextInfraGithubCli._handle_pr_workspace(
+            m.Infra.GithubPrWorkspaceInput(
+                workspace=str(tmp_path),
+                branch="feature/test",
+            ),
+        )
         assert captured["branch"] == "feature/test"
 
     def test_with_checkpoint(
@@ -139,8 +115,9 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        pr = _pr_args(checkpoint=True)
-        run_pr_workspace(_cli(tmp_path), pr, None)
+        FlextInfraGithubCli._handle_pr_workspace(
+            m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path), checkpoint=True),
+        )
         assert captured["checkpoint"] is True
 
     def test_with_fail_fast(
@@ -159,8 +136,9 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        pr = _pr_args(fail_fast=True)
-        run_pr_workspace(_cli(tmp_path), pr, None)
+        FlextInfraGithubCli._handle_pr_workspace(
+            m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path), fail_fast=True),
+        )
         assert captured["fail_fast"] is True
 
     def test_with_selected_projects(
@@ -185,6 +163,10 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        pr = _pr_args()
-        run_pr_workspace(_cli(tmp_path), pr, ["flext-core", "flext-api"])
+        FlextInfraGithubCli._handle_pr_workspace(
+            m.Infra.GithubPrWorkspaceInput(
+                workspace=str(tmp_path),
+                project=["flext-core", "flext-api"],
+            ),
+        )
         assert captured_projects == ["flext-core", "flext-api"]

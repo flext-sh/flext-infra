@@ -6,6 +6,14 @@ import tempfile
 from pathlib import Path
 from typing import TextIO, override
 
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    StrictUndefined,
+    TemplateError,
+    select_autoescape,
+)
+
 from flext_infra import (
     FlextInfraBaseMkTemplateEngine,
     c,
@@ -126,12 +134,22 @@ class FlextInfraBaseMkGenerator(s[str]):
     @staticmethod
     def render_bootstrap_include() -> r[str]:
         """Render the Makefile bootstrap include block from template."""
-        template_path = _TEMPLATES_DIR / c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE
         try:
-            content = template_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            environment = Environment(
+                loader=FileSystemLoader(str(_TEMPLATES_DIR)),
+                trim_blocks=False,
+                lstrip_blocks=False,
+                keep_trailing_newline=True,
+                undefined=StrictUndefined,
+                autoescape=select_autoescape(),
+            )
+            template = environment.get_template(c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE)
+            content: str = template.render(  # pyright: ignore[reportUnknownMemberType]
+                make=c.Infra.Make,
+            )
             return r[str].ok(content.rstrip("\n"))
-        except OSError as exc:
-            return r[str].fail(f"bootstrap template read failed: {exc}")
+        except (OSError, TemplateError, TypeError, ValueError) as exc:
+            return r[str].fail(f"bootstrap template render failed: {exc}")
 
 
 __all__ = ["FlextInfraBaseMkGenerator"]

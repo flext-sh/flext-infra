@@ -13,48 +13,12 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Annotated
 
 import typer
 from flext_cli import cli
 from flext_core import FlextRuntime, r
-from pydantic import BaseModel, Field
 
 from flext_infra import FlextInfraReleaseOrchestrator, c, m, t, u
-
-# ── Input Model ──────────────────────────────────────────────
-
-
-class ReleaseInput(BaseModel):
-    """CLI input for release orchestration — fields become CLI options."""
-
-    workspace: Annotated[
-        str | None, Field(default=None, description="Workspace root directory")
-    ]
-    apply: Annotated[bool, Field(default=False, description="Apply changes")]
-    phase: Annotated[str, Field(default="all", description="Release phase")]
-    version: Annotated[str, Field(default="", description="Version string")]
-    tag: Annotated[str, Field(default="", description="Git tag (e.g. v1.0.0)")]
-    bump: Annotated[str, Field(default="", description="Bump type (major/minor/patch)")]
-    interactive: Annotated[
-        int, Field(default=1, description="Interactive mode (1=yes, 0=no)")
-    ]
-    push: Annotated[bool, Field(default=False, description="Push to remote")]
-    dev_suffix: Annotated[bool, Field(default=False, description="Add dev suffix")]
-    next_dev: Annotated[
-        bool, Field(default=False, description="Prepare next dev version")
-    ]
-    next_bump: Annotated[
-        str, Field(default="minor", description="Bump type for next dev version")
-    ]
-    create_branches: Annotated[
-        int, Field(default=1, description="Create release branches (1=yes, 0=no)")
-    ]
-    projects: Annotated[
-        list[str] | None,
-        Field(default=None, description="Project names to release"),
-    ]
-
 
 # ── Helpers ──────────────────────────────────────────────────
 
@@ -124,7 +88,7 @@ class FlextInfraReleaseCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="run",
                 help_text="Run release orchestration CLI flow",
-                model_cls=ReleaseInput,
+                model_cls=m.Infra.ReleaseRunInput,
                 handler=self._handle_run,
                 success_message="Release completed successfully",
                 failure_message="Release failed",
@@ -132,7 +96,7 @@ class FlextInfraReleaseCli:
         )
 
     @staticmethod
-    def _handle_run(params: ReleaseInput) -> r[bool]:
+    def _handle_run(params: m.Infra.ReleaseRunInput) -> r[bool]:
         """Execute release orchestration with resolved version and phases."""
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         dry_run = not params.apply

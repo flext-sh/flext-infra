@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
+from flext_core import r
 from flext_tests import tm
 
+from flext_infra import m
 from flext_infra.refactor import __main__ as refactor_main
+from flext_infra.refactor.__main__ import FlextInfraRefactorCli
 
 
 def test_refactor_census_rejects_apply_before_subcommand() -> None:
@@ -20,24 +24,20 @@ def test_refactor_centralize_accepts_apply_before_subcommand(
     captured_workspace = Path()
     captured_normalize_remaining = False
 
-    def _run_centralize(
-        cli: object,
-        *,
-        normalize_remaining: bool,
-    ) -> int:
+    @staticmethod  # type: ignore[misc]
+    def _mock_handler(
+        params: m.Infra.RefactorCentralizeInput,
+    ) -> r[Mapping[str, int]]:
         nonlocal captured_apply, captured_workspace, captured_normalize_remaining
-        captured_apply = bool(getattr(cli, "apply", False))
-        workspace_value = getattr(cli, "workspace", Path())
-        captured_workspace = (
-            workspace_value if isinstance(workspace_value, Path) else Path()
-        )
-        captured_normalize_remaining = normalize_remaining
-        return 0
+        captured_apply = params.apply
+        captured_workspace = Path(params.workspace).resolve()
+        captured_normalize_remaining = params.normalize_remaining
+        return r[Mapping[str, int]].ok({"files": 0})
 
     monkeypatch.setattr(
-        refactor_main.FlextInfraRefactorCommand,
-        "run_centralize_pydantic",
-        staticmethod(_run_centralize),
+        FlextInfraRefactorCli,
+        "_handle_centralize_pydantic",
+        _mock_handler,
     )
     result = refactor_main.main(
         ["--workspace", str(tmp_path), "--apply", "centralize-pydantic"],

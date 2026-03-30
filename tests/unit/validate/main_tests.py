@@ -8,30 +8,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import argparse
 import subprocess
 import sys
 from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import t, u
-from flext_infra.validate.__main__ import FlextInfraValidateCommand
-
-_run_basemk_validate = FlextInfraValidateCommand.run_basemk_validate
-_run_inventory = FlextInfraValidateCommand.run_inventory
-_run_scan = FlextInfraValidateCommand.run_scan
+from flext_infra import m, t
+from flext_infra.validate.__main__ import FlextInfraValidateCli
 
 _CWD = "/home/marlonsc/flext/flext-core"
-
-
-def _ns(**kwargs: str | t.StrSequence | Path | None) -> argparse.Namespace:
-    """Create a simple namespace from keyword arguments."""
-    return argparse.Namespace(**kwargs)
-
-
-def _cli_args(root: Path) -> u.Infra.CliArgs:
-    return u.Infra.resolve(_ns(workspace=root))
 
 
 def _cli(*args: str) -> subprocess.CompletedProcess[str]:
@@ -49,22 +35,31 @@ class TestMainBaseMkValidate:
     """Test basemk-validate subcommand with real services."""
 
     def test_success(self, tmp_path: Path) -> None:
-        """basemk-validate returns exit code (0 or 1) based on base.mk match."""
+        """basemk-validate returns r[bool] based on base.mk match."""
         (tmp_path / "base.mk").write_text("# root")
-        assert _run_basemk_validate(_cli_args(tmp_path)) in {0, 1}
+        result = FlextInfraValidateCli._handle_basemk_validate(
+            m.Infra.ValidateBaseMkInput(workspace=str(tmp_path)),
+        )
+        assert isinstance(result.is_success, bool)
 
     def test_with_violations(self, tmp_path: Path) -> None:
-        """basemk-validate returns 1 with mismatched base.mk."""
+        """basemk-validate returns failure with mismatched base.mk."""
         (tmp_path / "base.mk").write_text("# root")
         proj = tmp_path / "project1"
         proj.mkdir()
         (proj / "pyproject.toml").write_text("")
         (proj / "base.mk").write_text("# different")
-        tm.that(_run_basemk_validate(_cli_args(tmp_path)), eq=1)
+        result = FlextInfraValidateCli._handle_basemk_validate(
+            m.Infra.ValidateBaseMkInput(workspace=str(tmp_path)),
+        )
+        tm.that(result.is_failure, eq=True)
 
     def test_missing_root_basemk(self, tmp_path: Path) -> None:
-        """basemk-validate returns 1 when root base.mk missing."""
-        tm.that(_run_basemk_validate(_cli_args(tmp_path)), eq=1)
+        """basemk-validate returns failure when root base.mk missing."""
+        result = FlextInfraValidateCli._handle_basemk_validate(
+            m.Infra.ValidateBaseMkInput(workspace=str(tmp_path)),
+        )
+        tm.that(result.is_failure, eq=True)
 
 
 class TestMainInventory:
@@ -72,45 +67,54 @@ class TestMainInventory:
 
     def test_success(self, tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
-        tm.that(_run_inventory(_cli_args(tmp_path), output_dir=None), eq=0)
+        result = FlextInfraValidateCli._handle_inventory(
+            m.Infra.ValidateInventoryInput(workspace=str(tmp_path)),
+        )
+        tm.that(result.is_success, eq=True)
 
     def test_with_output_dir(self, tmp_path: Path) -> None:
         """Inventory succeeds with output directory."""
         output = tmp_path / "output"
         output.mkdir()
-        tm.that(_run_inventory(_cli_args(tmp_path), output_dir=str(output)), eq=0)
+        result = FlextInfraValidateCli._handle_inventory(
+            m.Infra.ValidateInventoryInput(
+                workspace=str(tmp_path),
+                output_dir=str(output),
+            ),
+        )
+        tm.that(result.is_success, eq=True)
 
 
 class TestMainScan:
     """Test scan subcommand with real services."""
 
     def test_no_violations(self, tmp_path: Path) -> None:
-        """Scan returns 0 when no violations found."""
+        """Scan returns success when no violations found."""
         (tmp_path / "test.txt").write_text("hello world")
-        tm.that(
-            _run_scan(
-                _cli_args(tmp_path),
+        result = FlextInfraValidateCli._handle_scan(
+            m.Infra.ValidateScanInput(
+                workspace=str(tmp_path),
                 pattern="NONEXISTENT_PATTERN",
                 include=["*.txt"],
                 exclude=[],
                 match="present",
             ),
-            eq=0,
         )
+        tm.that(result.is_success, eq=True)
 
     def test_with_violations(self, tmp_path: Path) -> None:
-        """Scan returns 1 when violations found."""
+        """Scan returns failure when violations found."""
         (tmp_path / "test.txt").write_text("TODO fix this")
-        tm.that(
-            _run_scan(
-                _cli_args(tmp_path),
+        result = FlextInfraValidateCli._handle_scan(
+            m.Infra.ValidateScanInput(
+                workspace=str(tmp_path),
                 pattern="TODO",
                 include=["*.txt"],
                 exclude=[],
                 match="present",
             ),
-            eq=1,
         )
+        tm.that(result.is_failure, eq=True)
 
 
 class TestMainCliRouting:

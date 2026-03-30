@@ -26,7 +26,7 @@ if TYPE_CHECKING:
         TestInventoryServiceScripts,
     )
     from tests.unit.validate.main_cli_tests import (
-        test_stub_validate_rejects_all_with_project,
+        test_stub_validate_help_returns_zero,
         test_stub_validate_uses_all_flag,
     )
     from tests.unit.validate.main_tests import (
@@ -150,9 +150,9 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainValidate",
     ],
-    "test_stub_validate_rejects_all_with_project": [
+    "test_stub_validate_help_returns_zero": [
         "tests.unit.validate.main_cli_tests",
-        "test_stub_validate_rejects_all_with_project",
+        "test_stub_validate_help_returns_zero",
     ],
     "test_stub_validate_uses_all_flag": [
         "tests.unit.validate.main_cli_tests",
@@ -190,7 +190,7 @@ __all__ = [
     "TestStubChainIsInternal",
     "TestStubChainStubExists",
     "TestStubChainValidate",
-    "test_stub_validate_rejects_all_with_project",
+    "test_stub_validate_help_returns_zero",
     "test_stub_validate_uses_all_flag",
     "v",
 ]

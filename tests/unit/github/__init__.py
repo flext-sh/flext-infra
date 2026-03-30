@@ -14,8 +14,9 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes
 
     from tests.unit.github.main_cli_tests import (
-        test_lint_rejects_apply_before_subcommand,
-        test_pr_subcommand_preserves_explicit_argv,
+        test_main_returns_nonzero_on_unknown,
+        test_main_returns_zero_on_help,
+        test_pr_workspace_accepts_repeated_project_options,
     )
     from tests.unit.github.main_dispatch_tests import TestRunPrWorkspace
     from tests.unit.github.main_integration_tests import TestMain, main
@@ -31,13 +32,17 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "TestRunWorkflows": ["tests.unit.github.main_tests", "TestRunWorkflows"],
     "main": ["tests.unit.github.main_integration_tests", "main"],
-    "test_lint_rejects_apply_before_subcommand": [
+    "test_main_returns_nonzero_on_unknown": [
         "tests.unit.github.main_cli_tests",
-        "test_lint_rejects_apply_before_subcommand",
+        "test_main_returns_nonzero_on_unknown",
     ],
-    "test_pr_subcommand_preserves_explicit_argv": [
+    "test_main_returns_zero_on_help": [
         "tests.unit.github.main_cli_tests",
-        "test_pr_subcommand_preserves_explicit_argv",
+        "test_main_returns_zero_on_help",
+    ],
+    "test_pr_workspace_accepts_repeated_project_options": [
+        "tests.unit.github.main_cli_tests",
+        "test_pr_workspace_accepts_repeated_project_options",
     ],
 }
 
@@ -48,8 +53,9 @@ __all__ = [
     "TestRunPrWorkspace",
     "TestRunWorkflows",
     "main",
-    "test_lint_rejects_apply_before_subcommand",
-    "test_pr_subcommand_preserves_explicit_argv",
+    "test_main_returns_nonzero_on_unknown",
+    "test_main_returns_zero_on_help",
+    "test_pr_workspace_accepts_repeated_project_options",
 ]
 
 

@@ -61,6 +61,14 @@ class TestWorkspaceRoot:
         tm.ok(result)
         tm.that(str(result.value), eq=str(tmp_path / "subdir"))
 
+    def testworkspace_root_explicit_path_ignores_env(self, tmp_path: Path) -> None:
+        explicit = tmp_path / "explicit"
+        explicit.mkdir()
+        with patch.dict("os.environ", {"FLEXT_WORKSPACE_ROOT": "/home/marlonsc/flext"}):
+            result = u.Infra.workspace_root(explicit)
+        tm.ok(result)
+        tm.that(str(result.value), eq=str(explicit))
+
     def testworkspace_root_fallback(self, tmp_path: Path) -> None:
         deep_path = tmp_path / "a" / "b" / "c" / "d" / "e"
         deep_path.mkdir(parents=True, exist_ok=True)
@@ -96,6 +104,8 @@ class TestParser:
                 "--dry-run",
                 "--skip-comments",
                 "--skip-check",
+                "--project",
+                "flext-core",
             ])
         tm.that(exit_code, eq=0)
         tm.that(run_mock.called, eq=True)
@@ -108,6 +118,8 @@ class TestParser:
         tm.that(args.dry_run, eq=True)
         tm.that(args.skip_comments, eq=True)
         tm.that(args.skip_check, eq=True)
+        cli_args = call_args.args[1]
+        tm.that(cli_args.project_names(), eq=["flext-core"])
 
 
 def test_workspace_root_doc_construction() -> None:

@@ -24,26 +24,25 @@ class FlextInfraGatesModels:
         reports_dir: Annotated[Path, Field(description="Reports output directory")]
         fail_fast: Annotated[
             bool,
-            Field(default=False, description="Stop on first gate failure"),
+            Field(description="Stop on first gate failure"),
         ] = False
         apply_fixes: Annotated[
             bool,
-            Field(default=False, description="Apply supported fixes before checking"),
+            Field(description="Apply supported fixes before checking"),
         ] = False
         check_only: Annotated[
             bool,
             Field(
-                default=False,
                 description="Never write files even when fix mode is requested",
             ),
         ] = False
         ruff_args: Annotated[
             Sequence[str],
-            Field(default_factory=tuple, description="Extra arguments for Ruff"),
+            Field(description="Extra arguments for Ruff"),
         ] = ()
         pyright_args: Annotated[
             Sequence[str],
-            Field(default_factory=tuple, description="Extra arguments for Pyright"),
+            Field(description="Extra arguments for Pyright"),
         ] = ()
 
 

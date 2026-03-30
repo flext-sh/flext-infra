@@ -8,6 +8,16 @@
 # FLEXT Workspace Makefile - Simple Verbs Only
 # =============================================================================
 
+{% macro forward_make_args(forward_specs) -%}
+{%- for variable_name, forward_mode in forward_specs %}
+{%- if forward_mode == make.FORWARD_MODE_ENABLED %}
+		$(if $(filter 1,$({{ variable_name }})),--make-arg "{{ variable_name }}=$({{ variable_name }})") \
+{%- else %}
+		$(if $({{ variable_name }}),--make-arg "{{ variable_name }}=$({{ variable_name }})") \
+{%- endif %}
+{%- endfor %}
+{%- endmacro %}
+
 SHELL := /usr/bin/bash
 .DEFAULT_GOAL := help
 
@@ -24,49 +34,10 @@ UV_CACHE_DIR ?= /tmp/uv-cache
 UV_PROJECT_ENVIRONMENT ?= $(WORKSPACE_VENV)
 export UV_CACHE_DIR
 export UV_PROJECT_ENVIRONMENT
-ORCHESTRATOR := env -u PYTHONPATH -u MYPYPATH $(PY) -m flext_infra workspace orchestrate
-PYTEST_ARGS ?=
-VALIDATE_SCOPE ?= project
-DOCS_PHASE ?= all
-FAIL_FAST ?=
-JOBS ?=
-CHECK_GATES ?=
-VALIDATE_GATES ?=
-FIX ?=
-FILE ?=
-FILES ?=
-CHANGED_ONLY ?=
-MATCH ?=
-RUFF_ARGS ?=
-PYRIGHT_ARGS ?=
-CHECK_ONLY ?=
-RELEASE_PHASE ?= all
-INTERACTIVE ?= 1
-DRY_RUN ?=
-PUSH ?=
-VERSION ?=
-MESSAGE ?=
-TAG ?=
-BUMP ?=
-RELEASE_DEV_SUFFIX ?= 0
-RELEASE_NEXT_DEV ?= 0
-RELEASE_NEXT_BUMP ?= minor
-CREATE_BRANCHES ?= 1
-PR_ACTION ?= status
-PR_BASE ?= main
-PR_HEAD ?=
-PR_NUMBER ?=
-PR_TITLE ?=
-PR_BODY ?=
-PR_DRAFT ?= 0
-PR_MERGE_METHOD ?= squash
-PR_AUTO ?= 0
-PR_DELETE_BRANCH ?= 0
-PR_CHECKS_STRICT ?= 0
-PR_RELEASE_ON_MERGE ?= 1
-PR_INCLUDE_ROOT ?= 1
+{% for variable_name, default_value in make.WORKSPACE_VARIABLE_DEFAULTS -%}
+{{ variable_name }} ?= {{ default_value }}
+{% endfor %}
 PR_BRANCH ?= {{ pr_branch }}
-PR_CHECKPOINT ?= 1
 
 Q := @
 ifdef VERBOSE
@@ -104,11 +75,15 @@ WORKSPACE_PYTHONPATH := $(shell \
 		skip=0; for p in $(PRIORITY_PROJECTS); do [ "$$d" = "$$p" ] && skip=1; done; \
 		[ "$$skip" = "0" ] && [ -d "$(CURDIR)/$$d/src" ] && printf "$(CURDIR)/$$d/src:"; \
 	done)$(CURDIR)/src
+WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)
+WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra
+ORCHESTRATOR := $(WORKSPACE_FLEXT_INFRA) workspace orchestrate
+ORCHESTRATOR_PROJECTS := --projects "$(SELECTED_PROJECTS)"
 
 define ENSURE_NO_PROJECT_CONFLICT
-if [ -n "$(PROJECT)" ] && [ -n "$(PROJECTS)" ]; then \
-	echo "ERROR: Cannot use PROJECT and PROJECTS together"; \
-	echo "Use PROJECT=<name> or PROJECTS=\"proj-a proj-b\""; \
+	if [ -n "$(PROJECT)" ] && [ -n "$(PROJECTS)" ]; then \
+	echo "{{ make.PROJECT_SELECTION_CONFLICT_ERROR }}"; \
+	echo "{{ make.PROJECT_SELECTION_CONFLICT_HINT | replace('"', '\\"') }}"; \
 	exit 1; \
 fi
 endef
@@ -122,8 +97,8 @@ endef
 
 define ENSURE_SELECTED_PROJECTS
 if [ -z "$(SELECTED_PROJECTS)" ]; then \
-	echo "ERROR: no projects selected"; \
-	echo "Use PROJECT=<name> or PROJECTS=\"proj-a proj-b\""; \
+	echo "{{ make.PROJECT_SELECTION_EMPTY_ERROR }}"; \
+	echo "{{ make.PROJECT_SELECTION_EMPTY_HINT | replace('"', '\\"') }}"; \
 	exit 1; \
 fi
 endef
@@ -139,16 +114,19 @@ endef
 
 define AUTO_SYNC_ALL_PROJECTS
 for proj in $(ALL_PROJECTS); do \
-	$(PY) -m flext_infra workspace sync --workspace "$$proj" --canonical-root "$(CURDIR)" --apply >/dev/null || exit 1; \
+	$(WORKSPACE_FLEXT_INFRA) workspace sync --workspace "$$proj" --canonical-root "$(CURDIR)" --apply >/dev/null || exit 1; \
 done
 endef
 
-define AUTO_ADJUST_SELECTED_PROJECTS
+define PREPARE_SELECTED_PROJECTS
+$(ENSURE_NO_PROJECT_CONFLICT)
+$(ENSURE_SELECTED_PROJECTS)
+$(ENSURE_PROJECTS_EXIST)
 endef
 
 define ENFORCE_WORKSPACE_VENV
 if [ ! -d "$(WORKSPACE_VENV)" ]; then \
-	echo "ERROR: workspace venv not found at $(WORKSPACE_VENV). Run 'make setup'."; \
+	echo "ERROR: workspace venv not found at $(WORKSPACE_VENV). Run '{{ make.WORKSPACE_BOOT_HINT }}'."; \
 	exit 1; \
 fi; \
 local_venvs=$$(for proj in $(ALL_PROJECTS); do \
@@ -170,12 +148,18 @@ if [ -n "$$residual_venvs" ]; then \
 fi
 endef
 
+define PREPARE_RUNTIME_SELECTED_PROJECTS
+$(REQUIRE_VENV)
+$(ENFORCE_WORKSPACE_VENV)
+$(PREPARE_SELECTED_PROJECTS)
+endef
+
 # Guard: ensure .venv exists before running any target (read-only, no side effects)
 define REQUIRE_VENV
 if [ ! -x "$(PY)" ]; then \
 	echo ""; \
 	echo "ERROR: workspace .venv not found ($(PY) missing)."; \
-	echo "    Run 'make setup' first to create the environment."; \
+	echo "    Run '{{ make.WORKSPACE_BOOT_HINT }}' first to create the environment."; \
 	echo ""; \
 	exit 1; \
 fi
@@ -217,7 +201,7 @@ define PREFLIGHT_CHECK
 		fi; \
 	fi; \
 	if [ "$$ok" -eq 0 ]; then \
-		echo ""; echo "Fix the above requirements and re-run: make setup"; exit 1; \
+		echo ""; echo "Fix the above requirements and re-run: {{ make.WORKSPACE_BOOT_HINT }}"; exit 1; \
 	fi; \
 	echo " OK: all required tools present"
 endef
@@ -231,94 +215,24 @@ help: ## Show simple workspace verbs
 	$(Q)echo "Selection: $(words $(SELECTED_PROJECTS)) selected"
 	$(Q)echo ""
 	$(Q)echo "Core verbs:"
-	$(Q)echo " boot    Install all projects into workspace .venv, then run val VALIDATE_SCOPE=workspace"
-	$(Q)echo " up     Upgrade deps + modernize + dependency report (.reports/dependencies/)"
-	$(Q)echo " mod    Modernize pyproject.toml configs only (no lock/install)"
-	$(Q)echo " build   Build/package all selected projects"
-	$(Q)echo " check   Run the lint gates in all projects"
-	$(Q)echo " scan    Run all security checks in all projects"
-	$(Q)echo " fmt    Run all formatting in all projects"
-	$(Q)echo " docs    Build docs in all projects"
-	$(Q)echo " test    Run tests only in all projects"
-	$(Q)echo " val    Run validate gates (FIX=1 auto-fix, VALIDATE_SCOPE=workspace for repo-level)"
-	$(Q)echo " rel    Interactive workspace release orchestration"
-	$(Q)echo " pr     Manage PRs for selected projects"
-	$(Q)echo " types   Stub supply-chain + typing report (PROJECT/PROJECTS to scope)"
-	$(Q)echo " pyre    Run authoritative repo-wide pyrefly report"
-	$(Q)echo " stubs   Validate typing stub supply-chain (repo-wide)"
-	$(Q)echo " pol    Enforce no Any/t.NormalizedValue/type: ignore (repo-wide)"
-	$(Q)echo " cqrs    Enforce strict CQRS/FlextModels patterns across ecosystem"
-	$(Q)echo " clean   Clean all projects"
+{% for verb_name, verb_help in make.WORKSPACE_CORE_VERBS %}
+	$(Q)printf " %-7s %s\n" "{{ verb_name }}" "{{ verb_help }}"
+{% endfor %}
 	$(Q)echo ""
 	$(Q)echo "Git workflow:"
-	$(Q)echo " save    Commit all changes in selected projects (MESSAGE=)"
-	$(Q)echo " tag    Create git tags for selected projects (TAG=, DRY_RUN=1)"
-	$(Q)echo " push   Push branches and tags for selected projects"
-	$(Q)echo " gen    Recreate standardized pyproject.toml, base.mk, Makefile and __init__.py"
+{% for verb_name, verb_help in make.WORKSPACE_GIT_VERBS %}
+	$(Q)printf " %-7s %s\n" "{{ verb_name }}" "{{ verb_help }}"
+{% endfor %}
 	$(Q)echo ""
 	$(Q)echo "Selectors:"
-	$(Q)echo " PROJECT=<name>             Single project"
-	$(Q)echo " PROJECTS=\"proj-a proj-b\"        Multi-project"
-	$(Q)echo " FAIL_FAST=1               Stop on first project failure"
-	$(Q)echo " FIX=1                  Auto-fix (validate + check)"
-	$(Q)echo " PYTEST_ARGS=\"-k expr -x\"        Extra pytest args for test"
-	$(Q)echo " CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,type  Select check gates (default: all)"
-	$(Q)echo " VALIDATE_GATES=complexity,docstring   Select validate gates (default: all)"
-	$(Q)echo " FILE=src/foo.py             Single file for check/test/format"
-	$(Q)echo " FILES=\"a.py b.py\"           Multiple files for check/test/format"
-	$(Q)echo " CHANGED_ONLY=1             check only git-modified .py files"
-	$(Q)echo " MATCH=test_name            Filter tests by name (pytest -k)"
-	$(Q)echo " VERBOSE=1                Verbose test output (-vv -s)"
-	$(Q)echo " RUFF_ARGS=\"--select E501\"    Extra ruff args for check"
-	$(Q)echo " PYRIGHT_ARGS=\"--level basic\"  Extra pyright args for check"
-	$(Q)echo " CHECK_ONLY=1             Dry-run format/check (no writes)"
-	$(Q)echo " VALIDATE_SCOPE=project|workspace     Validate scope (default: project)"
-	$(Q)echo " DOCS_PHASE=audit|fix|build|generate|validate|all"
-	$(Q)echo " RELEASE_PHASE=validate,version,build,publish|all"
-	$(Q)echo " INTERACTIVE=1|0             Release prompt mode"
-	$(Q)echo " DRY_RUN=1                Print plan, do not tag/push"
-	$(Q)echo " PUSH=1                  Push release commit/tag"
-	$(Q)echo " VERSION=<semver> TAG=v<semver> BUMP=patch Release controls"
-	$(Q)echo " RELEASE_DEV_SUFFIX=0|1         Append -dev during release version phase"
-	$(Q)echo " RELEASE_NEXT_DEV=0|1          After release, auto-bump to next <RELEASE_NEXT_BUMP>-dev"
-	$(Q)echo " RELEASE_NEXT_BUMP=major|minor|patch   Next dev bump strategy (default: minor)"
-	$(Q)echo " CREATE_BRANCHES=1|0           Create release branches in workspace + projects"
-	$(Q)echo " PR_ACTION=status|create|view|checks|merge|close"
-	$(Q)echo " PR_BASE=main PR_HEAD=<branch> PR_NUMBER=<id> PR_DRAFT=0|1"
-	$(Q)echo " PR_TITLE='title' PR_BODY='body' PR_MERGE_METHOD=squash|merge|rebase"
-	$(Q)echo " PR_AUTO=0|1 PR_DELETE_BRANCH=0|1"
-	$(Q)echo " PR_CHECKS_STRICT=0|1          checks action strict failure toggle"
-	$(Q)echo " PR_RELEASE_ON_MERGE=0|1         merge action: dispatch release workflow"
-	$(Q)echo " PR_INCLUDE_ROOT=0|1           include root repo in workspace PR automation"
-	$(Q)echo " PR_BRANCH=<name> PR_CHECKPOINT=0|1   normalize branch + checkpoint before action"
-	$(Q)echo " DEPS_REPORT=0              Skip dependency report after upgrade/typings"
-	$(Q)echo " MESSAGE='chore: ...'          Commit message for commit verb"
+{% for help_line in make.WORKSPACE_SELECTOR_LINES %}
+	$(Q)echo " {{ help_line | replace('"', '\\"') }}"
+{% endfor %}
 	$(Q)echo ""
 	$(Q)echo "Examples:"
-	$(Q)echo " make check PROJECT=flext-core"
-	$(Q)echo " make check PROJECT=flext-core FILE=src/flext_core/foo.py CHECK_GATES=pyright"
-	$(Q)echo " make check PROJECT=flext-core CHANGED_ONLY=1"
-	$(Q)echo " make check CHECK_GATES=lint FIX=1 CHANGED_ONLY=1"
-	$(Q)echo " make test PROJECT=flext-core MATCH=test_container FAIL_FAST=1"
-	$(Q)echo " make test PROJECT=flext-core FILE=tests/unit/test_foo.py"
-	$(Q)echo " make fmt FILE=src/flext_core/foo.py CHECK_ONLY=1"
-	$(Q)echo " make check PROJECT=flext-core CHECK_GATES=lint RUFF_ARGS=\"--select E501\""
-	$(Q)echo " make build"
-	$(Q)echo " make types PROJECT=flext-api"
-	$(Q)echo " make pyre"
-	$(Q)echo " make stubs"
-	$(Q)echo " make check CHECK_GATES=lint,type"
-	$(Q)echo " make val PROJECTS=\"flext-core flext-api\" FIX=1"
-	$(Q)echo " make test PROJECT=flext-api PYTEST_ARGS=\"-k unit\" FAIL_FAST=1"
-	$(Q)echo " make val VALIDATE_SCOPE=workspace"
-	$(Q)echo " make rel BUMP=minor"
-	$(Q)echo " make save MESSAGE='chore: upgrade deps'"
-	$(Q)echo " make tag"
-	$(Q)echo " make tag TAG=v1.0.0"
-	$(Q)echo " make push"
-	$(Q)echo " make gen PROJECT=flext-core"
-	$(Q)echo " make pr PROJECT=flext-core PR_ACTION=status"
-	$(Q)echo " make pr PROJECT=flext-core PR_ACTION=create PR_TITLE='release: 0.11.0-dev'"
+{% for example_line in make.WORKSPACE_EXAMPLES %}
+	$(Q)echo " {{ example_line | replace('"', '\\"') }}"
+{% endfor %}
 	$(Q)echo " NOTE: External projects (not in .gitmodules) require manual clone."
 
 boot: ## Install all projects into workspace .venv
@@ -357,14 +271,10 @@ boot: ## Install all projects into workspace .venv
 	$(Q)$(ENSURE_WORKSPACE_RUNTIME)
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)echo "Enforcing Python version guards..."; $(PY) -m flext_infra maintenance || exit 1
+	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_FLEXT_INFRA) maintenance || exit 1
 	$(Q)$(AUTO_ADJUST_SELECTED_PROJECTS)
-	$(Q)echo "Modernizing pyproject.toml files..."; \
-	$(PY) -m flext_infra deps modernize --skip-check --apply; \
-	echo ""
-	$(Q)echo "Syncing dependency paths to workspace mode..."; \
-	$(PY) -m flext_infra deps path-sync --mode auto --apply; \
-	echo ""
+	$(Q)echo "Standardizing project metadata (make mod)..."
+	$(Q)$(MAKE) mod
 	$(Q)total_steps=$$(( $(words $(SELECTED_PROJECTS)) + 1 )); \
 	echo "Starting workspace setup for $$total_steps item(s) ($(words $(SELECTED_PROJECTS)) projects + root)"; \
 	failed=0; installed=0; step=1; failed_projects=""; \
@@ -373,7 +283,7 @@ boot: ## Install all projects into workspace .venv
 			log_file="/tmp/flext-setup-$$proj.log"; \
 			start_ts=$$(date +%s); \
 			printf "[%2d/%2d] boot %s\n" $$step $$total_steps "$$proj"; \
-			if FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(PY) -m flext_infra deps internal-sync --workspace "$$proj" >>"$$log_file" 2>&1; then \
+			if $(WORKSPACE_FLEXT_INFRA) deps internal-sync --workspace "$$proj" >>"$$log_file" 2>&1; then \
 				:; \
 			else \
 				echo "     sync  ... failed"; \
@@ -413,7 +323,7 @@ boot: ## Install all projects into workspace .venv
 	start_ts=$$(date +%s); \
 	root_lock_ok=0; \
 	printf "[%2d/%2d] boot %s\n" $$step $$total_steps "root"; \
-	if ! FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(PY) -m flext_infra deps internal-sync --workspace . >"$$log_file" 2>&1; then \
+	if ! $(WORKSPACE_FLEXT_INFRA) deps internal-sync --workspace . >"$$log_file" 2>&1; then \
 		echo "     sync  ... failed"; \
 		cat "$$log_file"; \
 		failed=$$((failed + 1)); \
@@ -461,13 +371,9 @@ up: ## Upgrade Python dependencies to latest via Poetry
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)echo "Enforcing Python version guards..."; $(PY) -m flext_infra maintenance || exit 1
-	$(Q)echo "Modernizing pyproject.toml files..."; \
-	$(PY) -m flext_infra deps modernize --skip-check --apply; \
-	echo ""
-	$(Q)echo "Syncing dependency paths to workspace mode..."; \
-	$(PY) -m flext_infra deps path-sync --mode auto --apply; \
-	echo ""
+	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_FLEXT_INFRA) maintenance || exit 1
+	$(Q)echo "Standardizing project metadata (make mod)..."
+	$(Q)$(MAKE) mod
 	$(Q)echo "Upgrading workspace dependencies (uv workspace mode)..."; \
 	log_file="/tmp/flext-upgrade-workspace.log"; \
 	start_ts=$$(date +%s); \
@@ -500,21 +406,22 @@ up: ## Upgrade Python dependencies to latest via Poetry
 	echo "Upgrade summary: Upgraded=workspace Failed=0 Total=workspace"; \
 	if [ "$(DEPS_REPORT)" != "0" ]; then \
 		echo "Dependency report (deptry + pip check)..."; \
-		$(PY) -m flext_infra deps detect -q --no-fail; \
+		$(WORKSPACE_FLEXT_INFRA) deps detect -q --no-fail; \
 	fi
 	$(Q)echo "Syncing GitHub workflow templates..."
-	$(Q)$(PY) -m flext_infra github workflows --workspace "$(CURDIR)" --apply --prune --report .reports/workflows/sync.json
+	$(Q)$(WORKSPACE_FLEXT_INFRA) github workflows --workspace "$(CURDIR)" --apply --prune --report .reports/workflows/sync.json
 
 mod: ## Modernize pyproject.toml files (standardize configs without lock/install)
 	$(Q)$(REQUIRE_VENV)
+	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Modernizing pyproject.toml files..."; \
-	$(PY) -m flext_infra deps modernize --skip-check --apply; \
+	$(WORKSPACE_FLEXT_INFRA) deps modernize --skip-check --apply $(if $(PROJECT),--project "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
 	echo ""
 	$(Q)echo "Syncing dependency paths to workspace mode..."; \
-	$(PY) -m flext_infra deps path-sync --mode auto --apply; \
+	$(WORKSPACE_FLEXT_INFRA) deps path-sync --mode auto --apply $(if $(PROJECT),--project "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
 	echo ""
 	$(Q)echo "Formatting pyproject.toml files with taplo..."; \
 	taplo format --config "$(CURDIR)/.taplo.toml" pyproject.toml */pyproject.toml; \
@@ -523,43 +430,23 @@ mod: ## Modernize pyproject.toml files (standardize configs without lock/install
 	$(Q)ruff format . --quiet
 	$(Q)echo "Modernization complete."
 
-check: ## Run lint gates in all projects (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security)
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)$(AUTO_ADJUST_SELECTED_PROJECTS)
+check: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }})
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb check \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
-		$(if $(CHECK_GATES),--make-arg "CHECK_GATES=$(CHECK_GATES)") \
-		$(if $(FILE),--make-arg "FILE=$(FILE)") \
-		$(if $(FILES),--make-arg "FILES=$(FILES)") \
-		$(if $(filter 1,$(CHANGED_ONLY)),--make-arg "CHANGED_ONLY=$(CHANGED_ONLY)") \
-		$(if $(filter 1,$(FIX)),--make-arg "FIX=$(FIX)") \
-		$(if $(RUFF_ARGS),--make-arg "RUFF_ARGS=$(RUFF_ARGS)") \
-		$(if $(PYRIGHT_ARGS),--make-arg "PYRIGHT_ARGS=$(PYRIGHT_ARGS)") \
-		$(if $(filter 1,$(CHECK_ONLY)),--make-arg "CHECK_ONLY=$(CHECK_ONLY)") \
-		$(SELECTED_PROJECTS)
+{{ forward_make_args(make.CHECK_FORWARD_ARGS) | trim }}
+		$(ORCHESTRATOR_PROJECTS)
 
 cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 	$(Q).github/scripts/check-cqrs-compliance.sh
 
 build: ## Build/package all selected projects
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)$(ORCHESTRATOR) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(SELECTED_PROJECTS)
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
+	$(Q)$(ORCHESTRATOR) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 
 rel: ## Interactive workspace release orchestration
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)$(PY) -m flext_infra release \
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
+	$(Q)$(WORKSPACE_FLEXT_INFRA) release \
 		--workspace "$(CURDIR)" \
 		--phase "$(RELEASE_PHASE)" \
 		--interactive "$(INTERACTIVE)" \
@@ -575,11 +462,8 @@ rel: ## Interactive workspace release orchestration
 		$(if $(BUMP),--bump "$(BUMP)",)
 
 pr: ## Manage pull requests for selected projects
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)$(PY) -m flext_infra github pr-workspace \
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
+	$(Q)$(WORKSPACE_FLEXT_INFRA) github pr-workspace \
 		--workspace "$(CURDIR)" \
 		$(foreach proj,$(SELECTED_PROJECTS),--project "$(proj)") \
 		--include-root "$(PR_INCLUDE_ROOT)" \
@@ -600,13 +484,8 @@ pr: ## Manage pull requests for selected projects
 		--pr-release-on-merge "$(PR_RELEASE_ON_MERGE)"
 
 scan: ## Run all security checks in all projects
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)$(AUTO_ADJUST_SELECTED_PROJECTS)
-	$(Q)$(ORCHESTRATOR) --verb scan $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(SELECTED_PROJECTS)
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
+	$(Q)$(ORCHESTRATOR) --verb scan $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 
 fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdownlint)
 	$(Q)$(REQUIRE_VENV)
@@ -645,32 +524,18 @@ fmt: ## Run code formatting across all workspace projects (ruff/gofmt + markdown
 	$(Q)echo "Format complete."
 
 docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb docs \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
-		--make-arg "DOCS_PHASE=$(DOCS_PHASE)" \
-		$(if $(FIX),--make-arg "FIX=$(FIX)") \
-		$(SELECTED_PROJECTS)
+{{ forward_make_args(make.DOCS_FORWARD_ARGS) | trim }}
+		$(ORCHESTRATOR_PROJECTS)
 
 test: ## Run tests only in all projects
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)$(AUTO_ADJUST_SELECTED_PROJECTS)
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb test \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
-		$(if $(PYTEST_ARGS),--make-arg "PYTEST_ARGS=$(PYTEST_ARGS)") \
-		$(if $(FILE),--make-arg "FILE=$(FILE)") \
-		$(if $(FILES),--make-arg "FILES=$(FILES)") \
-		$(if $(MATCH),--make-arg "MATCH=$(MATCH)") \
-		$(if $(VERBOSE),--make-arg "VERBOSE=$(VERBOSE)") \
-		$(SELECTED_PROJECTS)
+{{ forward_make_args(make.TEST_FORWARD_ARGS) | trim }}
+		$(ORCHESTRATOR_PROJECTS)
 
 val: ## Run validate gates (VALIDATE_SCOPE=project|workspace, FIX=1)
 ifeq ($(VALIDATE_SCOPE),workspace)
@@ -680,40 +545,30 @@ ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(AUTO_ADJUST_SELECTED_PROJECTS)
 	$(Q)mkdir -p .reports
 	$(Q)echo "Running workspace validation (inventory + strict anti-drift gates)..."
-	$(Q)$(PY) -m flext_infra maintenance --check || exit 1
-	$(Q)$(PY) -m flext_infra validate inventory --workspace .
-	$(Q)$(PY) -m flext_infra validate basemk-validate
-	$(Q)$(PY) -m flext_infra github lint --workspace . --report .reports/workflows/actionlint.json
-	$(Q)$(PY) -m flext_infra validate skill-validate --skill scripts-validation --mode strict
-	$(Q)$(PY) -m flext_infra validate skill-validate --skill rules-github --mode strict
-	$(Q)$(PY) -m flext_infra validate skill-validate --skill rules-docker --mode strict
-	$(Q)$(PY) -m flext_infra deps modernize --audit
+	$(Q)$(WORKSPACE_FLEXT_INFRA) maintenance --check || exit 1
+	$(Q)$(WORKSPACE_FLEXT_INFRA) validate inventory --workspace .
+	$(Q)$(WORKSPACE_FLEXT_INFRA) validate basemk-validate
+	$(Q)$(WORKSPACE_FLEXT_INFRA) github lint --workspace . --report .reports/workflows/actionlint.json
+	$(Q)$(WORKSPACE_FLEXT_INFRA) validate skill-validate --skill scripts-validation --mode strict
+	$(Q)$(WORKSPACE_FLEXT_INFRA) validate skill-validate --skill rules-github --mode strict
+	$(Q)$(WORKSPACE_FLEXT_INFRA) validate skill-validate --skill rules-docker --mode strict
+	$(Q)$(WORKSPACE_FLEXT_INFRA) deps modernize --audit
 	$(Q)if git grep -nE '/home/.*/flext|file:///home/.*/flext' -- . ':!Makefile'; then \
 		echo "ERROR: absolute workspace paths detected in tracked sources/config"; \
 		exit 1; \
 	fi
 else
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)$(VALIDATE_FIX_PARAM)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)$(AUTO_ADJUST_SELECTED_PROJECTS)
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)if [ -z "$(FIX)" ]; then echo "INFO: run 'make val FIX=1' to auto-fix before validate"; fi
 	$(Q)$(ORCHESTRATOR) --verb val \
 		$(if $(filter 1,$(FAIL_FAST)),--fail-fast) \
-		$(if $(FIX),--make-arg "FIX=$(FIX)") \
-		$(if $(VALIDATE_GATES),--make-arg "VALIDATE_GATES=$(VALIDATE_GATES)") \
-		$(SELECTED_PROJECTS)
+{{ forward_make_args(make.VALIDATE_FORWARD_ARGS) | trim }}
+		$(ORCHESTRATOR_PROJECTS)
 endif
 
 types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency report). Use PROJECT= or PROJECTS= to scope.
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)echo "Regenerating typings/generated/ via stubgen (PEP 561 pre-check)..."
 	$(Q)gen_dir="$(CURDIR)/typings/generated"; \
 	tmp_dir=$$(mktemp -d); \
@@ -749,10 +604,10 @@ types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency rep
 		echo "  no packages to regenerate"; \
 	fi; \
 	rm -rf "$$tmp_dir"
-	$(Q)$(PY) -m flext_infra validate stub-validate \
+	$(Q)$(WORKSPACE_FLEXT_INFRA) validate stub-validate \
 		$(if $(PROJECT),--project $(PROJECT),$(if $(PROJECTS),$(addprefix --project ,$(PROJECTS)),--all))
 	$(Q)if [ "$(DEPS_REPORT)" != "0" ]; then \
-		$(PY) -m flext_infra deps detect --typings -q --no-fail; \
+		$(WORKSPACE_FLEXT_INFRA) deps detect --typings -q --no-fail; \
 	fi
 
 pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefly + evidence
@@ -760,7 +615,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)mkdir -p .sisyphus/evidence .reports/pyrefly
 	$(Q)set -o pipefail; \
-	FLEXT_WORKSPACE_ROOT="$(CURDIR)" env -u PYTHONPATH $(PY) -m flext_infra check run \
+	$(WORKSPACE_FLEXT_INFRA) check run \
 		--gates pyrefly \
 		--reports-dir "$(CURDIR)/.reports/pyrefly" \
 		--project "." \
@@ -774,7 +629,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 	echo "=== Type Policy Gate ==="; \
 	policy_violations=0; \
 	echo "--- # type: ignore ---"; \
-	env -u PYTHONPATH $(PY) -m flext_infra validate scan --workspace . \
+	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
 		--pattern "#\\s*type:\\s*ignore" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -783,7 +638,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 		--match absent \
 		2>&1 || policy_violations=$$((policy_violations + 1)); \
 	echo "--- Any (typing) ---"; \
-	env -u PYTHONPATH $(PY) -m flext_infra validate scan --workspace . \
+	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
 		--pattern "\\bAny\\b" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -792,7 +647,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 		--match absent \
 		2>&1 || policy_violations=$$((policy_violations + 1)); \
 	echo "--- object annotations ---"; \
-	env -u PYTHONPATH $(PY) -m flext_infra validate scan --workspace . \
+	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
 		--pattern "(?::\\s*|->\\s*)object\\b" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -813,7 +668,7 @@ stubs: ## Repo-wide stub supply-chain validation -> .sisyphus/evidence
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)mkdir -p .sisyphus/evidence
 	$(Q)set -o pipefail; \
-	env -u PYTHONPATH $(PY) -m flext_infra validate stub-validate --all \
+	$(WORKSPACE_FLEXT_INFRA) validate stub-validate --all \
 		2>&1 | tee .sisyphus/evidence/pyrefly-stub-validate.txt; \
 	stub_status=$${PIPESTATUS[0]}; \
 	printf "exit_code: %s\n" "$$stub_status" >> .sisyphus/evidence/pyrefly-stub-validate.txt; \
@@ -830,7 +685,7 @@ pol: ## Repo-wide typing policy gate (no Any/t.NormalizedValue/# type: ignore)
 	echo "workspace: $(CURDIR)" >> .reports/pyrefly/type-policy.txt; \
 	echo "" >> .reports/pyrefly/type-policy.txt; \
 	echo "--- # type: ignore ---" >> .reports/pyrefly/type-policy.txt; \
-	env -u PYTHONPATH $(PY) -m flext_infra validate scan --workspace . \
+	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
 		--pattern "#\\s*type:\\s*ignore" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -840,7 +695,7 @@ pol: ## Repo-wide typing policy gate (no Any/t.NormalizedValue/# type: ignore)
 		2>&1 | tee -a .reports/pyrefly/type-policy.txt || status=$$?; \
 	echo "" >> .reports/pyrefly/type-policy.txt; \
 	echo "--- Any (typing) ---" >> .reports/pyrefly/type-policy.txt; \
-	env -u PYTHONPATH $(PY) -m flext_infra validate scan --workspace . \
+	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
 		--pattern "\\bAny\\b" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -850,7 +705,7 @@ pol: ## Repo-wide typing policy gate (no Any/t.NormalizedValue/# type: ignore)
 		2>&1 | tee -a .reports/pyrefly/type-policy.txt || status=$$?; \
 	echo "" >> .reports/pyrefly/type-policy.txt; \
 	echo "--- t.NormalizedValue (typing contexts) ---" >> .reports/pyrefly/type-policy.txt; \
-	env -u PYTHONPATH $(PY) -m flext_infra validate scan --workspace . \
+	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
 		--pattern "(?:\\:\\s*|->\\s*|=\\s*|\\|\\s*|\\[\\s*|,\\s*)t.NormalizedValue\\b" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -863,21 +718,14 @@ pol: ## Repo-wide typing policy gate (no Any/t.NormalizedValue/# type: ignore)
 	exit $$status
 
 clean: ## Clean all projects
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)$(AUTO_ADJUST_SELECTED_PROJECTS)
-	$(Q)$(ORCHESTRATOR) --verb clean $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(SELECTED_PROJECTS)
+	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
+	$(Q)$(ORCHESTRATOR) --verb clean $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 	$(Q)rm -rf .pytest_cache/ htmlcov/ .coverage* .mypy_cache/ .ruff_cache/
 
 save: ## Commit all changes in selected projects (MESSAGE=)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
+	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)if [ -z "$(MESSAGE)" ]; then \
-		echo "ERROR: MESSAGE is required. Usage: make commit MESSAGE='chore: your message'"; \
+		echo "ERROR: MESSAGE is required. Usage: {{ make.SAVE_USAGE }}"; \
 		exit 1; \
 	fi
 	$(Q)committed=0; skipped=0; failed=0; \
@@ -930,9 +778,7 @@ stat: ## Show git status for all workspace projects (submodules + external + roo
 	fi
 
 tag: ## Create git tags for selected projects (TAG= optional, DRY_RUN=1)
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
+	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)tagged=0; skipped=0; failed=0; \
 	for proj in $(SELECTED_PROJECTS); do \
 		if [ -e "$$proj/.git" ] && [ -f "$$proj/pyproject.toml" ]; then \
@@ -981,9 +827,7 @@ tag: ## Create git tags for selected projects (TAG= optional, DRY_RUN=1)
 	echo "Tag: $$tagged tagged, $$skipped skipped, $$failed failed"
 
 push: ## Push branches and tags for selected projects
-	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
+	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)pushed=0; failed=0; \
 	for proj in $(SELECTED_PROJECTS); do \
 		if [ -e "$$proj/.git" ]; then \
@@ -1028,26 +872,22 @@ sync: ## Sync project Makefiles from pyproject.toml + refresh __init__.py lazy i
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)echo "==> Syncing workspace root base.mk..."
-	$(Q)PYTHONPATH="$(WORKSPACE_PYTHONPATH):$$PYTHONPATH" \
-		$(PY) -m flext_infra workspace sync \
-			--workspace "$(CURDIR)"
+	$(Q)$(WORKSPACE_FLEXT_INFRA) workspace sync \
+		--workspace "$(CURDIR)"
 	$(Q)echo "==> Syncing project Makefiles..."
 	$(Q)for proj in $(SELECTED_PROJECTS); do \
-		PYTHONPATH="$(WORKSPACE_PYTHONPATH):$$PYTHONPATH" \
-		$(PY) -m flext_infra workspace sync \
+		$(WORKSPACE_FLEXT_INFRA) workspace sync \
 			--workspace "$$proj" \
 			--canonical-root "$(CURDIR)"; \
 	done
 	$(Q)echo "==> Regenerating __init__.py lazy imports..."
-	$(Q)PYTHONPATH="$(WORKSPACE_PYTHONPATH):$$PYTHONPATH" \
-		$(PY) -m flext_infra codegen lazy-init --workspace "$(CURDIR)"
+	$(Q)$(WORKSPACE_FLEXT_INFRA) codegen lazy-init --workspace "$(CURDIR)"
 	$(Q)echo "==> Sync complete."
 
 imp: ## Detect and fix import violations across workspace (CST-based)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)PYTHONPATH="$(WORKSPACE_PYTHONPATH):$$PYTHONPATH" \
-		$(PY) -m flext_infra refactor imports \
+	$(Q)$(WORKSPACE_FLEXT_INFRA) refactor imports \
 		--workspace "$(CURDIR)" $(if $(APPLY),--apply,)
 
 # Workspace-specific custom targets (optional, never overwritten by sync)

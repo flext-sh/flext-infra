@@ -10,23 +10,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from typing import Annotated
 
 from flext_cli import cli
 from flext_core import FlextRuntime, r
-from pydantic import BaseModel, Field
 
 from flext_infra import FlextInfraPythonVersionEnforcer, m, t
-
-# ── Input Model ──────────────────────────────────────────────
-
-
-class MaintenanceInput(BaseModel):
-    """CLI input for maintenance command — fields become CLI options."""
-
-    check: Annotated[bool, Field(default=False, description="Run in check mode")]
-    verbose: Annotated[bool, Field(default=False, description="Verbose output")]
-
 
 # ── Router ───────────────────────────────────────────────────
 
@@ -52,7 +40,7 @@ class FlextInfraMaintenanceCli:
             route=m.Cli.ResultCommandRouteModel(
                 name="run",
                 help_text="Execute maintenance operations",
-                model_cls=MaintenanceInput,
+                model_cls=m.Infra.MaintenanceRunInput,
                 handler=self._handle_run,
                 success_message="Maintenance completed successfully",
                 failure_message="Maintenance failed",
@@ -60,7 +48,7 @@ class FlextInfraMaintenanceCli:
         )
 
     @staticmethod
-    def _handle_run(params: MaintenanceInput) -> r[int]:
+    def _handle_run(params: m.Infra.MaintenanceRunInput) -> r[int]:
         service = FlextInfraPythonVersionEnforcer()
         return service.execute(check_only=params.check, verbose=params.verbose)
 

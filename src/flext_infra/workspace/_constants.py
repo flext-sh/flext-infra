@@ -51,7 +51,7 @@ class FlextInfraWorkspaceConstants:
         ".reports/",
         ".venv/",
         "__pycache__/",
-        "base.mk",
+        "!base.mk",
     ]
 
     MAKEFILE_INCLUDE_OLD: Final[str] = (

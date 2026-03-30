@@ -20,13 +20,13 @@ from flext_infra import c, m, r, s, t
 class _Renderable(Protocol):
     def render(
         self,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue,
+        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
     ) -> str: ...
 
 
 def _render(
     template: _Renderable,
-    **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue,
+    **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
 ) -> str:
     """Render a jinja2 template with explicit str return type."""
     return template.render(**kwargs)
@@ -84,6 +84,7 @@ class FlextInfraBaseMkTemplateEngine(s[str]):
                     template,
                     config=active_config,
                     lint_gates_csv=lint_gates_csv,
+                    make=c.Infra.Make,
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"

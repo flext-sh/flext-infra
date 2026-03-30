@@ -1,7 +1,7 @@
 """Project Makefile generator for workspace sync.
 
 Fully generates project Makefiles from pyproject.toml metadata and the
-base bootstrap template.  Custom targets live in ``custom.mk`` alongside
+base bootstrap template. Custom targets live in ``custom.mk`` alongside
 the generated ``Makefile``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -16,10 +16,6 @@ from pathlib import Path
 from typing import NamedTuple
 
 from flext_infra import FlextInfraBaseMkGenerator, c, r, u
-
-# Legacy sentinel used by the previous sentinel-based approach.
-# Present only during migration; the new generated Makefile has no sentinel.
-_LEGACY_SENTINEL: str = "# --- FLEXT:custom-targets ---"
 
 
 class _ProjectMeta(NamedTuple):
@@ -36,12 +32,6 @@ class FlextInfraProjectMakefileUpdater:
     The generated ``Makefile`` is 100% managed — do not edit it.  Put any
     project-specific Make targets in ``custom.mk`` next to the ``Makefile``;
     it is automatically included via ``-include custom.mk`` at the end.
-
-    Migration (legacy sentinel-based Makefiles):
-      - If the existing ``Makefile`` contains the legacy sentinel
-        ``# --- FLEXT:custom-targets ---``, the inline custom section is
-        extracted and written to ``custom.mk`` (only if ``custom.mk`` does
-        not yet exist and the custom section is non-empty).
 
     Idempotency:
       - SHA-256 comparison skips the write if the generated content is
@@ -80,21 +70,11 @@ class FlextInfraProjectMakefileUpdater:
         new_content = self._build_makefile(meta, bootstrap)
         makefile_path = project_root / "Makefile"
 
-        # Migration: move any legacy inline custom section to custom.mk
         if makefile_path.exists():
             try:
                 existing = makefile_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             except OSError as exc:
                 return r[bool].fail(f"Makefile read failed: {exc}")
-
-            migrate_result = self._migrate_custom_section(
-                existing,
-                project_root / "custom.mk",
-            )
-            if migrate_result.is_failure:
-                return r[bool].fail(
-                    migrate_result.error or "custom.mk migration failed",
-                )
 
             existing_hash = hashlib.sha256(
                 existing.encode(c.Infra.Encoding.DEFAULT)
@@ -163,40 +143,6 @@ class FlextInfraProjectMakefileUpdater:
             "-include custom.mk",
         ]
         return "\n".join(lines) + "\n"
-
-    @staticmethod
-    def _migrate_custom_section(existing_content: str, custom_mk_path: Path) -> r[bool]:
-        """Migrate inline custom section to custom.mk (one-time, non-destructive).
-
-        Only writes ``custom.mk`` if:
-        - The existing Makefile contains the legacy sentinel.
-        - The extracted custom section is non-empty (after stripping).
-        - ``custom.mk`` does not already exist.
-
-        Returns True if migration was performed, False if skipped.
-        """
-        sentinel_line = "\n" + _LEGACY_SENTINEL + "\n"
-        if sentinel_line not in existing_content:
-            return r[bool].ok(False)
-
-        if custom_mk_path.exists():
-            return r[bool].ok(False)
-
-        # Use last sentinel occurrence (handles files with multiple sentinels)
-        idx = existing_content.rindex(sentinel_line)
-        custom_raw = existing_content[idx + len(sentinel_line) :]
-
-        # Strip trivial content (empty lines, standalone comments from the old header)
-        custom_lines = [
-            ln
-            for ln in custom_raw.splitlines()
-            if ln.strip() and not ln.strip().startswith("# ===")
-        ]
-        if not custom_lines:
-            return r[bool].ok(False)
-
-        custom_content = "\n".join(custom_lines) + "\n"
-        return u.Infra.atomic_write_file(custom_mk_path, custom_content)
 
     @staticmethod
     def _atomic_write(target: Path, content: str) -> r[bool]:
