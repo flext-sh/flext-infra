@@ -1,14 +1,14 @@
 """CLI entry point for core infrastructure services.
 
 Usage:
-    python -m flext_infra validate basemk-validate [--workspace PATH]
-    python -m flext_infra validate inventory [--workspace PATH] [--output-dir PATH]
-    python -m flext_infra validate pytest-diag --junit PATH --log PATH
-    python -m flext_infra validate scan --workspace PATH --pattern REGEX
+    python -m flext_infra.validate basemk-validate [--workspace PATH]
+    python -m flext_infra.validate inventory [--workspace PATH] [--output-dir PATH]
+    python -m flext_infra.validate pytest-diag --junit PATH --log PATH
+    python -m flext_infra.validate scan --workspace PATH --pattern REGEX
         --include GLOB [--exclude GLOB] [--match present|absent]
-    python -m flext_infra validate skill-validate --skill NAME [--workspace PATH]
+    python -m flext_infra.validate skill-validate --skill NAME [--workspace PATH]
         [--mode baseline|strict]
-    python -m flext_infra validate stub-validate [--workspace PATH]
+    python -m flext_infra.validate stub-validate [--workspace PATH]
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -17,9 +17,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Annotated
+
+from flext_cli import cli
+from flext_core import FlextRuntime, r
+from pydantic import BaseModel, Field
 
 from flext_infra import (
     FlextInfraBaseMkValidator,
@@ -29,302 +32,325 @@ from flext_infra import (
     FlextInfraStubSupplyChain,
     FlextInfraTextPatternScanner,
     c,
-    output,
+    m,
     t,
     u,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import m
+# ── Helpers ──────────────────────────────────────────────────
 
 
-class FlextInfraValidateCommand:
-    """CLI entry point for workspace validation and inventory reporting."""
+def _list_str(
+    payload: m.Infra.InventoryReport | m.Infra.PytestDiagnostics,
+    key: str,
+) -> t.StrSequence:
+    """Extract string list from payload attribute."""
+    return [item for item in getattr(payload, key, []) if isinstance(item, str)]
+
+
+# ── Input Models ─────────────────────────────────────────────
+
+
+class BaseMkValidateInput(BaseModel):
+    """CLI input for basemk-validate — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+
+
+class InventoryInput(BaseModel):
+    """CLI input for inventory — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+    output_dir: Annotated[
+        str | None, Field(default=None, description="Output directory")
+    ]
+
+
+class PytestDiagInput(BaseModel):
+    """CLI input for pytest-diag — fields become CLI options."""
+
+    junit: Annotated[str, Field(..., description="JUnit XML path")]
+    log: Annotated[str, Field(..., description="Pytest log path")]
+    failed: Annotated[
+        str | None, Field(default=None, description="Path to write failed cases")
+    ]
+    errors: Annotated[
+        str | None, Field(default=None, description="Path to write error traces")
+    ]
+    warnings: Annotated[
+        str | None, Field(default=None, description="Path to write warnings")
+    ]
+    slowest: Annotated[
+        str | None, Field(default=None, description="Path to write slowest entries")
+    ]
+    skips: Annotated[
+        str | None, Field(default=None, description="Path to write skipped cases")
+    ]
+
+
+class ScanInput(BaseModel):
+    """CLI input for scan — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+    pattern: Annotated[str, Field(..., description="Regex pattern")]
+    include: Annotated[
+        list[str] | None, Field(default=None, description="Include glob")
+    ]
+    exclude: Annotated[
+        list[str] | None, Field(default=None, description="Exclude glob")
+    ]
+    match: Annotated[
+        str,
+        Field(
+            default=c.Infra.MatchModes.PRESENT,
+            description="Violation mode (present or absent)",
+        ),
+    ]
+
+
+class SkillValidateInput(BaseModel):
+    """CLI input for skill-validate — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+    skill: Annotated[str, Field(..., description="Skill folder name")]
+    mode: Annotated[
+        str,
+        Field(
+            default=c.Infra.Modes.BASELINE,
+            description="Validation mode (baseline or strict)",
+        ),
+    ]
+
+
+class StubValidateInput(BaseModel):
+    """CLI input for stub-validate — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+    project: Annotated[
+        list[str] | None, Field(default=None, description="Project to validate")
+    ]
+    all_projects: Annotated[
+        bool, Field(default=False, description="Validate all projects", alias="all")
+    ]
+
+
+# ── Router ───────────────────────────────────────────────────
+
+
+class FlextInfraValidateCli:
+    """Declarative CLI router for core infrastructure services."""
+
+    def __init__(self) -> None:
+        """Initialize CLI app and register declarative routes."""
+        self._app = cli.create_app_with_common_params(
+            name="validate",
+            help_text="Core infrastructure services",
+        )
+        self._register_commands()
+
+    def run(self, args: t.StrSequence | None = None) -> r[bool]:
+        """Execute the CLI application."""
+        return cli.execute_app(self._app, prog_name="validate", args=args)
+
+    def _register_commands(self) -> None:
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="basemk-validate",
+                help_text="Validate base.mk sync",
+                model_cls=BaseMkValidateInput,
+                handler=self._handle_basemk_validate,
+                success_message="base.mk validation passed",
+                failure_message="base.mk validation failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="inventory",
+                help_text="Generate scripts inventory",
+                model_cls=InventoryInput,
+                handler=self._handle_inventory,
+                success_message="Inventory generated successfully",
+                failure_message="Inventory generation failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="pytest-diag",
+                help_text="Extract pytest diagnostics from JUnit and log files",
+                model_cls=PytestDiagInput,
+                handler=self._handle_pytest_diag,
+                success_message="Pytest diagnostics extracted",
+                failure_message="Pytest diagnostics extraction failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="scan",
+                help_text="Scan text files for patterns",
+                model_cls=ScanInput,
+                handler=self._handle_scan,
+                success_message="Scan completed with no violations",
+                failure_message="Scan failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="skill-validate",
+                help_text="Validate a skill",
+                model_cls=SkillValidateInput,
+                handler=self._handle_skill_validate,
+                success_message="Skill validation passed",
+                failure_message="Skill validation failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="stub-validate",
+                help_text="Validate stub supply chain",
+                model_cls=StubValidateInput,
+                handler=self._handle_stub_validate,
+                success_message="Stub validation passed",
+                failure_message="Stub validation failed",
+            ),
+        )
 
     @staticmethod
-    def list_str(
-        payload: m.Infra.InventoryReport | m.Infra.PytestDiagnostics,
-        key: str,
-    ) -> t.StrSequence:
-        """Extract string list from payload attribute."""
-        return [item for item in getattr(payload, key, []) if isinstance(item, str)]
-
-    @staticmethod
-    def run_basemk_validate(cli: u.Infra.CliArgs) -> int:
-        """Validate base.mk sync."""
+    def _handle_basemk_validate(params: BaseMkValidateInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         validator = FlextInfraBaseMkValidator()
-        result = validator.validate(cli.workspace)
-        if result.is_success:
-            report: m.Infra.ValidationReport = result.value
-            output.info(report.summary)
-            for violation in report.violations:
-                output.warning(violation)
-            return 0 if report.passed else 1
-        output.error(result.error or "unknown error")
-        return 1
-
-    @staticmethod
-    def run_inventory(cli: u.Infra.CliArgs, output_dir: str | None) -> int:
-        """Generate scripts inventory."""
-        service = FlextInfraInventoryService()
-        output_dir_path = Path(output_dir).resolve() if output_dir else None
-        result = service.generate(cli.workspace, output_dir=output_dir_path)
-        if result.is_success:
-            report: m.Infra.InventoryReport = result.value
-            for output_path in FlextInfraValidateCommand.list_str(
-                report,
-                "reports_written",
-            ):
-                output.info(f"Wrote: {output_path}")
-            return 0
-        output.error(result.error or "unknown error")
-        return 1
-
-    @staticmethod
-    def run_pytest_diag(
-        junit: str,
-        log: str,
-        failed: str | None,
-        errors: str | None,
-        warnings: str | None,
-        slowest: str | None,
-        skips: str | None,
-    ) -> int:
-        """Extract pytest diagnostics from JUnit and log files."""
-        extractor = FlextInfraPytestDiagExtractor()
-        result = extractor.extract(Path(junit), Path(log))
+        result = validator.validate(resolved_workspace)
         if result.is_failure:
-            output.error(result.error or "unknown error")
-            return 1
-        data: m.Infra.PytestDiagnostics = result.value
-        if failed:
-            u.write_file(
-                Path(failed),
-                "\n\n".join(FlextInfraValidateCommand.list_str(data, "failed_cases"))
-                + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if errors:
-            u.write_file(
-                Path(errors),
-                "\n\n".join(FlextInfraValidateCommand.list_str(data, "error_traces"))
-                + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if warnings:
-            u.write_file(
-                Path(warnings),
-                "\n".join(FlextInfraValidateCommand.list_str(data, "warning_lines"))
-                + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if slowest:
-            u.write_file(
-                Path(slowest),
-                "\n".join(FlextInfraValidateCommand.list_str(data, "slow_entries"))
-                + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        if skips:
-            u.write_file(
-                Path(skips),
-                "\n".join(FlextInfraValidateCommand.list_str(data, "skip_cases"))
-                + "\n",
-                encoding=c.Infra.Encoding.DEFAULT,
-            )
-        return 0
+            return r[bool].fail(result.error or "unknown error")
+        report: m.Infra.ValidationReport = result.value
+        if not report.passed:
+            return r[bool].fail(report.summary)
+        return r[bool].ok(True)
 
     @staticmethod
-    def run_scan(
-        cli: u.Infra.CliArgs,
-        pattern: str,
-        include: t.StrSequence,
-        exclude: t.StrSequence,
-        match: str,
-    ) -> int:
-        """Scan text files for patterns."""
+    def _handle_inventory(params: InventoryInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
+        service = FlextInfraInventoryService()
+        output_dir_path = (
+            Path(params.output_dir).resolve() if params.output_dir else None
+        )
+        result = service.generate(resolved_workspace, output_dir=output_dir_path)
+        if result.is_failure:
+            return r[bool].fail(result.error or "unknown error")
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _handle_pytest_diag(params: PytestDiagInput) -> r[bool]:
+        extractor = FlextInfraPytestDiagExtractor()
+        result = extractor.extract(Path(params.junit), Path(params.log))
+        if result.is_failure:
+            return r[bool].fail(result.error or "unknown error")
+        data: m.Infra.PytestDiagnostics = result.value
+        if params.failed:
+            u.write_file(
+                Path(params.failed),
+                "\n\n".join(_list_str(data, "failed_cases")) + "\n",
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+        if params.errors:
+            u.write_file(
+                Path(params.errors),
+                "\n\n".join(_list_str(data, "error_traces")) + "\n",
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+        if params.warnings:
+            u.write_file(
+                Path(params.warnings),
+                "\n".join(_list_str(data, "warning_lines")) + "\n",
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+        if params.slowest:
+            u.write_file(
+                Path(params.slowest),
+                "\n".join(_list_str(data, "slow_entries")) + "\n",
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+        if params.skips:
+            u.write_file(
+                Path(params.skips),
+                "\n".join(_list_str(data, "skip_cases")) + "\n",
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _handle_scan(params: ScanInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         scanner = FlextInfraTextPatternScanner()
         result = scanner.scan(
-            cli.workspace,
-            pattern,
-            includes=include or [],
-            excludes=exclude or [],
-            match_mode=match,
+            resolved_workspace,
+            params.pattern,
+            includes=params.include or [],
+            excludes=params.exclude or [],
+            match_mode=params.match,
         )
-        if result.is_success:
-            data: t.ConfigurationMapping = result.value
-            violation_count = data.get("violation_count", 0)
-            return 1 if isinstance(violation_count, int) and violation_count > 0 else 0
-        output.error(result.error or "unknown error")
-        return 1
+        if result.is_failure:
+            return r[bool].fail(result.error or "unknown error")
+        data: t.ConfigurationMapping = result.value
+        violation_count = data.get("violation_count", 0)
+        if isinstance(violation_count, int) and violation_count > 0:
+            return r[bool].fail(f"Scan found {violation_count} violation(s)")
+        return r[bool].ok(True)
 
     @staticmethod
-    def run_skill_validate(cli: u.Infra.CliArgs, skill: str, mode: str) -> int:
-        """Validate a skill."""
+    def _handle_skill_validate(params: SkillValidateInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         validator = FlextInfraSkillValidator()
-        result = validator.validate(cli.workspace, skill, mode=mode)
-        if result.is_success:
-            report: m.Infra.ValidationReport = result.value
-            output.info(report.summary)
-            for violation in report.violations:
-                output.warning(violation)
-            return 0 if report.passed else 1
-        output.error(result.error or "unknown error")
-        return 1
+        result = validator.validate(resolved_workspace, params.skill, mode=params.mode)
+        if result.is_failure:
+            return r[bool].fail(result.error or "unknown error")
+        report: m.Infra.ValidationReport = result.value
+        if not report.passed:
+            return r[bool].fail(report.summary)
+        return r[bool].ok(True)
 
     @staticmethod
-    def run_stub_validate(cli: u.Infra.CliArgs, project: t.StrSequence | None) -> int:
-        """Validate stub supply chain."""
+    def _handle_stub_validate(params: StubValidateInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         chain = FlextInfraStubSupplyChain()
-        project_dirs: Sequence[Path] | None = (
-            [cli.workspace / project_name for project_name in project]
-            if project
+        effective_projects = None if params.all_projects else params.project
+        project_dirs = (
+            [resolved_workspace / project_name for project_name in effective_projects]
+            if effective_projects
             else None
         )
-        result = chain.validate(cli.workspace, project_dirs=project_dirs)
-        if result.is_success:
-            report: m.Infra.ValidationReport = result.value
-            output.info(report.summary)
-            for violation in report.violations:
-                output.warning(violation)
-            return 0 if report.passed else 1
-        output.error(result.error or "unknown error")
-        return 1
-
-    @staticmethod
-    def run(argv: t.StrSequence | None = None) -> int:
-        """Run validation command dispatcher."""
-        parser, subs = u.Infra.create_subcommand_parser(
-            prog="flext_infra validate",
-            description="Core infrastructure services",
-            subcommands={
-                "basemk-validate": "Validate base.mk sync",
-                "inventory": "Generate scripts inventory",
-                "pytest-diag": "Extract pytest diagnostics",
-                "scan": "Scan text files for patterns",
-                "skill-validate": "Validate a skill",
-                "stub-validate": "Validate stub supply chain",
-            },
-            include_apply=False,
-            include_diff=False,
-        )
-
-        subs["inventory"].add_argument(
-            "--output-dir",
-            default=None,
-            help="Output directory",
-        )
-
-        subs["pytest-diag"].add_argument(
-            "--junit",
-            required=True,
-            help="JUnit XML path",
-        )
-        subs["pytest-diag"].add_argument("--log", required=True, help="Pytest log path")
-        subs["pytest-diag"].add_argument("--failed", help="Path to write failed cases")
-        subs["pytest-diag"].add_argument("--errors", help="Path to write error traces")
-        subs["pytest-diag"].add_argument("--warnings", help="Path to write warnings")
-        subs["pytest-diag"].add_argument(
-            "--slowest",
-            help="Path to write slowest entries",
-        )
-        subs["pytest-diag"].add_argument("--skips", help="Path to write skipped cases")
-
-        subs["scan"].add_argument("--pattern", required=True, help="Regex pattern")
-        subs["scan"].add_argument(
-            "--include",
-            action="append",
-            required=True,
-            help="Include glob",
-        )
-        subs["scan"].add_argument(
-            "--exclude",
-            action="append",
-            default=[],
-            help="Exclude glob",
-        )
-        subs["scan"].add_argument(
-            "--match",
-            choices=("present", "absent"),
-            default=c.Infra.MatchModes.PRESENT,
-            help="Violation mode",
-        )
-
-        subs["skill-validate"].add_argument(
-            "--skill",
-            required=True,
-            help="Skill folder name",
-        )
-        subs["skill-validate"].add_argument(
-            "--mode",
-            choices=("baseline", "strict"),
-            default=c.Infra.Modes.BASELINE,
-        )
-
-        stub_selection = subs["stub-validate"].add_mutually_exclusive_group(
-            required=False,
-        )
-        stub_selection.add_argument(
-            "--project",
-            action="append",
-            help="Project to validate",
-        )
-        _ = stub_selection.add_argument(
-            "--all",
-            action="store_true",
-            help="Validate all projects",
-        )
-
-        args = u.Infra.parse_subcommand_args(parser, argv)
-        cli = u.Infra.resolve(args)
-
-        run = FlextInfraValidateCommand
-        commands = {
-            "basemk-validate": lambda: run.run_basemk_validate(cli),
-            "inventory": lambda: run.run_inventory(
-                cli,
-                getattr(args, "output_dir", None),
-            ),
-            "pytest-diag": lambda: run.run_pytest_diag(
-                getattr(args, "junit", ""),
-                getattr(args, "log", ""),
-                getattr(args, "failed", None),
-                getattr(args, "errors", None),
-                getattr(args, "warnings", None),
-                getattr(args, "slowest", None),
-                getattr(args, "skips", None),
-            ),
-            "scan": lambda: run.run_scan(
-                cli,
-                getattr(args, "pattern", ""),
-                getattr(args, "include", None) or [],
-                getattr(args, "exclude", None) or [],
-                getattr(args, "match", "present"),
-            ),
-            "skill-validate": lambda: run.run_skill_validate(
-                cli,
-                getattr(args, "skill", ""),
-                getattr(args, "mode", "baseline"),
-            ),
-            "stub-validate": lambda: run.run_stub_validate(
-                cli,
-                None if getattr(args, "all", False) else getattr(args, "project", None),
-            ),
-        }
-        handler = commands.get(args.command)
-        if handler is None:
-            parser.print_help()
-            return 1
-        return handler()
+        result = chain.validate(resolved_workspace, project_dirs=project_dirs)
+        if result.is_failure:
+            return r[bool].fail(result.error or "unknown error")
+        report: m.Infra.ValidationReport = result.value
+        if not report.passed:
+            return r[bool].fail(report.summary)
+        return r[bool].ok(True)
 
 
-def _main_inner(argv: t.StrSequence | None = None) -> int:
-    return FlextInfraValidateCommand.run(argv)
+# ── Entry Point ──────────────────────────────────────────────
 
 
-def main() -> int:
+def main(argv: t.StrSequence | None = None) -> int:
     """Run core infrastructure services."""
-    return u.Infra.run_cli(_main_inner)
+    FlextRuntime.ensure_structlog_configured()
+    result = FlextInfraValidateCli().run(argv)
+    return 0 if result.is_success else 1
 
 
 if __name__ == "__main__":

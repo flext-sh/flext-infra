@@ -11,7 +11,12 @@ import pytest
 from flext_core import r
 from flext_tests import tf, tm
 
-from flext_infra import FlextInfraBaseMkGenerator, FlextInfraSyncService, m, t
+from flext_infra import (
+    FlextInfraBaseMkGenerator,
+    FlextInfraSyncService,
+    FlextInfraWorkspaceMakefileGenerator,
+)
+from tests import m, t
 
 _S = FlextInfraSyncService
 SetupFn = Callable[[_S, pytest.MonkeyPatch], None]
@@ -171,6 +176,21 @@ def test_sync_updates_workspace_makefile_for_workspace_root(
     monkeypatch.setattr(service, "_sync_project_makefile", _project_makefile)
     tm.ok(service.sync(workspace_root=tmp_path))
     tm.that(calls, eq=["workspace"])
+
+
+def test_workspace_makefile_generator_sanitizes_orchestrator_env(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nversion='0.1.0'\n",
+        encoding="utf-8",
+    )
+    generator = FlextInfraWorkspaceMakefileGenerator()
+    tm.ok(generator.generate(tmp_path))
+    tm.that(
+        (tmp_path / "Makefile").read_text(encoding="utf-8"),
+        has="ORCHESTRATOR := env -u PYTHONPATH -u MYPYPATH $(PY) -m flext_infra workspace orchestrate",
+    )
 
 
 def test_sync_updates_project_makefile_for_standalone_project(

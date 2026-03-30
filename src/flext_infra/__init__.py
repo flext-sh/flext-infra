@@ -18,7 +18,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
 if TYPE_CHECKING:
-    from flext_core import FlextTypes, d, e, h, r, s, x
+    from flext_cli import d, e, h, r, s, x
+    from flext_core import FlextTypes
 
     from flext_infra import (
         _constants,
@@ -1266,31 +1267,31 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "c": ["flext_infra.constants", "FlextInfraConstants"],
     "check": ["flext_infra.check", ""],
     "codegen": ["flext_infra.codegen", ""],
-    "d": ["flext_core", "d"],
+    "d": ["flext_cli", "d"],
     "deps": ["flext_infra.deps", ""],
     "detectors": ["flext_infra.detectors", ""],
     "docs": ["flext_infra.docs", ""],
-    "e": ["flext_core", "e"],
+    "e": ["flext_cli", "e"],
     "gates": ["flext_infra.gates", ""],
-    "h": ["flext_core", "h"],
+    "h": ["flext_cli", "h"],
     "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
     "m": ["flext_infra.models", "FlextInfraModels"],
     "main": ["flext_infra.check.workspace_check", "main"],
     "maintenance": ["flext_infra.workspace.maintenance", ""],
     "output": ["flext_infra._utilities.output", "output"],
     "p": ["flext_infra.protocols", "FlextInfraProtocols"],
-    "r": ["flext_core", "r"],
+    "r": ["flext_cli", "r"],
     "refactor": ["flext_infra.refactor", ""],
     "release": ["flext_infra.release", ""],
     "rules": ["flext_infra.rules", ""],
     "run_cli": ["flext_infra.check.workspace_check", "run_cli"],
-    "s": ["flext_core", "s"],
+    "s": ["flext_cli", "s"],
     "t": ["flext_infra.typings", "FlextInfraTypes"],
     "transformers": ["flext_infra.transformers", ""],
     "u": ["flext_infra.utilities", "FlextInfraUtilities"],
     "validate": ["flext_infra.validate", ""],
     "workspace": ["flext_infra.workspace", ""],
-    "x": ["flext_core", "x"],
+    "x": ["flext_cli", "x"],
 }
 
 __all__ = [

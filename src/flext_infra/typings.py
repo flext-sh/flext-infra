@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_core import FlextTypes
+from flext_cli import FlextCliTypes
 
 from flext_infra import (
     FlextInfraTypesBase,
@@ -22,7 +22,7 @@ from flext_infra import (
 from flext_infra._typings.cst import FlextInfraTypesCst
 
 
-class FlextInfraTypes(FlextTypes):
+class FlextInfraTypes(FlextCliTypes):
     """Type namespace for flext-infra; extends FlextTypes via MRO.
 
     Infra-specific types are nested under the ``Infra`` inner class to

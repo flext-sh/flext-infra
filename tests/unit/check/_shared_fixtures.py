@@ -22,12 +22,8 @@ from flext_infra import (
     FlextInfraRuffFormatGate,
     FlextInfraRuffLintGate,
     FlextInfraWorkspaceChecker,
-    m as infra_models,
 )
-from tests import t
-
-from ...helpers import h
-from ...models import m
+from tests import h, m, t
 
 type GateClass = type[
     FlextInfraRuffLintGate
@@ -180,18 +176,19 @@ class RunProjectsMock:
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
+        **_kwargs: t.Infra.InfraValue,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Mock run_projects method with captured argument state."""
-        del gates, reports_dir  # Not used in mock, but required by signature
+        del gates, reports_dir, _kwargs  # Not used in mock, but required by signature
         self.captured_projects = projects
         self.captured_fail_fast = fail_fast
         if self.error_msg:
             return r[Sequence[m.Infra.ProjectResult]].fail(self.error_msg)
-        result = infra_models.Infra.ProjectResult(project="test-project")
+        result = m.Infra.ProjectResult(project="test-project")
         if not self.passed:
             # Add failing gate to make passed=False (computed from gates dict)
-            fail_gate = infra_models.Infra.GateExecution(
-                result=infra_models.Infra.GateResult(
+            fail_gate = m.Infra.GateExecution(
+                result=m.Infra.GateResult(
                     gate="test",
                     project="test-project",
                     passed=False,
@@ -228,7 +225,7 @@ def create_fake_run_projects(
 
 def create_check_project_stub(
     project: m.Infra.ProjectResult,
-) -> Callable[[Path, t.StrSequence, Path], m.Infra.ProjectResult]:
+) -> Callable[..., m.Infra.ProjectResult]:
     """Factory for _check_project stub that returns fixed project result.
 
     Single Responsibility: Create consistent project checking mocks.
@@ -239,8 +236,9 @@ def create_check_project_stub(
         _project_dir: Path,
         _gates: t.StrSequence,
         _reports_dir: Path,
+        **_kwargs: t.Infra.InfraValue,
     ) -> m.Infra.ProjectResult:
-        del _project_dir, _gates, _reports_dir
+        del _project_dir, _gates, _reports_dir, _kwargs
         return project
 
     return _fake_check
@@ -248,7 +246,7 @@ def create_check_project_stub(
 
 def create_check_project_iter_stub(
     projects: Sequence[m.Infra.ProjectResult],
-) -> Callable[[Path, t.StrSequence, Path], m.Infra.ProjectResult]:
+) -> Callable[..., m.Infra.ProjectResult]:
     """Factory for _check_project stub that iterates through project results.
 
     Single Responsibility: Create consistent project checking mocks with state.
@@ -260,8 +258,9 @@ def create_check_project_iter_stub(
         _project_dir: Path,
         _gates: t.StrSequence,
         _reports_dir: Path,
+        **_kwargs: t.Infra.InfraValue,
     ) -> m.Infra.ProjectResult:
-        del _project_dir, _gates, _reports_dir
+        del _project_dir, _gates, _reports_dir, _kwargs
         return next(project_iter)
 
     return _fake_check

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_core import FlextUtilities
+from flext_cli import FlextCliUtilities
 
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.cli import FlextInfraUtilitiesCli
@@ -49,7 +49,7 @@ from flext_infra.transformers._utilities_normalizer import (
 from flext_infra.transformers.policy import FlextInfraRefactorTransformerPolicyUtilities
 
 
-class FlextInfraUtilities(FlextUtilities):
+class FlextInfraUtilities(FlextCliUtilities):
     """Utility namespace for flext-infra; extends FlextUtilities.
 
     Usage::

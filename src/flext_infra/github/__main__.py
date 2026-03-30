@@ -3,285 +3,274 @@
 from __future__ import annotations
 
 import sys
-from argparse import ArgumentParser
-from collections.abc import Sequence
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Annotated
 
-from flext_core import r
+from flext_cli import cli
+from flext_core import FlextRuntime, r
+from pydantic import BaseModel, Field
 
-from flext_infra import c, m, output, t, u
+from flext_infra import c, m, t, u
 
-
-def configure_workflows_parser(parser: ArgumentParser) -> None:
-    """Configure parser for the workflows command."""
-    _ = parser.add_argument("--prune", action="store_true", help="Remove unknown files")
-    _ = parser.add_argument("--report", type=Path, help="Output report file")
-
-
-def configure_lint_parser(parser: ArgumentParser) -> None:
-    """Configure parser for the lint command."""
-    _ = parser.add_argument(
-        "--strict",
-        action="store_true",
-        help="Fail on strict mode warnings",
-    )
-    _ = parser.add_argument("--report", type=Path, help="Output report file")
+# ── Input Models ─────────────────────────────────────────────
 
 
-def configure_pr_workspace_parser(parser: ArgumentParser) -> None:
-    """Configure parser for the pr-workspace command."""
-    _ = parser.add_argument(
-        "--project",
-        action="append",
-        help="Project to process (repeatable)",
-    )
-    _ = parser.add_argument(
-        "--projects",
-        type=str,
-        default=None,
-        help="Multiple projects (comma-separated)",
-    )
-    _ = parser.add_argument("--include-root", type=int, default=0, choices=[0, 1])
-    _ = parser.add_argument("--branch", type=str, default="")
-    _ = parser.add_argument("--checkpoint", type=int, default=1, choices=[0, 1])
-    _ = parser.add_argument("--fail-fast", type=int, default=1, choices=[0, 1])
-    _ = parser.add_argument(
-        "--pr-action",
-        type=str,
-        default="status",
-        choices=["status", "create", "merge", "close"],
-    )
-    _ = parser.add_argument("--pr-base", type=str, default="")
-    _ = parser.add_argument("--pr-head", type=str, default="")
-    _ = parser.add_argument("--pr-number", type=int, default=0)
-    _ = parser.add_argument("--pr-title", type=str, default="")
-    _ = parser.add_argument("--pr-body", type=str, default="")
-    _ = parser.add_argument("--pr-draft", type=int, default=0, choices=[0, 1])
-    _ = parser.add_argument(
-        "--pr-merge-method",
-        type=str,
-        default="squash",
-        choices=["merge", "squash", "rebase"],
-    )
-    _ = parser.add_argument("--pr-auto", type=int, default=0, choices=[0, 1])
-    _ = parser.add_argument("--pr-delete-branch", type=int, default=1, choices=[0, 1])
-    _ = parser.add_argument("--pr-checks-strict", type=int, default=1, choices=[0, 1])
-    _ = parser.add_argument(
-        "--pr-release-on-merge",
-        type=int,
-        default=0,
-        choices=[0, 1],
-    )
+class WorkflowsInput(BaseModel):
+    """CLI input for workflows sync — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    prune: Annotated[bool, Field(default=False, description="Remove unknown files")]
+    report: Annotated[str | None, Field(default=None, description="Output report file")]
 
 
-def run_workflows(
-    cli: u.Infra.CliArgs,
-    *,
-    prune: bool,
-    report: Path | None,
-) -> int:
-    """Sync GitHub workflow files."""
-    result: r[Sequence[m.Infra.SyncOperation]] = (
-        u.Infra.github_sync_workspace_workflows(
-            workspace_root=cli.workspace,
-            apply=cli.apply,
-            prune=prune,
-            report_path=report,
+class LintInput(BaseModel):
+    """CLI input for workflow lint — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    strict: Annotated[
+        bool, Field(default=False, description="Fail on strict mode warnings")
+    ]
+    report: Annotated[str | None, Field(default=None, description="Output report file")]
+
+
+class PrInput(BaseModel):
+    """CLI input for single-project PR management — fields become CLI options."""
+
+    repo_root: Annotated[str, Field(..., description="Repository root directory")]
+    action: Annotated[
+        str,
+        Field(
+            default="status",
+            description="PR action (status/create/view/checks/merge/close)",
+        ),
+    ]
+    base: Annotated[str, Field(default="main", description="Base branch")]
+    head: Annotated[str | None, Field(default=None, description="Head branch")]
+    number: Annotated[int | None, Field(default=None, description="PR number")]
+    title: Annotated[str | None, Field(default=None, description="PR title")]
+    body: Annotated[str | None, Field(default=None, description="PR body")]
+    draft: Annotated[bool, Field(default=False, description="Create as draft")]
+    merge_method: Annotated[
+        str, Field(default="squash", description="Merge method (merge/squash/rebase)")
+    ]
+    auto: Annotated[bool, Field(default=False, description="Auto-merge")]
+    delete_branch: Annotated[
+        bool, Field(default=True, description="Delete head branch on merge")
+    ]
+    checks_strict: Annotated[
+        bool, Field(default=True, description="Fail if checks fail")
+    ]
+    release_on_merge: Annotated[
+        bool, Field(default=True, description="Run release workflow on merge")
+    ]
+
+
+class PrWorkspaceInput(BaseModel):
+    """CLI input for workspace-wide PR management — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    project: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Project to process (comma-separated for multiple)",
+        ),
+    ]
+    include_root: Annotated[
+        bool, Field(default=False, description="Include root project")
+    ]
+    branch: Annotated[str, Field(default="", description="Branch name filter")]
+    checkpoint: Annotated[bool, Field(default=True, description="Enable checkpoints")]
+    fail_fast: Annotated[bool, Field(default=True, description="Stop on first failure")]
+    pr_action: Annotated[str, Field(default="status", description="PR action")]
+    pr_base: Annotated[str, Field(default="", description="Base branch")]
+    pr_head: Annotated[str, Field(default="", description="Head branch")]
+    pr_number: Annotated[int | None, Field(default=None, description="PR number")]
+    pr_title: Annotated[str, Field(default="", description="PR title")]
+    pr_body: Annotated[str, Field(default="", description="PR body")]
+    pr_draft: Annotated[bool, Field(default=False, description="Draft PR")]
+    pr_merge_method: Annotated[str, Field(default="squash", description="Merge method")]
+    pr_auto: Annotated[bool, Field(default=False, description="Auto-merge")]
+    pr_delete_branch: Annotated[
+        bool, Field(default=True, description="Delete branch on merge")
+    ]
+    pr_checks_strict: Annotated[
+        bool, Field(default=True, description="Strict checks required")
+    ]
+    pr_release_on_merge: Annotated[
+        bool, Field(default=False, description="Release on merge")
+    ]
+
+
+# ── Router ───────────────────────────────────────────────────
+
+
+class FlextInfraGithubCli:
+    """Declarative CLI router for GitHub integration services."""
+
+    def __init__(self) -> None:
+        """Initialize CLI app and register declarative routes."""
+        self._app = cli.create_app_with_common_params(
+            name="github",
+            help_text="GitHub integration services",
         )
-    )
-    return u.Infra.exit_code(result, failure_msg="Workflow sync failed")
+        self._register_commands()
 
+    def run(self, args: t.StrSequence | None = None) -> r[bool]:
+        """Execute the CLI application."""
+        return cli.execute_app(self._app, prog_name="github", args=args)
 
-def run_lint(
-    cli: u.Infra.CliArgs,
-    *,
-    report: Path | None,
-    strict: bool,
-) -> int:
-    """Lint GitHub workflow files across workspace."""
-    result: r[m.Infra.WorkflowLintResult] = u.Infra.github_lint_workflows(
-        workspace_root=cli.workspace,
-        report_path=report,
-        strict=strict,
-    )
-    if result.is_failure:
-        output.error(f"Workflow lint failed: {result.error}")
-        return 1
-    if result.value.status != "ok" and strict:
-        output.error(f"Workflow lint found issues: {result.value.detail}")
-        return 1
-    return 0
-
-
-def run_pr(argv: t.StrSequence) -> int:
-    """Manage pull requests for a single project."""
-    parser = u.Infra.create_parser(
-        "flext-infra github pr",
-        "Pull request lifecycle management",
-        include_apply=False,
-        include_diff=False,
-    )
-    _ = parser.add_argument(
-        "--repo-root",
-        type=Path,
-        required=True,
-        help="Repository root directory",
-    )
-    _ = parser.add_argument(
-        "--action",
-        choices=["status", "create", "view", "checks", "merge", "close"],
-        default="status",
-        help="PR action to perform",
-    )
-    _ = parser.add_argument("--base", default=c.Infra.Git.MAIN, help="Base branch")
-    _ = parser.add_argument("--head", help="Head branch (default: current)")
-    _ = parser.add_argument("--number", type=int, help="PR number")
-    _ = parser.add_argument("--title", help="PR title (for create)")
-    _ = parser.add_argument("--body", help="PR body (for create)")
-    _ = parser.add_argument(
-        "--draft",
-        type=int,
-        default=0,
-        choices=[0, 1],
-        help="Create as draft",
-    )
-    _ = parser.add_argument(
-        "--merge-method",
-        choices=["merge", "squash", "rebase"],
-        default="squash",
-        help="Merge method",
-    )
-    _ = parser.add_argument(
-        "--auto",
-        type=int,
-        default=0,
-        choices=[0, 1],
-        help="Auto-merge",
-    )
-    _ = parser.add_argument(
-        "--delete-branch",
-        type=int,
-        default=1,
-        choices=[0, 1],
-        help="Delete head branch on merge",
-    )
-    _ = parser.add_argument(
-        "--checks-strict",
-        type=int,
-        default=1,
-        choices=[0, 1],
-        help="Fail if checks fail",
-    )
-    _ = parser.add_argument(
-        "--release-on-merge",
-        type=int,
-        default=1,
-        choices=[0, 1],
-        help="Run release workflow on merge",
-    )
-    args = parser.parse_args(argv)
-
-    pr_args = {
-        "action": args.action,
-        "base": args.base,
-        "head": args.head,
-        "number": str(args.number) if args.number else "",
-        "title": args.title,
-        "body": args.body,
-        "draft": str(args.draft),
-        "merge_method": args.merge_method,
-        "auto": str(args.auto),
-        "delete_branch": str(args.delete_branch),
-        "checks_strict": str(args.checks_strict),
-        "release_on_merge": str(args.release_on_merge),
-    }
-
-    result = u.Infra.github_pr_run_single(
-        repo_root=args.repo_root,
-        workspace_root=args.repo_root,
-        pr_args=pr_args,
-    )
-
-    if result.is_failure:
-        output.error(result.error or "status failed")
-        return 1
-
-    if result.value.exit_code != 0:
-        return result.value.exit_code
-    return 0
-
-
-def run_pr_workspace(
-    cli: u.Infra.CliArgs,
-    pr_args: m.Infra.PrWorkspaceArgs,
-    projects: t.StrSequence | None,
-) -> int:
-    """Manage PRs across workspace."""
-    result = u.Infra.github_pr_orchestrate(
-        workspace_root=cli.workspace,
-        projects=projects,
-        include_root=pr_args.include_root,
-        branch=pr_args.branch,
-        checkpoint=pr_args.checkpoint,
-        fail_fast=pr_args.fail_fast,
-        pr_args=pr_args.as_orchestrate_dict(),
-    )
-    return u.Infra.exit_code(result, failure_msg="PR workspace orchestration failed")
-
-
-def run(argv: t.StrSequence | None = None) -> int:
-    """Run GitHub command dispatcher."""
-    parser, subs = u.Infra.create_subcommand_parser(
-        "flext-infra github",
-        "GitHub integration services",
-        subcommands={
-            "workflows": "Sync GitHub workflow files across workspace",
-            c.Infra.LINT_SECTION: "Lint GitHub workflow files",
-            c.Infra.PR: "Manage pull requests for a single project",
-            "pr-workspace": "Manage pull requests across workspace projects",
-        },
-        include_apply=False,
-        include_project=False,
-        subcommand_flags={
-            "workflows": {
-                "include_apply": True,
-                "include_diff": False,
-            },
-        },
-    )
-    configure_workflows_parser(subs["workflows"])
-    configure_lint_parser(subs[c.Infra.LINT_SECTION])
-    configure_pr_workspace_parser(subs["pr-workspace"])
-
-    args = u.Infra.parse_subcommand_args(
-        parser,
-        argv,
-        passthrough_subcommands=(c.Infra.PR,),
-    )
-    if not args.command:
-        parser.print_help()
-        return 1
-    cli = u.Infra.resolve(args)
-    if args.command == "workflows":
-        return run_workflows(cli, prune=args.prune, report=args.report)
-    if args.command == c.Infra.LINT_SECTION:
-        return run_lint(cli, report=args.report, strict=args.strict)
-    if args.command == c.Infra.PR:
-        return run_pr(list(getattr(args, "_unknown_args", ()) or ()))
-    if args.command == "pr-workspace":
-        project_names = u.Infra.project_names_from_values(
-            getattr(args, "project", None),
-            getattr(args, "projects", None),
+    def _register_commands(self) -> None:
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="workflows",
+                help_text="Sync GitHub workflow files across workspace",
+                model_cls=WorkflowsInput,
+                handler=self._handle_workflows,
+                failure_message="Workflow sync failed",
+            ),
         )
-        pr_args = m.Infra.PrWorkspaceArgs.from_cli_namespace(args)
-        return run_pr_workspace(cli, pr_args, project_names)
-    parser.print_help()
-    return 1
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name=c.Infra.LINT_SECTION,
+                help_text="Lint GitHub workflow files",
+                model_cls=LintInput,
+                handler=self._handle_lint,
+                failure_message="Workflow lint failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name=c.Infra.PR,
+                help_text="Manage pull requests for a single project",
+                model_cls=PrInput,
+                handler=self._handle_pr,
+                failure_message="PR operation failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="pr-workspace",
+                help_text="Manage pull requests across workspace projects",
+                model_cls=PrWorkspaceInput,
+                handler=self._handle_pr_workspace,
+                failure_message="PR workspace orchestration failed",
+            ),
+        )
+
+    @staticmethod
+    def _handle_workflows(params: WorkflowsInput) -> r[bool]:
+        """Sync GitHub workflow files."""
+        report_path = Path(params.report) if params.report else None
+        result = u.Infra.github_sync_workspace_workflows(
+            workspace_root=Path(params.workspace),
+            apply=params.apply,
+            prune=params.prune,
+            report_path=report_path,
+        )
+        if result.is_failure:
+            return r[bool].fail(result.error or "workflow sync failed")
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _handle_lint(params: LintInput) -> r[m.Infra.WorkflowLintResult]:
+        """Lint GitHub workflow files across workspace."""
+        report_path = Path(params.report) if params.report else None
+        result: r[m.Infra.WorkflowLintResult] = u.Infra.github_lint_workflows(
+            workspace_root=Path(params.workspace),
+            report_path=report_path,
+            strict=params.strict,
+        )
+        if result.is_failure:
+            return result
+        if result.value.status != "ok" and params.strict:
+            return r[m.Infra.WorkflowLintResult].fail(
+                f"Workflow lint found issues: {result.value.detail}",
+            )
+        return result
+
+    @staticmethod
+    def _handle_pr(params: PrInput) -> r[m.Infra.PrExecutionResultModel]:
+        """Manage pull requests for a single project."""
+        repo_root = Path(params.repo_root)
+        pr_args: Mapping[str, str] = {
+            "action": params.action,
+            "base": params.base,
+            "head": params.head or "",
+            "number": str(params.number) if params.number else "",
+            "title": params.title or "",
+            "body": params.body or "",
+            "draft": "1" if params.draft else "0",
+            "merge_method": params.merge_method,
+            "auto": "1" if params.auto else "0",
+            "delete_branch": "1" if params.delete_branch else "0",
+            "checks_strict": "1" if params.checks_strict else "0",
+            "release_on_merge": "1" if params.release_on_merge else "0",
+        }
+        result = u.Infra.github_pr_run_single(
+            repo_root=repo_root,
+            workspace_root=repo_root,
+            pr_args=pr_args,
+        )
+        if result.is_failure:
+            return result
+        if result.value.exit_code != 0:
+            return r[m.Infra.PrExecutionResultModel].fail(
+                f"PR operation exited with code {result.value.exit_code}",
+            )
+        return result
+
+    @staticmethod
+    def _handle_pr_workspace(
+        params: PrWorkspaceInput,
+    ) -> r[m.Infra.PrOrchestrationResult]:
+        """Manage PRs across workspace."""
+        project_names: t.StrSequence | None = None
+        if params.project:
+            project_names = u.Infra.project_names_from_values(params.project)
+        pr_model = m.Infra.PrWorkspaceArgs(
+            include_root=params.include_root,
+            branch=params.branch,
+            checkpoint=params.checkpoint,
+            fail_fast=params.fail_fast,
+            pr_action=params.pr_action,
+            pr_base=params.pr_base,
+            pr_head=params.pr_head,
+            pr_number=str(params.pr_number) if params.pr_number else "",
+            pr_title=params.pr_title,
+            pr_body=params.pr_body,
+            pr_draft=params.pr_draft,
+            pr_merge_method=params.pr_merge_method,
+            pr_auto=params.pr_auto,
+            pr_delete_branch=params.pr_delete_branch,
+            pr_checks_strict=params.pr_checks_strict,
+            pr_release_on_merge=params.pr_release_on_merge,
+        )
+        return u.Infra.github_pr_orchestrate(
+            workspace_root=Path(params.workspace),
+            projects=project_names,
+            include_root=pr_model.include_root,
+            branch=pr_model.branch,
+            checkpoint=pr_model.checkpoint,
+            fail_fast=pr_model.fail_fast,
+            pr_args=pr_model.as_orchestrate_dict(),
+        )
 
 
-def main() -> int:
-    """Entry point."""
-    return u.Infra.run_cli(run)
+# ── Entry Point ──────────────────────────────────────────────
+
+
+def main(argv: t.StrSequence | None = None) -> int:
+    """Run the GitHub CLI entrypoint."""
+    FlextRuntime.ensure_structlog_configured()
+    result = FlextInfraGithubCli().run(argv)
+    return 0 if result.is_success else 1
 
 
 if __name__ == "__main__":

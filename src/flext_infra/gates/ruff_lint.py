@@ -18,7 +18,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     gate_id = c.Infra.LINT
     gate_name = "Ruff Lint"
-    can_fix = False
+    can_fix = True
     tool_name = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][0]
     tool_url = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][1]
 
@@ -39,6 +39,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 c.Infra.RUFF,
                 c.Infra.Verbs.CHECK,
                 *targets,
+                *ctx.ruff_args,
                 "--output-format",
                 c.Infra.OUTPUT_JSON,
                 "--quiet",
@@ -73,6 +74,36 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             project=project_dir.name,
             passed=result.exit_code == 0,
             issues=issues,
+            duration=time.monotonic() - started,
+            raw_output=result.stderr,
+        )
+
+    @override
+    def fix(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        started = time.monotonic()
+        check_dirs = self._existing_check_dirs(project_dir)
+        targets = check_dirs or ["."]
+        result = self._run(
+            [
+                sys.executable,
+                "-m",
+                c.Infra.RUFF,
+                c.Infra.Verbs.CHECK,
+                *targets,
+                *ctx.ruff_args,
+                "--fix",
+                "--quiet",
+            ],
+            project_dir,
+        )
+        return self._build_gate_result(
+            project=project_dir.name,
+            passed=result.exit_code == 0,
+            issues=[],
             duration=time.monotonic() - started,
             raw_output=result.stderr,
         )

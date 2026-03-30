@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from flext_infra._models.base import FlextInfraModelsBase
     from flext_infra._models.census import FlextInfraModelsCensus
+    from flext_infra._models.cli_inputs import FlextInfraModelsCliInputs
     from flext_infra._models.cst import FlextInfraModelsCst
     from flext_infra._models.rope import FlextInfraModelsRope
     from flext_infra._models.scan import FlextInfraModelsScan
@@ -22,6 +23,10 @@ if TYPE_CHECKING:
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraModelsBase": ["flext_infra._models.base", "FlextInfraModelsBase"],
     "FlextInfraModelsCensus": ["flext_infra._models.census", "FlextInfraModelsCensus"],
+    "FlextInfraModelsCliInputs": [
+        "flext_infra._models.cli_inputs",
+        "FlextInfraModelsCliInputs",
+    ],
     "FlextInfraModelsCst": ["flext_infra._models.cst", "FlextInfraModelsCst"],
     "FlextInfraModelsRope": ["flext_infra._models.rope", "FlextInfraModelsRope"],
     "FlextInfraModelsScan": ["flext_infra._models.scan", "FlextInfraModelsScan"],
@@ -30,6 +35,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 __all__ = [
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
+    "FlextInfraModelsCliInputs",
     "FlextInfraModelsCst",
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",

@@ -1,7 +1,7 @@
 """CLI entry point for maintenance services.
 
 Usage:
-    python -m flext_infra maintenance [--workspace PATH] [--verbose]
+    python -m flext_infra maintenance run [--check] [--verbose]
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,50 +10,71 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from typing import Annotated
 
-from flext_core import r
+from flext_cli import cli
+from flext_core import FlextRuntime, r
+from pydantic import BaseModel, Field
 
-from flext_infra import (
-    FlextInfraPythonVersionEnforcer,
-    output,
-    t,
-    u,
-)
+from flext_infra import FlextInfraPythonVersionEnforcer, m, t
+
+# ── Input Model ──────────────────────────────────────────────
 
 
-class FlextInfraWorkspaceMaintenanceCommand:
-    """CLI entry point for workspace maintenance operations (Python version enforcement)."""
+class MaintenanceInput(BaseModel):
+    """CLI input for maintenance command — fields become CLI options."""
+
+    check: Annotated[bool, Field(default=False, description="Run in check mode")]
+    verbose: Annotated[bool, Field(default=False, description="Verbose output")]
+
+
+# ── Router ───────────────────────────────────────────────────
+
+
+class FlextInfraMaintenanceCli:
+    """Declarative CLI router for workspace maintenance operations."""
+
+    def __init__(self) -> None:
+        """Initialize CLI app and register declarative routes."""
+        self._app = cli.create_app_with_common_params(
+            name="maintenance",
+            help_text="Enforce Python version constraints via pyproject.toml",
+        )
+        self._register_commands()
+
+    def run(self, args: t.StrSequence | None = None) -> r[bool]:
+        """Execute the CLI application."""
+        return cli.execute_app(self._app, prog_name="maintenance", args=args)
+
+    def _register_commands(self) -> None:
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="run",
+                help_text="Execute maintenance operations",
+                model_cls=MaintenanceInput,
+                handler=self._handle_run,
+                success_message="Maintenance completed successfully",
+                failure_message="Maintenance failed",
+            ),
+        )
 
     @staticmethod
-    def run(argv: t.StrSequence | None = None) -> int:
-        """Execute maintenance CLI and return service exit code."""
-        parser = u.Infra.create_parser(
-            prog="maintenance",
-            description="Enforce Python version constraints via pyproject.toml",
-            include_apply=False,
-            include_diff=False,
-            include_check=True,
-        )
-        _ = parser.add_argument(
-            "--verbose",
-            "-v",
-            action="store_true",
-            help="Verbose output",
-        )
-        args = parser.parse_args(argv)
-        cli = u.Infra.resolve(args)
+    def _handle_run(params: MaintenanceInput) -> r[int]:
         service = FlextInfraPythonVersionEnforcer()
-        result: r[int] = service.execute(check_only=cli.check, verbose=args.verbose)
-        if result.is_success:
-            return result.unwrap()
-        output.error(result.error or "maintenance failed")
-        return 1
+        return service.execute(check_only=params.check, verbose=params.verbose)
+
+
+# ── Entry Point ──────────────────────────────────────────────
 
 
 def main(argv: t.StrSequence | None = None) -> int:
     """Run maintenance service CLI."""
-    return FlextInfraWorkspaceMaintenanceCommand.run(argv)
+    FlextRuntime.ensure_structlog_configured()
+    instance = FlextInfraMaintenanceCli()
+    result = instance.run(argv)
+    return 0 if result.is_success else 1
 
 
 if __name__ == "__main__":
-    sys.exit(u.Infra.run_cli(main))
+    sys.exit(main())

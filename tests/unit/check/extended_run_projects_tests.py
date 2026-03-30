@@ -12,10 +12,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraWorkspaceChecker, t
-from tests import m
+from flext_infra import FlextInfraWorkspaceChecker
+from tests import m, t
 
-CheckProjectStub = Callable[[Path, t.StrSequence, Path], m.Infra.ProjectResult]
+CheckProjectStub = Callable[..., m.Infra.ProjectResult]
 
 
 def _make_gate_exec(
@@ -52,7 +52,9 @@ def _check_project_stub(project: m.Infra.ProjectResult) -> CheckProjectStub:
         _project_dir: Path,
         _gates: t.StrSequence,
         _reports_dir: Path,
+        **_kwargs: t.Infra.InfraValue,
     ) -> m.Infra.ProjectResult:
+        del _kwargs
         return project
 
     return _fake_check
@@ -67,7 +69,9 @@ def _iter_check_project_stub(
         _project_dir: Path,
         _gates: t.StrSequence,
         _reports_dir: Path,
+        **_kwargs: t.Infra.InfraValue,
     ) -> m.Infra.ProjectResult:
+        del _kwargs
         return next(project_iter)
 
     return _fake_check
@@ -149,8 +153,9 @@ class TestRunProjectsBehavior:
             _project_dir: Path,
             _gates: t.StrSequence,
             _reports_dir: Path,
+            **_kwargs: t.Infra.InfraValue,
         ) -> m.Infra.ProjectResult:
-            del _project_dir, _gates, _reports_dir
+            del _project_dir, _gates, _reports_dir, _kwargs
             call_count[0] += 1
             return m.Infra.ProjectResult(
                 project="p",
@@ -250,3 +255,96 @@ class TestRunSingleProject:
         result = checker.run("p1", ["lint"])
         tm.ok(result)
         tm.that(len(result.value), eq=1)
+
+
+class _FixableGate:
+    can_fix = True
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def fix(
+        self,
+        _project_dir: Path,
+        _ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        self.calls.append("fix")
+        return _make_gate_exec()
+
+    def check(
+        self,
+        _project_dir: Path,
+        _ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        self.calls.append("check")
+        return _make_gate_exec()
+
+
+def _create_fixable_gate(
+    _gate_id: str,
+    _workspace_root: Path,
+    *,
+    gate: _FixableGate,
+) -> _FixableGate:
+    return gate
+
+
+class TestRunProjectFixMode:
+    """Test supported gate fixes during project checking."""
+
+    def test_check_project_runs_fix_before_check(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        gate = _FixableGate()
+
+        def _fake_create(gate_id: str, workspace_root: Path) -> _FixableGate:
+            return _create_fixable_gate(
+                gate_id,
+                workspace_root,
+                gate=gate,
+            )
+
+        monkeypatch.setattr(checker._registry, "create", _fake_create)
+        _setup_project(tmp_path, "p1")
+
+        result = checker._check_project(
+            tmp_path / "p1",
+            ["lint"],
+            tmp_path / "reports",
+            fix=True,
+        )
+
+        tm.that(result.passed, eq=True)
+        tm.that(gate.calls, eq=["fix", "check"])
+
+    def test_check_project_check_only_skips_fix(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        checker = FlextInfraWorkspaceChecker(workspace_root=tmp_path)
+        gate = _FixableGate()
+
+        def _fake_create(gate_id: str, workspace_root: Path) -> _FixableGate:
+            return _create_fixable_gate(
+                gate_id,
+                workspace_root,
+                gate=gate,
+            )
+
+        monkeypatch.setattr(checker._registry, "create", _fake_create)
+        _setup_project(tmp_path, "p1")
+
+        result = checker._check_project(
+            tmp_path / "p1",
+            ["lint"],
+            tmp_path / "reports",
+            fix=True,
+            check_only=True,
+        )
+
+        tm.that(result.passed, eq=True)
+        tm.that(gate.calls, eq=["check"])

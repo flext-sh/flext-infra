@@ -17,8 +17,11 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import TypeAdapter
+from flext_cli import cli
+from flext_core import FlextRuntime, r
+from pydantic import BaseModel, Field, TypeAdapter
 
 from flext_infra import (
     FlextInfraCodegenCensus,
@@ -28,7 +31,7 @@ from flext_infra import (
     FlextInfraCodegenPyTyped,
     FlextInfraCodegenScaffolder,
     c,
-    output,
+    m,
     t,
     u,
 )
@@ -38,134 +41,264 @@ _JSON_OUTPUT_ADAPTER: TypeAdapter[t.ContainerMapping] = TypeAdapter(
 )
 
 
-class FlextInfraCodegenCommand:
-    """CLI entry point for code generation operations."""
+def _format_text(value: str) -> str:
+    """Format text result for CLI output."""
+    return str(value)
+
+
+# ── Input Models ─────────────────────────────────────────────
+
+
+class LazyInitInput(BaseModel):
+    """CLI input for lazy-init — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    check: Annotated[bool, Field(default=False, description="Check mode (no writes)")]
+
+
+class CensusInput(BaseModel):
+    """CLI input for census — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    output_format: Annotated[
+        str, Field(default="text", description="Output format (json|text)")
+    ]
+    class_to_analyze: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Full class path to analyze (e.g. flext_core.FlextConstants)",
+        ),
+    ]
+
+
+class DeduplicateInput(BaseModel):
+    """CLI input for deduplicate — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    class_to_analyze: Annotated[
+        str,
+        Field(
+            description="Full class path to deduplicate (e.g. flext_core.FlextConstants)",
+        ),
+    ]
+
+
+class ScaffoldInput(BaseModel):
+    """CLI input for scaffold — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    apply: Annotated[bool, Field(default=False, description="Apply changes")]
+
+
+class AutoFixInput(BaseModel):
+    """CLI input for auto-fix — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    apply: Annotated[bool, Field(default=False, description="Apply changes")]
+
+
+class PyTypedInput(BaseModel):
+    """CLI input for py-typed — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    check: Annotated[bool, Field(default=False, description="Check mode (no writes)")]
+
+
+class PipelineInput(BaseModel):
+    """CLI input for pipeline — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    output_format: Annotated[
+        str, Field(default="text", description="Output format (json|text)")
+    ]
+
+
+class ConstantsQualityGateInput(BaseModel):
+    """CLI input for constants-quality-gate — fields become CLI options."""
+
+    workspace: Annotated[str, Field(default=".", description="Workspace root")]
+    before_report: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Path to pre-refactor report JSON for comparison",
+        ),
+    ]
+    baseline_file: Annotated[
+        str | None,
+        Field(default=None, description="Path to baseline JSON payload for comparison"),
+    ]
+
+
+# ── Router ───────────────────────────────────────────────────
+
+
+class FlextInfraCodegenCli:
+    """Declarative CLI router for code generation utilities."""
+
+    def __init__(self) -> None:
+        """Initialize CLI app and register declarative routes."""
+        self._app = cli.create_app_with_common_params(
+            name="codegen",
+            help_text="Code generation tools for workspace standardization",
+        )
+        self._register_commands()
+
+    def run(self, args: t.StrSequence | None = None) -> r[bool]:
+        """Execute the CLI application."""
+        return cli.execute_app(self._app, prog_name="codegen", args=args)
+
+    def _register_commands(self) -> None:
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="lazy-init",
+                help_text="Generate/refresh PEP 562 lazy-import __init__.py files",
+                model_cls=LazyInitInput,
+                handler=self._handle_lazy_init,
+                failure_message="lazy-init failed",
+                success_message="lazy-init complete",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="census",
+                help_text="Count namespace violations across workspace projects",
+                model_cls=CensusInput,
+                handler=self._handle_census,
+                failure_message="census failed",
+                success_formatter=_format_text,
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="deduplicate",
+                help_text="Auto-fix duplicated constants (keep most-used)",
+                model_cls=DeduplicateInput,
+                handler=self._handle_deduplicate,
+                failure_message="deduplicate failed",
+                success_formatter=_format_text,
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="scaffold",
+                help_text="Generate missing base modules in src/ and tests/",
+                model_cls=ScaffoldInput,
+                handler=self._handle_scaffold,
+                failure_message="scaffold failed",
+                success_formatter=_format_text,
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="auto-fix",
+                help_text="Auto-fix namespace violations (move Finals/TypeVars)",
+                model_cls=AutoFixInput,
+                handler=self._handle_auto_fix,
+                failure_message="auto-fix failed",
+                success_formatter=_format_text,
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="py-typed",
+                help_text="Create/remove PEP 561 py.typed markers",
+                model_cls=PyTypedInput,
+                handler=self._handle_py_typed,
+                failure_message="py-typed failed",
+                success_message="py-typed markers updated",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="pipeline",
+                help_text="Run full codegen pipeline",
+                model_cls=PipelineInput,
+                handler=self._handle_pipeline,
+                failure_message="pipeline failed",
+                success_formatter=_format_text,
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="constants-quality-gate",
+                help_text="Run constants migration quality gate",
+                model_cls=ConstantsQualityGateInput,
+                handler=self._handle_constants_quality_gate,
+                failure_message="constants quality gate failed",
+                success_message="constants quality gate passed",
+            ),
+        )
+
+    # ── Handlers ─────────────────────────────────────────────
 
     @staticmethod
-    def run(argv: t.StrSequence | None) -> int:
-        """Run codegen command dispatcher."""
-        parser, subs = u.Infra.create_subcommand_parser(
-            "flext-infra codegen",
-            "Code generation tools for workspace standardization",
-            subcommands={
-                "lazy-init": "Generate/refresh PEP 562 lazy-import __init__.py files",
-                "census": "Count namespace violations across workspace projects",
-                "deduplicate": "Auto-fix duplicated constants (keep most-used)",
-                "scaffold": "Generate missing base modules in src/ and tests/",
-                "auto-fix": "Auto-fix namespace violations (move Finals/TypeVars)",
-                "py-typed": "Create/remove PEP 561 py.typed markers",
-                "pipeline": "Run full codegen pipeline",
-                "constants-quality-gate": "Run constants migration quality gate",
-            },
-            include_apply=False,
-            include_diff=False,
-            include_format=False,
-            include_check=False,
-            subcommand_flags={
-                "lazy-init": {"include_check": True},
-                "census": {"include_format": True},
-                "deduplicate": {"include_apply": True, "include_diff": False},
-                "scaffold": {"include_apply": True, "include_diff": False},
-                "auto-fix": {"include_apply": True, "include_diff": False},
-                "py-typed": {"include_check": True},
-                "pipeline": {
-                    "include_apply": True,
-                    "include_diff": False,
-                    "include_format": True,
-                },
-            },
-        )
-        baseline_group = subs["constants-quality-gate"].add_mutually_exclusive_group(
-            required=False,
-        )
-        _ = baseline_group.add_argument(
-            "--before-report",
-            type=Path,
-            default=None,
-            help="Path to pre-refactor report JSON for comparison",
-        )
-        _ = baseline_group.add_argument(
-            "--baseline-file",
-            type=Path,
-            default=None,
-            help="Path to baseline JSON payload for comparison",
-        )
-        _ = subs["census"].add_argument(
-            "--class-to-analyze",
-            type=str,
-            default=None,
-            help="Full class path to analyze attributes (e.g., flext_core.FlextConstants)",
-        )
-        _ = subs["deduplicate"].add_argument(
-            "--class-to-analyze",
-            type=str,
-            required=True,
-            help="Full class path to deduplicate (e.g., flext_core.FlextConstants)",
-        )
-
-        args = u.Infra.parse_subcommand_args(parser, argv)
-        cli = u.Infra.resolve(args)
-        if args.command == "lazy-init":
-            return FlextInfraCodegenCommand.handle_lazy_init(cli)
-        if args.command == "py-typed":
-            return FlextInfraCodegenCommand.handle_py_typed(cli)
-        if args.command == "census":
-            return FlextInfraCodegenCommand.handle_census(cli)
-        if args.command == "deduplicate":
-            return FlextInfraCodegenCommand.handle_deduplicate(cli)
-        if args.command == "scaffold":
-            return FlextInfraCodegenCommand.handle_scaffold(cli)
-        if args.command == "auto-fix":
-            return FlextInfraCodegenCommand.handle_auto_fix(cli)
-        if args.command == "pipeline":
-            return FlextInfraCodegenCommand.handle_pipeline(cli)
-        if args.command == "constants-quality-gate":
-            return FlextInfraCodegenCommand.handle_constants_quality_gate(
-                cli,
-                before_report=getattr(args, "before_report", None),
-                baseline_file=getattr(args, "baseline_file", None),
-            )
-        output.error(f"unknown command: {args.command}")
-        return 1
-
-    @staticmethod
-    def handle_lazy_init(cli: u.Infra.CliArgs) -> int:
+    def _handle_lazy_init(params: LazyInitInput) -> r[bool]:
         """Handle lazy-init code generation."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=cli.workspace)
-        errors = generator.run(check_only=cli.check)
+        workspace = Path(params.workspace).resolve()
+        generator = FlextInfraCodegenLazyInit(workspace_root=workspace)
+        errors = generator.run(check_only=params.check)
         if errors > 0:
-            output.error(f"lazy-init failed in {errors} package directories")
-            return 1
-        return 0
+            return r[bool].fail(
+                f"lazy-init failed in {errors} package directories",
+            )
+        return r[bool].ok(True)
 
     @staticmethod
-    def handle_py_typed(cli: u.Infra.CliArgs) -> int:
-        """Handle py.typed marker generation."""
-        service = FlextInfraCodegenPyTyped(workspace_root=cli.workspace)
-        service.run(check_only=cli.check)
-        return 0
-
-    @staticmethod
-    def handle_deduplicate(cli: u.Infra.CliArgs) -> int:
-        """Handle constant deduplication with user selection."""
-        class_to_analyze = getattr(cli, "class_to_analyze", None)
-        if not class_to_analyze:
-            output.error("--class-to-analyze is required")
-            return 1
-
-        # Get deduplicate proposals
-        fixes = u.Infra.propose_deduplication_fixes(
-            class_to_analyze,
-            cli.workspace,
+    def _handle_census(params: CensusInput) -> r[str]:
+        """Handle namespace violation census."""
+        workspace = Path(params.workspace).resolve()
+        census = FlextInfraCodegenCensus(
+            workspace_root=workspace,
+            class_to_analyze=params.class_to_analyze,
         )
+        reports = census.run()
+        if params.output_format == "json":
+            text = _JSON_OUTPUT_ADAPTER.dump_json({
+                c.Infra.ReportKeys.PROJECTS: [rpt.model_dump() for rpt in reports],
+                "total_violations": sum(rpt.total for rpt in reports),
+                "total_fixable": sum(rpt.fixable for rpt in reports),
+            }).decode()
+        else:
+            total_v = sum(rpt.total for rpt in reports)
+            total_f = sum(rpt.fixable for rpt in reports)
+            lines: list[str] = [
+                f"  {rpt.project}: {rpt.total} violations ({rpt.fixable} fixable)"
+                for rpt in reports
+                if rpt.total > 0
+            ]
+            lines.append(
+                f"Total: {total_v} violations ({total_f} fixable)"
+                f" across {len(reports)} projects",
+            )
+            text = "\n".join(lines)
+        return r[str].ok(text)
 
+    @staticmethod
+    def _handle_deduplicate(params: DeduplicateInput) -> r[str]:
+        """Handle constant deduplication with user selection."""
+        workspace = Path(params.workspace).resolve()
+        dry_run = not params.apply
+        fixes = u.Infra.propose_deduplication_fixes(
+            params.class_to_analyze,
+            workspace,
+        )
         if not fixes:
-            output.info("No duplicates found")
-            return 0
+            return r[str].ok("No duplicates found")
 
-        output.info(f"Found {len(fixes)} groups of duplicate constants\n")
+        lines: list[str] = [f"Found {len(fixes)} groups of duplicate constants\n"]
 
-        # Display fixes
         for i, fix in enumerate(fixes, 1):
             value_str = str(fix.get("value", ""))[:50]
             canonical = str(fix.get("canonical_name", ""))
@@ -175,7 +308,7 @@ class FlextInfraCodegenCommand:
             duplicates: Sequence[Mapping[str, str | int]] = (
                 duplicates_val if isinstance(duplicates_val, list) else []
             )
-            output.info(
+            lines.append(
                 f"{i}. Value: {value_str}"
                 f" | Keep: {canonical} ({usages} uses)"
                 f" | Replace {len(duplicates)} others",
@@ -187,196 +320,198 @@ class FlextInfraCodegenCommand:
                     dup_usages = (
                         int(dup_usages_val) if isinstance(dup_usages_val, int) else 0
                     )
-                    output.info(f"   - {dup_name} ({dup_usages} uses)")
+                    lines.append(f"   - {dup_name} ({dup_usages} uses)")
 
-        # Apply fixes
-        output.info(f"\nApplying {len(fixes)} deduplication fixes...")
+        lines.append(f"\nApplying {len(fixes)} deduplication fixes...")
         total_files_modified = 0
         for fix in fixes:
             result = u.Infra.apply_deduplication_fix(
                 fix,
-                cli.workspace,
-                class_to_analyze,
-                dry_run=cli.dry_run,
+                workspace,
+                params.class_to_analyze,
+                dry_run=dry_run,
             )
             if result.get("status") == "success":
                 files_mod_val = result.get("files_modified", 0)
                 files_mod = int(files_mod_val) if isinstance(files_mod_val, int) else 0
                 total_files_modified += files_mod
-                canonical = str(result.get("canonical", ""))
+                canonical_name = str(result.get("canonical", ""))
                 replaced_val = result.get("replaced", [])
                 replaced: t.StrSequence = []
                 if isinstance(replaced_val, list):
                     replaced = [item for item in replaced_val if isinstance(item, str)]
-                output.info(
-                    f"✓ {canonical}: replaced {len(replaced)} in {files_mod} files",
+                lines.append(
+                    f"  {canonical_name}: replaced {len(replaced)}"
+                    f" in {files_mod} files",
                 )
 
-        if not cli.dry_run:
-            output.info(f"\n✓ Modified {total_files_modified} files")
+        if dry_run:
+            lines.append(f"\n[DRY-RUN] Would modify {total_files_modified} files")
         else:
-            output.info(f"\n[DRY-RUN] Would modify {total_files_modified} files")
+            lines.append(f"\nModified {total_files_modified} files")
 
-        return 0
+        return r[str].ok("\n".join(lines))
 
     @staticmethod
-    def handle_census(cli: u.Infra.CliArgs) -> int:
-        """Handle namespace violation census."""
-        class_to_analyze = getattr(cli, "class_to_analyze", None)
-        census = FlextInfraCodegenCensus(
-            workspace_root=cli.workspace,
-            class_to_analyze=class_to_analyze,
-        )
-        reports = census.run()
-        if cli.output_format == "json":
-            output.info(
-                _JSON_OUTPUT_ADAPTER.dump_json({
-                    c.Infra.ReportKeys.PROJECTS: [rpt.model_dump() for rpt in reports],
-                    "total_violations": sum(rpt.total for rpt in reports),
-                    "total_fixable": sum(rpt.fixable for rpt in reports),
-                }).decode(),
-            )
-        else:
-            total_v = sum(rpt.total for rpt in reports)
-            total_f = sum(rpt.fixable for rpt in reports)
-            for rpt in reports:
-                if rpt.total > 0:
-                    output.info(
-                        f"  {rpt.project}: {rpt.total} violations ({rpt.fixable} fixable)",
-                    )
-            output.info(
-                f"Total: {total_v} violations ({total_f} fixable) across {len(reports)} projects",
-            )
-        return 0
-
-    @staticmethod
-    def handle_scaffold(cli: u.Infra.CliArgs) -> int:
+    def _handle_scaffold(params: ScaffoldInput) -> r[str]:
         """Handle module scaffolding."""
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=cli.workspace)
-        if cli.dry_run:
-            output.info("Dry-run mode: no files will be created")
+        workspace = Path(params.workspace).resolve()
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=workspace)
         results = scaffolder.run()
+        lines: list[str] = []
         total_created = sum(len(res.files_created) for res in results)
         total_skipped = sum(len(res.files_skipped) for res in results)
-        for res in results:
-            if res.files_created:
-                output.info(f"  {res.project}: created {len(res.files_created)} files")
-        output.info(
-            f"Scaffold: {total_created} created, {total_skipped} skipped across {len(results)} projects",
+        if not params.apply:
+            lines.append("Dry-run mode: no files will be created")
+        lines.extend(
+            f"  {res.project}: created {len(res.files_created)} files"
+            for res in results
+            if res.files_created
         )
-        return 0
+        lines.append(
+            f"Scaffold: {total_created} created, {total_skipped} skipped"
+            f" across {len(results)} projects",
+        )
+        return r[str].ok("\n".join(lines))
 
     @staticmethod
-    def handle_auto_fix(cli: u.Infra.CliArgs) -> int:
+    def _handle_auto_fix(params: AutoFixInput) -> r[str]:
         """Handle namespace violation auto-fix."""
+        workspace = Path(params.workspace).resolve()
+        dry_run = not params.apply
         fixer = FlextInfraCodegenFixer(
-            workspace_root=cli.workspace,
-            dry_run=cli.dry_run,
+            workspace_root=workspace,
+            dry_run=dry_run,
         )
-        if cli.dry_run:
-            output.info("Dry-run mode: no files will be modified")
+        lines: list[str] = []
+        if dry_run:
+            lines.append("Dry-run mode: no files will be modified")
         results = fixer.run()
         total_fixed = sum(len(res.violations_fixed) for res in results)
         total_skipped = sum(len(res.violations_skipped) for res in results)
-        for res in results:
-            if res.violations_fixed:
-                output.info(
-                    f"  {res.project}: fixed {len(res.violations_fixed)} violations",
-                )
-        output.info(
-            f"Auto-fix: {total_fixed} fixed, {total_skipped} skipped across {len(results)} projects",
+        lines.extend(
+            f"  {res.project}: fixed {len(res.violations_fixed)} violations"
+            for res in results
+            if res.violations_fixed
         )
-        return 0
+        lines.append(
+            f"Auto-fix: {total_fixed} fixed, {total_skipped} skipped"
+            f" across {len(results)} projects",
+        )
+        return r[str].ok("\n".join(lines))
 
     @staticmethod
-    def handle_pipeline(cli: u.Infra.CliArgs) -> int:
+    def _handle_py_typed(params: PyTypedInput) -> r[bool]:
+        """Handle py.typed marker generation."""
+        workspace = Path(params.workspace).resolve()
+        service = FlextInfraCodegenPyTyped(workspace_root=workspace)
+        service.run(check_only=params.check)
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _handle_pipeline(params: PipelineInput) -> r[str]:
         """Handle full codegen pipeline."""
-        py_typed = FlextInfraCodegenPyTyped(workspace_root=cli.workspace)
+        workspace = Path(params.workspace).resolve()
+        dry_run = not params.apply
+
+        py_typed = FlextInfraCodegenPyTyped(workspace_root=workspace)
         py_typed.run()
-        census = FlextInfraCodegenCensus(workspace_root=cli.workspace)
+
+        census = FlextInfraCodegenCensus(workspace_root=workspace)
         reports_before = census.run()
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=cli.workspace)
+
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=workspace)
         scaffold_results = scaffolder.run()
+
         fixer = FlextInfraCodegenFixer(
-            workspace_root=cli.workspace,
-            dry_run=cli.dry_run,
+            workspace_root=workspace,
+            dry_run=dry_run,
         )
         fix_results = fixer.run()
-        generator = FlextInfraCodegenLazyInit(workspace_root=cli.workspace)
-        generator.run(check_only=cli.dry_run)
+
+        generator = FlextInfraCodegenLazyInit(workspace_root=workspace)
+        generator.run(check_only=dry_run)
+
         reports_after = census.run()
-        if cli.output_format == "json":
-            output.info(
-                _JSON_OUTPUT_ADAPTER.dump_json({
-                    "census_before": {
-                        "total_violations": sum(r.total for r in reports_before),
-                        "total_fixable": sum(r.fixable for r in reports_before),
-                    },
-                    "scaffold": {
-                        "total_created": sum(
-                            len(r.files_created) for r in scaffold_results
-                        ),
-                        "total_skipped": sum(
-                            len(r.files_skipped) for r in scaffold_results
-                        ),
-                    },
-                    "auto_fix": {
-                        "total_fixed": sum(
-                            len(r.violations_fixed) for r in fix_results
-                        ),
-                        "total_skipped": sum(
-                            len(r.violations_skipped) for r in fix_results
-                        ),
-                    },
-                    "census_after": {
-                        "total_violations": sum(r.total for r in reports_after),
-                        "total_fixable": sum(r.fixable for r in reports_after),
-                    },
-                }).decode(),
-            )
+
+        if params.output_format == "json":
+            text = _JSON_OUTPUT_ADAPTER.dump_json({
+                "census_before": {
+                    "total_violations": sum(rpt.total for rpt in reports_before),
+                    "total_fixable": sum(rpt.fixable for rpt in reports_before),
+                },
+                "scaffold": {
+                    "total_created": sum(
+                        len(res.files_created) for res in scaffold_results
+                    ),
+                    "total_skipped": sum(
+                        len(res.files_skipped) for res in scaffold_results
+                    ),
+                },
+                "auto_fix": {
+                    "total_fixed": sum(
+                        len(res.violations_fixed) for res in fix_results
+                    ),
+                    "total_skipped": sum(
+                        len(res.violations_skipped) for res in fix_results
+                    ),
+                },
+                "census_after": {
+                    "total_violations": sum(rpt.total for rpt in reports_after),
+                    "total_fixable": sum(rpt.fixable for rpt in reports_after),
+                },
+            }).decode()
         else:
-            before_v = sum(r.total for r in reports_before)
-            after_v = sum(r.total for r in reports_after)
-            output.info(f"Census before: {before_v} violations")
-            output.info(
-                f"Scaffold: {sum(len(r.files_created) for r in scaffold_results)} files created",
-            )
-            output.info(
-                f"Auto-fix: {sum(len(r.violations_fixed) for r in fix_results)} violations fixed",
-            )
-            output.info(f"Census after: {after_v} violations")
-            output.info(f"Improvement: {before_v - after_v} violations resolved")
-        return 0
+            before_v = sum(rpt.total for rpt in reports_before)
+            after_v = sum(rpt.total for rpt in reports_after)
+            scaffold_count = sum(len(res.files_created) for res in scaffold_results)
+            fix_count = sum(len(res.violations_fixed) for res in fix_results)
+            lines = [
+                f"Census before: {before_v} violations",
+                f"Scaffold: {scaffold_count} files created",
+                f"Auto-fix: {fix_count} violations fixed",
+                f"Census after: {after_v} violations",
+                f"Improvement: {before_v - after_v} violations resolved",
+            ]
+            text = "\n".join(lines)
+        return r[str].ok(text)
 
     @staticmethod
-    def handle_constants_quality_gate(
-        cli: u.Infra.CliArgs,
-        *,
-        before_report: Path | None,
-        baseline_file: Path | None,
-    ) -> int:
+    def _handle_constants_quality_gate(
+        params: ConstantsQualityGateInput,
+    ) -> r[bool]:
         """Handle constants migration quality gate."""
+        workspace = Path(params.workspace).resolve()
+        if params.before_report and params.baseline_file:
+            return r[bool].fail(
+                "--before-report and --baseline-file are mutually exclusive",
+            )
+        before_report = Path(params.before_report) if params.before_report else None
+        baseline_file = Path(params.baseline_file) if params.baseline_file else None
         gate = FlextInfraCodegenConstantsQualityGate(
-            workspace_root=cli.workspace,
+            workspace_root=workspace,
             before_report=before_report,
             baseline_file=baseline_file,
         )
         report = gate.run()
         verdict = str(report.get("verdict", "FAIL"))
-        return (
-            0
-            if FlextInfraCodegenConstantsQualityGate.is_success_verdict(verdict)
-            else 1
-        )
+        if FlextInfraCodegenConstantsQualityGate.is_success_verdict(verdict):
+            return r[bool].ok(True)
+        return r[bool].fail(f"quality gate verdict: {verdict}")
+
+
+# ── Entry Point ──────────────────────────────────────────────
 
 
 def main(argv: t.StrSequence | None = None) -> int:
     """Run codegen service CLI with centralized bootstrap."""
-    return u.Infra.run_cli(FlextInfraCodegenCommand.run, argv)
+    FlextRuntime.ensure_structlog_configured()
+    result = FlextInfraCodegenCli().run(argv)
+    return 0 if result.is_success else 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
 
 
-__all__ = ["FlextInfraCodegenCommand", "main"]
+__all__ = ["FlextInfraCodegenCli", "main"]

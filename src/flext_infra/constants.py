@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_core import FlextConstants
+from flext_cli import FlextCliConstants
 
 from flext_infra import (
     FlextInfraBasemkConstants,
@@ -30,7 +30,7 @@ from flext_infra import (
 )
 
 
-class FlextInfraConstants(FlextConstants):
+class FlextInfraConstants(FlextCliConstants):
     """Centralized constants for FLEXT infrastructure (Layer 0).
 
     Provides immutable, namespace-organized constants for infrastructure

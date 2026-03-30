@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -25,6 +26,25 @@ class FlextInfraGatesModels:
             bool,
             Field(default=False, description="Stop on first gate failure"),
         ] = False
+        apply_fixes: Annotated[
+            bool,
+            Field(default=False, description="Apply supported fixes before checking"),
+        ] = False
+        check_only: Annotated[
+            bool,
+            Field(
+                default=False,
+                description="Never write files even when fix mode is requested",
+            ),
+        ] = False
+        ruff_args: Annotated[
+            Sequence[str],
+            Field(default_factory=tuple, description="Extra arguments for Ruff"),
+        ] = ()
+        pyright_args: Annotated[
+            Sequence[str],
+            Field(default_factory=tuple, description="Extra arguments for Pyright"),
+        ] = ()
 
 
 __all__ = ["FlextInfraGatesModels"]

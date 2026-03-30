@@ -14,8 +14,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from argparse import ArgumentParser
-from collections.abc import Mapping
+from pathlib import Path
+from typing import Annotated
+
+from flext_cli import cli
+from flext_core import FlextRuntime, r
+from pydantic import BaseModel, Field
 
 from flext_infra import (
     FlextInfraDocAuditor,
@@ -24,208 +28,284 @@ from flext_infra import (
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
     c,
+    m,
     t,
-    u,
 )
 
+_DEFAULT_OUTPUT_DIR = f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs"
 
-class FlextInfraDocsCommand:
-    """CLI entry point for documentation generation and management commands."""
+# ── Input Models ─────────────────────────────────────────────
+
+
+class AuditInput(BaseModel):
+    """CLI input for audit — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+    project: Annotated[
+        str | None, Field(default=None, description="Single project name")
+    ]
+    projects: Annotated[
+        str | None, Field(default=None, description="Comma-separated project names")
+    ]
+    check: Annotated[bool, Field(default=False, description="Enable check mode")]
+    strict: Annotated[bool, Field(default=False, description="Strict mode")]
+    output_dir: Annotated[
+        str,
+        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
+    ]
+
+
+class FixInput(BaseModel):
+    """CLI input for fix — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+    project: Annotated[
+        str | None, Field(default=None, description="Single project name")
+    ]
+    projects: Annotated[
+        str | None, Field(default=None, description="Comma-separated project names")
+    ]
+    apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    output_dir: Annotated[
+        str,
+        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
+    ]
+
+
+class BuildInput(BaseModel):
+    """CLI input for build — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+    project: Annotated[
+        str | None, Field(default=None, description="Single project name")
+    ]
+    projects: Annotated[
+        str | None, Field(default=None, description="Comma-separated project names")
+    ]
+    output_dir: Annotated[
+        str,
+        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
+    ]
+
+
+class GenerateInput(BaseModel):
+    """CLI input for generate — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+    project: Annotated[
+        str | None, Field(default=None, description="Single project name")
+    ]
+    projects: Annotated[
+        str | None, Field(default=None, description="Comma-separated project names")
+    ]
+    apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    output_dir: Annotated[
+        str,
+        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
+    ]
+
+
+class ValidateInput(BaseModel):
+    """CLI input for validate — fields become CLI options."""
+
+    workspace: Annotated[
+        str | None, Field(default=None, description="Workspace root directory")
+    ]
+    project: Annotated[
+        str | None, Field(default=None, description="Single project name")
+    ]
+    projects: Annotated[
+        str | None, Field(default=None, description="Comma-separated project names")
+    ]
+    apply: Annotated[bool, Field(default=False, description="Apply changes")]
+    check: Annotated[bool, Field(default=False, description="Enable check mode")]
+    output_dir: Annotated[
+        str,
+        Field(default=_DEFAULT_OUTPUT_DIR, description="Output directory for reports"),
+    ]
+
+
+# ── Router ───────────────────────────────────────────────────
+
+
+class FlextInfraDocsCli:
+    """Declarative CLI router for documentation services."""
+
+    def __init__(self) -> None:
+        """Initialize CLI app and register declarative routes."""
+        self._app = cli.create_app_with_common_params(
+            name="docs",
+            help_text="Documentation management services",
+        )
+        self._register_commands()
+
+    def run(self, args: t.StrSequence | None = None) -> r[bool]:
+        """Execute the CLI application."""
+        return cli.execute_app(self._app, prog_name="docs", args=args)
+
+    def _register_commands(self) -> None:
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="audit",
+                help_text="Audit documentation for broken links and forbidden terms",
+                model_cls=AuditInput,
+                handler=self._handle_audit,
+                success_message="Audit completed successfully",
+                failure_message="Audit failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="fix",
+                help_text="Fix documentation issues",
+                model_cls=FixInput,
+                handler=self._handle_fix,
+                success_message="Fix completed successfully",
+                failure_message="Fix failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="build",
+                help_text="Build MkDocs sites",
+                model_cls=BuildInput,
+                handler=self._handle_build,
+                success_message="Build completed successfully",
+                failure_message="Build failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="generate",
+                help_text="Generate project docs",
+                model_cls=GenerateInput,
+                handler=self._handle_generate,
+                success_message="Generate completed successfully",
+                failure_message="Generate failed",
+            ),
+        )
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="validate",
+                help_text="Validate documentation",
+                model_cls=ValidateInput,
+                handler=self._handle_validate,
+                success_message="Validate completed successfully",
+                failure_message="Validate failed",
+            ),
+        )
 
     @staticmethod
-    def run(argv: t.StrSequence | None = None) -> int:
-        """Run documentation command dispatcher."""
-        parser_subs: t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]] = (
-            u.Infra.create_subcommand_parser(
-                "flext-infra docs",
-                "Documentation management services",
-                subcommands={
-                    "audit": "Audit documentation for broken links and forbidden terms",
-                    "fix": "Fix documentation issues",
-                    c.Infra.Directories.BUILD: "Build MkDocs sites",
-                    "generate": "Generate project docs",
-                    c.Infra.Verbs.VALIDATE: "Validate documentation",
-                },
-                include_apply=False,
-                include_diff=False,
-                include_project=True,
-                include_check=False,
-                subcommand_flags={
-                    "audit": {"include_check": True},
-                    "fix": {"include_apply": True, "include_diff": False},
-                    "generate": {"include_apply": True, "include_diff": False},
-                    c.Infra.Verbs.VALIDATE: {
-                        "include_apply": True,
-                        "include_diff": False,
-                        "include_check": True,
-                    },
-                },
-            )
-        )
-        parser, subs = parser_subs
-
-        _ = subs["audit"].add_argument(
-            "--strict",
-            action="store_true",
-            help="Strict mode",
-        )
-        _ = subs["audit"].add_argument(
-            "--output-dir",
-            default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-        )
-
-        _ = subs["fix"].add_argument(
-            "--output-dir",
-            default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-        )
-
-        _ = subs[c.Infra.Directories.BUILD].add_argument(
-            "--output-dir",
-            default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-        )
-
-        _ = subs["generate"].add_argument(
-            "--output-dir",
-            default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-        )
-
-        _ = subs[c.Infra.Verbs.VALIDATE].add_argument(
-            "--output-dir",
-            default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
-        )
-
-        args = u.Infra.parse_subcommand_args(parser, argv)
-        cli = u.Infra.resolve(args)
-
-        if not args.command:
-            parser.print_help()
-            return 1
-
-        output_dir = str(getattr(args, "output_dir", ""))
-        if args.command == "audit":
-            return FlextInfraDocsCommand.run_audit(
-                cli,
-                check=cli.check,
-                strict=bool(getattr(args, "strict", False)),
-                output_dir=output_dir,
-            )
-        if args.command == "fix":
-            return FlextInfraDocsCommand.run_fix(cli, output_dir=output_dir)
-        if args.command == c.Infra.Directories.BUILD:
-            return FlextInfraDocsCommand.run_build(cli, output_dir=output_dir)
-        if args.command == "generate":
-            return FlextInfraDocsCommand.run_generate(cli, output_dir=output_dir)
-        if args.command == c.Infra.Verbs.VALIDATE:
-            return FlextInfraDocsCommand.run_validate(
-                cli,
-                check=cli.check,
-                output_dir=output_dir,
-            )
-        parser.print_help()
-        return 1
-
-    @staticmethod
-    def run_audit(
-        cli: u.Infra.CliArgs,
-        *,
-        check: bool = False,
-        strict: bool = False,
-        output_dir: str = "",
-    ) -> int:
-        """Audit documentation for issues."""
+    def _handle_audit(params: AuditInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         auditor = FlextInfraDocAuditor()
         result = auditor.audit(
-            workspace_root=cli.workspace,
-            project=cli.project,
-            projects=cli.projects,
-            output_dir=output_dir,
-            check="all" if check else "",
-            strict=strict,
+            workspace_root=resolved_workspace,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
+            check="all" if params.check else "",
+            strict=params.strict,
         )
         if result.is_failure:
-            return u.Infra.exit_code(result, failure_msg="audit failed")
+            return r[bool].fail(result.error or "audit failed")
         failures = sum(1 for report in result.value if not report.passed)
-        return 1 if failures else 0
+        if failures:
+            return r[bool].fail(f"Audit found {failures} failure(s)")
+        return r[bool].ok(True)
 
     @staticmethod
-    def run_fix(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
-        """Fix documentation issues."""
+    def _handle_fix(params: FixInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         fixer = FlextInfraDocFixer()
         result = fixer.fix(
-            workspace_root=cli.workspace,
-            project=cli.project,
-            projects=cli.projects,
-            output_dir=output_dir,
-            apply=cli.apply,
+            workspace_root=resolved_workspace,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
+            apply=params.apply,
         )
         if result.is_failure:
-            return u.Infra.exit_code(result, failure_msg="fix failed")
-        return 0
+            return r[bool].fail(result.error or "fix failed")
+        return r[bool].ok(True)
 
     @staticmethod
-    def run_build(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
-        """Build documentation sites."""
+    def _handle_build(params: BuildInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         builder = FlextInfraDocBuilder()
         result = builder.build(
-            workspace_root=cli.workspace,
-            project=cli.project,
-            projects=cli.projects,
-            output_dir=output_dir,
+            workspace_root=resolved_workspace,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
         )
         if result.is_failure:
-            return u.Infra.exit_code(result, failure_msg="build failed")
+            return r[bool].fail(result.error or "build failed")
         failures = sum(
             1 for report in result.value if report.result == c.Infra.Status.FAIL
         )
-        return 1 if failures else 0
+        if failures:
+            return r[bool].fail(f"Build had {failures} failure(s)")
+        return r[bool].ok(True)
 
     @staticmethod
-    def run_generate(cli: u.Infra.CliArgs, *, output_dir: str = "") -> int:
-        """Generate documentation."""
+    def _handle_generate(params: GenerateInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         generator = FlextInfraDocGenerator()
         result = generator.generate(
-            workspace_root=cli.workspace,
-            project=cli.project,
-            projects=cli.projects,
-            output_dir=output_dir,
-            apply=cli.apply,
+            workspace_root=resolved_workspace,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
+            apply=params.apply,
         )
         if result.is_failure:
-            return u.Infra.exit_code(result, failure_msg="generate failed")
-        return 0
+            return r[bool].fail(result.error or "generate failed")
+        return r[bool].ok(True)
 
     @staticmethod
-    def run_validate(
-        cli: u.Infra.CliArgs,
-        *,
-        check: bool = False,
-        output_dir: str = "",
-    ) -> int:
-        """Validate documentation."""
+    def _handle_validate(params: ValidateInput) -> r[bool]:
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
         validator = FlextInfraDocValidator()
         result = validator.validate(
-            workspace_root=cli.workspace,
-            project=cli.project,
-            projects=cli.projects,
-            output_dir=output_dir,
-            check="all" if check else "",
-            apply=cli.apply,
+            workspace_root=resolved_workspace,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
+            check="all" if params.check else "",
+            apply=params.apply,
         )
         if result.is_failure:
-            return u.Infra.exit_code(result, failure_msg="validate failed")
+            return r[bool].fail(result.error or "validate failed")
         failures = sum(
             1 for report in result.value if report.result == c.Infra.Status.FAIL
         )
-        return 1 if failures else 0
+        if failures:
+            return r[bool].fail(f"Validate found {failures} failure(s)")
+        return r[bool].ok(True)
 
 
-def _main_inner(argv: t.StrSequence | None = None) -> int:
-    return FlextInfraDocsCommand.run(argv)
+# ── Entry Point ──────────────────────────────────────────────
 
 
-def main() -> int:
+def main(argv: t.StrSequence | None = None) -> int:
     """Entry point for documentation CLI."""
-    return u.Infra.run_cli(_main_inner)
+    FlextRuntime.ensure_structlog_configured()
+    result = FlextInfraDocsCli().run(argv)
+    return 0 if result.is_success else 1
 
 
 if __name__ == "__main__":

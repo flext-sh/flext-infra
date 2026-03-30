@@ -97,6 +97,7 @@ def test_make_help_lists_supported_options(tmp_path: Path) -> None:
             "FILE=src/foo.py             Single file for check/fmt/test",
             'FILES="a.py b.py"          Multiple files for check/fmt/test',
             "CHANGED_ONLY=1              Git-changed Python files for check",
+            "CHECK_ONLY=1                Dry-run format/check (no writes)",
             'PYRIGHT_ARGS="--level basic" Extra args for pyright',
             "DIAG=1                      Emit extended pytest diagnostics",
             "FIX=1                       Auto-fix supported gates",
@@ -125,6 +126,143 @@ def test_make_check_file_scope_runs_mypy(tmp_path: Path) -> None:
 
     tm.that(result.returncode, eq=0)
     tm.that(log_path.read_text(encoding="utf-8"), has="run mypy src/demo.py")
+
+
+def test_make_check_file_scope_unsets_python_path_env(tmp_path: Path) -> None:
+    log_path = tmp_path / "tool.log"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    _write_executable(
+        bin_dir / "poetry",
+        '#!/usr/bin/env bash\nprintf \'PYTHONPATH=%s MYPYPATH=%s %s\\n\' "${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
+        + str(log_path)
+        + '"\nexit 0\n',
+    )
+    _write_executable(
+        bin_dir / "python",
+        '#!/usr/bin/env bash\nprintf \'python %s\\n\' "$*" >> "'
+        + str(log_path)
+        + '"\nexit 0\n',
+    )
+    _write_project(tmp_path)
+    (tmp_path / ".venv" / "bin").mkdir(parents=True)
+    (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
+
+    result = _run_make(
+        tmp_path,
+        "check",
+        "FILE=src/demo.py",
+        "CHECK_GATES=mypy",
+        env={
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "PYTHONPATH": "/tmp/poison-pythonpath",
+            "MYPYPATH": "/tmp/poison-mypypath",
+        },
+    )
+
+    tm.that(result.returncode, eq=0)
+    tm.that(
+        log_path.read_text(encoding="utf-8"),
+        has="PYTHONPATH=unset MYPYPATH=unset run mypy src/demo.py",
+    )
+
+
+def test_make_check_full_run_unsets_python_path_env(tmp_path: Path) -> None:
+    log_path = tmp_path / "tool.log"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    _write_executable(
+        bin_dir / "poetry",
+        '#!/usr/bin/env bash\nprintf \'PYTHONPATH=%s MYPYPATH=%s %s\\n\' "${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
+        + str(log_path)
+        + '"\nexit 0\n',
+    )
+    _write_executable(
+        bin_dir / "python",
+        '#!/usr/bin/env bash\nprintf \'python %s\\n\' "$*" >> "'
+        + str(log_path)
+        + '"\nexit 0\n',
+    )
+    _write_project(tmp_path)
+    (tmp_path / ".venv" / "bin").mkdir(parents=True)
+    (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
+
+    result = _run_make(
+        tmp_path,
+        "check",
+        "CHECK_GATES=mypy",
+        env={
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "PYTHONPATH": "/tmp/poison-pythonpath",
+            "MYPYPATH": "/tmp/poison-mypypath",
+        },
+    )
+
+    tm.that(result.returncode, eq=0)
+    tm.that(
+        log_path.read_text(encoding="utf-8"),
+        has="PYTHONPATH=unset MYPYPATH=unset run python -m flext_infra check run --gates mypy",
+    )
+
+
+def test_make_check_full_run_forwards_fix_and_tool_args(tmp_path: Path) -> None:
+    log_path = tmp_path / "tool.log"
+    bin_dir = tmp_path / "bin"
+    _write_stubs(bin_dir, log_path)
+    _write_project(tmp_path)
+    (tmp_path / ".venv" / "bin").mkdir(parents=True)
+    (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
+
+    result = _run_make(
+        tmp_path,
+        "check",
+        "CHECK_GATES=lint,pyright",
+        "FIX=1",
+        "RUFF_ARGS=--select E501",
+        "PYRIGHT_ARGS=--level basic",
+        env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+    )
+
+    tm.that(result.returncode, eq=0)
+    tm.that(
+        log_path.read_text(encoding="utf-8"),
+        has=("run python -m flext_infra check run --gates lint,pyright --reports-dir "),
+    )
+    tm.that(
+        log_path.read_text(encoding="utf-8"),
+        has="--project . --fix --ruff-args --select E501 --pyright-args --level basic",
+    )
+
+
+def test_make_check_fast_path_check_only_suppresses_fix_writes(tmp_path: Path) -> None:
+    log_path = tmp_path / "tool.log"
+    bin_dir = tmp_path / "bin"
+    _write_stubs(bin_dir, log_path)
+    _write_project(tmp_path)
+    (tmp_path / ".venv" / "bin").mkdir(parents=True)
+    (tmp_path / ".venv" / "bin" / "python").write_text("", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
+
+    result = _run_make(
+        tmp_path,
+        "check",
+        "FILE=src/demo.py",
+        "CHECK_GATES=lint",
+        "FIX=1",
+        "CHECK_ONLY=1",
+        env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+    )
+
+    tm.that(result.returncode, eq=0)
+    tm.that(log_path.read_text(encoding="utf-8"), has="run ruff check src/demo.py")
+    tm.that("--fix" not in log_path.read_text(encoding="utf-8"), eq=True)
 
 
 def test_make_check_file_scope_rejects_unsupported_gates(tmp_path: Path) -> None:

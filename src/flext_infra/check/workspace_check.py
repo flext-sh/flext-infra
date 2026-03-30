@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import time
 from collections.abc import MutableSequence, Sequence
 from datetime import UTC, datetime
@@ -59,6 +60,13 @@ class FlextInfraWorkspaceChecker(s[bool]):
     def parse_gate_csv(raw: str) -> t.StrSequence:
         """Parse a comma-separated gate list."""
         return [gate.strip() for gate in raw.split(",") if gate.strip()]
+
+    @staticmethod
+    def parse_tool_args(raw: str | None) -> t.StrSequence:
+        """Parse extra gate arguments passed as a shell-style string."""
+        if raw is None:
+            return []
+        return [item for item in shlex.split(raw) if item]
 
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> r[t.StrSequence]:
@@ -132,6 +140,10 @@ class FlextInfraWorkspaceChecker(s[bool]):
             default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/check",
         )
         _ = subs[c.Infra.Verbs.RUN].add_argument("--fail-fast", action="store_true")
+        _ = subs[c.Infra.Verbs.RUN].add_argument("--fix", action="store_true")
+        _ = subs[c.Infra.Verbs.RUN].add_argument("--check-only", action="store_true")
+        _ = subs[c.Infra.Verbs.RUN].add_argument("--ruff-args")
+        _ = subs[c.Infra.Verbs.RUN].add_argument("--pyright-args")
         _ = subs["fix-pyrefly-config"].add_argument("projects", nargs="*")
         _ = subs["fix-pyrefly-config"].add_argument("--verbose", action="store_true")
         return parser
@@ -149,6 +161,10 @@ class FlextInfraWorkspaceChecker(s[bool]):
             )
             checker = FlextInfraWorkspaceChecker(workspace_root=checker_workspace)
             gates = FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
+            ruff_args = FlextInfraWorkspaceChecker.parse_tool_args(args.ruff_args)
+            pyright_args = FlextInfraWorkspaceChecker.parse_tool_args(
+                args.pyright_args,
+            )
             reports_dir = Path(args.reports_dir).expanduser()
             if not reports_dir.is_absolute():
                 reports_dir = (Path.cwd() / reports_dir).resolve()
@@ -157,6 +173,10 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 gates=gates,
                 reports_dir=reports_dir,
                 fail_fast=args.fail_fast,
+                fix=args.fix,
+                check_only=args.check_only,
+                ruff_args=ruff_args,
+                pyright_args=pyright_args,
             )
             if run_result.is_failure:
                 output.error(run_result.error or "check failed")
@@ -230,6 +250,10 @@ class FlextInfraWorkspaceChecker(s[bool]):
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
+        fix: bool = False,
+        check_only: bool = False,
+        ruff_args: t.StrSequence | None = None,
+        pyright_args: t.StrSequence | None = None,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)
@@ -240,6 +264,8 @@ class FlextInfraWorkspaceChecker(s[bool]):
         resolved_gates: t.StrSequence = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         report_base.mkdir(parents=True, exist_ok=True)
+        resolved_ruff_args = list(ruff_args or [])
+        resolved_pyright_args = list(pyright_args or [])
         results: MutableSequence[m.Infra.ProjectResult] = []
         total = len(projects)
         failed = 0
@@ -258,6 +284,10 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 project_dir,
                 resolved_gates,
                 report_base,
+                fix=fix,
+                check_only=check_only,
+                ruff_args=resolved_ruff_args,
+                pyright_args=resolved_pyright_args,
             )
             elapsed = time.monotonic() - start
             results.append(project_result)
@@ -313,10 +343,22 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 )
         return r[Sequence[m.Infra.ProjectResult]].ok(results)
 
-    def _gate_ctx(self, reports_dir: Path | None = None) -> m.Infra.GateContext:
+    def _gate_ctx(
+        self,
+        reports_dir: Path | None = None,
+        *,
+        apply_fixes: bool = False,
+        check_only: bool = False,
+        ruff_args: t.StrSequence | None = None,
+        pyright_args: t.StrSequence | None = None,
+    ) -> m.Infra.GateContext:
         return m.Infra.GateContext(
             workspace_root=self._workspace_root,
             reports_dir=reports_dir or self._default_reports_dir,
+            apply_fixes=apply_fixes,
+            check_only=check_only,
+            ruff_args=tuple(ruff_args or ()),
+            pyright_args=tuple(pyright_args or ()),
         )
 
     def _run_pyrefly(
@@ -364,6 +406,8 @@ class FlextInfraWorkspaceChecker(s[bool]):
         gate_id: str,
         project_dir: Path,
         reports_dir: Path | None = None,
+        *,
+        ctx: m.Infra.GateContext | None = None,
     ) -> m.Infra.GateExecution:
         gate = self._registry.create(gate_id, self._workspace_root)
         if gate is None:
@@ -378,22 +422,43 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 issues=[],
                 raw_output=f"{gate_id} gate not registered",
             )
-        return gate.check(project_dir, self._gate_ctx(reports_dir))
+        return gate.check(project_dir, ctx or self._gate_ctx(reports_dir))
 
     def _check_project(
         self,
         project_dir: Path,
         gates: t.StrSequence,
         reports_dir: Path,
+        *,
+        fix: bool = False,
+        check_only: bool = False,
+        ruff_args: t.StrSequence | None = None,
+        pyright_args: t.StrSequence | None = None,
     ) -> m.Infra.ProjectResult:
         result = m.Infra.ProjectResult(project=project_dir.name)
-        ctx = self._gate_ctx(reports_dir)
+        ctx = self._gate_ctx(
+            reports_dir,
+            apply_fixes=fix,
+            check_only=check_only,
+            ruff_args=ruff_args,
+            pyright_args=pyright_args,
+        )
         for gate in gates:
             gate_instance = self._registry.create(gate, self._workspace_root)
-            if gate_instance is not None:
-                execution = gate_instance.check(project_dir, ctx)
-            else:
+            if gate_instance is None:
                 continue
+            if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
+                fix_execution = gate_instance.fix(project_dir, ctx)
+                if not fix_execution.result.passed:
+                    result.gates[gate] = fix_execution
+                    output.gate_result(
+                        gate,
+                        len(fix_execution.issues),
+                        fix_execution.result.passed,
+                        fix_execution.result.duration,
+                    )
+                    continue
+            execution = gate_instance.check(project_dir, ctx)
             result.gates[gate] = execution
             output.gate_result(
                 gate,

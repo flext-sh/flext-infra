@@ -37,7 +37,14 @@ class FlextInfraPyrightGate(FlextInfraGate):
         if not check_dirs:
             return self._skip_result(project_dir, started)
         result = self._run(
-            [sys.executable, "-m", c.Infra.PYRIGHT, *check_dirs, "--outputjson"],
+            [
+                sys.executable,
+                "-m",
+                c.Infra.PYRIGHT,
+                *check_dirs,
+                *ctx.pyright_args,
+                "--outputjson",
+            ],
             project_dir,
             timeout=c.Infra.Timeouts.LONG,
         )

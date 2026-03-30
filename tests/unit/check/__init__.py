@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from tests.unit.check.cli_tests import (
         test_resolve_gates_maps_type_alias,
         test_run_cli_rejects_fix_flags_for_run,
+        test_run_cli_run_forwards_fix_and_tool_args,
         test_run_cli_run_returns_one_for_fail,
         test_run_cli_run_returns_two_for_error,
         test_run_cli_run_returns_zero_for_pass,
@@ -89,6 +90,7 @@ if TYPE_CHECKING:
     )
     from tests.unit.check.extended_run_projects_tests import (
         CheckProjectStub,
+        TestRunProjectFixMode,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
@@ -104,6 +106,7 @@ if TYPE_CHECKING:
     from tests.unit.check.extended_runners_ruff_tests import (
         TestCollectMarkdownFiles,
         TestRunCommand,
+        TestRunPyrightArgs,
         TestRunRuffFormat,
         TestRunRuffLint,
     )
@@ -267,6 +270,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "TestRunMarkdown",
     ],
     "TestRunMypy": ["tests.unit.check.extended_runners_tests", "TestRunMypy"],
+    "TestRunProjectFixMode": [
+        "tests.unit.check.extended_run_projects_tests",
+        "TestRunProjectFixMode",
+    ],
     "TestRunProjectsBehavior": [
         "tests.unit.check.extended_run_projects_tests",
         "TestRunProjectsBehavior",
@@ -283,6 +290,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestRunPyright": [
         "tests.unit.check.extended_runners_extra_tests",
         "TestRunPyright",
+    ],
+    "TestRunPyrightArgs": [
+        "tests.unit.check.extended_runners_ruff_tests",
+        "TestRunPyrightArgs",
     ],
     "TestRunRuffFormat": [
         "tests.unit.check.extended_runners_ruff_tests",
@@ -404,6 +415,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.check.cli_tests",
         "test_run_cli_rejects_fix_flags_for_run",
     ],
+    "test_run_cli_run_forwards_fix_and_tool_args": [
+        "tests.unit.check.cli_tests",
+        "test_run_cli_run_forwards_fix_and_tool_args",
+    ],
     "test_run_cli_run_returns_one_for_fail": [
         "tests.unit.check.cli_tests",
         "test_run_cli_run_returns_one_for_fail",
@@ -470,11 +485,13 @@ __all__ = [
     "TestRunGo",
     "TestRunMarkdown",
     "TestRunMypy",
+    "TestRunProjectFixMode",
     "TestRunProjectsBehavior",
     "TestRunProjectsReports",
     "TestRunProjectsValidation",
     "TestRunPyrefly",
     "TestRunPyright",
+    "TestRunPyrightArgs",
     "TestRunRuffFormat",
     "TestRunRuffLint",
     "TestRunSingleProject",
@@ -505,6 +522,7 @@ __all__ = [
     "test_fix_pyrefly_config_main_executes_real_cli_help",
     "test_resolve_gates_maps_type_alias",
     "test_run_cli_rejects_fix_flags_for_run",
+    "test_run_cli_run_forwards_fix_and_tool_args",
     "test_run_cli_run_returns_one_for_fail",
     "test_run_cli_run_returns_two_for_error",
     "test_run_cli_run_returns_zero_for_pass",

@@ -150,8 +150,12 @@ if TYPE_CHECKING:
     )
     from tests.unit.basemk.test_make_contract import (
         test_make_boot_works_without_existing_venv_in_workspace_mode,
+        test_make_check_fast_path_check_only_suppresses_fix_writes,
         test_make_check_file_scope_rejects_unsupported_gates,
         test_make_check_file_scope_runs_mypy,
+        test_make_check_file_scope_unsets_python_path_env,
+        test_make_check_full_run_forwards_fix_and_tool_args,
+        test_make_check_full_run_unsets_python_path_env,
         test_make_help_lists_supported_options,
     )
     from tests.unit.check._shared_fixtures import (
@@ -175,6 +179,7 @@ if TYPE_CHECKING:
     from tests.unit.check.cli_tests import (
         test_resolve_gates_maps_type_alias,
         test_run_cli_rejects_fix_flags_for_run,
+        test_run_cli_run_forwards_fix_and_tool_args,
         test_run_cli_run_returns_one_for_fail,
         test_run_cli_run_returns_two_for_error,
         test_run_cli_run_returns_zero_for_pass,
@@ -248,6 +253,7 @@ if TYPE_CHECKING:
     )
     from tests.unit.check.extended_run_projects_tests import (
         CheckProjectStub,
+        TestRunProjectFixMode,
         TestRunProjectsBehavior,
         TestRunProjectsReports,
         TestRunProjectsValidation,
@@ -263,6 +269,7 @@ if TYPE_CHECKING:
     from tests.unit.check.extended_runners_ruff_tests import (
         TestCollectMarkdownFiles,
         TestRunCommand,
+        TestRunPyrightArgs,
         TestRunRuffFormat,
         TestRunRuffLint,
     )
@@ -1059,6 +1066,7 @@ if TYPE_CHECKING:
         test_sync_success_scenarios,
         test_sync_updates_project_makefile_for_standalone_project,
         test_sync_updates_workspace_makefile_for_workspace_root,
+        test_workspace_makefile_generator_sanitizes_orchestrator_env,
     )
     from tests.unit.validate.basemk_validator_tests import (
         TestBaseMkValidatorCore,
@@ -2157,6 +2165,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.github.main_dispatch_tests",
         "TestRunPrWorkspace",
     ],
+    "TestRunProjectFixMode": [
+        "tests.unit.check.extended_run_projects_tests",
+        "TestRunProjectFixMode",
+    ],
     "TestRunProjectsBehavior": [
         "tests.unit.check.extended_run_projects_tests",
         "TestRunProjectsBehavior",
@@ -2173,6 +2185,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "TestRunPyright": [
         "tests.unit.check.extended_runners_extra_tests",
         "TestRunPyright",
+    ],
+    "TestRunPyrightArgs": [
+        "tests.unit.check.extended_runners_ruff_tests",
+        "TestRunPyrightArgs",
     ],
     "TestRunRuffFix": [
         "tests.unit.codegen.lazy_init_generation_tests",
@@ -3133,6 +3149,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.basemk.test_make_contract",
         "test_make_boot_works_without_existing_venv_in_workspace_mode",
     ],
+    "test_make_check_fast_path_check_only_suppresses_fix_writes": [
+        "tests.unit.basemk.test_make_contract",
+        "test_make_check_fast_path_check_only_suppresses_fix_writes",
+    ],
     "test_make_check_file_scope_rejects_unsupported_gates": [
         "tests.unit.basemk.test_make_contract",
         "test_make_check_file_scope_rejects_unsupported_gates",
@@ -3140,6 +3160,18 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_make_check_file_scope_runs_mypy": [
         "tests.unit.basemk.test_make_contract",
         "test_make_check_file_scope_runs_mypy",
+    ],
+    "test_make_check_file_scope_unsets_python_path_env": [
+        "tests.unit.basemk.test_make_contract",
+        "test_make_check_file_scope_unsets_python_path_env",
+    ],
+    "test_make_check_full_run_forwards_fix_and_tool_args": [
+        "tests.unit.basemk.test_make_contract",
+        "test_make_check_full_run_forwards_fix_and_tool_args",
+    ],
+    "test_make_check_full_run_unsets_python_path_env": [
+        "tests.unit.basemk.test_make_contract",
+        "test_make_check_full_run_unsets_python_path_env",
     ],
     "test_make_help_lists_supported_options": [
         "tests.unit.basemk.test_make_contract",
@@ -3543,6 +3575,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.check.cli_tests",
         "test_run_cli_rejects_fix_flags_for_run",
     ],
+    "test_run_cli_run_forwards_fix_and_tool_args": [
+        "tests.unit.check.cli_tests",
+        "test_run_cli_run_forwards_fix_and_tool_args",
+    ],
     "test_run_cli_run_returns_one_for_fail": [
         "tests.unit.check.cli_tests",
         "test_run_cli_run_returns_one_for_fail",
@@ -3764,6 +3800,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_workspace_cli_rejects_migrate_flags_for_detect": [
         "tests.unit.test_infra_workspace_cli",
         "test_workspace_cli_rejects_migrate_flags_for_detect",
+    ],
+    "test_workspace_makefile_generator_sanitizes_orchestrator_env": [
+        "tests.unit.test_infra_workspace_sync",
+        "test_workspace_makefile_generator_sanitizes_orchestrator_env",
     ],
     "test_workspace_migrator_error_handling_on_invalid_workspace": [
         "tests.unit.test_infra_workspace_migrator_deps",
@@ -4137,11 +4177,13 @@ __all__ = [
     "TestRunPipCheck",
     "TestRunPr",
     "TestRunPrWorkspace",
+    "TestRunProjectFixMode",
     "TestRunProjectsBehavior",
     "TestRunProjectsReports",
     "TestRunProjectsValidation",
     "TestRunPyrefly",
     "TestRunPyright",
+    "TestRunPyrightArgs",
     "TestRunRuffFix",
     "TestRunRuffFormat",
     "TestRunRuffLint",
@@ -4438,8 +4480,12 @@ __all__ = [
     "test_main_with_changes_no_dry_run",
     "test_maintenance_rejects_apply_flag",
     "test_make_boot_works_without_existing_venv_in_workspace_mode",
+    "test_make_check_fast_path_check_only_suppresses_fix_writes",
     "test_make_check_file_scope_rejects_unsupported_gates",
     "test_make_check_file_scope_runs_mypy",
+    "test_make_check_file_scope_unsets_python_path_env",
+    "test_make_check_full_run_forwards_fix_and_tool_args",
+    "test_make_check_full_run_unsets_python_path_env",
     "test_make_help_lists_supported_options",
     "test_migrate_makefile_not_found_non_dry_run",
     "test_migrate_pyproject_flext_core_non_dry_run",
@@ -4542,6 +4588,7 @@ __all__ = [
     "test_rule_dispatch_prefers_fix_action_metadata",
     "test_run_cases",
     "test_run_cli_rejects_fix_flags_for_run",
+    "test_run_cli_run_forwards_fix_and_tool_args",
     "test_run_cli_run_returns_one_for_fail",
     "test_run_cli_run_returns_two_for_error",
     "test_run_cli_run_returns_zero_for_pass",
@@ -4599,6 +4646,7 @@ __all__ = [
     "test_workspace_cli_migrate_command",
     "test_workspace_cli_migrate_output_contains_summary",
     "test_workspace_cli_rejects_migrate_flags_for_detect",
+    "test_workspace_makefile_generator_sanitizes_orchestrator_env",
     "test_workspace_migrator_error_handling_on_invalid_workspace",
     "test_workspace_migrator_makefile_not_found_dry_run",
     "test_workspace_migrator_makefile_read_error",

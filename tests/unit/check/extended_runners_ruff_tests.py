@@ -18,11 +18,11 @@ from flext_tests import tm
 
 from flext_infra import (
     FlextInfraMarkdownGate,
+    FlextInfraPyrightGate,
     FlextInfraRuffFormatGate,
     FlextInfraRuffLintGate,
     FlextInfraUtilitiesSubprocess,
     FlextInfraWorkspaceChecker,
-    t,
 )
 from tests import (
     FlextInfraTestHelpers,
@@ -30,6 +30,7 @@ from tests import (
     m,
     patch_gate_run,
     run_command_failure_check,
+    t,
 )
 
 
@@ -79,6 +80,37 @@ class TestRunRuffLint:
         )
         result = checker._run_ruff_lint(proj_dir)
         tm.that(not result.result.passed, eq=True)
+
+    def test_run_ruff_lint_forwards_ctx_ruff_args(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        captured_cmd: list[str] = []
+
+        def _fake_run(
+            _self: FlextInfraRuffLintGate,
+            cmd: t.StrSequence,
+            cwd: Path,
+            timeout: int = 0,
+            env: t.StrMapping | None = None,
+        ) -> m.Infra.CommandOutput:
+            _ = cwd, timeout, env
+            captured_cmd.extend(cmd)
+            return m.Infra.CommandOutput(stdout="[]", stderr="", exit_code=0)
+
+        monkeypatch.setattr(FlextInfraRuffLintGate, "_run", _fake_run)
+        gate = FlextInfraRuffLintGate(tmp_path)
+        proj_dir = create_checker_project(tmp_path)[1]
+        _ = gate.check(
+            proj_dir,
+            m.Infra.GateContext(
+                workspace_root=tmp_path,
+                reports_dir=tmp_path,
+                ruff_args=("--select", "E501"),
+            ),
+        )
+        tm.that(captured_cmd, has=["--select", "E501", "--output-format", "json"])
 
 
 class TestRunRuffFormat:
@@ -147,6 +179,46 @@ class TestRunRuffFormat:
         )
         result = checker._run_ruff_format(tmp_path)
         tm.that(len(result.issues), gte=1)
+
+
+class TestRunPyrightArgs:
+    """Test Pyright gate extra argument forwarding."""
+
+    def test_run_pyright_forwards_ctx_args(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        captured_cmd: list[str] = []
+
+        def _fake_run(
+            _self: FlextInfraPyrightGate,
+            cmd: t.StrSequence,
+            cwd: Path,
+            timeout: int = 0,
+            env: t.StrMapping | None = None,
+        ) -> m.Infra.CommandOutput:
+            _ = cwd, timeout, env
+            captured_cmd.extend(cmd)
+            return m.Infra.CommandOutput(
+                stdout='{"generalDiagnostics":[]}',
+                stderr="",
+                exit_code=0,
+            )
+
+        monkeypatch.setattr(FlextInfraPyrightGate, "_run", _fake_run)
+        gate = FlextInfraPyrightGate(tmp_path)
+        proj_dir = create_checker_project(tmp_path, with_src=True)[1]
+        (proj_dir / "src" / "demo.py").write_text("value = 1\n", encoding="utf-8")
+        _ = gate.check(
+            proj_dir,
+            m.Infra.GateContext(
+                workspace_root=tmp_path,
+                reports_dir=tmp_path,
+                pyright_args=("--level", "basic"),
+            ),
+        )
+        tm.that(captured_cmd, has=["--level", "basic", "--outputjson"])
 
 
 class TestRunCommand:

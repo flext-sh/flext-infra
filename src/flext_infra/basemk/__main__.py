@@ -5,13 +5,17 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from flext_cli import cli
+from flext_core import FlextRuntime, r
+
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,
     m,
     t,
-    u,
 )
+
+# ── Helpers ──────────────────────────────────────────────────
 
 
 def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
@@ -22,58 +26,66 @@ def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
     )
 
 
-def run(argv: t.StrSequence | None = None) -> int:
-    """Run the base.mk CLI command dispatcher."""
-    parser = u.Infra.create_parser(
-        "basemk",
-        "base.mk generation utilities",
-        include_apply=False,
-        include_diff=False,
-    )
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    generate_parser = subparsers.add_parser(
-        "generate",
-        help="Generate base.mk content from templates",
-    )
-    _ = generate_parser.add_argument(
-        "--workspace",
-        type=Path,
-        default=Path.cwd(),
-        help="Workspace root directory (default: cwd)",
-    )
-    _ = generate_parser.add_argument(
-        "--output",
-        type=Path,
-        help="Write generated content to file path (defaults to stdout)",
-    )
-    _ = generate_parser.add_argument(
-        "--project-name",
-        type=str,
-        help="Override project name in generated base.mk",
-    )
-    args = parser.parse_args(argv)
-    if args.command != "generate":
-        parser.print_help()
-        return 1
-    generator = FlextInfraBaseMkGenerator()
-    config = _build_config(args.project_name)
-    generated_result = generator.generate_basemk(config)
-    if generated_result.is_failure:
-        return u.Infra.exit_code(
-            generated_result,
-            failure_msg="base.mk generation failed",
+# ── Router ───────────────────────────────────────────────────
+
+
+class FlextInfraBaseMkCli:
+    """Declarative CLI router for base.mk generation."""
+
+    def __init__(self) -> None:
+        """Initialize CLI app and register declarative routes."""
+        self._app = cli.create_app_with_common_params(
+            name="basemk",
+            help_text="base.mk generation utilities",
         )
-    write_result = generator.write(
-        generated_result.value,
-        output=args.output,
-        stream=sys.stdout,
-    )
-    return u.Infra.exit_code(write_result, failure_msg="base.mk write failed")
+        self._register_commands()
+
+    def run(self, args: t.StrSequence | None = None) -> r[bool]:
+        """Execute the CLI application."""
+        return cli.execute_app(self._app, prog_name="basemk", args=args)
+
+    def _register_commands(self) -> None:
+        cli.register_result_route(
+            self._app,
+            route=m.Cli.ResultCommandRouteModel(
+                name="generate",
+                help_text="Generate base.mk content from templates",
+                model_cls=GenerateInput,
+                handler=self._handle_generate,
+                success_message="base.mk generation complete",
+                failure_message="base.mk generation failed",
+            ),
+        )
+
+    @staticmethod
+    def _handle_generate(params: GenerateInput) -> r[str]:
+        """Generate base.mk content and optionally write to file."""
+        generator = FlextInfraBaseMkGenerator()
+        config = _build_config(params.project_name)
+        generated_result = generator.generate_basemk(config)
+        if generated_result.is_failure:
+            return r[str].fail(
+                generated_result.error or "base.mk generation failed",
+            )
+        output = Path(params.output) if params.output else None
+        write_result = generator.write(
+            generated_result.value,
+            output=output,
+            stream=sys.stdout,
+        )
+        if write_result.is_failure:
+            return r[str].fail(write_result.error or "base.mk write failed")
+        return r[str].ok(generated_result.value)
+
+
+# ── Entry Point ──────────────────────────────────────────────
 
 
 def main(argv: t.StrSequence | None = None) -> int:
     """Run the base.mk CLI entrypoint."""
-    return u.Infra.run_cli(run, argv)
+    FlextRuntime.ensure_structlog_configured()
+    result = FlextInfraBaseMkCli().run(argv)
+    return 0 if result.is_success else 1
 
 
 if __name__ == "__main__":

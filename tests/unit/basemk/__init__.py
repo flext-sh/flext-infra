@@ -70,8 +70,12 @@ if TYPE_CHECKING:
     )
     from tests.unit.basemk.test_make_contract import (
         test_make_boot_works_without_existing_venv_in_workspace_mode,
+        test_make_check_fast_path_check_only_suppresses_fix_writes,
         test_make_check_file_scope_rejects_unsupported_gates,
         test_make_check_file_scope_runs_mypy,
+        test_make_check_file_scope_unsets_python_path_env,
+        test_make_check_full_run_forwards_fix_and_tool_args,
+        test_make_check_full_run_unsets_python_path_env,
         test_make_help_lists_supported_options,
     )
 
@@ -249,6 +253,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.basemk.test_make_contract",
         "test_make_boot_works_without_existing_venv_in_workspace_mode",
     ],
+    "test_make_check_fast_path_check_only_suppresses_fix_writes": [
+        "tests.unit.basemk.test_make_contract",
+        "test_make_check_fast_path_check_only_suppresses_fix_writes",
+    ],
     "test_make_check_file_scope_rejects_unsupported_gates": [
         "tests.unit.basemk.test_make_contract",
         "test_make_check_file_scope_rejects_unsupported_gates",
@@ -256,6 +264,18 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_make_check_file_scope_runs_mypy": [
         "tests.unit.basemk.test_make_contract",
         "test_make_check_file_scope_runs_mypy",
+    ],
+    "test_make_check_file_scope_unsets_python_path_env": [
+        "tests.unit.basemk.test_make_contract",
+        "test_make_check_file_scope_unsets_python_path_env",
+    ],
+    "test_make_check_full_run_forwards_fix_and_tool_args": [
+        "tests.unit.basemk.test_make_contract",
+        "test_make_check_full_run_forwards_fix_and_tool_args",
+    ],
+    "test_make_check_full_run_unsets_python_path_env": [
+        "tests.unit.basemk.test_make_contract",
+        "test_make_check_full_run_unsets_python_path_env",
     ],
     "test_make_help_lists_supported_options": [
         "tests.unit.basemk.test_make_contract",
@@ -324,8 +344,12 @@ __all__ = [
     "test_generator_write_to_stream",
     "test_generator_write_to_stream_handles_oserror",
     "test_make_boot_works_without_existing_venv_in_workspace_mode",
+    "test_make_check_fast_path_check_only_suppresses_fix_writes",
     "test_make_check_file_scope_rejects_unsupported_gates",
     "test_make_check_file_scope_runs_mypy",
+    "test_make_check_file_scope_unsets_python_path_env",
+    "test_make_check_full_run_forwards_fix_and_tool_args",
+    "test_make_check_full_run_unsets_python_path_env",
     "test_make_help_lists_supported_options",
     "test_render_all_declares_and_documents_runtime_options",
     "test_render_all_exposes_canonical_public_targets",
