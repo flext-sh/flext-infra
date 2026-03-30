@@ -77,7 +77,16 @@ WORKSPACE_PYTHONPATH := $(shell \
 	done)$(CURDIR)/src
 WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)
 WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra
-ORCHESTRATOR := $(WORKSPACE_FLEXT_INFRA) workspace orchestrate
+WORKSPACE_INFRA_CHECK := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CHECK }}
+WORKSPACE_INFRA_CODEGEN := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CODEGEN }}
+WORKSPACE_INFRA_DEPS := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_DEPS }}
+WORKSPACE_INFRA_GITHUB := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_GITHUB }}
+WORKSPACE_INFRA_MAINTENANCE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_ROUTE_MAINTENANCE }}
+WORKSPACE_INFRA_REFACTOR := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_REFACTOR }}
+WORKSPACE_INFRA_RELEASE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_ROUTE_RELEASE }}
+WORKSPACE_INFRA_VALIDATE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_VALIDATE }}
+WORKSPACE_INFRA_WORKSPACE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_WORKSPACE }}
+ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate
 ORCHESTRATOR_PROJECTS := --projects "$(SELECTED_PROJECTS)"
 
 define ENSURE_NO_PROJECT_CONFLICT
@@ -114,7 +123,7 @@ endef
 
 define AUTO_SYNC_ALL_PROJECTS
 for proj in $(ALL_PROJECTS); do \
-	$(WORKSPACE_FLEXT_INFRA) workspace sync --workspace "$$proj" --canonical-root "$(CURDIR)" --apply >/dev/null || exit 1; \
+	$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$$proj" --canonical-root "$(CURDIR)" --apply >/dev/null || exit 1; \
 done
 endef
 
@@ -269,10 +278,8 @@ boot: ## Install all projects into workspace .venv
 	$(Q)echo "Bootstrapping flext-core runtime dependencies..."; \
 	uv sync --directory flext-core --no-dev || exit 1
 	$(Q)$(ENSURE_WORKSPACE_RUNTIME)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_FLEXT_INFRA) maintenance || exit 1
-	$(Q)$(AUTO_ADJUST_SELECTED_PROJECTS)
+	$(Q)$(PREPARE_SELECTED_PROJECTS)
+	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
 	$(Q)echo "Standardizing project metadata (make mod)..."
 	$(Q)$(MAKE) mod
 	$(Q)total_steps=$$(( $(words $(SELECTED_PROJECTS)) + 1 )); \
@@ -283,7 +290,7 @@ boot: ## Install all projects into workspace .venv
 			log_file="/tmp/flext-setup-$$proj.log"; \
 			start_ts=$$(date +%s); \
 			printf "[%2d/%2d] boot %s\n" $$step $$total_steps "$$proj"; \
-			if $(WORKSPACE_FLEXT_INFRA) deps internal-sync --workspace "$$proj" >>"$$log_file" 2>&1; then \
+			if $(WORKSPACE_INFRA_DEPS) internal-sync --workspace "$$proj" >>"$$log_file" 2>&1; then \
 				:; \
 			else \
 				echo "     sync  ... failed"; \
@@ -323,7 +330,7 @@ boot: ## Install all projects into workspace .venv
 	start_ts=$$(date +%s); \
 	root_lock_ok=0; \
 	printf "[%2d/%2d] boot %s\n" $$step $$total_steps "root"; \
-	if ! $(WORKSPACE_FLEXT_INFRA) deps internal-sync --workspace . >"$$log_file" 2>&1; then \
+	if ! $(WORKSPACE_INFRA_DEPS) internal-sync --workspace . >"$$log_file" 2>&1; then \
 		echo "     sync  ... failed"; \
 		cat "$$log_file"; \
 		failed=$$((failed + 1)); \
@@ -371,7 +378,7 @@ up: ## Upgrade Python dependencies to latest via Poetry
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_FLEXT_INFRA) maintenance || exit 1
+	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
 	$(Q)echo "Standardizing project metadata (make mod)..."
 	$(Q)$(MAKE) mod
 	$(Q)echo "Upgrading workspace dependencies (uv workspace mode)..."; \
@@ -406,10 +413,10 @@ up: ## Upgrade Python dependencies to latest via Poetry
 	echo "Upgrade summary: Upgraded=workspace Failed=0 Total=workspace"; \
 	if [ "$(DEPS_REPORT)" != "0" ]; then \
 		echo "Dependency report (deptry + pip check)..."; \
-		$(WORKSPACE_FLEXT_INFRA) deps detect -q --no-fail; \
+		$(WORKSPACE_INFRA_DEPS) detect -q --no-fail; \
 	fi
 	$(Q)echo "Syncing GitHub workflow templates..."
-	$(Q)$(WORKSPACE_FLEXT_INFRA) github workflows --workspace "$(CURDIR)" --apply --prune --report .reports/workflows/sync.json
+	$(Q)$(WORKSPACE_INFRA_GITHUB) workflows --workspace "$(CURDIR)" --apply --prune --report .reports/workflows/sync.json
 
 mod: ## Modernize pyproject.toml files (standardize configs without lock/install)
 	$(Q)$(REQUIRE_VENV)
@@ -418,10 +425,10 @@ mod: ## Modernize pyproject.toml files (standardize configs without lock/install
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Modernizing pyproject.toml files..."; \
-	$(WORKSPACE_FLEXT_INFRA) deps modernize --skip-check --apply $(if $(PROJECT),--project "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
+	$(WORKSPACE_INFRA_DEPS) modernize --skip-check --apply $(if $(PROJECT),--project "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
 	echo ""
 	$(Q)echo "Syncing dependency paths to workspace mode..."; \
-	$(WORKSPACE_FLEXT_INFRA) deps path-sync --mode auto --apply $(if $(PROJECT),--project "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
+	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(if $(PROJECT),--project "$(PROJECT)",) $(if $(PROJECTS),--projects "$(PROJECTS)",); \
 	echo ""
 	$(Q)echo "Formatting pyproject.toml files with taplo..."; \
 	taplo format --config "$(CURDIR)/.taplo.toml" pyproject.toml */pyproject.toml; \
@@ -446,7 +453,7 @@ build: ## Build/package all selected projects
 
 rel: ## Interactive workspace release orchestration
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
-	$(Q)$(WORKSPACE_FLEXT_INFRA) release \
+	$(Q)$(WORKSPACE_INFRA_RELEASE) \
 		--workspace "$(CURDIR)" \
 		--phase "$(RELEASE_PHASE)" \
 		--interactive "$(INTERACTIVE)" \
@@ -463,7 +470,7 @@ rel: ## Interactive workspace release orchestration
 
 pr: ## Manage pull requests for selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
-	$(Q)$(WORKSPACE_FLEXT_INFRA) github pr-workspace \
+	$(Q)$(WORKSPACE_INFRA_GITHUB) pr-workspace \
 		--workspace "$(CURDIR)" \
 		$(foreach proj,$(SELECTED_PROJECTS),--project "$(proj)") \
 		--include-root "$(PR_INCLUDE_ROOT)" \
@@ -541,18 +548,18 @@ val: ## Run validate gates (VALIDATE_SCOPE=project|workspace, FIX=1)
 ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
+	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
-	$(Q)$(AUTO_ADJUST_SELECTED_PROJECTS)
 	$(Q)mkdir -p .reports
 	$(Q)echo "Running workspace validation (inventory + strict anti-drift gates)..."
-	$(Q)$(WORKSPACE_FLEXT_INFRA) maintenance --check || exit 1
-	$(Q)$(WORKSPACE_FLEXT_INFRA) validate inventory --workspace .
-	$(Q)$(WORKSPACE_FLEXT_INFRA) validate basemk-validate
-	$(Q)$(WORKSPACE_FLEXT_INFRA) github lint --workspace . --report .reports/workflows/actionlint.json
-	$(Q)$(WORKSPACE_FLEXT_INFRA) validate skill-validate --skill scripts-validation --mode strict
-	$(Q)$(WORKSPACE_FLEXT_INFRA) validate skill-validate --skill rules-github --mode strict
-	$(Q)$(WORKSPACE_FLEXT_INFRA) validate skill-validate --skill rules-docker --mode strict
-	$(Q)$(WORKSPACE_FLEXT_INFRA) deps modernize --audit
+	$(Q)$(WORKSPACE_INFRA_MAINTENANCE) --check || exit 1
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) inventory --workspace .
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) basemk-validate
+	$(Q)$(WORKSPACE_INFRA_GITHUB) lint --workspace . --report .reports/workflows/actionlint.json
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) skill-validate --skill scripts-validation --mode strict
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) skill-validate --skill rules-github --mode strict
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) skill-validate --skill rules-docker --mode strict
+	$(Q)$(WORKSPACE_INFRA_DEPS) modernize --audit
 	$(Q)if git grep -nE '/home/.*/flext|file:///home/.*/flext' -- . ':!Makefile'; then \
 		echo "ERROR: absolute workspace paths detected in tracked sources/config"; \
 		exit 1; \
@@ -604,10 +611,10 @@ types: ## Run typings supply-chain (stubgen + stub_supply_chain + dependency rep
 		echo "  no packages to regenerate"; \
 	fi; \
 	rm -rf "$$tmp_dir"
-	$(Q)$(WORKSPACE_FLEXT_INFRA) validate stub-validate \
+	$(Q)$(WORKSPACE_INFRA_VALIDATE) stub-validate \
 		$(if $(PROJECT),--project $(PROJECT),$(if $(PROJECTS),$(addprefix --project ,$(PROJECTS)),--all))
 	$(Q)if [ "$(DEPS_REPORT)" != "0" ]; then \
-		$(WORKSPACE_FLEXT_INFRA) deps detect --typings -q --no-fail; \
+		$(WORKSPACE_INFRA_DEPS) detect --typings -q --no-fail; \
 	fi
 
 pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefly + evidence
@@ -615,7 +622,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)mkdir -p .sisyphus/evidence .reports/pyrefly
 	$(Q)set -o pipefail; \
-	$(WORKSPACE_FLEXT_INFRA) check run \
+	$(WORKSPACE_INFRA_CHECK) run \
 		--gates pyrefly \
 		--reports-dir "$(CURDIR)/.reports/pyrefly" \
 		--project "." \
@@ -629,7 +636,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 	echo "=== Type Policy Gate ==="; \
 	policy_violations=0; \
 	echo "--- # type: ignore ---"; \
-	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
+	$(WORKSPACE_INFRA_VALIDATE) scan --workspace . \
 		--pattern "#\\s*type:\\s*ignore" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -638,7 +645,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 		--match absent \
 		2>&1 || policy_violations=$$((policy_violations + 1)); \
 	echo "--- Any (typing) ---"; \
-	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
+	$(WORKSPACE_INFRA_VALIDATE) scan --workspace . \
 		--pattern "\\bAny\\b" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -647,7 +654,7 @@ pyre: ## Authoritative repo-wide pyrefly report + policy gate -> .reports/pyrefl
 		--match absent \
 		2>&1 || policy_violations=$$((policy_violations + 1)); \
 	echo "--- object annotations ---"; \
-	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
+	$(WORKSPACE_INFRA_VALIDATE) scan --workspace . \
 		--pattern "(?::\\s*|->\\s*)object\\b" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -668,7 +675,7 @@ stubs: ## Repo-wide stub supply-chain validation -> .sisyphus/evidence
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)mkdir -p .sisyphus/evidence
 	$(Q)set -o pipefail; \
-	$(WORKSPACE_FLEXT_INFRA) validate stub-validate --all \
+	$(WORKSPACE_INFRA_VALIDATE) stub-validate --all \
 		2>&1 | tee .sisyphus/evidence/pyrefly-stub-validate.txt; \
 	stub_status=$${PIPESTATUS[0]}; \
 	printf "exit_code: %s\n" "$$stub_status" >> .sisyphus/evidence/pyrefly-stub-validate.txt; \
@@ -685,7 +692,7 @@ pol: ## Repo-wide typing policy gate (no Any/t.NormalizedValue/# type: ignore)
 	echo "workspace: $(CURDIR)" >> .reports/pyrefly/type-policy.txt; \
 	echo "" >> .reports/pyrefly/type-policy.txt; \
 	echo "--- # type: ignore ---" >> .reports/pyrefly/type-policy.txt; \
-	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
+	$(WORKSPACE_INFRA_VALIDATE) scan --workspace . \
 		--pattern "#\\s*type:\\s*ignore" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -695,7 +702,7 @@ pol: ## Repo-wide typing policy gate (no Any/t.NormalizedValue/# type: ignore)
 		2>&1 | tee -a .reports/pyrefly/type-policy.txt || status=$$?; \
 	echo "" >> .reports/pyrefly/type-policy.txt; \
 	echo "--- Any (typing) ---" >> .reports/pyrefly/type-policy.txt; \
-	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
+	$(WORKSPACE_INFRA_VALIDATE) scan --workspace . \
 		--pattern "\\bAny\\b" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -705,7 +712,7 @@ pol: ## Repo-wide typing policy gate (no Any/t.NormalizedValue/# type: ignore)
 		2>&1 | tee -a .reports/pyrefly/type-policy.txt || status=$$?; \
 	echo "" >> .reports/pyrefly/type-policy.txt; \
 	echo "--- t.NormalizedValue (typing contexts) ---" >> .reports/pyrefly/type-policy.txt; \
-	$(WORKSPACE_FLEXT_INFRA) validate scan --workspace . \
+	$(WORKSPACE_INFRA_VALIDATE) scan --workspace . \
 		--pattern "(?:\\:\\s*|->\\s*|=\\s*|\\|\\s*|\\[\\s*|,\\s*)t.NormalizedValue\\b" \
 		--include "**/*.py*" \
 		--exclude "**/.venv/**" --exclude "**/venv/**" --exclude "**/__pycache__/**" --exclude "**/.git/**" \
@@ -872,22 +879,22 @@ sync: ## Sync project Makefiles from pyproject.toml + refresh __init__.py lazy i
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)echo "==> Syncing workspace root base.mk..."
-	$(Q)$(WORKSPACE_FLEXT_INFRA) workspace sync \
+	$(Q)$(WORKSPACE_INFRA_WORKSPACE) sync \
 		--workspace "$(CURDIR)"
 	$(Q)echo "==> Syncing project Makefiles..."
 	$(Q)for proj in $(SELECTED_PROJECTS); do \
-		$(WORKSPACE_FLEXT_INFRA) workspace sync \
+		$(WORKSPACE_INFRA_WORKSPACE) sync \
 			--workspace "$$proj" \
 			--canonical-root "$(CURDIR)"; \
 	done
 	$(Q)echo "==> Regenerating __init__.py lazy imports..."
-	$(Q)$(WORKSPACE_FLEXT_INFRA) codegen lazy-init --workspace "$(CURDIR)"
+	$(Q)$(WORKSPACE_INFRA_CODEGEN) lazy-init --workspace "$(CURDIR)"
 	$(Q)echo "==> Sync complete."
 
 imp: ## Detect and fix import violations across workspace (CST-based)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(WORKSPACE_FLEXT_INFRA) refactor imports \
+	$(Q)$(WORKSPACE_INFRA_REFACTOR) imports \
 		--workspace "$(CURDIR)" $(if $(APPLY),--apply,)
 
 # Workspace-specific custom targets (optional, never overwritten by sync)

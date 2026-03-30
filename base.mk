@@ -128,6 +128,7 @@ endif
 # === CACHE ===
 LINT_CACHE_DIR := .lint-cache
 CACHE_TIMEOUT := 300
+BASE_INFRA_WORKSPACE := python -m flext_infra workspace
 
 $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
@@ -167,7 +168,7 @@ endef
 
 define AUTO_SYNC_BASE_AND_SCRIPTS
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
-	python -m flext_infra workspace sync \
+	$(BASE_INFRA_WORKSPACE) sync \
 		--workspace "$(CURDIR)" --apply; \
 elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
 	echo "INFO: [preflight] Standalone mode: skipping workspace dependency sync."; \
@@ -177,6 +178,13 @@ endef
 _preflight: ## Preflight: sync base.mk and enforce venv contract
 	$(Q)$(AUTO_SYNC_BASE_AND_SCRIPTS)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
+
+PROJECT_INFRA_ROOT := $(POETRY) run python -m flext_infra
+PROJECT_INFRA_CHECK := env -u PYTHONPATH -u MYPYPATH FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check
+PROJECT_INFRA_DEPS := $(PROJECT_INFRA_ROOT) deps
+PROJECT_INFRA_DOCS := env -u PYTHONPATH -u MYPYPATH $(VENV_PYTHON) -m flext_infra docs
+PROJECT_INFRA_GITHUB := env -u PYTHONPATH -u MYPYPATH $(VENV_PYTHON) -m flext_infra github
+PROJECT_INFRA_VALIDATE := $(VENV_PYTHON) -m flext_infra validate
 
 help: ## Show commands
 	$(Q)echo "================================================"
@@ -270,8 +278,8 @@ boot: ## Complete setup
 		go mod tidy; \
 		exit 0; \
 	fi
-	$(Q)$(POETRY) run python -m flext_infra deps path-sync --mode auto --apply --workspace "$(CURDIR)"
-	$(Q)$(POETRY) run python -m flext_infra deps internal-sync --workspace "$(CURDIR)"
+	$(Q)$(PROJECT_INFRA_DEPS) path-sync --mode auto --apply --workspace "$(CURDIR)"
+	$(Q)$(PROJECT_INFRA_DEPS) internal-sync --workspace "$(CURDIR)"
 	$(Q)$(POETRY) lock
 	$(Q)$(POETRY) install --all-extras --all-groups
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
@@ -407,7 +415,7 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 	if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
 		project_key="."; \
 	fi; \
-	env -u PYTHONPATH -u MYPYPATH FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(POETRY) run python -m flext_infra check run --gates "$$gates" --reports-dir "$(CURDIR)/.reports/check" --project "$$project_key" $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) $(if $(filter 1,$(CHECK_ONLY)),--check-only,) $(if $(RUFF_ARGS),--ruff-args "$(RUFF_ARGS)",) $(if $(PYRIGHT_ARGS),--pyright-args "$(PYRIGHT_ARGS)",); \
+	$(PROJECT_INFRA_CHECK) run --gates "$$gates" --reports-dir "$(CURDIR)/.reports/check" --project "$$project_key" $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) $(if $(filter 1,$(CHECK_ONLY)),--check-only,) $(if $(RUFF_ARGS),--ruff-args "$(RUFF_ARGS)",) $(if $(PYRIGHT_ARGS),--pyright-args "$(PYRIGHT_ARGS)",); \
 	exit $$?
 
 scan: ## Run all security checks
@@ -419,7 +427,7 @@ scan: ## Run all security checks
 	if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
 		project_key="."; \
 	fi; \
-	FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(POETRY) run python -m flext_infra check run \
+	$(PROJECT_INFRA_CHECK) run \
 		--workspace "$(WORKSPACE_ROOT)" \
 		--gates "security" \
 		--reports-dir "$(CURDIR)/.reports/scan" \
@@ -488,15 +496,15 @@ docs: ## Build docs
 	fi; \
 	for phase in $$phases; do \
 		case "$$phase" in \
-			audit) subcmd="docs audit"; extra="--strict 1" ;; \
-			fix) subcmd="docs fix"; extra="$(if $(filter 1,$(FIX)),--apply,)" ;; \
-			build) subcmd="docs build"; extra="" ;; \
-			generate) subcmd="docs generate"; extra="--apply" ;; \
-			validate) subcmd="docs validate"; extra="$(if $(filter 1,$(FIX)),--apply,)" ;; \
+			audit) subcmd="$(PROJECT_INFRA_DOCS) audit"; extra="--strict 1" ;; \
+			fix) subcmd="$(PROJECT_INFRA_DOCS) fix"; extra="$(if $(filter 1,$(FIX)),--apply,)" ;; \
+			build) subcmd="$(PROJECT_INFRA_DOCS) build"; extra="" ;; \
+			generate) subcmd="$(PROJECT_INFRA_DOCS) generate"; extra="--apply" ;; \
+			validate) subcmd="$(PROJECT_INFRA_DOCS) validate"; extra="$(if $(filter 1,$(FIX)),--apply,)" ;; \
 				*) echo "ERROR: invalid DOCS_PHASE=$$phase (allowed: all|generate|fix|audit|build|validate)"; exit 2 ;; \
 			esac; \
 		if [ "$$phase" = "fix" ] && [ "$$all_mode" = "1" ]; then extra="--apply"; fi; \
-		cmd="env -u PYTHONPATH -u MYPYPATH $(VENV_PYTHON) -m flext_infra $$subcmd --workspace . --output-dir .reports/docs"; \
+		cmd="$$subcmd --workspace . --output-dir .reports/docs"; \
 		if [ -n "$$extra" ]; then cmd="$$cmd $$extra"; fi; \
 		eval $$cmd || exit $$?; \
 	done
@@ -565,7 +573,7 @@ test: ## Run pytest only
 		echo "duration_seconds=0" >> "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
-	$(VENV_PYTHON) -m flext_infra validate pytest-diag \
+	$(PROJECT_INFRA_VALIDATE) pytest-diag \
 		--junit "$$junit_file" --log "$$log_file" \
 		--failed "$$failed_file" --errors "$$errors_file" \
 		--warnings "$$warnings_file" --slowest "$$slowest_file" \
@@ -693,7 +701,7 @@ daemon-status: ## Show status of all daemons
 daemon-restart: daemon-stop daemon-start ## Restart all daemons
 
 pr: ## Manage pull requests for this repository
-	$(Q)env -u PYTHONPATH -u MYPYPATH $(VENV_PYTHON) -m flext_infra github pr \
+	$(Q)$(PROJECT_INFRA_GITHUB) pr \
 		--repo-root "$(CURDIR)" \
 		--action "$(PR_ACTION)" \
 		--base "$(PR_BASE)" \

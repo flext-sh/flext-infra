@@ -106,6 +106,21 @@ def test_make_help_lists_supported_options(tmp_path: Path) -> None:
     assert "check-fast" not in result.stdout
 
 
+def test_rendered_base_mk_declares_cli_group_roots() -> None:
+    rendered = _render_base_mk()
+    tm.that(
+        rendered,
+        has=[
+            "PROJECT_INFRA_ROOT := $(POETRY) run python -m flext_infra",
+            'PROJECT_INFRA_CHECK := env -u PYTHONPATH -u MYPYPATH FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check',
+            "PROJECT_INFRA_DEPS := $(PROJECT_INFRA_ROOT) deps",
+            "PROJECT_INFRA_DOCS := env -u PYTHONPATH -u MYPYPATH $(VENV_PYTHON) -m flext_infra docs",
+            "PROJECT_INFRA_GITHUB := env -u PYTHONPATH -u MYPYPATH $(VENV_PYTHON) -m flext_infra github",
+            "PROJECT_INFRA_VALIDATE := $(VENV_PYTHON) -m flext_infra validate",
+        ],
+    )
+
+
 def test_make_check_file_scope_runs_mypy(tmp_path: Path) -> None:
     log_path = tmp_path / "tool.log"
     bin_dir = tmp_path / "bin"

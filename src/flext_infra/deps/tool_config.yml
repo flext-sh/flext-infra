@@ -442,22 +442,92 @@ tools:
     python-version: '3.13'
     use-ignore-files: false
     strict-errors:
+      # --- type safety ---
+      - annotation-mismatch
+      - bad-argument-count
+      - bad-argument-type
+      - bad-assignment
+      - bad-class-definition
+      - bad-context-manager
+      - bad-dunder-all
+      - bad-function-definition
+      - bad-index
+      - bad-instantiation
+      - bad-keyword-argument
+      - bad-match
+      - bad-param-name-override
+      - bad-raise
+      - bad-return
+      - bad-specialization
+      - bad-typed-dict
+      - bad-typed-dict-key
+      - bad-unpacking
       - deprecated
-      - redundant-cast
       - implicit-abstract-class
       - implicit-any
+      - implicit-import
       - implicitly-defined-attribute
+      - inconsistent-inheritance
+      - inconsistent-overload
+      - inconsistent-overload-default
+      - invalid-annotation
+      - invalid-argument
+      - invalid-decorator
+      - invalid-inheritance
+      - invalid-literal
+      - invalid-overload
+      - invalid-param-spec
+      - invalid-pattern
+      - invalid-self-type
+      - invalid-super-call
+      - invalid-type-alias
+      - invalid-type-var
+      - invalid-type-var-tuple
+      - invalid-variance
+      - invalid-yield
+      - missing-argument
+      - missing-attribute
+      - missing-import
+      - missing-module-attribute
       - missing-override-decorator
       - missing-source
+      - missing-source-for-stubs
+      - no-access
+      - no-matching-overload
+      - not-a-type
+      - not-async
+      - not-callable
+      - not-iterable
       - not-required-key-access
       - open-unpacking
       - protocol-implicitly-defined-attribute
+      - read-only
+      - redefinition
+      - redundant-cast
+      - redundant-condition
       - unannotated-attribute
       - unannotated-parameter
       - unannotated-return
+      - unbound-name
+      - unexpected-keyword
+      - unexpected-positional-argument
+      - unknown-name
+      - unnecessary-comparison
+      - unreachable
+      - unresolvable-dunder-all
+      - unsafe-overlap
+      - unsupported
+      - unsupported-delete
+      - unsupported-operation
+      - untyped-import
+      - unused-coroutine
+      - unused-ignore
+      - variance-mismatch
     disabled-errors:
+      - abstract-method-call
       - bad-override
       - non-convergent-recursion
+      - non-exhaustive-match
     project-exclude-globs:
       - '**/__pycache__'
       - '**/node_modules'

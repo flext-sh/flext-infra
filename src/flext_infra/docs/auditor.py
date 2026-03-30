@@ -159,6 +159,24 @@ class FlextInfraDocAuditor:
             ),
         )
 
+    def execute_command(self, params: m.Infra.DocsAuditInput) -> r[bool]:
+        """CLI handler — accepts input model, delegates to audit."""
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
+        result = self.audit(
+            workspace_root=resolved_workspace,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
+            check="all" if params.check else "",
+            strict=params.strict,
+        )
+        if result.is_failure:
+            return r[bool].fail(result.error or "audit failed")
+        failures = sum(1 for report in result.value if not report.passed)
+        if failures:
+            return r[bool].fail(f"Audit found {failures} failure(s)")
+        return r[bool].ok(True)
+
     def audit_scope(
         self,
         scope: m.Infra.DocScope,

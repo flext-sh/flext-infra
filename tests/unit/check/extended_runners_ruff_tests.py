@@ -24,14 +24,11 @@ from flext_infra import (
     FlextInfraUtilitiesSubprocess,
     FlextInfraWorkspaceChecker,
 )
-from tests import (
-    FlextInfraTestHelpers,
-    create_checker_project,
-    m,
-    patch_gate_run,
-    run_command_failure_check,
-    t,
-)
+from tests import FlextInfraTestHelpers
+from tests.models import m
+from tests.typings import t
+from tests.unit.check._shared_fixtures import create_checker_project, patch_gate_run
+from tests.unit.check.extended_gate_go_cmd_tests import run_command_failure_check
 
 
 def _create_run_raw_result(

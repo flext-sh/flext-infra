@@ -14,9 +14,8 @@ from tests import m
 
 def test_main_returns_zero_on_help() -> None:
     """--help should exit with code 0."""
-    with pytest.raises(SystemExit) as exc_info:
-        github_main.main(["--help"])
-    tm.that(exc_info.value.code, eq=0)
+    result = github_main.main(["--help"])
+    tm.that(result, eq=0)
 
 
 def test_main_returns_nonzero_on_unknown() -> None:

@@ -71,7 +71,11 @@ class TestModernizerUncoveredLines:
         modernizer = FlextInfraPyprojectModernizer(tmp_path)
         args = _modernizer_args()
 
-        def _find_files() -> Sequence[Path]:
+        def _find_files(
+            *,
+            project_paths: Sequence[Path] | None = None,
+        ) -> Sequence[Path]:
+            _ = project_paths
             return [pyproject]
 
         def _read_doc(_path: Path) -> tomlkit.TOMLDocument:
@@ -79,6 +83,7 @@ class TestModernizerUncoveredLines:
 
         def _process_file(
             _path: Path,
+            *,
             canonical_dev: t.StrSequence,
             dry_run: bool,
             skip_comments: bool,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import tempfile
 from pathlib import Path
 from typing import TextIO, override
@@ -82,6 +83,24 @@ class FlextInfraBaseMkGenerator(s[str]):
             return r[bool].ok(True)
         except OSError as exc:
             return r[bool].fail(f"base.mk write failed: {exc}")
+
+    def execute_command(self, params: m.Infra.BaseMkGenerateInput) -> r[str]:
+        """CLI handler — accepts input model, delegates to generate+write."""
+        config = (
+            FlextInfraBaseMkTemplateEngine.default_config().model_copy(
+                update={"project_name": params.project_name},
+            )
+            if params.project_name
+            else None
+        )
+        result = self.generate_basemk(config)
+        if result.is_failure:
+            return result
+        output_path = Path(params.output) if params.output else None
+        write_result = self.write(result.value, output=output_path, stream=sys.stdout)
+        if write_result.is_failure:
+            return r[str].fail(write_result.error or "write failed")
+        return result
 
     def _normalize_config(
         self,

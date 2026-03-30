@@ -7,6 +7,7 @@ endif
 # === CACHE ===
 LINT_CACHE_DIR := .lint-cache
 CACHE_TIMEOUT := 300
+BASE_INFRA_WORKSPACE := python -m flext_infra {{ make.CLI_GROUP_WORKSPACE }}
 
 $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
@@ -46,7 +47,7 @@ endef
 
 define AUTO_SYNC_BASE_AND_SCRIPTS
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
-	python -m flext_infra workspace sync \
+	$(BASE_INFRA_WORKSPACE) sync \
 		--workspace "$(CURDIR)" --apply; \
 elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
 	echo "INFO: [preflight] Standalone mode: skipping workspace dependency sync."; \

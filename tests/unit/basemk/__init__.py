@@ -77,6 +77,7 @@ if TYPE_CHECKING:
         test_make_check_full_run_forwards_fix_and_tool_args,
         test_make_check_full_run_unsets_python_path_env,
         test_make_help_lists_supported_options,
+        test_rendered_base_mk_declares_cli_group_roots,
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
@@ -297,6 +298,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.basemk.test_engine",
         "test_render_all_has_no_scripts_path_references",
     ],
+    "test_rendered_base_mk_declares_cli_group_roots": [
+        "tests.unit.basemk.test_make_contract",
+        "test_rendered_base_mk_declares_cli_group_roots",
+    ],
 }
 
 __all__ = [
@@ -355,6 +360,7 @@ __all__ = [
     "test_render_all_exposes_canonical_public_targets",
     "test_render_all_generates_large_makefile",
     "test_render_all_has_no_scripts_path_references",
+    "test_rendered_base_mk_declares_cli_group_roots",
 ]
 
 

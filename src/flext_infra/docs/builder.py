@@ -80,6 +80,24 @@ class FlextInfraDocBuilder:
             handler=self._build_scope,
         )
 
+    def execute_command(self, params: m.Infra.DocsBuildInput) -> r[bool]:
+        """CLI handler — accepts input model, delegates to build."""
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
+        result = self.build(
+            workspace_root=resolved_workspace,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
+        )
+        if result.is_failure:
+            return r[bool].fail(result.error or "build failed")
+        failures = sum(
+            1 for report in result.value if report.result == c.Infra.Status.FAIL
+        )
+        if failures:
+            return r[bool].fail(f"Build had {failures} failure(s)")
+        return r[bool].ok(True)
+
     def _build_scope(
         self,
         scope: m.Infra.DocScope,

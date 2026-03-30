@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer,
     )
+    from flext_infra.refactor.cli import FlextInfraCliRefactor
     from flext_infra.refactor.engine import FlextInfraRefactorEngine
     from flext_infra.refactor.migrate_to_class_mro import (
         FlextInfraRefactorMigrateToClassMRO,
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraCliRefactor": ["flext_infra.refactor.cli", "FlextInfraCliRefactor"],
     "FlextInfraNamespaceEnforcer": [
         "flext_infra.refactor.namespace_enforcer",
         "FlextInfraNamespaceEnforcer",
@@ -104,6 +106,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 }
 
 __all__ = [
+    "FlextInfraCliRefactor",
     "FlextInfraNamespaceEnforcer",
     "FlextInfraProjectClassifier",
     "FlextInfraRefactorCensus",

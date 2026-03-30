@@ -9,7 +9,6 @@ from __future__ import annotations
 from argparse import Namespace
 from pathlib import Path
 
-import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
@@ -93,15 +92,13 @@ class TestReleaseMainVersionResolution:
             parse=r[str].ok("1.0.0"),
         )
         args = _args(version="1.0.0", bump="", interactive=1)
-        tm.that(
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            ),
-            eq="1.0.0",
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
         )
+        tm.that(result, ok=True, eq="1.0.0")
 
     def test_resolve_version_invalid_explicit(
         self,
@@ -113,13 +110,13 @@ class TestReleaseMainVersionResolution:
             parse=r[str].fail("invalid"),
         )
         args = _args(version="invalid", bump="", interactive=1)
-        with pytest.raises(RuntimeError):
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            )
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
+        )
+        tm.that(result, ok=False)
 
     def test_resolve_version_from_current(
         self,
@@ -131,15 +128,13 @@ class TestReleaseMainVersionResolution:
             current=r[str].ok("0.9.0"),
         )
         args = _args(version="", bump="", interactive=0)
-        tm.that(
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            ),
-            eq="0.9.0",
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
         )
+        tm.that(result, ok=True, eq="0.9.0")
 
     def test_resolve_version_current_read_failure(
         self,
@@ -151,13 +146,13 @@ class TestReleaseMainVersionResolution:
             current=r[str].fail("read error"),
         )
         args = _args(version="", bump="", interactive=1)
-        with pytest.raises(RuntimeError):
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            )
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
+        )
+        tm.that(result, ok=False)
 
     def test_resolve_version_with_bump(
         self,
@@ -170,15 +165,13 @@ class TestReleaseMainVersionResolution:
             bump=r[str].ok("1.1.0"),
         )
         args = _args(version="", bump="minor", interactive=1)
-        tm.that(
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            ),
-            eq="1.1.0",
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
         )
+        tm.that(result, ok=True, eq="1.1.0")
 
     def test_resolve_version_bump_failure(
         self,
@@ -191,13 +184,13 @@ class TestReleaseMainVersionResolution:
             bump=r[str].fail("invalid bump"),
         )
         args = _args(version="", bump="invalid", interactive=1)
-        with pytest.raises(RuntimeError):
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            )
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
+        )
+        tm.that(result, ok=False)
 
     def test_resolve_version_interactive_input(
         self,
@@ -211,15 +204,13 @@ class TestReleaseMainVersionResolution:
         )
         monkeypatch.setattr("builtins.input", _input_minor)
         args = _args(version="", bump="", interactive=1)
-        tm.that(
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            ),
-            eq="1.1.0",
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
         )
+        tm.that(result, ok=True, eq="1.1.0")
 
     def test_resolve_version_interactive_invalid_input(
         self,
@@ -232,13 +223,13 @@ class TestReleaseMainVersionResolution:
         )
         monkeypatch.setattr("builtins.input", _input_invalid)
         args = _args(version="", bump="", interactive=1)
-        with pytest.raises(RuntimeError):
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            )
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
+        )
+        tm.that(result, ok=False)
 
     def test_resolve_version_non_interactive(
         self,
@@ -250,15 +241,13 @@ class TestReleaseMainVersionResolution:
             current=r[str].ok("1.0.0"),
         )
         args = _args(version="", bump="", interactive=0)
-        tm.that(
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            ),
-            eq="1.0.0",
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
         )
+        tm.that(result, ok=True, eq="1.0.0")
 
 
 class TestResolveVersionInteractive:
@@ -275,13 +264,13 @@ class TestResolveVersionInteractive:
         )
         monkeypatch.setattr("builtins.input", _input_invalid)
         args = _args(version=None, bump=None, interactive=1)
-        with pytest.raises(RuntimeError, match="invalid bump type"):
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            )
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
+        )
+        tm.that(result, ok=False)
 
     def test_resolve_version_interactive_bump_failure(
         self,
@@ -295,30 +284,26 @@ class TestResolveVersionInteractive:
         )
         monkeypatch.setattr("builtins.input", _input_major)
         args = _args(version=None, bump=None, interactive=1)
-        with pytest.raises(RuntimeError, match="bump failed"):
-            _resolve_version(
-                version_arg=args.version or "",
-                bump_arg=args.bump or "",
-                interactive=args.interactive,
-                root_path=tmp_path,
-            )
+        result = _resolve_version(
+            version_arg=args.version or "",
+            bump_arg=args.bump or "",
+            interactive=args.interactive,
+            root_path=tmp_path,
+        )
+        tm.that(result, ok=False)
 
 
 class TestReleaseMainTagResolution:
     """Test tag resolution logic."""
 
     def test_resolve_tag_explicit(self) -> None:
-        tm.that(
-            _resolve_tag("v1.0.0", "1.0.0"),
-            eq="v1.0.0",
-        )
+        result = _resolve_tag("v1.0.0", "1.0.0")
+        tm.that(result, ok=True, eq="v1.0.0")
 
     def test_resolve_tag_invalid_prefix(self) -> None:
-        with pytest.raises(RuntimeError):
-            _resolve_tag("1.0.0", "1.0.0")
+        result = _resolve_tag("1.0.0", "1.0.0")
+        tm.that(result, ok=False)
 
     def test_resolve_tag_auto_generated(self) -> None:
-        tm.that(
-            _resolve_tag("", "1.0.0"),
-            eq="v1.0.0",
-        )
+        result = _resolve_tag("", "1.0.0")
+        tm.that(result, ok=True, eq="v1.0.0")

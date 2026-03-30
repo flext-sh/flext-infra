@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from collections.abc import MutableSequence
 from pathlib import Path
 from types import SimpleNamespace
@@ -27,7 +26,6 @@ def _patch_main_deps(
     root_result: r[Path] | None = None,
     release_result: r[bool] | None = None,
     capture: MutableSequence[SimpleNamespace] | None = None,
-    error_calls: MutableSequence[str] | None = None,
 ) -> None:
     """Patch all main() dependencies via monkeypatch."""
     effective_root = root_result
@@ -79,64 +77,42 @@ def _patch_main_deps(
 
     monkeypatch.setattr(_main_mod, "FlextInfraReleaseOrchestrator", _Or)
 
-    if error_calls is not None:
-        ec: MutableSequence[str] = error_calls
-
-        class _Out:
-            @staticmethod
-            def error(msg: str) -> None:
-                ec.append(msg)
-
-        monkeypatch.setattr(_main_mod, "output", _Out)
-
 
 def _argv(tmp_path: Path, *extra: str) -> list[str]:
-    return ["prog", "--workspace", str(tmp_path), *extra]
+    return ["run", "--workspace", str(tmp_path), *extra]
 
 
 class TestReleaseMainFlow:
     """Test main() orchestration."""
 
     def test_main_success(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            _argv(tmp_path, "--phase", "validate", "--interactive", "0"),
-        )
         _patch_main_deps(monkeypatch, tmp_path)
-        tm.that(main(), eq=0)
+        tm.that(
+            main(argv=_argv(tmp_path, "--phase", "validate", "--interactive", "0")),
+            eq=0,
+        )
 
     def test_main_workspace_root_failure(
         self,
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            _argv(tmp_path, "--phase", "validate", "--interactive", "0"),
-        )
-        errors: MutableSequence[str] = []
         _patch_main_deps(
             monkeypatch,
             tmp_path,
             root_result=r[Path].fail("not found"),
-            error_calls=errors,
         )
-        tm.that(main(), eq=1)
+        tm.that(
+            main(argv=_argv(tmp_path, "--phase", "validate", "--interactive", "0")),
+            eq=1,
+        )
 
     def test_main_version_resolution_failure(
         self,
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            _argv(tmp_path, "--phase", "version", "--version", "invalid"),
-        )
-        errors: MutableSequence[str] = []
-        _patch_main_deps(monkeypatch, tmp_path, error_calls=errors)
+        _patch_main_deps(monkeypatch, tmp_path)
 
         def _parse_semver_fail(version: str) -> r[str]:
             return r[str].fail("invalid")
@@ -146,68 +122,81 @@ class TestReleaseMainFlow:
             "parse_semver",
             staticmethod(_parse_semver_fail),
         )
-        tm.that(main(), eq=1)
-        tm.that(len(errors), eq=1)
+        tm.that(
+            main(argv=_argv(tmp_path, "--phase", "version", "--version", "invalid")),
+            eq=1,
+        )
 
     def test_main_release_failure(
         self,
         tmp_path: Path,
         monkeypatch: MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            _argv(tmp_path, "--phase", "validate", "--interactive", "0"),
-        )
-        errors: MutableSequence[str] = []
         _patch_main_deps(
             monkeypatch,
             tmp_path,
             release_result=r[bool].fail("release failed"),
-            error_calls=errors,
         )
-        tm.that(main(), eq=1)
+        tm.that(
+            main(argv=_argv(tmp_path, "--phase", "validate", "--interactive", "0")),
+            eq=1,
+        )
 
     def test_main_all_phases(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            _argv(tmp_path, "--phase", "all", "--interactive", "0"),
-        )
         calls: MutableSequence[SimpleNamespace] = []
         _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        tm.that(main(), eq=0)
+        tm.that(
+            main(argv=_argv(tmp_path, "--phase", "all", "--interactive", "0")),
+            eq=0,
+        )
         tm.that(calls[0].phases, eq=["validate", "version", "build", "publish"])
 
     def test_main_with_push(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            _argv(tmp_path, "--phase", "validate", "--push", "--interactive", "0"),
-        )
         calls: MutableSequence[SimpleNamespace] = []
         _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        tm.that(main(), eq=0)
+        tm.that(
+            main(
+                argv=_argv(
+                    tmp_path, "--phase", "validate", "--push", "--interactive", "0"
+                ),
+            ),
+            eq=0,
+        )
         tm.that(calls[0].push, eq=True)
 
     def test_main_with_dry_run(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            _argv(tmp_path, "--phase", "validate", "--dry-run", "--interactive", "0"),
-        )
         calls: MutableSequence[SimpleNamespace] = []
         _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        tm.that(main(), eq=0)
+        tm.that(
+            main(
+                argv=_argv(
+                    tmp_path,
+                    "--phase",
+                    "validate",
+                    "--no-apply",
+                    "--interactive",
+                    "0",
+                ),
+            ),
+            eq=0,
+        )
         tm.that(calls[0].dry_run, eq=True)
 
     def test_main_with_projects(self, tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            _argv(tmp_path, "--phase", "validate", "--projects", "proj1", "proj2"),
-        )
         calls: MutableSequence[SimpleNamespace] = []
         _patch_main_deps(monkeypatch, tmp_path, capture=calls)
-        tm.that(main(), eq=0)
+        tm.that(
+            main(
+                argv=_argv(
+                    tmp_path,
+                    "--phase",
+                    "validate",
+                    "--projects",
+                    "proj1",
+                    "--projects",
+                    "proj2",
+                ),
+            ),
+            eq=0,
+        )
         tm.that(calls[0].project_names, eq=["proj1", "proj2"])

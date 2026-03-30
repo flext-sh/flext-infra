@@ -34,7 +34,7 @@ from typing import override
 
 from flext_core import FlextLogger
 
-from flext_infra import c, r, s, u
+from flext_infra import c, m, r, s, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -100,6 +100,10 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             required_minor=required_minor,
         )
         return r[int].ok(0)
+
+    def execute_command(self, params: m.Infra.MaintenanceRunInput) -> r[int]:
+        """CLI handler — accepts input model, delegates to execute."""
+        return self.execute(check_only=params.check, verbose=params.verbose)
 
     def _discover_projects(self, workspace_root: Path) -> Sequence[Path]:
         """Discover all Python projects in workspace.

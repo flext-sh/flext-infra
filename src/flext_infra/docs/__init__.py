@@ -22,25 +22,30 @@ if TYPE_CHECKING:
 
     from flext_infra.docs.auditor import FlextInfraDocAuditor, main
     from flext_infra.docs.builder import FlextInfraDocBuilder
+    from flext_infra.docs.cli import FlextInfraCliDocs, FlextInfraDocsCli
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.validator import FlextInfraDocValidator
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraCliDocs": ["flext_infra.docs.cli", "FlextInfraCliDocs"],
     "FlextInfraDocAuditor": ["flext_infra.docs.auditor", "FlextInfraDocAuditor"],
     "FlextInfraDocBuilder": ["flext_infra.docs.builder", "FlextInfraDocBuilder"],
     "FlextInfraDocFixer": ["flext_infra.docs.fixer", "FlextInfraDocFixer"],
     "FlextInfraDocGenerator": ["flext_infra.docs.generator", "FlextInfraDocGenerator"],
     "FlextInfraDocValidator": ["flext_infra.docs.validator", "FlextInfraDocValidator"],
+    "FlextInfraDocsCli": ["flext_infra.docs.cli", "FlextInfraDocsCli"],
     "main": ["flext_infra.docs.auditor", "main"],
 }
 
 __all__ = [
+    "FlextInfraCliDocs",
     "FlextInfraDocAuditor",
     "FlextInfraDocBuilder",
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
     "FlextInfraDocValidator",
+    "FlextInfraDocsCli",
     "main",
 ]
 

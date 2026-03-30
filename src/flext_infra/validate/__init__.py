@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes
 
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+    from flext_infra.validate.cli import FlextInfraCliValidate
     from flext_infra.validate.inventory import FlextInfraInventoryService
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
@@ -34,6 +35,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.validate.basemk_validator",
         "FlextInfraBaseMkValidator",
     ],
+    "FlextInfraCliValidate": ["flext_infra.validate.cli", "FlextInfraCliValidate"],
     "FlextInfraInventoryService": [
         "flext_infra.validate.inventory",
         "FlextInfraInventoryService",
@@ -62,6 +64,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 
 __all__ = [
     "FlextInfraBaseMkValidator",
+    "FlextInfraCliValidate",
     "FlextInfraInventoryService",
     "FlextInfraNamespaceValidator",
     "FlextInfraPytestDiagExtractor",

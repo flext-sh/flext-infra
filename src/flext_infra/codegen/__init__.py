@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes
 
     from flext_infra.codegen.census import FlextInfraCodegenCensus
+    from flext_infra.codegen.cli import FlextInfraCliCodegen
     from flext_infra.codegen.constants_quality_gate import (
         FlextInfraCodegenConstantsQualityGate,
     )
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraCliCodegen": ["flext_infra.codegen.cli", "FlextInfraCliCodegen"],
     "FlextInfraCodegenCensus": [
         "flext_infra.codegen.census",
         "FlextInfraCodegenCensus",
@@ -54,6 +56,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 }
 
 __all__ = [
+    "FlextInfraCliCodegen",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConstantsQualityGate",
     "FlextInfraCodegenFixer",

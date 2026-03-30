@@ -21,10 +21,12 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes
 
     from flext_infra.workspace import maintenance
+    from flext_infra.workspace.cli import FlextInfraCliWorkspace
     from flext_infra.workspace.detector import (
         FlextInfraWorkspaceDetector,
         FlextInfraWorkspaceMode,
     )
+    from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
     from flext_infra.workspace.maintenance.python_version import (
         FlextInfraPythonVersionEnforcer,
         logger,
@@ -38,6 +40,11 @@ if TYPE_CHECKING:
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+    "FlextInfraCliMaintenance": [
+        "flext_infra.workspace.maintenance.cli",
+        "FlextInfraCliMaintenance",
+    ],
+    "FlextInfraCliWorkspace": ["flext_infra.workspace.cli", "FlextInfraCliWorkspace"],
     "FlextInfraOrchestratorService": [
         "flext_infra.workspace.orchestrator",
         "FlextInfraOrchestratorService",
@@ -73,6 +80,8 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
 }
 
 __all__ = [
+    "FlextInfraCliMaintenance",
+    "FlextInfraCliWorkspace",
     "FlextInfraOrchestratorService",
     "FlextInfraProjectMakefileUpdater",
     "FlextInfraProjectMigrator",

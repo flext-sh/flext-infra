@@ -88,6 +88,26 @@ class FlextInfraDocValidator:
             ),
         )
 
+    def execute_command(self, params: m.Infra.DocsValidateInput) -> r[bool]:
+        """CLI handler — accepts input model, delegates to validate."""
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
+        result = self.validate(
+            workspace_root=resolved_workspace,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
+            check="all" if params.check else "",
+            apply=params.apply,
+        )
+        if result.is_failure:
+            return r[bool].fail(result.error or "validate failed")
+        failures = sum(
+            1 for report in result.value if report.result == c.Infra.Status.FAIL
+        )
+        if failures:
+            return r[bool].fail(f"Validate found {failures} failure(s)")
+        return r[bool].ok(True)
+
     def _run_adr_skill_check(
         self, workspace_root: Path
     ) -> t.Infra.Pair[int, t.StrSequence]:

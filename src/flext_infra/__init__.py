@@ -34,6 +34,7 @@ if TYPE_CHECKING:
         detectors,
         docs,
         gates,
+        github,
         refactor,
         release,
         rules,
@@ -97,6 +98,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
     from flext_infra.basemk._constants import FlextInfraBasemkConstants
     from flext_infra.basemk._models import FlextInfraBasemkModels
+    from flext_infra.basemk.cli import FlextInfraCliBasemk
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
     from flext_infra.check._constants import FlextInfraCheckConstants
@@ -106,6 +108,7 @@ if TYPE_CHECKING:
         FlextInfraWorkspaceChecker,
     )
     from flext_infra.check.workspace_check import build_parser, main, run_cli
+    from flext_infra.cli import FlextInfraCli
     from flext_infra.codegen._codegen_coercion import FlextInfraCodegenCoercion
     from flext_infra.codegen._codegen_execution_tools import (
         FlextInfraCodegenExecutionTools,
@@ -138,6 +141,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesCodegenTransforms,
     )
     from flext_infra.codegen.census import FlextInfraCodegenCensus
+    from flext_infra.codegen.cli import FlextInfraCliCodegen
     from flext_infra.codegen.constants_quality_gate import (
         FlextInfraCodegenConstantsQualityGate,
     )
@@ -231,6 +235,7 @@ if TYPE_CHECKING:
     from flext_infra.docs._models import FlextInfraDocsModels
     from flext_infra.docs.auditor import FlextInfraDocAuditor
     from flext_infra.docs.builder import FlextInfraDocBuilder
+    from flext_infra.docs.cli import FlextInfraCliDocs, FlextInfraDocsCli
     from flext_infra.docs.fixer import FlextInfraDocFixer
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.validator import FlextInfraDocValidator
@@ -247,6 +252,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
     from flext_infra.github._constants import FlextInfraGithubConstants
     from flext_infra.github._models import FlextInfraGithubModels
+    from flext_infra.github.cli import FlextInfraCliGithub
     from flext_infra.models import FlextInfraModels, FlextInfraModels as m
     from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from flext_infra.refactor._base_rule import (
@@ -297,6 +303,7 @@ if TYPE_CHECKING:
     from flext_infra.refactor.class_nesting_analyzer import (
         FlextInfraRefactorClassNestingAnalyzer,
     )
+    from flext_infra.refactor.cli import FlextInfraCliRefactor
     from flext_infra.refactor.engine import FlextInfraRefactorEngine
     from flext_infra.refactor.migrate_to_class_mro import (
         FlextInfraRefactorMigrateToClassMRO,
@@ -321,6 +328,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.release._constants import FlextInfraReleaseConstants
     from flext_infra.release._models import FlextInfraReleaseModels
+    from flext_infra.release.cli import FlextInfraCliRelease
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
     from flext_infra.rules.class_nesting import FlextInfraClassNestingRefactorRule
     from flext_infra.rules.class_reconstructor import (
@@ -422,6 +430,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.validate._models import FlextInfraCoreModels
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+    from flext_infra.validate.cli import FlextInfraCliValidate
     from flext_infra.validate.inventory import FlextInfraInventoryService
     from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
     from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
@@ -431,10 +440,12 @@ if TYPE_CHECKING:
     from flext_infra.workspace import maintenance
     from flext_infra.workspace._constants import FlextInfraWorkspaceConstants
     from flext_infra.workspace._models import FlextInfraWorkspaceModels
+    from flext_infra.workspace.cli import FlextInfraCliWorkspace
     from flext_infra.workspace.detector import (
         FlextInfraWorkspaceDetector,
         FlextInfraWorkspaceMode,
     )
+    from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
     from flext_infra.workspace.maintenance.python_version import (
         FlextInfraPythonVersionEnforcer,
         logger,
@@ -499,6 +510,19 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.detectors.class_placement_detector",
         "FlextInfraClassPlacementDetector",
     ],
+    "FlextInfraCli": ["flext_infra.cli", "FlextInfraCli"],
+    "FlextInfraCliBasemk": ["flext_infra.basemk.cli", "FlextInfraCliBasemk"],
+    "FlextInfraCliCodegen": ["flext_infra.codegen.cli", "FlextInfraCliCodegen"],
+    "FlextInfraCliDocs": ["flext_infra.docs.cli", "FlextInfraCliDocs"],
+    "FlextInfraCliGithub": ["flext_infra.github.cli", "FlextInfraCliGithub"],
+    "FlextInfraCliMaintenance": [
+        "flext_infra.workspace.maintenance.cli",
+        "FlextInfraCliMaintenance",
+    ],
+    "FlextInfraCliRefactor": ["flext_infra.refactor.cli", "FlextInfraCliRefactor"],
+    "FlextInfraCliRelease": ["flext_infra.release.cli", "FlextInfraCliRelease"],
+    "FlextInfraCliValidate": ["flext_infra.validate.cli", "FlextInfraCliValidate"],
+    "FlextInfraCliWorkspace": ["flext_infra.workspace.cli", "FlextInfraCliWorkspace"],
     "FlextInfraCodegenCensus": [
         "flext_infra.codegen.census",
         "FlextInfraCodegenCensus",
@@ -610,6 +634,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraDocFixer": ["flext_infra.docs.fixer", "FlextInfraDocFixer"],
     "FlextInfraDocGenerator": ["flext_infra.docs.generator", "FlextInfraDocGenerator"],
     "FlextInfraDocValidator": ["flext_infra.docs.validator", "FlextInfraDocValidator"],
+    "FlextInfraDocsCli": ["flext_infra.docs.cli", "FlextInfraDocsCli"],
     "FlextInfraDocsConstants": [
         "flext_infra.docs._constants",
         "FlextInfraDocsConstants",
@@ -1278,6 +1303,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "docs": ["flext_infra.docs", ""],
     "e": ["flext_cli", "e"],
     "gates": ["flext_infra.gates", ""],
+    "github": ["flext_infra.github", ""],
     "h": ["flext_cli", "h"],
     "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
     "m": ["flext_infra.models", "FlextInfraModels"],
@@ -1318,6 +1344,16 @@ __all__ = [
     "FlextInfraCheckModels",
     "FlextInfraClassNestingRefactorRule",
     "FlextInfraClassPlacementDetector",
+    "FlextInfraCli",
+    "FlextInfraCliBasemk",
+    "FlextInfraCliCodegen",
+    "FlextInfraCliDocs",
+    "FlextInfraCliGithub",
+    "FlextInfraCliMaintenance",
+    "FlextInfraCliRefactor",
+    "FlextInfraCliRelease",
+    "FlextInfraCliValidate",
+    "FlextInfraCliWorkspace",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenCoercion",
     "FlextInfraCodegenConstants",
@@ -1354,6 +1390,7 @@ __all__ = [
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
     "FlextInfraDocValidator",
+    "FlextInfraDocsCli",
     "FlextInfraDocsConstants",
     "FlextInfraDocsModels",
     "FlextInfraEnsureCoverageConfigPhase",
@@ -1560,6 +1597,7 @@ __all__ = [
     "docs",
     "e",
     "gates",
+    "github",
     "h",
     "logger",
     "m",

@@ -271,6 +271,19 @@ class FlextInfraConstantsBase:
     class Make:
         """Canonical make contract metadata for generated Makefiles."""
 
+        CLI_GROUP_BASEMK: Final[str] = "basemk"
+        CLI_GROUP_CHECK: Final[str] = "check"
+        CLI_GROUP_CODEGEN: Final[str] = "codegen"
+        CLI_GROUP_DEPS: Final[str] = "deps"
+        CLI_GROUP_DOCS: Final[str] = "docs"
+        CLI_GROUP_GITHUB: Final[str] = "github"
+        CLI_GROUP_MAINTENANCE: Final[str] = "maintenance"
+        CLI_GROUP_REFACTOR: Final[str] = "refactor"
+        CLI_GROUP_RELEASE: Final[str] = "release"
+        CLI_ROUTE_RELEASE: Final[str] = "release run"
+        CLI_GROUP_VALIDATE: Final[str] = "validate"
+        CLI_ROUTE_MAINTENANCE: Final[str] = "maintenance run"
+        CLI_GROUP_WORKSPACE: Final[str] = "workspace"
         PROJECT_CHECK_GATES_ALLOWED: Final[str] = (
             "lint,format,pyrefly,mypy,pyright,security,markdown,go,type"
         )

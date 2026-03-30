@@ -487,7 +487,10 @@ class FlextInfraModelsCliInputs:
         ] = Field(default_factory=list)
 
     class WorkspaceMigrateInput(ApplyMixin, CliInputBase):
-        pass
+        dry_run: Annotated[
+            bool,
+            Field(default=False, description="Preview changes without writing"),
+        ] = False
 
     class MaintenanceRunInput(CliInputBase):
         """CLI input for maintenance command."""

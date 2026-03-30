@@ -75,6 +75,20 @@ class FlextInfraDocFixer:
             handler=lambda scope: self._fix_scope(scope, apply=apply),
         )
 
+    def execute_command(self, params: m.Infra.DocsFixInput) -> r[bool]:
+        """CLI handler — accepts input model, delegates to fix."""
+        resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
+        result = self.fix(
+            workspace_root=resolved_workspace,
+            project=params.project,
+            projects=params.projects,
+            output_dir=params.output_dir,
+            apply=params.apply,
+        )
+        if result.is_failure:
+            return r[bool].fail(result.error or "fix failed")
+        return r[bool].ok(True)
+
     def _fix_scope(
         self,
         scope: m.Infra.DocScope,

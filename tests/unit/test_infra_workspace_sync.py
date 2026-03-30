@@ -193,7 +193,8 @@ def test_workspace_makefile_generator_sanitizes_orchestrator_env(
         has=[
             'WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)',
             'WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra',
-            "ORCHESTRATOR := $(WORKSPACE_FLEXT_INFRA) workspace orchestrate",
+            "WORKSPACE_INFRA_WORKSPACE := $(WORKSPACE_FLEXT_INFRA) workspace",
+            "ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate",
             'ORCHESTRATOR_PROJECTS := --projects "$(SELECTED_PROJECTS)"',
         ],
     )
@@ -216,6 +217,11 @@ def test_workspace_makefile_generator_declares_canonical_workspace_variables(
             "PROJECTS ?=",
             "DEPS_REPORT ?= 1",
             "PR_BRANCH ?= 0.1.0",
+            "WORKSPACE_INFRA_DEPS := $(WORKSPACE_FLEXT_INFRA) deps",
+            "WORKSPACE_INFRA_MAINTENANCE := $(WORKSPACE_FLEXT_INFRA) maintenance run",
+            "WORKSPACE_INFRA_RELEASE := $(WORKSPACE_FLEXT_INFRA) release run",
+            "WORKSPACE_INFRA_VALIDATE := $(WORKSPACE_FLEXT_INFRA) validate",
+            "WORKSPACE_INFRA_GITHUB := $(WORKSPACE_FLEXT_INFRA) github",
         ],
     )
 
