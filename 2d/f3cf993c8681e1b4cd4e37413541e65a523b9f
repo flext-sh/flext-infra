@@ -1,0 +1,25 @@
+src/flext_infra/_utilities/output.py
+  7c26e48752f88cec 6
+src/flext_infra/__init__.py
+  7c26e48752f88cec 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "2df3cf993c8681e1b4cd4e37413541e65a523b9f",
+  "prompts": {
+    "7c26e48752f88cec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6787acd4-7aef-474e-8efa-17eb3e0f003e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 131,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
