@@ -10,7 +10,7 @@ from flext_infra import (
     FlextInfraUtilitiesCodegenTransforms,
     FlextInfraUtilitiesFormatting,
     FlextInfraUtilitiesIteration,
-    FlextInfraUtilitiesRefactor,
+    FlextInfraUtilitiesParsing,
     c,
     t,
 )
@@ -122,7 +122,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
         re_export = f"from {pkg_name}.{target_module} import " + ", ".join(
             sorted(moved_names),
         )
-        source_result = FlextInfraUtilitiesRefactor.insert_import_statement(
+        source_result = FlextInfraUtilitiesParsing.insert_import_statement(
             source_result,
             re_export,
         )
@@ -131,7 +131,7 @@ class FlextInfraCodegenSnapshot(FlextInfraCodegenCoercion):
 
         target_result = target_text
         for imp in import_texts:
-            target_result = FlextInfraUtilitiesRefactor.insert_import_statement(
+            target_result = FlextInfraUtilitiesParsing.insert_import_statement(
                 target_result,
                 imp,
             )

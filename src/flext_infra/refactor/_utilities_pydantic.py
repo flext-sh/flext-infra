@@ -80,13 +80,6 @@ class FlextInfraUtilitiesRefactorPydantic:
         return posix.endswith(("/models.py", "/_models.py")) or "/models/" in posix
 
     @staticmethod
-    def _dest_import_statement(file_path: Path, names: t.StrSequence) -> str:
-        joined = ", ".join(sorted(set(names)))
-        if (file_path.parent / "__init__.py").exists():
-            return f"from ._models import {joined}"
-        return f"from _models import {joined}"
-
-    @staticmethod
     def _ensure_dest_header(dest_path: Path) -> str:
         if dest_path.exists():
             return dest_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
@@ -121,12 +114,6 @@ class FlextInfraUtilitiesRefactorPydantic:
         return updated
 
     @staticmethod
-    def _alias_as_root_model(alias_move: m.Infra.AliasMove) -> str:
-        return (
-            f"class {alias_move.name}(RootModel[{alias_move.alias_expr}]):\n    pass\n"
-        )
-
-    @staticmethod
     def _normalize_disallowed_bases(
         file_path: Path,
         *,
@@ -135,23 +122,6 @@ class FlextInfraUtilitiesRefactorPydantic:
         _ = file_path
         _ = apply
         return False
-
-    @staticmethod
-    def _can_apply_import_rewrite(file_path: Path) -> bool:
-        return (file_path.parent / "__init__.py").exists()
-
-    @staticmethod
-    def _filter_moves_for_necessity(
-        class_moves: Sequence[m.Infra.ClassMove],
-        alias_moves: Sequence[m.Infra.AliasMove],
-    ) -> t.Infra.Pair[Sequence[m.Infra.ClassMove], Sequence[m.Infra.AliasMove]]:
-        filtered_classes = [
-            move
-            for move in class_moves
-            if move.kind
-            in FlextInfraUtilitiesRefactorPydantic._PYDANTIC_AUTO_APPLY_CLASS_KINDS
-        ]
-        return (filtered_classes, alias_moves)
 
     @staticmethod
     def _process_single_file(
@@ -188,10 +158,12 @@ class FlextInfraUtilitiesRefactorPydantic:
         apply_class_moves = class_moves
         apply_alias_moves = alias_moves
         if apply:
-            apply_class_moves, apply_alias_moves = cls._filter_moves_for_necessity(
-                class_moves,
-                alias_moves,
-            )
+            apply_class_moves = [
+                move
+                for move in class_moves
+                if move.kind in cls._PYDANTIC_AUTO_APPLY_CLASS_KINDS
+            ]
+            apply_alias_moves = alias_moves
             if not apply_class_moves and not apply_alias_moves:
                 return m.Infra.CentralizerFileResult(
                     found_models=found_models,
@@ -217,7 +189,10 @@ class FlextInfraUtilitiesRefactorPydantic:
         dest_path = file_path.parent / "_models.py"
         class_blocks = [mv.source for mv in apply_class_moves]
         class_names = [mv.name for mv in apply_class_moves]
-        alias_blocks = [cls._alias_as_root_model(a) for a in apply_alias_moves]
+        alias_blocks = [
+            f"class {a.name}(RootModel[{a.alias_expr}]):\n    pass\n"
+            for a in apply_alias_moves
+        ]
         alias_names = [a.name for a in apply_alias_moves]
         existing_dest = cls._ensure_dest_header(dest_path)
         updated_dest = cls._append_unique_blocks(
@@ -233,7 +208,11 @@ class FlextInfraUtilitiesRefactorPydantic:
             file_path,
             apply_class_moves,
             apply_alias_moves,
-            import_statement=cls._dest_import_statement(file_path, moved_names),
+            import_statement=(
+                f"from ._models import {', '.join(sorted(set(moved_names)))}"
+                if (file_path.parent / "__init__.py").exists()
+                else f"from _models import {', '.join(sorted(set(moved_names)))}"
+            ),
         )
         return updated_dest, updated_source
 
@@ -329,7 +308,7 @@ class FlextInfraUtilitiesRefactorPydantic:
             moved_aliases += len(result.apply_alias_moves)
             touched_files += 1
             if apply:
-                if not cls._can_apply_import_rewrite(file_path):
+                if not (file_path.parent / "__init__.py").exists():
                     skipped_nonpackage_apply += 1
                     continue
                 _ = dest_path.write_text(

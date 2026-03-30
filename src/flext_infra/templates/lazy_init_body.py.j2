@@ -11,14 +11,12 @@
 {%- if inline_constants %}
 
 {% endif %}
-_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
+_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 {%- for name, mod, attr in lazy_entries %}
+{%- if attr == name or attr == "" %}
+    "{{ name }}": "{{ mod }}",
+{%- else %}
     "{{ name }}": ["{{ mod }}", "{{ attr }}"],
+{%- endif %}
 {%- endfor %}
 }
-
-_EXPORTS: Sequence[str] = [
-{%- for name in exports %}
-    "{{ name }}",
-{%- endfor %}
-]

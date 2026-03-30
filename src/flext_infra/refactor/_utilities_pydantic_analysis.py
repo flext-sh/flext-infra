@@ -14,8 +14,6 @@ import operator
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-import libcst as cst
-
 from flext_infra import FlextInfraUtilitiesParsing, c, m, t
 
 
@@ -54,15 +52,6 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         return names
 
     @staticmethod
-    def _is_model_like_base_name(base_name: str) -> bool:
-        if (
-            base_name
-            in FlextInfraUtilitiesRefactorPydanticAnalysis._PYDANTIC_MODEL_BASES
-        ):
-            return True
-        return bool(base_name.startswith("FlextModels."))
-
-    @staticmethod
     def is_top_level_model_class(node: ast.stmt) -> bool:
         """Return True when statement is a top-level model-like class."""
         if not isinstance(node, ast.ClassDef):
@@ -70,22 +59,9 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         base_names = FlextInfraUtilitiesRefactorPydanticAnalysis._class_base_names(
             node,
         )
+        model_bases = FlextInfraUtilitiesRefactorPydanticAnalysis._PYDANTIC_MODEL_BASES
         return any(
-            FlextInfraUtilitiesRefactorPydanticAnalysis._is_model_like_base_name(
-                base_name,
-            )
-            for base_name in base_names
-        )
-
-    @staticmethod
-    def _is_typings_scope(file_path: Path) -> bool:
-        posix = file_path.as_posix()
-        return posix.endswith(("/typings.py", "/_typings.py")) or "/typings/" in posix
-
-    @staticmethod
-    def _is_dict_like_expr(expr: str) -> bool:
-        return any(
-            marker in expr for marker in ("Mapping[", "Mapping[", "MutableMapping[")
+            bn in model_bases or bn.startswith("FlextModels.") for bn in base_names
         )
 
     _DICT_ALIAS_KEYS: tuple[str, ...] = (
@@ -108,7 +84,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
     ) -> tuple[str, str] | None:
         """Extract (alias_name, expr) from an alias-like node, or None."""
         keys = FlextInfraUtilitiesRefactorPydanticAnalysis._DICT_ALIAS_KEYS
-        is_dict_like = FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_expr
+        dict_markers = ("Mapping[", "MutableMapping[")
         match node:
             case ast.TypeAlias():
                 alias_name = node.name.id
@@ -131,7 +107,7 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         ):
             return None
         expr = ast.get_source_segment(source, value_node)
-        if expr is None or not is_dict_like(expr):
+        if expr is None or not any(marker in expr for marker in dict_markers):
             return None
         return (alias_name, expr)
 
@@ -142,8 +118,9 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         *,
         file_path: Path,
     ) -> m.Infra.AliasMove | None:
+        posix = file_path.as_posix()
         is_typings_scope = (
-            FlextInfraUtilitiesRefactorPydanticAnalysis._is_typings_scope(file_path)
+            posix.endswith(("/typings.py", "/_typings.py")) or "/typings/" in posix
         )
         result = FlextInfraUtilitiesRefactorPydanticAnalysis._extract_alias_candidate(
             node,
@@ -161,32 +138,6 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         )
 
     @staticmethod
-    def _is_typed_dict_call(func: ast.expr) -> bool:
-        """Return True when *func* references ``TypedDict``."""
-        if isinstance(func, ast.Name):
-            return func.id == "TypedDict"
-        if isinstance(func, ast.Attribute):
-            return func.attr == "TypedDict"
-        return False
-
-    @staticmethod
-    def _has_total_false(keywords: Sequence[ast.keyword]) -> bool:
-        """Return True when ``total=False`` is present in keyword args."""
-        return any(
-            kw.arg == "total"
-            and isinstance(kw.value, ast.Constant)
-            and kw.value.value is False
-            for kw in keywords
-        )
-
-    @staticmethod
-    def _render_field_line(key: str, annotation: str, *, total_false: bool) -> str:
-        """Render a single field line for a BaseModel class body."""
-        if total_false:
-            return f"    {key}: Annotated[{annotation} | None, Field(default=None)]"
-        return f"    {key}: {annotation}"
-
-    @staticmethod
     def _typed_dict_factory_model(
         node: ast.Assign,
     ) -> m.Infra.ClassMove | None:
@@ -198,8 +149,11 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         if extracted is None:
             return None
         target_name, field_map, keywords = extracted
-        total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._has_total_false(
-            keywords,
+        total_false = any(
+            kw.arg == "total"
+            and isinstance(kw.value, ast.Constant)
+            and kw.value.value is False
+            for kw in keywords
         )
         rendered_class = (
             FlextInfraUtilitiesRefactorPydanticAnalysis._render_typed_dict_class(
@@ -226,9 +180,11 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         target = node.targets[0]
         if not isinstance(node.value, ast.Call):
             return None
-        if not FlextInfraUtilitiesRefactorPydanticAnalysis._is_typed_dict_call(
-            node.value.func,
-        ):
+        func = node.value.func
+        is_td = (isinstance(func, ast.Name) and func.id == "TypedDict") or (
+            isinstance(func, ast.Attribute) and func.attr == "TypedDict"
+        )
+        if not is_td:
             return None
         if (
             len(node.value.args)
@@ -248,7 +204,6 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         total_false: bool,
     ) -> str:
         """Render a BaseModel class from TypedDict factory fields."""
-        render = FlextInfraUtilitiesRefactorPydanticAnalysis._render_field_line
         field_lines: MutableSequence[str] = []
         for key_node, value_node in zip(
             field_map.keys,
@@ -260,8 +215,14 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             key_value = key_node.value
             if not isinstance(key_value, str):
                 continue
+            ann = ast.unparse(value_node)
+            line = (
+                f"    {key_value}: Annotated[{ann} | None, Field(default=None)]"
+                if total_false
+                else f"    {key_value}: {ann}"
+            )
             field_lines.append(
-                render(key_value, ast.unparse(value_node), total_false=total_false),
+                line,
             )
         if not field_lines:
             field_lines.append("    pass")
@@ -442,104 +403,13 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         updated = "\n".join(lines)
         moved_names = [m.name for m in class_moves] + [a.name for a in alias_moves]
         if moved_names:
-            updated = FlextInfraUtilitiesRefactorPydanticAnalysis._insert_import(
+            updated = FlextInfraUtilitiesParsing.insert_import_statement(
                 updated,
                 import_statement,
             )
         if source.endswith("\n") and (not updated.endswith("\n")):
             updated += "\n"
         return updated
-
-    @staticmethod
-    def _is_cst_docstring(stmt: cst.BaseStatement) -> bool:
-        """Return True when *stmt* is a module-level docstring."""
-        return (
-            isinstance(stmt, cst.SimpleStatementLine)
-            and len(stmt.body) == 1
-            and isinstance(stmt.body[0], cst.Expr)
-            and isinstance(
-                stmt.body[0].value,
-                (cst.SimpleString, cst.ConcatenatedString),
-            )
-        )
-
-    @staticmethod
-    def _is_cst_import(stmt: cst.BaseStatement) -> bool:
-        """Return True when *stmt* is an import statement."""
-        return isinstance(stmt, cst.SimpleStatementLine) and any(
-            isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body
-        )
-
-    @staticmethod
-    def _is_cst_future_import(stmt: cst.BaseStatement) -> bool:
-        """Return True when *stmt* is a ``from __future__`` import."""
-        if not isinstance(stmt, cst.SimpleStatementLine):
-            return False
-        return any(
-            isinstance(s, cst.ImportFrom)
-            and isinstance(s.module, cst.Name)
-            and s.module.value == "__future__"
-            for s in stmt.body
-        )
-
-    @staticmethod
-    def _is_preamble_stmt(stmt: cst.BaseStatement) -> bool:
-        """Return True for docstrings, imports, and future imports."""
-        cls = FlextInfraUtilitiesRefactorPydanticAnalysis
-        return (
-            cls._is_cst_docstring(stmt)
-            or cls._is_cst_future_import(stmt)
-            or cls._is_cst_import(stmt)
-        )
-
-    @staticmethod
-    def _insert_import(source: str, import_stmt: str) -> str:
-        """Insert import statement preserving canonical ordering."""
-        normalized = import_stmt.strip()
-        if not normalized:
-            return source
-        parsed_import = FlextInfraUtilitiesRefactorPydanticAnalysis._parse_import_stmt(
-            normalized,
-        )
-        if parsed_import is None:
-            return source
-        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
-        if module is None:
-            return source
-        if FlextInfraUtilitiesRefactorPydanticAnalysis._import_already_exists(
-            module,
-            normalized,
-        ):
-            return source
-        is_preamble = FlextInfraUtilitiesRefactorPydanticAnalysis._is_preamble_stmt
-        insert_idx = 0
-        for idx, stmt in enumerate(module.body):
-            if is_preamble(stmt):
-                insert_idx = idx + 1
-                continue
-            break
-        new_body = [*module.body[:insert_idx], parsed_import, *module.body[insert_idx:]]
-        return module.with_changes(body=new_body).code
-
-    @staticmethod
-    def _parse_import_stmt(normalized: str) -> cst.SimpleStatementLine | None:
-        """Parse an import string into a CST statement, or None on failure."""
-        try:
-            parsed = cst.parse_statement(f"{normalized}\n")
-        except cst.ParserSyntaxError:
-            return None
-        if not isinstance(parsed, cst.SimpleStatementLine):
-            return None
-        return parsed
-
-    @staticmethod
-    def _import_already_exists(module: cst.Module, normalized: str) -> bool:
-        """Check if the import statement already exists in the module."""
-        return any(
-            isinstance(stmt, cst.SimpleStatementLine)
-            and cst.Module(body=[stmt]).code.strip() == normalized
-            for stmt in module.body
-        )
 
 
 __all__ = ["FlextInfraUtilitiesRefactorPydanticAnalysis"]

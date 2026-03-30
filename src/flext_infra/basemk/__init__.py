@@ -18,38 +18,19 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.basemk import cli as cli, engine as engine, generator as generator
-    from flext_infra.basemk.cli import FlextInfraCliBasemk as FlextInfraCliBasemk
-    from flext_infra.basemk.engine import (
-        FlextInfraBaseMkTemplateEngine as FlextInfraBaseMkTemplateEngine,
-    )
-    from flext_infra.basemk.generator import (
-        FlextInfraBaseMkGenerator as FlextInfraBaseMkGenerator,
-    )
+    from flext_infra.basemk import cli, engine, generator
+    from flext_infra.basemk.cli import *
+    from flext_infra.basemk.engine import *
+    from flext_infra.basemk.generator import *
 
-_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraBaseMkGenerator": [
-        "flext_infra.basemk.generator",
-        "FlextInfraBaseMkGenerator",
-    ],
-    "FlextInfraBaseMkTemplateEngine": [
-        "flext_infra.basemk.engine",
-        "FlextInfraBaseMkTemplateEngine",
-    ],
-    "FlextInfraCliBasemk": ["flext_infra.basemk.cli", "FlextInfraCliBasemk"],
-    "cli": ["flext_infra.basemk.cli", ""],
-    "engine": ["flext_infra.basemk.engine", ""],
-    "generator": ["flext_infra.basemk.generator", ""],
+_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "FlextInfraBaseMkGenerator": "flext_infra.basemk.generator",
+    "FlextInfraBaseMkTemplateEngine": "flext_infra.basemk.engine",
+    "FlextInfraCliBasemk": "flext_infra.basemk.cli",
+    "cli": "flext_infra.basemk.cli",
+    "engine": "flext_infra.basemk.engine",
+    "generator": "flext_infra.basemk.generator",
 }
 
-_EXPORTS: Sequence[str] = [
-    "FlextInfraBaseMkGenerator",
-    "FlextInfraBaseMkTemplateEngine",
-    "FlextInfraCliBasemk",
-    "cli",
-    "engine",
-    "generator",
-]
 
-
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))

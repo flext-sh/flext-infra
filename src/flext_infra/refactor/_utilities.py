@@ -13,7 +13,6 @@ import ast
 from collections import Counter, defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import override
 
 import libcst as cst
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
@@ -322,63 +321,6 @@ class FlextInfraUtilitiesRefactor(
             raise ValueError(msg)
         return loaded_dict
 
-    @staticmethod
-    @override
-    def _import_already_exists(module: cst.Module, normalized: str) -> bool:
-        """Check if the import statement already exists in the module."""
-        return any(
-            isinstance(stmt, cst.SimpleStatementLine)
-            and cst.Module(body=[stmt]).code.strip() == normalized
-            for stmt in module.body
-        )
-
-    @staticmethod
-    def _find_import_insert_index(module: cst.Module) -> int:
-        """Find the index after the last docstring/future/import statement."""
-        insert_idx = 0
-        for idx, stmt in enumerate(module.body):
-            if not isinstance(stmt, cst.SimpleStatementLine):
-                break
-            is_docstring = (
-                len(stmt.body) == 1
-                and isinstance(stmt.body[0], cst.Expr)
-                and isinstance(
-                    stmt.body[0].value,
-                    (cst.SimpleString, cst.ConcatenatedString),
-                )
-            )
-            is_import = any(
-                isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body
-            )
-            if is_docstring or is_import:
-                insert_idx = idx + 1
-                continue
-            break
-        return insert_idx
-
-    @staticmethod
-    def insert_import_statement(source: str, import_stmt: str) -> str:
-        normalized_import = import_stmt.strip()
-        if not normalized_import:
-            return source
-        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
-        if module is None:
-            return source
-        try:
-            parsed_stmt = cst.parse_statement(f"{normalized_import}\n")
-        except cst.ParserSyntaxError:
-            return source
-        if not isinstance(parsed_stmt, cst.SimpleStatementLine):
-            return source
-        if FlextInfraUtilitiesRefactor._import_already_exists(
-            module,
-            normalized_import,
-        ):
-            return source
-        insert_idx = FlextInfraUtilitiesRefactor._find_import_insert_index(module)
-        new_body = [*module.body[:insert_idx], parsed_stmt, *module.body[insert_idx:]]
-        return module.with_changes(body=new_body).code
-
     # ── Generic AST introspection ─────────────────────────────────────
 
     @staticmethod
@@ -413,21 +355,6 @@ class FlextInfraUtilitiesRefactor(
         if not file_path.exists():
             return {}
         return FlextInfraUtilitiesRefactor._extract_classes_ast(file_path)
-
-    @staticmethod
-    def _classify_method_type(func_node: ast.FunctionDef) -> str:
-        """Classify a function as static, class, or instance method."""
-        decs = [
-            d.id
-            if isinstance(d, ast.Name)
-            else (d.attr if isinstance(d, ast.Attribute) else "")
-            for d in func_node.decorator_list
-        ]
-        if "staticmethod" in decs:
-            return "static"
-        if "classmethod" in decs:
-            return "class"
-        return "instance"
 
     @staticmethod
     def _append_unique(
@@ -468,7 +395,17 @@ class FlextInfraUtilitiesRefactor(
             methods: MutableSequence[t.Infra.Triple[str, str, str]] = []
             for item in ast.iter_child_nodes(node):
                 if isinstance(item, ast.FunctionDef) and not item.name.startswith("_"):
-                    mtype = FlextInfraUtilitiesRefactor._classify_method_type(item)
+                    decs = [
+                        d.id
+                        if isinstance(d, ast.Name)
+                        else (d.attr if isinstance(d, ast.Attribute) else "")
+                        for d in item.decorator_list
+                    ]
+                    mtype = (
+                        "static"
+                        if "staticmethod" in decs
+                        else ("class" if "classmethod" in decs else "instance")
+                    )
                     FlextInfraUtilitiesRefactor._append_unique(
                         methods,
                         (item.name, mtype, py_file.name),
@@ -482,22 +419,6 @@ class FlextInfraUtilitiesRefactor(
             if methods:
                 result[node.name] = methods
         return result
-
-    @staticmethod
-    def _resolve_staticmethod_target(
-        arg: ast.expr,
-    ) -> t.Infra.StrPair | None:
-        """Resolve the (class, method) pair from a staticmethod(...) argument."""
-        if not isinstance(arg, ast.Attribute):
-            return None
-        if isinstance(arg.value, ast.Name):
-            return (arg.value.id, arg.attr)
-        if isinstance(arg.value, ast.Attribute) and isinstance(
-            arg.value.value,
-            ast.Name,
-        ):
-            return (arg.value.value.id, f"{arg.value.attr}.{arg.attr}")
-        return None
 
     @staticmethod
     def _extract_alias_from_assign(
@@ -514,9 +435,16 @@ class FlextInfraUtilitiesRefactor(
             and call.args
         ):
             return
-        resolved = FlextInfraUtilitiesRefactor._resolve_staticmethod_target(
-            call.args[0],
-        )
+        arg = call.args[0]
+        resolved: t.Infra.StrPair | None = None
+        if isinstance(arg, ast.Attribute):
+            if isinstance(arg.value, ast.Name):
+                resolved = (arg.value.id, arg.attr)
+            elif isinstance(arg.value, ast.Attribute) and isinstance(
+                arg.value.value,
+                ast.Name,
+            ):
+                resolved = (arg.value.value.id, f"{arg.value.attr}.{arg.attr}")
         if resolved is None:
             return
         for target in item.targets:
@@ -588,22 +516,12 @@ class FlextInfraUtilitiesRefactor(
     ) -> str:
         """Identify project name for a file path (most-specific root wins)."""
         matching_roots = [
-            root
-            for root in project_roots
-            if FlextInfraUtilitiesRefactor._is_path_within_root(file_path, root)
+            root for root in project_roots if file_path.is_relative_to(root)
         ]
         if not matching_roots:
             return c.Infra.Defaults.UNKNOWN
         best = max(matching_roots, key=lambda root: len(root.parts))
         return best.name
-
-    @staticmethod
-    def _is_path_within_root(file_path: Path, base_path: Path) -> bool:
-        try:
-            file_path.relative_to(base_path)
-        except ValueError:
-            return False
-        return True
 
     @staticmethod
     def build_mro_target(

@@ -18,18 +18,13 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.github import cli as cli
-    from flext_infra.github.cli import FlextInfraCliGithub as FlextInfraCliGithub
+    from flext_infra.github import cli
+    from flext_infra.github.cli import *
 
-_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraCliGithub": ["flext_infra.github.cli", "FlextInfraCliGithub"],
-    "cli": ["flext_infra.github.cli", ""],
+_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "FlextInfraCliGithub": "flext_infra.github.cli",
+    "cli": "flext_infra.github.cli",
 }
 
-_EXPORTS: Sequence[str] = [
-    "FlextInfraCliGithub",
-    "cli",
-]
 
-
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))

@@ -112,10 +112,11 @@ class FlextInfraCodegenGeneration:
         *,
         include_flext_types: bool = True,
     ) -> t.StrSequence:
-        """Generate TYPE_CHECKING import block for type hints.
+        """Generate TYPE_CHECKING import block with wildcard imports per module.
 
-        Creates Python code for conditional imports guarded by TYPE_CHECKING,
-        organizing imports by module with proper spacing between top-level packages.
+        Uses ``from module import *`` for brevity since TYPE_CHECKING never
+        executes at runtime. Submodule-only entries (empty attr) get
+        ``import mod as alias`` form.
 
         Args:
             groups: Mapping of module paths to lists of (export_name, attr_name) tuples.
@@ -125,10 +126,9 @@ class FlextInfraCodegenGeneration:
             List of code lines forming the TYPE_CHECKING block.
 
         """
+        if not groups:
+            return []
         lines: MutableSequence[str] = ["if TYPE_CHECKING:"]
-        # Only emit the standalone FlextTypes import when it does NOT already
-        # appear in the groups (avoids F811 redefinition in flext_core's own
-        # __init__.py where FlextTypes is re-exported from flext_core.typings).
         flext_types_in_groups = any(
             export_name == "FlextTypes"
             for items in groups.values()
@@ -137,13 +137,28 @@ class FlextInfraCodegenGeneration:
         if include_flext_types and not flext_types_in_groups:
             lines.append("    from flext_core import FlextTypes")
 
-        import_lines = FlextInfraCodegenGeneration._generate_import_lines(
-            groups,
-            indent="    ",
-        )
-        if not import_lines:
-            return lines if len(lines) > 1 else []
-        lines.extend(import_lines)
+        sorted_mods = sorted(groups, key=str.lower)
+        prev_top: str | None = None
+        for mod in sorted_mods:
+            top = mod.split(".")[0]
+            if prev_top is not None and top != prev_top:
+                lines.append("")
+            items = groups[mod]
+            # Submodule-only entries (empty attr_name) need explicit alias
+            alias_items = [(exp, attr) for exp, attr in items if not attr]
+            attr_items = [(exp, attr) for exp, attr in items if attr]
+            for export_name, _ in sorted(alias_items, key=operator.itemgetter(0)):
+                if mod.startswith(".") and mod != ".":
+                    parent_mod, _, child_name = mod.rpartition(".")
+                    lines.append(
+                        f"    from {parent_mod or '.'} import {child_name} "
+                        f"as {export_name}",
+                    )
+                else:
+                    lines.append(f"    import {mod} as {export_name}")
+            if attr_items:
+                lines.append(f"    from {mod} import *")
+            prev_top = top
         return lines
 
     @staticmethod
@@ -184,10 +199,9 @@ class FlextInfraCodegenGeneration:
             if name not in eager_typevar_names
         }
 
-        # --- determine L0 vs standard ---
-        is_l0_typings = current_pkg.startswith(
-            c.Infra.Packages.CORE_UNDERSCORE + "._typings",
-        )
+        # L0 (_typings) no longer needs special templates — flext_core.lazy
+        # has zero runtime imports from flext_core, so no circular deps.
+        is_l0_typings = False
 
         # --- header + docstring ---
         out: MutableSequence[str] = [c.Infra.AUTOGEN_HEADER]
@@ -253,7 +267,10 @@ class FlextInfraCodegenGeneration:
 
         # --- getattr block (from .j2 template) ---
         getattr_name = tpl.GETATTR_L0 if is_l0_typings else tpl.GETATTR_STANDARD
-        getattr_rendered: str = _render(_ENV.get_template(getattr_name))
+        getattr_rendered: str = _render(
+            _ENV.get_template(getattr_name),
+            exports=sorted(exports),
+        )
         out.extend(getattr_rendered.splitlines())
 
         return "\n".join(out)

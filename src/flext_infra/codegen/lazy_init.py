@@ -201,6 +201,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         lazy_map = self._build_sibling_export_index(pkg_dir, current_pkg)
 
         # 3. Add exports from child subdirectories (already computed)
+        child_packages = self._collect_child_packages(pkg_dir, current_pkg, dir_exports)
         self._merge_child_exports(pkg_dir, current_pkg, lazy_map, dir_exports)
 
         # 4. Handle __version__.py
@@ -249,6 +250,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             current_pkg,
             eager_tvars,
             version_eager,
+            child_packages=child_packages,
         )
 
     def _write_init(
@@ -261,6 +263,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
+        child_packages: Sequence[str] | None = None,
     ) -> t.Infra.LazyInitWriteResult:
         """Write the generated ``__init__.py`` and run ruff fix."""
         try:
@@ -272,6 +275,7 @@ class FlextInfraCodegenLazyInit(s[int]):
                 current_pkg,
                 eager_typevar_names,
                 eager_imports,
+                child_packages=child_packages or [],
             )
             init_path.write_text(generated, encoding=c.Infra.Encoding.DEFAULT)
             self._run_ruff_fix(init_path)
@@ -396,7 +400,10 @@ class FlextInfraCodegenLazyInit(s[int]):
         has_all, all_exports = u.Infra.extract_exports(sibling_tree)
         if has_all and all_exports:
             for name in all_exports:
-                if name not in index:
+                if (
+                    name not in index
+                    and name not in FlextInfraCodegenLazyInit._INFRA_ONLY_EXPORTS
+                ):
                     index[name] = (mod_path, name)
         else:
             FlextInfraCodegenLazyInit._scan_ast_public_defs(
@@ -463,11 +470,18 @@ class FlextInfraCodegenLazyInit(s[int]):
     # Child-directory export merging (bottom-up)
     # ---------------------------------------------------------------------------
 
+    _INFRA_ONLY_EXPORTS: ClassVar[frozenset[str]] = frozenset({
+        "cleanup_submodule_namespace",
+        "install_lazy_exports",
+        "lazy_getattr",
+    })
+
     @staticmethod
     def _should_bubble_up(name: str) -> bool:
         """Check if an export should bubble up to the parent package.
 
-        Filters out private names, entry points, and ALL_CAPS utility constants.
+        Filters out private names, entry points, ALL_CAPS utility constants,
+        and lazy-import infrastructure functions.
         """
         if name.startswith("_"):
             return False
@@ -475,8 +489,27 @@ class FlextInfraCodegenLazyInit(s[int]):
             return False
         if name == "main":
             return False
+        if name in FlextInfraCodegenLazyInit._INFRA_ONLY_EXPORTS:
+            return False
         # Skip ALL_CAPS constants (e.g., BLUE, BOLD, SYM_ARROW)
         return not name.isupper()
+
+    @staticmethod
+    def _collect_child_packages(
+        pkg_dir: Path,
+        current_pkg: str,
+        dir_exports: Mapping[str, t.Infra.LazyImportMap],
+    ) -> Sequence[str]:
+        """Return dotted package names of immediate children with exports."""
+        children: MutableSequence[str] = []
+        for subdir in sorted(pkg_dir.iterdir()):
+            if not subdir.is_dir() or subdir.name.startswith("."):
+                continue
+            if str(subdir) not in dir_exports:
+                continue
+            child_pkg = f"{current_pkg}.{subdir.name}" if current_pkg else subdir.name
+            children.append(child_pkg)
+        return children
 
     @staticmethod
     def _merge_child_exports(

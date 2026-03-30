@@ -420,5 +420,101 @@ class FlextInfraUtilitiesRope:
             return None
         return sum(len(item) for item in lines[: line_number - 1]) + column
 
+    @staticmethod
+    def insert_import_statement(source: str, import_stmt: str) -> str:
+        """Insert an import statement into source code using rope.
+
+        Parses the import statement to extract module and name, then uses
+        rope's importutils to add it in the correct position. Falls back
+        to prepend-after-existing-imports if rope can't parse it.
+
+        Args:
+            source: Python source code.
+            import_stmt: Full import statement string (e.g. "from foo import Bar").
+
+        Returns:
+            Updated source code with the import added.
+
+        """
+        normalized = import_stmt.strip()
+        if not normalized:
+            return source
+        if normalized in source:
+            return source
+        from rope.refactor.importutils import add_import as _rope_add_import
+
+        rope_project = FlextInfraUtilitiesRope.init_rope_project()
+        resource = FlextInfraUtilitiesRope._create_temp_resource(
+            rope_project,
+            source,
+        )
+        try:
+            pymodule = FlextInfraUtilitiesRope._get_pycore(
+                rope_project,
+            ).resource_to_pyobject(resource)
+            module_name, name = FlextInfraUtilitiesRope._parse_import_stmt(
+                normalized,
+            )
+            if module_name:
+                result = _rope_add_import(
+                    rope_project,
+                    pymodule,
+                    module_name,
+                    name=name,
+                )
+                if isinstance(result, tuple) and len(result) >= 1:
+                    return str(result[0]) if result[0] else source
+                if hasattr(result, "get_changed_contents"):
+                    changed = result.get_changed_contents()
+                    return changed.get(resource, source)
+        except (RefactoringError, ResourceNotFoundError, AttributeError, ValueError):
+            pass
+        return FlextInfraUtilitiesRope._fallback_insert_import(source, normalized)
+
+    @staticmethod
+    def _create_temp_resource(
+        rope_project: t.Infra.RopeProject,
+        source: str,
+    ) -> t.Infra.RopeResource:
+        """Create an in-memory rope resource from source string."""
+        root_path = Path(rope_project.address)
+        temp_path = root_path / "__rope_temp__.py"
+        temp_path.write_text(source, encoding=c.Infra.Encoding.DEFAULT)
+        resource = rope_project.get_resource("__rope_temp__.py")
+        return cast("RopeFile", resource)
+
+    @staticmethod
+    def _parse_import_stmt(stmt: str) -> tuple[str, str | None]:
+        """Parse 'from X import Y' or 'import X' into (module, name|None)."""
+        from_match = re.match(r"from\s+([\w.]+)\s+import\s+(\w+)", stmt)
+        if from_match:
+            return from_match.group(1), from_match.group(2)
+        import_match = re.match(r"import\s+([\w.]+)", stmt)
+        if import_match:
+            return import_match.group(1), None
+        return "", None
+
+    @staticmethod
+    def _fallback_insert_import(source: str, import_line: str) -> str:
+        """Insert import after last existing import line (simple fallback)."""
+        lines = source.splitlines(keepends=True)
+        last_import_idx = 0
+        for idx, line in enumerate(lines):
+            stripped = line.strip()
+            if (
+                stripped.startswith(("import ", "from "))
+                or stripped == ""
+                or (
+                    stripped.startswith("#")
+                    or stripped.startswith('"""')
+                    or stripped.startswith("'''")
+                )
+            ):
+                last_import_idx = idx + 1
+            elif last_import_idx > 0:
+                break
+        lines.insert(last_import_idx, import_line + "\n")
+        return "".join(lines)
+
 
 __all__ = ["FlextInfraUtilitiesRope"]

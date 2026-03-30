@@ -19,82 +19,38 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.codegen import (
-        census as census,
-        cli as cli,
-        constants_quality_gate as constants_quality_gate,
-        fixer as fixer,
-        lazy_init as lazy_init,
-        py_typed as py_typed,
-        scaffolder as scaffolder,
+        census,
+        cli,
+        constants_quality_gate,
+        fixer,
+        lazy_init,
+        py_typed,
+        scaffolder,
     )
-    from flext_infra.codegen.census import (
-        FlextInfraCodegenCensus as FlextInfraCodegenCensus,
-    )
-    from flext_infra.codegen.cli import FlextInfraCliCodegen as FlextInfraCliCodegen
-    from flext_infra.codegen.constants_quality_gate import (
-        FlextInfraCodegenConstantsQualityGate as FlextInfraCodegenConstantsQualityGate,
-    )
-    from flext_infra.codegen.fixer import (
-        FlextInfraCodegenFixer as FlextInfraCodegenFixer,
-    )
-    from flext_infra.codegen.lazy_init import (
-        FlextInfraCodegenLazyInit as FlextInfraCodegenLazyInit,
-    )
-    from flext_infra.codegen.py_typed import (
-        FlextInfraCodegenPyTyped as FlextInfraCodegenPyTyped,
-    )
-    from flext_infra.codegen.scaffolder import (
-        FlextInfraCodegenScaffolder as FlextInfraCodegenScaffolder,
-    )
+    from flext_infra.codegen.census import *
+    from flext_infra.codegen.cli import *
+    from flext_infra.codegen.constants_quality_gate import *
+    from flext_infra.codegen.fixer import *
+    from flext_infra.codegen.lazy_init import *
+    from flext_infra.codegen.py_typed import *
+    from flext_infra.codegen.scaffolder import *
 
-_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraCliCodegen": ["flext_infra.codegen.cli", "FlextInfraCliCodegen"],
-    "FlextInfraCodegenCensus": [
-        "flext_infra.codegen.census",
-        "FlextInfraCodegenCensus",
-    ],
-    "FlextInfraCodegenConstantsQualityGate": [
-        "flext_infra.codegen.constants_quality_gate",
-        "FlextInfraCodegenConstantsQualityGate",
-    ],
-    "FlextInfraCodegenFixer": ["flext_infra.codegen.fixer", "FlextInfraCodegenFixer"],
-    "FlextInfraCodegenLazyInit": [
-        "flext_infra.codegen.lazy_init",
-        "FlextInfraCodegenLazyInit",
-    ],
-    "FlextInfraCodegenPyTyped": [
-        "flext_infra.codegen.py_typed",
-        "FlextInfraCodegenPyTyped",
-    ],
-    "FlextInfraCodegenScaffolder": [
-        "flext_infra.codegen.scaffolder",
-        "FlextInfraCodegenScaffolder",
-    ],
-    "census": ["flext_infra.codegen.census", ""],
-    "cli": ["flext_infra.codegen.cli", ""],
-    "constants_quality_gate": ["flext_infra.codegen.constants_quality_gate", ""],
-    "fixer": ["flext_infra.codegen.fixer", ""],
-    "lazy_init": ["flext_infra.codegen.lazy_init", ""],
-    "py_typed": ["flext_infra.codegen.py_typed", ""],
-    "scaffolder": ["flext_infra.codegen.scaffolder", ""],
+_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "FlextInfraCliCodegen": "flext_infra.codegen.cli",
+    "FlextInfraCodegenCensus": "flext_infra.codegen.census",
+    "FlextInfraCodegenConstantsQualityGate": "flext_infra.codegen.constants_quality_gate",
+    "FlextInfraCodegenFixer": "flext_infra.codegen.fixer",
+    "FlextInfraCodegenLazyInit": "flext_infra.codegen.lazy_init",
+    "FlextInfraCodegenPyTyped": "flext_infra.codegen.py_typed",
+    "FlextInfraCodegenScaffolder": "flext_infra.codegen.scaffolder",
+    "census": "flext_infra.codegen.census",
+    "cli": "flext_infra.codegen.cli",
+    "constants_quality_gate": "flext_infra.codegen.constants_quality_gate",
+    "fixer": "flext_infra.codegen.fixer",
+    "lazy_init": "flext_infra.codegen.lazy_init",
+    "py_typed": "flext_infra.codegen.py_typed",
+    "scaffolder": "flext_infra.codegen.scaffolder",
 }
 
-_EXPORTS: Sequence[str] = [
-    "FlextInfraCliCodegen",
-    "FlextInfraCodegenCensus",
-    "FlextInfraCodegenConstantsQualityGate",
-    "FlextInfraCodegenFixer",
-    "FlextInfraCodegenLazyInit",
-    "FlextInfraCodegenPyTyped",
-    "FlextInfraCodegenScaffolder",
-    "census",
-    "cli",
-    "constants_quality_gate",
-    "fixer",
-    "lazy_init",
-    "py_typed",
-    "scaffolder",
-]
 
-
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))

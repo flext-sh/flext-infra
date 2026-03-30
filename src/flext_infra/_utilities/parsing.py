@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator, Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
-from libcst.metadata import CodeRange, MetadataWrapper, PositionProvider
 
 from flext_infra import c, t
 
@@ -76,61 +75,6 @@ class FlextInfraUtilitiesParsing:
                 parts.append(current.value)
             return ".".join(reversed(parts))
         return ""
-
-    @staticmethod
-    def cst_iter_simple_statements(
-        body: Sequence[cst.SimpleStatementLine | cst.BaseCompoundStatement],
-    ) -> Iterator[cst.BaseSmallStatement]:
-        """Iterate over simple statements from a module or compound body.
-
-        Args:
-            body: Sequence of statement lines or compound statements.
-
-        Yields:
-            Individual small statements from simple statement lines.
-
-        """
-        for item in body:
-            if isinstance(item, cst.SimpleStatementLine):
-                yield from item.body
-
-    @staticmethod
-    def cst_line_for(
-        *,
-        node: cst.CSTNode,
-        positions: Mapping[cst.CSTNode, CodeRange],
-    ) -> int:
-        """Get the line number of a CST node.
-
-        Args:
-            node: A libcst node to locate.
-            positions: Mapping from CST nodes to their code ranges.
-
-        Returns:
-            The line number of the node, or 1 if not found in positions.
-
-        """
-        code_range = positions.get(node)
-        if code_range is None:
-            return 1
-        return code_range.start.line
-
-    @staticmethod
-    def cst_resolve_positions(
-        tree: cst.Module,
-    ) -> t.Infra.Pair[cst.Module, Mapping[cst.CSTNode, CodeRange]]:
-        """Wrap a CST module and resolve position metadata.
-
-        Args:
-            tree: The CST module to wrap.
-
-        Returns:
-            Tuple of (wrapped module, positions mapping).
-
-        """
-        wrapper = MetadataWrapper(tree)
-        positions = wrapper.resolve(PositionProvider)
-        return (wrapper.module, positions)
 
     @staticmethod
     def cst_module_name(node: cst.CSTNode | None) -> str:
@@ -204,13 +148,6 @@ class FlextInfraUtilitiesParsing:
         """Extract the local alias name from a CST AsName node."""
         if asname and isinstance(asname.name, cst.Name):
             return asname.name.value
-        return None
-
-    @staticmethod
-    def cst_imported_name(imported_alias: cst.ImportAlias) -> str | None:
-        """Extract the imported name from a CST ImportAlias node."""
-        if imported_alias.asname is None and isinstance(imported_alias.name, cst.Name):
-            return imported_alias.name.value
         return None
 
     @staticmethod
@@ -292,16 +229,55 @@ class FlextInfraUtilitiesParsing:
         return ""
 
     @staticmethod
-    def cst_find_toplevel_class(
-        *,
-        tree: cst.Module,
-        class_name: str,
-    ) -> cst.ClassDef | None:
-        """Find a top-level class definition by name in a CST module."""
-        for stmt in tree.body:
-            if isinstance(stmt, cst.ClassDef) and stmt.name.value == class_name:
-                return stmt
-        return None
+    def _import_already_exists(module: cst.Module, normalized: str) -> bool:
+        """Check if the import statement already exists in the module."""
+        return any(
+            isinstance(stmt, cst.SimpleStatementLine)
+            and cst.Module(body=[stmt]).code.strip() == normalized
+            for stmt in module.body
+        )
+
+    @staticmethod
+    def insert_import_statement(source: str, import_stmt: str) -> str:
+        """Insert an import statement into source at the correct position."""
+        normalized_import = import_stmt.strip()
+        if not normalized_import:
+            return source
+        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
+        if module is None:
+            return source
+        try:
+            parsed_stmt = cst.parse_statement(f"{normalized_import}\n")
+        except cst.ParserSyntaxError:
+            return source
+        if not isinstance(parsed_stmt, cst.SimpleStatementLine):
+            return source
+        if FlextInfraUtilitiesParsing._import_already_exists(
+            module,
+            normalized_import,
+        ):
+            return source
+        insert_idx = 0
+        for idx, body_stmt in enumerate(module.body):
+            if not isinstance(body_stmt, cst.SimpleStatementLine):
+                break
+            is_docstring = (
+                len(body_stmt.body) == 1
+                and isinstance(body_stmt.body[0], cst.Expr)
+                and isinstance(
+                    body_stmt.body[0].value,
+                    (cst.SimpleString, cst.ConcatenatedString),
+                )
+            )
+            is_import = any(
+                isinstance(s, (cst.Import, cst.ImportFrom)) for s in body_stmt.body
+            )
+            if is_docstring or is_import:
+                insert_idx = idx + 1
+                continue
+            break
+        new_body = [*module.body[:insert_idx], parsed_stmt, *module.body[insert_idx:]]
+        return module.with_changes(body=new_body).code
 
 
 __all__ = ["FlextInfraUtilitiesParsing"]

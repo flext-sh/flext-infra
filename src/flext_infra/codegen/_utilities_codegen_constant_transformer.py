@@ -499,18 +499,6 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         ]
 
     @staticmethod
-    def _is_single_import_from(
-        stmt: cst.BaseCompoundStatement | cst.SimpleStatementLine,
-    ) -> bool:
-        """Check if statement is a simple single ``from X import ...`` line."""
-        return (
-            isinstance(stmt, cst.SimpleStatementLine)
-            and len(stmt.body) == 1
-            and isinstance(stmt.body[0], cst.ImportFrom)
-            and not isinstance(stmt.body[0].names, cst.ImportStar)
-        )
-
-    @staticmethod
     def _split_cycle_imports(
         imp: cst.ImportFrom,
         target_set: frozenset[str],
@@ -548,10 +536,12 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         target_set = frozenset(target_aliases)
 
         for stmt in tree.body:
-            if not cls._is_single_import_from(stmt):
-                new_body.append(stmt)
-                continue
-            if not isinstance(stmt, cst.SimpleStatementLine):
+            if not (
+                isinstance(stmt, cst.SimpleStatementLine)
+                and len(stmt.body) == 1
+                and isinstance(stmt.body[0], cst.ImportFrom)
+                and not isinstance(stmt.body[0].names, cst.ImportStar)
+            ):
                 new_body.append(stmt)
                 continue
             imp = stmt.body[0]

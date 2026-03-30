@@ -15,11 +15,10 @@ from argparse import SUPPRESS, ArgumentParser, Namespace
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-import orjson
-from flext_core import FlextRuntime, r
-from pydantic import BaseModel, model_validator
+from flext_core import FlextRuntime
+from pydantic import model_validator
 
-from flext_infra import FlextInfraUtilitiesDiscovery, m, output, t
+from flext_infra import m, output, t
 
 
 class _SharedFlags(m.FrozenStrictModel):
@@ -97,11 +96,6 @@ class FlextInfraUtilitiesCli:
         def dry_run(self) -> bool:
             """Return True if not in apply mode (i.e., dry-run mode)."""
             return not self.apply
-
-        @property
-        def mode_label(self) -> str:
-            """Return human-readable mode label."""
-            return "apply" if self.apply else "dry-run"
 
         def project_names(self) -> t.StrSequence | None:
             """Extract project names from single or comma-separated project string.
@@ -531,114 +525,6 @@ class FlextInfraUtilitiesCli:
         except Exception as exc:
             output.error(str(exc))
             return 1
-
-    @staticmethod
-    def exit_code[T](
-        result: r[T],
-        *,
-        failure_msg: str = "operation failed",
-    ) -> int:
-        if result.is_success:
-            return 0
-        output.error(result.error or failure_msg)
-        return 1
-
-    @staticmethod
-    def iter_projects(
-        cli: FlextInfraUtilitiesCli.CliArgs,
-    ) -> r[Sequence[m.Infra.ProjectInfo]]:
-        """Discover, filter, and sort workspace projects.
-
-        Centralizes the discover_projects -> filter -> sort pattern
-        that was previously duplicated across 13 call sites.
-
-        Args:
-            cli: Parsed CLI arguments with workspace and project filters.
-
-        Returns:
-            Sorted, filtered list of project info models.
-
-        """
-        result = FlextInfraUtilitiesDiscovery.discover_projects(cli.workspace)
-        if result.is_failure:
-            return r[Sequence[m.Infra.ProjectInfo]].fail(
-                result.error or "discovery failed",
-            )
-        projects = list(result.value)
-        filter_names = cli.project_names()
-        if filter_names is not None:
-            name_set = set(filter_names)
-            projects = [p for p in projects if p.name in name_set]
-        return r[Sequence[m.Infra.ProjectInfo]].ok(
-            sorted(projects, key=lambda p: p.name),
-        )
-
-    @staticmethod
-    def emit(
-        data: BaseModel | Mapping[str, t.Scalar],
-        *,
-        text_fn: Callable[[BaseModel | Mapping[str, t.Scalar]], str] | None = None,
-        cli: FlextInfraUtilitiesCli.CliArgs,
-    ) -> None:
-        """Emit structured data in the format requested by CLI flags.
-
-        Centralizes the JSON-vs-text output branching that was previously
-        duplicated across multiple CLI commands.
-
-        Args:
-            data: Pydantic model or scalar mapping to emit.
-            text_fn: Optional formatter for text mode. Receives data, returns string.
-            cli: Parsed CLI arguments with output_format.
-
-        """
-        if cli.output_format == "json":
-            if isinstance(data, BaseModel):
-                sys.stdout.write(data.model_dump_json())
-            else:
-                sys.stdout.write(orjson.dumps(dict(data)).decode())
-            sys.stdout.write("\n")
-        elif text_fn is not None:
-            output.write(text_fn(data))
-        else:
-            output.write(str(data))
-
-    @staticmethod
-    def reorder_argv(
-        cli_args: list[str],
-        *,
-        value_flags: frozenset[str],
-    ) -> list[str]:
-        """Move flags from before the subcommand to after it.
-
-        Allows ``main(["--check", "lazy-init", ...])`` to work the same as
-        ``main(["lazy-init", "--check", ...])``.
-
-        Args:
-            cli_args: Raw CLI arguments.
-            value_flags: Flags that consume the next token as a value.
-
-        Returns:
-            Reordered argument list with subcommand first.
-
-        """
-        subcmd_idx = -1
-        i = 0
-        while i < len(cli_args):
-            arg = cli_args[i]
-            if not arg.startswith("-"):
-                subcmd_idx = i
-                break
-            if arg in value_flags and i + 1 < len(cli_args):
-                i += 2
-                continue
-            i += 1
-        if subcmd_idx <= 0:
-            return cli_args
-        return [
-            cli_args[subcmd_idx],
-            *cli_args[:subcmd_idx],
-            *cli_args[subcmd_idx + 1 :],
-        ]
 
 
 __all__ = ["FlextInfraUtilitiesCli"]

@@ -284,43 +284,23 @@ class FlextInfraUtilitiesCodegenTransforms:
         return names_used - target_available
 
     @staticmethod
-    def _import_from_provides_missing(
-        stmt: ast.ImportFrom,
-        missing: frozenset[str],
-    ) -> bool:
-        """Check if a ``from ... import`` provides any of the missing names."""
-        if not stmt.module or not stmt.module.startswith("flext"):
-            return False
-        return any((alias.asname or alias.name) in missing for alias in stmt.names)
-
-    @staticmethod
-    def _import_provides_missing(
-        stmt: ast.Import,
-        missing: frozenset[str],
-    ) -> bool:
-        """Check if an ``import`` provides any of the missing names."""
-        for alias in stmt.names:
-            top = (alias.asname or alias.name).split(".")[0]
-            if top.startswith("flext") and top in missing:
-                return True
-        return False
-
-    @staticmethod
     def has_first_party_provider(
         missing: frozenset[str],
         source_tree: ast.Module,
     ) -> bool:
         """Check if any missing names come from a first-party (flext_*) import."""
-        cls = FlextInfraUtilitiesCodegenTransforms
         for stmt in source_tree.body:
-            if isinstance(stmt, ast.ImportFrom) and cls._import_from_provides_missing(
-                stmt,
-                missing,
+            if (
+                isinstance(stmt, ast.ImportFrom)
+                and stmt.module
+                and stmt.module.startswith("flext")
+                and any((alias.asname or alias.name) in missing for alias in stmt.names)
             ):
                 return True
-            if isinstance(stmt, ast.Import) and cls._import_provides_missing(
-                stmt,
-                missing,
+            if isinstance(stmt, ast.Import) and any(
+                (alias.asname or alias.name).split(".")[0].startswith("flext")
+                and (alias.asname or alias.name).split(".")[0] in missing
+                for alias in stmt.names
             ):
                 return True
         return False
@@ -403,56 +383,31 @@ class FlextInfraUtilitiesCodegenTransforms:
         return import_texts
 
     @staticmethod
-    def _is_all_assign(stmt: ast.stmt) -> bool:
-        """Check if a statement is ``__all__ = [...]`` or ``__all__ = (...)``."""
-        if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1:
-            return False
-        target = stmt.targets[0]
-        return (
-            isinstance(target, ast.Name)
-            and target.id == "__all__"
-            and isinstance(stmt.value, (ast.List, ast.Tuple))
-        )
-
-    @staticmethod
-    def _extract_literal_strings(
-        elements: Sequence[ast.expr],
-    ) -> t.StrSequence | None:
-        """Extract string literals from a list/tuple; returns None if non-literal found."""
-        names: MutableSequence[str] = []
-        for element in elements:
-            if isinstance(element, ast.Constant) and isinstance(element.value, str):
-                names.append(element.value)
-            else:
-                return None
-        return names
-
-    @staticmethod
     def find_all_assignment(
         tree: ast.Module,
     ) -> tuple[ast.Assign | None, t.StrSequence]:
         """Find the ``__all__`` assignment and extract its literal string entries."""
-        cls = FlextInfraUtilitiesCodegenTransforms
         for stmt in tree.body:
-            if not cls._is_all_assign(stmt):
+            if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1:
                 continue
-            assign = stmt
-            if not isinstance(assign, ast.Assign) or not isinstance(
-                assign.value,
-                (ast.List, ast.Tuple),
+            target = stmt.targets[0]
+            if (
+                not isinstance(target, ast.Name)
+                or target.id != "__all__"
+                or not isinstance(stmt.value, (ast.List, ast.Tuple))
             ):
                 continue
-            names = cls._extract_literal_strings(assign.value.elts)
-            if names is not None:
-                return assign, names
+            names: MutableSequence[str] = []
+            all_literal = True
+            for element in stmt.value.elts:
+                if isinstance(element, ast.Constant) and isinstance(element.value, str):
+                    names.append(element.value)
+                else:
+                    all_literal = False
+                    break
+            if all_literal:
+                return stmt, names
         return None, []
-
-    @staticmethod
-    def _defined_name_from_stmt(stmt: ast.stmt) -> str | None:
-        """Extract a defined name from a class/function/async-function definition."""
-        if isinstance(stmt, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-            return stmt.name
-        return None
 
     @staticmethod
     def collect_all_defined_names(tree: ast.Module) -> t.Infra.StrSet:
@@ -460,9 +415,8 @@ class FlextInfraUtilitiesCodegenTransforms:
         cls = FlextInfraUtilitiesCodegenTransforms
         available: t.Infra.StrSet = set()
         for stmt in tree.body:
-            def_name = cls._defined_name_from_stmt(stmt)
-            if def_name is not None:
-                available.add(def_name)
+            if isinstance(stmt, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                available.add(stmt.name)
                 continue
             if isinstance(stmt, ast.Import):
                 available.update(cls._names_from_import(stmt))

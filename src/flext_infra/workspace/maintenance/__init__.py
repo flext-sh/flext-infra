@@ -17,39 +17,17 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.workspace.maintenance import (
-        cli as cli,
-        python_version as python_version,
-    )
-    from flext_infra.workspace.maintenance.cli import (
-        FlextInfraCliMaintenance as FlextInfraCliMaintenance,
-    )
-    from flext_infra.workspace.maintenance.python_version import (
-        FlextInfraPythonVersionEnforcer as FlextInfraPythonVersionEnforcer,
-        logger as logger,
-    )
+    from flext_infra.workspace.maintenance import cli, python_version
+    from flext_infra.workspace.maintenance.cli import *
+    from flext_infra.workspace.maintenance.python_version import *
 
-_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
-    "FlextInfraCliMaintenance": [
-        "flext_infra.workspace.maintenance.cli",
-        "FlextInfraCliMaintenance",
-    ],
-    "FlextInfraPythonVersionEnforcer": [
-        "flext_infra.workspace.maintenance.python_version",
-        "FlextInfraPythonVersionEnforcer",
-    ],
-    "cli": ["flext_infra.workspace.maintenance.cli", ""],
-    "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
-    "python_version": ["flext_infra.workspace.maintenance.python_version", ""],
+_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "FlextInfraCliMaintenance": "flext_infra.workspace.maintenance.cli",
+    "FlextInfraPythonVersionEnforcer": "flext_infra.workspace.maintenance.python_version",
+    "cli": "flext_infra.workspace.maintenance.cli",
+    "logger": "flext_infra.workspace.maintenance.python_version",
+    "python_version": "flext_infra.workspace.maintenance.python_version",
 }
 
-_EXPORTS: Sequence[str] = [
-    "FlextInfraCliMaintenance",
-    "FlextInfraPythonVersionEnforcer",
-    "cli",
-    "logger",
-    "python_version",
-]
 
-
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, _EXPORTS)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))

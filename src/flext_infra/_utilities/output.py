@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Mapping, MutableSequence, Sequence
+from collections.abc import Callable, MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 from typing import Final
@@ -230,17 +230,6 @@ class FlextInfraUtilitiesOutput:
                 f"{clr}{fail_sym}{reset} {project:<20} {count_label}  ({log_path})\n",
             )
         cls._stream.flush()
-
-    @staticmethod
-    def metrics(
-        *instances: t.Infra.MetricRecord,
-        **kwargs: t.Infra.MetricValue,
-    ) -> None:
-        for item in list(instances) + [kwargs]:
-            for k, v in item.items() if isinstance(item, Mapping) else item:
-                if isinstance(v, (*t.PRIMITIVES_TYPES, Path)) or v is None:
-                    sys.stdout.write(f"{k}={v}\n")
-        sys.stdout.flush()
 
     @staticmethod
     def _add_violation_section[V](

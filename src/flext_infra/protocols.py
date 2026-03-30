@@ -14,7 +14,6 @@ from flext_cli import FlextCliProtocols
 
 from flext_infra import (
     FlextInfraProtocolsBase,
-    FlextInfraProtocolsCst,
     FlextInfraProtocolsRope,
 )
 
@@ -27,9 +26,7 @@ class FlextInfraProtocols(FlextCliProtocols):
     protocols live as nested classes below.
     """
 
-    class Infra(
-        FlextInfraProtocolsCst, FlextInfraProtocolsRope, FlextInfraProtocolsBase
-    ):
+    class Infra(FlextInfraProtocolsRope, FlextInfraProtocolsBase):
         """Infra-specific structural protocol definitions."""
 
 

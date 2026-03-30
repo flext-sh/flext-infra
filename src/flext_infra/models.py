@@ -23,7 +23,6 @@ from flext_infra import (
     FlextInfraModelsBase,
     FlextInfraModelsCensus,
     FlextInfraModelsCliInputs,
-    FlextInfraModelsCst,
     FlextInfraModelsRope,
     FlextInfraModelsScan,
     FlextInfraRefactorModels,
@@ -38,7 +37,6 @@ class FlextInfraModels(FlextCliModels):
     class Infra(
         FlextInfraModelsCliInputs,
         FlextInfraModelsCensus,
-        FlextInfraModelsCst,
         FlextInfraBasemkModels,
         FlextInfraCheckModels,
         FlextInfraCodegenModels,
