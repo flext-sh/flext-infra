@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import sys
 
-import click
-
 from flext_infra import m, t
 from flext_infra.workspace.cli import (
     FlextInfraCliWorkspace,
@@ -19,6 +17,25 @@ _handle_migrate = FlextInfraCliWorkspace._handle_migrate
 
 # Module reference for dynamic handler lookup
 _THIS_MODULE = sys.modules[__name__]
+
+_SUBCOMMANDS: frozenset[str] = frozenset({
+    "detect",
+    "sync",
+    "orchestrate",
+    "migrate",
+})
+
+
+def _normalize_argv(raw: list[str]) -> list[str]:
+    """Reorder args so the subcommand comes first (Click requirement).
+
+    Handles invocations like ``--workspace . --dry-run migrate`` by moving
+    the subcommand name to the front: ``migrate --workspace . --dry-run``.
+    """
+    for idx, arg in enumerate(raw):
+        if arg in _SUBCOMMANDS:
+            return [arg, *raw[:idx], *raw[idx + 1 :]]
+    return raw
 
 
 def main(argv: t.StrSequence | None = None) -> int:
@@ -83,21 +100,33 @@ def main(argv: t.StrSequence | None = None) -> int:
     # leave sys.argv as ["flext-infra", "workspace", ...remaining...].
     # Strip the known group name if present at sys.argv[1].
     if argv is None:
-        raw = sys.argv[1:]
+        raw = list(sys.argv[1:])
         if raw and raw[0] == "workspace":
             raw = raw[1:]
-        cli_args: t.StrSequence = raw
+        cli_args: list[str] = _normalize_argv(raw)
     else:
-        cli_args = argv
-    try:
-        result = cli.execute_app(app, prog_name="workspace", args=cli_args)
-    except click.UsageError:
-        return 2
+        cli_args = _normalize_argv(list(argv))
+    result = cli.execute_app(app, prog_name="workspace", args=cli_args)
     if result.is_failure:
         error_msg = result.error or ""
-        if "exited with code 2" in error_msg:
+        if _is_usage_error(error_msg):
             return 2
     return 0 if result.is_success else 1
+
+
+_USAGE_ERROR_MARKERS: tuple[str, ...] = (
+    "No such option",
+    "No such command",
+    "Missing option",
+    "Missing argument",
+    "Got unexpected extra argument",
+    "exited with code 2",
+)
+
+
+def _is_usage_error(msg: str) -> bool:
+    """Return True when *msg* looks like a Click/Typer usage error."""
+    return any(marker in msg for marker in _USAGE_ERROR_MARKERS)
 
 
 if __name__ == "__main__":
