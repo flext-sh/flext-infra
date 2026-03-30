@@ -40,6 +40,47 @@ class FlextInfraOrchestratorService(s[bool]):
         """Not used; call orchestrate() directly instead."""
         return r[bool].fail("Use orchestrate() method directly")
 
+    def _execute_project(
+        self,
+        project: str,
+        verb: str,
+        idx: int,
+        *,
+        make_args: t.StrSequence,
+    ) -> t.Infra.Pair[m.Infra.CommandOutput, bool]:
+        """Run one project and return (output, succeeded)."""
+        output_result = self._run_project(project, verb, idx, make_args=list(make_args))
+        if output_result.is_failure:
+            return (
+                m.Infra.CommandOutput(
+                    stdout="",
+                    stderr=output_result.error or "project execution failed",
+                    exit_code=1,
+                    duration=0.0,
+                ),
+                False,
+            )
+        cmd_output: m.Infra.CommandOutput = output_result.value
+        return (cmd_output, cmd_output.exit_code == 0)
+
+    @staticmethod
+    def _collect_failures(
+        projects: t.StrSequence,
+        results: Sequence[m.Infra.CommandOutput],
+    ) -> Sequence[t.Infra.Triple[str, int, Path]]:
+        """Collect failure details for projects with non-zero exit codes."""
+        failures: MutableSequence[t.Infra.Triple[str, int, Path]] = []
+        for proj_name, cmd_result in zip(projects, results, strict=False):
+            if cmd_result.exit_code != 0:
+                log_file = (
+                    Path(cmd_result.stdout)
+                    if cmd_result.stdout
+                    else Path(f"{proj_name}.log")
+                )
+                err_count, _ = u.Infra.extract_errors(log_file)
+                failures.append((proj_name, err_count, log_file))
+        return failures
+
     def orchestrate(
         self,
         projects: t.StrSequence,
@@ -86,51 +127,23 @@ class FlextInfraOrchestratorService(s[bool]):
                         ),
                     )
                     continue
-                output_result = self._run_project(
+                cmd_output, succeeded = self._execute_project(
                     project,
                     verb,
                     idx,
-                    make_args=list(make_args),
+                    make_args=make_args,
                 )
-                if output_result.is_failure:
-                    failed += 1
-                    results.append(
-                        m.Infra.CommandOutput(
-                            stdout="",
-                            stderr=output_result.error or "project execution failed",
-                            exit_code=1,
-                            duration=0.0,
-                        ),
-                    )
-                    if fail_fast:
-                        skipped = total - idx
-                    continue
-                output_value = output_result.value
-                cmd_output: m.Infra.CommandOutput = output_value
                 results.append(cmd_output)
-                if cmd_output.exit_code == 0:
+                if succeeded:
                     success += 1
                 else:
                     failed += 1
-                if cmd_output.exit_code != 0 and fail_fast:
-                    skipped = total - idx
+                    if fail_fast:
+                        skipped = total - idx
             elapsed_total = time.monotonic() - started_total
             output.summary(verb, total, success, failed, skipped, elapsed_total)
             if failed > 0:
-                failures: MutableSequence[t.Infra.Triple[str, int, Path]] = []
-                for proj_name, cmd_result in zip(
-                    projects,
-                    results,
-                    strict=False,
-                ):
-                    if cmd_result.exit_code != 0:
-                        log_file = (
-                            Path(cmd_result.stdout)
-                            if cmd_result.stdout
-                            else Path(f"{proj_name}.log")
-                        )
-                        err_count, _ = u.Infra.extract_errors(log_file)
-                        failures.append((proj_name, err_count, log_file))
+                failures = self._collect_failures(projects, results)
                 output.failure_summary(verb, failures)
             return r[Sequence[m.Infra.CommandOutput]].ok(results)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:

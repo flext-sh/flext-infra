@@ -146,7 +146,8 @@ class TestMainWithFlags:
         monkeypatch.setattr(sys, "argv", ["prog", "docs", "audit", "--strict"])
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
         main()
-        tm.that(kw.get("strict"), eq=True)
+        params = kw.get("params")
+        tm.that(getattr(params, "strict", None), eq=True)
 
     def test_fix_apply_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
         kw: MutableMapping[str, t.Scalar] = {}
@@ -174,7 +175,8 @@ class TestMainWithFlags:
         monkeypatch.setattr(sys, "argv", ["prog", "docs", "audit", "--check"])
         monkeypatch.setattr(FlextInfraDocAuditor, "audit", _capture_audit(kw))
         main()
-        tm.that(kw.get("check"), eq="all")
+        params = kw.get("params")
+        tm.that(getattr(params, "check", None), eq="all")
 
     def test_validate_check_parameter(self, monkeypatch: pytest.MonkeyPatch) -> None:
         kw: MutableMapping[str, t.Scalar] = {}

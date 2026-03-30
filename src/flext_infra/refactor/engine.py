@@ -324,7 +324,8 @@ class FlextInfraRefactorEngine:
 
         Returns (stash_ref, None) on success or ("", error_results) on failure.
         """
-        if not apply_safety or dry_run:
+        skip_stash = (not apply_safety) or dry_run
+        if skip_stash:
             return "", None
         stash_ref_result = self._prepare_safety_stash(target_path)
         if stash_ref_result.is_failure:
@@ -432,14 +433,7 @@ class FlextInfraRefactorEngine:
             return list(
                 self.collect_workspace_files(args.workspace, pattern=args.pattern),
             )
-        if args.file:
-            if not args.file.exists():
-                u.Infra.refactor_error(f"File not found: {args.file}")
-                return None
-            return [args.file]
-        if args.files:
-            return [item for item in args.files if item.exists()]
-        return []
+        return self._collect_explicit_files(args)
 
     def _collect_project_files_for_analysis(
         self,
@@ -476,6 +470,20 @@ class FlextInfraRefactorEngine:
             ),
         )
 
+    @staticmethod
+    def _collect_explicit_files(
+        args: argparse.Namespace,
+    ) -> MutableSequence[Path] | None:
+        """Resolve --file or --files args to a path list. Returns None on error."""
+        if args.file:
+            if not args.file.exists():
+                u.Infra.refactor_error(f"File not found: {args.file}")
+                return None
+            return [args.file]
+        if args.files:
+            return [item for item in args.files if item.exists()]
+        return []
+
     def _run_refactor(self, args: argparse.Namespace) -> int:
         """Execute the refactoring branch of the CLI."""
         results = self._collect_refactor_results(args)
@@ -508,14 +516,21 @@ class FlextInfraRefactorEngine:
                     pattern=args.pattern,
                 ),
             )
+        return self._refactor_explicit_files(args)
+
+    def _refactor_explicit_files(
+        self,
+        args: argparse.Namespace,
+    ) -> MutableSequence[m.Infra.Result] | None:
+        """Refactor --file or --files from CLI args. Returns None on error."""
         if args.file:
             return self._refactor_single_file(args)
         if args.files:
-            existing_files = [item for item in args.files if item.exists()]
-            missing_files = [item for item in args.files if not item.exists()]
-            for file_path in missing_files:
+            existing = [item for item in args.files if item.exists()]
+            missing = [item for item in args.files if not item.exists()]
+            for file_path in missing:
                 u.Infra.refactor_error(f"File not found: {file_path}")
-            return list(self.refactor_files(existing_files, dry_run=args.dry_run))
+            return list(self.refactor_files(existing, dry_run=args.dry_run))
         return []
 
     def _refactor_single_file(
@@ -534,6 +549,22 @@ class FlextInfraRefactorEngine:
         return [result_single]
 
     @staticmethod
+    def _matches_pattern(file: Path, base_path: Path, pattern: str) -> bool:
+        """Return True when file matches the glob pattern."""
+        rel = str(file.relative_to(base_path))
+        return fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(file.name, pattern)
+
+    @staticmethod
+    def _is_ignored(file: Path, base_path: Path, ignore_patterns: set[str]) -> bool:
+        """Return True when file or any parent dir matches ignore patterns."""
+        if file.name in ignore_patterns:
+            return True
+        rel_path = file.relative_to(base_path)
+        if any(part in ignore_patterns for part in rel_path.parts):
+            return True
+        return any(fnmatch.fnmatch(str(rel_path), ip) for ip in ignore_patterns)
+
+    @staticmethod
     def _filter_files(
         candidates: Sequence[Path],
         *,
@@ -546,19 +577,9 @@ class FlextInfraRefactorEngine:
         return [
             f
             for f in candidates
-            if (
-                fnmatch.fnmatch(str(f.relative_to(base_path)), pattern)
-                or fnmatch.fnmatch(f.name, pattern)
-            )
+            if FlextInfraRefactorEngine._matches_pattern(f, base_path, pattern)
             and (not allowed_extensions or f.suffix in allowed_extensions)
-            and f.name not in ignore_patterns
-            and not any(
-                part in ignore_patterns for part in f.relative_to(base_path).parts
-            )
-            and not any(
-                fnmatch.fnmatch(str(f.relative_to(base_path)), ip)
-                for ip in ignore_patterns
-            )
+            and not FlextInfraRefactorEngine._is_ignored(f, base_path, ignore_patterns)
         ]
 
     def collect_workspace_files(
@@ -653,6 +674,53 @@ class FlextInfraRefactorEngine:
             )
         return r[Sequence[FlextInfraRefactorRule]].ok(loaded_rules)
 
+    def _apply_file_rules(
+        self,
+        file_path: Path,
+        source: str,
+    ) -> m.Infra.Result | t.Infra.Pair[str, t.StrSequence]:
+        """Apply file-level rules, returning error Result or (updated_source, changes)."""
+        current = source
+        all_changes: MutableSequence[str] = []
+        for file_rule in self.file_rules:
+            file_rule_result = file_rule.apply(file_path, dry_run=True)
+            if not file_rule_result.success:
+                return m.Infra.Result(
+                    file_path=file_path,
+                    success=False,
+                    modified=False,
+                    error=file_rule_result.error,
+                    changes=file_rule_result.changes,
+                    refactored_code=None,
+                )
+            if file_rule_result.modified and file_rule_result.refactored_code:
+                current = file_rule_result.refactored_code
+            all_changes.extend(file_rule_result.changes)
+        return (current, list(all_changes))
+
+    def _apply_cst_rules(
+        self,
+        file_path: Path,
+        source: str,
+    ) -> m.Infra.Result | t.Infra.Pair[str, t.StrSequence]:
+        """Parse and apply CST rules, returning error Result or (code, changes)."""
+        tree = u.Infra.parse_cst_from_source(source)
+        if tree is None:
+            return m.Infra.Result(
+                file_path=file_path,
+                success=False,
+                modified=False,
+                error="parse_failed",
+                changes=[],
+                refactored_code=None,
+            )
+        all_changes: MutableSequence[str] = []
+        for rule in self.rules:
+            if rule.enabled:
+                tree, changes = rule.apply(tree, file_path)
+                all_changes.extend(changes)
+        return (tree.code, list(all_changes))
+
     def refactor_file(
         self,
         file_path: Path,
@@ -670,40 +738,16 @@ class FlextInfraRefactorEngine:
                     refactored_code=None,
                 )
             original_source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            source = original_source
-            all_changes: MutableSequence[str] = []
-            file_rule_modified = False
-            for file_rule in self.file_rules:
-                file_rule_result = file_rule.apply(file_path, dry_run=True)
-                if not file_rule_result.success:
-                    return m.Infra.Result(
-                        file_path=file_path,
-                        success=False,
-                        modified=False,
-                        error=file_rule_result.error,
-                        changes=file_rule_result.changes,
-                        refactored_code=None,
-                    )
-                if file_rule_result.modified and file_rule_result.refactored_code:
-                    source = file_rule_result.refactored_code
-                    file_rule_modified = True
-                all_changes.extend(file_rule_result.changes)
-            tree = u.Infra.parse_cst_from_source(source)
-            if tree is None:
-                return m.Infra.Result(
-                    file_path=file_path,
-                    success=False,
-                    modified=False,
-                    error="parse_failed",
-                    changes=[],
-                    refactored_code=None,
-                )
-            for rule in self.rules:
-                if rule.enabled:
-                    tree, changes = rule.apply(tree, file_path)
-                    all_changes.extend(changes)
-            result_code = tree.code
-            modified = file_rule_modified or result_code != original_source
+            file_result = self._apply_file_rules(file_path, original_source)
+            if isinstance(file_result, m.Infra.Result):
+                return file_result
+            source_after_file_rules, file_changes = file_result
+            cst_result = self._apply_cst_rules(file_path, source_after_file_rules)
+            if isinstance(cst_result, m.Infra.Result):
+                return cst_result
+            result_code, cst_changes = cst_result
+            all_changes = [*file_changes, *cst_changes]
+            modified = result_code != original_source
             if not dry_run and modified:
                 u.write_file(file_path, result_code, encoding=c.Infra.Encoding.DEFAULT)
             return m.Infra.Result(

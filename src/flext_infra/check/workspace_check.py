@@ -25,6 +25,15 @@ from flext_infra import (
 )
 
 
+class _LoopOutcome(m.ArbitraryTypesModel):
+    """Bundled results from the project-checking loop."""
+
+    results: Sequence[m.Infra.ProjectResult]
+    failed: int
+    skipped: int
+    total_elapsed: float
+
+
 class FlextInfraWorkspaceChecker(s[bool]):
     """Run workspace quality gates and generate reports."""
 
@@ -245,15 +254,12 @@ class FlextInfraWorkspaceChecker(s[bool]):
 
     @staticmethod
     def _write_reports_and_summary(
-        results: Sequence[m.Infra.ProjectResult],
         resolved_gates: t.StrSequence,
         report_base: Path,
-        *,
-        failed: int,
-        skipped: int,
-        total_elapsed: float,
+        outcome: _LoopOutcome,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
+        results = outcome.results
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         md_path = report_base / "check-report.md"
         _ = md_path.write_text(
@@ -268,14 +274,14 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 json_write_result.error or "failed to write sarif report",
             )
         total_errors = sum(project.total_errors for project in results)
-        success = len(results) - failed
+        success = len(results) - outcome.failed
         output.summary(
             c.Infra.Verbs.CHECK,
             len(results),
             success,
-            failed,
-            skipped,
-            total_elapsed,
+            outcome.failed,
+            outcome.skipped,
+            outcome.total_elapsed,
         )
         output.info(f"Reports: {md_path}")
         output.info(f"         {sarif_path}")
@@ -309,8 +315,14 @@ class FlextInfraWorkspaceChecker(s[bool]):
         check_only: bool = False,
         ruff_args: t.StrSequence | None = None,
         pyright_args: t.StrSequence | None = None,
+        ctx: m.Infra.GateContext | None = None,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
-        """Run selected gates for multiple projects."""
+        """Run selected gates for multiple projects.
+
+        Pass ``ctx`` to supply a pre-built GateContext; individual gate-option
+        kwargs (fix, check_only, ruff_args, pyright_args) are ignored when
+        ``ctx`` is provided.
+        """
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.is_failure:
             return r[Sequence[m.Infra.ProjectResult]].fail(
@@ -319,26 +331,23 @@ class FlextInfraWorkspaceChecker(s[bool]):
         resolved_gates: t.StrSequence = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         report_base.mkdir(parents=True, exist_ok=True)
-        ctx = self._gate_ctx(
+        effective_ctx = ctx or self._gate_ctx(
             report_base,
             apply_fixes=fix,
             check_only=check_only,
             ruff_args=ruff_args,
             pyright_args=pyright_args,
         )
-        results, failed, skipped, total_elapsed = self._run_project_loop(
+        outcome = self._run_project_loop(
             projects,
             resolved_gates,
-            ctx,
+            effective_ctx,
             fail_fast=fail_fast,
         )
         return self._write_reports_and_summary(
-            results,
             resolved_gates,
             report_base,
-            failed=failed,
-            skipped=skipped,
-            total_elapsed=total_elapsed,
+            outcome,
         )
 
     def _run_project_loop(
@@ -348,7 +357,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         ctx: m.Infra.GateContext,
         *,
         fail_fast: bool,
-    ) -> tuple[Sequence[m.Infra.ProjectResult], int, int, float]:
+    ) -> _LoopOutcome:
         """Execute gate checks across projects, collecting results and timing."""
         results: MutableSequence[m.Infra.ProjectResult] = []
         total = len(projects)
@@ -356,23 +365,27 @@ class FlextInfraWorkspaceChecker(s[bool]):
         skipped = 0
         loop_start = time.monotonic()
         for index, project_name in enumerate(projects, 1):
-            outcome = self._run_single_project(
+            project_result = self._run_single_project(
                 project_name,
                 index,
                 total,
                 resolved_gates,
                 ctx,
             )
-            if outcome is None:
+            if project_result is None:
                 skipped += 1
                 continue
-            results.append(outcome)
-            if not outcome.passed:
+            results.append(project_result)
+            if not project_result.passed:
                 failed += 1
                 if fail_fast:
                     break
-        total_elapsed = time.monotonic() - loop_start
-        return (results, failed, skipped, total_elapsed)
+        return _LoopOutcome(
+            results=results,
+            failed=failed,
+            skipped=skipped,
+            total_elapsed=time.monotonic() - loop_start,
+        )
 
     def _run_single_project(
         self,
@@ -526,17 +539,14 @@ class FlextInfraWorkspaceChecker(s[bool]):
         *,
         fix: bool = False,
         check_only: bool = False,
-        ruff_args: t.StrSequence | None = None,
-        pyright_args: t.StrSequence | None = None,
+        ctx: m.Infra.GateContext | None = None,
     ) -> m.Infra.ProjectResult:
-        ctx = self._gate_ctx(
+        effective_ctx = ctx or self._gate_ctx(
             reports_dir,
             apply_fixes=fix,
             check_only=check_only,
-            ruff_args=ruff_args,
-            pyright_args=pyright_args,
         )
-        return self._check_project_with_ctx(project_dir, gates, ctx)
+        return self._check_project_with_ctx(project_dir, gates, effective_ctx)
 
     def _resolve_workspace_root(self, workspace_root: Path | None) -> Path:
         if workspace_root is not None:

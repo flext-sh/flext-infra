@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import dataclasses
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
@@ -19,8 +18,7 @@ from pydantic import BaseModel
 from flext_infra import m, t, u
 
 
-@dataclasses.dataclass(slots=True)
-class _DetectorContext:
+class _DetectorContext(m.ArbitraryTypesModel):
     """Bundles the common parameters passed to every ``detect_file`` classmethod."""
 
     file_path: Path

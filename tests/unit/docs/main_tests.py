@@ -140,7 +140,8 @@ class TestRunAudit:
         FlextInfraDocsCli._handle_audit(
             m.Infra.DocsAuditInput(check=check, strict=strict),
         )
-        tm.that(captured_kwargs.get(field), eq=expected)
+        params = captured_kwargs.get("params")
+        tm.that(getattr(params, field, None), eq=expected)
 
 
 class TestRunFix:

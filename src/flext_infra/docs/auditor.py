@@ -150,8 +150,7 @@ class FlextInfraDocAuditor:
         project: str | None = None,
         projects: str | None = None,
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
-        check: str = "all",
-        strict: bool = True,
+        params: m.Infra.AuditScopeParams | None = None,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
         """Run documentation audit across project scopes.
 
@@ -160,37 +159,40 @@ class FlextInfraDocAuditor:
             project: Single project name filter.
             projects: Comma-separated project names.
             output_dir: Report output directory.
-            check: Comma-separated checks (links, forbidden-terms, all).
-            strict: Fail on any issues found.
+            params: Audit scope parameters (check, strict, budgets).
 
         Returns:
             r with list of AuditReport objects.
 
         """
-        budgets = self.load_audit_budgets(workspace_root)
+        resolved = params or m.Infra.AuditScopeParams()
+        budgets = resolved.budgets or self.load_audit_budgets(workspace_root)
+        scope_params = m.Infra.AuditScopeParams(
+            check=resolved.check,
+            strict=resolved.strict,
+            budgets=budgets,
+        )
         return u.Infra.run_scoped(
             workspace_root,
             project=project,
             projects=projects,
             output_dir=output_dir,
-            handler=lambda scope: self.audit_scope(
-                scope,
-                check=check,
-                strict=strict,
-                budgets=budgets,
-            ),
+            handler=lambda scope: self.audit_scope(scope, params=scope_params),
         )
 
     def execute_command(self, params: m.Infra.DocsAuditInput) -> r[bool]:
         """CLI handler — accepts input model, delegates to audit."""
         resolved_workspace = Path(params.workspace) if params.workspace else Path.cwd()
+        scope_params = m.Infra.AuditScopeParams(
+            check="all" if params.check else "",
+            strict=params.strict,
+        )
         result = self.audit(
             workspace_root=resolved_workspace,
             project=params.project,
             projects=params.projects,
             output_dir=params.output_dir,
-            check="all" if params.check else "",
-            strict=params.strict,
+            params=scope_params,
         )
         if result.is_failure:
             return r[bool].fail(result.error or "audit failed")
@@ -242,33 +244,74 @@ class FlextInfraDocAuditor:
         self,
         scope: m.Infra.DocScope,
         *,
-        check: str,
-        strict: bool,
-        budgets: t.Infra.Pair[int | None, Mapping[str, int]] | None = None,
-        max_issues_default: int | None = None,
-        max_issues_by_scope: Mapping[str, int] | None = None,
+        params: m.Infra.AuditScopeParams | None = None,
     ) -> m.Infra.DocsPhaseReport:
         """Run configured audit checks on a single scope."""
-        resolved_default, resolved_by_scope = self._resolve_budgets(
-            budgets,
-            max_issues_default,
-            max_issues_by_scope,
+        resolved = params or m.Infra.AuditScopeParams()
+        checks = self._resolve_checks(resolved.check)
+        issues = self._collect_issues(scope, checks)
+        self._write_audit_reports(scope, issues, checks, strict=resolved.strict)
+        passed = self._evaluate_pass(
+            scope.name,
+            issues,
+            strict=resolved.strict,
+            budgets=resolved.budgets or self._NO_BUDGETS,
         )
+        return self._build_audit_report(
+            scope,
+            issues,
+            checks,
+            strict=resolved.strict,
+            passed=passed,
+        )
+
+    @staticmethod
+    def _resolve_checks(check: str) -> set[str]:
+        """Parse check string into a resolved set of check names."""
         checks = {part.strip() for part in check.split(",") if part.strip()}
         if not checks or "all" in checks:
-            checks = {"links", "forbidden-terms"}
+            return {"links", "forbidden-terms"}
+        return checks
+
+    def _collect_issues(
+        self,
+        scope: m.Infra.DocScope,
+        checks: set[str],
+    ) -> MutableSequence[m.Infra.AuditIssue]:
+        """Run enabled checks and collect all issues."""
         issues: MutableSequence[m.Infra.AuditIssue] = []
         if "links" in checks:
             issues.extend(self.broken_link_issues(scope))
         if "forbidden-terms" in checks:
             issues.extend(self.forbidden_term_issues(scope))
-        self._write_audit_reports(scope, issues, checks, strict=strict)
-        max_issues = resolved_by_scope.get(scope.name, resolved_default)
-        if strict:
-            limit = 0 if max_issues is None else max_issues
-            passed = len(issues) <= limit
-        else:
-            passed = True
+        return issues
+
+    @staticmethod
+    def _evaluate_pass(
+        scope_name: str,
+        issues: Sequence[m.Infra.AuditIssue],
+        *,
+        strict: bool,
+        budgets: t.Infra.Pair[int | None, Mapping[str, int]],
+    ) -> bool:
+        """Determine whether the scope passes given strictness and budgets."""
+        if not strict:
+            return True
+        resolved_default, resolved_by_scope = budgets
+        max_issues = resolved_by_scope.get(scope_name, resolved_default)
+        limit = 0 if max_issues is None else max_issues
+        return len(issues) <= limit
+
+    @staticmethod
+    def _build_audit_report(
+        scope: m.Infra.DocScope,
+        issues: Sequence[m.Infra.AuditIssue],
+        checks: set[str],
+        *,
+        strict: bool,
+        passed: bool,
+    ) -> m.Infra.DocsPhaseReport:
+        """Build the final DocsPhaseReport from audit results."""
         status = c.Infra.Status.OK if passed else c.Infra.Status.FAIL
         reason = f"issues:{len(issues)}"
         logger.info(
@@ -298,17 +341,6 @@ class FlextInfraDocAuditor:
             reason=reason,
             message=f"issues: {len(issues)}",
         )
-
-    @staticmethod
-    def _resolve_budgets(
-        budgets: t.Infra.Pair[int | None, Mapping[str, int]] | None,
-        max_issues_default: int | None,
-        max_issues_by_scope: Mapping[str, int] | None,
-    ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
-        """Unpack budgets tuple or fall back to individual keyword args."""
-        if budgets is not None:
-            return budgets
-        return (max_issues_default, max_issues_by_scope or {})
 
     def _check_links_in_file(
         self,
@@ -408,13 +440,16 @@ class FlextInfraDocAuditor:
         args = parser.parse_args()
         cli = u.Infra.resolve(args)
         auditor = FlextInfraDocAuditor()
+        scope_params = m.Infra.AuditScopeParams(
+            check="all" if cli.check else "none",
+            strict=bool(getattr(args, "strict", False)),
+        )
         result = auditor.audit(
             workspace_root=cli.workspace,
             project=cli.project,
             projects=cli.projects,
             output_dir=args.output_dir,
-            check="all" if cli.check else "none",
-            strict=bool(getattr(args, "strict", False)),
+            params=scope_params,
         )
         if result.is_failure:
             output.error(result.error or "audit failed")

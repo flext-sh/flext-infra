@@ -6,8 +6,37 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Annotated
+
+from flext_core import FlextModels
+from pydantic import Field
+
+from flext_infra import t
+
 
 class FlextInfraModelsBase:
     """Base models for flext-infra project."""
 
-    pass
+    class SummaryStats(FlextModels.FrozenStrictModel):
+        """Bundled stats for summary output."""
+
+        verb: Annotated[str, Field(description="Verb label for the summary block")]
+        total: Annotated[int, Field(description="Total processed items")]
+        success: Annotated[int, Field(description="Successful items")]
+        failed: Annotated[int, Field(description="Failed items")]
+        skipped: Annotated[int, Field(description="Skipped items")]
+        elapsed: Annotated[float, Field(description="Elapsed time in seconds")]
+
+    class ProjectFailureInfo(FlextModels.FrozenStrictModel):
+        """Bundled info for project failure output."""
+
+        project: Annotated[str, Field(description="Project display name")]
+        elapsed: Annotated[float, Field(description="Elapsed time in seconds")]
+        log_path: Annotated[Path, Field(description="Path to the project log")]
+        error_count: Annotated[int, Field(description="Total project errors")]
+        errors: Annotated[
+            t.StrSequence,
+            Field(description="Rendered error excerpt lines"),
+        ]
+        max_show: Annotated[int, Field(description="Maximum errors to render")] = 3

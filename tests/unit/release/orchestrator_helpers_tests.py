@@ -147,11 +147,18 @@ class TestGenerateNotes:
         monkeypatch.setattr(_CLS, "_previous_tag", _previous_tag)
         monkeypatch.setattr(_CLS, "_collect_changes", _collect_changes)
         notes_path = workspace_root / "notes.md"
+        config = infra_models.Infra.ReleasePhaseDispatchConfig(
+            phase="publish",
+            workspace_root=workspace_root,
+            version="1.0.0",
+            tag="v1.0.0",
+            project_names=[],
+            dry_run=False,
+            push=False,
+            dev_suffix=False,
+        )
         result = _CLS()._generate_notes(
-            workspace_root,
-            "1.0.0",
-            "v1.0.0",
-            [],
+            config,
             notes_path,
         )
         tm.ok(result)

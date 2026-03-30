@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
@@ -65,51 +65,24 @@ class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
         self._include_return_annotations = include_return_annotations
 
     @staticmethod
-    def _collect_mutated_params(function_node: cst.FunctionDef) -> t.Infra.StrSet:
-        param_names: t.Infra.StrSet = set()
-        parameters = function_node.params
-        param_names.update(param.name.value for param in parameters.posonly_params)
-        param_names.update(param.name.value for param in parameters.params)
-        param_names.update(param.name.value for param in parameters.kwonly_params)
+    def _extract_param_names(parameters: cst.Parameters) -> t.Infra.StrSet:
+        """Extract all parameter names from a function signature."""
+        names: t.Infra.StrSet = set()
+        names.update(param.name.value for param in parameters.posonly_params)
+        names.update(param.name.value for param in parameters.params)
+        names.update(param.name.value for param in parameters.kwonly_params)
         if isinstance(parameters.star_arg, cst.Param):
-            param_names.add(parameters.star_arg.name.value)
+            names.add(parameters.star_arg.name.value)
         if parameters.star_kwarg is not None:
-            param_names.add(parameters.star_kwarg.name.value)
-        mutating_methods = {"clear", "copy", "pop", "popitem", "setdefault", "update"}
+            names.add(parameters.star_kwarg.name.value)
+        return names
 
-        class MutableParamVisitor(cst.CSTVisitor):
-            def __init__(self) -> None:
-                self.mutated: t.Infra.StrSet = set()
-
-            @override
-            def visit_AssignTarget(self, node: cst.AssignTarget) -> None:
-                target = node.target
-                if isinstance(target, cst.Subscript):
-                    value = target.value
-                    if isinstance(value, cst.Name) and value.value in param_names:
-                        self.mutated.add(value.value)
-
-            @override
-            def visit_AugAssign(self, node: cst.AugAssign) -> None:
-                target = node.target
-                if isinstance(target, cst.Subscript):
-                    value = target.value
-                    if isinstance(value, cst.Name) and value.value in param_names:
-                        self.mutated.add(value.value)
-
-            @override
-            def visit_Call(self, node: cst.Call) -> None:
-                func = node.func
-                if not isinstance(func, cst.Attribute):
-                    return
-                if not isinstance(func.value, cst.Name):
-                    return
-                if func.value.value not in param_names:
-                    return
-                if func.attr.value in mutating_methods:
-                    self.mutated.add(func.value.value)
-
-        visitor = MutableParamVisitor()
+    @staticmethod
+    def _collect_mutated_params(function_node: cst.FunctionDef) -> t.Infra.StrSet:
+        param_names = FlextInfraDictToMappingTransformer._extract_param_names(
+            function_node.params,
+        )
+        visitor = _MutableParamVisitor(param_names)
         function_node.visit(visitor)
         return visitor.mutated
 
@@ -123,6 +96,48 @@ class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
                 return True
         return False
 
+    def _rewrite_all_params(
+        self,
+        parameters: cst.Parameters,
+        mutated_names: t.Infra.StrSet,
+    ) -> cst.Parameters:
+        """Rewrite all parameter annotations from dict to Mapping where safe."""
+        star_arg = parameters.star_arg
+        if isinstance(star_arg, cst.Param):
+            star_arg = self._rewrite_param_if_safe(star_arg, mutated_names)
+        star_kwarg = parameters.star_kwarg
+        if star_kwarg is not None:
+            star_kwarg = self._rewrite_param_if_safe(star_kwarg, mutated_names)
+        return parameters.with_changes(
+            posonly_params=[
+                self._rewrite_param_if_safe(p, mutated_names)
+                for p in parameters.posonly_params
+            ],
+            params=[
+                self._rewrite_param_if_safe(p, mutated_names) for p in parameters.params
+            ],
+            kwonly_params=[
+                self._rewrite_param_if_safe(p, mutated_names)
+                for p in parameters.kwonly_params
+            ],
+            star_arg=star_arg,
+            star_kwarg=star_kwarg,
+        )
+
+    def _maybe_rewrite_return(self, node: cst.FunctionDef) -> cst.FunctionDef:
+        """Rewrite return annotation from dict to Mapping if enabled."""
+        if not self._include_return_annotations:
+            return node
+        returns = node.returns
+        if returns is None:
+            return node
+        rewritten = self._rewrite_annotation_expr(returns.annotation)
+        if rewritten is returns.annotation:
+            return node
+        return node.with_changes(
+            returns=returns.with_changes(annotation=rewritten),
+        )
+
     @override
     def leave_FunctionDef(
         self,
@@ -132,69 +147,13 @@ class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
         if self._is_overload_function(original_node):
             return updated_node
         mutated_names = self._collect_mutated_params(original_node)
-        parameters = updated_node.params
-        star_arg_updated = parameters.star_arg
-        if isinstance(star_arg_updated, cst.Param):
-            star_arg_updated = self._rewrite_param_if_safe(
-                star_arg_updated,
-                mutated_names,
-            )
-        star_kwarg_updated = parameters.star_kwarg
-        if star_kwarg_updated is not None:
-            star_kwarg_updated = self._rewrite_param_if_safe(
-                star_kwarg_updated,
-                mutated_names,
-            )
-        rewritten_params = parameters.with_changes(
-            posonly_params=[
-                self._rewrite_param_if_safe(param, mutated_names)
-                for param in parameters.posonly_params
-            ],
-            params=[
-                self._rewrite_param_if_safe(param, mutated_names)
-                for param in parameters.params
-            ],
-            kwonly_params=[
-                self._rewrite_param_if_safe(param, mutated_names)
-                for param in parameters.kwonly_params
-            ],
-            star_arg=star_arg_updated,
-            star_kwarg=star_kwarg_updated,
-        )
+        rewritten_params = self._rewrite_all_params(updated_node.params, mutated_names)
         working_node = updated_node.with_changes(params=rewritten_params)
-        if not self._include_return_annotations:
-            return working_node
-        returns = working_node.returns
-        if returns is None:
-            return working_node
-        rewritten = self._rewrite_annotation_expr(returns.annotation)
-        if rewritten is returns.annotation:
-            return working_node
-        return working_node.with_changes(
-            returns=returns.with_changes(annotation=rewritten),
-        )
+        return self._maybe_rewrite_return(working_node)
 
-    @override
-    def leave_Module(
-        self,
-        original_node: cst.Module,
-        updated_node: cst.Module,
-    ) -> cst.Module:
-        del original_node
-        if not self.changes or self._has_mapping_import:
-            return updated_node
-        import_line: cst.SimpleStatementLine = cst.SimpleStatementLine(
-            body=[
-                cst.ImportFrom(
-                    module=cst.Attribute(
-                        value=cst.Name("collections"),
-                        attr=cst.Name("abc"),
-                    ),
-                    names=[cst.ImportAlias(name=cst.Name("Mapping"))],
-                ),
-            ],
-        )
-        body = list(updated_node.body)
+    @staticmethod
+    def _find_import_insert_position(body: Sequence[cst.BaseStatement]) -> int:
+        """Find the insertion index for a new import after docstrings and __future__."""
         insert_at = 0
         if (
             body
@@ -218,6 +177,30 @@ class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
             if not isinstance(module, cst.Name) or module.value != "__future__":
                 break
             insert_at += 1
+        return insert_at
+
+    @override
+    def leave_Module(
+        self,
+        original_node: cst.Module,
+        updated_node: cst.Module,
+    ) -> cst.Module:
+        del original_node
+        if not self.changes or self._has_mapping_import:
+            return updated_node
+        import_line: cst.SimpleStatementLine = cst.SimpleStatementLine(
+            body=[
+                cst.ImportFrom(
+                    module=cst.Attribute(
+                        value=cst.Name("collections"),
+                        attr=cst.Name("abc"),
+                    ),
+                    names=[cst.ImportAlias(name=cst.Name("Mapping"))],
+                ),
+            ],
+        )
+        body = list(updated_node.body)
+        insert_at = self._find_import_insert_position(body)
         body.insert(insert_at, import_line)
         return updated_node.with_changes(body=body)
 

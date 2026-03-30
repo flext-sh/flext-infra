@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -84,6 +84,18 @@ class FlextInfraDocsModels:
             bool,
             Field(default=False, description="Whether file was written"),
         ] = False
+
+    class AuditScopeParams(FlextModels.FrozenStrictModel):
+        """Bundled parameters for a single audit scope run."""
+
+        check: Annotated[
+            str, Field(default="all", description="Comma-separated checks")
+        ]
+        strict: Annotated[bool, Field(default=True, description="Strict mode")]
+        budgets: Annotated[
+            t.Infra.Pair[int | None, Mapping[str, int]] | None,
+            Field(default=None, description="Budget tuple (default, by_scope)"),
+        ] = None
 
     class DocsPhaseReport(FlextModels.FrozenStrictModel):
         """Unified report payload for docs phases."""

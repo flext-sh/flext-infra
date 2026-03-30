@@ -90,30 +90,13 @@ class FlextInfraWorkspaceMakefileGenerator:
 
         return self._atomic_write(makefile, content)
 
-    def _bootstrap_template(self, makefile: Path) -> r[bool]:
-        """Create the template from the current Makefile (one-time bootstrap)."""
-        if not makefile.exists():
-            return r[bool].ok(False)
-
-        try:
-            content = makefile.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except OSError as exc:
-            return r[bool].fail(f"Makefile read failed: {exc}")
-
-        # Skip if already generated (avoid re-bootstrapping)
-        if _GENERATED_MARKER in content:
-            return r[bool].ok(False)
-
-        pr_branch = self._current_branch(makefile.parent)
-
-        # Build template: replace header, parameterise PR_BRANCH, add custom include
+    @staticmethod
+    def _build_template_lines(content: str) -> str:
+        """Transform raw Makefile content into a Jinja2 template string."""
         lines = content.splitlines(keepends=True)
         out: MutableSequence[str] = []
         header_done = False
-        custom_include_done = _CUSTOM_INCLUDE in content
-
         for line in lines:
-            # Replace first non-comment/non-empty block with @generated header
             if not header_done and line.startswith("#"):
                 out.extend((
                     "# =============================================================================\n",
@@ -124,26 +107,35 @@ class FlextInfraWorkspaceMakefileGenerator:
                     "# DO NOT EDIT — put custom targets in workspace_custom.mk instead.\n",
                     "# =============================================================================\n",
                 ))
-                # Skip original header lines
                 header_done = True
                 continue
             if not header_done and not line.strip():
                 continue
-            # Parameterise PR_BRANCH
             if line.startswith("PR_BRANCH ?="):
                 out.append("PR_BRANCH ?= {{ pr_branch }}\n")
                 continue
             out.append(line)
-
         template_content = "".join(out)
-
-        # Append custom include if not already present
-        if not custom_include_done:
+        if _CUSTOM_INCLUDE not in content:
             if not template_content.endswith("\n"):
                 template_content += "\n"
             template_content += f"\n# Workspace-specific custom targets (optional, never overwritten by sync)\n{_CUSTOM_INCLUDE}\n"
+        return template_content
 
-        # Write template to flext_infra
+    def _bootstrap_template(self, makefile: Path) -> r[bool]:
+        """Create the template from the current Makefile (one-time bootstrap)."""
+        if not makefile.exists():
+            return r[bool].ok(False)
+        try:
+            content = makefile.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except OSError as exc:
+            return r[bool].fail(f"Makefile read failed: {exc}")
+        if _GENERATED_MARKER in content:
+            return r[bool].ok(False)
+
+        pr_branch = self._current_branch(makefile.parent)
+        template_content = self._build_template_lines(content)
+
         try:
             _TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
             template_write = self._atomic_write(self.template_path, template_content)
@@ -152,15 +144,13 @@ class FlextInfraWorkspaceMakefileGenerator:
         except OSError as exc:
             return r[bool].fail(f"template bootstrap failed: {exc}")
 
-        # Now generate the Makefile from the newly created template
         render_result = self._render_template(
             pr_branch=pr_branch,
             template_text=template_content,
         )
         if render_result.is_failure:
             return r[bool].fail(render_result.error or "template render failed")
-        rendered = render_result.value
-        return self._atomic_write(makefile, rendered)
+        return self._atomic_write(makefile, render_result.value)
 
     def _render_template(
         self,

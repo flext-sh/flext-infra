@@ -81,79 +81,78 @@ class FlextInfraUtilitiesReporting:
         )
 
     @staticmethod
+    def _issue_to_sarif_result(issue: m.Infra.Issue) -> m.Infra.SarifResult:
+        """Convert a single gate issue to a SARIF result entry."""
+        rule_id = issue.code or c.Infra.Defaults.UNKNOWN
+        level = (
+            c.Infra.ERROR
+            if issue.severity == c.Infra.ERROR
+            else c.Infra.Severity.WARNING
+        )
+        return m.Infra.SarifResult(
+            rule_id=rule_id,
+            level=level,
+            message=issue.message,
+            locations=[
+                m.Infra.SarifLocation(
+                    uri=issue.file,
+                    start_line=max(issue.line, 1),
+                    start_column=max(issue.column, 1),
+                ),
+            ],
+        )
+
+    @staticmethod
+    def _build_sarif_run(
+        gate: str,
+        results: Sequence[m.Infra.ProjectResult],
+    ) -> m.Infra.SarifRun:
+        """Build a single SARIF run for one gate across all projects."""
+        tool_name, tool_url = c.Infra.SARIF_TOOL_INFO.get(gate, (gate, ""))
+        sarif_results: MutableSequence[m.Infra.SarifResult] = []
+        rules_seen: t.Infra.StrSet = set()
+        rules: MutableSequence[m.Infra.SarifRule] = []
+        for project in results:
+            gate_result = project.gates.get(gate)
+            if not gate_result:
+                continue
+            for issue in gate_result.issues:
+                rule_id = issue.code or c.Infra.Defaults.UNKNOWN
+                if rule_id not in rules_seen:
+                    rules_seen.add(rule_id)
+                    rules.append(
+                        m.Infra.SarifRule(id=rule_id, short_description=rule_id),
+                    )
+                sarif_results.append(
+                    FlextInfraUtilitiesReporting._issue_to_sarif_result(issue),
+                )
+        return m.Infra.SarifRun(
+            tool_name=tool_name,
+            information_uri=tool_url,
+            rules=rules,
+            results=sarif_results,
+        )
+
+    @staticmethod
     def generate_sarif(
         results: Sequence[m.Infra.ProjectResult],
         gates: t.StrSequence,
     ) -> JsonValue:
         """Generate a SARIF 2.1.0 payload from gate results."""
-        sarif_runs: MutableSequence[m.Infra.SarifRun] = []
-        for gate in gates:
-            tool_name, tool_url = c.Infra.SARIF_TOOL_INFO.get(
-                gate,
-                (gate, ""),
-            )
-            sarif_results: MutableSequence[m.Infra.SarifResult] = []
-            rules_seen: t.Infra.StrSet = set()
-            rules: MutableSequence[m.Infra.SarifRule] = []
-            for project in results:
-                gate_result = project.gates.get(gate)
-                if not gate_result:
-                    continue
-                for issue in gate_result.issues:
-                    rule_id = issue.code or c.Infra.Defaults.UNKNOWN
-                    if rule_id not in rules_seen:
-                        rules_seen.add(rule_id)
-                        rules.append(
-                            m.Infra.SarifRule(
-                                id=rule_id,
-                                short_description=rule_id,
-                            ),
-                        )
-                    sarif_results.append(
-                        m.Infra.SarifResult(
-                            rule_id=rule_id,
-                            level=c.Infra.ERROR
-                            if issue.severity == c.Infra.ERROR
-                            else c.Infra.Severity.WARNING,
-                            message=issue.message,
-                            locations=[
-                                m.Infra.SarifLocation(
-                                    uri=issue.file,
-                                    start_line=max(issue.line, 1),
-                                    start_column=max(issue.column, 1),
-                                ),
-                            ],
-                        ),
-                    )
-            sarif_runs.append(
-                m.Infra.SarifRun(
-                    tool_name=tool_name,
-                    information_uri=tool_url,
-                    rules=rules,
-                    results=sarif_results,
-                ),
-            )
+        sarif_runs = [
+            FlextInfraUtilitiesReporting._build_sarif_run(gate, results)
+            for gate in gates
+        ]
         sarif_report = m.Infra.SarifReport(runs=sarif_runs)
         sarif_dict: dict[str, JsonValue] = sarif_report.model_dump(by_alias=True)
         return sarif_dict
 
     @staticmethod
-    def generate_markdown(
+    def _markdown_summary_table(
         results: Sequence[m.Infra.ProjectResult],
         gates: t.StrSequence,
-        timestamp: str,
-    ) -> str:
-        """Generate a markdown summary report."""
-        lines: MutableSequence[str] = [
-            "# FLEXT Check Report",
-            "",
-            f"**Generated**: {timestamp}  ",
-            f"**Projects**: {len(results)}  ",
-            f"**Gates**: {', '.join(gates)}  ",
-            "",
-            "## Summary",
-            "",
-        ]
+    ) -> t.Infra.Pair[Sequence[str], int]:
+        """Build markdown summary table rows. Returns (lines, failed_count)."""
         header = "| Project |"
         sep = "|---------|"
         for gate in gates:
@@ -161,7 +160,7 @@ class FlextInfraUtilitiesReporting:
             sep += "------|"
         header += " Total | Status |"
         sep += "-------|--------|"
-        lines.extend([header, sep])
+        lines: MutableSequence[str] = [header, sep]
         failed_count = 0
         for project in results:
             row = f"| {project.project} |"
@@ -177,17 +176,16 @@ class FlextInfraUtilitiesReporting:
                 failed_count += 1
             row += f" {project.total_errors} | {status} |"
             lines.append(row)
-        lines.extend([
-            "",
-            f"**Total errors**: {sum(p.total_errors for p in results)}  ",
-            f"**Failed projects**: {failed_count}/{len(results)}  ",
-            "",
-        ])
-        for project in sorted(
-            results,
-            key=lambda item: item.total_errors,
-            reverse=True,
-        ):
+        return (lines, failed_count)
+
+    @staticmethod
+    def _markdown_project_details(
+        results: Sequence[m.Infra.ProjectResult],
+        gates: t.StrSequence,
+    ) -> Sequence[str]:
+        """Build per-project error detail sections."""
+        lines: MutableSequence[str] = []
+        for project in sorted(results, key=lambda p: p.total_errors, reverse=True):
             if project.total_errors == 0:
                 continue
             lines.extend([f"## {project.project}", ""])
@@ -209,6 +207,41 @@ class FlextInfraUtilitiesReporting:
                         f"... and {len(gate_result.issues) - c.Infra.MAX_DISPLAY_ISSUES} more errors",
                     )
                 lines.extend(["```", ""])
+        return lines
+
+    @staticmethod
+    def generate_markdown(
+        results: Sequence[m.Infra.ProjectResult],
+        gates: t.StrSequence,
+        timestamp: str,
+    ) -> str:
+        """Generate a markdown summary report."""
+        lines: MutableSequence[str] = [
+            "# FLEXT Check Report",
+            "",
+            f"**Generated**: {timestamp}  ",
+            f"**Projects**: {len(results)}  ",
+            f"**Gates**: {', '.join(gates)}  ",
+            "",
+            "## Summary",
+            "",
+        ]
+        table_lines, failed_count = (
+            FlextInfraUtilitiesReporting._markdown_summary_table(
+                results,
+                gates,
+            )
+        )
+        lines.extend(table_lines)
+        lines.extend([
+            "",
+            f"**Total errors**: {sum(p.total_errors for p in results)}  ",
+            f"**Failed projects**: {failed_count}/{len(results)}  ",
+            "",
+        ])
+        lines.extend(
+            FlextInfraUtilitiesReporting._markdown_project_details(results, gates),
+        )
         return "\n".join(lines)
 
 

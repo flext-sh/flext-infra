@@ -22,6 +22,18 @@ class FlextInfraProtocolsBase:
     """Base protocols for flext-infra project."""
 
     @runtime_checkable
+    class OutputStream(Protocol):
+        """Minimal text stream contract used by infrastructure output backends."""
+
+        def write(self, msg: str, /) -> int:
+            """Write a text fragment and return the number of characters written."""
+            ...
+
+        def flush(self) -> None:
+            """Flush buffered text to the underlying sink."""
+            ...
+
+    @runtime_checkable
     class ProjectInfo(Protocol):
         """Minimal project descriptor used by orchestration services."""
 

@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import override
 
 from flext_core import r, s
+from pydantic import Field
 from rope.base.exceptions import ModuleSyntaxError
 
 from flext_infra import (
@@ -38,15 +39,16 @@ from flext_infra import (
 class FlextInfraCodegenFixer(s[bool]):
     """AST-based auto-fixer for namespace violations (Rules 1-2)."""
 
-    class _FixContext:
+    class _FixContext(m.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations."""
 
-        __slots__ = ("files_modified", "violations_fixed", "violations_skipped")
-
-        def __init__(self) -> None:
-            self.violations_fixed: MutableSequence[m.Infra.CensusViolation] = []
-            self.violations_skipped: MutableSequence[m.Infra.CensusViolation] = []
-            self.files_modified: t.Infra.StrSet = set()
+        violations_fixed: MutableSequence[m.Infra.CensusViolation] = Field(
+            default_factory=list,
+        )
+        violations_skipped: MutableSequence[m.Infra.CensusViolation] = Field(
+            default_factory=list,
+        )
+        files_modified: t.Infra.StrSet = Field(default_factory=set)
 
     _workspace_root: Path
     _dry_run: bool

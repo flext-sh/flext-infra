@@ -108,34 +108,44 @@ class FlextInfraDocValidator:
             return r[bool].fail(f"Validate found {failures} failure(s)")
         return r[bool].ok(True)
 
+    @staticmethod
+    def _load_required_skills(workspace_root: Path) -> t.StrSequence | None:
+        """Load required skill names from architecture config. Returns None on error."""
+        config = workspace_root / "docs/architecture/architecture_config.json"
+        if not config.exists():
+            return []
+        payload_result = u.Infra.read_json(config)
+        if payload_result.is_failure:
+            return None
+        payload = payload_result.value
+        docs_validation = payload.get("docs_validation")
+        if not isinstance(docs_validation, dict):
+            return []
+        configured = docs_validation.get("required_skills")
+        if not isinstance(configured, list):
+            return []
+        try:
+            required_items: Sequence[str] = _STR_SEQ_ADAPTER.validate_python(
+                configured,
+                strict=True,
+            )
+            return [str(item) for item in required_items if item]
+        except ValidationError:
+            return []
+
     def _run_adr_skill_check(
         self, workspace_root: Path
     ) -> t.Infra.Pair[int, t.StrSequence]:
         """Run ADR skill check and return exit code with missing skill names."""
+        loaded = self._load_required_skills(workspace_root)
+        if loaded is None:
+            return (1, [])
+        required = loaded or [
+            "rules-docs",
+            "scripts-maintenance",
+            "readme-standardization",
+        ]
         skills_root = workspace_root / ".claude/skills"
-        required: t.StrSequence = []
-        config = workspace_root / "docs/architecture/architecture_config.json"
-        if config.exists():
-            payload_result = u.Infra.read_json(config)
-            if payload_result.is_failure:
-                return (1, [])
-            payload = payload_result.value
-            docs_validation = payload.get("docs_validation")
-            if isinstance(docs_validation, dict):
-                configured = docs_validation.get("required_skills")
-                if isinstance(configured, list):
-                    try:
-                        required_items: Sequence[str] = (
-                            _STR_SEQ_ADAPTER.validate_python(
-                                configured,
-                                strict=True,
-                            )
-                        )
-                        required = [str(item) for item in required_items if item]
-                    except ValidationError:
-                        required = []
-        if not required:
-            required = ["rules-docs", "scripts-maintenance", "readme-standardization"]
         missing: MutableSequence[str] = []
         for name in required:
             skill = skills_root / name / "SKILL.md"

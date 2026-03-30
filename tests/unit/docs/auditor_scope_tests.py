@@ -97,10 +97,7 @@ class TestAuditorScope:
         )
         report = auditor.audit_scope(
             scope,
-            check="links",
-            strict=True,
-            max_issues_default=None,
-            max_issues_by_scope={},
+            params=m.Infra.AuditScopeParams(check="links", strict=True),
         )
         tm.that(report.phase, eq="audit")
         tm.that(report.checks, has="links")
@@ -115,10 +112,7 @@ class TestAuditorScope:
         )
         report = auditor.audit_scope(
             scope,
-            check="forbidden-terms",
-            strict=True,
-            max_issues_default=None,
-            max_issues_by_scope={},
+            params=m.Infra.AuditScopeParams(check="forbidden-terms", strict=True),
         )
         tm.that(report.phase, eq="audit")
         tm.that(report.checks, has="forbidden-terms")
@@ -133,10 +127,7 @@ class TestAuditorScope:
         )
         report = auditor.audit_scope(
             scope,
-            check="all",
-            strict=True,
-            max_issues_default=None,
-            max_issues_by_scope={},
+            params=m.Infra.AuditScopeParams(check="all", strict=True),
         )
         tm.that(report.passed, eq=True)
 
@@ -150,10 +141,7 @@ class TestAuditorScope:
         )
         report = auditor.audit_scope(
             scope,
-            check="all",
-            strict=False,
-            max_issues_default=None,
-            max_issues_by_scope={},
+            params=m.Infra.AuditScopeParams(check="all", strict=False),
         )
         tm.that(report.passed, eq=True)
 
@@ -167,10 +155,11 @@ class TestAuditorScope:
         )
         report = auditor.audit_scope(
             scope,
-            check="all",
-            strict=True,
-            max_issues_default=0,
-            max_issues_by_scope={},
+            params=m.Infra.AuditScopeParams(
+                check="all",
+                strict=True,
+                budgets=(0, {}),
+            ),
         )
         tm.that(report.phase, eq="audit")
 
@@ -184,9 +173,10 @@ class TestAuditorScope:
         )
         report = auditor.audit_scope(
             scope,
-            check="all",
-            strict=True,
-            max_issues_default=10,
-            max_issues_by_scope={"test": 5},
+            params=m.Infra.AuditScopeParams(
+                check="all",
+                strict=True,
+                budgets=(10, {"test": 5}),
+            ),
         )
         tm.that(report.phase, eq="audit")

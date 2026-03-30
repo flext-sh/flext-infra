@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from argparse import Namespace
+from collections.abc import MutableSequence
+from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import FlextModels
@@ -190,6 +192,40 @@ class FlextInfraGithubModels:
             ),
         ]
         reason: Annotated[str, Field(..., description="Reason for the action.")]
+
+    class GithubSyncContext(FlextModels.ArbitraryTypesModel):
+        """Bundled parameters for the workflow-sync call chain."""
+
+        project_name: Annotated[str, Field(description="Project name")]
+        project_root: Annotated[Path, Field(description="Project root path")]
+        rendered_template: Annotated[str, Field(description="Rendered workflow body")]
+        apply: Annotated[bool, Field(description="Whether writes are enabled")]
+        prune: Annotated[bool, Field(description="Whether pruning is enabled")]
+
+        @property
+        def workflows_dir(self) -> Path:
+            return self.project_root / ".github" / "workflows"
+
+        @property
+        def ci_destination(self) -> Path:
+            return self.workflows_dir / "ci.yml"
+
+    class GithubPrRepoContext(FlextModels.ArbitraryTypesModel):
+        """Bundled parameters for the PR-per-repo processing chain."""
+
+        workspace_root: Annotated[Path, Field(description="Workspace root path")]
+        effective_args: Annotated[
+            t.StrMapping,
+            Field(description="Effective PR orchestration arguments"),
+        ]
+        branch: Annotated[str, Field(description="Branch override")]
+        checkpoint: Annotated[
+            bool, Field(description="Whether checkpointing is enabled")
+        ]
+        results: Annotated[
+            MutableSequence[FlextInfraGithubModels.PrExecutionResultModel],
+            Field(description="Accumulated PR execution results"),
+        ]
 
 
 __all__ = ["FlextInfraGithubModels"]

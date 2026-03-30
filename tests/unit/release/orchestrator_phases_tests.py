@@ -16,15 +16,48 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraModels, FlextInfraReleaseOrchestrator, u
-from tests import t
+from flext_infra import FlextInfraReleaseOrchestrator, m
+from tests import c, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from _pytest.monkeypatch import MonkeyPatch
 
-_m = FlextInfraModels
+
+def _version_ctx(
+    workspace_root: Path,
+    version: str = "1.0.0",
+    project_names: t.StrSequence = (),
+    *,
+    dry_run: bool = False,
+    dev_suffix: bool = False,
+) -> m.Infra.ReleasePhaseDispatchConfig:
+    """Build a ReleasePhaseDispatchConfig for version phase tests."""
+    return m.Infra.ReleasePhaseDispatchConfig(
+        phase=c.Infra.VERSION,
+        workspace_root=workspace_root,
+        version=version,
+        tag=f"v{version}",
+        project_names=list(project_names),
+        dry_run=dry_run,
+        dev_suffix=dev_suffix,
+    )
+
+
+def _build_ctx(
+    workspace_root: Path,
+    version: str = "1.0.0",
+    project_names: t.StrSequence = (),
+) -> m.Infra.ReleasePhaseDispatchConfig:
+    """Build a ReleasePhaseDispatchConfig for build phase tests."""
+    return m.Infra.ReleasePhaseDispatchConfig(
+        phase=c.Infra.Directories.BUILD,
+        workspace_root=workspace_root,
+        version=version,
+        tag=f"v{version}",
+        project_names=list(project_names),
+    )
 
 
 @pytest.fixture
@@ -87,7 +120,7 @@ class TestPhaseVersion:
             staticmethod(_replace_version),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=False))
+        tm.ok(orchestrator.phase_version(_version_ctx(workspace_root)))
 
     def test_invalid_semver(
         self,
@@ -100,7 +133,9 @@ class TestPhaseVersion:
 
         monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver_fail))
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator.phase_version(workspace_root, "invalid", []))
+        tm.fail(
+            orchestrator.phase_version(_version_ctx(workspace_root, version="invalid"))
+        )
 
     def test_with_dev_suffix(
         self,
@@ -120,7 +155,7 @@ class TestPhaseVersion:
             staticmethod(_replace_version),
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dev_suffix=True))
+        tm.ok(orchestrator.phase_version(_version_ctx(workspace_root, dev_suffix=True)))
 
     def test_dry_run(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
         def _parse_semver(version: str) -> r[str]:
@@ -128,7 +163,7 @@ class TestPhaseVersion:
 
         monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", [], dry_run=True))
+        tm.ok(orchestrator.phase_version(_version_ctx(workspace_root, dry_run=True)))
 
     def test_skips_missing_files(
         self,
@@ -147,7 +182,7 @@ class TestPhaseVersion:
             return r[str].ok(version)
 
         monkeypatch.setattr(u.Infra, "parse_semver", staticmethod(_parse_semver))
-        tm.ok(orchestrator.phase_version(workspace_root, "1.0.0", []))
+        tm.ok(orchestrator.phase_version(_version_ctx(workspace_root)))
 
 
 class TestPhaseBuild:
@@ -176,7 +211,7 @@ class TestPhaseBuild:
             _fake_run_make,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.ok(orchestrator.phase_build(workspace_root, "1.0.0", []))
+        tm.ok(orchestrator.phase_build(_build_ctx(workspace_root)))
 
     def test_report_dir_creation_fails(
         self,
@@ -198,7 +233,7 @@ class TestPhaseBuild:
 
         monkeypatch.setattr("pathlib.Path.mkdir", _raise_mkdir)
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator.phase_build(workspace_root, "1.0.0", []))
+        tm.fail(orchestrator.phase_build(_build_ctx(workspace_root)))
 
     def test_with_make_failure(
         self,
@@ -227,4 +262,4 @@ class TestPhaseBuild:
             _fake_run_make_failure,
         )
         orchestrator = FlextInfraReleaseOrchestrator()
-        tm.fail(orchestrator.phase_build(workspace_root, "1.0.0", []))
+        tm.fail(orchestrator.phase_build(_build_ctx(workspace_root)))

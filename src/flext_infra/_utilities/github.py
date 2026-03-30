@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import contextlib
-import dataclasses
 import shutil
 import time
 from collections.abc import MutableMapping, MutableSequence, Sequence
@@ -27,37 +26,6 @@ from flext_infra import (
     m,
     t,
 )
-
-
-@dataclasses.dataclass(slots=True)
-class _SyncContext:
-    """Bundled parameters for the workflow-sync call chain."""
-
-    project_name: str
-    project_root: Path
-    rendered_template: str
-    apply: bool
-    prune: bool
-    operations: MutableSequence[m.Infra.SyncOperation]
-
-    @property
-    def workflows_dir(self) -> Path:
-        return self.project_root / ".github" / "workflows"
-
-    @property
-    def ci_destination(self) -> Path:
-        return self.workflows_dir / "ci.yml"
-
-
-@dataclasses.dataclass(slots=True)
-class _PrRepoContext:
-    """Bundled parameters for the PR-per-repo processing chain."""
-
-    workspace_root: Path
-    effective_args: t.StrMapping
-    branch: str
-    checkpoint: bool
-    results: MutableSequence[m.Infra.PrExecutionResultModel]
 
 
 class FlextInfraUtilitiesGithub(
@@ -142,13 +110,12 @@ class FlextInfraUtilitiesGithub(
             )
         all_operations: MutableSequence[m.Infra.SyncOperation] = []
         for project in projects_result.value:
-            ctx = _SyncContext(
+            ctx = m.Infra.GithubSyncContext(
                 project_name=project.name,
                 project_root=project.path,
                 rendered_template=template_result.value,
                 apply=apply,
                 prune=prune,
-                operations=all_operations,
             )
             ops_result = cls._github_sync_project(ctx)
             if ops_result.is_success:
@@ -196,34 +163,13 @@ class FlextInfraUtilitiesGithub(
     @classmethod
     def _github_sync_project(
         cls,
-        *,
-        project_name: str,
-        project_root: Path,
-        rendered_template: str,
-        apply: bool = False,
-        prune: bool = False,
+        ctx: m.Infra.GithubSyncContext,
     ) -> r[Sequence[m.Infra.SyncOperation]]:
         operations: MutableSequence[m.Infra.SyncOperation] = []
-        workflows_dir = project_root / ".github" / "workflows"
-        destination = workflows_dir / "ci.yml"
         try:
-            cls._github_sync_ci_yml(
-                project_name=project_name,
-                project_root=project_root,
-                workflows_dir=workflows_dir,
-                destination=destination,
-                rendered_template=rendered_template,
-                apply=apply,
-                operations=operations,
-            )
-            if prune and workflows_dir.exists():
-                cls._github_prune_workflows(
-                    project_name=project_name,
-                    project_root=project_root,
-                    workflows_dir=workflows_dir,
-                    apply=apply,
-                    operations=operations,
-                )
+            cls._github_sync_ci_yml(ctx, operations)
+            if ctx.prune and ctx.workflows_dir.exists():
+                cls._github_prune_workflows(ctx, operations)
         except OSError as exc:
             return r[Sequence[m.Infra.SyncOperation]].fail(f"sync error: {exc}")
         return r[Sequence[m.Infra.SyncOperation]].ok(operations)
@@ -231,28 +177,24 @@ class FlextInfraUtilitiesGithub(
     @classmethod
     def _github_sync_ci_yml(
         cls,
-        *,
-        project_name: str,
-        project_root: Path,
-        workflows_dir: Path,
-        destination: Path,
-        rendered_template: str,
-        apply: bool,
+        ctx: m.Infra.GithubSyncContext,
         operations: MutableSequence[m.Infra.SyncOperation],
     ) -> None:
         """Sync a single ci.yml file for a project."""
+        destination = ctx.ci_destination
+        rel_path = str(destination.relative_to(ctx.project_root))
         if destination.exists():
             current = destination.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            if current != rendered_template:
-                if apply:
+            if current != ctx.rendered_template:
+                if ctx.apply:
                     _ = destination.write_text(
-                        rendered_template,
+                        ctx.rendered_template,
                         encoding=c.Infra.Encoding.DEFAULT,
                     )
                 operations.append(
                     m.Infra.SyncOperation(
-                        project=project_name,
-                        path=str(destination.relative_to(project_root)),
+                        project=ctx.project_name,
+                        path=rel_path,
                         action="update",
                         reason="force overwrite ci.yml",
                     ),
@@ -260,23 +202,23 @@ class FlextInfraUtilitiesGithub(
             else:
                 operations.append(
                     m.Infra.SyncOperation(
-                        project=project_name,
-                        path=str(destination.relative_to(project_root)),
+                        project=ctx.project_name,
+                        path=rel_path,
                         action="noop",
                         reason="already synced",
                     ),
                 )
         else:
-            if apply:
-                workflows_dir.mkdir(parents=True, exist_ok=True)
+            if ctx.apply:
+                ctx.workflows_dir.mkdir(parents=True, exist_ok=True)
                 _ = destination.write_text(
-                    rendered_template,
+                    ctx.rendered_template,
                     encoding=c.Infra.Encoding.DEFAULT,
                 )
             operations.append(
                 m.Infra.SyncOperation(
-                    project=project_name,
-                    path=str(destination.relative_to(project_root)),
+                    project=ctx.project_name,
+                    path=rel_path,
                     action="create",
                     reason="missing ci.yml",
                 ),
@@ -284,26 +226,22 @@ class FlextInfraUtilitiesGithub(
 
     @staticmethod
     def _github_prune_workflows(
-        *,
-        project_name: str,
-        project_root: Path,
-        workflows_dir: Path,
-        apply: bool,
+        ctx: m.Infra.GithubSyncContext,
         operations: MutableSequence[m.Infra.SyncOperation],
     ) -> None:
         """Remove non-canonical workflow files from a project."""
-        candidates = sorted(workflows_dir.glob("*.yml")) + sorted(
-            workflows_dir.glob("*.yaml"),
+        candidates = sorted(ctx.workflows_dir.glob("*.yml")) + sorted(
+            ctx.workflows_dir.glob("*.yaml"),
         )
         for path in candidates:
             if path.name in c.Infra.MANAGED_FILES:
                 continue
-            if apply:
+            if ctx.apply:
                 path.unlink()
             operations.append(
                 m.Infra.SyncOperation(
-                    project=project_name,
-                    path=str(path.relative_to(project_root)),
+                    project=ctx.project_name,
+                    path=str(path.relative_to(ctx.project_root)),
                     action="prune",
                     reason="remove non-canonical workflow",
                 ),
@@ -364,15 +302,15 @@ class FlextInfraUtilitiesGithub(
         }
         failures = 0
         results: MutableSequence[m.Infra.PrExecutionResultModel] = []
+        pr_ctx = m.Infra.GithubPrRepoContext(
+            workspace_root=workspace_root,
+            effective_args=effective_args,
+            branch=branch,
+            checkpoint=checkpoint,
+            results=results,
+        )
         for repo_root in repos:
-            failed = cls._github_pr_process_repo(
-                repo_root=repo_root,
-                workspace_root=workspace_root,
-                effective_args=effective_args,
-                branch=branch,
-                checkpoint=checkpoint,
-                results=results,
-            )
+            failed = cls._github_pr_process_repo(repo_root, pr_ctx)
             if failed:
                 failures += 1
                 if fail_fast:
@@ -395,27 +333,22 @@ class FlextInfraUtilitiesGithub(
     @classmethod
     def _github_pr_process_repo(
         cls,
-        *,
         repo_root: Path,
-        workspace_root: Path,
-        effective_args: t.StrMapping,
-        branch: str,
-        checkpoint: bool,
-        results: MutableSequence[m.Infra.PrExecutionResultModel],
+        ctx: m.Infra.GithubPrRepoContext,
     ) -> bool:
         """Process a single repo in PR orchestration. Returns True on failure."""
-        if branch:
-            cls.git_checkout(repo_root, branch)
-        if checkpoint:
-            cls._github_pr_checkpoint(repo_root, branch)
-        run_result: r[m.Infra.PrExecutionResultModel] = cls._github_pr_run_single(
+        if ctx.branch:
+            cls.git_checkout(repo_root, ctx.branch)
+        if ctx.checkpoint:
+            cls._github_pr_checkpoint(repo_root, ctx.branch)
+        run_result: r[m.Infra.PrExecutionResultModel] = cls.github_pr_run_single(
             repo_root,
-            workspace_root,
-            effective_args,
+            ctx.workspace_root,
+            ctx.effective_args,
         )
         if run_result.is_success:
             pr_data = run_result.value
-            results.append(pr_data)
+            ctx.results.append(pr_data)
             return pr_data.exit_code != 0
         return True
 
@@ -453,19 +386,6 @@ class FlextInfraUtilitiesGithub(
         pr_args: t.StrMapping,
     ) -> r[m.Infra.PrExecutionResultModel]:
         """Execute one PR command for a single repository."""
-        return cls._github_pr_run_single(
-            repo_root=repo_root,
-            workspace_root=workspace_root,
-            pr_args=pr_args,
-        )
-
-    @classmethod
-    def _github_pr_run_single(
-        cls,
-        repo_root: Path,
-        workspace_root: Path,
-        pr_args: t.StrMapping,
-    ) -> r[m.Infra.PrExecutionResultModel]:
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
         report_dir = cls.get_report_dir(
             workspace_root,

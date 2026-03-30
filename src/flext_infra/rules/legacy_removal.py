@@ -91,25 +91,23 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         actual: _ForwardingActual,
     ) -> bool:
         cls = FlextInfraRefactorLegacyRemovalRule
-        if not cls._positionals_match(
-            positional_expected=expected.positional,
-            positional_forwarded=actual.positional,
-            keyword_forwarded=actual.keyword,
-        ):
-            return False
-        if not cls._kwonly_match(
-            kwonly_expected=expected.kwonly,
-            keyword_forwarded=actual.keyword,
-        ):
-            return False
         extra_keywords = (
             set(actual.keyword.keys()) - set(expected.positional) - set(expected.kwonly)
         )
-        if extra_keywords:
-            return False
-        if not cls._variadic_matches(expected.star_arg, actual.star):
-            return False
-        return cls._variadic_matches(expected.star_kwarg, actual.star_kw)
+        return (
+            cls._positionals_match(
+                positional_expected=expected.positional,
+                positional_forwarded=actual.positional,
+                keyword_forwarded=actual.keyword,
+            )
+            and cls._kwonly_match(
+                kwonly_expected=expected.kwonly,
+                keyword_forwarded=actual.keyword,
+            )
+            and not extra_keywords
+            and cls._variadic_matches(expected.star_arg, actual.star)
+            and cls._variadic_matches(expected.star_kwarg, actual.star_kw)
+        )
 
     @staticmethod
     def _name_value(expr: cst.BaseExpression) -> str | None:
@@ -219,39 +217,49 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         """Extract a required name/literal value from an argument, or None."""
         return self._name_value(arg.value)
 
+    def _classify_arg(
+        self,
+        arg: cst.Arg,
+        *,
+        positional: MutableSequence[str],
+        keyword: MutableMapping[str, str],
+        stars: MutableMapping[str, str],
+    ) -> bool:
+        """Classify a single call argument. Returns False if unparseable."""
+        name_value = self._require_name_value(arg)
+        if arg.keyword is not None:
+            if name_value is None:
+                return False
+            keyword[arg.keyword.value] = name_value
+        elif arg.star in {"*", "**"}:
+            if name_value is None:
+                return False
+            stars[arg.star] = name_value
+        elif arg.star not in {"", None}:
+            return False
+        else:
+            if name_value is None:
+                return False
+            positional.append(name_value)
+        return True
+
     def _parse_forwarded_arguments(
         self,
         call_args: Sequence[cst.Arg],
     ) -> _ForwardingActual | None:
-        positional_forwarded: MutableSequence[str] = []
-        keyword_forwarded: MutableMapping[str, str] = {}
-        star_forwarded: str | None = None
-        star_kw_forwarded: str | None = None
+        positional: MutableSequence[str] = []
+        keyword: MutableMapping[str, str] = {}
+        stars: MutableMapping[str, str] = {}
         for arg in call_args:
-            name_value = self._require_name_value(arg)
-            if arg.keyword is not None:
-                if name_value is None:
-                    return None
-                keyword_forwarded[arg.keyword.value] = name_value
-            elif arg.star == "*":
-                if name_value is None:
-                    return None
-                star_forwarded = name_value
-            elif arg.star == "**":
-                if name_value is None:
-                    return None
-                star_kw_forwarded = name_value
-            elif arg.star not in {"", None}:
+            if not self._classify_arg(
+                arg, positional=positional, keyword=keyword, stars=stars
+            ):
                 return None
-            else:
-                if name_value is None:
-                    return None
-                positional_forwarded.append(name_value)
         return _ForwardingActual(
-            positional=positional_forwarded,
-            keyword=keyword_forwarded,
-            star=star_forwarded,
-            star_kw=star_kw_forwarded,
+            positional=positional,
+            keyword=keyword,
+            star=stars.get("*"),
+            star_kw=stars.get("**"),
         )
 
     def _remove_aliases(

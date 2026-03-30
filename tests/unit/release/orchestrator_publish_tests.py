@@ -8,7 +8,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraReleaseOrchestrator, u
+from flext_infra import FlextInfraModels, FlextInfraReleaseOrchestrator, u
 from tests import t
 
 if TYPE_CHECKING:
@@ -17,6 +17,25 @@ if TYPE_CHECKING:
     from _pytest.monkeypatch import MonkeyPatch
 
 _CLS = FlextInfraReleaseOrchestrator
+_m = FlextInfraModels
+
+
+def _publish_ctx(
+    workspace_root: Path,
+    *,
+    dry_run: bool = False,
+    push: bool = False,
+) -> _m.Infra.ReleasePhaseDispatchConfig:
+    """Build a ReleasePhaseDispatchConfig for publish phase tests."""
+    return _m.Infra.ReleasePhaseDispatchConfig(
+        phase="publish",
+        workspace_root=workspace_root,
+        version="1.0.0",
+        tag="v1.0.0",
+        project_names=[],
+        dry_run=dry_run,
+        push=push,
+    )
 
 
 @pytest.fixture
@@ -70,7 +89,7 @@ class TestPhasePublish:
         monkeypatch: MonkeyPatch,
     ) -> None:
         _stub_publish(monkeypatch, workspace_root)
-        tm.ok(_CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=True))
+        tm.ok(_CLS().phase_publish(_publish_ctx(workspace_root, dry_run=True)))
 
     def test_dry_run_skips_changelog(
         self,
@@ -90,7 +109,7 @@ class TestPhasePublish:
             "update_changelog",
             staticmethod(fake_changelog),
         )
-        tm.ok(_CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=True))
+        tm.ok(_CLS().phase_publish(_publish_ctx(workspace_root, dry_run=True)))
         tm.that(not changelog_called, eq=True)
 
     def test_updates_changelog(
@@ -100,7 +119,7 @@ class TestPhasePublish:
     ) -> None:
         _stub_full_publish(monkeypatch, workspace_root)
         tm.ok(
-            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
+            _CLS().phase_publish(_publish_ctx(workspace_root)),
         )
 
     def test_with_push(self, workspace_root: Path, monkeypatch: MonkeyPatch) -> None:
@@ -114,14 +133,7 @@ class TestPhasePublish:
         _stub_full_publish(monkeypatch, workspace_root)
         monkeypatch.setattr(_CLS, "_push_release", fake_push)
         tm.ok(
-            _CLS().phase_publish(
-                workspace_root,
-                "1.0.0",
-                "v1.0.0",
-                [],
-                dry_run=False,
-                push=True,
-            ),
+            _CLS().phase_publish(_publish_ctx(workspace_root, push=True)),
         )
         tm.that(push_called, eq=True)
 
@@ -148,7 +160,7 @@ class TestPhasePublish:
             _generate_notes,
         )
         tm.fail(
-            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
+            _CLS().phase_publish(_publish_ctx(workspace_root)),
         )
 
     def test_changelog_update_failure(
@@ -164,7 +176,7 @@ class TestPhasePublish:
             staticmethod(lambda *a, **kw: r[bool].fail("changelog failed")),
         )
         tm.fail(
-            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
+            _CLS().phase_publish(_publish_ctx(workspace_root)),
         )
 
     def test_tag_creation_failure(
@@ -190,5 +202,5 @@ class TestPhasePublish:
             _create_tag,
         )
         tm.fail(
-            _CLS().phase_publish(workspace_root, "1.0.0", "v1.0.0", [], dry_run=False),
+            _CLS().phase_publish(_publish_ctx(workspace_root)),
         )

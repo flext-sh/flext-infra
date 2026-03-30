@@ -17,12 +17,12 @@ from pathlib import Path
 
 import orjson
 from flext_core import FlextRuntime, r
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from flext_infra import FlextInfraUtilitiesDiscovery, m, output, t
 
 
-class _SharedFlags:
+class _SharedFlags(m.FrozenStrictModel):
     """Bundled CLI flag configuration for shared parser options.
 
     Groups the boolean flags that control which CLI arguments are added to
@@ -30,28 +30,26 @@ class _SharedFlags:
     option resolution functions to avoid parameter proliferation.
     """
 
-    __slots__ = (
-        "include_apply",
-        "include_check",
-        "include_diff",
-        "include_format",
-        "include_project",
-    )
+    include_apply: bool = True
+    include_diff: bool = True
+    include_format: bool = False
+    include_check: bool = False
+    include_project: bool = False
 
-    def __init__(
-        self,
-        *,
-        include_apply: bool = True,
-        include_diff: bool | None = None,
-        include_format: bool = False,
-        include_check: bool = False,
-        include_project: bool = False,
-    ) -> None:
-        self.include_apply = include_apply
-        self.include_diff = include_apply if include_diff is None else include_diff
-        self.include_format = include_format
-        self.include_check = include_check
-        self.include_project = include_project
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_include_diff(
+        cls,
+        data: Mapping[str, bool | None] | _SharedFlags,
+    ) -> Mapping[str, bool | None] | _SharedFlags:
+        """Default include_diff to include_apply when not explicitly provided or None."""
+        if isinstance(data, Mapping) and (
+            "include_diff" not in data or data.get("include_diff") is None
+        ):
+            resolved: MutableMapping[str, bool | None] = dict(data)
+            resolved["include_diff"] = data.get("include_apply", True)
+            return resolved
+        return data
 
     def to_dict(self) -> MutableMapping[str, bool]:
         """Return flag values as a mutable mapping."""
@@ -66,13 +64,7 @@ class _SharedFlags:
     @staticmethod
     def from_dict(data: Mapping[str, bool]) -> _SharedFlags:
         """Construct from a mapping with already-resolved values."""
-        flags = _SharedFlags.__new__(_SharedFlags)
-        flags.include_apply = data.get("include_apply", True)
-        flags.include_diff = data.get("include_diff", flags.include_apply)
-        flags.include_format = data.get("include_format", False)
-        flags.include_check = data.get("include_check", False)
-        flags.include_project = data.get("include_project", False)
-        return flags
+        return _SharedFlags.model_validate(data)
 
 
 class FlextInfraUtilitiesCli:
@@ -294,6 +286,29 @@ class FlextInfraUtilitiesCli:
         return base
 
     @staticmethod
+    def _resolve_shared_flags(
+        *,
+        flags: _SharedFlags | None,
+        include_apply: bool,
+        include_diff: bool | None,
+        include_format: bool,
+        include_check: bool,
+        include_project: bool,
+    ) -> _SharedFlags:
+        """Resolve legacy shared-flag kwargs into a validated bundle."""
+        if flags is not None:
+            return flags
+        return _SharedFlags.model_validate(
+            {
+                "include_apply": include_apply,
+                "include_diff": include_diff,
+                "include_format": include_format,
+                "include_check": include_check,
+                "include_project": include_project,
+            },
+        )
+
+    @staticmethod
     def create_subcommand_parser(
         prog: str,
         description: str,
@@ -332,16 +347,13 @@ class FlextInfraUtilitiesCli:
             Tuple of (main_parser, subcommand_parsers_dict).
 
         """
-        resolved_flags = (
-            flags
-            if flags is not None
-            else _SharedFlags(
-                include_apply=include_apply,
-                include_diff=include_diff,
-                include_format=include_format,
-                include_check=include_check,
-                include_project=include_project,
-            )
+        resolved_flags = FlextInfraUtilitiesCli._resolve_shared_flags(
+            flags=flags,
+            include_apply=include_apply,
+            include_diff=include_diff,
+            include_format=include_format,
+            include_check=include_check,
+            include_project=include_project,
         )
         base_options = resolved_flags.to_dict()
         command_options: MutableMapping[str, MutableMapping[str, bool]] = {}
@@ -417,16 +429,13 @@ class FlextInfraUtilitiesCli:
             Configured ArgumentParser instance.
 
         """
-        resolved_flags = (
-            flags
-            if flags is not None
-            else _SharedFlags(
-                include_apply=include_apply,
-                include_diff=include_diff,
-                include_format=include_format,
-                include_check=include_check,
-                include_project=include_project,
-            )
+        resolved_flags = FlextInfraUtilitiesCli._resolve_shared_flags(
+            flags=flags,
+            include_apply=include_apply,
+            include_diff=include_diff,
+            include_format=include_format,
+            include_check=include_check,
+            include_project=include_project,
         )
         parser = ArgumentParser(prog=prog, description=description)
         FlextInfraUtilitiesCli._add_shared_flags(parser, resolved_flags)

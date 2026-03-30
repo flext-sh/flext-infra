@@ -104,8 +104,7 @@ class TestAuditorCore:
             project=project,
             projects=projects,
             output_dir=output_dir_value,
-            check=check,
-            strict=strict,
+            params=m.Infra.AuditScopeParams(check=check, strict=strict),
         )
         tm.that(result.is_success or result.is_failure, eq=True)
 

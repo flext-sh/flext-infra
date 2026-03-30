@@ -175,8 +175,10 @@ class FlextInfraDocsCli:
             project=params.project,
             projects=params.projects,
             output_dir=params.output_dir,
-            check="all" if params.check else "",
-            strict=params.strict,
+            params=m.Infra.AuditScopeParams(
+                check="all" if params.check else "",
+                strict=params.strict,
+            ),
         )
         if result.is_failure:
             return r[bool].fail(result.error or "audit failed")
