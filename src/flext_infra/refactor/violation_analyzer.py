@@ -12,8 +12,6 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper
 
 from flext_infra import (
-    FlextInfraFunctionDependencyCollector,
-    FlextInfraImportDependencyCollector,
     FlextInfraRefactorClassNestingAnalyzer,
     FlextInfraViolationCensusVisitor,
     c,
@@ -111,15 +109,14 @@ class FlextInfraRefactorViolationAnalyzer:
                 totals=dict(totals.items()),
                 manual_review=manual_review,
             )
-        import_collector = FlextInfraImportDependencyCollector()
-        _ = module.visit(import_collector)
+        local_to_import = cls._extract_local_to_import(module)
         for stmt in module.body:
             if not isinstance(stmt, cst.FunctionDef):
                 continue
             classification = cls._classify_helper_function(
                 file_path=file_path,
                 function=stmt,
-                local_to_import=import_collector.local_to_import,
+                local_to_import=local_to_import,
             )
             suggestions.append(classification)
             category = classification.category
@@ -140,10 +137,9 @@ class FlextInfraRefactorViolationAnalyzer:
         function: cst.FunctionDef,
         local_to_import: t.StrMapping,
     ) -> m.Infra.HelperClassification:
-        dependency_collector = FlextInfraFunctionDependencyCollector()
-        function.visit(dependency_collector)
+        used_names = cls._collect_names(function)
         dependencies: t.Infra.StrSet = set()
-        for name in dependency_collector.names:
+        for name in used_names:
             imported = local_to_import.get(name)
             if imported is not None:
                 dependencies.add(imported)
@@ -235,6 +231,56 @@ class FlextInfraRefactorViolationAnalyzer:
                 continue
             return False
         return True
+
+    @staticmethod
+    def _extract_local_to_import(module: cst.Module) -> Mapping[str, str]:
+        """Extract local-name → fully-qualified-name mapping from imports."""
+        result: MutableMapping[str, str] = {}
+        for stmt in module.body:
+            if not isinstance(stmt, cst.SimpleStatementLine):
+                continue
+            for s in stmt.body:
+                if isinstance(s, cst.Import):
+                    for raw in s.names:
+                        imported = u.Infra.cst_module_name(raw.name)
+                        if not imported:
+                            continue
+                        local = u.Infra.cst_asname_to_local(raw.asname)
+                        if local is None:
+                            local = imported.split(".", maxsplit=1)[0]
+                        result[local] = imported
+                if (
+                    isinstance(s, cst.ImportFrom)
+                    and s.module is not None
+                    and not isinstance(s.names, cst.ImportStar)
+                ):
+                    module_name = u.Infra.cst_module_name(s.module)
+                    if not module_name:
+                        continue
+                    for raw in s.names:
+                        if not isinstance(raw.name, cst.Name):
+                            continue
+                        imported_name = raw.name.value
+                        local = (
+                            u.Infra.cst_asname_to_local(raw.asname) or imported_name
+                        )
+                        result[local] = f"{module_name}.{imported_name}"
+        return result
+
+    @staticmethod
+    def _collect_names(node: cst.CSTNode) -> t.Infra.StrSet:
+        """Collect all Name tokens from a CST node."""
+
+        class _Collector(cst.CSTVisitor):
+            def __init__(self) -> None:
+                self.names: t.Infra.StrSet = set()
+
+            def visit_Name(self, node: cst.Name) -> None:
+                self.names.add(node.value)
+
+        col = _Collector()
+        node.visit(col)
+        return col.names
 
 
 __all__ = ["FlextInfraRefactorViolationAnalyzer"]

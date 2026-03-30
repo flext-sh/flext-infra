@@ -29,7 +29,7 @@ def test_refactor_centralize_accepts_apply_before_subcommand(
     captured_workspace = Path()
     captured_normalize_remaining = False
 
-    @staticmethod  # type: ignore[misc]
+    @staticmethod
     def _mock_handler(
         params: m.Infra.RefactorCentralizeInput,
     ) -> r[Mapping[str, int]]:

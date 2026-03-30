@@ -19,7 +19,6 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.deps import (
-        _phases,
         cli,
         detection,
         detector,
@@ -29,32 +28,7 @@ if TYPE_CHECKING:
         modernizer,
         path_sync,
     )
-    from flext_infra.deps._phases import (
-        consolidate_groups,
-        ensure_coverage,
-        ensure_extra_paths,
-        ensure_formatting,
-        ensure_mypy,
-        ensure_namespace,
-        ensure_pydantic_mypy,
-        ensure_pyrefly,
-        ensure_pyright,
-        ensure_pytest,
-        ensure_ruff,
-        inject_comments,
-    )
-    from flext_infra.deps._phases.consolidate_groups import *
-    from flext_infra.deps._phases.ensure_coverage import *
-    from flext_infra.deps._phases.ensure_extra_paths import *
-    from flext_infra.deps._phases.ensure_formatting import *
-    from flext_infra.deps._phases.ensure_mypy import *
-    from flext_infra.deps._phases.ensure_namespace import *
-    from flext_infra.deps._phases.ensure_pydantic_mypy import *
-    from flext_infra.deps._phases.ensure_pyrefly import *
-    from flext_infra.deps._phases.ensure_pyright import *
-    from flext_infra.deps._phases.ensure_pytest import *
-    from flext_infra.deps._phases.ensure_ruff import *
-    from flext_infra.deps._phases.inject_comments import *
+    from flext_infra.deps._phases import *
     from flext_infra.deps.cli import *
     from flext_infra.deps.detection import *
     from flext_infra.deps.detector import *

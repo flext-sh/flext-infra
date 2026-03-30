@@ -163,7 +163,7 @@ class FlextInfraBaseMkGenerator(s[str]):
                 autoescape=select_autoescape(),
             )
             template = environment.get_template(c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE)
-            content: str = template.render(  # pyright: ignore[reportUnknownMemberType]
+            content: str = template.render(
                 make=c.Infra.Make,
             )
             return r[str].ok(content.rstrip("\n"))

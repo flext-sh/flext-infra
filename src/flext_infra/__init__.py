@@ -1,14 +1,7 @@
 # AUTO-GENERATED FILE — DO NOT EDIT MANUALLY.
 # Regenerate with: make gen
 #
-"""Public API for flext-infra.
-
-Provides access to infrastructure services for workspace management, validation,
-dependency handling, and build orchestration in the FLEXT ecosystem.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Flext infra package."""
 
 from __future__ import annotations
 
@@ -32,403 +25,32 @@ from flext_infra.__version__ import (
 if TYPE_CHECKING:
     from flext_cli import *
 
-    from flext_infra import (
-        _constants,
-        _models,
-        _protocols,
-        _typings,
-        _utilities,
-        basemk,
-        check,
-        cli,
-        codegen,
-        constants,
-        deps,
-        detectors,
-        gates,
-        models,
-        protocols,
-        refactor,
-        rules,
-        transformers,
-        typings,
-        utilities,
-        validate,
-        workspace,
-    )
-    from flext_infra._constants import base, census, rope
-    from flext_infra._constants.base import *
-    from flext_infra._constants.census import *
-    from flext_infra._constants.rope import *
-    from flext_infra._models import cli_inputs, scan
-    from flext_infra._models.base import *
-    from flext_infra._models.census import *
-    from flext_infra._models.cli_inputs import *
-    from flext_infra._models.rope import *
-    from flext_infra._models.scan import *
-    from flext_infra._protocols.base import *
-    from flext_infra._protocols.rope import *
-    from flext_infra._typings import cst
-    from flext_infra._typings.base import *
-    from flext_infra._typings.cst import *
-    from flext_infra._typings.rope import *
-    from flext_infra._utilities import (
-        discovery,
-        docs,
-        formatting,
-        git,
-        github,
-        io,
-        iteration,
-        log_parser,
-        parsing,
-        paths,
-        patterns,
-        release,
-        reporting,
-        safety,
-        selection,
-        subprocess,
-        templates,
-        terminal,
-        toml,
-        toml_parse,
-        versioning,
-        yaml,
-    )
-    from flext_infra._utilities.base import *
-    from flext_infra._utilities.cli import *
-    from flext_infra._utilities.cst import *
-    from flext_infra._utilities.discovery import *
-    from flext_infra._utilities.docs import *
-    from flext_infra._utilities.formatting import *
-    from flext_infra._utilities.git import *
-    from flext_infra._utilities.github import *
-    from flext_infra._utilities.io import *
-    from flext_infra._utilities.iteration import *
-    from flext_infra._utilities.log_parser import *
-    from flext_infra._utilities.output import *
-    from flext_infra._utilities.parsing import *
-    from flext_infra._utilities.paths import *
-    from flext_infra._utilities.patterns import *
-    from flext_infra._utilities.release import *
-    from flext_infra._utilities.reporting import *
-    from flext_infra._utilities.rope import *
-    from flext_infra._utilities.safety import *
-    from flext_infra._utilities.selection import *
-    from flext_infra._utilities.subprocess import *
-    from flext_infra._utilities.templates import *
-    from flext_infra._utilities.terminal import *
-    from flext_infra._utilities.toml import *
-    from flext_infra._utilities.toml_parse import *
-    from flext_infra._utilities.versioning import *
-    from flext_infra._utilities.yaml import *
-    from flext_infra.basemk import engine, generator
-    from flext_infra.basemk._constants import *
-    from flext_infra.basemk._models import *
-    from flext_infra.basemk.cli import *
-    from flext_infra.basemk.engine import *
-    from flext_infra.basemk.generator import *
-    from flext_infra.check import services, workspace_check
-    from flext_infra.check._constants import *
-    from flext_infra.check._models import *
-    from flext_infra.check.cli import *
-    from flext_infra.check.services import *
-    from flext_infra.check.workspace_check import *
+    from flext_infra import cli, constants, models, protocols, typings, utilities
+    from flext_infra._constants import *
+    from flext_infra._models import *
+    from flext_infra._protocols import *
+    from flext_infra._typings import *
+    from flext_infra._utilities import *
+    from flext_infra.basemk import *
+    from flext_infra.check import *
     from flext_infra.cli import *
-    from flext_infra.codegen import (
-        constants_quality_gate,
-        fixer,
-        lazy_init,
-        py_typed,
-        scaffolder,
-    )
-    from flext_infra.codegen._codegen_coercion import *
-    from flext_infra.codegen._codegen_execution_tools import *
-    from flext_infra.codegen._codegen_generation import *
-    from flext_infra.codegen._codegen_metrics import *
-    from flext_infra.codegen._codegen_metrics_checks import *
-    from flext_infra.codegen._codegen_snapshot import *
-    from flext_infra.codegen._constants import *
-    from flext_infra.codegen._models import *
-    from flext_infra.codegen._utilities import *
-    from flext_infra.codegen._utilities_codegen_ast_parsing import *
-    from flext_infra.codegen._utilities_codegen_constant_transformer import *
-    from flext_infra.codegen._utilities_codegen_constant_visitor import *
-    from flext_infra.codegen._utilities_codegen_execution import *
-    from flext_infra.codegen._utilities_codegen_governance import *
-    from flext_infra.codegen._utilities_transforms import *
-    from flext_infra.codegen.census import *
-    from flext_infra.codegen.cli import *
-    from flext_infra.codegen.constants_quality_gate import *
-    from flext_infra.codegen.fixer import *
-    from flext_infra.codegen.lazy_init import *
-    from flext_infra.codegen.py_typed import *
-    from flext_infra.codegen.scaffolder import *
+    from flext_infra.codegen import *
     from flext_infra.constants import *
-    from flext_infra.deps import (
-        detection,
-        detector,
-        extra_paths,
-        fix_pyrefly_config,
-        internal_sync,
-        modernizer,
-        path_sync,
-    )
-    from flext_infra.deps._constants import *
-    from flext_infra.deps._detector_runtime import *
-    from flext_infra.deps._models import *
-    from flext_infra.deps._phases import (
-        consolidate_groups,
-        ensure_coverage,
-        ensure_extra_paths,
-        ensure_formatting,
-        ensure_mypy,
-        ensure_namespace,
-        ensure_pydantic_mypy,
-        ensure_pyrefly,
-        ensure_pyright,
-        ensure_pytest,
-        ensure_ruff,
-        inject_comments,
-    )
-    from flext_infra.deps._phases.consolidate_groups import *
-    from flext_infra.deps._phases.ensure_coverage import *
-    from flext_infra.deps._phases.ensure_extra_paths import *
-    from flext_infra.deps._phases.ensure_formatting import *
-    from flext_infra.deps._phases.ensure_mypy import *
-    from flext_infra.deps._phases.ensure_namespace import *
-    from flext_infra.deps._phases.ensure_pydantic_mypy import *
-    from flext_infra.deps._phases.ensure_pyrefly import *
-    from flext_infra.deps._phases.ensure_pyright import *
-    from flext_infra.deps._phases.ensure_pytest import *
-    from flext_infra.deps._phases.ensure_ruff import *
-    from flext_infra.deps._phases.inject_comments import *
-    from flext_infra.deps.cli import *
-    from flext_infra.deps.detection import *
-    from flext_infra.deps.detector import *
-    from flext_infra.deps.extra_paths import *
-    from flext_infra.deps.internal_sync import *
-    from flext_infra.deps.modernizer import *
-    from flext_infra.deps.path_sync import *
-    from flext_infra.detectors import (
-        class_placement_detector,
-        compatibility_alias_detector,
-        cyclic_import_detector,
-        dependency_analyzer_base,
-        future_annotations_detector,
-        import_alias_detector,
-        import_collector,
-        internal_import_detector,
-        loose_object_detector,
-        manual_protocol_detector,
-        manual_typing_alias_detector,
-        mro_completeness_detector,
-        namespace_facade_scanner,
-        namespace_source_detector,
-        runtime_alias_detector,
-    )
-    from flext_infra.detectors._base_detector import *
-    from flext_infra.detectors.class_placement_detector import *
-    from flext_infra.detectors.compatibility_alias_detector import *
-    from flext_infra.detectors.cyclic_import_detector import *
-    from flext_infra.detectors.dependency_analyzer_base import *
-    from flext_infra.detectors.future_annotations_detector import *
-    from flext_infra.detectors.import_alias_detector import *
-    from flext_infra.detectors.import_collector import *
-    from flext_infra.detectors.internal_import_detector import *
-    from flext_infra.detectors.loose_object_detector import *
-    from flext_infra.detectors.manual_protocol_detector import *
-    from flext_infra.detectors.manual_typing_alias_detector import *
-    from flext_infra.detectors.mro_completeness_detector import *
-    from flext_infra.detectors.namespace_facade_scanner import *
-    from flext_infra.detectors.namespace_source_detector import *
-    from flext_infra.detectors.runtime_alias_detector import *
-    from flext_infra.docs import auditor, builder, validator
-    from flext_infra.docs._constants import *
-    from flext_infra.docs._models import *
-    from flext_infra.docs.auditor import *
-    from flext_infra.docs.builder import *
-    from flext_infra.docs.cli import *
-    from flext_infra.docs.fixer import *
-    from flext_infra.docs.generator import *
-    from flext_infra.docs.validator import *
-    from flext_infra.gates import (
-        bandit,
-        go,
-        markdown,
-        mypy,
-        pyrefly,
-        pyright,
-        ruff_format,
-        ruff_lint,
-    )
-    from flext_infra.gates._base_gate import *
-    from flext_infra.gates._gate_registry import *
-    from flext_infra.gates._models import *
-    from flext_infra.gates.bandit import *
-    from flext_infra.gates.go import *
-    from flext_infra.gates.markdown import *
-    from flext_infra.gates.mypy import *
-    from flext_infra.gates.pyrefly import *
-    from flext_infra.gates.pyright import *
-    from flext_infra.gates.ruff_format import *
-    from flext_infra.gates.ruff_lint import *
-    from flext_infra.github._constants import *
-    from flext_infra.github._models import *
-    from flext_infra.github.cli import *
+    from flext_infra.deps import *
+    from flext_infra.detectors import *
+    from flext_infra.docs import *
+    from flext_infra.gates import *
+    from flext_infra.github import *
     from flext_infra.models import *
     from flext_infra.protocols import *
-    from flext_infra.refactor import (
-        class_nesting_analyzer,
-        migrate_to_class_mro,
-        mro_import_rewriter,
-        mro_migration_validator,
-        mro_resolver,
-        namespace_enforcer,
-        project_classifier,
-        rule,
-        rule_definition_validator,
-        scanner,
-        violation_analyzer,
-    )
-    from flext_infra.refactor._base_rule import *
-    from flext_infra.refactor._constants import *
-    from flext_infra.refactor._function_dependency_collector import *
-    from flext_infra.refactor._import_dependency_collector import *
-    from flext_infra.refactor._models import *
-    from flext_infra.refactor._models_ast_grep import *
-    from flext_infra.refactor._models_namespace_enforcer import *
-    from flext_infra.refactor._post_check_gate import *
-    from flext_infra.refactor._top_level_class_collector import *
-    from flext_infra.refactor._utilities import *
-    from flext_infra.refactor._utilities_cli import *
-    from flext_infra.refactor._utilities_loader import *
-    from flext_infra.refactor._utilities_mro_scan import *
-    from flext_infra.refactor._utilities_mro_transform import *
-    from flext_infra.refactor._utilities_namespace import *
-    from flext_infra.refactor._utilities_pydantic import *
-    from flext_infra.refactor._utilities_pydantic_analysis import *
-    from flext_infra.refactor.census import *
-    from flext_infra.refactor.class_nesting_analyzer import *
-    from flext_infra.refactor.cli import *
-    from flext_infra.refactor.engine import *
-    from flext_infra.refactor.migrate_to_class_mro import *
-    from flext_infra.refactor.mro_import_rewriter import *
-    from flext_infra.refactor.mro_migration_validator import *
-    from flext_infra.refactor.mro_resolver import *
-    from flext_infra.refactor.namespace_enforcer import *
-    from flext_infra.refactor.project_classifier import *
-    from flext_infra.refactor.rule import *
-    from flext_infra.refactor.rule_definition_validator import *
-    from flext_infra.refactor.safety import *
-    from flext_infra.refactor.scanner import *
-    from flext_infra.refactor.violation_analyzer import *
-    from flext_infra.release import orchestrator
-    from flext_infra.release._constants import *
-    from flext_infra.release._models import *
-    from flext_infra.release.cli import *
-    from flext_infra.release.orchestrator import *
-    from flext_infra.rules import (
-        class_nesting,
-        class_reconstructor,
-        ensure_future_annotations,
-        import_modernizer,
-        legacy_removal,
-        mro_class_migration,
-        pattern_corrections,
-    )
-    from flext_infra.rules.class_nesting import *
-    from flext_infra.rules.class_reconstructor import *
-    from flext_infra.rules.ensure_future_annotations import *
-    from flext_infra.rules.import_modernizer import *
-    from flext_infra.rules.legacy_removal import *
-    from flext_infra.rules.mro_class_migration import *
-    from flext_infra.rules.pattern_corrections import *
-    from flext_infra.transformers import (
-        alias_remover,
-        census_visitors,
-        deprecated_remover,
-        dict_to_mapping,
-        helper_consolidation,
-        import_bypass_remover,
-        lazy_import_fixer,
-        mro_private_inline,
-        mro_remover,
-        mro_symbol_propagator,
-        nested_class_propagation,
-        policy,
-        redundant_cast_remover,
-        signature_propagator,
-        symbol_propagator,
-        tier0_import_fixer,
-        typing_annotation_replacer,
-        typing_unifier,
-        violation_census_visitor,
-    )
-    from flext_infra.transformers._base import *
-    from flext_infra.transformers._utilities_normalizer import *
-    from flext_infra.transformers.alias_remover import *
-    from flext_infra.transformers.census_visitors import *
-    from flext_infra.transformers.class_nesting import *
-    from flext_infra.transformers.class_reconstructor import *
-    from flext_infra.transformers.deprecated_remover import *
-    from flext_infra.transformers.dict_to_mapping import *
-    from flext_infra.transformers.helper_consolidation import *
-    from flext_infra.transformers.import_bypass_remover import *
-    from flext_infra.transformers.import_modernizer import *
-    from flext_infra.transformers.lazy_import_fixer import *
-    from flext_infra.transformers.mro_private_inline import *
-    from flext_infra.transformers.mro_remover import *
-    from flext_infra.transformers.mro_symbol_propagator import *
-    from flext_infra.transformers.nested_class_propagation import *
-    from flext_infra.transformers.policy import *
-    from flext_infra.transformers.redundant_cast_remover import *
-    from flext_infra.transformers.signature_propagator import *
-    from flext_infra.transformers.symbol_propagator import *
-    from flext_infra.transformers.tier0_import_fixer import *
-    from flext_infra.transformers.typing_annotation_replacer import *
-    from flext_infra.transformers.typing_unifier import *
-    from flext_infra.transformers.violation_census_visitor import *
+    from flext_infra.refactor import *
+    from flext_infra.release import *
+    from flext_infra.rules import *
+    from flext_infra.transformers import *
     from flext_infra.typings import *
     from flext_infra.utilities import *
-    from flext_infra.validate import (
-        basemk_validator,
-        inventory,
-        namespace_validator,
-        pytest_diag,
-        skill_validator,
-        stub_chain,
-    )
-    from flext_infra.validate._constants import *
-    from flext_infra.validate._models import *
-    from flext_infra.validate.basemk_validator import *
-    from flext_infra.validate.cli import *
-    from flext_infra.validate.inventory import *
-    from flext_infra.validate.namespace_validator import *
-    from flext_infra.validate.pytest_diag import *
-    from flext_infra.validate.scanner import *
-    from flext_infra.validate.skill_validator import *
-    from flext_infra.validate.stub_chain import *
-    from flext_infra.workspace import (
-        maintenance,
-        migrator,
-        project_makefile,
-        sync,
-        workspace_makefile,
-    )
-    from flext_infra.workspace._constants import *
-    from flext_infra.workspace._models import *
-    from flext_infra.workspace.cli import *
-    from flext_infra.workspace.detector import *
-    from flext_infra.workspace.maintenance import python_version
-    from flext_infra.workspace.maintenance.cli import *
-    from flext_infra.workspace.maintenance.python_version import *
-    from flext_infra.workspace.migrator import *
-    from flext_infra.workspace.orchestrator import *
-    from flext_infra.workspace.project_makefile import *
-    from flext_infra.workspace.sync import *
-    from flext_infra.workspace.workspace_makefile import *
+    from flext_infra.validate import *
+    from flext_infra.workspace import *
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "CONTAINER_DICT_SEQ_ADAPTER": "flext_infra.refactor._base_rule",
@@ -508,7 +130,6 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraEnsurePytestConfigPhase": "flext_infra.deps._phases.ensure_pytest",
     "FlextInfraEnsureRuffConfigPhase": "flext_infra.deps._phases.ensure_ruff",
     "FlextInfraExtraPathsManager": "flext_infra.deps.extra_paths",
-    "FlextInfraFunctionDependencyCollector": "flext_infra.refactor._function_dependency_collector",
     "FlextInfraFutureAnnotationsDetector": "flext_infra.detectors.future_annotations_detector",
     "FlextInfraGate": "flext_infra.gates._base_gate",
     "FlextInfraGateRegistry": "flext_infra.gates._gate_registry",
@@ -520,7 +141,6 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraHelperConsolidationTransformer": "flext_infra.transformers.helper_consolidation",
     "FlextInfraImportAliasDetector": "flext_infra.detectors.import_alias_detector",
     "FlextInfraImportCollector": "flext_infra.detectors.import_collector",
-    "FlextInfraImportDependencyCollector": "flext_infra.refactor._import_dependency_collector",
     "FlextInfraInjectCommentsPhase": "flext_infra.deps._phases.inject_comments",
     "FlextInfraInternalDependencySyncService": "flext_infra.deps.internal_sync",
     "FlextInfraInternalImportDetector": "flext_infra.detectors.internal_import_detector",

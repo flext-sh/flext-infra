@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Protocol
 
@@ -111,16 +111,17 @@ class FlextInfraCodegenGeneration:
         groups: Mapping[str, t.Infra.StrPairSequence],
         *,
         include_flext_types: bool = True,
+        child_packages: Sequence[str] | None = None,
     ) -> t.StrSequence:
-        """Generate TYPE_CHECKING import block with wildcard imports per module.
+        """Generate TYPE_CHECKING import block with wildcard imports.
 
-        Uses ``from module import *`` for brevity since TYPE_CHECKING never
-        executes at runtime. Submodule-only entries (empty attr) get
-        ``import mod as alias`` form.
+        Collapses sub-module imports into parent package wildcards when the
+        parent is a known child package (already has its own ``__init__.py``).
 
         Args:
             groups: Mapping of module paths to lists of (export_name, attr_name) tuples.
             include_flext_types: Whether to import FlextTypes from flext_core.
+            child_packages: Child packages whose sub-modules should be collapsed.
 
         Returns:
             List of code lines forming the TYPE_CHECKING block.
@@ -128,36 +129,64 @@ class FlextInfraCodegenGeneration:
         """
         if not groups:
             return []
+
+        # Collapse: if mod starts with a child_package prefix, replace with the child
+        children = set(child_packages or [])
+        collapsed: MutableMapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(
+            list,
+        )
+        for mod, items in groups.items():
+            target = mod
+            for cp in children:
+                if mod.startswith(cp + ".") or mod == cp:
+                    target = cp
+                    break
+            collapsed[target].extend(items)
+
         lines: MutableSequence[str] = ["if TYPE_CHECKING:"]
         flext_types_in_groups = any(
             export_name == "FlextTypes"
-            for items in groups.values()
+            for items in collapsed.values()
             for export_name, _ in items
         )
         if include_flext_types and not flext_types_in_groups:
             lines.append("    from flext_core import FlextTypes")
 
-        sorted_mods = sorted(groups, key=str.lower)
+        # Collect all mods that will get wildcard imports
+        wildcard_mods: set[str] = set()
+        for mod in collapsed:
+            items = collapsed[mod]
+            if mod in children or any(attr for _, attr in items):
+                wildcard_mods.add(mod)
+
+        sorted_mods = sorted(collapsed, key=str.lower)
         prev_top: str | None = None
         for mod in sorted_mods:
             top = mod.split(".")[0]
             if prev_top is not None and top != prev_top:
                 lines.append("")
-            items = groups[mod]
-            # Submodule-only entries (empty attr_name) need explicit alias
-            alias_items = [(exp, attr) for exp, attr in items if not attr]
-            attr_items = [(exp, attr) for exp, attr in items if attr]
-            for export_name, _ in sorted(alias_items, key=operator.itemgetter(0)):
-                if mod.startswith(".") and mod != ".":
-                    parent_mod, _, child_name = mod.rpartition(".")
-                    lines.append(
-                        f"    from {parent_mod or '.'} import {child_name} "
-                        f"as {export_name}",
-                    )
-                else:
-                    lines.append(f"    import {mod} as {export_name}")
-            if attr_items:
+            items = collapsed[mod]
+            is_collapsed_child = mod in children
+            if is_collapsed_child:
                 lines.append(f"    from {mod} import *")
+            else:
+                alias_items = [(exp, attr) for exp, attr in items if not attr]
+                attr_items = [(exp, attr) for exp, attr in items if attr]
+                # Skip submodule aliases whose target already has a wildcard
+                for export_name, _ in sorted(alias_items, key=operator.itemgetter(0)):
+                    target_mod = f"{mod}.{export_name}" if not mod.startswith(".") else mod
+                    if target_mod in wildcard_mods or target_mod in children:
+                        continue
+                    if mod.startswith(".") and mod != ".":
+                        parent_mod, _, child_name = mod.rpartition(".")
+                        lines.append(
+                            f"    from {parent_mod or '.'} import {child_name} "
+                            f"as {export_name}",
+                        )
+                    else:
+                        lines.append(f"    import {mod} as {export_name}")
+                if attr_items:
+                    lines.append(f"    from {mod} import *")
             prev_top = top
         return lines
 
@@ -170,6 +199,7 @@ class FlextInfraCodegenGeneration:
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
+        child_packages_for_tc: Sequence[str] | None = None,
     ) -> str:
         """Generate complete module file with lazy imports and type hints.
 
@@ -237,6 +267,9 @@ class FlextInfraCodegenGeneration:
             runtime_groups,
         )
 
+        # --- determine child packages for TYPE_CHECKING collapse ---
+        children_tc = child_packages_for_tc or []
+
         # --- TYPE_CHECKING block ---
         groups: Mapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(list)
         for export_name in sorted(lazy_filtered):
@@ -246,14 +279,15 @@ class FlextInfraCodegenGeneration:
         type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
             groups,
             include_flext_types=False,
+            child_packages=children_tc,
         )
-
-        # --- body (inline constants + _LAZY_IMPORTS + __all__) from .j2 ---
         lazy_entries = [
             (exp, lazy_filtered[exp][0], lazy_filtered[exp][1])
             for exp in sorted(exports)
             if exp in lazy_filtered
         ]
+
+        # --- body (inline constants + _LAZY_IMPORTS) from .j2 ---
         body: str = _render(
             _ENV.get_template(tpl.BODY),
             runtime_import_lines="\n".join(runtime_import_lines),
@@ -270,6 +304,7 @@ class FlextInfraCodegenGeneration:
         getattr_rendered: str = _render(
             _ENV.get_template(getattr_name),
             exports=sorted(exports),
+            child_packages=[],
         )
         out.extend(getattr_rendered.splitlines())
 

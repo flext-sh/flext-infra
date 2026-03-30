@@ -172,7 +172,7 @@ class FlextInfraWorkspaceMakefileGenerator:
                 template = environment.get_template(_TEMPLATE_NAME)
             else:
                 template = environment.from_string(template_text)
-            rendered: str = template.render(  # pyright: ignore[reportUnknownMemberType]
+            rendered: str = template.render(
                 pr_branch=pr_branch,
                 make=c.Infra.Make,
             )

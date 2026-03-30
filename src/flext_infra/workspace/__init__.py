@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from flext_infra.workspace import (
         cli,
         detector,
-        maintenance,
         migrator,
         orchestrator,
         project_makefile,
@@ -30,9 +29,7 @@ if TYPE_CHECKING:
     )
     from flext_infra.workspace.cli import *
     from flext_infra.workspace.detector import *
-    from flext_infra.workspace.maintenance import python_version
-    from flext_infra.workspace.maintenance.cli import *
-    from flext_infra.workspace.maintenance.python_version import *
+    from flext_infra.workspace.maintenance import *
     from flext_infra.workspace.migrator import *
     from flext_infra.workspace.orchestrator import *
     from flext_infra.workspace.project_makefile import *

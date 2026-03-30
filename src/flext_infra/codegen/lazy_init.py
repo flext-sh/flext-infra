@@ -201,8 +201,10 @@ class FlextInfraCodegenLazyInit(s[int]):
         lazy_map = self._build_sibling_export_index(pkg_dir, current_pkg)
 
         # 3. Add exports from child subdirectories (already computed)
-        child_packages = self._collect_child_packages(pkg_dir, current_pkg, dir_exports)
+        child_packages_raw = self._collect_child_packages(pkg_dir, current_pkg, dir_exports)
         self._merge_child_exports(pkg_dir, current_pkg, lazy_map, dir_exports)
+        # TYPE_CHECKING collapse is always safe (never runs at runtime).
+        child_packages_for_tc = child_packages_raw
 
         # 4. Handle __version__.py
         inline_constants, version_eager = self._extract_version_exports(
@@ -250,7 +252,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             current_pkg,
             eager_tvars,
             version_eager,
-            child_packages=child_packages,
+            child_packages_for_tc=child_packages_for_tc,
         )
 
     def _write_init(
@@ -263,7 +265,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
-        child_packages: Sequence[str] | None = None,
+        child_packages_for_tc: Sequence[str] | None = None,
     ) -> t.Infra.LazyInitWriteResult:
         """Write the generated ``__init__.py`` and run ruff fix."""
         try:
@@ -275,7 +277,7 @@ class FlextInfraCodegenLazyInit(s[int]):
                 current_pkg,
                 eager_typevar_names,
                 eager_imports,
-                child_packages=child_packages or [],
+                child_packages_for_tc=child_packages_for_tc or [],
             )
             init_path.write_text(generated, encoding=c.Infra.Encoding.DEFAULT)
             self._run_ruff_fix(init_path)
@@ -493,6 +495,21 @@ class FlextInfraCodegenLazyInit(s[int]):
             return False
         # Skip ALL_CAPS constants (e.g., BLUE, BOLD, SYM_ARROW)
         return not name.isupper()
+
+    @staticmethod
+    def _is_self_referential(pkg_dir: Path, current_pkg: str) -> bool:
+        """Check if any sibling .py file imports from the package itself."""
+        import_prefix = f"from {current_pkg} import"
+        for py_file in pkg_dir.glob("*.py"):
+            if py_file.name == "__init__.py":
+                continue
+            try:
+                text = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
+                if import_prefix in text:
+                    return True
+            except OSError:
+                continue
+        return False
 
     @staticmethod
     def _collect_child_packages(
