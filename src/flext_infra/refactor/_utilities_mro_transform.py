@@ -44,47 +44,93 @@ class FlextInfraUtilitiesRefactorMroTransform:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(encoding=c.Infra.Encoding.DEFAULT)
         module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
+        empty_migration = m.Infra.MROFileMigration(
+            file=scan_result.file,
+            module=scan_result.module,
+            moved_symbols=(),
+            created_classes=(),
+        )
         if module is None:
-            return (
-                source,
-                m.Infra.MROFileMigration(
-                    file=scan_result.file,
-                    module=scan_result.module,
-                    moved_symbols=(),
-                    created_classes=(),
-                ),
-                {},
-            )
+            return (source, empty_migration, {})
         candidate_symbols = {candidate.symbol for candidate in scan_result.candidates}
-        moved_statements: MutableSequence[t.Infra.Pair[str, cst.CSTNode]] = []
-        retained_module_body: MutableSequence[cst.CSTNode] = []
-        for stmt in module.body:
-            moved = FlextInfraUtilitiesRefactorMroTransform._extract_moved_statement(
-                statement=stmt,
+        moved_statements, retained_module_body = (
+            FlextInfraUtilitiesRefactorMroTransform._classify_statements(
+                module=module,
                 candidate_symbols=candidate_symbols,
             )
-            if moved is None:
-                retained_module_body.append(stmt)
-                continue
-            moved_statements.append(moved)
+        )
         if not moved_statements:
-            return (
-                source,
-                m.Infra.MROFileMigration(
-                    file=scan_result.file,
-                    module=scan_result.module,
-                    moved_symbols=(),
-                    created_classes=(),
-                ),
-                {},
-            )
+            return (source, empty_migration, {})
         moved_by_symbol = dict(moved_statements)
         ordered_symbols = [symbol for symbol, _ in moved_statements]
+        class_name = scan_result.constants_class or c.Infra.DEFAULT_CONSTANTS_CLASS
+        transformed_body, symbol_map, created_classes = (
+            FlextInfraUtilitiesRefactorMroTransform._build_transformed_body(
+                retained_body=retained_module_body,
+                moved_by_symbol=moved_by_symbol,
+                ordered_symbols=ordered_symbols,
+                class_name=class_name,
+            )
+        )
+        updated_module = module.with_changes(body=tuple(transformed_body))
+        facade_alias = scan_result.facade_alias or class_name
+        updated_module = FlextInfraUtilitiesRefactorMroTransform._apply_rewriters(
+            module=updated_module,
+            moved_by_symbol=moved_by_symbol,
+            ordered_symbols=ordered_symbols,
+            symbol_map=symbol_map,
+            facade_alias=facade_alias,
+        )
+        migration = m.Infra.MROFileMigration(
+            file=scan_result.file,
+            module=scan_result.module,
+            moved_symbols=tuple(ordered_symbols),
+            created_classes=created_classes,
+        )
+        return (updated_module.code, migration, symbol_map)
+
+    @staticmethod
+    def _classify_statements(
+        *,
+        module: cst.Module,
+        candidate_symbols: t.Infra.StrSet,
+    ) -> t.Infra.Pair[
+        Sequence[t.Infra.Pair[str, cst.CSTNode]],
+        Sequence[cst.CSTNode],
+    ]:
+        """Partition module body into moved vs retained statements."""
+        moved: MutableSequence[t.Infra.Pair[str, cst.CSTNode]] = []
+        retained: MutableSequence[cst.CSTNode] = []
+        for stmt in module.body:
+            extracted = (
+                FlextInfraUtilitiesRefactorMroTransform._extract_moved_statement(
+                    statement=stmt,
+                    candidate_symbols=candidate_symbols,
+                )
+            )
+            if extracted is None:
+                retained.append(stmt)
+            else:
+                moved.append(extracted)
+        return (moved, retained)
+
+    @staticmethod
+    def _build_transformed_body(
+        *,
+        retained_body: Sequence[cst.CSTNode],
+        moved_by_symbol: Mapping[str, cst.CSTNode],
+        ordered_symbols: t.StrSequence,
+        class_name: str,
+    ) -> t.Infra.Triple[
+        Sequence[cst.CSTNode],
+        MutableMapping[str, str],
+        tuple[str, ...],
+    ]:
+        """Merge moved symbols into the facade class within the retained body."""
         transformed_body: MutableSequence[cst.CSTNode] = []
         symbol_map: MutableMapping[str, str] = {}
-        class_name = scan_result.constants_class or c.Infra.DEFAULT_CONSTANTS_CLASS
         class_found = False
-        for retained_stmt in retained_module_body:
+        for retained_stmt in retained_body:
             if (
                 isinstance(retained_stmt, cst.ClassDef)
                 and retained_stmt.name.value == class_name
@@ -113,7 +159,48 @@ class FlextInfraUtilitiesRefactorMroTransform:
             transformed_body.append(new_class)
             symbol_map.update(class_symbol_map)
             created_classes = (class_name,)
-        updated_module = module.with_changes(body=tuple(transformed_body))
+        return (transformed_body, symbol_map, created_classes)
+
+    @staticmethod
+    def _apply_rewriters(
+        *,
+        module: cst.Module,
+        moved_by_symbol: Mapping[str, cst.CSTNode],
+        ordered_symbols: t.StrSequence,
+        symbol_map: Mapping[str, str],
+        facade_alias: str,
+    ) -> cst.Module:
+        """Apply private-inline and qualified-reference transformers."""
+        replacement_values = (
+            FlextInfraUtilitiesRefactorMroTransform._collect_private_replacements(
+                moved_by_symbol=moved_by_symbol,
+                ordered_symbols=ordered_symbols,
+            )
+        )
+        inline_transformer = FlextInfraRefactorMROPrivateInlineTransformer(
+            replacement_values=replacement_values,
+        )
+        module = module.visit(inline_transformer)
+        qualified_renames = (
+            FlextInfraUtilitiesRefactorMroTransform._build_qualified_renames(
+                symbol_map=symbol_map,
+                facade_alias=facade_alias,
+            )
+        )
+        if qualified_renames:
+            qualified_transformer = FlextInfraRefactorMROQualifiedReferenceTransformer(
+                renames=qualified_renames,
+            )
+            module = module.visit(qualified_transformer)
+        return module
+
+    @staticmethod
+    def _collect_private_replacements(
+        *,
+        moved_by_symbol: Mapping[str, cst.CSTNode],
+        ordered_symbols: t.StrSequence,
+    ) -> MutableMapping[str, cst.BaseExpression]:
+        """Collect replacement values for private (underscore-prefixed) symbols."""
         replacement_values: MutableMapping[str, cst.BaseExpression] = {}
         for symbol in ordered_symbols:
             if not symbol.startswith("_"):
@@ -121,14 +208,17 @@ class FlextInfraUtilitiesRefactorMroTransform:
             value = FlextInfraUtilitiesRefactorMroTransform._statement_value(
                 statement=moved_by_symbol[symbol],
             )
-            if value is None:
-                continue
-            replacement_values[symbol] = value
-        inline_transformer = FlextInfraRefactorMROPrivateInlineTransformer(
-            replacement_values=replacement_values,
-        )
-        updated_module = updated_module.visit(inline_transformer)
-        facade_alias = scan_result.facade_alias or class_name
+            if value is not None:
+                replacement_values[symbol] = value
+        return replacement_values
+
+    @staticmethod
+    def _build_qualified_renames(
+        *,
+        symbol_map: Mapping[str, str],
+        facade_alias: str,
+    ) -> MutableMapping[str, cst.BaseExpression]:
+        """Build qualified attribute expressions for public dotted symbol paths."""
         qualified_renames: MutableMapping[str, cst.BaseExpression] = {}
         for symbol, target_path in symbol_map.items():
             if symbol.startswith("_") or "." not in target_path:
@@ -138,18 +228,7 @@ class FlextInfraUtilitiesRefactorMroTransform:
             for part in parts:
                 current = cst.Attribute(value=current, attr=cst.Name(part))
             qualified_renames[symbol] = current
-        if qualified_renames:
-            qualified_transformer = FlextInfraRefactorMROQualifiedReferenceTransformer(
-                renames=qualified_renames,
-            )
-            updated_module = updated_module.visit(qualified_transformer)
-        migration = m.Infra.MROFileMigration(
-            file=scan_result.file,
-            module=scan_result.module,
-            moved_symbols=tuple(ordered_symbols),
-            created_classes=created_classes,
-        )
-        return (updated_module.code, migration, symbol_map)
+        return qualified_renames
 
     @staticmethod
     def _extract_moved_statement(
@@ -157,40 +236,73 @@ class FlextInfraUtilitiesRefactorMroTransform:
         statement: cst.CSTNode,
         candidate_symbols: t.Infra.StrSet,
     ) -> t.Infra.Pair[str, cst.CSTNode] | None:
-        if isinstance(statement, cst.ClassDef):
-            symbol = statement.name.value
-            if symbol in candidate_symbols:
-                return (symbol, statement)
+        extracted = FlextInfraUtilitiesRefactorMroTransform._extract_symbol_and_node(
+            statement=statement,
+        )
+        if extracted is None:
             return None
+        symbol, node = extracted
+        if symbol not in candidate_symbols:
+            return None
+        return (symbol, node)
+
+    @staticmethod
+    def _extract_symbol_and_node(
+        *,
+        statement: cst.CSTNode,
+    ) -> t.Infra.Pair[str, cst.CSTNode] | None:
+        """Return (symbol, node) from a top-level statement, or None."""
+        if isinstance(statement, cst.ClassDef):
+            return (statement.name.value, statement)
         if isinstance(statement, cst.TypeAlias):
-            symbol = statement.name.value
-            if symbol not in candidate_symbols:
-                return None
-            return (symbol, statement)
+            return (statement.name.value, statement)
         if not isinstance(statement, cst.SimpleStatementLine):
             return None
+        return FlextInfraUtilitiesRefactorMroTransform._extract_symbol_from_simple(
+            statement=statement,
+        )
+
+    @staticmethod
+    def _extract_symbol_from_simple(
+        *,
+        statement: cst.SimpleStatementLine,
+    ) -> t.Infra.Pair[str, cst.CSTNode] | None:
+        """Extract (symbol, inner_node) from a single-statement simple line."""
         if len(statement.body) != 1:
             return None
         first_stmt = statement.body[0]
-        match first_stmt:
-            case cst.AnnAssign():
-                if not isinstance(first_stmt.target, cst.Name):
-                    return None
-                symbol = first_stmt.target.value
-            case cst.Assign():
-                if len(first_stmt.targets) != 1:
-                    return None
-                assign_target = first_stmt.targets[0].target
-                if not isinstance(assign_target, cst.Name):
-                    return None
-                symbol = assign_target.value
-            case cst.TypeAlias():
-                symbol = first_stmt.name.value
-            case _:
-                return None
-        if symbol not in candidate_symbols:
+        symbol = FlextInfraUtilitiesRefactorMroTransform._symbol_from_simple_stmt(
+            stmt=first_stmt,
+        )
+        if symbol is None:
             return None
         return (symbol, first_stmt)
+
+    @staticmethod
+    def _symbol_from_simple_stmt(
+        *,
+        stmt: cst.BaseSmallStatement,
+    ) -> str | None:
+        """Extract the symbol name from an AnnAssign, Assign, or TypeAlias."""
+        if isinstance(stmt, cst.AnnAssign):
+            return stmt.target.value if isinstance(stmt.target, cst.Name) else None
+        if isinstance(stmt, cst.Assign):
+            return FlextInfraUtilitiesRefactorMroTransform._symbol_from_assign(
+                stmt=stmt,
+            )
+        if isinstance(stmt, cst.TypeAlias):
+            return stmt.name.value
+        return None
+
+    @staticmethod
+    def _symbol_from_assign(*, stmt: cst.Assign) -> str | None:
+        """Extract symbol name from a single-target Assign."""
+        if len(stmt.targets) != 1:
+            return None
+        assign_target = stmt.targets[0].target
+        if not isinstance(assign_target, cst.Name):
+            return None
+        return assign_target.value
 
     @staticmethod
     def _migrate_constants_class(
@@ -199,11 +311,49 @@ class FlextInfraUtilitiesRefactorMroTransform:
         moved_by_symbol: Mapping[str, cst.CSTNode],
         ordered_symbols: t.StrSequence,
     ) -> t.Infra.Pair[cst.ClassDef, t.StrMapping]:
-        retained_class_body: MutableSequence[cst.CSTNode] = []
+        retained_class_body, alias_by_symbol, alias_replacement_values = (
+            FlextInfraUtilitiesRefactorMroTransform._partition_class_body(
+                class_body=class_def.body.body,
+                moved_by_symbol=moved_by_symbol,
+            )
+        )
+        is_types_facade = class_def.name.value.endswith("Types")
+        symbol_map, moved_lines, moved_core_lines = (
+            FlextInfraUtilitiesRefactorMroTransform._retarget_ordered_symbols(
+                ordered_symbols=ordered_symbols,
+                moved_by_symbol=moved_by_symbol,
+                alias_by_symbol=alias_by_symbol,
+                alias_replacement_values=alias_replacement_values,
+                is_types_facade=is_types_facade,
+            )
+        )
+        final_body = FlextInfraUtilitiesRefactorMroTransform._assemble_class_body(
+            retained_body=retained_class_body,
+            moved_lines=moved_lines,
+            moved_core_lines=moved_core_lines,
+        )
+        return (
+            class_def.with_changes(
+                body=class_def.body.with_changes(body=tuple(final_body)),
+            ),
+            symbol_map,
+        )
+
+    @staticmethod
+    def _partition_class_body(
+        *,
+        class_body: Sequence[cst.CSTNode],
+        moved_by_symbol: Mapping[str, cst.CSTNode],
+    ) -> t.Infra.Triple[
+        Sequence[cst.CSTNode],
+        MutableMapping[str, str],
+        MutableMapping[str, cst.BaseExpression],
+    ]:
+        """Split class body into retained statements, alias mappings, and replacement values."""
+        retained: MutableSequence[cst.CSTNode] = []
         alias_by_symbol: MutableMapping[str, str] = {}
         alias_replacement_values: MutableMapping[str, cst.BaseExpression] = {}
-        is_types_facade = class_def.name.value.endswith("Types")
-        for statement in class_def.body.body:
+        for statement in class_body:
             alias = FlextInfraUtilitiesRefactorMroTransform._extract_alias_assignment(
                 statement=statement,
             )
@@ -217,7 +367,23 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 if private_value is not None:
                     alias_replacement_values[alias[0]] = private_value
                 continue
-            retained_class_body.append(statement)
+            retained.append(statement)
+        return (retained, alias_by_symbol, alias_replacement_values)
+
+    @staticmethod
+    def _retarget_ordered_symbols(
+        *,
+        ordered_symbols: t.StrSequence,
+        moved_by_symbol: Mapping[str, cst.CSTNode],
+        alias_by_symbol: Mapping[str, str],
+        alias_replacement_values: Mapping[str, cst.BaseExpression],
+        is_types_facade: bool,
+    ) -> t.Infra.Triple[
+        MutableMapping[str, str],
+        Sequence[cst.CSTNode],
+        Sequence[cst.CSTNode],
+    ]:
+        """Build symbol map and retargeted nodes, split into regular vs core lines."""
         symbol_map: MutableMapping[str, str] = {}
         added_targets: t.Infra.StrSet = set()
         moved_lines: MutableSequence[cst.CSTNode] = []
@@ -248,9 +414,19 @@ class FlextInfraUtilitiesRefactorMroTransform:
                 moved_core_lines.append(moved_node)
             else:
                 moved_lines.append(moved_node)
+        return (symbol_map, moved_lines, moved_core_lines)
+
+    @staticmethod
+    def _assemble_class_body(
+        *,
+        retained_body: Sequence[cst.CSTNode],
+        moved_lines: Sequence[cst.CSTNode],
+        moved_core_lines: Sequence[cst.CSTNode],
+    ) -> Sequence[cst.BaseStatement]:
+        """Combine retained, core, and moved nodes into the final class body."""
         cleaned_body = [
             statement
-            for statement in retained_class_body
+            for statement in retained_body
             if not (
                 moved_lines
                 and isinstance(statement, cst.SimpleStatementLine)
@@ -260,36 +436,10 @@ class FlextInfraUtilitiesRefactorMroTransform:
         ]
         final_nodes: MutableSequence[cst.CSTNode] = [*cleaned_body]
         if moved_core_lines:
-            has_existing_core = any(
-                isinstance(s, cst.ClassDef) and s.name.value == "Core"
-                for s in final_nodes
+            final_nodes = FlextInfraUtilitiesRefactorMroTransform._integrate_core_lines(
+                final_nodes=final_nodes,
+                moved_core_lines=moved_core_lines,
             )
-            if has_existing_core:
-                merged_body, _ = (
-                    FlextInfraUtilitiesRefactorMroTransform._merge_core_class(
-                        class_body=final_nodes,
-                        moved_core_lines=moved_core_lines,
-                        target_class_name="Core",
-                    )
-                )
-                final_nodes = list(merged_body)
-            else:
-                merged_body, inserted_core = (
-                    FlextInfraUtilitiesRefactorMroTransform._merge_core_class(
-                        class_body=final_nodes,
-                        moved_core_lines=moved_core_lines,
-                        target_class_name="_Core",
-                    )
-                )
-                final_nodes = list(merged_body)
-                if inserted_core and (
-                    not FlextInfraUtilitiesRefactorMroTransform._has_core_alias(
-                        class_body=final_nodes,
-                    )
-                ):
-                    final_nodes.append(
-                        FlextInfraUtilitiesRefactorMroTransform._core_alias_statement(),
-                    )
         final_nodes.extend(moved_lines)
         final_body = [
             statement
@@ -298,12 +448,42 @@ class FlextInfraUtilitiesRefactorMroTransform:
         ]
         if not final_body:
             final_body = [cst.SimpleStatementLine(body=[cst.Pass()])]
-        return (
-            class_def.with_changes(
-                body=class_def.body.with_changes(body=tuple(final_body)),
-            ),
-            symbol_map,
+        return final_body
+
+    @staticmethod
+    def _integrate_core_lines(
+        *,
+        final_nodes: MutableSequence[cst.CSTNode],
+        moved_core_lines: Sequence[cst.CSTNode],
+    ) -> MutableSequence[cst.CSTNode]:
+        """Merge core-namespace lines into the class body, creating _Core if needed."""
+        has_existing_core = any(
+            isinstance(s, cst.ClassDef) and s.name.value == "Core" for s in final_nodes
         )
+        if has_existing_core:
+            merged_body, _ = FlextInfraUtilitiesRefactorMroTransform._merge_core_class(
+                class_body=final_nodes,
+                moved_core_lines=moved_core_lines,
+                target_class_name="Core",
+            )
+            return list(merged_body)
+        merged_body, inserted_core = (
+            FlextInfraUtilitiesRefactorMroTransform._merge_core_class(
+                class_body=final_nodes,
+                moved_core_lines=moved_core_lines,
+                target_class_name="_Core",
+            )
+        )
+        result = list(merged_body)
+        if inserted_core and (
+            not FlextInfraUtilitiesRefactorMroTransform._has_core_alias(
+                class_body=result,
+            )
+        ):
+            result.append(
+                FlextInfraUtilitiesRefactorMroTransform._core_alias_statement(),
+            )
+        return result
 
     @staticmethod
     def _create_constants_class(
@@ -368,20 +548,34 @@ class FlextInfraUtilitiesRefactorMroTransform:
             return None
         assign = statement.body[0]
         if isinstance(assign, cst.AnnAssign):
-            if not isinstance(assign.target, cst.Name):
-                return None
-            if not isinstance(assign.value, cst.Name):
-                return None
-            return (assign.target.value, assign.value.value)
+            return FlextInfraUtilitiesRefactorMroTransform._alias_from_ann_assign(
+                assign=assign,
+            )
         if isinstance(assign, cst.Assign):
-            if len(assign.targets) != 1:
-                return None
-            if not isinstance(assign.targets[0].target, cst.Name):
-                return None
-            if not isinstance(assign.value, cst.Name):
-                return None
-            return (assign.targets[0].target.value, assign.value.value)
+            return FlextInfraUtilitiesRefactorMroTransform._alias_from_assign(
+                assign=assign,
+            )
         return None
+
+    @staticmethod
+    def _alias_from_ann_assign(*, assign: cst.AnnAssign) -> t.Infra.StrPair | None:
+        """Extract (target, value) name pair from an annotated assignment."""
+        if not isinstance(assign.target, cst.Name):
+            return None
+        if not isinstance(assign.value, cst.Name):
+            return None
+        return (assign.target.value, assign.value.value)
+
+    @staticmethod
+    def _alias_from_assign(*, assign: cst.Assign) -> t.Infra.StrPair | None:
+        """Extract (target, value) name pair from a plain assignment."""
+        if len(assign.targets) != 1:
+            return None
+        if not isinstance(assign.targets[0].target, cst.Name):
+            return None
+        if not isinstance(assign.value, cst.Name):
+            return None
+        return (assign.targets[0].target.value, assign.value.value)
 
     @staticmethod
     def _default_target(*, symbol: str) -> str:
@@ -409,38 +603,74 @@ class FlextInfraUtilitiesRefactorMroTransform:
         replacement_value: cst.BaseExpression | None,
     ) -> cst.CSTNode:
         if isinstance(statement, cst.ClassDef):
-            if statement.name.value == target_name:
-                return statement
-            return statement.with_changes(name=cst.Name(target_name))
+            return FlextInfraUtilitiesRefactorMroTransform._retarget_class_def(
+                statement=statement,
+                target_name=target_name,
+            )
         if isinstance(statement, cst.TypeAlias):
             return cst.SimpleStatementLine(
                 body=[statement.with_changes(name=cst.Name(target_name))],
             )
         if isinstance(statement, cst.AnnAssign):
-            if replacement_value is not None:
-                return cst.SimpleStatementLine(
-                    body=[
-                        statement.with_changes(
-                            target=cst.Name(target_name),
-                            value=replacement_value,
-                        ),
-                    ],
-                )
-            return cst.SimpleStatementLine(
-                body=[statement.with_changes(target=cst.Name(target_name))],
+            return FlextInfraUtilitiesRefactorMroTransform._retarget_ann_assign(
+                statement=statement,
+                target_name=target_name,
+                replacement_value=replacement_value,
             )
         if isinstance(statement, cst.Assign):
-            assign_value = replacement_value or statement.value
-            return cst.SimpleStatementLine(
-                body=[
-                    statement.with_changes(
-                        targets=(cst.AssignTarget(target=cst.Name(target_name)),),
-                        value=assign_value,
-                    ),
-                ],
+            return FlextInfraUtilitiesRefactorMroTransform._retarget_assign(
+                statement=statement,
+                target_name=target_name,
+                replacement_value=replacement_value,
             )
         msg = "unsupported constant statement type"
         raise ValueError(msg)
+
+    @staticmethod
+    def _retarget_class_def(
+        *,
+        statement: cst.ClassDef,
+        target_name: str,
+    ) -> cst.ClassDef:
+        """Rename a ClassDef to the target name if needed."""
+        if statement.name.value == target_name:
+            return statement
+        return statement.with_changes(name=cst.Name(target_name))
+
+    @staticmethod
+    def _retarget_ann_assign(
+        *,
+        statement: cst.AnnAssign,
+        target_name: str,
+        replacement_value: cst.BaseExpression | None,
+    ) -> cst.SimpleStatementLine:
+        """Re-target an annotated assignment with optional value replacement."""
+        changes: MutableMapping[str, cst.Name | cst.BaseExpression] = {
+            "target": cst.Name(target_name),
+        }
+        if replacement_value is not None:
+            changes["value"] = replacement_value
+        return cst.SimpleStatementLine(
+            body=[statement.with_changes(**changes)],
+        )
+
+    @staticmethod
+    def _retarget_assign(
+        *,
+        statement: cst.Assign,
+        target_name: str,
+        replacement_value: cst.BaseExpression | None,
+    ) -> cst.SimpleStatementLine:
+        """Re-target a plain assignment with optional value replacement."""
+        assign_value = replacement_value or statement.value
+        return cst.SimpleStatementLine(
+            body=[
+                statement.with_changes(
+                    targets=(cst.AssignTarget(target=cst.Name(target_name)),),
+                    value=assign_value,
+                ),
+            ],
+        )
 
     @staticmethod
     def _merge_core_class(

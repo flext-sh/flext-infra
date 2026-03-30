@@ -83,7 +83,7 @@ class FlextInfraTypesBase:
     type LazyInitWriteResult = tuple[int, LazyImportMap]
     "Result for writing generated __init__.py."
     type VersionExportsResult = tuple[FlextTypes.StrMapping, LazyImportMap]
-    "Result for __version__.py export extraction (inline constants, lazy map)."
+    "Result for __version__.py export extraction (inline constants, eager import map)."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
     type PathSet = set[_Path]

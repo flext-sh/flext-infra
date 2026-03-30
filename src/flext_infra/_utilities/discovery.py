@@ -79,6 +79,18 @@ class FlextInfraUtilitiesDiscovery:
     def discover_package_from_file(file_path: Path) -> str:
         """Discover the package name for a Python file."""
         resolved = file_path.resolve()
+        via_src = FlextInfraUtilitiesDiscovery._discover_package_via_src_lineage(
+            resolved,
+        )
+        if via_src:
+            return via_src
+        return FlextInfraUtilitiesDiscovery._discover_package_via_project_root(
+            file_path,
+        )
+
+    @staticmethod
+    def _discover_package_via_src_lineage(resolved: Path) -> str:
+        """Walk parent directories looking for a src/ boundary with a package."""
         candidate = resolved.parent if resolved.is_file() else resolved
         lineage = (candidate, *candidate.parents)
         for current in lineage:
@@ -92,6 +104,11 @@ class FlextInfraUtilitiesDiscovery:
                         return package_name
             except ValueError:
                 continue
+        return ""
+
+    @staticmethod
+    def _discover_package_via_project_root(file_path: Path) -> str:
+        """Fallback: find project root and return its first src/ package."""
         project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
             file_path,
         )

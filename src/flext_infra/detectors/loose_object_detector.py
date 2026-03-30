@@ -19,6 +19,7 @@ from flext_infra import (
     t,
     u,
 )
+from flext_infra.detectors._base_detector import _DetectorContext
 
 _CONSTANT_RE = c.Infra.NAMESPACE_CONSTANT_PATTERN
 _ALLOWED_TOP_LEVEL: frozenset[str] = frozenset({
@@ -54,25 +55,24 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         self, file_path: Path
     ) -> Sequence[m.Infra.LooseObjectViolation]:
         return self.detect_file(
-            file_path=file_path,
-            project_name=self._project_name,
-            rope_project=self._rope,
-            parse_failures=self._pf,
+            _DetectorContext(
+                file_path=file_path,
+                project_name=self._project_name,
+                rope_project=self._rope,
+                parse_failures=self._pf,
+            ),
         )
 
     @classmethod
     @override
     def detect_file(
         cls,
-        *,
-        file_path: Path,
-        rope_project: t.Infra.RopeProject,
-        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
-        project_name: str = "",
-        project_root: Path | None = None,
+        ctx: _DetectorContext,
     ) -> Sequence[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
-        del parse_failures, project_root
+        file_path = ctx.file_path
+        rope_project = ctx.rope_project
+        project_name = ctx.project_name
         if (
             file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
             or file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES

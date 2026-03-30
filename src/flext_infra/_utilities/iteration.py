@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
@@ -153,6 +153,22 @@ class FlextInfraUtilitiesIteration:
             for part in path.parts
         )
 
+    _KNOWN_DIRS: frozenset[str] = frozenset({
+        "src",
+        "tests",
+        "examples",
+        "scripts",
+        ".",
+        "..",
+        "__pycache__",
+        ".git",
+        ".venv",
+        "node_modules",
+        "vendor",
+        "build",
+        "dist",
+    })
+
     @staticmethod
     def iter_python_files(
         workspace_root: Path,
@@ -190,7 +206,6 @@ class FlextInfraUtilitiesIteration:
                     workspace_root=workspace_root,
                 )
             )
-            # Dynamic directory discovery: scan all subdirectories with Python files
             selected_dirs = src_dirs or frozenset(
                 {
                     c.Infra.Paths.DEFAULT_SRC_DIR,
@@ -199,7 +214,6 @@ class FlextInfraUtilitiesIteration:
                     c.Infra.Directories.SCRIPTS,
                 },
             )
-            # Build include flags for known directories
             include_flags = {
                 c.Infra.Paths.DEFAULT_SRC_DIR: True,
                 c.Infra.Directories.TESTS: include_tests,
@@ -208,54 +222,58 @@ class FlextInfraUtilitiesIteration:
             }
             files: MutableSequence[Path] = []
             for project_root in roots:
-                # First: include explicitly specified directories if enabled
-                for dir_name, enabled in include_flags.items():
-                    if (not enabled) or (dir_name not in selected_dirs):
-                        continue
-                    directory = project_root / dir_name
-                    if directory.is_dir():
-                        files.extend(
-                            FlextInfraUtilitiesIteration.iter_directory_python_files(
-                                directory,
-                            ),
-                        )
-
-                # Second: dynamically discover any other directories with Python files
-                # (for extensibility - docs/, tools/, etc.)
-                for subdir in project_root.iterdir():
-                    if not subdir.is_dir():
-                        continue
-                    dir_name = subdir.name
-                    # Skip known system dirs and those already processed
-                    if dir_name in {
-                        "src",
-                        "tests",
-                        "examples",
-                        "scripts",  # Already handled above
-                        ".",
-                        "..",
-                        "__pycache__",
-                        ".git",
-                        ".venv",
-                        "node_modules",
-                        "vendor",
-                        "build",
-                        "dist",
-                    }:
-                        continue
-                    # Skip dotfiles/hidden directories
-                    if dir_name.startswith("."):
-                        continue
-                    # Check if directory contains Python files
-                    py_files = FlextInfraUtilitiesIteration.iter_directory_python_files(
-                        subdir,
-                    )
-                    if py_files:
-                        files.extend(py_files)
-
+                FlextInfraUtilitiesIteration._iter_known_dirs(
+                    project_root,
+                    include_flags,
+                    selected_dirs,
+                    files,
+                )
+                FlextInfraUtilitiesIteration._iter_dynamic_dirs(
+                    project_root,
+                    files,
+                )
             return r[Sequence[Path]].ok(sorted(set(files)))
         except OSError as exc:
             return r[Sequence[Path]].fail(f"python file iteration failed: {exc}")
+
+    @staticmethod
+    def _iter_known_dirs(
+        project_root: Path,
+        include_flags: Mapping[str, bool],
+        selected_dirs: frozenset[str],
+        files: MutableSequence[Path],
+    ) -> None:
+        """Collect Python files from known project directories (src, tests, etc.)."""
+        for dir_name, enabled in include_flags.items():
+            if (not enabled) or (dir_name not in selected_dirs):
+                continue
+            directory = project_root / dir_name
+            if directory.is_dir():
+                files.extend(
+                    FlextInfraUtilitiesIteration.iter_directory_python_files(
+                        directory,
+                    ),
+                )
+
+    @staticmethod
+    def _iter_dynamic_dirs(
+        project_root: Path,
+        files: MutableSequence[Path],
+    ) -> None:
+        """Discover additional directories with Python files (docs/, tools/, etc.)."""
+        for subdir in project_root.iterdir():
+            if not subdir.is_dir():
+                continue
+            dir_name = subdir.name
+            if dir_name in FlextInfraUtilitiesIteration._KNOWN_DIRS:
+                continue
+            if dir_name.startswith("."):
+                continue
+            py_files = FlextInfraUtilitiesIteration.iter_directory_python_files(
+                subdir,
+            )
+            if py_files:
+                files.extend(py_files)
 
     @staticmethod
     def iter_workspace_python_modules(

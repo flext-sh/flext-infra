@@ -145,22 +145,43 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         if notes_result.is_failure:
             return notes_result
         if not dry_run:
-            changelog_result = u.Infra.update_changelog(
-                workspace_root,
-                version,
-                tag,
-                notes_path,
+            apply_result = self._publish_apply(
+                workspace_root=workspace_root,
+                version=version,
+                tag=tag,
+                notes_path=notes_path,
+                push=push,
             )
-            if changelog_result.is_failure:
-                return changelog_result
-            tag_result = self._create_tag(workspace_root, tag)
-            if tag_result.is_failure:
-                return tag_result
-            if push:
-                push_result = self._push_release(workspace_root, tag)
-                if push_result.is_failure:
-                    return push_result
+            if apply_result.is_failure:
+                return apply_result
         self.logger.info("release_phase_publish", tag=tag, dry_run=dry_run)
+        return r[bool].ok(True)
+
+    def _publish_apply(
+        self,
+        *,
+        workspace_root: Path,
+        version: str,
+        tag: str,
+        notes_path: Path,
+        push: bool,
+    ) -> r[bool]:
+        """Apply changelog, tag, and optional push for publish phase."""
+        changelog_result = u.Infra.update_changelog(
+            workspace_root,
+            version,
+            tag,
+            notes_path,
+        )
+        if changelog_result.is_failure:
+            return changelog_result
+        tag_result = self._create_tag(workspace_root, tag)
+        if tag_result.is_failure:
+            return tag_result
+        if push:
+            push_result = self._push_release(workspace_root, tag)
+            if push_result.is_failure:
+                return push_result
         return r[bool].ok(True)
 
     def phase_validate(self, workspace_root: Path, *, dry_run: bool = False) -> r[bool]:
@@ -188,6 +209,20 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         if parse_result.is_failure:
             return r[bool].fail(parse_result.error or "invalid version")
         files = self._version_files(workspace_root, project_names)
+        changed = self._version_update_files(files, target, dry_run=dry_run)
+        if dry_run:
+            self.logger.info("release_phase_version_checked", checked_version=target)
+        self.logger.info("release_phase_version_summary", files_changed=changed)
+        return r[bool].ok(True)
+
+    def _version_update_files(
+        self,
+        files: Sequence[Path],
+        target: str,
+        *,
+        dry_run: bool,
+    ) -> int:
+        """Update version in each file, returning count of changed files."""
         changed = 0
         for path in files:
             if not path.exists():
@@ -204,10 +239,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
                 path=str(path),
                 target=target,
             )
-        if dry_run:
-            self.logger.info("release_phase_version_checked", checked_version=target)
-        self.logger.info("release_phase_version_summary", files_changed=changed)
-        return r[bool].ok(True)
+        return changed
 
     def run_release(
         self,

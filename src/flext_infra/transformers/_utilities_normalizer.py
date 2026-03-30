@@ -26,6 +26,7 @@ from flext_infra import (
 )
 
 _UNKNOWN_TIER = 99
+_DEFAULT_SUBDIR_TIER = 4
 
 
 class FlextInfraNormalizerContext(m.ArbitraryTypesModel):
@@ -181,6 +182,24 @@ class FlextInfraUtilitiesImportNormalizer:
         return ".".join(module_parts)
 
     @staticmethod
+    def _collect_intra_package_imports(
+        tree: ast.Module,
+        package_name: str,
+    ) -> t.Infra.StrSet:
+        """Extract intra-package import names from an AST."""
+        imports: t.Infra.StrSet = set()
+        prefix = f"{package_name}."
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module:
+                if node.module.startswith(prefix) or node.module == package_name:
+                    imports.add(node.module)
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.startswith(prefix) or alias.name == package_name:
+                        imports.add(alias.name)
+        return imports
+
+    @staticmethod
     def build_import_graph(
         *,
         package_dir: Path,
@@ -200,21 +219,32 @@ class FlextInfraUtilitiesImportNormalizer:
                 )
             except ValueError:
                 continue
-            imports: t.Infra.StrSet = set()
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom) and node.module:
-                    if node.module.startswith(f"{package_name}."):
-                        imports.add(node.module)
-                    elif node.module == package_name:
-                        imports.add(package_name)
-                elif isinstance(node, ast.Import):
-                    for alias in node.names:
-                        if alias.name.startswith(f"{package_name}."):
-                            imports.add(alias.name)
-                        elif alias.name == package_name:
-                            imports.add(package_name)
-            graph[module_name] = imports
+            graph[module_name] = (
+                FlextInfraUtilitiesImportNormalizer._collect_intra_package_imports(
+                    tree,
+                    package_name,
+                )
+            )
         return {name: frozenset(imports) for name, imports in graph.items()}
+
+    @staticmethod
+    def _tier_from_directory(
+        first_dir: str,
+        facade_to_alias: t.StrMapping,
+        alias_tiers: Mapping[str, int],
+    ) -> int:
+        """Resolve tier from the first subdirectory name under the package."""
+        if not first_dir.startswith("_"):
+            return _DEFAULT_SUBDIR_TIER
+        normalized = first_dir.lstrip("_")
+        if normalized == "services":
+            normalized = "service"
+        alias = facade_to_alias.get(f"{normalized}.py", "")
+        if alias in alias_tiers:
+            return alias_tiers[alias]
+        if normalized == "result" and "r" in alias_tiers:
+            return alias_tiers["r"]
+        return _DEFAULT_SUBDIR_TIER
 
     @staticmethod
     def file_tier(
@@ -238,18 +268,49 @@ class FlextInfraUtilitiesImportNormalizer:
         parts = Path(relative).parts[:-1]
         if not parts:
             return _UNKNOWN_TIER
-        first = parts[0]
-        if first.startswith("_"):
-            normalized = first.lstrip("_")
-            if normalized == "services":
-                normalized = "service"
-            alias = facade_to_alias.get(f"{normalized}.py", "")
-            if alias in alias_tiers:
-                return alias_tiers[alias]
-            if normalized == "result" and "r" in alias_tiers:
-                return alias_tiers["r"]
-            return 4
-        return 4
+        return FlextInfraUtilitiesImportNormalizer._tier_from_directory(
+            parts[0],
+            facade_to_alias,
+            alias_tiers,
+        )
+
+    @staticmethod
+    def _resolve_package_dir(
+        package_name: str,
+        project_root: Path | None,
+    ) -> Path | None:
+        """Locate the on-disk package directory for a given package name."""
+        if project_root is not None:
+            candidate = project_root / "src" / package_name
+            if candidate.is_dir() and (candidate / "__init__.py").is_file():
+                return candidate
+        if package_name:
+            spec = importlib.util.find_spec(package_name)
+            if spec and spec.submodule_search_locations:
+                locs = list(spec.submodule_search_locations)
+                if locs:
+                    cand = Path(locs[0])
+                    if cand.is_dir() and (cand / "__init__.py").is_file():
+                        return cand
+        return None
+
+    @staticmethod
+    def _resolve_file_module(
+        file_path: Path,
+        package_dir: Path | None,
+        package_name: str,
+    ) -> str:
+        """Resolve the dotted module path for *file_path*, or empty string."""
+        if package_dir is None or not package_name:
+            return ""
+        try:
+            return FlextInfraUtilitiesImportNormalizer.file_to_module(
+                file_path=file_path,
+                package_dir=package_dir,
+                package_name=package_name,
+            )
+        except ValueError:
+            return ""
 
     @staticmethod
     def build_context(
@@ -266,20 +327,10 @@ class FlextInfraUtilitiesImportNormalizer:
         project_root = FlextInfraUtilitiesDiscovery.discover_project_root_from_file(
             file_path,
         )
-        package_dir: Path | None = None
-        if project_root is not None:
-            candidate = project_root / "src" / package_name
-            if candidate.is_dir() and (candidate / "__init__.py").is_file():
-                package_dir = candidate
-        if package_dir is None and package_name:
-            spec = importlib.util.find_spec(package_name)
-            if spec and spec.submodule_search_locations:
-                locs = list(spec.submodule_search_locations)
-                if locs:
-                    cand = Path(locs[0])
-                    if cand.is_dir() and (cand / "__init__.py").is_file():
-                        package_dir = cand
-
+        package_dir = FlextInfraUtilitiesImportNormalizer._resolve_package_dir(
+            package_name,
+            project_root,
+        )
         alias_to_module: t.StrMapping = (
             FlextInfraUtilitiesImportNormalizer.build_alias_to_defining_module(
                 package_name=package_name,
@@ -290,16 +341,11 @@ class FlextInfraUtilitiesImportNormalizer:
             if package_dir is not None and package_name
             else {}
         )
-        file_module = ""
-        if package_dir is not None and package_name:
-            try:
-                file_module = FlextInfraUtilitiesImportNormalizer.file_to_module(
-                    file_path=file_path,
-                    package_dir=package_dir,
-                    package_name=package_name,
-                )
-            except ValueError:
-                file_module = ""
+        file_module = FlextInfraUtilitiesImportNormalizer._resolve_file_module(
+            file_path,
+            package_dir,
+            package_name,
+        )
         alias_to_facade: t.StrMapping = (
             FlextInfraUtilitiesDiscovery.discover_project_aliases(project_root)
             if project_root is not None

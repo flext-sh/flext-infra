@@ -80,20 +80,21 @@ class FlextInfraUtilitiesRefactor(
         parts = [part for part in rel.with_suffix("").parts if part != "src"]
         return ".".join(parts)
 
+    _MODULE_FAMILY_KEYS: Sequence[str] = (
+        "_models",
+        "_utilities",
+        "_dispatcher",
+        "_decorators",
+        "_runtime",
+    )
+
     @staticmethod
     def module_family_from_path(path: str) -> str:
         """Resolve module family key from a source file path."""
         normalized = path.replace("\\", "/")
-        if "_models" in normalized:
-            return "_models"
-        if "_utilities" in normalized:
-            return "_utilities"
-        if "_dispatcher" in normalized:
-            return "_dispatcher"
-        if "_decorators" in normalized:
-            return "_decorators"
-        if "_runtime" in normalized:
-            return "_runtime"
+        for key in FlextInfraUtilitiesRefactor._MODULE_FAMILY_KEYS:
+            if key in normalized:
+                return key
         return "other_private"
 
     @staticmethod
@@ -231,6 +232,45 @@ class FlextInfraUtilitiesRefactor(
         return current_module == candidate_module
 
     @staticmethod
+    def _load_schema_definitions(
+        schema: Mapping[str, t.Infra.InfraValue],
+    ) -> Mapping[str, t.Infra.InfraValue] | None:
+        """Load and validate the 'definitions' section of a policy schema."""
+        definitions_raw = schema.get("definitions", {})
+        if not isinstance(definitions_raw, dict):
+            return None
+        try:
+            return _INFRA_MAPPING_ADAPTER.validate_python(definitions_raw)
+        except ValidationError:
+            return None
+
+    @staticmethod
+    def _extract_definition_required(
+        definitions: Mapping[str, t.Infra.InfraValue],
+        key: str,
+    ) -> t.StrSequence | None:
+        """Extract required fields from a named schema definition."""
+        raw = definitions.get(key, {})
+        if not isinstance(raw, dict):
+            return None
+        validated: Mapping[str, t.Infra.InfraValue] = (
+            _INFRA_MAPPING_ADAPTER.validate_python(raw)
+        )
+        return FlextInfraUtilitiesRefactor.string_list(validated.get("required", []))
+
+    @staticmethod
+    def _all_entries_have_required(
+        loaded: Mapping[str, t.Infra.InfraValue],
+        field: str,
+        required_fields: t.StrSequence,
+    ) -> bool:
+        """Check all entries under a mapping field have the required keys."""
+        return all(
+            FlextInfraUtilitiesRefactor.has_required_fields(entry, required_fields)
+            for entry in FlextInfraUtilitiesRefactor.mapping_list(loaded.get(field))
+        )
+
+    @staticmethod
     def policy_document_schema_valid(
         loaded: Mapping[str, t.Infra.InfraValue],
         schema_path: Path,
@@ -245,56 +285,30 @@ class FlextInfraUtilitiesRefactor(
         )
         if not FlextInfraUtilitiesRefactor.has_required_fields(loaded, top_required):
             return False
-        definitions_raw = schema.get("definitions", {})
-        if not isinstance(definitions_raw, dict):
+        definitions = FlextInfraUtilitiesRefactor._load_schema_definitions(schema)
+        if definitions is None:
             return False
-        try:
-            definitions: Mapping[str, t.Infra.InfraValue] = (
-                _INFRA_MAPPING_ADAPTER.validate_python(
-                    definitions_raw,
-                )
-            )
-        except ValidationError:
-            return False
-        policy_entry_raw = definitions.get("policyEntry", {})
-        class_rule_raw = definitions.get("classRule", {})
-        if not isinstance(policy_entry_raw, dict):
-            return False
-        if not isinstance(class_rule_raw, dict):
-            return False
-        policy_entry: Mapping[str, t.Infra.InfraValue] = (
-            _INFRA_MAPPING_ADAPTER.validate_python(
-                policy_entry_raw,
+        policy_entry_required = (
+            FlextInfraUtilitiesRefactor._extract_definition_required(
+                definitions,
+                "policyEntry",
             )
         )
-        class_rule: Mapping[str, t.Infra.InfraValue] = (
-            _INFRA_MAPPING_ADAPTER.validate_python(
-                class_rule_raw,
-            )
+        class_rule_required = FlextInfraUtilitiesRefactor._extract_definition_required(
+            definitions,
+            "classRule",
         )
-        policy_entry_required = FlextInfraUtilitiesRefactor.string_list(
-            policy_entry.get("required", []),
+        if policy_entry_required is None or class_rule_required is None:
+            return False
+        return FlextInfraUtilitiesRefactor._all_entries_have_required(
+            loaded,
+            "policy_matrix",
+            policy_entry_required,
+        ) and FlextInfraUtilitiesRefactor._all_entries_have_required(
+            loaded,
+            c.Infra.ReportKeys.RULES,
+            class_rule_required,
         )
-        class_rule_required = FlextInfraUtilitiesRefactor.string_list(
-            class_rule.get("required", []),
-        )
-        for entry in FlextInfraUtilitiesRefactor.mapping_list(
-            loaded.get("policy_matrix"),
-        ):
-            if not FlextInfraUtilitiesRefactor.has_required_fields(
-                entry,
-                policy_entry_required,
-            ):
-                return False
-        for rule in FlextInfraUtilitiesRefactor.mapping_list(
-            loaded.get(c.Infra.ReportKeys.RULES),
-        ):
-            if not FlextInfraUtilitiesRefactor.has_required_fields(
-                rule,
-                class_rule_required,
-            ):
-                return False
-        return True
 
     @staticmethod
     def load_validated_policy_document(policy_path: Path) -> t.Infra.ContainerDict:
@@ -347,24 +361,30 @@ class FlextInfraUtilitiesRefactor(
         return False
 
     @staticmethod
-    def insert_import_statement(source: str, import_stmt: str) -> str:
-        normalized_import = import_stmt.strip()
-        if not normalized_import:
-            return source
-        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
-        if module is None:
-            return source
+    def _parse_import_statement(
+        normalized_import: str,
+    ) -> cst.SimpleStatementLine | None:
+        """Parse a normalized import string into a CST statement node."""
         try:
-            parsed_stmt = cst.parse_statement(f"{normalized_import}\n")
+            parsed = cst.parse_statement(f"{normalized_import}\n")
         except cst.ParserSyntaxError:
-            return source
-        if not isinstance(parsed_stmt, cst.SimpleStatementLine):
-            return source
-        for stmt in module.body:
-            if not isinstance(stmt, cst.SimpleStatementLine):
-                continue
-            if cst.Module(body=[stmt]).code.strip() == normalized_import:
-                return source
+            return None
+        if not isinstance(parsed, cst.SimpleStatementLine):
+            return None
+        return parsed
+
+    @staticmethod
+    def _import_already_exists(module: cst.Module, normalized_import: str) -> bool:
+        """Check if the import statement already exists in the module."""
+        return any(
+            isinstance(stmt, cst.SimpleStatementLine)
+            and cst.Module(body=[stmt]).code.strip() == normalized_import
+            for stmt in module.body
+        )
+
+    @staticmethod
+    def _find_import_insert_index(module: cst.Module) -> int:
+        """Find the index after the last docstring/future/import statement."""
         insert_idx = 0
         for idx, stmt in enumerate(module.body):
             if (
@@ -375,6 +395,27 @@ class FlextInfraUtilitiesRefactor(
                 insert_idx = idx + 1
                 continue
             break
+        return insert_idx
+
+    @staticmethod
+    def insert_import_statement(source: str, import_stmt: str) -> str:
+        normalized_import = import_stmt.strip()
+        if not normalized_import:
+            return source
+        module = FlextInfraUtilitiesParsing.parse_cst_from_source(source)
+        if module is None:
+            return source
+        parsed_stmt = FlextInfraUtilitiesRefactor._parse_import_statement(
+            normalized_import,
+        )
+        if parsed_stmt is None:
+            return source
+        if FlextInfraUtilitiesRefactor._import_already_exists(
+            module,
+            normalized_import,
+        ):
+            return source
+        insert_idx = FlextInfraUtilitiesRefactor._find_import_insert_index(module)
         new_body = [*module.body[:insert_idx], parsed_stmt, *module.body[insert_idx:]]
         return module.with_changes(body=new_body).code
 
@@ -414,6 +455,42 @@ class FlextInfraUtilitiesRefactor(
         return FlextInfraUtilitiesRefactor._extract_classes_ast(file_path)
 
     @staticmethod
+    def _classify_method_type(func_node: ast.FunctionDef) -> str:
+        """Classify a function as static, class, or instance method."""
+        decs = [
+            d.id
+            if isinstance(d, ast.Name)
+            else (d.attr if isinstance(d, ast.Attribute) else "")
+            for d in func_node.decorator_list
+        ]
+        if "staticmethod" in decs:
+            return "static"
+        if "classmethod" in decs:
+            return "class"
+        return "instance"
+
+    @staticmethod
+    def _append_unique(
+        methods: MutableSequence[t.Infra.Triple[str, str, str]],
+        entry: t.Infra.Triple[str, str, str],
+    ) -> None:
+        """Append entry if its name (first element) is not already present."""
+        if not any(e[0] == entry[0] for e in methods):
+            methods.append(entry)
+
+    @staticmethod
+    def _collect_inner_class_methods(
+        inner_cls: ast.ClassDef,
+        filename: str,
+        methods: MutableSequence[t.Infra.Triple[str, str, str]],
+    ) -> None:
+        """Collect public methods from a nested class definition."""
+        for inner in ast.iter_child_nodes(inner_cls):
+            if isinstance(inner, ast.FunctionDef) and not inner.name.startswith("_"):
+                entry = (f"{inner_cls.name}.{inner.name}", "static", filename)
+                FlextInfraUtilitiesRefactor._append_unique(methods, entry)
+
+    @staticmethod
     def _extract_classes_ast(
         py_file: Path,
     ) -> Mapping[str, Sequence[t.Infra.Triple[str, str, str]]]:
@@ -431,45 +508,67 @@ class FlextInfraUtilitiesRefactor(
             methods: MutableSequence[t.Infra.Triple[str, str, str]] = []
             for item in ast.iter_child_nodes(node):
                 if isinstance(item, ast.FunctionDef) and not item.name.startswith("_"):
-                    decs = [
-                        d.id
-                        if isinstance(d, ast.Name)
-                        else (d.attr if isinstance(d, ast.Attribute) else "")
-                        for d in item.decorator_list
-                    ]
-                    mtype = (
-                        "static"
-                        if "staticmethod" in decs
-                        else "class"
-                        if "classmethod" in decs
-                        else "instance"
+                    mtype = FlextInfraUtilitiesRefactor._classify_method_type(item)
+                    FlextInfraUtilitiesRefactor._append_unique(
+                        methods,
+                        (item.name, mtype, py_file.name),
                     )
-                    entry = (item.name, mtype, py_file.name)
-                    if not any(e[0] == item.name for e in methods):
-                        methods.append(entry)
                 elif isinstance(item, ast.ClassDef) and not item.name.startswith("_"):
-                    for inner in ast.iter_child_nodes(item):
-                        if isinstance(
-                            inner,
-                            ast.FunctionDef,
-                        ) and not inner.name.startswith("_"):
-                            entry = (
-                                f"{item.name}.{inner.name}",
-                                "static",
-                                py_file.name,
-                            )
-                            if not any(e[0] == entry[0] for e in methods):
-                                methods.append(entry)
+                    FlextInfraUtilitiesRefactor._collect_inner_class_methods(
+                        item,
+                        py_file.name,
+                        methods,
+                    )
             if methods:
                 result[node.name] = methods
         return result
+
+    @staticmethod
+    def _resolve_staticmethod_target(
+        arg: ast.expr,
+    ) -> t.Infra.StrPair | None:
+        """Resolve the (class, method) pair from a staticmethod(...) argument."""
+        if not isinstance(arg, ast.Attribute):
+            return None
+        if isinstance(arg.value, ast.Name):
+            return (arg.value.id, arg.attr)
+        if isinstance(arg.value, ast.Attribute) and isinstance(
+            arg.value.value,
+            ast.Name,
+        ):
+            return (arg.value.value.id, f"{arg.value.attr}.{arg.attr}")
+        return None
+
+    @staticmethod
+    def _extract_alias_from_assign(
+        item: ast.Assign,
+        alias_map: MutableMapping[str, t.Infra.StrPair],
+    ) -> None:
+        """Extract alias mapping from a staticmethod assignment node."""
+        if not isinstance(item.value, ast.Call):
+            return
+        call = item.value
+        if not (
+            isinstance(call.func, ast.Name)
+            and call.func.id == "staticmethod"
+            and call.args
+        ):
+            return
+        resolved = FlextInfraUtilitiesRefactor._resolve_staticmethod_target(
+            call.args[0],
+        )
+        if resolved is None:
+            return
+        for target in item.targets:
+            if isinstance(target, ast.Name):
+                alias_map[target.id] = resolved
 
     @staticmethod
     def build_facade_alias_map(
         facade_path: Path,
         facade_class_name: str,
     ) -> Mapping[str, t.Infra.StrPair]:
-        """Parse a facade class to build flat alias → (class, method) map.
+        """Parse a facade class to build flat alias -> (class, method) map.
 
         Inspects ``staticmethod(...)`` assignments in the facade class.
         """
@@ -482,41 +581,34 @@ class FlextInfraUtilitiesRefactor(
             if not (isinstance(node, ast.ClassDef) and node.name == facade_class_name):
                 continue
             for item in ast.iter_child_nodes(node):
-                if not isinstance(item, ast.Assign):
-                    continue
-                for target in item.targets:
-                    if not isinstance(target, ast.Name) or not isinstance(
-                        item.value,
-                        ast.Call,
-                    ):
-                        continue
-                    call = item.value
-                    if not (
-                        isinstance(call.func, ast.Name)
-                        and call.func.id == "staticmethod"
-                        and call.args
-                    ):
-                        continue
-                    arg = call.args[0]
-                    if isinstance(arg, ast.Attribute):
-                        if isinstance(arg.value, ast.Name):
-                            alias_map[target.id] = (arg.value.id, arg.attr)
-                        elif isinstance(arg.value, ast.Attribute) and isinstance(
-                            arg.value.value,
-                            ast.Name,
-                        ):
-                            alias_map[target.id] = (
-                                arg.value.value.id,
-                                f"{arg.value.attr}.{arg.attr}",
-                            )
+                if isinstance(item, ast.Assign):
+                    FlextInfraUtilitiesRefactor._extract_alias_from_assign(
+                        item,
+                        alias_map,
+                    )
         return alias_map
+
+    @staticmethod
+    def _extract_inner_class_bases(
+        facade_node: ast.ClassDef,
+    ) -> MutableMapping[str, str]:
+        """Extract inner class name -> first base class name from a facade."""
+        name_map: MutableMapping[str, str] = {}
+        for item in ast.iter_child_nodes(facade_node):
+            if not isinstance(item, ast.ClassDef):
+                continue
+            for base in item.bases:
+                if isinstance(base, ast.Name):
+                    name_map[item.name] = base.id
+                    break
+        return name_map
 
     @staticmethod
     def build_facade_inner_class_map(
         facade_path: Path,
         facade_class_name: str,
     ) -> t.StrMapping:
-        """Map inner class names → base class names in a facade.
+        """Map inner class names -> base class names in a facade.
 
         E.g. ``{"Conversion": "FlextUtilitiesConversion", ...}``.
         """
@@ -524,15 +616,10 @@ class FlextInfraUtilitiesRefactor(
         if tree is None:
             return {}
 
-        name_map: MutableMapping[str, str] = {}
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.ClassDef) and node.name == facade_class_name:
-                for item in ast.iter_child_nodes(node):
-                    if isinstance(item, ast.ClassDef):
-                        for base in item.bases:
-                            if isinstance(base, ast.Name):
-                                name_map[item.name] = base.id
-        return name_map
+                return FlextInfraUtilitiesRefactor._extract_inner_class_bases(node)
+        return {}
 
     @staticmethod
     def identify_project_by_roots(

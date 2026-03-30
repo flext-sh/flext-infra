@@ -150,6 +150,29 @@ class TestGenerateFile:
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
         tm.that(content, contains='__version__ = "1.0.0"')
 
+    def test_with_eager_runtime_imports(self) -> None:
+        """Test version-like exports are imported eagerly at runtime."""
+        exports = ["FlextVersion", "__version__"]
+        filtered: t.Infra.LazyImportMap = {}
+        inline_constants: t.StrMapping = {}
+        eager_imports: t.Infra.LazyImportMap = {
+            "FlextVersion": ("test_pkg.__version__", "FlextVersion"),
+            "__version__": ("test_pkg.__version__", "__version__"),
+        }
+        content = _generate_file(
+            "",
+            exports,
+            filtered,
+            inline_constants,
+            "test_pkg",
+            eager_imports=eager_imports,
+        )
+        tm.that(
+            content,
+            contains="from test_pkg.__version__ import FlextVersion, __version__",
+        )
+        tm.that(content, contains="_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {")
+
     def test_with_docstring(self) -> None:
         """Test preserves docstring."""
         docstring = '"""Test module."""'

@@ -40,31 +40,24 @@ class FlextInfraDocAuditor:
         lower = target.strip().lower().lstrip("<")
         return lower.startswith(("http://", "https://", "mailto:", "tel:", "data:"))
 
+    _NO_BUDGETS: t.Infra.Pair[int | None, Mapping[str, int]] = (None, {})
+
     @staticmethod
-    def load_audit_budgets(
-        workspace_root: Path,
-    ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
-        """Load audit issue budgets from architecture config."""
-        config_path: Path | None = None
+    def _find_architecture_config(workspace_root: Path) -> Path | None:
+        """Walk up from workspace_root looking for the architecture config."""
         for candidate in [workspace_root, *workspace_root.parents]:
             path = candidate / "docs/architecture/architecture_config.json"
             if path.exists():
-                config_path = path
-                break
-        if config_path is None:
-            return (None, {})
-        payload_result = u.Infra.read_json(config_path)
-        if payload_result.is_failure:
-            return (None, {})
-        payload = payload_result.value
-        docs_validation_value = payload.get("docs_validation")
-        if not isinstance(docs_validation_value, Mapping):
-            return (None, {})
-        audit_gate_value = docs_validation_value.get("audit_gate")
-        if not isinstance(audit_gate_value, Mapping):
-            return (None, {})
-        default_budget = audit_gate_value.get("max_issues_default")
-        by_scope_raw_value = audit_gate_value.get("max_issues_by_scope")
+                return path
+        return None
+
+    @staticmethod
+    def _parse_audit_gate(
+        audit_gate: Mapping[str, t.Infra.InfraValue],
+    ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
+        """Extract default budget and per-scope budgets from an audit_gate mapping."""
+        default_budget = audit_gate.get("max_issues_default")
+        by_scope_raw_value = audit_gate.get("max_issues_by_scope")
         by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
         if isinstance(by_scope_raw_value, Mapping):
             try:
@@ -78,9 +71,30 @@ class FlextInfraDocAuditor:
         for name, value in by_scope_raw.items():
             if isinstance(value, (int, float)):
                 by_scope[name] = int(value)
-        if isinstance(default_budget, (int, float)):
-            return (int(default_budget), by_scope)
-        return (None, by_scope)
+        resolved_default = (
+            int(default_budget) if isinstance(default_budget, (int, float)) else None
+        )
+        return (resolved_default, by_scope)
+
+    @staticmethod
+    def load_audit_budgets(
+        workspace_root: Path,
+    ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
+        """Load audit issue budgets from architecture config."""
+        config_path = FlextInfraDocAuditor._find_architecture_config(workspace_root)
+        if config_path is None:
+            return FlextInfraDocAuditor._NO_BUDGETS
+        payload_result = u.Infra.read_json(config_path)
+        if payload_result.is_failure:
+            return FlextInfraDocAuditor._NO_BUDGETS
+        payload = payload_result.value
+        docs_validation_value = payload.get("docs_validation")
+        if not isinstance(docs_validation_value, Mapping):
+            return FlextInfraDocAuditor._NO_BUDGETS
+        audit_gate_value = docs_validation_value.get("audit_gate")
+        if not isinstance(audit_gate_value, Mapping):
+            return FlextInfraDocAuditor._NO_BUDGETS
+        return FlextInfraDocAuditor._parse_audit_gate(audit_gate_value)
 
     @staticmethod
     def normalize_link(target: str) -> str:
@@ -177,24 +191,15 @@ class FlextInfraDocAuditor:
             return r[bool].fail(f"Audit found {failures} failure(s)")
         return r[bool].ok(True)
 
-    def audit_scope(
-        self,
+    @staticmethod
+    def _write_audit_reports(
         scope: m.Infra.DocScope,
+        issues: Sequence[m.Infra.AuditIssue],
+        checks: set[str],
         *,
-        check: str,
         strict: bool,
-        max_issues_default: int | None,
-        max_issues_by_scope: Mapping[str, int],
-    ) -> m.Infra.DocsPhaseReport:
-        """Run configured audit checks on a single scope."""
-        checks = {part.strip() for part in check.split(",") if part.strip()}
-        if not checks or "all" in checks:
-            checks = {"links", "forbidden-terms"}
-        issues: MutableSequence[m.Infra.AuditIssue] = []
-        if "links" in checks:
-            issues.extend(self.broken_link_issues(scope))
-        if "forbidden-terms" in checks:
-            issues.extend(self.forbidden_term_issues(scope))
+    ) -> None:
+        """Persist JSON summary and markdown report to the scope report directory."""
         sorted_checks: list[JsonValue] = [str(ck) for ck in sorted(checks)]
         summary: dict[str, JsonValue] = {
             c.Infra.ReportKeys.SCOPE: scope.name,
@@ -222,8 +227,28 @@ class FlextInfraDocAuditor:
         )
         _ = u.Infra.write_markdown(
             scope.report_dir / "audit-report.md",
-            self.to_markdown(scope, issues),
+            FlextInfraDocAuditor.to_markdown(scope, issues),
         )
+
+    def audit_scope(
+        self,
+        scope: m.Infra.DocScope,
+        *,
+        check: str,
+        strict: bool,
+        max_issues_default: int | None,
+        max_issues_by_scope: Mapping[str, int],
+    ) -> m.Infra.DocsPhaseReport:
+        """Run configured audit checks on a single scope."""
+        checks = {part.strip() for part in check.split(",") if part.strip()}
+        if not checks or "all" in checks:
+            checks = {"links", "forbidden-terms"}
+        issues: MutableSequence[m.Infra.AuditIssue] = []
+        if "links" in checks:
+            issues.extend(self.broken_link_issues(scope))
+        if "forbidden-terms" in checks:
+            issues.extend(self.forbidden_term_issues(scope))
+        self._write_audit_reports(scope, issues, checks, strict=strict)
         max_issues = max_issues_by_scope.get(scope.name, max_issues_default)
         if strict:
             limit = 0 if max_issues is None else max_issues
@@ -260,6 +285,44 @@ class FlextInfraDocAuditor:
             message=f"issues: {len(issues)}",
         )
 
+    def _check_links_in_file(
+        self,
+        md_file: Path,
+        rel: str,
+    ) -> Sequence[m.Infra.AuditIssue]:
+        """Check a single markdown file for broken internal links."""
+        content = md_file.read_text(
+            encoding=c.Infra.Encoding.DEFAULT,
+            errors=c.Infra.IGNORE,
+        )
+        issues: MutableSequence[m.Infra.AuditIssue] = []
+        in_fenced_code = False
+        for number, line in enumerate(content.splitlines(), start=1):
+            stripped = line.lstrip()
+            if stripped.startswith("```"):
+                in_fenced_code = not in_fenced_code
+                continue
+            if in_fenced_code:
+                continue
+            clean_line = u.Infra.INLINE_CODE_RE.sub("", line)
+            for raw in u.Infra.MARKDOWN_LINK_URL_RE.findall(clean_line):
+                target = self.normalize_link(raw)
+                if not target or target.startswith("#") or self.is_external(target):
+                    continue
+                if self.should_skip_target(raw, target):
+                    continue
+                path = (md_file.parent / target).resolve()
+                if not path.exists():
+                    issues.append(
+                        m.Infra.AuditIssue(
+                            file=rel,
+                            issue_type="broken_link",
+                            severity="high",
+                            message=f"line {number}: target not found -> {raw}",
+                        ),
+                    )
+        return issues
+
     def broken_link_issues(
         self,
         scope: m.Infra.DocScope,
@@ -267,36 +330,8 @@ class FlextInfraDocAuditor:
         """Collect broken internal-link issues for markdown files in scope."""
         issues: MutableSequence[m.Infra.AuditIssue] = []
         for md_file in u.Infra.iter_markdown_files(scope.path):
-            content = md_file.read_text(
-                encoding=c.Infra.Encoding.DEFAULT,
-                errors=c.Infra.IGNORE,
-            )
             rel = md_file.relative_to(scope.path).as_posix()
-            in_fenced_code = False
-            for number, line in enumerate(content.splitlines(), start=1):
-                stripped = line.lstrip()
-                if stripped.startswith("```"):
-                    in_fenced_code = not in_fenced_code
-                    continue
-                if in_fenced_code:
-                    continue
-                clean_line = u.Infra.INLINE_CODE_RE.sub("", line)
-                for raw in u.Infra.MARKDOWN_LINK_URL_RE.findall(clean_line):
-                    target = self.normalize_link(raw)
-                    if not target or target.startswith("#") or self.is_external(target):
-                        continue
-                    if self.should_skip_target(raw, target):
-                        continue
-                    path = (md_file.parent / target).resolve()
-                    if not path.exists():
-                        issues.append(
-                            m.Infra.AuditIssue(
-                                file=rel,
-                                issue_type="broken_link",
-                                severity="high",
-                                message=f"line {number}: target not found -> {raw}",
-                            ),
-                        )
+            issues.extend(self._check_links_in_file(md_file, rel))
         return issues
 
     def forbidden_term_issues(

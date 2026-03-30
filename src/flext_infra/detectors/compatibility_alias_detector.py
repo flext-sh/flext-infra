@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
-from pathlib import Path
+from collections.abc import Sequence
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t
+from flext_infra import FlextInfraScanFileMixin, c, m, p
+from flext_infra.detectors._base_detector import _DetectorContext
 
 
 class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -25,15 +25,11 @@ class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scan
     @override
     def detect_file(
         cls,
-        *,
-        file_path: Path,
-        rope_project: t.Infra.RopeProject,
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
-        project_name: str = "",
-        project_root: Path | None = None,
+        ctx: _DetectorContext,
     ) -> Sequence[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file."""
-        del parse_failures, project_name, project_root
+        file_path = ctx.file_path
+        rope_project = ctx.rope_project
         if file_path.suffix != ".py":
             return []
         source = cls._get_source_or_empty(rope_project, file_path)

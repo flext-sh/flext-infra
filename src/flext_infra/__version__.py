@@ -13,8 +13,6 @@ from collections.abc import Mapping
 from importlib.metadata import PackageMetadata, metadata
 from typing import Final
 
-from flext_infra import t
-
 _MAJOR_INDEX: Final[int] = 0
 _MINOR_INDEX: Final[int] = 1
 _PATCH_INDEX: Final[int] = 2
@@ -45,7 +43,7 @@ class FlextInfraVersion:
         return cls.__version__
 
     @classmethod
-    def get_version_info(cls) -> t.Infra.VariadicTuple[int | str]:
+    def get_version_info(cls) -> tuple[int | str, ...]:
         """Return the version as a tuple of integers and strings."""
         return cls.__version_info__
 

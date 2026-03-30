@@ -39,6 +39,13 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
         return f"[DRY-RUN] {action}" if dry_run else action
 
     @staticmethod
+    def _no_change_result(message: str, *, dry_run: bool) -> r[str]:
+        """Return a no-op result: dry-run shows message, normal returns empty."""
+        if dry_run:
+            return r[str].ok(f"[DRY-RUN] {message}")
+        return r[str].ok("")
+
+    @staticmethod
     def _append_result(
         result: r[str],
         changes: MutableSequence[str],
@@ -251,9 +258,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
     def _migrate_makefile(self, project_root: Path, *, dry_run: bool) -> r[str]:
         makefile_path = project_root / c.Infra.Files.MAKEFILE_FILENAME
         if not makefile_path.exists():
-            if dry_run:
-                return r[str].ok(self._action_text("Makefile not found", dry_run=True))
-            return r[str].ok("")
+            return self._no_change_result("Makefile not found", dry_run=dry_run)
         try:
             original = makefile_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
         except OSError as exc:
@@ -263,11 +268,7 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             updated = updated.replace(before, after)
         updated = self._apply_bootstrap_include(updated)
         if updated == original:
-            if dry_run:
-                return r[str].ok(
-                    self._action_text("Makefile already migrated", dry_run=True),
-                )
-            return r[str].ok("")
+            return self._no_change_result("Makefile already migrated", dry_run=dry_run)
         if not dry_run:
             try:
                 u.write_file(makefile_path, updated, encoding=c.Infra.Encoding.DEFAULT)
@@ -346,20 +347,12 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
     ) -> r[str]:
         pyproject_path = project_root / c.Infra.Files.PYPROJECT_FILENAME
         if not pyproject_path.exists():
-            if dry_run:
-                return r[str].ok(
-                    self._action_text("pyproject.toml not found", dry_run=True),
-                )
-            return r[str].ok("")
+            return self._no_change_result("pyproject.toml not found", dry_run=dry_run)
         if project_name == c.Infra.Packages.CORE:
-            if dry_run:
-                return r[str].ok(
-                    self._action_text(
-                        "pyproject.toml dependency unchanged for flext-core",
-                        dry_run=True,
-                    ),
-                )
-            return r[str].ok("")
+            return self._no_change_result(
+                "pyproject.toml dependency unchanged for flext-core",
+                dry_run=dry_run,
+            )
         document_result = u.Infra.read_document(pyproject_path)
         if document_result.is_failure:
             return r[str].fail(
@@ -367,14 +360,22 @@ class FlextInfraProjectMigrator(s[Sequence[m.Infra.MigrationResult]]):
             )
         document: tomlkit.TOMLDocument = document_result.value
         if self._has_flext_core_dependency(document):
-            if dry_run:
-                return r[str].ok(
-                    self._action_text(
-                        "pyproject.toml already includes flext-core dependency",
-                        dry_run=True,
-                    ),
-                )
-            return r[str].ok("")
+            return self._no_change_result(
+                "pyproject.toml already includes flext-core dependency",
+                dry_run=dry_run,
+            )
+        return self._apply_flext_core_dependency(
+            document, pyproject_path, dry_run=dry_run
+        )
+
+    def _apply_flext_core_dependency(
+        self,
+        document: tomlkit.TOMLDocument,
+        pyproject_path: Path,
+        *,
+        dry_run: bool,
+    ) -> r[str]:
+        """Add flext-core dependency to the pyproject document and write if not dry-run."""
         project_table = self._ensure_table(document, c.Infra.PROJECT)
         dependencies_raw = self._toml_get(project_table, c.Infra.DEPENDENCIES)
         dependencies: MutableSequence[str] = []

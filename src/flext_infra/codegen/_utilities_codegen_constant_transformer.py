@@ -18,6 +18,19 @@ from flext_infra import (
 
 class FlextInfraUtilitiesCodegenConstantTransformation:
     MIN_ATTRIBUTE_CHAIN: Final[int] = 2
+    CANONICAL_ALIASES: Final[frozenset[str]] = frozenset([
+        "c",
+        "d",
+        "e",
+        "h",
+        "m",
+        "p",
+        "r",
+        "s",
+        "t",
+        "u",
+        "x",
+    ])
 
     class CanonicalValueReplacer(cst.CSTTransformer):
         def __init__(
@@ -331,101 +344,210 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         return index
 
     @staticmethod
-    def break_import_cycles(pkg_dir: Path) -> t.Infra.Pair[bool, t.StrSequence]:
-        def parse_lazy_imports(init_file: Path) -> t.StrMapping:
-            if not init_file.is_file():
-                return {}
-            source = init_file.read_text(c.Infra.Encoding.DEFAULT)
-            mapping: MutableMapping[str, str] = {}
-            for match in re.finditer(
-                r'"(\w+)":\s*\("([\w.]+)",\s*"(\w+)"\)',
-                source,
+    def parse_lazy_imports(init_file: Path) -> t.StrMapping:
+        """Parse ``__init__.py`` lazy-loading map: alias -> module stem."""
+        if not init_file.is_file():
+            return {}
+        source = init_file.read_text(c.Infra.Encoding.DEFAULT)
+        mapping: MutableMapping[str, str] = {}
+        for match in re.finditer(
+            r'"(\w+)":\s*\("([\w.]+)",\s*"(\w+)"\)',
+            source,
+        ):
+            alias, module_path, _export = match.groups()
+            mapping[alias] = module_path.rsplit(".", 1)[-1]
+        return mapping
+
+    @staticmethod
+    def build_self_import_graph(
+        pkg_dir: Path,
+        package_name: str,
+        lazy_map: t.StrMapping,
+    ) -> Mapping[str, t.Infra.StrSet]:
+        """Build a dependency graph among modules within the same package."""
+        graph: MutableMapping[str, t.Infra.StrSet] = {}
+        for py_file in pkg_dir.glob("*.py"):
+            if py_file.name == "__init__.py":
+                continue
+            stem = py_file.stem
+            tree = FlextInfraUtilitiesParsing.parse_module_cst(py_file)
+            if tree is None:
+                continue
+            deps = FlextInfraUtilitiesCodegenConstantTransformation.collect_module_deps(
+                tree,
+                stem,
+                package_name,
+                lazy_map,
+            )
+            if deps:
+                graph[stem] = deps
+        return graph
+
+    @staticmethod
+    def collect_module_deps(
+        tree: cst.Module,
+        stem: str,
+        package_name: str,
+        lazy_map: t.StrMapping,
+    ) -> t.Infra.StrSet:
+        """Collect intra-package dependencies for a single parsed module."""
+        deps: t.Infra.StrSet = set()
+        for stmt in tree.body:
+            if not isinstance(stmt, cst.SimpleStatementLine):
+                continue
+            for small in stmt.body:
+                if not isinstance(small, cst.ImportFrom):
+                    continue
+                if isinstance(small.names, cst.ImportStar):
+                    continue
+                mod = tree.code_for_node(small.module) if small.module else ""
+                if mod != package_name:
+                    continue
+                for alias in small.names:
+                    name = alias.name.value if isinstance(alias.name, cst.Name) else ""
+                    target = lazy_map.get(name)
+                    if target and target != stem:
+                        deps.add(target)
+        return deps
+
+    @staticmethod
+    def find_import_cycles(
+        graph: Mapping[str, t.Infra.StrSet],
+    ) -> Sequence[t.StrSequence]:
+        """Detect all cycles in the import graph via DFS."""
+        cycles: MutableSequence[t.StrSequence] = []
+        visited: t.Infra.StrSet = set()
+        path: MutableSequence[str] = []
+        path_set: t.Infra.StrSet = set()
+
+        def dfs(node: str) -> None:
+            if node in path_set:
+                idx = path.index(node)
+                cycles.append([*path[idx:], node])
+                return
+            if node in visited:
+                return
+            visited.add(node)
+            path.append(node)
+            path_set.add(node)
+            for neighbor in graph.get(node, set()):
+                dfs(neighbor)
+            path.pop()
+            path_set.remove(node)
+
+        for start in graph:
+            dfs(start)
+        return cycles
+
+    @staticmethod
+    def collect_cycle_edges(
+        cycles: Sequence[t.StrSequence],
+    ) -> t.Infra.StrPairSet:
+        """Extract directed edges from detected cycles."""
+        cycle_edges: t.Infra.StrPairSet = set()
+        for cycle in cycles:
+            edges = [(cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1)]
+            cycle_edges.update(edges)
+        return cycle_edges
+
+    @staticmethod
+    def resolve_target_aliases(
+        lazy_map: t.StrMapping,
+        target_mod: str,
+    ) -> Sequence[str]:
+        """Return canonical aliases that resolve to *target_mod* in the lazy map."""
+        return [
+            alias
+            for alias, mod_stem in lazy_map.items()
+            if mod_stem == target_mod
+            and alias
+            in FlextInfraUtilitiesCodegenConstantTransformation.CANONICAL_ALIASES
+        ]
+
+    @staticmethod
+    def rewrite_module_imports(
+        tree: cst.Module,
+        package_name: str,
+        parent_pkg: str,
+        target_aliases: Sequence[str],
+    ) -> t.Infra.Pair[
+        MutableSequence[cst.BaseCompoundStatement | cst.SimpleStatementLine],
+        MutableSequence[str],
+    ]:
+        """Rewrite imports in a single module, redirecting cycle aliases to parent.
+
+        Returns the new body statements and a list of change descriptions.
+        """
+        new_body: MutableSequence[
+            cst.BaseCompoundStatement | cst.SimpleStatementLine
+        ] = []
+        changes: MutableSequence[str] = []
+        target_set = frozenset(target_aliases)
+
+        for stmt in tree.body:
+            if not (
+                isinstance(stmt, cst.SimpleStatementLine)
+                and len(stmt.body) == 1
+                and isinstance(stmt.body[0], cst.ImportFrom)
+                and not isinstance(stmt.body[0].names, cst.ImportStar)
             ):
-                alias, module_path, _export = match.groups()
-                mapping[alias] = module_path.rsplit(".", 1)[-1]
-            return mapping
+                new_body.append(stmt)
+                continue
+            imp = stmt.body[0]
+            mod = tree.code_for_node(imp.module) if imp.module else ""
+            if mod != package_name:
+                new_body.append(stmt)
+                continue
+            names = imp.names
+            if isinstance(names, cst.ImportStar):
+                new_body.append(stmt)
+                continue
+            imported = [
+                alias.name.value for alias in names if isinstance(alias.name, cst.Name)
+            ]
+            cycle_aliases = [a for a in imported if a in target_set]
+            keep_aliases = [a for a in imported if a not in target_set]
+            if not cycle_aliases:
+                new_body.append(stmt)
+                continue
+            if keep_aliases:
+                new_body.append(
+                    cst.parse_statement(
+                        f"from {package_name} import {', '.join(keep_aliases)}\n",
+                    ),
+                )
+            new_body.append(
+                cst.parse_statement(
+                    f"from {parent_pkg} import {', '.join(cycle_aliases)}\n",
+                ),
+            )
+            changes.append(
+                f"from {package_name} import {', '.join(cycle_aliases)}"
+                f" → from {parent_pkg} import {', '.join(cycle_aliases)}",
+            )
+        return new_body, changes
 
-        def build_self_import_graph(
-            package_name: str,
-            lazy_map: t.StrMapping,
-        ) -> Mapping[str, t.Infra.StrSet]:
-            graph: MutableMapping[str, t.Infra.StrSet] = {}
-            for py_file in pkg_dir.glob("*.py"):
-                if py_file.name == "__init__.py":
-                    continue
-                stem = py_file.stem
-                deps: t.Infra.StrSet = set()
-                tree = FlextInfraUtilitiesParsing.parse_module_cst(py_file)
-                if tree is None:
-                    continue
-                for stmt in tree.body:
-                    if not isinstance(stmt, cst.SimpleStatementLine):
-                        continue
-                    for small in stmt.body:
-                        if not isinstance(small, cst.ImportFrom):
-                            continue
-                        if isinstance(small.names, cst.ImportStar):
-                            continue
-                        mod = tree.code_for_node(small.module) if small.module else ""
-                        if mod != package_name:
-                            continue
-                        for alias in small.names:
-                            name = (
-                                alias.name.value
-                                if isinstance(alias.name, cst.Name)
-                                else ""
-                            )
-                            target = lazy_map.get(name)
-                            if target and target != stem:
-                                deps.add(target)
-                if deps:
-                    graph[stem] = deps
-            return graph
-
-        def find_cycles(graph: Mapping[str, t.Infra.StrSet]) -> Sequence[t.StrSequence]:
-            cycles: MutableSequence[t.StrSequence] = []
-            visited: t.Infra.StrSet = set()
-            path: MutableSequence[str] = []
-            path_set: t.Infra.StrSet = set()
-
-            def dfs(node: str) -> None:
-                if node in path_set:
-                    idx = path.index(node)
-                    cycles.append([*path[idx:], node])
-                    return
-                if node in visited:
-                    return
-                visited.add(node)
-                path.append(node)
-                path_set.add(node)
-                for neighbor in graph.get(node, set()):
-                    dfs(neighbor)
-                path.pop()
-                path_set.remove(node)
-
-            for start in graph:
-                dfs(start)
-            return cycles
-
-        lazy_map = parse_lazy_imports(pkg_dir / "__init__.py")
+    @staticmethod
+    def break_import_cycles(pkg_dir: Path) -> t.Infra.Pair[bool, t.StrSequence]:
+        """Detect and break intra-package import cycles by redirecting to parent."""
+        cls = FlextInfraUtilitiesCodegenConstantTransformation
+        lazy_map = cls.parse_lazy_imports(pkg_dir / "__init__.py")
         if not lazy_map:
-            return False, []
-        graph = build_self_import_graph(pkg_dir.name, lazy_map)
-        cycles = find_cycles(graph)
-        if not cycles:
             return False, []
 
         package_name = pkg_dir.name
+        graph = cls.build_self_import_graph(pkg_dir, package_name, lazy_map)
+        cycles = cls.find_import_cycles(graph)
+        if not cycles:
+            return False, []
+
         parent_pkg = FlextInfraUtilitiesCodegenConstantDetection.resolve_parent_package(
             pkg_dir,
         )
         if parent_pkg.startswith(f"{package_name}.") or parent_pkg == package_name:
             return False, []
-        cycle_edges: t.Infra.StrPairSet = set()
-        for cycle in cycles:
-            edges = [(cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1)]
-            cycle_edges.update(edges)
 
+        cycle_edges = cls.collect_cycle_edges(cycles)
         all_changes: MutableSequence[str] = []
         any_modified = False
 
@@ -436,81 +558,20 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
             tree = FlextInfraUtilitiesParsing.parse_module_cst(source_file)
             if tree is None:
                 continue
-            new_body: MutableSequence[
-                cst.BaseCompoundStatement | cst.SimpleStatementLine
-            ] = []
-            changed = False
-
-            canonical_aliases = frozenset([
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "u",
-                "x",
-            ])
-            target_aliases = [
-                alias
-                for alias, mod_stem in lazy_map.items()
-                if mod_stem == target_mod and alias in canonical_aliases
-            ]
+            target_aliases = cls.resolve_target_aliases(lazy_map, target_mod)
             if not target_aliases:
                 continue
-
-            for stmt in tree.body:
-                if not (
-                    isinstance(stmt, cst.SimpleStatementLine)
-                    and len(stmt.body) == 1
-                    and isinstance(stmt.body[0], cst.ImportFrom)
-                    and not isinstance(stmt.body[0].names, cst.ImportStar)
-                ):
-                    new_body.append(stmt)
-                    continue
-                imp = stmt.body[0]
-                mod = tree.code_for_node(imp.module) if imp.module else ""
-                if mod != package_name:
-                    new_body.append(stmt)
-                    continue
-                names = imp.names
-                if isinstance(names, cst.ImportStar):
-                    new_body.append(stmt)
-                    continue
-                imported = [
-                    alias.name.value
-                    for alias in names
-                    if isinstance(alias.name, cst.Name)
-                ]
-                cycle_aliases = [a for a in imported if a in target_aliases]
-                keep_aliases = [a for a in imported if a not in target_aliases]
-                if not cycle_aliases:
-                    new_body.append(stmt)
-                    continue
-                if keep_aliases:
-                    new_body.append(
-                        cst.parse_statement(
-                            f"from {package_name} import {', '.join(keep_aliases)}\n",
-                        ),
-                    )
-                new_body.append(
-                    cst.parse_statement(
-                        f"from {parent_pkg} import {', '.join(cycle_aliases)}\n",
-                    ),
-                )
-                changed = True
-                all_changes.append(
-                    f"{source_mod}.py: from {package_name} import {', '.join(cycle_aliases)}"
-                    f" → from {parent_pkg} import {', '.join(cycle_aliases)}",
-                )
-
-            if changed:
+            new_body, changes = cls.rewrite_module_imports(
+                tree,
+                package_name,
+                parent_pkg,
+                target_aliases,
+            )
+            if changes:
                 new_tree = tree.with_changes(body=new_body)
                 source_file.write_text(new_tree.code, encoding=c.Infra.Encoding.DEFAULT)
                 any_modified = True
+                all_changes.extend(f"{source_mod}.py: {change}" for change in changes)
 
         return any_modified, all_changes
 

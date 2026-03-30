@@ -113,42 +113,65 @@ class FlextInfraUtilitiesRefactorNamespace:
         """
         dep_names: t.Infra.StrSet = set()
         raw: t.Infra.TomlData = doc.unwrap()
-        # PEP 621: project.dependencies with " @ file:" path refs
-        project_val: t.Infra.InfraValue = raw.get("project")
-        if isinstance(project_val, dict):
-            deps_val: t.Infra.InfraValue = project_val.get("dependencies")
-            if isinstance(deps_val, Sequence) and not isinstance(deps_val, str):
-                for item_val in deps_val:
-                    if not isinstance(item_val, str):
-                        continue
-                    if " @ " not in item_val:
-                        continue
-                    _name, path_part = item_val.split(" @ ", 1)
-                    path_part = path_part.strip().removeprefix("file:").strip()
-                    path_part = path_part.removeprefix("./").strip()
-                    if path_part:
-                        dep_names.add(Path(path_part).name)
-        # Poetry: tool.poetry.dependencies with path = "..."
-        tool_val: t.Infra.InfraValue = raw.get("tool")
-        if isinstance(tool_val, dict):
-            poetry_val: t.Infra.InfraValue = tool_val.get("poetry")
-            if isinstance(poetry_val, dict):
-                deps_tbl_val: t.Infra.InfraValue = poetry_val.get("dependencies")
-                if isinstance(deps_tbl_val, dict):
-                    for dep_entry in deps_tbl_val.values():
-                        if not isinstance(dep_entry, dict):
-                            continue
-                        dep_path_val: t.Infra.InfraValue = dep_entry.get("path")
-                        dep_path_str = (
-                            str(dep_path_val) if dep_path_val is not None else ""
-                        )
-                        if dep_path_str:
-                            dep_path_clean = (
-                                dep_path_str.strip().removeprefix("./").strip()
-                            )
-                            if dep_path_clean:
-                                dep_names.add(Path(dep_path_clean).name)
+        FlextInfraUtilitiesRefactorNamespace._collect_pep621_deps(
+            raw=raw,
+            dep_names=dep_names,
+        )
+        FlextInfraUtilitiesRefactorNamespace._collect_poetry_deps(
+            raw=raw,
+            dep_names=dep_names,
+        )
         return sorted(dep_names)
+
+    @staticmethod
+    def _collect_pep621_deps(
+        *,
+        raw: t.Infra.TomlData,
+        dep_names: t.Infra.StrSet,
+    ) -> None:
+        """Collect PEP 621 ``project.dependencies`` with ``@ file:`` path refs."""
+        project_val: t.Infra.InfraValue = raw.get("project")
+        if not isinstance(project_val, dict):
+            return
+        deps_val: t.Infra.InfraValue = project_val.get("dependencies")
+        if not isinstance(deps_val, Sequence) or isinstance(deps_val, str):
+            return
+        for item_val in deps_val:
+            if not isinstance(item_val, str):
+                continue
+            if " @ " not in item_val:
+                continue
+            _name, path_part = item_val.split(" @ ", 1)
+            path_part = path_part.strip().removeprefix("file:").strip()
+            path_part = path_part.removeprefix("./").strip()
+            if path_part:
+                dep_names.add(Path(path_part).name)
+
+    @staticmethod
+    def _collect_poetry_deps(
+        *,
+        raw: t.Infra.TomlData,
+        dep_names: t.Infra.StrSet,
+    ) -> None:
+        """Collect Poetry ``tool.poetry.dependencies`` with ``path = "..."``."""
+        tool_val: t.Infra.InfraValue = raw.get("tool")
+        if not isinstance(tool_val, dict):
+            return
+        poetry_val: t.Infra.InfraValue = tool_val.get("poetry")
+        if not isinstance(poetry_val, dict):
+            return
+        deps_tbl_val: t.Infra.InfraValue = poetry_val.get("dependencies")
+        if not isinstance(deps_tbl_val, dict):
+            return
+        for dep_entry in deps_tbl_val.values():
+            if not isinstance(dep_entry, dict):
+                continue
+            dep_path_val: t.Infra.InfraValue = dep_entry.get("path")
+            dep_path_str = str(dep_path_val) if dep_path_val is not None else ""
+            if dep_path_str:
+                dep_path_clean = dep_path_str.strip().removeprefix("./").strip()
+                if dep_path_clean:
+                    dep_names.add(Path(dep_path_clean).name)
 
     @staticmethod
     def _preferred_file_name(*, family: str) -> str:
@@ -315,40 +338,67 @@ class FlextInfraUtilitiesRefactorNamespace:
         if not source_target_names:
             return
         for py_file in py_files:
-            parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
-                py_file,
+            FlextInfraUtilitiesRefactorNamespace._rewrite_protocol_imports_in_file(
+                py_file=py_file,
+                source_target_names=source_target_names,
             )
-            if parsed is None:
+
+    @staticmethod
+    def _rewrite_protocol_imports_in_file(
+        *,
+        py_file: Path,
+        source_target_names: Sequence[t.Infra.Triple[str, str, t.Infra.StrSet]],
+    ) -> None:
+        """Rewrite moved protocol imports in a single file."""
+        parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
+            py_file,
+        )
+        if parsed is None:
+            return
+        new_lines = parsed.source.splitlines(keepends=True)
+        changed = False
+        for stmt in parsed.tree.body:
+            if not isinstance(stmt, ast.ImportFrom):
                 continue
-            source = parsed.source
-            tree = parsed.tree
-            new_lines = source.splitlines(keepends=True)
-            changed = False
-            for stmt in tree.body:
-                if not isinstance(stmt, ast.ImportFrom):
-                    continue
-                if stmt.module is None:
-                    continue
-                for source_module, target_module, moved_names in source_target_names:
-                    if stmt.module != source_module:
-                        continue
-                    imported = [alias.name for alias in stmt.names if alias.name != "*"]
-                    if not any(name in moved_names for name in imported):
-                        continue
-                    if stmt.lineno <= 0 or stmt.lineno > len(new_lines):
-                        continue
-                    line_index = stmt.lineno - 1
-                    line_text = new_lines[line_index]
-                    new_lines[line_index] = line_text.replace(
-                        source_module,
-                        target_module,
-                    )
-                    changed = True
-            if changed:
-                _ = py_file.write_text(
-                    "".join(new_lines),
-                    encoding=c.Infra.Encoding.DEFAULT,
-                )
+            if stmt.module is None:
+                continue
+            rewritten = FlextInfraUtilitiesRefactorNamespace._try_rewrite_import_stmt(
+                stmt=stmt,
+                new_lines=new_lines,
+                source_target_names=source_target_names,
+            )
+            if rewritten:
+                changed = True
+        if changed:
+            _ = py_file.write_text(
+                "".join(new_lines),
+                encoding=c.Infra.Encoding.DEFAULT,
+            )
+
+    @staticmethod
+    def _try_rewrite_import_stmt(
+        *,
+        stmt: ast.ImportFrom,
+        new_lines: MutableSequence[str],
+        source_target_names: Sequence[t.Infra.Triple[str, str, t.Infra.StrSet]],
+    ) -> bool:
+        """Try to rewrite a single import statement. Returns True if rewritten."""
+        for source_module, target_module, moved_names in source_target_names:
+            if stmt.module != source_module:
+                continue
+            imported = [alias.name for alias in stmt.names if alias.name != "*"]
+            if not any(name in moved_names for name in imported):
+                continue
+            if stmt.lineno <= 0 or stmt.lineno > len(new_lines):
+                continue
+            line_index = stmt.lineno - 1
+            line_text = new_lines[line_index]
+            new_lines[line_index] = line_text.replace(
+                source_module,
+                target_module,
+            )
+            return True
+        return False
 
     @staticmethod
     def _remove_line_ranges_and_write(
@@ -395,15 +445,15 @@ class FlextInfraUtilitiesRefactorNamespace:
                 stmt,
             ):
                 continue
-            block = ast.get_source_segment(source, stmt)
-            if block is None:
-                lines = source.splitlines()
-                block = "\n".join(lines[stmt.lineno - 1 : stmt.end_lineno])
             if stmt.end_lineno is None:
                 continue
+            block = FlextInfraUtilitiesRefactorNamespace._extract_source_block(
+                source=source,
+                node=stmt,
+            )
             class_nodes.append(stmt)
             remove_ranges.append((stmt.lineno, stmt.end_lineno))
-            blocks.append(block.strip("\n"))
+            blocks.append(block)
         if not class_nodes:
             return None
         target_file = FlextInfraUtilitiesRefactorNamespace._canonical_target_file(
@@ -443,33 +493,13 @@ class FlextInfraUtilitiesRefactorNamespace:
         remove_ranges: MutableSequence[t.Infra.IntPair] = []
         blocks: MutableSequence[str] = []
         for stmt in tree.body:
-            if isinstance(stmt, ast.TypeAlias):
-                alias_name = stmt.name.id
-                if alias_name not in alias_names:
-                    continue
-                if stmt.end_lineno is None:
-                    continue
-                block = ast.get_source_segment(source, stmt)
-                if block is None:
-                    lines = source.splitlines()
-                    block = "\n".join(lines[stmt.lineno - 1 : stmt.end_lineno])
-                remove_ranges.append((stmt.lineno, stmt.end_lineno))
-                blocks.append(block.strip("\n"))
-                continue
-            if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
-                if stmt.target.id not in alias_names:
-                    continue
-                if stmt.end_lineno is None:
-                    continue
-                annotation_src = ast.get_source_segment(source, stmt.annotation) or ""
-                if "TypeAlias" not in annotation_src:
-                    continue
-                block = ast.get_source_segment(source, stmt)
-                if block is None:
-                    lines = source.splitlines()
-                    block = "\n".join(lines[stmt.lineno - 1 : stmt.end_lineno])
-                remove_ranges.append((stmt.lineno, stmt.end_lineno))
-                blocks.append(block.strip("\n"))
+            FlextInfraUtilitiesRefactorNamespace._collect_typing_alias_stmt(
+                stmt=stmt,
+                source=source,
+                alias_names=alias_names,
+                remove_ranges=remove_ranges,
+                blocks=blocks,
+            )
         if not blocks:
             return
         target_file = FlextInfraUtilitiesRefactorNamespace._canonical_target_file(
@@ -486,6 +516,53 @@ class FlextInfraUtilitiesRefactorNamespace:
             source_file=source_file,
             remove_ranges=remove_ranges,
         )
+
+    @staticmethod
+    def _extract_source_block(*, source: str, node: ast.stmt) -> str:
+        """Extract source text for an AST node, with fallback to line slicing."""
+        block = ast.get_source_segment(source, node)
+        if block is None:
+            lines = source.splitlines()
+            block = "\n".join(lines[node.lineno - 1 : node.end_lineno])
+        return block.strip("\n")
+
+    @staticmethod
+    def _collect_typing_alias_stmt(
+        *,
+        stmt: ast.stmt,
+        source: str,
+        alias_names: t.Infra.StrSet,
+        remove_ranges: MutableSequence[t.Infra.IntPair],
+        blocks: MutableSequence[str],
+    ) -> None:
+        """Collect a single typing alias (PEP 695 or TypeAlias) if it matches."""
+        if isinstance(stmt, ast.TypeAlias):
+            alias_name = stmt.name.id
+            if alias_name not in alias_names:
+                return
+            if stmt.end_lineno is None:
+                return
+            block = FlextInfraUtilitiesRefactorNamespace._extract_source_block(
+                source=source,
+                node=stmt,
+            )
+            remove_ranges.append((stmt.lineno, stmt.end_lineno))
+            blocks.append(block)
+            return
+        if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+            if stmt.target.id not in alias_names:
+                return
+            if stmt.end_lineno is None:
+                return
+            annotation_src = ast.get_source_segment(source, stmt.annotation) or ""
+            if "TypeAlias" not in annotation_src:
+                return
+            block = FlextInfraUtilitiesRefactorNamespace._extract_source_block(
+                source=source,
+                node=stmt,
+            )
+            remove_ranges.append((stmt.lineno, stmt.end_lineno))
+            blocks.append(block)
 
     @staticmethod
     def _append_protocol_blocks(
@@ -570,37 +647,48 @@ class FlextInfraUtilitiesRefactorNamespace:
             )
             target_path = primary_package / file_name
             if target_path.exists():
-                content = target_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-                mutated = False
-                class_signature = f"class {class_name}("
-                if (
-                    class_signature not in content
-                    and f"class {class_name}:" not in content
-                ):
-                    base_class = (
-                        FlextInfraUtilitiesRefactorNamespace._base_class_for_family(
-                            family=status.family,
-                            base_chains=base_chains,
-                        )
-                    )
-                    snippet = f"\n\nclass {class_name}({base_class}):\n    pass\n"
-                    content = content.rstrip() + snippet
-                    mutated = True
-                alias_line = f"{status.family} = {class_name}"
-                if alias_line not in content:
-                    content = content.rstrip() + f"\n\n{alias_line}\n"
-                    mutated = True
-                if mutated:
-                    _ = target_path.write_text(
-                        content,
-                        encoding=c.Infra.Encoding.DEFAULT,
-                    )
+                FlextInfraUtilitiesRefactorNamespace._patch_existing_facade_file(
+                    target_path=target_path,
+                    family=status.family,
+                    class_name=class_name,
+                    base_chains=base_chains,
+                )
                 continue
             FlextInfraUtilitiesRefactorNamespace._write_missing_facade_file(
                 file_path=target_path,
                 family=status.family,
                 class_name=class_name,
                 base_chains=base_chains,
+            )
+
+    @staticmethod
+    def _patch_existing_facade_file(
+        *,
+        target_path: Path,
+        family: str,
+        class_name: str,
+        base_chains: Mapping[str, Sequence[str]] | None = None,
+    ) -> None:
+        """Append missing class def and alias to an existing facade file."""
+        content = target_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        mutated = False
+        class_signature = f"class {class_name}("
+        if class_signature not in content and f"class {class_name}:" not in content:
+            base_class = FlextInfraUtilitiesRefactorNamespace._base_class_for_family(
+                family=family,
+                base_chains=base_chains,
+            )
+            snippet = f"\n\nclass {class_name}({base_class}):\n    pass\n"
+            content = content.rstrip() + snippet
+            mutated = True
+        alias_line = f"{family} = {class_name}"
+        if alias_line not in content:
+            content = content.rstrip() + f"\n\n{alias_line}\n"
+            mutated = True
+        if mutated:
+            _ = target_path.write_text(
+                content,
+                encoding=c.Infra.Encoding.DEFAULT,
             )
 
     @staticmethod
@@ -655,21 +743,25 @@ class FlextInfraUtilitiesRefactorNamespace:
         tree: cst.Module,
     ) -> bool:
         """Check if a CST module is a facade declaration file."""
-        max_alias_len = _MAX_ALIAS_NAME_LEN
-        for stmt in tree.body:
-            if not isinstance(stmt, cst.SimpleStatementLine):
-                continue
-            for item in stmt.body:
-                if not isinstance(item, cst.Assign):
-                    continue
-                for target in item.targets:
-                    if (
-                        isinstance(target.target, cst.Name)
-                        and len(target.target.value) <= max_alias_len
-                        and isinstance(item.value, cst.Name)
-                    ):
-                        return True
-        return False
+        return any(
+            FlextInfraUtilitiesRefactorNamespace._is_short_alias_assignment(item)
+            for stmt in tree.body
+            if isinstance(stmt, cst.SimpleStatementLine)
+            for item in stmt.body
+        )
+
+    @staticmethod
+    def _is_short_alias_assignment(item: cst.BaseSmallStatement) -> bool:
+        """Check if a CST statement is a short alias assignment (e.g. ``m = Xyz``)."""
+        if not isinstance(item, cst.Assign):
+            return False
+        if not isinstance(item.value, cst.Name):
+            return False
+        return any(
+            isinstance(target.target, cst.Name)
+            and len(target.target.value) <= _MAX_ALIAS_NAME_LEN
+            for target in item.targets
+        )
 
     @staticmethod
     def rewrite_mro_completeness_violations(
@@ -695,54 +787,101 @@ class FlextInfraUtilitiesRefactorNamespace:
             missing_by_facade: Mapping[str, t.Infra.StrSet] = defaultdict(set)
             for violation in file_violations:
                 missing_by_facade[violation.facade_class].add(violation.missing_base)
-            # CST parse for class header rewriting
-            cst_tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
-            if cst_tree is None:
-                continue
-            rewriter = _MROBaseRewriter(
+            FlextInfraUtilitiesRefactorNamespace._rewrite_mro_in_file(
+                file_path=file_path,
                 missing_by_facade=missing_by_facade,
                 core_bases=core_bases,
-            )
-            modified_tree = cst_tree.visit(rewriter)
-            if not rewriter.changed:
-                continue
-            # Inject import statements for new bases via line manipulation
-            modified_source = modified_tree.code
-            lines = modified_source.splitlines(keepends=True)
-            # Use ast to find existing imports and last import line
-            parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
-                file_path,
-                stage="mro-completeness-imports",
                 parse_failures=parse_failures,
             )
-            existing_imports: t.Infra.StrSet = set()
-            insert_line = 0
-            if parsed is not None:
-                for stmt in parsed.tree.body:
-                    if isinstance(stmt, ast.ImportFrom) and stmt.names:
-                        existing_imports.update(alias.name for alias in stmt.names)
-                    if isinstance(stmt, (ast.Import, ast.ImportFrom)):
-                        insert_line = stmt.end_lineno or stmt.lineno
-            new_imports: MutableSequence[str] = []
-            for base_name in sorted(rewriter.new_bases):
-                if base_name in existing_imports:
-                    continue
-                module = FlextInfraUtilitiesFormatting.class_name_to_module(
-                    base_name,
-                )
-                new_imports.append(f"from {module} import {base_name}\n")
-            if new_imports:
-                for import_line in reversed(new_imports):
-                    lines.insert(insert_line, import_line)
-            _ = file_path.write_text(
-                "".join(lines),
-                encoding=c.Infra.Encoding.DEFAULT,
+
+    @staticmethod
+    def _rewrite_mro_in_file(
+        *,
+        file_path: Path,
+        missing_by_facade: Mapping[str, t.Infra.StrSet],
+        core_bases: frozenset[str],
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
+    ) -> None:
+        """Rewrite MRO bases and inject imports for a single facade file."""
+        cst_tree = FlextInfraUtilitiesParsing.parse_module_cst(file_path)
+        if cst_tree is None:
+            return
+        rewriter = _MROBaseRewriter(
+            missing_by_facade=missing_by_facade,
+            core_bases=core_bases,
+        )
+        modified_tree = cst_tree.visit(rewriter)
+        if not rewriter.changed:
+            return
+        lines = modified_tree.code.splitlines(keepends=True)
+        new_imports = FlextInfraUtilitiesRefactorNamespace._build_missing_imports(
+            file_path=file_path,
+            new_bases=rewriter.new_bases,
+            parse_failures=parse_failures,
+        )
+        if new_imports:
+            insert_line = FlextInfraUtilitiesRefactorNamespace._find_last_import_line(
+                file_path=file_path,
+                parse_failures=parse_failures,
             )
-            FlextInfraUtilitiesFormatting.run_ruff_fix(
-                file_path,
-                include_format=True,
-                quiet=True,
+            for import_line in reversed(new_imports):
+                lines.insert(insert_line, import_line)
+        _ = file_path.write_text(
+            "".join(lines),
+            encoding=c.Infra.Encoding.DEFAULT,
+        )
+        FlextInfraUtilitiesFormatting.run_ruff_fix(
+            file_path,
+            include_format=True,
+            quiet=True,
+        )
+
+    @staticmethod
+    def _build_missing_imports(
+        *,
+        file_path: Path,
+        new_bases: t.Infra.StrSet,
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
+    ) -> Sequence[str]:
+        """Build import lines for bases not already imported in the file."""
+        parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
+            file_path,
+            stage="mro-completeness-imports",
+            parse_failures=parse_failures,
+        )
+        existing_imports: t.Infra.StrSet = set()
+        if parsed is not None:
+            for stmt in parsed.tree.body:
+                if isinstance(stmt, ast.ImportFrom) and stmt.names:
+                    existing_imports.update(alias.name for alias in stmt.names)
+        imports: MutableSequence[str] = []
+        for base_name in sorted(new_bases):
+            if base_name in existing_imports:
+                continue
+            module = FlextInfraUtilitiesFormatting.class_name_to_module(
+                base_name,
             )
+            imports.append(f"from {module} import {base_name}\n")
+        return imports
+
+    @staticmethod
+    def _find_last_import_line(
+        *,
+        file_path: Path,
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
+    ) -> int:
+        """Find the line number after the last import statement."""
+        parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
+            file_path,
+            stage="mro-completeness-imports",
+            parse_failures=parse_failures,
+        )
+        insert_line = 0
+        if parsed is not None:
+            for stmt in parsed.tree.body:
+                if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                    insert_line = stmt.end_lineno or stmt.lineno
+        return insert_line
 
     @staticmethod
     def rewrite_runtime_alias_violations(*, py_files: Sequence[Path]) -> None:
@@ -797,28 +936,9 @@ class FlextInfraUtilitiesRefactorNamespace:
             lines = source.splitlines()
             if not lines:
                 continue
-            insert_idx = 0
-            if lines[0].startswith("#!"):
-                insert_idx = 1
-            if insert_idx < len(lines) and re.match(
-                r"^#.*coding[:=]",
-                lines[insert_idx],
-            ):
-                insert_idx += 1
-            if insert_idx < len(lines) and (
-                lines[insert_idx].startswith('"""')
-                or lines[insert_idx].startswith("'''")
-            ):
-                docstring_single_line_quote_count = 2
-                quote = lines[insert_idx][:3]
-                line_text = lines[insert_idx]
-                if line_text.count(quote) >= docstring_single_line_quote_count:
-                    insert_idx += 1
-                else:
-                    for idx in range(insert_idx + 1, len(lines)):
-                        if quote in lines[idx]:
-                            insert_idx = idx + 1
-                            break
+            insert_idx = FlextInfraUtilitiesRefactorNamespace._find_future_insert_index(
+                lines=lines,
+            )
             new_lines = (
                 lines[:insert_idx]
                 + ["", c.Infra.SourceCode.FUTURE_ANNOTATIONS, ""]
@@ -828,6 +948,31 @@ class FlextInfraUtilitiesRefactorNamespace:
                 "\n".join(new_lines).rstrip() + "\n",
                 encoding=c.Infra.Encoding.DEFAULT,
             )
+
+    @staticmethod
+    def _find_future_insert_index(*, lines: Sequence[str]) -> int:
+        """Find the line index after shebang, encoding, and module docstring."""
+        insert_idx = 0
+        if lines[0].startswith("#!"):
+            insert_idx = 1
+        if insert_idx < len(lines) and re.match(
+            r"^#.*coding[:=]",
+            lines[insert_idx],
+        ):
+            insert_idx += 1
+        if insert_idx >= len(lines):
+            return insert_idx
+        line_text = lines[insert_idx]
+        if not line_text.startswith(('"""', "'''")):
+            return insert_idx
+        docstring_single_line_quote_count = 2
+        quote = line_text[:3]
+        if line_text.count(quote) >= docstring_single_line_quote_count:
+            return insert_idx + 1
+        for idx in range(insert_idx + 1, len(lines)):
+            if quote in lines[idx]:
+                return idx + 1
+        return insert_idx
 
     @staticmethod
     def rewrite_manual_protocol_violations(
@@ -889,74 +1034,110 @@ class FlextInfraUtilitiesRefactorNamespace:
         for violation in violations:
             grouped[Path(violation.file)][violation.alias_name] = violation.target_name
         for file_path, alias_map in grouped.items():
-            parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
-                file_path,
-                stage="compatibility-alias-rewrite",
+            FlextInfraUtilitiesRefactorNamespace._rewrite_compat_aliases_in_file(
+                file_path=file_path,
+                alias_map=alias_map,
                 parse_failures=parse_failures,
             )
-            if parsed is None:
-                continue
-            source = parsed.source
-            assignment_lines: t.Infra.IntSet = set()
-            for stmt in parsed.tree.body:
-                if not isinstance(stmt, ast.Assign):
-                    continue
-                if len(stmt.targets) != 1:
-                    continue
-                target = stmt.targets[0]
-                if not isinstance(target, ast.Name):
-                    continue
-                if not isinstance(stmt.value, ast.Name):
-                    continue
-                if target.id in alias_map and stmt.value.id == alias_map[target.id]:
-                    assignment_lines.add(stmt.lineno)
-            if not assignment_lines:
-                continue
-            kept_lines = [
-                line
-                for idx, line in enumerate(source.splitlines(keepends=True), start=1)
-                if idx not in assignment_lines
-            ]
-            kept_source = "".join(kept_lines)
-            line_buffer = kept_source.splitlines(keepends=True)
-            replacements_by_line: Mapping[
-                int,
-                MutableSequence[t.Infra.Triple[int, int, str]],
-            ] = defaultdict(
-                list,
+
+    @staticmethod
+    def _rewrite_compat_aliases_in_file(
+        *,
+        file_path: Path,
+        alias_map: Mapping[str, str],
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation],
+    ) -> None:
+        """Remove alias assignments and replace alias usages in a single file."""
+        parsed = FlextInfraUtilitiesRefactorLoader.load_python_module(
+            file_path,
+            stage="compatibility-alias-rewrite",
+            parse_failures=parse_failures,
+        )
+        if parsed is None:
+            return
+        source = parsed.source
+        assignment_lines = (
+            FlextInfraUtilitiesRefactorNamespace._find_alias_assignment_lines(
+                tree=parsed.tree,
+                alias_map=alias_map,
             )
-            token_generator = tokenize.generate_tokens(StringIO(kept_source).readline)
-            for tok in token_generator:
-                if tok.type != token.NAME:
-                    continue
-                replacement = alias_map.get(tok.string)
-                if replacement is None:
-                    continue
-                start_line, start_col = tok.start
-                end_line, end_col = tok.end
-                if start_line != end_line:
-                    continue
-                replacements_by_line[start_line - 1].append((
-                    start_col,
-                    end_col,
-                    replacement,
-                ))
-            for line_idx, replacements in replacements_by_line.items():
-                if line_idx < 0 or line_idx >= len(line_buffer):
-                    continue
-                line_text = line_buffer[line_idx]
-                for start_col, end_col, replacement in sorted(
-                    replacements,
-                    key=operator.itemgetter(0),
-                    reverse=True,
-                ):
-                    line_text = (
-                        line_text[:start_col] + replacement + line_text[end_col:]
-                    )
-                line_buffer[line_idx] = line_text
-            rewritten = "".join(line_buffer)
-            if rewritten != source:
-                _ = file_path.write_text(rewritten, encoding=c.Infra.Encoding.DEFAULT)
+        )
+        if not assignment_lines:
+            return
+        kept_source = "".join(
+            line
+            for idx, line in enumerate(source.splitlines(keepends=True), start=1)
+            if idx not in assignment_lines
+        )
+        rewritten = FlextInfraUtilitiesRefactorNamespace._apply_token_replacements(
+            source=kept_source,
+            alias_map=alias_map,
+        )
+        if rewritten != source:
+            _ = file_path.write_text(rewritten, encoding=c.Infra.Encoding.DEFAULT)
+
+    @staticmethod
+    def _find_alias_assignment_lines(
+        *,
+        tree: ast.Module,
+        alias_map: Mapping[str, str],
+    ) -> t.Infra.IntSet:
+        """Find line numbers of ``AliasName = TargetName`` assignments to remove."""
+        assignment_lines: t.Infra.IntSet = set()
+        for stmt in tree.body:
+            if not isinstance(stmt, ast.Assign):
+                continue
+            if len(stmt.targets) != 1:
+                continue
+            target = stmt.targets[0]
+            if not isinstance(target, ast.Name):
+                continue
+            if not isinstance(stmt.value, ast.Name):
+                continue
+            if target.id in alias_map and stmt.value.id == alias_map[target.id]:
+                assignment_lines.add(stmt.lineno)
+        return assignment_lines
+
+    @staticmethod
+    def _apply_token_replacements(
+        *,
+        source: str,
+        alias_map: Mapping[str, str],
+    ) -> str:
+        """Replace alias name tokens in source with their target names."""
+        line_buffer = source.splitlines(keepends=True)
+        replacements_by_line: Mapping[
+            int,
+            MutableSequence[t.Infra.Triple[int, int, str]],
+        ] = defaultdict(list)
+        token_generator = tokenize.generate_tokens(StringIO(source).readline)
+        for tok in token_generator:
+            if tok.type != token.NAME:
+                continue
+            replacement = alias_map.get(tok.string)
+            if replacement is None:
+                continue
+            start_line, start_col = tok.start
+            end_line, end_col = tok.end
+            if start_line != end_line:
+                continue
+            replacements_by_line[start_line - 1].append((
+                start_col,
+                end_col,
+                replacement,
+            ))
+        for line_idx, replacements in replacements_by_line.items():
+            if line_idx < 0 or line_idx >= len(line_buffer):
+                continue
+            line_text = line_buffer[line_idx]
+            for start_col, end_col, replacement in sorted(
+                replacements,
+                key=operator.itemgetter(0),
+                reverse=True,
+            ):
+                line_text = line_text[:start_col] + replacement + line_text[end_col:]
+            line_buffer[line_idx] = line_text
+        return "".join(line_buffer)
 
 
 class _MROBaseRewriter(cst.CSTTransformer):
@@ -1025,24 +1206,48 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
         original_node: cst.ImportFrom,
         updated_node: cst.ImportFrom,
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        module_name = FlextInfraUtilitiesParsing.cst_module_to_str(
-            updated_node.module,
-        )
-        if not module_name or not module_name.startswith(self._project_package):
-            return updated_node
-        if module_name == self._project_package:
-            return updated_node
-        suffix = module_name[len(self._project_package) :]
-        if not suffix.startswith("."):
-            return updated_node
-        is_private = "._" in suffix
-        if self._is_facade and not is_private:
+        is_private = self._should_clean_import(updated_node)
+        if is_private is None:
             return updated_node
         if isinstance(updated_node.names, cst.ImportStar):
             self.changed = True
             return cst.RemovalSentinel.REMOVE
+        return self._filter_import_aliases(
+            updated_node=updated_node,
+            is_private=is_private,
+        )
+
+    def _should_clean_import(
+        self,
+        node: cst.ImportFrom,
+    ) -> bool | None:
+        """Determine if an import should be cleaned. Returns None to skip."""
+        module_name = FlextInfraUtilitiesParsing.cst_module_to_str(node.module)
+        if not module_name or not module_name.startswith(self._project_package):
+            return None
+        if module_name == self._project_package:
+            return None
+        suffix = module_name[len(self._project_package) :]
+        if not suffix.startswith("."):
+            return None
+        is_private = "._" in suffix
+        if self._is_facade and not is_private:
+            return None
+        return is_private
+
+    def _filter_import_aliases(
+        self,
+        *,
+        updated_node: cst.ImportFrom,
+        is_private: bool,
+    ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
+        """Filter import aliases, removing private/short ones."""
+        names = updated_node.names
+        if isinstance(names, cst.ImportStar):
+            self.changed = True
+            return cst.RemovalSentinel.REMOVE
         remaining: MutableSequence[cst.ImportAlias] = []
-        for alias in updated_node.names:
+        for alias in names:
             name = self._alias_name(alias)
             if alias.asname is not None:
                 self.changed = True
@@ -1054,7 +1259,7 @@ class _NamespaceImportCleaner(cst.CSTTransformer):
         if not remaining:
             self.changed = True
             return cst.RemovalSentinel.REMOVE
-        if len(remaining) < len(updated_node.names):
+        if len(remaining) < len(names):
             self.changed = True
             cleaned = self._normalize_commas(remaining)
             return updated_node.with_changes(names=cleaned)

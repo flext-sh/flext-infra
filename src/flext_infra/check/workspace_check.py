@@ -243,62 +243,17 @@ class FlextInfraWorkspaceChecker(s[bool]):
         """Run selected gates for one project."""
         return self.run_projects([project], list(gates)).map(lambda value: value)
 
-    def run_projects(
-        self,
-        projects: t.StrSequence,
-        gates: t.StrSequence,
+    @staticmethod
+    def _write_reports_and_summary(
+        results: Sequence[m.Infra.ProjectResult],
+        resolved_gates: t.StrSequence,
+        report_base: Path,
         *,
-        reports_dir: Path | None = None,
-        fail_fast: bool = False,
-        fix: bool = False,
-        check_only: bool = False,
-        ruff_args: t.StrSequence | None = None,
-        pyright_args: t.StrSequence | None = None,
+        failed: int,
+        skipped: int,
+        total_elapsed: float,
     ) -> r[Sequence[m.Infra.ProjectResult]]:
-        """Run selected gates for multiple projects."""
-        resolved_gates_result = self.resolve_gates(gates)
-        if resolved_gates_result.is_failure:
-            return r[Sequence[m.Infra.ProjectResult]].fail(
-                resolved_gates_result.error or "invalid gates",
-            )
-        resolved_gates: t.StrSequence = resolved_gates_result.value
-        report_base = reports_dir or self._default_reports_dir
-        report_base.mkdir(parents=True, exist_ok=True)
-        resolved_ruff_args = list(ruff_args or [])
-        resolved_pyright_args = list(pyright_args or [])
-        results: MutableSequence[m.Infra.ProjectResult] = []
-        total = len(projects)
-        failed = 0
-        skipped = 0
-        loop_start = time.monotonic()
-        for index, project_name in enumerate(projects, 1):
-            project_dir = self._workspace_root / project_name
-            pyproject_path = project_dir / c.Infra.Files.PYPROJECT_FILENAME
-            if not project_dir.is_dir() or not pyproject_path.exists():
-                output.progress(index, total, project_name, c.Infra.Severity.SKIP)
-                skipped += 1
-                continue
-            output.progress(index, total, project_name, c.Infra.Verbs.CHECK)
-            start = time.monotonic()
-            project_result = self._check_project(
-                project_dir,
-                resolved_gates,
-                report_base,
-                fix=fix,
-                check_only=check_only,
-                ruff_args=resolved_ruff_args,
-                pyright_args=resolved_pyright_args,
-            )
-            elapsed = time.monotonic() - start
-            results.append(project_result)
-            if project_result.passed:
-                output.status(c.Infra.Verbs.CHECK, project_name, True, elapsed)
-            else:
-                output.status(c.Infra.Verbs.CHECK, project_name, False, elapsed)
-                failed += 1
-                if fail_fast:
-                    break
-        total_elapsed = time.monotonic() - loop_start
+        """Write markdown/SARIF reports and print summary to output."""
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
         md_path = report_base / "check-report.md"
         _ = md_path.write_text(
@@ -342,6 +297,72 @@ class FlextInfraWorkspaceChecker(s[bool]):
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",
                 )
         return r[Sequence[m.Infra.ProjectResult]].ok(results)
+
+    def run_projects(
+        self,
+        projects: t.StrSequence,
+        gates: t.StrSequence,
+        *,
+        reports_dir: Path | None = None,
+        fail_fast: bool = False,
+        fix: bool = False,
+        check_only: bool = False,
+        ruff_args: t.StrSequence | None = None,
+        pyright_args: t.StrSequence | None = None,
+    ) -> r[Sequence[m.Infra.ProjectResult]]:
+        """Run selected gates for multiple projects."""
+        resolved_gates_result = self.resolve_gates(gates)
+        if resolved_gates_result.is_failure:
+            return r[Sequence[m.Infra.ProjectResult]].fail(
+                resolved_gates_result.error or "invalid gates",
+            )
+        resolved_gates: t.StrSequence = resolved_gates_result.value
+        report_base = reports_dir or self._default_reports_dir
+        report_base.mkdir(parents=True, exist_ok=True)
+        ctx = self._gate_ctx(
+            report_base,
+            apply_fixes=fix,
+            check_only=check_only,
+            ruff_args=ruff_args,
+            pyright_args=pyright_args,
+        )
+        results: MutableSequence[m.Infra.ProjectResult] = []
+        total = len(projects)
+        failed = 0
+        skipped = 0
+        loop_start = time.monotonic()
+        for index, project_name in enumerate(projects, 1):
+            project_dir = self._workspace_root / project_name
+            pyproject_path = project_dir / c.Infra.Files.PYPROJECT_FILENAME
+            if not project_dir.is_dir() or not pyproject_path.exists():
+                output.progress(index, total, project_name, c.Infra.Severity.SKIP)
+                skipped += 1
+                continue
+            output.progress(index, total, project_name, c.Infra.Verbs.CHECK)
+            start = time.monotonic()
+            project_result = self._check_project_with_ctx(
+                project_dir,
+                resolved_gates,
+                ctx,
+            )
+            elapsed = time.monotonic() - start
+            results.append(project_result)
+            if project_result.passed:
+                output.status(c.Infra.Verbs.CHECK, project_name, True, elapsed)
+            else:
+                output.status(c.Infra.Verbs.CHECK, project_name, False, elapsed)
+                failed += 1
+                if fail_fast:
+                    break
+        total_elapsed = time.monotonic() - loop_start
+        return self._write_reports_and_summary(
+            results,
+            resolved_gates,
+            report_base,
+            failed=failed,
+            skipped=skipped,
+            total_elapsed=total_elapsed,
+        )
 
     def _gate_ctx(
         self,
@@ -424,25 +445,14 @@ class FlextInfraWorkspaceChecker(s[bool]):
             )
         return gate.check(project_dir, ctx or self._gate_ctx(reports_dir))
 
-    def _check_project(
+    def _check_project_with_ctx(
         self,
         project_dir: Path,
         gates: t.StrSequence,
-        reports_dir: Path,
-        *,
-        fix: bool = False,
-        check_only: bool = False,
-        ruff_args: t.StrSequence | None = None,
-        pyright_args: t.StrSequence | None = None,
+        ctx: m.Infra.GateContext,
     ) -> m.Infra.ProjectResult:
+        """Run gates for one project using a pre-built GateContext."""
         result = m.Infra.ProjectResult(project=project_dir.name)
-        ctx = self._gate_ctx(
-            reports_dir,
-            apply_fixes=fix,
-            check_only=check_only,
-            ruff_args=ruff_args,
-            pyright_args=pyright_args,
-        )
         for gate in gates:
             gate_instance = self._registry.create(gate, self._workspace_root)
             if gate_instance is None:
@@ -467,6 +477,26 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 execution.result.duration,
             )
         return result
+
+    def _check_project(
+        self,
+        project_dir: Path,
+        gates: t.StrSequence,
+        reports_dir: Path,
+        *,
+        fix: bool = False,
+        check_only: bool = False,
+        ruff_args: t.StrSequence | None = None,
+        pyright_args: t.StrSequence | None = None,
+    ) -> m.Infra.ProjectResult:
+        ctx = self._gate_ctx(
+            reports_dir,
+            apply_fixes=fix,
+            check_only=check_only,
+            ruff_args=ruff_args,
+            pyright_args=pyright_args,
+        )
+        return self._check_project_with_ctx(project_dir, gates, ctx)
 
     def _resolve_workspace_root(self, workspace_root: Path | None) -> Path:
         if workspace_root is not None:

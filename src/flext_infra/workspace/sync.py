@@ -98,57 +98,10 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             with lock_path.open("w", encoding=c.Infra.Encoding.DEFAULT) as lock_handle:
                 fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
                 try:
-                    changed = 0
-                    effective_root = canonical_root or self._canonical_root
-                    basemk_result = self._sync_basemk(
+                    return self._sync_locked_content(
                         resolved,
                         config,
-                        canonical_root=effective_root,
-                    )
-                    if basemk_result.is_failure:
-                        return r[m.Infra.SyncResult].fail(
-                            basemk_result.error or "base.mk sync failed",
-                        )
-                    changed += 1 if basemk_result.value else 0
-                    gitignore_result = self._ensure_gitignore_entries(
-                        resolved,
-                        c.Infra.REQUIRED_GITIGNORE_ENTRIES,
-                    )
-                    if gitignore_result.is_failure:
-                        return r[m.Infra.SyncResult].fail(
-                            gitignore_result.error or ".gitignore sync failed",
-                        )
-                    changed += 1 if gitignore_result.value else 0
-                    is_workspace_root = self._is_workspace_root(
-                        resolved,
-                        effective_root,
-                    )
-                    if is_workspace_root:
-                        workspace_makefile_result = self._sync_workspace_makefile(
-                            resolved,
-                        )
-                        if workspace_makefile_result.is_failure:
-                            return r[m.Infra.SyncResult].fail(
-                                workspace_makefile_result.error
-                                or "workspace Makefile sync failed",
-                            )
-                        changed += 1 if workspace_makefile_result.value else 0
-                    elif (resolved / c.Infra.Files.PYPROJECT_FILENAME).exists():
-                        makefile_result = self._sync_project_makefile(
-                            resolved,
-                            effective_root or resolved,
-                        )
-                        if makefile_result.is_failure:
-                            return r[m.Infra.SyncResult].fail(
-                                makefile_result.error or "Makefile sync failed",
-                            )
-                        changed += 1 if makefile_result.value else 0
-                    return r[m.Infra.SyncResult].ok(
-                        m.Infra.SyncResult(
-                            files_changed=changed,
-                            source=resolved,
-                            target=resolved,
-                        ),
+                        canonical_root=canonical_root,
                     )
                 finally:
                     fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
@@ -156,6 +109,64 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
             return r[m.Infra.SyncResult].fail(
                 f"sync lock acquisition failed: {exc}",
             )
+
+    def _sync_locked_content(
+        self,
+        resolved: Path,
+        config: m.Infra.BaseMkConfig | None,
+        *,
+        canonical_root: Path | None = None,
+    ) -> r[m.Infra.SyncResult]:
+        """Execute all sync steps under the file lock."""
+        changed = 0
+        effective_root = canonical_root or self._canonical_root
+        basemk_result = self._sync_basemk(
+            resolved,
+            config,
+            canonical_root=effective_root,
+        )
+        if basemk_result.is_failure:
+            return r[m.Infra.SyncResult].fail(
+                basemk_result.error or "base.mk sync failed",
+            )
+        changed += 1 if basemk_result.value else 0
+        gitignore_result = self._ensure_gitignore_entries(
+            resolved,
+            c.Infra.REQUIRED_GITIGNORE_ENTRIES,
+        )
+        if gitignore_result.is_failure:
+            return r[m.Infra.SyncResult].fail(
+                gitignore_result.error or ".gitignore sync failed",
+            )
+        changed += 1 if gitignore_result.value else 0
+        changed += self._sync_makefile_if_needed(resolved, effective_root)
+        return r[m.Infra.SyncResult].ok(
+            m.Infra.SyncResult(
+                files_changed=changed,
+                source=resolved,
+                target=resolved,
+            ),
+        )
+
+    def _sync_makefile_if_needed(
+        self,
+        resolved: Path,
+        effective_root: Path | None,
+    ) -> int:
+        """Sync workspace or project Makefile as appropriate. Returns 1 if changed."""
+        is_workspace_root = self._is_workspace_root(resolved, effective_root)
+        if is_workspace_root:
+            workspace_makefile_result = self._sync_workspace_makefile(resolved)
+            if workspace_makefile_result.is_success and workspace_makefile_result.value:
+                return 1
+        elif (resolved / c.Infra.Files.PYPROJECT_FILENAME).exists():
+            makefile_result = self._sync_project_makefile(
+                resolved,
+                effective_root or resolved,
+            )
+            if makefile_result.is_success and makefile_result.value:
+                return 1
+        return 0
 
     @staticmethod
     def _sync_project_makefile(

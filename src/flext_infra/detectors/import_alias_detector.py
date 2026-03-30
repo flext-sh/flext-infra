@@ -8,11 +8,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t
+from flext_infra import FlextInfraScanFileMixin, c, m, p
+from flext_infra.detectors._base_detector import _DetectorContext
 
 
 class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -27,15 +28,10 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
     @override
     def detect_file(
         cls,
-        *,
-        file_path: Path,
-        rope_project: t.Infra.RopeProject,
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
-        project_name: str = "",
-        project_root: Path | None = None,
+        ctx: _DetectorContext,
     ) -> Sequence[m.Infra.ImportAliasViolation]:
         """Detect deep imports via ImportNormalizerTransformer."""
-        del parse_failures, rope_project, project_name, project_root
+        file_path = ctx.file_path
         transformer = cls._get_transformer()
         if transformer is None:
             return []

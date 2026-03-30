@@ -17,6 +17,18 @@ from typing import TYPE_CHECKING
 
 from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 
+from flext_infra.__version__ import (
+    FlextInfraVersion,
+    __author__,
+    __author_email__,
+    __description__,
+    __license__,
+    __title__,
+    __url__,
+    __version__,
+    __version_info__,
+)
+
 if TYPE_CHECKING:
     from flext_cli import d, e, h, r, s, x
     from flext_core import FlextTypes
@@ -41,17 +53,6 @@ if TYPE_CHECKING:
         transformers,
         validate,
         workspace,
-    )
-    from flext_infra.__version__ import (
-        __all__,
-        __author__,
-        __author_email__,
-        __description__,
-        __license__,
-        __title__,
-        __url__,
-        __version__,
-        __version_info__,
     )
     from flext_infra._constants.base import FlextInfraConstantsBase
     from flext_infra._constants.census import FlextInfraConstantsCensus
@@ -189,7 +190,10 @@ if TYPE_CHECKING:
     from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
-    from flext_infra.detectors._base_detector import FlextInfraScanFileMixin
+    from flext_infra.detectors._base_detector import (
+        FlextInfraScanFileMixin,
+        _DetectorContext,
+    )
     from flext_infra.detectors.class_placement_detector import (
         FlextInfraClassPlacementDetector,
     )
@@ -1282,15 +1286,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "INFRA_SEQ_ADAPTER": ["flext_infra.refactor._base_rule", "INFRA_SEQ_ADAPTER"],
     "STR_MAPPING_ADAPTER": ["flext_infra.refactor._base_rule", "STR_MAPPING_ADAPTER"],
-    "__all__": ["flext_infra.__version__", "__all__"],
-    "__author__": ["flext_infra.__version__", "__author__"],
-    "__author_email__": ["flext_infra.__version__", "__author_email__"],
-    "__description__": ["flext_infra.__version__", "__description__"],
-    "__license__": ["flext_infra.__version__", "__license__"],
-    "__title__": ["flext_infra.__version__", "__title__"],
-    "__url__": ["flext_infra.__version__", "__url__"],
-    "__version__": ["flext_infra.__version__", "__version__"],
-    "__version_info__": ["flext_infra.__version__", "__version_info__"],
+    "_DetectorContext": ["flext_infra.detectors._base_detector", "_DetectorContext"],
     "_constants": ["flext_infra._constants", ""],
     "_models": ["flext_infra._models", ""],
     "_protocols": ["flext_infra._protocols", ""],
@@ -1571,6 +1567,7 @@ __all__ = [
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesYaml",
+    "FlextInfraVersion",
     "FlextInfraViolationCensusVisitor",
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceConstants",
@@ -1578,7 +1575,7 @@ __all__ = [
     "FlextInfraWorkspaceMakefileGenerator",
     "FlextInfraWorkspaceMode",
     "FlextInfraWorkspaceModels",
-    "__all__",
+    "_DetectorContext",
     "__author__",
     "__author_email__",
     "__description__",

@@ -52,6 +52,80 @@ class FlextInfraSkillValidator:
         except ValidationError:
             return {}
 
+    def _evaluate_single_rule(
+        self,
+        rule_obj: Mapping[str, t.Infra.InfraValue],
+        skill_dir: Path,
+        root: Path,
+        mode: str,
+        include_globs: t.StrSequence,
+        exclude_globs: t.StrSequence,
+        counts: MutableMapping[str, int],
+        violations: MutableSequence[str],
+    ) -> None:
+        """Evaluate one rule entry and accumulate counts/violations."""
+        rule_id = str(rule_obj.get(c.Infra.ReportKeys.ID, "")).strip()
+        rule_type = str(rule_obj.get("type", "")).strip()
+        group = str(rule_obj.get(c.Infra.GROUP, rule_id)).strip() or rule_id
+        if rule_type == "ast-grep":
+            count = self._run_ast_grep_count(
+                rule_obj,
+                skill_dir,
+                root,
+                include_globs,
+                exclude_globs,
+            )
+        elif rule_type == "custom":
+            count = self._run_custom_count(rule_obj, skill_dir, root, mode)
+        else:
+            return
+        counts[group] = counts.get(group, 0) + count
+        if count > 0:
+            label = (
+                "ast-grep matches" if rule_type == "ast-grep" else "custom violations"
+            )
+            violations.append(f"[{rule_id}] {count} {label}")
+
+    def _apply_baseline_comparison(
+        self,
+        rules: Mapping[str, t.Infra.InfraValue],
+        root: Path,
+        skill_name: str,
+        counts: Mapping[str, int],
+        total: int,
+    ) -> bool:
+        """Compare counts against the baseline file and return pass/fail."""
+        baseline_obj = self._normalize_str_object_mapping(
+            rules.get(c.Infra.Modes.BASELINE, {}),
+        )
+        if not baseline_obj:
+            return True
+        strategy = str(baseline_obj.get("strategy", c.Infra.ReportKeys.TOTAL))
+        baseline_path = self._render_template(
+            root,
+            str(baseline_obj.get(c.Infra.ReportKeys.FILE, c.Infra.BASELINE_DEFAULT)),
+            skill_name,
+        )
+        if not baseline_path.exists():
+            return True
+        bl_data_result = u.Infra.read_json(baseline_path)
+        if bl_data_result.is_failure:
+            return True
+        bl_data = self._normalize_str_object_mapping(bl_data_result.value)
+        bl_counts_raw_map = self._normalize_str_object_mapping(
+            bl_data.get("counts", {}),
+        )
+        bl_counts: MutableMapping[str, int] = {}
+        for key_obj, val_obj in bl_counts_raw_map.items():
+            if isinstance(val_obj, int):
+                bl_counts[str(key_obj)] = int(val_obj)
+        if strategy == c.Infra.ReportKeys.TOTAL:
+            return total <= sum(bl_counts.values())
+        return all(
+            counts.get(g, 0) <= bl_counts.get(g, 0)
+            for g in set(counts) | set(bl_counts)
+        )
+
     def validate(
         self,
         workspace_root: Path,
@@ -104,74 +178,31 @@ class FlextInfraSkillValidator:
             )
             counts: MutableMapping[str, int] = {}
             violations: MutableSequence[str] = []
+            skill_dir = skills_dir / skill_name
             for rule_obj_raw in rules_list:
                 rule_obj = self._normalize_str_object_mapping(rule_obj_raw)
                 if not rule_obj:
                     continue
-                rule_id = str(rule_obj.get(c.Infra.ReportKeys.ID, "")).strip()
-                rule_type = str(rule_obj.get("type", "")).strip()
-                group = str(rule_obj.get(c.Infra.GROUP, rule_id)).strip() or rule_id
-                if rule_type == "ast-grep":
-                    count = self._run_ast_grep_count(
-                        rule_obj,
-                        skills_dir / skill_name,
-                        root,
-                        include_globs,
-                        exclude_globs,
-                    )
-                    counts[group] = counts.get(group, 0) + count
-                    if count > 0:
-                        violations.append(f"[{rule_id}] {count} ast-grep matches")
-                elif rule_type == "custom":
-                    count = self._run_custom_count(
-                        rule_obj,
-                        skills_dir / skill_name,
-                        root,
-                        mode,
-                    )
-                    counts[group] = counts.get(group, 0) + count
-                    if count > 0:
-                        violations.append(f"[{rule_id}] {count} custom violations")
+                self._evaluate_single_rule(
+                    rule_obj,
+                    skill_dir,
+                    root,
+                    mode,
+                    include_globs,
+                    exclude_globs,
+                    counts,
+                    violations,
+                )
             total = sum(counts.values())
             passed = total == 0 if mode == c.Infra.Modes.STRICT else True
             if mode != c.Infra.Modes.STRICT:
-                baseline_obj = self._normalize_str_object_mapping(
-                    rules.get(c.Infra.Modes.BASELINE, {}),
+                passed = self._apply_baseline_comparison(
+                    rules,
+                    root,
+                    skill_name,
+                    counts,
+                    total,
                 )
-                if baseline_obj:
-                    strategy = str(
-                        baseline_obj.get("strategy", c.Infra.ReportKeys.TOTAL),
-                    )
-                    baseline_path = self._render_template(
-                        root,
-                        str(
-                            baseline_obj.get(
-                                c.Infra.ReportKeys.FILE,
-                                c.Infra.BASELINE_DEFAULT,
-                            ),
-                        ),
-                        skill_name,
-                    )
-                    if baseline_path.exists():
-                        bl_data_result = u.Infra.read_json(baseline_path)
-                        if bl_data_result.is_success:
-                            bl_data = self._normalize_str_object_mapping(
-                                bl_data_result.value,
-                            )
-                            bl_counts_raw_map = self._normalize_str_object_mapping(
-                                bl_data.get("counts", {}),
-                            )
-                            bl_counts: MutableMapping[str, int] = {}
-                            for key_obj, val_obj in bl_counts_raw_map.items():
-                                if isinstance(val_obj, int):
-                                    bl_counts[str(key_obj)] = int(val_obj)
-                            if strategy == c.Infra.ReportKeys.TOTAL:
-                                passed = total <= sum(bl_counts.values())
-                            else:
-                                passed = all(
-                                    counts.get(g, 0) <= bl_counts.get(g, 0)
-                                    for g in set(counts) | set(bl_counts)
-                                )
             summary = (
                 f"{skill_name}: {total} violations, {('PASS' if passed else 'FAIL')}"
             )
@@ -236,6 +267,22 @@ class FlextInfraSkillValidator:
                 count += 1
         return count
 
+    @staticmethod
+    def _parse_violation_count(stdout: str) -> int:
+        """Parse violation count from JSON-line stdout of a custom script."""
+        count = 0
+        for raw_line in stdout.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            payload_result = u.Infra.parse(line)
+            if payload_result.is_success and isinstance(payload_result.value, dict):
+                payload = payload_result.value
+                maybe = payload.get("violation_count", payload.get("count", 0))
+                if isinstance(maybe, int):
+                    count += maybe
+        return count
+
     def _run_custom_count(
         self,
         rule: Mapping[str, t.Infra.InfraValue],
@@ -268,17 +315,7 @@ class FlextInfraSkillValidator:
         if result_wrapper.is_failure:
             return 0
         result: p.Infra.CommandOutput = result_wrapper.value
-        count = 0
-        for raw_line in (result.stdout or "").splitlines():
-            line = raw_line.strip()
-            if not line:
-                continue
-            payload_result = u.Infra.parse(line)
-            if payload_result.is_success and isinstance(payload_result.value, dict):
-                payload = payload_result.value
-                maybe = payload.get("violation_count", payload.get("count", 0))
-                if isinstance(maybe, int):
-                    count += maybe
+        count = self._parse_violation_count(result.stdout or "")
         if result.exit_code == 1:
             count = max(count, 1)
         return count

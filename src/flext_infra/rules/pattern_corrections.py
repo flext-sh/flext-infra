@@ -11,6 +11,48 @@ import libcst as cst
 from flext_infra import INFRA_MAPPING_ADAPTER, FlextInfraRefactorRule, c, t, u
 
 
+class _MutableParamVisitor(cst.CSTVisitor):
+    """Detect dict parameters that are mutated in function bodies."""
+
+    def __init__(self, param_names: t.Infra.StrSet) -> None:
+        self._param_names = param_names
+        self.mutated: t.Infra.StrSet = set()
+
+    def _check_subscript_target(self, target: cst.BaseAssignTargetExpression) -> None:
+        """Mark param as mutated if assigned via subscript (e.g. d[key] = ...)."""
+        if isinstance(target, cst.Subscript) and isinstance(target.value, cst.Name) and target.value.value in self._param_names:
+            self.mutated.add(target.value.value)
+
+    @override
+    def visit_AssignTarget(self, node: cst.AssignTarget) -> None:
+        self._check_subscript_target(node.target)
+
+    @override
+    def visit_AugAssign(self, node: cst.AugAssign) -> None:
+        self._check_subscript_target(node.target)
+
+    @override
+    def visit_Call(self, node: cst.Call) -> None:
+        func = node.func
+        if not isinstance(func, cst.Attribute) or not isinstance(func.value, cst.Name):
+            return
+        if (
+            func.value.value in self._param_names
+            and func.attr.value in _MUTATING_METHODS
+        ):
+            self.mutated.add(func.value.value)
+
+
+_MUTATING_METHODS = frozenset({
+    "clear",
+    "copy",
+    "pop",
+    "popitem",
+    "setdefault",
+    "update",
+})
+
+
 class FlextInfraDictToMappingTransformer(cst.CSTTransformer):
     def __init__(self, *, include_return_annotations: bool) -> None:
         self.changes: MutableSequence[str] = []

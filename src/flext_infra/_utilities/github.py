@@ -173,34 +173,44 @@ class FlextInfraUtilitiesGithub(
         workflows_dir = project_root / ".github" / "workflows"
         destination = workflows_dir / "ci.yml"
         try:
-            if destination.exists():
-                current = destination.read_text(encoding=c.Infra.Encoding.DEFAULT)
-                if current != rendered_template:
-                    if apply:
-                        _ = destination.write_text(
-                            rendered_template,
-                            encoding=c.Infra.Encoding.DEFAULT,
-                        )
-                    operations.append(
-                        m.Infra.SyncOperation(
-                            project=project_name,
-                            path=str(destination.relative_to(project_root)),
-                            action="update",
-                            reason="force overwrite ci.yml",
-                        ),
-                    )
-                else:
-                    operations.append(
-                        m.Infra.SyncOperation(
-                            project=project_name,
-                            path=str(destination.relative_to(project_root)),
-                            action="noop",
-                            reason="already synced",
-                        ),
-                    )
-            else:
+            cls._github_sync_ci_yml(
+                project_name=project_name,
+                project_root=project_root,
+                workflows_dir=workflows_dir,
+                destination=destination,
+                rendered_template=rendered_template,
+                apply=apply,
+                operations=operations,
+            )
+            if prune and workflows_dir.exists():
+                cls._github_prune_workflows(
+                    project_name=project_name,
+                    project_root=project_root,
+                    workflows_dir=workflows_dir,
+                    apply=apply,
+                    operations=operations,
+                )
+        except OSError as exc:
+            return r[Sequence[m.Infra.SyncOperation]].fail(f"sync error: {exc}")
+        return r[Sequence[m.Infra.SyncOperation]].ok(operations)
+
+    @classmethod
+    def _github_sync_ci_yml(
+        cls,
+        *,
+        project_name: str,
+        project_root: Path,
+        workflows_dir: Path,
+        destination: Path,
+        rendered_template: str,
+        apply: bool,
+        operations: MutableSequence[m.Infra.SyncOperation],
+    ) -> None:
+        """Sync a single ci.yml file for a project."""
+        if destination.exists():
+            current = destination.read_text(encoding=c.Infra.Encoding.DEFAULT)
+            if current != rendered_template:
                 if apply:
-                    workflows_dir.mkdir(parents=True, exist_ok=True)
                     _ = destination.write_text(
                         rendered_template,
                         encoding=c.Infra.Encoding.DEFAULT,
@@ -209,30 +219,61 @@ class FlextInfraUtilitiesGithub(
                     m.Infra.SyncOperation(
                         project=project_name,
                         path=str(destination.relative_to(project_root)),
-                        action="create",
-                        reason="missing ci.yml",
+                        action="update",
+                        reason="force overwrite ci.yml",
                     ),
                 )
-            if prune and workflows_dir.exists():
-                candidates = sorted(workflows_dir.glob("*.yml")) + sorted(
-                    workflows_dir.glob("*.yaml"),
+            else:
+                operations.append(
+                    m.Infra.SyncOperation(
+                        project=project_name,
+                        path=str(destination.relative_to(project_root)),
+                        action="noop",
+                        reason="already synced",
+                    ),
                 )
-                for path in candidates:
-                    if path.name in c.Infra.MANAGED_FILES:
-                        continue
-                    if apply:
-                        path.unlink()
-                    operations.append(
-                        m.Infra.SyncOperation(
-                            project=project_name,
-                            path=str(path.relative_to(project_root)),
-                            action="prune",
-                            reason="remove non-canonical workflow",
-                        ),
-                    )
-        except OSError as exc:
-            return r[Sequence[m.Infra.SyncOperation]].fail(f"sync error: {exc}")
-        return r[Sequence[m.Infra.SyncOperation]].ok(operations)
+        else:
+            if apply:
+                workflows_dir.mkdir(parents=True, exist_ok=True)
+                _ = destination.write_text(
+                    rendered_template,
+                    encoding=c.Infra.Encoding.DEFAULT,
+                )
+            operations.append(
+                m.Infra.SyncOperation(
+                    project=project_name,
+                    path=str(destination.relative_to(project_root)),
+                    action="create",
+                    reason="missing ci.yml",
+                ),
+            )
+
+    @staticmethod
+    def _github_prune_workflows(
+        *,
+        project_name: str,
+        project_root: Path,
+        workflows_dir: Path,
+        apply: bool,
+        operations: MutableSequence[m.Infra.SyncOperation],
+    ) -> None:
+        """Remove non-canonical workflow files from a project."""
+        candidates = sorted(workflows_dir.glob("*.yml")) + sorted(
+            workflows_dir.glob("*.yaml"),
+        )
+        for path in candidates:
+            if path.name in c.Infra.MANAGED_FILES:
+                continue
+            if apply:
+                path.unlink()
+            operations.append(
+                m.Infra.SyncOperation(
+                    project=project_name,
+                    path=str(path.relative_to(project_root)),
+                    action="prune",
+                    reason="remove non-canonical workflow",
+                ),
+            )
 
     @classmethod
     def _github_write_report(
@@ -290,23 +331,15 @@ class FlextInfraUtilitiesGithub(
         failures = 0
         results: MutableSequence[m.Infra.PrExecutionResultModel] = []
         for repo_root in repos:
-            if branch:
-                cls.git_checkout(repo_root, branch)
-            if checkpoint:
-                cls._github_pr_checkpoint(repo_root, branch)
-            run_result: r[m.Infra.PrExecutionResultModel] = cls._github_pr_run_single(
-                repo_root,
-                workspace_root,
-                effective_args,
+            failed = cls._github_pr_process_repo(
+                repo_root=repo_root,
+                workspace_root=workspace_root,
+                effective_args=effective_args,
+                branch=branch,
+                checkpoint=checkpoint,
+                results=results,
             )
-            if run_result.is_success:
-                pr_data = run_result.value
-                results.append(pr_data)
-                if pr_data.exit_code != 0:
-                    failures += 1
-                    if fail_fast:
-                        break
-            else:
+            if failed:
                 failures += 1
                 if fail_fast:
                     break
@@ -324,6 +357,33 @@ class FlextInfraUtilitiesGithub(
                 results=orchestration_results,
             ),
         )
+
+    @classmethod
+    def _github_pr_process_repo(
+        cls,
+        *,
+        repo_root: Path,
+        workspace_root: Path,
+        effective_args: t.StrMapping,
+        branch: str,
+        checkpoint: bool,
+        results: MutableSequence[m.Infra.PrExecutionResultModel],
+    ) -> bool:
+        """Process a single repo in PR orchestration. Returns True on failure."""
+        if branch:
+            cls.git_checkout(repo_root, branch)
+        if checkpoint:
+            cls._github_pr_checkpoint(repo_root, branch)
+        run_result: r[m.Infra.PrExecutionResultModel] = cls._github_pr_run_single(
+            repo_root,
+            workspace_root,
+            effective_args,
+        )
+        if run_result.is_success:
+            pr_data = run_result.value
+            results.append(pr_data)
+            return pr_data.exit_code != 0
+        return True
 
     @classmethod
     def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> r[bool]:
@@ -381,7 +441,40 @@ class FlextInfraUtilitiesGithub(
         with contextlib.suppress(OSError):
             report_dir.mkdir(parents=True, exist_ok=True)
         log_path = report_dir / f"{display}.log"
-        if repo_root == workspace_root:
+        command = cls._github_build_pr_command(
+            repo_root=repo_root,
+            workspace_root=workspace_root,
+            pr_args=pr_args,
+        )
+        started = time.monotonic()
+        to_file_result: r[int] = cls.run_to_file(command, log_path)
+        if to_file_result.is_failure:
+            return r[m.Infra.PrExecutionResultModel].fail(
+                to_file_result.error or "command execution error",
+            )
+        exit_code = to_file_result.value
+        elapsed = int(time.monotonic() - started)
+        status = c.Infra.Status.OK if exit_code == 0 else c.Infra.Status.FAIL
+        return r[m.Infra.PrExecutionResultModel].ok(
+            m.Infra.PrExecutionResultModel(
+                display=display,
+                status=status,
+                elapsed=elapsed,
+                exit_code=exit_code,
+                log_path=str(log_path),
+            ),
+        )
+
+    @staticmethod
+    def _github_build_pr_command(
+        *,
+        repo_root: Path,
+        workspace_root: Path,
+        pr_args: t.StrMapping,
+    ) -> list[str]:
+        """Build the CLI command list for a single PR operation."""
+        is_root = repo_root == workspace_root
+        if is_root:
             command = [
                 c.Infra.PYTHON,
                 "-m",
@@ -428,25 +521,8 @@ class FlextInfraUtilitiesGithub(
         ):
             value = pr_args.get(key, "")
             if value:
-                if repo_root == workspace_root:
+                if is_root:
                     command.extend([f"--{key}", value])
                 else:
                     command.append(f"{flag}={value}")
-        started = time.monotonic()
-        to_file_result: r[int] = cls.run_to_file(command, log_path)
-        if to_file_result.is_failure:
-            return r[m.Infra.PrExecutionResultModel].fail(
-                to_file_result.error or "command execution error",
-            )
-        exit_code = to_file_result.value
-        elapsed = int(time.monotonic() - started)
-        status = c.Infra.Status.OK if exit_code == 0 else c.Infra.Status.FAIL
-        return r[m.Infra.PrExecutionResultModel].ok(
-            m.Infra.PrExecutionResultModel(
-                display=display,
-                status=status,
-                elapsed=elapsed,
-                exit_code=exit_code,
-                log_path=str(log_path),
-            ),
-        )
+        return command

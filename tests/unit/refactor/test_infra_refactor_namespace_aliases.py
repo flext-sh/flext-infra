@@ -7,6 +7,7 @@ from rope.base.project import Project as RopeProject
 
 try:
     from flext_infra import FlextInfraImportAliasDetector, u
+    from flext_infra.detectors._base_detector import _DetectorContext
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 
@@ -31,8 +32,10 @@ def test_import_alias_detector_skips_private_and_class_imports(
     )
 
     violations = FlextInfraImportAliasDetector.detect_file(
-        file_path=sample_file,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=sample_file,
+            rope_project=rope_project,
+        ),
     )
     assert violations == []
 
@@ -50,8 +53,10 @@ def test_import_alias_detector_skips_nested_private_and_as_renames(
     )
 
     violations = FlextInfraImportAliasDetector.detect_file(
-        file_path=sample_file,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=sample_file,
+            rope_project=rope_project,
+        ),
     )
     assert violations == []
 
@@ -71,8 +76,10 @@ def test_import_alias_detector_skips_facade_and_subclass_files(
     )
 
     violations = FlextInfraImportAliasDetector.detect_file(
-        file_path=sample_file,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=sample_file,
+            rope_project=rope_project,
+        ),
     )
     assert violations == []
 

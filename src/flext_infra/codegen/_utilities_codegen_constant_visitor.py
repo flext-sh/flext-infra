@@ -487,17 +487,34 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         for stmt in tree.body:
             if not isinstance(stmt, cst.SimpleStatementLine):
                 continue
-            for small in stmt.body:
-                if not isinstance(small, cst.ImportFrom):
-                    continue
-                if isinstance(small.names, cst.ImportStar):
-                    continue
-                mod = tree.code_for_node(small.module) if small.module else ""
-                for alias in small.names:
-                    name = alias.name.value if isinstance(alias.name, cst.Name) else ""
-                    if "Constants" in name and name.startswith("Flext"):
-                        return mod
+            result = FlextInfraUtilitiesCodegenConstantDetection._find_constants_import_module(
+                tree,
+                stmt,
+            )
+            if result is not None:
+                return result
         return "flext_core"
+
+    @staticmethod
+    def _find_constants_import_module(
+        tree: cst.Module,
+        stmt: cst.SimpleStatementLine,
+    ) -> str | None:
+        """Search a statement for a ``from <pkg> import Flext*Constants`` import.
+
+        Returns the module string if found, ``None`` otherwise.
+        """
+        for small in stmt.body:
+            if not isinstance(small, cst.ImportFrom):
+                continue
+            if isinstance(small.names, cst.ImportStar):
+                continue
+            mod = tree.code_for_node(small.module) if small.module else ""
+            for alias in small.names:
+                name = alias.name.value if isinstance(alias.name, cst.Name) else ""
+                if "Constants" in name and name.startswith("Flext"):
+                    return mod
+        return None
 
     @staticmethod
     def extract_class_attributes_with_mro(
@@ -533,30 +550,50 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             for attr_name in dir(base_cls):
                 if attr_name.startswith("_") or attr_name in seen_names:
                     continue
-                try:
-                    attr_value = getattr(cls, attr_name)
-                    # Skip only instance methods, not type definitions or constants
-                    if (
-                        callable(attr_value)
-                        and not isinstance(attr_value, type)
-                        and hasattr(attr_value, "__self__")
-                    ):
-                        continue
-                    # Include: constants (str, int, bool), enums, classes, types
-                    attr_type = type(attr_value).__name__
-                    result[attr_name] = m.Infra.ConstantDefinition(
-                        name=attr_name,
-                        value_repr=repr(attr_value)[:100],
-                        type_annotation=attr_type,
-                        file_path="<dynamic>",
-                        class_path=class_name,
-                        project="flext-core",
-                        line=1,
+                defn = (
+                    FlextInfraUtilitiesCodegenConstantDetection._classify_mro_attribute(
+                        cls,
+                        class_name,
+                        attr_name,
                     )
-                    seen_names.add(attr_name)
-                except (AttributeError, ValueError, TypeError, RecursionError):
-                    continue
+                )
+                if defn is not None:
+                    result[attr_name] = defn
+                seen_names.add(attr_name)
         return result
+
+    @staticmethod
+    def _classify_mro_attribute(
+        target_cls: type[object],
+        class_name: str,
+        attr_name: str,
+    ) -> m.Infra.ConstantDefinition | None:
+        """Classify a single attribute from the MRO walk.
+
+        Returns a ``ConstantDefinition`` if the attribute is a public
+        constant/enum/class/type, ``None`` if it should be skipped.
+        """
+        try:
+            attr_value = getattr(target_cls, attr_name)
+            # Skip only instance methods, not type definitions or constants
+            if (
+                callable(attr_value)
+                and not isinstance(attr_value, type)
+                and hasattr(attr_value, "__self__")
+            ):
+                return None
+            attr_type = type(attr_value).__name__
+            return m.Infra.ConstantDefinition(
+                name=attr_name,
+                value_repr=repr(attr_value)[:100],
+                type_annotation=attr_type,
+                file_path="<dynamic>",
+                class_path=class_name,
+                project="flext-core",
+                line=1,
+            )
+        except (AttributeError, ValueError, TypeError, RecursionError):
+            return None
 
     @staticmethod
     def scan_class_attribute_usages(
@@ -582,8 +619,6 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         """
         used_names: t.Infra.StrSet = set()
         usage_map: MutableMapping[str, MutableSequence[t.Infra.StrIntPair]] = {}
-
-        # Fast lookup for class usages
         search_prefix = f"{class_name}."
         files_scanned = 0
 
@@ -596,36 +631,68 @@ class FlextInfraUtilitiesCodegenConstantDetection:
                 source = py_file.read_text(c.Infra.Encoding.DEFAULT)
             except (UnicodeDecodeError, OSError):
                 continue
-
-            # Quick check: does file contain the class name at all?
             if search_prefix not in source:
                 continue
 
             files_scanned += 1
-            lines = source.split("\n")
-            for line_num, line in enumerate(lines, 1):
-                # Find all occurrences of CLASS_NAME.ATTR
-                idx = 0
-                while True:
-                    pos = line.find(search_prefix, idx)
-                    if pos == -1:
-                        break
-                    # Extract attribute name (word characters after the dot)
-                    after_dot = pos + len(search_prefix)
-                    end_pos = after_dot
-                    while end_pos < len(line) and (
-                        line[end_pos].isalnum() or line[end_pos] == "_"
-                    ):
-                        end_pos += 1
-                    if end_pos > after_dot:
-                        attr_name = line[after_dot:end_pos]
-                        used_names.add(attr_name)
-                        if attr_name not in usage_map:
-                            usage_map[attr_name] = list[tuple[str, int]]()
-                        usage_map[attr_name].append((str(py_file), line_num))
-                    idx = pos + 1
+            FlextInfraUtilitiesCodegenConstantDetection._collect_attribute_refs(
+                source,
+                search_prefix,
+                str(py_file),
+                used_names,
+                usage_map,
+            )
 
         return used_names, usage_map
+
+    @staticmethod
+    def _collect_attribute_refs(
+        source: str,
+        search_prefix: str,
+        file_path: str,
+        used_names: t.Infra.StrSet,
+        usage_map: MutableMapping[str, MutableSequence[t.Infra.StrIntPair]],
+    ) -> None:
+        """Collect attribute references from a single file's source text."""
+        lines = source.split("\n")
+        for line_num, line in enumerate(lines, 1):
+            FlextInfraUtilitiesCodegenConstantDetection._extract_attribute_refs_from_line(
+                line,
+                search_prefix,
+                file_path,
+                line_num,
+                used_names,
+                usage_map,
+            )
+
+    @staticmethod
+    def _extract_attribute_refs_from_line(
+        line: str,
+        search_prefix: str,
+        file_path: str,
+        line_num: int,
+        used_names: t.Infra.StrSet,
+        usage_map: MutableMapping[str, MutableSequence[t.Infra.StrIntPair]],
+    ) -> None:
+        """Extract all ``CLASS_NAME.ATTR`` references from a single line."""
+        idx = 0
+        while True:
+            pos = line.find(search_prefix, idx)
+            if pos == -1:
+                break
+            after_dot = pos + len(search_prefix)
+            end_pos = after_dot
+            while end_pos < len(line) and (
+                line[end_pos].isalnum() or line[end_pos] == "_"
+            ):
+                end_pos += 1
+            if end_pos > after_dot:
+                attr_name = line[after_dot:end_pos]
+                used_names.add(attr_name)
+                if attr_name not in usage_map:
+                    usage_map[attr_name] = list[tuple[str, int]]()
+                usage_map[attr_name].append((file_path, line_num))
+            idx = pos + 1
 
     @staticmethod
     def _analyze_class_internal(

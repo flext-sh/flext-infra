@@ -143,24 +143,29 @@ class FlextInfraUtilitiesCodegenTransforms:
         return frozenset(names)
 
     @staticmethod
-    def all_deps_resolvable(node: ast.stmt, target_tree: ast.Module) -> bool:
-        """Check if all names used in node are available in the target module.
-
-        Called AFTER copy_required_imports to verify the copy succeeded.
-        A name is available if it's imported or defined in the target module.
-        """
+    def external_deps_for_node(node: ast.stmt) -> frozenset[str]:
+        """Compute external name dependencies for a node (excluding self-name and type params)."""
         names_used = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
             node,
         )
         node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
         type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(node)
-        names_used = frozenset(
+        return frozenset(
             n for n in names_used if n != node_name and n not in type_params
         )
-        if not names_used:
-            return True
-        available: t.Infra.StrSet = set(dir(_builtins_module))
-        for stmt in target_tree.body:
+
+    @staticmethod
+    def collect_available_names(
+        tree: ast.Module,
+        *,
+        include_builtins: bool = False,
+        include_definitions: bool = False,
+    ) -> t.Infra.StrSet:
+        """Collect names available in a module (imports and optionally definitions)."""
+        available: t.Infra.StrSet = set()
+        if include_builtins:
+            available.update(dir(_builtins_module))
+        for stmt in tree.body:
             if isinstance(stmt, ast.Import):
                 for alias in stmt.names:
                     imported_name = alias.asname or alias.name
@@ -170,35 +175,17 @@ class FlextInfraUtilitiesCodegenTransforms:
                     imported_name = alias.asname or alias.name
                     if imported_name != "*":
                         available.add(imported_name)
-            else:
+            elif include_definitions:
                 name = FlextInfraUtilitiesCodegenTransforms.get_node_name(stmt)
                 if name:
                     available.add(name)
-        return all(n in available for n in names_used)
+        return available
 
     @staticmethod
-    def copy_required_imports(
-        node: ast.stmt,
-        source_tree: ast.Module,
-        target_tree: ast.Module,
-    ) -> None:
-        """Copy imports needed by node from source_tree to target_tree.
-
-        Mutates target_tree for analysis accumulation only - the tree is
-        never written to disk via ast.unparse.
-        """
-        names_used = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
-            node,
-        )
-        node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
-        type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(node)
-        names_used = frozenset(
-            n for n in names_used if n != node_name and n not in type_params
-        )
-        if not names_used:
-            return
+    def collect_source_import_map(tree: ast.Module) -> MutableMapping[str, ast.stmt]:
+        """Build a mapping of name -> import statement from a module's imports."""
         source_imports: MutableMapping[str, ast.stmt] = {}
-        for stmt in source_tree.body:
+        for stmt in tree.body:
             match stmt:
                 case ast.Import():
                     for alias in stmt.names:
@@ -212,20 +199,42 @@ class FlextInfraUtilitiesCodegenTransforms:
                             source_imports[imported_name] = stmt
                 case _:
                     pass
-        target_available: t.Infra.StrSet = set()
-        for stmt in target_tree.body:
-            match stmt:
-                case ast.Import():
-                    for alias in stmt.names:
-                        imported_name = alias.asname or alias.name
-                        target_available.add(imported_name.split(".")[0])
-                case ast.ImportFrom():
-                    for alias in stmt.names:
-                        imported_name = alias.asname or alias.name
-                        if imported_name != "*":
-                            target_available.add(imported_name)
-                case _:
-                    pass
+        return source_imports
+
+    @staticmethod
+    def all_deps_resolvable(node: ast.stmt, target_tree: ast.Module) -> bool:
+        """Check if all names used in node are available in the target module.
+
+        Called AFTER copy_required_imports to verify the copy succeeded.
+        A name is available if it's imported or defined in the target module.
+        """
+        names_used = FlextInfraUtilitiesCodegenTransforms.external_deps_for_node(node)
+        if not names_used:
+            return True
+        available = FlextInfraUtilitiesCodegenTransforms.collect_available_names(
+            target_tree,
+            include_builtins=True,
+            include_definitions=True,
+        )
+        return all(n in available for n in names_used)
+
+    @staticmethod
+    def copy_required_imports(
+        node: ast.stmt,
+        source_tree: ast.Module,
+        target_tree: ast.Module,
+    ) -> None:
+        """Copy imports needed by node from source_tree to target_tree.
+
+        Mutates target_tree for analysis accumulation only - the tree is
+        never written to disk via ast.unparse.
+        """
+        cls_ref = FlextInfraUtilitiesCodegenTransforms
+        names_used = cls_ref.external_deps_for_node(node)
+        if not names_used:
+            return
+        source_imports = cls_ref.collect_source_import_map(source_tree)
+        target_available = cls_ref.collect_available_names(target_tree)
         seen_modules: t.Infra.StrSet = set()
         imports_to_add: MutableSequence[ast.stmt] = []
         for name in sorted(names_used):
@@ -241,57 +250,32 @@ class FlextInfraUtilitiesCodegenTransforms:
             imports_to_add.append(import_stmt)
         if not imports_to_add:
             return
-        last_import_idx = 0
-        for i, stmt in enumerate(target_tree.body):
-            if isinstance(stmt, (ast.Import, ast.ImportFrom)) or (
-                isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant)
-            ):
-                last_import_idx = i + 1
+        last_import_idx = cls_ref.find_insert_position(target_tree)
         for i, imp in enumerate(imports_to_add):
             target_tree.body.insert(last_import_idx + i, imp)
 
     @staticmethod
-    def needs_first_party_import(
+    def find_missing_deps(
         node: ast.stmt,
-        source_tree: ast.Module,
         target_tree: ast.Module,
-    ) -> bool:
-        """Check if moving node to target would require a first-party import.
-
-        First-party imports (from flext_*) into typings.py create circular
-        import chains because typings.py is imported by result.py, runtime.py,
-        and other foundational modules. If the node depends on names that come
-        from first-party imports and those names are NOT already available in
-        the target module, moving the node is unsafe.
-        """
-        names_used = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
-            node,
-        )
-        node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
-        type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(node)
-        names_used = frozenset(
-            n for n in names_used if n != node_name and n not in type_params
-        )
+    ) -> frozenset[str]:
+        """Find names required by node that are not available in target_tree."""
+        names_used = FlextInfraUtilitiesCodegenTransforms.external_deps_for_node(node)
         if not names_used:
-            return False
-        target_available: t.Infra.StrSet = set(dir(_builtins_module))
-        for stmt in target_tree.body:
-            if isinstance(stmt, ast.Import):
-                target_available.update(
-                    (alias.asname or alias.name).split(".")[0] for alias in stmt.names
-                )
-            elif isinstance(stmt, ast.ImportFrom):
-                for alias in stmt.names:
-                    imported = alias.asname or alias.name
-                    if imported != "*":
-                        target_available.add(imported)
-            else:
-                found = FlextInfraUtilitiesCodegenTransforms.get_node_name(stmt)
-                if found:
-                    target_available.add(found)
-        missing = names_used - target_available
-        if not missing:
-            return False
+            return frozenset()
+        target_available = FlextInfraUtilitiesCodegenTransforms.collect_available_names(
+            target_tree,
+            include_builtins=True,
+            include_definitions=True,
+        )
+        return names_used - target_available
+
+    @staticmethod
+    def has_first_party_provider(
+        missing: frozenset[str],
+        source_tree: ast.Module,
+    ) -> bool:
+        """Check if any missing names come from a first-party (flext_*) import."""
         for stmt in source_tree.body:
             if isinstance(stmt, ast.ImportFrom) and stmt.module:
                 if stmt.module.startswith("flext"):
@@ -307,6 +291,46 @@ class FlextInfraUtilitiesCodegenTransforms:
         return False
 
     @staticmethod
+    def needs_first_party_import(
+        node: ast.stmt,
+        source_tree: ast.Module,
+        target_tree: ast.Module,
+    ) -> bool:
+        """Check if moving node to target would require a first-party import.
+
+        First-party imports (from flext_*) into typings.py create circular
+        import chains because typings.py is imported by result.py, runtime.py,
+        and other foundational modules. If the node depends on names that come
+        from first-party imports and those names are NOT already available in
+        the target module, moving the node is unsafe.
+        """
+        missing = FlextInfraUtilitiesCodegenTransforms.find_missing_deps(
+            node,
+            target_tree,
+        )
+        if not missing:
+            return False
+        return FlextInfraUtilitiesCodegenTransforms.has_first_party_provider(
+            missing,
+            source_tree,
+        )
+
+    @staticmethod
+    def names_provided_by_import(stmt: ast.Import | ast.ImportFrom) -> t.Infra.StrSet:
+        """Return the set of names that an import statement provides."""
+        provided: t.Infra.StrSet = set()
+        if isinstance(stmt, ast.Import):
+            provided.update(
+                (alias.asname or alias.name).split(".")[0] for alias in stmt.names
+            )
+        else:
+            for alias in stmt.names:
+                imported = alias.asname or alias.name
+                if imported != "*":
+                    provided.add(imported)
+        return provided
+
+    @staticmethod
     def collect_import_texts_for_nodes(
         nodes: Sequence[ast.stmt],
         source_lines: t.StrSequence,
@@ -320,15 +344,8 @@ class FlextInfraUtilitiesCodegenTransforms:
         """
         all_names: t.Infra.StrSet = set()
         for node in nodes:
-            names = FlextInfraUtilitiesCodegenTransforms.get_top_level_names_in_node(
-                node,
-            )
-            node_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(node)
-            type_params = FlextInfraUtilitiesCodegenTransforms.get_type_param_names(
-                node,
-            )
             all_names.update(
-                n for n in names if n != node_name and n not in type_params
+                FlextInfraUtilitiesCodegenTransforms.external_deps_for_node(node),
             )
         if not all_names:
             return []
@@ -337,16 +354,9 @@ class FlextInfraUtilitiesCodegenTransforms:
         for stmt in source_tree.body:
             if not isinstance(stmt, (ast.Import, ast.ImportFrom)):
                 continue
-            provided: t.Infra.StrSet = set()
-            if isinstance(stmt, ast.Import):
-                provided.update(
-                    (alias.asname or alias.name).split(".")[0] for alias in stmt.names
-                )
-            else:
-                for alias in stmt.names:
-                    imported = alias.asname or alias.name
-                    if imported != "*":
-                        provided.add(imported)
+            provided = FlextInfraUtilitiesCodegenTransforms.names_provided_by_import(
+                stmt,
+            )
             if not (provided & all_names):
                 continue
             start = stmt.lineno
@@ -358,17 +368,10 @@ class FlextInfraUtilitiesCodegenTransforms:
         return import_texts
 
     @staticmethod
-    def prune_stale_all_assignment(*, path: Path) -> bool:
-        """Remove stale entries from __all__ that no longer exist in the module."""
-        try:
-            source = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
-        except (OSError, UnicodeDecodeError):
-            return False
-        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
-        if tree is None:
-            return False
-        assignment: ast.Assign | None = None
-        exports: t.StrSequence = []
+    def find_all_assignment(
+        tree: ast.Module,
+    ) -> tuple[ast.Assign | None, t.StrSequence]:
+        """Find the ``__all__`` assignment and extract its literal string entries."""
         for stmt in tree.body:
             if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1:
                 continue
@@ -387,20 +390,15 @@ class FlextInfraUtilitiesCodegenTransforms:
                 break
             if not is_literal_list:
                 continue
-            assignment = stmt
-            exports = names
-            break
-        if assignment is None or not exports:
-            return False
+            return stmt, names
+        return None, []
+
+    @staticmethod
+    def collect_all_defined_names(tree: ast.Module) -> t.Infra.StrSet:
+        """Collect all top-level defined/imported names in a module (for __all__ pruning)."""
         available: t.Infra.StrSet = set()
         for stmt in tree.body:
-            if isinstance(stmt, ast.ClassDef):
-                available.add(stmt.name)
-                continue
-            if isinstance(stmt, ast.FunctionDef):
-                available.add(stmt.name)
-                continue
-            if isinstance(stmt, ast.AsyncFunctionDef):
+            if isinstance(stmt, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
                 available.add(stmt.name)
                 continue
             if isinstance(stmt, ast.Import):
@@ -417,16 +415,39 @@ class FlextInfraUtilitiesCodegenTransforms:
             found_name = FlextInfraUtilitiesCodegenTransforms.get_node_name(stmt)
             if found_name:
                 available.add(found_name)
+        return available
+
+    @staticmethod
+    def render_all_block(filtered: t.StrSequence) -> str:
+        """Render the ``__all__`` assignment text from filtered names."""
+        if not filtered:
+            return "__all__ = []"
+        return (
+            "__all__ = [\n" + "\n".join(f'    "{name}",' for name in filtered) + "\n]"
+        )
+
+    @staticmethod
+    def prune_stale_all_assignment(*, path: Path) -> bool:
+        """Remove stale entries from __all__ that no longer exist in the module."""
+        try:
+            source = path.read_text(encoding=c.Infra.Encoding.DEFAULT)
+        except (OSError, UnicodeDecodeError):
+            return False
+        tree = FlextInfraUtilitiesParsing.parse_ast_from_source(source)
+        if tree is None:
+            return False
+        assignment, exports = FlextInfraUtilitiesCodegenTransforms.find_all_assignment(
+            tree,
+        )
+        if assignment is None or not exports:
+            return False
+        available = FlextInfraUtilitiesCodegenTransforms.collect_all_defined_names(tree)
         filtered = [
             name for name in exports if name in available or name.startswith("__")
         ]
         if filtered == exports:
             return False
-        block = "__all__ = [\n" + "\n".join(f'    "{name}",' for name in filtered)
-        if not filtered:
-            block = "__all__ = []"
-        else:
-            block += "\n]"
+        block = FlextInfraUtilitiesCodegenTransforms.render_all_block(filtered)
         lines = source.splitlines()
         if assignment.lineno <= 0 or assignment.end_lineno is None:
             return False

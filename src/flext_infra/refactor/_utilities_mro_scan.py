@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
@@ -112,42 +112,68 @@ class FlextInfraUtilitiesRefactorMroScan:
                     stmt=stmt,
                 )
             )
+        return FlextInfraUtilitiesRefactorMroScan._constant_candidate_from_statement(
+            stmt=stmt,
+        )
+
+    @staticmethod
+    def _constant_candidate_from_statement(
+        *,
+        stmt: ast.stmt,
+    ) -> m.Infra.MROSymbolCandidate | None:
+        """Extract a constant candidate from an AnnAssign or Assign statement."""
+        symbol = FlextInfraUtilitiesRefactorMroScan._extract_constant_symbol(stmt=stmt)
+        if symbol is None:
+            return None
+        return m.Infra.MROSymbolCandidate(
+            symbol=symbol,
+            line=stmt.lineno,
+            kind="constant",
+            class_name="",
+            facade_name="",
+        )
+
+    @staticmethod
+    def _extract_constant_symbol(*, stmt: ast.stmt) -> str | None:
+        """Return the constant symbol name if the statement is a valid constant."""
         if isinstance(stmt, ast.AnnAssign):
-            if not isinstance(stmt.target, ast.Name):
-                return None
-            if not FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(
-                stmt.target.id,
-            ):
-                return None
-            if not FlextInfraUtilitiesRefactorMroScan._is_final_annotation(
-                annotation=stmt.annotation,
-            ):
-                return None
-            return m.Infra.MROSymbolCandidate(
-                symbol=stmt.target.id,
-                line=stmt.lineno,
-                kind="constant",
-                class_name="",
-                facade_name="",
+            return FlextInfraUtilitiesRefactorMroScan._constant_from_ann_assign(
+                stmt=stmt,
             )
         if isinstance(stmt, ast.Assign):
-            if len(stmt.targets) != 1:
-                return None
-            target = stmt.targets[0]
-            if not isinstance(target, ast.Name):
-                return None
-            if not FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(
-                target.id,
-            ):
-                return None
-            return m.Infra.MROSymbolCandidate(
-                symbol=target.id,
-                line=stmt.lineno,
-                kind="constant",
-                class_name="",
-                facade_name="",
+            return FlextInfraUtilitiesRefactorMroScan._constant_from_assign(
+                stmt=stmt,
             )
         return None
+
+    @staticmethod
+    def _constant_from_ann_assign(*, stmt: ast.AnnAssign) -> str | None:
+        """Extract constant name from a Final-annotated AnnAssign."""
+        if not isinstance(stmt.target, ast.Name):
+            return None
+        if not FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(
+            stmt.target.id,
+        ):
+            return None
+        if not FlextInfraUtilitiesRefactorMroScan._is_final_annotation(
+            annotation=stmt.annotation,
+        ):
+            return None
+        return stmt.target.id
+
+    @staticmethod
+    def _constant_from_assign(*, stmt: ast.Assign) -> str | None:
+        """Extract constant name from an UPPER_CASE Assign."""
+        if len(stmt.targets) != 1:
+            return None
+        target = stmt.targets[0]
+        if not isinstance(target, ast.Name):
+            return None
+        if not FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_CONSTANT_PATTERN.match(
+            target.id,
+        ):
+            return None
+        return target.id
 
     @staticmethod
     def _project_roots(*, workspace_root: Path) -> Sequence[Path]:
@@ -160,52 +186,54 @@ class FlextInfraUtilitiesRefactorMroScan:
         *,
         target: str,
     ) -> t.Infra.VariadicTuple[m.Infra.MROTargetSpec]:
-        constants_spec = m.Infra.MROTargetSpec(
-            family_alias="c",
-            file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,
-            package_directory=c.Infra.MRO_CONSTANTS_DIRECTORY,
-            class_suffix=c.Infra.CONSTANTS_CLASS_SUFFIX,
-        )
-        typings_spec = m.Infra.MROTargetSpec(
-            family_alias="t",
-            file_names=c.Infra.MRO_TYPINGS_FILE_NAMES,
-            package_directory=c.Infra.MRO_TYPINGS_DIRECTORY,
-            class_suffix="Types",
-        )
-        protocols_spec = m.Infra.MROTargetSpec(
-            family_alias="p",
-            file_names=c.Infra.MRO_PROTOCOLS_FILE_NAMES,
-            package_directory=c.Infra.MRO_PROTOCOLS_DIRECTORY,
-            class_suffix="Protocols",
-        )
-        models_spec = m.Infra.MROTargetSpec(
-            family_alias="m",
-            file_names=c.Infra.MRO_MODELS_FILE_NAMES,
-            package_directory=c.Infra.MRO_MODELS_DIRECTORY,
-            class_suffix="Models",
-        )
-        utilities_spec = m.Infra.MROTargetSpec(
-            family_alias="u",
-            file_names=c.Infra.MRO_UTILITIES_FILE_NAMES,
-            package_directory=c.Infra.MRO_UTILITIES_DIRECTORY,
-            class_suffix="Utilities",
-        )
-        if target == "constants":
-            return (constants_spec,)
-        if target == "typings":
-            return (typings_spec,)
-        if target == "protocols":
-            return (protocols_spec,)
-        if target == "models":
-            return (models_spec,)
-        if target == "utilities":
-            return (utilities_spec,)
+        all_specs = FlextInfraUtilitiesRefactorMroScan._build_all_target_specs()
+        spec_by_name = {spec.family_alias: spec for spec in all_specs}
+        target_name_to_alias: Mapping[str, str] = {
+            "constants": "c",
+            "typings": "t",
+            "protocols": "p",
+            "models": "m",
+            "utilities": "u",
+        }
+        alias = target_name_to_alias.get(target)
+        if alias is not None and alias in spec_by_name:
+            return (spec_by_name[alias],)
+        return all_specs
+
+    @staticmethod
+    def _build_all_target_specs() -> t.Infra.VariadicTuple[m.Infra.MROTargetSpec]:
+        """Construct the full set of MRO target specs."""
         return (
-            constants_spec,
-            typings_spec,
-            protocols_spec,
-            models_spec,
-            utilities_spec,
+            m.Infra.MROTargetSpec(
+                family_alias="c",
+                file_names=c.Infra.MRO_CONSTANTS_FILE_NAMES,
+                package_directory=c.Infra.MRO_CONSTANTS_DIRECTORY,
+                class_suffix=c.Infra.CONSTANTS_CLASS_SUFFIX,
+            ),
+            m.Infra.MROTargetSpec(
+                family_alias="t",
+                file_names=c.Infra.MRO_TYPINGS_FILE_NAMES,
+                package_directory=c.Infra.MRO_TYPINGS_DIRECTORY,
+                class_suffix="Types",
+            ),
+            m.Infra.MROTargetSpec(
+                family_alias="p",
+                file_names=c.Infra.MRO_PROTOCOLS_FILE_NAMES,
+                package_directory=c.Infra.MRO_PROTOCOLS_DIRECTORY,
+                class_suffix="Protocols",
+            ),
+            m.Infra.MROTargetSpec(
+                family_alias="m",
+                file_names=c.Infra.MRO_MODELS_FILE_NAMES,
+                package_directory=c.Infra.MRO_MODELS_DIRECTORY,
+                class_suffix="Models",
+            ),
+            m.Infra.MROTargetSpec(
+                family_alias="u",
+                file_names=c.Infra.MRO_UTILITIES_FILE_NAMES,
+                package_directory=c.Infra.MRO_UTILITIES_DIRECTORY,
+                class_suffix="Utilities",
+            ),
         )
 
     @staticmethod
@@ -256,7 +284,25 @@ class FlextInfraUtilitiesRefactorMroScan:
         tree: ast.Module,
         target_spec: m.Infra.MROTargetSpec,
     ) -> str:
-        for stmt in tree.body:
+        from_alias = FlextInfraUtilitiesRefactorMroScan._facade_from_alias_assign(
+            body=tree.body,
+            target_spec=target_spec,
+        )
+        if from_alias:
+            return from_alias
+        return FlextInfraUtilitiesRefactorMroScan._facade_from_class_def(
+            body=tree.body,
+            target_spec=target_spec,
+        )
+
+    @staticmethod
+    def _facade_from_alias_assign(
+        *,
+        body: Sequence[ast.stmt],
+        target_spec: m.Infra.MROTargetSpec,
+    ) -> str:
+        """Find facade class name from ``alias = ClassName`` assignments."""
+        for stmt in body:
             if not isinstance(stmt, ast.Assign):
                 continue
             if len(stmt.targets) != 1:
@@ -272,10 +318,19 @@ class FlextInfraUtilitiesRefactorMroScan:
             class_name = stmt.value.id
             if class_name.endswith(target_spec.class_suffix):
                 return class_name
-        for stmt in tree.body:
-            if not isinstance(stmt, ast.ClassDef):
-                continue
-            if stmt.name.endswith(target_spec.class_suffix):
+        return ""
+
+    @staticmethod
+    def _facade_from_class_def(
+        *,
+        body: Sequence[ast.stmt],
+        target_spec: m.Infra.MROTargetSpec,
+    ) -> str:
+        """Find facade class name from a ClassDef with matching suffix."""
+        for stmt in body:
+            if isinstance(stmt, ast.ClassDef) and stmt.name.endswith(
+                target_spec.class_suffix,
+            ):
                 return stmt.name
         return ""
 
@@ -284,67 +339,84 @@ class FlextInfraUtilitiesRefactorMroScan:
         *,
         stmt: ast.stmt,
     ) -> m.Infra.MROSymbolCandidate | None:
+        extracted = FlextInfraUtilitiesRefactorMroScan._extract_typing_symbol(stmt=stmt)
+        if extracted is None:
+            return None
+        symbol, kind = extracted
+        return m.Infra.MROSymbolCandidate(
+            symbol=symbol,
+            line=stmt.lineno,
+            kind=kind,
+            class_name="",
+            facade_name="",
+        )
+
+    @staticmethod
+    def _extract_typing_symbol(
+        *,
+        stmt: ast.stmt,
+    ) -> t.Infra.StrPair | None:
+        """Return (symbol, kind) for a typing-related statement, or None."""
         if isinstance(stmt, ast.TypeAlias):
             symbol = stmt.name.id
-            if (
-                FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_TYPE_CANDIDATE_PATTERN.match(
-                    symbol,
-                )
-                is None
+            if not FlextInfraUtilitiesRefactorMroScan._is_valid_type_symbol(
+                symbol=symbol,
             ):
                 return None
-            return m.Infra.MROSymbolCandidate(
-                symbol=symbol,
-                line=stmt.lineno,
-                kind="typealias",
-                class_name="",
-                facade_name="",
-            )
+            return (symbol, "typealias")
         if isinstance(stmt, ast.AnnAssign):
-            if not isinstance(stmt.target, ast.Name):
-                return None
-            symbol = stmt.target.id
-            if (
-                FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_TYPE_CANDIDATE_PATTERN.match(
-                    symbol,
-                )
-                is None
-            ):
-                return None
-            if not FlextInfraUtilitiesRefactorMroScan._is_type_alias_annotation(
-                annotation=stmt.annotation,
-            ):
-                return None
-            return m.Infra.MROSymbolCandidate(
-                symbol=symbol,
-                line=stmt.lineno,
-                kind="typealias",
-                class_name="",
-                facade_name="",
+            return FlextInfraUtilitiesRefactorMroScan._extract_typing_from_ann_assign(
+                stmt=stmt,
             )
         if isinstance(stmt, ast.Assign):
-            if len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
-                return None
-            symbol = stmt.targets[0].id
-            if (
-                FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_TYPE_CANDIDATE_PATTERN.match(
-                    symbol,
-                )
-                is None
-            ):
-                return None
-            if not FlextInfraUtilitiesRefactorMroScan._is_typing_factory_call(
-                expr=stmt.value,
-            ):
-                return None
-            return m.Infra.MROSymbolCandidate(
-                symbol=symbol,
-                line=stmt.lineno,
-                kind="typevar",
-                class_name="",
-                facade_name="",
+            return FlextInfraUtilitiesRefactorMroScan._extract_typing_from_assign(
+                stmt=stmt,
             )
         return None
+
+    @staticmethod
+    def _extract_typing_from_ann_assign(
+        *,
+        stmt: ast.AnnAssign,
+    ) -> t.Infra.StrPair | None:
+        """Extract (symbol, 'typealias') from a TypeAlias-annotated AnnAssign."""
+        if not isinstance(stmt.target, ast.Name):
+            return None
+        symbol = stmt.target.id
+        if not FlextInfraUtilitiesRefactorMroScan._is_valid_type_symbol(symbol=symbol):
+            return None
+        if not FlextInfraUtilitiesRefactorMroScan._is_type_alias_annotation(
+            annotation=stmt.annotation,
+        ):
+            return None
+        return (symbol, "typealias")
+
+    @staticmethod
+    def _extract_typing_from_assign(
+        *,
+        stmt: ast.Assign,
+    ) -> t.Infra.StrPair | None:
+        """Extract (symbol, 'typevar') from a typing factory call Assign."""
+        if len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
+            return None
+        symbol = stmt.targets[0].id
+        if not FlextInfraUtilitiesRefactorMroScan._is_valid_type_symbol(symbol=symbol):
+            return None
+        if not FlextInfraUtilitiesRefactorMroScan._is_typing_factory_call(
+            expr=stmt.value,
+        ):
+            return None
+        return (symbol, "typevar")
+
+    @staticmethod
+    def _is_valid_type_symbol(*, symbol: str) -> bool:
+        """Check if symbol matches the type candidate naming pattern."""
+        return (
+            FlextInfraUtilitiesRefactorMroScan._MRO_SCAN_TYPE_CANDIDATE_PATTERN.match(
+                symbol,
+            )
+            is not None
+        )
 
     @staticmethod
     def _protocol_candidate_from_statement(
@@ -353,26 +425,9 @@ class FlextInfraUtilitiesRefactorMroScan:
     ) -> m.Infra.MROSymbolCandidate | None:
         if not isinstance(stmt, ast.ClassDef):
             return None
-        has_protocol_base = False
-        for base_expr in stmt.bases:
-            if isinstance(base_expr, ast.Name) and base_expr.id == "Protocol":
-                has_protocol_base = True
-                break
-            if isinstance(base_expr, ast.Attribute) and base_expr.attr == "Protocol":
-                has_protocol_base = True
-                break
-            if isinstance(base_expr, ast.Subscript):
-                root_expr = base_expr.value
-                if isinstance(root_expr, ast.Name) and root_expr.id == "Protocol":
-                    has_protocol_base = True
-                    break
-                if (
-                    isinstance(root_expr, ast.Attribute)
-                    and root_expr.attr == "Protocol"
-                ):
-                    has_protocol_base = True
-                    break
-        if not has_protocol_base:
+        if not FlextInfraUtilitiesRefactorMroScan._has_protocol_base(
+            bases=stmt.bases,
+        ):
             return None
         return m.Infra.MROSymbolCandidate(
             symbol=stmt.name,
@@ -381,6 +436,31 @@ class FlextInfraUtilitiesRefactorMroScan:
             class_name="",
             facade_name="",
         )
+
+    @staticmethod
+    def _has_protocol_base(*, bases: Sequence[ast.expr]) -> bool:
+        """Check whether any base expression refers to Protocol."""
+        for base_expr in bases:
+            if FlextInfraUtilitiesRefactorMroScan._is_protocol_reference(
+                expr=base_expr,
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _is_protocol_reference(*, expr: ast.expr) -> bool:
+        """Check if a single base expression refers to Protocol."""
+        if isinstance(expr, ast.Name):
+            return expr.id == "Protocol"
+        if isinstance(expr, ast.Attribute):
+            return expr.attr == "Protocol"
+        if isinstance(expr, ast.Subscript):
+            root_expr = expr.value
+            if isinstance(root_expr, ast.Name):
+                return root_expr.id == "Protocol"
+            if isinstance(root_expr, ast.Attribute):
+                return root_expr.attr == "Protocol"
+        return False
 
     @staticmethod
     def _is_type_alias_annotation(*, annotation: ast.expr) -> bool:

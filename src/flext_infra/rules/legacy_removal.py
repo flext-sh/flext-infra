@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import override
+from typing import NamedTuple, override
 
 import libcst as cst
 from pydantic import ValidationError
@@ -21,6 +21,20 @@ from flext_infra import (
 )
 
 
+class _ForwardingExpected(NamedTuple):
+    positional: t.StrSequence
+    kwonly: t.StrSequence
+    star_arg: str | None
+    star_kwarg: str | None
+
+
+class _ForwardingActual(NamedTuple):
+    positional: t.StrSequence
+    keyword: t.StrMapping
+    star: str | None
+    star_kw: str | None
+
+
 class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     """Remove aliases, deprecated classes, wrappers and import bypass blocks."""
 
@@ -29,47 +43,73 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         return INFRA_MAPPING_ADAPTER.validate_python(self.config)
 
     @staticmethod
-    def _is_forwarding_compatible(
+    def _positionals_match(
         *,
         positional_expected: t.StrSequence,
-        kwonly_expected: t.StrSequence,
-        expected_star_arg: str | None,
-        expected_star_kwarg: str | None,
         positional_forwarded: t.StrSequence,
         keyword_forwarded: t.StrMapping,
-        star_forwarded: str | None,
-        star_kw_forwarded: str | None,
     ) -> bool:
+        """Check positional args forwarded correctly by position or by name."""
         positional_by_name = not positional_forwarded and set(
             keyword_forwarded.keys(),
         ) >= set(positional_expected)
         positional_by_position = positional_forwarded == positional_expected
         if not (positional_by_position or positional_by_name):
             return False
-        for name in positional_expected:
-            if name in keyword_forwarded and keyword_forwarded[name] != name:
-                return False
-        if kwonly_expected and (
-            not set(keyword_forwarded.keys()) >= set(kwonly_expected)
+        return all(
+            keyword_forwarded[name] == name
+            for name in positional_expected
+            if name in keyword_forwarded
+        )
+
+    @staticmethod
+    def _kwonly_match(
+        *,
+        kwonly_expected: t.StrSequence,
+        keyword_forwarded: t.StrMapping,
+    ) -> bool:
+        """Check keyword-only args forwarded correctly."""
+        if kwonly_expected and not set(keyword_forwarded.keys()) >= set(
+            kwonly_expected
         ):
             return False
-        for name in kwonly_expected:
-            if keyword_forwarded.get(name) != name:
-                return False
+        return all(keyword_forwarded.get(name) == name for name in kwonly_expected)
+
+    @staticmethod
+    def _variadic_matches(
+        expected: str | None,
+        forwarded: str | None,
+    ) -> bool:
+        """Check *args or **kwargs forwarding matches expectation."""
+        if expected is not None:
+            return forwarded == expected
+        return forwarded is None
+
+    @staticmethod
+    def _is_forwarding_compatible(
+        expected: _ForwardingExpected,
+        actual: _ForwardingActual,
+    ) -> bool:
+        cls = FlextInfraRefactorLegacyRemovalRule
+        if not cls._positionals_match(
+            positional_expected=expected.positional,
+            positional_forwarded=actual.positional,
+            keyword_forwarded=actual.keyword,
+        ):
+            return False
+        if not cls._kwonly_match(
+            kwonly_expected=expected.kwonly,
+            keyword_forwarded=actual.keyword,
+        ):
+            return False
         extra_keywords = (
-            set(keyword_forwarded.keys())
-            - set(positional_expected)
-            - set(kwonly_expected)
+            set(actual.keyword.keys()) - set(expected.positional) - set(expected.kwonly)
         )
         if extra_keywords:
             return False
-        if expected_star_arg is not None and star_forwarded != expected_star_arg:
+        if not cls._variadic_matches(expected.star_arg, actual.star):
             return False
-        if expected_star_arg is None and star_forwarded is not None:
-            return False
-        if expected_star_kwarg is not None and star_kw_forwarded != expected_star_kwarg:
-            return False
-        return not (expected_star_kwarg is None and star_kw_forwarded is not None)
+        return cls._variadic_matches(expected.star_kwarg, actual.star_kw)
 
     @staticmethod
     def _name_value(expr: cst.BaseExpression) -> str | None:
@@ -118,7 +158,7 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     def _expected_forwarding_params(
         self,
         func: cst.FunctionDef,
-    ) -> t.Infra.Quad[t.StrSequence, t.StrSequence, str | None, str | None]:
+    ) -> _ForwardingExpected:
         posonly_names = [param.name.value for param in func.params.posonly_params]
         positional_names = [param.name.value for param in func.params.params]
         positional_expected = posonly_names + positional_names
@@ -129,100 +169,89 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
         expected_star_kwarg: str | None = None
         if isinstance(func.params.star_kwarg, cst.Param):
             expected_star_kwarg = func.params.star_kwarg.name.value
-        return (
-            positional_expected,
-            kwonly_expected,
-            expected_star_arg,
-            expected_star_kwarg,
+        return _ForwardingExpected(
+            positional=positional_expected,
+            kwonly=kwonly_expected,
+            star_arg=expected_star_arg,
+            star_kwarg=expected_star_kwarg,
         )
 
-    def _extract_passthrough_call(
-        self,
-        func: cst.FunctionDef,
-    ) -> t.Infra.Pair[str, Sequence[cst.Arg]] | None:
+    @staticmethod
+    def _single_return_call(func: cst.FunctionDef) -> cst.Call | None:
+        """Extract the Call node from a single-statement 'return call()' body."""
         if not isinstance(func.body, cst.IndentedBlock):
             return None
         if len(func.body.body) != 1:
             return None
         stmt = func.body.body[0]
-        if not isinstance(stmt, cst.SimpleStatementLine):
-            return None
-        if len(stmt.body) != 1:
+        if not isinstance(stmt, cst.SimpleStatementLine) or len(stmt.body) != 1:
             return None
         small_stmt = stmt.body[0]
-        if not isinstance(small_stmt, cst.Return):
+        if not isinstance(small_stmt, cst.Return) or not isinstance(
+            small_stmt.value, cst.Call
+        ):
             return None
-        if not isinstance(small_stmt.value, cst.Call):
+        return small_stmt.value
+
+    def _extract_passthrough_call(
+        self,
+        func: cst.FunctionDef,
+    ) -> t.Infra.Pair[str, Sequence[cst.Arg]] | None:
+        call = self._single_return_call(func)
+        if call is None or not isinstance(call.func, cst.Name):
             return None
-        if not isinstance(small_stmt.value.func, cst.Name):
-            return None
-        return (small_stmt.value.func.value, list(small_stmt.value.args))
+        return (call.func.value, list(call.args))
 
     def _get_passthrough_target(self, func: cst.FunctionDef) -> str | None:
         passthrough = self._extract_passthrough_call(func)
         if passthrough is None:
             return None
         target_name, call_args = passthrough
-        positional_expected, kwonly_expected, expected_star_arg, expected_star_kwarg = (
-            self._expected_forwarding_params(func)
-        )
-        parsed_forwarding = self._parse_forwarded_arguments(call_args)
-        if parsed_forwarding is None:
+        expected = self._expected_forwarding_params(func)
+        actual = self._parse_forwarded_arguments(call_args)
+        if actual is None:
             return None
-        positional_forwarded, keyword_forwarded, star_forwarded, star_kw_forwarded = (
-            parsed_forwarding
-        )
-        if not self._is_forwarding_compatible(
-            positional_expected=positional_expected,
-            kwonly_expected=kwonly_expected,
-            expected_star_arg=expected_star_arg,
-            expected_star_kwarg=expected_star_kwarg,
-            positional_forwarded=positional_forwarded,
-            keyword_forwarded=keyword_forwarded,
-            star_forwarded=star_forwarded,
-            star_kw_forwarded=star_kw_forwarded,
-        ):
+        if not self._is_forwarding_compatible(expected, actual):
             return None
         return target_name
+
+    def _require_name_value(self, arg: cst.Arg) -> str | None:
+        """Extract a required name/literal value from an argument, or None."""
+        return self._name_value(arg.value)
 
     def _parse_forwarded_arguments(
         self,
         call_args: Sequence[cst.Arg],
-    ) -> t.Infra.Quad[t.StrSequence, t.StrMapping, str | None, str | None] | None:
+    ) -> _ForwardingActual | None:
         positional_forwarded: MutableSequence[str] = []
         keyword_forwarded: MutableMapping[str, str] = {}
         star_forwarded: str | None = None
         star_kw_forwarded: str | None = None
         for arg in call_args:
+            name_value = self._require_name_value(arg)
             if arg.keyword is not None:
-                name_value = self._name_value(arg.value)
                 if name_value is None:
                     return None
                 keyword_forwarded[arg.keyword.value] = name_value
-                continue
-            if arg.star == "*":
-                name_value = self._name_value(arg.value)
+            elif arg.star == "*":
                 if name_value is None:
                     return None
                 star_forwarded = name_value
-                continue
-            if arg.star == "**":
-                name_value = self._name_value(arg.value)
+            elif arg.star == "**":
                 if name_value is None:
                     return None
                 star_kw_forwarded = name_value
-                continue
-            if arg.star not in {"", None}:
+            elif arg.star not in {"", None}:
                 return None
-            name_value = self._name_value(arg.value)
-            if name_value is None:
-                return None
-            positional_forwarded.append(name_value)
-        return (
-            positional_forwarded,
-            keyword_forwarded,
-            star_forwarded,
-            star_kw_forwarded,
+            else:
+                if name_value is None:
+                    return None
+                positional_forwarded.append(name_value)
+        return _ForwardingActual(
+            positional=positional_forwarded,
+            keyword=keyword_forwarded,
+            star=star_forwarded,
+            star_kw=star_kw_forwarded,
         )
 
     def _remove_aliases(

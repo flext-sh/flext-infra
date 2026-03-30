@@ -172,43 +172,54 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
                 new_body.append(replacement)
         return module.with_changes(body=new_body)
 
+    @staticmethod
+    def _extract_typing_import(
+        stmt: cst.BaseStatement,
+    ) -> cst.ImportFrom | None:
+        """Return the ImportFrom node if stmt is a single 'from typing import ...'."""
+        if not isinstance(stmt, cst.SimpleStatementLine) or len(stmt.body) != 1:
+            return None
+        only = stmt.body[0]
+        if not isinstance(only, cst.ImportFrom):
+            return None
+        module_name = FlextInfraUtilitiesParsing.cst_module_name(only.module)
+        if module_name != "typing" or isinstance(only.names, cst.ImportStar):
+            return None
+        return only
+
+    def _should_retain_typing_alias(self, alias: cst.ImportAlias) -> bool:
+        """Decide if a typing import alias should be kept; logs removal changes."""
+        if not isinstance(alias.name, cst.Name):
+            return True
+        imported_name = alias.name.value
+        bound_name = self._bound_name(alias)
+        if imported_name == "TypeAlias":
+            if self._typealias_unconverted > 0:
+                return True
+            self.changes.append("Removed typing import: TypeAlias")
+            return False
+        if bound_name in self._all_name_usages:
+            return True
+        self.changes.append(f"Removed unused typing import: {imported_name}")
+        return False
+
     def _maybe_filter_typing_import_stmt(
         self,
         stmt: cst.BaseStatement,
     ) -> cst.BaseStatement | None:
-        if not isinstance(stmt, cst.SimpleStatementLine):
+        typing_import = self._extract_typing_import(stmt)
+        if typing_import is None:
             return stmt
-        if len(stmt.body) != 1:
+        names = typing_import.names
+        if isinstance(names, cst.ImportStar):
             return stmt
-        only = stmt.body[0]
-        if not isinstance(only, cst.ImportFrom):
-            return stmt
-        module_name = FlextInfraUtilitiesParsing.cst_module_name(only.module)
-        if module_name != "typing":
-            return stmt
-        if isinstance(only.names, cst.ImportStar):
-            return stmt
-        retained: MutableSequence[cst.ImportAlias] = []
-        for alias in tuple(only.names):
-            if not isinstance(alias.name, cst.Name):
-                retained.append(alias)
-                continue
-            imported_name = alias.name.value
-            bound_name = self._bound_name(alias)
-            if imported_name == "TypeAlias":
-                if self._typealias_unconverted > 0:
-                    retained.append(alias)
-                else:
-                    self.changes.append("Removed typing import: TypeAlias")
-                continue
-            if bound_name in self._all_name_usages:
-                retained.append(alias)
-                continue
-            self.changes.append(f"Removed unused typing import: {imported_name}")
+        retained = [
+            alias for alias in tuple(names) if self._should_retain_typing_alias(alias)
+        ]
         if not retained:
             self.changes.append("Removed empty typing import")
             return None
-        updated_import = only.with_changes(names=tuple(retained))
+        updated_import = typing_import.with_changes(names=tuple(retained))
         return stmt.with_changes(body=[updated_import])
 
     def _inject_t_import(self, module: cst.Module) -> cst.Module:

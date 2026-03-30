@@ -8,12 +8,12 @@ from pathlib import Path
 
 import pytest
 import tomlkit
-from flext_tests import t, tm
+from flext_tests import tm
 
 from flext_infra import (
     FlextInfraPyprojectModernizer,
     FlextInfraUtilitiesCli,
-    modernizer as modernizer_module,
+    t,
 )
 
 
@@ -95,7 +95,7 @@ class TestModernizerUncoveredLines:
             return []
 
         monkeypatch.setattr(modernizer, "find_pyproject_files", _find_files)
-        monkeypatch.setattr(modernizer_module.u.Infra, "read", _read_doc)
+        monkeypatch.setattr(modernizer.u.Infra, "read", _read_doc)
         monkeypatch.setattr(modernizer, "process_file", _process_file)
         tm.that(modernizer.run(args, _default_cli(tmp_path)), eq=0)
 

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t
+from flext_infra.detectors._base_detector import _DetectorContext
 
 
 class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -41,26 +42,24 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         self, file_path: Path
     ) -> Sequence[m.Infra.NamespaceSourceViolation]:
         return self.detect_file(
-            file_path=file_path,
-            project_name=self._project_name,
-            project_root=self._project_root,
-            rope_project=self._rope,
-            parse_failures=self._pf,
+            _DetectorContext(
+                file_path=file_path,
+                project_name=self._project_name,
+                project_root=self._project_root,
+                rope_project=self._rope,
+                parse_failures=self._pf,
+            ),
         )
 
     @classmethod
     @override
     def detect_file(
         cls,
-        *,
-        file_path: Path,
-        rope_project: t.Infra.RopeProject,
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
-        project_name: str = "",
-        project_root: Path | None = None,
+        ctx: _DetectorContext,
     ) -> Sequence[m.Infra.NamespaceSourceViolation]:
         """Detect wrong-source alias imports."""
-        del parse_failures, project_name, rope_project
+        file_path = ctx.file_path
+        project_root = ctx.project_root
         if project_root is None:
             return []
         package_name = cls.discover_project_package_name(project_root=project_root)

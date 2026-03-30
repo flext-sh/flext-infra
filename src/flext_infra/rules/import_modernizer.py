@@ -26,6 +26,65 @@ _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.ImportModernizerRuleConfi
 )
 
 
+def _all_param_names(params: cst.Parameters) -> Sequence[str]:
+    """Extract all parameter names from a function's Parameters node."""
+    names: MutableSequence[str] = [
+        param.name.value
+        for param in [*params.params, *params.posonly_params, *params.kwonly_params]
+    ]
+    if isinstance(params.star_arg, cst.Param):
+        names.append(params.star_arg.name.value)
+    if isinstance(params.star_kwarg, cst.Param):
+        names.append(params.star_kwarg.name.value)
+    return names
+
+
+class _FunctionShadowCollector(cst.CSTVisitor):
+    """Collect runtime-alias names shadowed inside function bodies."""
+
+    def __init__(
+        self,
+        runtime_aliases: t.Infra.StrSet,
+        shadowed_aliases: t.Infra.StrSet,
+    ) -> None:
+        self._function_depth = 0
+        self._runtime_aliases = runtime_aliases
+        self._shadowed = shadowed_aliases
+
+    def _collect_name(self, node: cst.BaseExpression) -> None:
+        if isinstance(node, cst.Name) and node.value in self._runtime_aliases:
+            self._shadowed.add(node.value)
+
+    @override
+    def leave_FunctionDef(self, original_node: cst.FunctionDef) -> None:
+        del original_node
+        self._function_depth -= 1
+
+    @override
+    def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
+        if self._function_depth > 0:
+            self._collect_name(node.target)
+
+    @override
+    def visit_Assign(self, node: cst.Assign) -> None:
+        if self._function_depth == 0:
+            return
+        for assign_target in node.targets:
+            self._collect_name(assign_target.target)
+
+    @override
+    def visit_For(self, node: cst.For) -> None:
+        if self._function_depth > 0:
+            self._collect_name(node.target)
+
+    @override
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
+        self._function_depth += 1
+        for param_name in _all_param_names(node.params):
+            if param_name in self._runtime_aliases:
+                self._shadowed.add(param_name)
+
+
 class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
     """Modernize forbidden imports and map symbols to runtime aliases."""
 
@@ -94,6 +153,56 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
             return alias.name.value
         return alias.name.attr.value
 
+    def _blocked_from_compound_stmt(
+        self,
+        stmt: cst.BaseStatement,
+        runtime_aliases: t.Infra.StrSet,
+        blocked: t.Infra.StrSet,
+    ) -> None:
+        """Collect blocked aliases from function/class definitions."""
+        if isinstance(stmt, cst.FunctionDef) and stmt.name.value in runtime_aliases:
+            blocked.add(stmt.name.value)
+        if isinstance(stmt, cst.ClassDef) and stmt.name.value in runtime_aliases:
+            blocked.add(stmt.name.value)
+
+    def _blocked_from_import(
+        self,
+        small_stmt: cst.ImportFrom | cst.Import,
+        runtime_aliases: t.Infra.StrSet,
+        blocked: t.Infra.StrSet,
+    ) -> None:
+        """Collect blocked aliases from import statements."""
+        if isinstance(small_stmt, cst.ImportFrom):
+            module_name = u.Infra.cst_module_name(small_stmt.module)
+            if module_name == c.Infra.Packages.CORE_UNDERSCORE:
+                return
+            if isinstance(small_stmt.names, cst.ImportStar):
+                return
+            names = small_stmt.names
+        else:
+            names = small_stmt.names
+        for alias in tuple(names):
+            bound_name = self._bound_name_from_import_alias(alias)
+            if bound_name in runtime_aliases:
+                blocked.add(bound_name)
+
+    @staticmethod
+    def _blocked_from_assignment(
+        small_stmt: cst.Assign | cst.AnnAssign,
+        runtime_aliases: t.Infra.StrSet,
+        blocked: t.Infra.StrSet,
+    ) -> None:
+        """Collect blocked aliases from assignment statements."""
+        if isinstance(small_stmt, cst.Assign):
+            for assign_target in small_stmt.targets:
+                target = assign_target.target
+                if isinstance(target, cst.Name) and target.value in runtime_aliases:
+                    blocked.add(target.value)
+        elif isinstance(small_stmt, cst.AnnAssign):
+            target = small_stmt.target
+            if isinstance(target, cst.Name) and target.value in runtime_aliases:
+                blocked.add(target.value)
+
     def _collect_blocked_aliases(
         self,
         tree: cst.Module,
@@ -104,48 +213,17 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
             if isinstance(stmt, cst.ImportFrom):
                 continue
             if not isinstance(stmt, cst.SimpleStatementLine):
-                if (
-                    isinstance(stmt, cst.FunctionDef)
-                    and stmt.name.value in runtime_aliases
-                ):
-                    blocked_aliases.add(stmt.name.value)
-                if (
-                    isinstance(stmt, cst.ClassDef)
-                    and stmt.name.value in runtime_aliases
-                ):
-                    blocked_aliases.add(stmt.name.value)
+                self._blocked_from_compound_stmt(stmt, runtime_aliases, blocked_aliases)
                 continue
             for small_stmt in stmt.body:
-                if isinstance(small_stmt, cst.ImportFrom):
-                    module_name = u.Infra.cst_module_name(small_stmt.module)
-                    if module_name == c.Infra.Packages.CORE_UNDERSCORE:
-                        continue
-                    if isinstance(small_stmt.names, cst.ImportStar):
-                        continue
-                    for alias in tuple(small_stmt.names):
-                        bound_name = self._bound_name_from_import_alias(alias)
-                        if bound_name in runtime_aliases:
-                            blocked_aliases.add(bound_name)
-                    continue
-                if isinstance(small_stmt, cst.Import):
-                    for alias in small_stmt.names:
-                        bound_name = self._bound_name_from_import_alias(alias)
-                        if bound_name in runtime_aliases:
-                            blocked_aliases.add(bound_name)
-                    continue
-                if isinstance(small_stmt, cst.Assign):
-                    for assign_target in small_stmt.targets:
-                        target = assign_target.target
-                        if (
-                            isinstance(target, cst.Name)
-                            and target.value in runtime_aliases
-                        ):
-                            blocked_aliases.add(target.value)
-                    continue
-                if isinstance(small_stmt, cst.AnnAssign):
-                    target = small_stmt.target
-                    if isinstance(target, cst.Name) and target.value in runtime_aliases:
-                        blocked_aliases.add(target.value)
+                if isinstance(small_stmt, (cst.ImportFrom, cst.Import)):
+                    self._blocked_from_import(
+                        small_stmt, runtime_aliases, blocked_aliases
+                    )
+                elif isinstance(small_stmt, (cst.Assign, cst.AnnAssign)):
+                    self._blocked_from_assignment(
+                        small_stmt, runtime_aliases, blocked_aliases
+                    )
         return blocked_aliases
 
     def _collect_function_shadowed_aliases(
@@ -154,59 +232,9 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         runtime_aliases: t.Infra.StrSet,
     ) -> t.Infra.StrSet:
         shadowed_aliases: t.Infra.StrSet = set()
-
-        class FunctionShadowCollector(cst.CSTVisitor):
-            def __init__(self) -> None:
-                self._function_depth = 0
-
-            @override
-            def leave_FunctionDef(self, original_node: cst.FunctionDef) -> None:
-                del original_node
-                self._function_depth -= 1
-
-            @override
-            def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
-                if self._function_depth == 0:
-                    return
-                target = node.target
-                if isinstance(target, cst.Name) and target.value in runtime_aliases:
-                    shadowed_aliases.add(target.value)
-
-            @override
-            def visit_Assign(self, node: cst.Assign) -> None:
-                if self._function_depth == 0:
-                    return
-                for assign_target in node.targets:
-                    target = assign_target.target
-                    if isinstance(target, cst.Name) and target.value in runtime_aliases:
-                        shadowed_aliases.add(target.value)
-
-            @override
-            def visit_For(self, node: cst.For) -> None:
-                if self._function_depth == 0:
-                    return
-                target = node.target
-                if isinstance(target, cst.Name) and target.value in runtime_aliases:
-                    shadowed_aliases.add(target.value)
-
-            @override
-            def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
-                self._function_depth += 1
-                param_names = [
-                    param.name.value
-                    for param in list(node.params.params)
-                    + list(node.params.posonly_params)
-                    + list(node.params.kwonly_params)
-                ]
-                if isinstance(node.params.star_arg, cst.Param):
-                    param_names.append(node.params.star_arg.name.value)
-                if isinstance(node.params.star_kwarg, cst.Param):
-                    param_names.append(node.params.star_kwarg.name.value)
-                for param_name in param_names:
-                    if param_name in runtime_aliases:
-                        shadowed_aliases.add(param_name)
-
-        tree.visit(FunctionShadowCollector())
+        tree.visit(
+            _FunctionShadowCollector(runtime_aliases, shadowed_aliases),
+        )
         return shadowed_aliases
 
     def _fix_lazy_imports(

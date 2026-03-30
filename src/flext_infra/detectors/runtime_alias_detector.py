@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, t
+from flext_infra.detectors._base_detector import _DetectorContext
 
 
 class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -35,25 +36,23 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         self, file_path: Path
     ) -> Sequence[m.Infra.RuntimeAliasViolation]:
         return self.detect_file(
-            file_path=file_path,
-            project_name=self._project_name,
-            rope_project=self._rope,
-            parse_failures=self._pf,
+            _DetectorContext(
+                file_path=file_path,
+                project_name=self._project_name,
+                rope_project=self._rope,
+                parse_failures=self._pf,
+            ),
         )
 
     @classmethod
     @override
     def detect_file(
         cls,
-        *,
-        file_path: Path,
-        rope_project: t.Infra.RopeProject,
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
-        project_name: str = "",
-        project_root: Path | None = None,
+        ctx: _DetectorContext,
     ) -> Sequence[m.Infra.RuntimeAliasViolation]:
         """Detect missing/duplicate runtime alias assignments in a facade file."""
-        del parse_failures, project_name, project_root
+        file_path = ctx.file_path
+        rope_project = ctx.rope_project
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []

@@ -77,8 +77,33 @@ class FlextInfraCodegenLazyInit(s[int]):
 
         """
         pkg_dirs = self._find_package_dirs()
+        total, ok, errors, _dir_exports = self._generate_all_inits(
+            pkg_dirs,
+            check_only=check_only,
+        )
+
+        if not check_only:
+            self._fix_import_cycles(pkg_dirs)
+
+        output.info(
+            f"Lazy-init summary: {ok} generated, {errors} errors"
+            f" ({total} dirs scanned)",
+        )
+        return errors
+
+    def _generate_all_inits(
+        self,
+        pkg_dirs: Sequence[Path],
+        *,
+        check_only: bool,
+    ) -> tuple[int, int, int, MutableMapping[str, t.Infra.LazyImportMap]]:
+        """Bottom-up generation pass: child exports computed before parents.
+
+        Returns:
+            ``(total, ok, errors, dir_exports)``.
+
+        """
         total = ok = errors = 0
-        # Bottom-up: child exports computed before parents consume them
         dir_exports: MutableMapping[str, t.Infra.LazyImportMap] = {}
 
         for pkg_dir in pkg_dirs:
@@ -96,27 +121,23 @@ class FlextInfraCodegenLazyInit(s[int]):
                 errors += 1
             else:
                 ok += 1
+        return total, ok, errors, dir_exports
 
-        # Phase 2: break circular imports in generated __init__.py files
-        if not check_only:
-            cycle_fixes = 0
-            for pkg_dir in pkg_dirs:
-                init_file = pkg_dir / "__init__.py"
-                if not init_file.is_file():
-                    continue
-                modified, changes = u.Infra.break_import_cycles(pkg_dir)
-                if modified:
-                    for change in changes:
-                        output.info(f"  CYCLE-FIX: {change}")
-                    cycle_fixes += len(changes)
-            if cycle_fixes:
-                output.info(f"Cycle-fix: {cycle_fixes} circular imports resolved")
-
-        output.info(
-            f"Lazy-init summary: {ok} generated, {errors} errors"
-            f" ({total} dirs scanned)",
-        )
-        return errors
+    @staticmethod
+    def _fix_import_cycles(pkg_dirs: Sequence[Path]) -> None:
+        """Phase 2: break circular imports in generated ``__init__.py`` files."""
+        cycle_fixes = 0
+        for pkg_dir in pkg_dirs:
+            init_file = pkg_dir / "__init__.py"
+            if not init_file.is_file():
+                continue
+            modified, changes = u.Infra.break_import_cycles(pkg_dir)
+            if modified:
+                for change in changes:
+                    output.info(f"  CYCLE-FIX: {change}")
+                cycle_fixes += len(changes)
+        if cycle_fixes:
+            output.info(f"Cycle-fix: {cycle_fixes} circular imports resolved")
 
     def _find_package_dirs(self) -> Sequence[Path]:
         """Find all package directories across every workspace project.
@@ -183,11 +204,10 @@ class FlextInfraCodegenLazyInit(s[int]):
         self._merge_child_exports(pkg_dir, current_pkg, lazy_map, dir_exports)
 
         # 4. Handle __version__.py
-        inline_constants, version_lazy = self._extract_version_exports(
+        inline_constants, version_eager = self._extract_version_exports(
             pkg_dir,
             current_pkg,
         )
-        lazy_map.update(version_lazy)
 
         # 5. Handle single-letter aliases via ALIAS_TO_SUFFIX
         # IMPORTANT: Only generate single-letter aliases at root-level public packages.
@@ -210,7 +230,9 @@ class FlextInfraCodegenLazyInit(s[int]):
             lazy_map.pop(k, None)
 
         # 8. Build final exports list (includes both lazy and eager)
-        exports = sorted(set(lazy_map) | set(inline_constants) | eager_tvars)
+        exports = sorted(
+            set(lazy_map) | set(inline_constants) | eager_tvars | set(version_eager),
+        )
         if not exports:
             return (None, dict(lazy_map))
 
@@ -226,6 +248,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             inline_constants,
             current_pkg,
             eager_tvars,
+            version_eager,
         )
 
     def _write_init(
@@ -237,6 +260,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         inline_constants: t.StrMapping,
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
+        eager_imports: t.Infra.LazyImportMap | None = None,
     ) -> t.Infra.LazyInitWriteResult:
         """Write the generated ``__init__.py`` and run ruff fix."""
         try:
@@ -247,6 +271,7 @@ class FlextInfraCodegenLazyInit(s[int]):
                 inline_constants,
                 current_pkg,
                 eager_typevar_names,
+                eager_imports,
             )
             init_path.write_text(generated, encoding=c.Infra.Encoding.DEFAULT)
             self._run_ruff_fix(init_path)
@@ -330,41 +355,53 @@ class FlextInfraCodegenLazyInit(s[int]):
         """
         index: t.Infra.MutableLazyImportMap = {}
         for py_file in sorted(pkg_dir.rglob("*.py")):
-            if py_file.name in {"__init__.py", "__main__.py", "__version__.py"}:
-                continue
-            # Only filter underscore files in root dir, not in nested submodules
-            rel_path = py_file.relative_to(pkg_dir)
-            if len(rel_path.parts) == 1 and py_file.name.startswith("_"):
-                continue
-            if py_file.stem[0:1].isdigit():
-                continue
-
-            # Build full module path from relative path
-            mod_parts = rel_path.with_suffix("").parts
-            mod_stem = ".".join(mod_parts)
-            mod_path = f"{current_pkg}.{mod_stem}" if current_pkg else mod_stem
-
-            sibling_tree = u.Infra.parse_module_ast(py_file)
-            if sibling_tree is None:
-                output.warning(f"skipping {py_file.name}: parse failed")
-                continue
-
-            # Prefer __all__ when available
-            has_all, all_exports = u.Infra.extract_exports(
-                sibling_tree,
+            FlextInfraCodegenLazyInit._index_single_file(
+                py_file,
+                pkg_dir,
+                current_pkg,
+                index,
             )
-            if has_all and all_exports:
-                for name in all_exports:
-                    if name not in index:
-                        index[name] = (mod_path, name)
-            else:
-                FlextInfraCodegenLazyInit._scan_ast_public_defs(
-                    sibling_tree,
-                    mod_path,
-                    index,
-                )
-
         return index
+
+    @staticmethod
+    def _index_single_file(
+        py_file: Path,
+        pkg_dir: Path,
+        current_pkg: str,
+        index: t.Infra.MutableLazyImportMap,
+    ) -> None:
+        """Index exports from a single ``.py`` file into the lazy map."""
+        if py_file.name in {"__init__.py", "__main__.py", "__version__.py"}:
+            return
+        # Only filter underscore files in root dir, not in nested submodules
+        rel_path = py_file.relative_to(pkg_dir)
+        if len(rel_path.parts) == 1 and py_file.name.startswith("_"):
+            return
+        if py_file.stem[0:1].isdigit():
+            return
+
+        # Build full module path from relative path
+        mod_parts = rel_path.with_suffix("").parts
+        mod_stem = ".".join(mod_parts)
+        mod_path = f"{current_pkg}.{mod_stem}" if current_pkg else mod_stem
+
+        sibling_tree = u.Infra.parse_module_ast(py_file)
+        if sibling_tree is None:
+            output.warning(f"skipping {py_file.name}: parse failed")
+            return
+
+        # Prefer __all__ when available
+        has_all, all_exports = u.Infra.extract_exports(sibling_tree)
+        if has_all and all_exports:
+            for name in all_exports:
+                if name not in index:
+                    index[name] = (mod_path, name)
+        else:
+            FlextInfraCodegenLazyInit._scan_ast_public_defs(
+                sibling_tree,
+                mod_path,
+                index,
+            )
 
     @staticmethod
     def _scan_ast_public_defs(
@@ -460,19 +497,30 @@ class FlextInfraCodegenLazyInit(s[int]):
             subdir_key = str(subdir)
             if subdir_key not in dir_exports:
                 continue
-            if subdir.name != "__init__" and subdir.name not in lazy_map:
-                submodule = (
-                    f"{current_pkg}.{subdir.name}" if current_pkg else subdir.name
-                )
-                lazy_map[subdir.name] = (submodule, "")
-            sub_exports = dir_exports[subdir_key]
-            # Merge module-level exports from sibling .py files
-            for name, (mod, attr) in sub_exports.items():
-                if not FlextInfraCodegenLazyInit._should_bubble_up(name):
-                    continue
-                # Sibling file exports take precedence
-                if name not in lazy_map:
-                    lazy_map[name] = (mod, attr)
+            FlextInfraCodegenLazyInit._merge_single_child(
+                subdir,
+                current_pkg,
+                lazy_map,
+                dir_exports[subdir_key],
+            )
+
+    @staticmethod
+    def _merge_single_child(
+        subdir: Path,
+        current_pkg: str,
+        lazy_map: t.Infra.MutableLazyImportMap,
+        sub_exports: t.Infra.LazyImportMap,
+    ) -> None:
+        """Merge a single child subdirectory's exports into the parent map."""
+        if subdir.name != "__init__" and subdir.name not in lazy_map:
+            submodule = f"{current_pkg}.{subdir.name}" if current_pkg else subdir.name
+            lazy_map[subdir.name] = (submodule, "")
+        for name, (mod, attr) in sub_exports.items():
+            if not FlextInfraCodegenLazyInit._should_bubble_up(name):
+                continue
+            # Sibling file exports take precedence
+            if name not in lazy_map:
+                lazy_map[name] = (mod, attr)
 
     # ---------------------------------------------------------------------------
     # Version and alias resolution
@@ -486,10 +534,11 @@ class FlextInfraCodegenLazyInit(s[int]):
         """Extract version-related exports from ``__version__.py``.
 
         Returns:
-            ``(inline_constants, lazy_entries)``.
+            ``(inline_constants, eager_entries)``.
             ``inline_constants``: String constants to inline directly.
-            ``lazy_entries``: Remaining exported names resolved lazily from
-            ``__version__.py``.
+            ``eager_entries``: Remaining exported names imported eagerly from
+            ``__version__.py`` so ``from package import __version__`` resolves
+            to the value instead of the submodule.
 
         """
         ver_file = pkg_dir / "__version__.py"
@@ -502,13 +551,13 @@ class FlextInfraCodegenLazyInit(s[int]):
         inline = u.Infra.extract_inline_constants(tree)
         ver_mod = f"{current_pkg}.__version__" if current_pkg else "__version__"
 
-        lazy: t.Infra.MutableLazyImportMap = {}
+        eager: t.Infra.MutableLazyImportMap = {}
         has_all, exported_names = u.Infra.extract_exports(tree)
         if has_all and exported_names:
             for name in exported_names:
                 if name not in inline:
-                    lazy[name] = (ver_mod, name)
-            return (inline, lazy)
+                    eager[name] = (ver_mod, name)
+            return (inline, eager)
 
         for node in tree.body:
             if isinstance(node, ast.Assign) and len(node.targets) == 1:
@@ -519,9 +568,9 @@ class FlextInfraCodegenLazyInit(s[int]):
                     and target.id.endswith("__")
                     and target.id not in inline
                 ):
-                    lazy[target.id] = (ver_mod, target.id)
+                    eager[target.id] = (ver_mod, target.id)
 
-        return (inline, lazy)
+        return (inline, eager)
 
     @staticmethod
     def _resolve_aliases(
@@ -541,29 +590,22 @@ class FlextInfraCodegenLazyInit(s[int]):
         for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
             expected_module = "typings" if suffix == "Types" else suffix.lower()
 
-            if alias in lazy_map:
-                existing = lazy_map[alias]
-                existing_basename = existing[0].rsplit(".", 1)[-1]
-                if (
-                    existing[1].endswith(suffix)
-                    and existing[0].count(".") == 1
-                    and existing_basename == expected_module
-                ):
-                    continue
-
-            matched = False
-            for name, (mod, _attr) in list(lazy_map.items()):
-                basename = mod.rsplit(".", 1)[-1]
-                if (
-                    name.endswith(suffix)
-                    and mod.count(".") == 1
-                    and basename == expected_module
-                ):
-                    lazy_map[alias] = (mod, name)
-                    matched = True
-                    break
-            if matched:
+            if FlextInfraCodegenLazyInit._existing_alias_is_canonical(
+                lazy_map,
+                alias,
+                suffix,
+                expected_module,
+            ):
                 continue
+
+            if FlextInfraCodegenLazyInit._find_facade_for_alias(
+                lazy_map,
+                alias,
+                suffix,
+                expected_module,
+            ):
+                continue
+
             # Phase 2: no local facade — delegate to parent package
             # Only delegate if alias has no local mapping already (e.g. s from tests.base)
             if pkg_dir is not None and alias not in lazy_map:
@@ -572,6 +614,43 @@ class FlextInfraCodegenLazyInit(s[int]):
                 )
                 if parent_pkg:
                     lazy_map[alias] = (parent_pkg, alias)
+
+    @staticmethod
+    def _existing_alias_is_canonical(
+        lazy_map: t.Infra.MutableLazyImportMap,
+        alias: str,
+        suffix: str,
+        expected_module: str,
+    ) -> bool:
+        """Return True if the existing alias already points to the canonical facade."""
+        if alias not in lazy_map:
+            return False
+        existing = lazy_map[alias]
+        existing_basename = existing[0].rsplit(".", 1)[-1]
+        return (
+            existing[1].endswith(suffix)
+            and existing[0].count(".") == 1
+            and existing_basename == expected_module
+        )
+
+    @staticmethod
+    def _find_facade_for_alias(
+        lazy_map: t.Infra.MutableLazyImportMap,
+        alias: str,
+        suffix: str,
+        expected_module: str,
+    ) -> bool:
+        """Search lazy_map for a facade class matching the suffix. Return True if found."""
+        for name, (mod, _attr) in list(lazy_map.items()):
+            basename = mod.rsplit(".", 1)[-1]
+            if (
+                name.endswith(suffix)
+                and mod.count(".") == 1
+                and basename == expected_module
+            ):
+                lazy_map[alias] = (mod, name)
+                return True
+        return False
 
     @staticmethod
     def _discover_parent_package(pkg_dir: Path) -> str | None:

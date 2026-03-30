@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, Sequence
-from pathlib import Path
+from collections.abc import Sequence
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t, u
+from flext_infra import FlextInfraScanFileMixin, c, m, p, u
+from flext_infra.detectors._base_detector import _DetectorContext
 
 
 class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
@@ -25,15 +25,11 @@ class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
     @override
     def detect_file(
         cls,
-        *,
-        file_path: Path,
-        rope_project: t.Infra.RopeProject,
-        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
-        project_name: str = "",
-        project_root: Path | None = None,
+        ctx: _DetectorContext,
     ) -> Sequence[m.Infra.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations."""
-        del parse_failures, project_name, project_root
+        file_path = ctx.file_path
+        rope_project = ctx.rope_project
         if (
             file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES
             or c.Infra.MRO_PROTOCOLS_DIRECTORY in file_path.parts
