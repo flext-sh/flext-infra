@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from tests.unit.check.cli_tests import (
         test_resolve_gates_maps_type_alias,
+        test_run_cli_rejects_fix_flags_for_run,
         test_run_cli_run_returns_one_for_fail,
         test_run_cli_run_returns_two_for_error,
         test_run_cli_run_returns_zero_for_pass,
@@ -399,6 +400,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.check.cli_tests",
         "test_resolve_gates_maps_type_alias",
     ],
+    "test_run_cli_rejects_fix_flags_for_run": [
+        "tests.unit.check.cli_tests",
+        "test_run_cli_rejects_fix_flags_for_run",
+    ],
     "test_run_cli_run_returns_one_for_fail": [
         "tests.unit.check.cli_tests",
         "test_run_cli_run_returns_one_for_fail",
@@ -499,6 +504,7 @@ __all__ = [
     "test_check_main_executes_real_cli",
     "test_fix_pyrefly_config_main_executes_real_cli_help",
     "test_resolve_gates_maps_type_alias",
+    "test_run_cli_rejects_fix_flags_for_run",
     "test_run_cli_run_returns_one_for_fail",
     "test_run_cli_run_returns_two_for_error",
     "test_run_cli_run_returns_zero_for_pass",

@@ -8,7 +8,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyPathSync, m, t, u
+from flext_infra import FlextInfraDependencyPathSync, m, t
 from flext_infra.deps import path_sync as path_sync_module
 
 
@@ -30,8 +30,9 @@ class _OutputRecorder:
     def __init__(self) -> None:
         self.calls: MutableSequence[str] = []
 
-    def info(self, message: str) -> None:
+    def info(self, message: str) -> r[bool]:
         self.calls.append(message)
+        return r[bool].ok(True)
 
 
 def test_main_project_invalid_toml(
@@ -203,7 +204,7 @@ def test_main_with_changes_and_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         "rewrite_dep_paths",
         _rewrite_changes,
     )
-    monkeypatch.setattr(u.Infra, "info", recorder.info)
+    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", recorder)
     tm.that(path_sync_module.main(), eq=0)
     tm.that(any("[DRY-RUN]" in call for call in recorder.calls), eq=True)
 
@@ -247,6 +248,6 @@ def test_main_with_changes_no_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
         "rewrite_dep_paths",
         _rewrite_changes,
     )
-    monkeypatch.setattr(u.Infra, "info", recorder.info)
+    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", recorder)
     tm.that(path_sync_module.main(), eq=0)
     assert len(recorder.calls) > 0

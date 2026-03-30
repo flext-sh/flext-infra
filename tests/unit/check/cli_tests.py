@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from flext_tests import tm
 
@@ -110,3 +111,14 @@ def test_run_cli_with_fail_fast_flag(monkeypatch: MonkeyPatch) -> None:
     ])
     assert exit_code == 0
     assert mock.captured_fail_fast is True
+
+
+def test_run_cli_rejects_fix_flags_for_run() -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        FlextInfraWorkspaceChecker.run_cli([
+            "--dry-run",
+            "run",
+            "--project",
+            "flext-core",
+        ])
+    assert exc_info.value.code == 2

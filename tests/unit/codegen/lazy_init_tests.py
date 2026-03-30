@@ -123,6 +123,17 @@ class TestExcludedDirectories:
         tm.that(type(result).__name__, eq="int")
         tm.that(result, gte=0)
 
+    def test_nested_site_packages_dir_excluded(self, tmp_path: Path) -> None:
+        _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
+        _create_init_file(
+            tmp_path / "pkg" / "container" / "venv" / "lib" / "site-packages" / "bad",
+            _VALID_TESTS_INIT,
+        )
+        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        result = generator.run(check_only=True)
+        tm.that(type(result).__name__, eq="int")
+        tm.that(result, gte=0)
+
 
 class TestEdgeCases:
     """Edge cases for directory scanning."""

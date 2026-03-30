@@ -214,8 +214,7 @@ class TestRunCLIExtended:
             _self: FlextInfraWorkspaceChecker,
             **_kw: t.Scalar,
         ) -> None:
-            msg = "Must use unified test helpers per Rule 3.6"
-            raise NotImplementedError(msg)
+            pass
 
         def _fake_run_projects(
             _self: FlextInfraWorkspaceChecker,

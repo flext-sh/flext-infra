@@ -9,10 +9,6 @@ from flext_infra import c, m, t, u
 
 
 class FlextInfraPostCheckGate:
-    def __init__(self) -> None:
-        msg = "Must use unified test helpers per Rule 3.6"
-        raise NotImplementedError(msg)
-
     def validate(
         self,
         result: m.Infra.Result,

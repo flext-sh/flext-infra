@@ -29,9 +29,11 @@ class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         file_path: Path,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations."""
-        del parse_failures
+        del parse_failures, project_name, project_root
         if (
             file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES
             or c.Infra.MRO_PROTOCOLS_DIRECTORY in file_path.parts

@@ -30,9 +30,11 @@ class FlextInfraFutureAnnotationsDetector(FlextInfraScanFileMixin, p.Infra.Scann
         file_path: Path,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.FutureAnnotationsViolation]:
         """Detect missing future annotations in a single file."""
-        del parse_failures
+        del parse_failures, project_name, project_root
         if file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []
         source = cls._get_source_or_empty(rope_project, file_path)

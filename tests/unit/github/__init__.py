@@ -13,6 +13,10 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.github.main_cli_tests import (
+        test_lint_rejects_apply_before_subcommand,
+        test_pr_subcommand_preserves_explicit_argv,
+    )
     from tests.unit.github.main_dispatch_tests import TestRunPrWorkspace
     from tests.unit.github.main_integration_tests import TestMain, main
     from tests.unit.github.main_tests import TestRunLint, TestRunPr, TestRunWorkflows
@@ -27,6 +31,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "TestRunWorkflows": ["tests.unit.github.main_tests", "TestRunWorkflows"],
     "main": ["tests.unit.github.main_integration_tests", "main"],
+    "test_lint_rejects_apply_before_subcommand": [
+        "tests.unit.github.main_cli_tests",
+        "test_lint_rejects_apply_before_subcommand",
+    ],
+    "test_pr_subcommand_preserves_explicit_argv": [
+        "tests.unit.github.main_cli_tests",
+        "test_pr_subcommand_preserves_explicit_argv",
+    ],
 }
 
 __all__ = [
@@ -36,6 +48,8 @@ __all__ = [
     "TestRunPrWorkspace",
     "TestRunWorkflows",
     "main",
+    "test_lint_rejects_apply_before_subcommand",
+    "test_pr_subcommand_preserves_explicit_argv",
 ]
 
 

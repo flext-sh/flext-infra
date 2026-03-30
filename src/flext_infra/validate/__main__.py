@@ -206,6 +206,7 @@ class FlextInfraValidateCommand:
                 "stub-validate": "Validate stub supply chain",
             },
             include_apply=False,
+            include_diff=False,
         )
 
         subs["inventory"].add_argument(
@@ -260,18 +261,21 @@ class FlextInfraValidateCommand:
             default=c.Infra.Modes.BASELINE,
         )
 
-        subs["stub-validate"].add_argument(
+        stub_selection = subs["stub-validate"].add_mutually_exclusive_group(
+            required=False,
+        )
+        stub_selection.add_argument(
             "--project",
             action="append",
             help="Project to validate",
         )
-        _ = subs["stub-validate"].add_argument(
+        _ = stub_selection.add_argument(
             "--all",
             action="store_true",
             help="Validate all projects",
         )
 
-        args = parser.parse_args(argv)
+        args = u.Infra.parse_subcommand_args(parser, argv)
         cli = u.Infra.resolve(args)
 
         run = FlextInfraValidateCommand
@@ -304,7 +308,7 @@ class FlextInfraValidateCommand:
             ),
             "stub-validate": lambda: run.run_stub_validate(
                 cli,
-                getattr(args, "project", None),
+                None if getattr(args, "all", False) else getattr(args, "project", None),
             ),
         }
         handler = commands.get(args.command)

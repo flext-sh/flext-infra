@@ -87,6 +87,45 @@ class TestDiscoveryIterPythonFiles:
         error_text = result.error or ""
         assert "python file iteration failed" in error_text
 
+    def test_iter_python_files_excludes_nested_virtualenv_trees(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project = tmp_path
+        (project / c.Infra.Paths.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (project / "pkg" / "container" / "venv" / "lib" / "site-packages").mkdir(
+            parents=True,
+        )
+        (project / c.Infra.Files.MAKEFILE_FILENAME).write_text(
+            "all:\n",
+            encoding="utf-8",
+        )
+        (project / c.Infra.Files.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='workspace'\n",
+            encoding="utf-8",
+        )
+        legit_file = project / c.Infra.Paths.DEFAULT_SRC_DIR / "mod.py"
+        nested_venv_file = (
+            project
+            / "pkg"
+            / "container"
+            / "venv"
+            / "lib"
+            / "site-packages"
+            / "ignored.py"
+        )
+        legit_file.write_text("x = 1\n", encoding="utf-8")
+        nested_venv_file.write_text("x = 2\n", encoding="utf-8")
+
+        result = u.Infra.iter_python_files(
+            workspace_root=tmp_path,
+            project_roots=[project],
+        )
+
+        assert result.is_success
+        assert legit_file in result.value
+        assert nested_venv_file not in result.value
+
 
 class TestDiscoveryFindAllPyprojectFiles:
     def test_find_all_pyproject_files_with_project_paths(self, tmp_path: Path) -> None:

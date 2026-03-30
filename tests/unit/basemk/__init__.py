@@ -57,6 +57,7 @@ if TYPE_CHECKING:
         test_basemk_build_config_with_project_name,
         test_basemk_main_ensures_structlog_configured,
         test_basemk_main_output_to_stdout,
+        test_basemk_main_rejects_apply_flag,
         test_basemk_main_with_generate_command,
         test_basemk_main_with_generation_failure,
         test_basemk_main_with_help,
@@ -115,6 +116,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_basemk_main_output_to_stdout": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_output_to_stdout",
+    ],
+    "test_basemk_main_rejects_apply_flag": [
+        "tests.unit.basemk.test_main",
+        "test_basemk_main_rejects_apply_flag",
     ],
     "test_basemk_main_with_generate_command": [
         "tests.unit.basemk.test_main",
@@ -286,6 +291,7 @@ __all__ = [
     "test_basemk_engine_render_all_with_valid_config",
     "test_basemk_main_ensures_structlog_configured",
     "test_basemk_main_output_to_stdout",
+    "test_basemk_main_rejects_apply_flag",
     "test_basemk_main_with_generate_command",
     "test_basemk_main_with_generation_failure",
     "test_basemk_main_with_help",

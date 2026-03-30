@@ -12,6 +12,7 @@ from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
+from flext_tests import tm
 
 from flext_infra import FlextInfraProjectMigrator, __main__ as workspace_cli, m
 
@@ -44,6 +45,17 @@ def test_workspace_cli_migrate_command(monkeypatch: MonkeyPatch) -> None:
     )
     exit_code = workspace_cli.main()
     assert exit_code == 0
+
+
+def test_workspace_cli_rejects_migrate_flags_for_detect(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _ = monkeypatch.setattr(
+        sys,
+        "argv",
+        ["flext-infra", "workspace", "--dry-run", "detect"],
+    )
+    tm.that(workspace_cli.main(), eq=2)
 
 
 def test_workspace_cli_migrate_output_contains_summary(

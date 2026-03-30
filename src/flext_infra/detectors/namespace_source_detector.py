@@ -54,13 +54,15 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         cls,
         *,
         file_path: Path,
-        project_name: str,
-        project_root: Path,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.NamespaceSourceViolation]:
         """Detect wrong-source alias imports."""
         del parse_failures, project_name, rope_project
+        if project_root is None:
+            return []
         package_name = cls.discover_project_package_name(project_root=project_root)
         if not package_name:
             return []

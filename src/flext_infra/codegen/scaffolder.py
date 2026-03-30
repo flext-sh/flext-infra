@@ -29,19 +29,7 @@ class FlextInfraCodegenScaffolder(s[bool]):
 
     def __init__(self, workspace_root: Path) -> None:
         """Initialize scaffolder with workspace root."""
-        super().__init__(
-            config_type=None,
-            config_overrides=None,
-            initial_context=None,
-            subproject=None,
-            services=None,
-            factories=None,
-            resources=None,
-            container_overrides=None,
-            wire_modules=None,
-            wire_packages=None,
-            wire_classes=None,
-        )
+        super().__init__()
         self._workspace_root = workspace_root
 
     @staticmethod

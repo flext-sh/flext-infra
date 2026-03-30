@@ -170,3 +170,20 @@ class TestMainWithFlags:
         monkeypatch.setattr(FlextInfraDocValidator, "validate", _capture_simple(kw))
         main()
         tm.that(kw.get("check"), eq="all")
+
+    def test_validate_check_before_subcommand(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        kw: MutableMapping[str, t.Scalar] = {}
+        monkeypatch.setattr(sys, "argv", ["prog", "--check", "validate"])
+        monkeypatch.setattr(FlextInfraDocValidator, "validate", _capture_simple(kw))
+        tm.that(main(), eq=0)
+        tm.that(kw.get("check"), eq="all")
+
+    def test_build_rejects_apply_before_subcommand(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["prog", "--apply", "build"])
+        tm.that(main(), eq=2)

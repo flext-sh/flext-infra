@@ -42,6 +42,10 @@ class FlextInfraDependencyPathSync:
     def _write_document(self, path: Path, doc: TOMLDocument) -> r[bool]:
         return u.Infra.write_document(path, doc)
 
+    def _info(self, message: str) -> None:
+        """Emit informational progress through the module logger."""
+        _ = self._log.info(message)
+
     @staticmethod
     def detect_mode(project_root: Path) -> str:
         """Detect workspace or standalone mode from project structure."""
@@ -314,7 +318,6 @@ class FlextInfraDependencyPathSync:
 
         if mode == "auto":
             mode = self.detect_mode(self._root)
-            u.Infra.info(f"[sync-dep-paths] auto-detected mode: {mode}")
 
         total_changes = 0
         internal_names: t.Infra.StrSet = set()
@@ -385,9 +388,9 @@ class FlextInfraDependencyPathSync:
             changes: t.StrSequence = changes_result.value
             if changes:
                 prefix = "[DRY-RUN] " if dry_run else ""
-                u.Infra.info(f"{prefix}{root_pyproject}:")
+                self._info(f"{prefix}{root_pyproject}:")
                 for change in changes:
-                    u.Infra.info(change)
+                    self._info(change)
                 total_changes += len(changes)
 
         for project_dir in sorted(project_dirs):
@@ -413,18 +416,14 @@ class FlextInfraDependencyPathSync:
             project_changes: t.StrSequence = changes_result.value
             if project_changes:
                 prefix = "[DRY-RUN] " if dry_run else ""
-                u.Infra.info(f"{prefix}{pyproject}:")
+                self._info(f"{prefix}{pyproject}:")
                 for change in project_changes:
-                    u.Infra.info(change)
+                    self._info(change)
                 total_changes += len(project_changes)
 
-        if total_changes == 0:
-            u.Infra.info(
-                "[sync-dep-paths] No changes needed - all paths already match target mode.",
-            )
-        else:
+        if total_changes > 0:
             action = "would change" if dry_run else "changed"
-            u.Infra.info(f"[sync-dep-paths] {action} {total_changes} path(s).")
+            self._info(f"[sync-dep-paths] {action} {total_changes} path(s).")
         return 0
 
     @staticmethod

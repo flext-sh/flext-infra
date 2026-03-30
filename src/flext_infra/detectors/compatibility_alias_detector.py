@@ -29,9 +29,11 @@ class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scan
         file_path: Path,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file."""
-        del parse_failures
+        del parse_failures, project_name, project_root
         if file_path.suffix != ".py":
             return []
         source = cls._get_source_or_empty(rope_project, file_path)

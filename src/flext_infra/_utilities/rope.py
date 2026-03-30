@@ -115,19 +115,19 @@ class FlextInfraUtilitiesRope:
             if symbol not in attrs:
                 return None
             pyname = attrs[symbol]
-            definition_loc = pyname.get_definition_location()
-            if definition_loc is None:
-                return None
-
-            def_module, line_number = definition_loc
-            if def_module is not None and hasattr(def_module, "get_resource"):
-                res = def_module.get_resource()
+            def_module: p.Infra.RopePyModuleLike | None
+            def_line: int | None
+            def_module, def_line = pyname.get_definition_location()
+            if def_module is not None:
+                res: p.Infra.RopeResourceLike | None = def_module.get_resource()
                 if res is not None:
                     source = res.read()
+            if def_line is None:
+                return None
 
             return FlextInfraUtilitiesRope._line_offset_for_symbol(
                 source=source,
-                line_number=line_number,
+                line_number=def_line,
                 symbol=symbol,
             )
         except (RefactoringError, ResourceNotFoundError, AttributeError):

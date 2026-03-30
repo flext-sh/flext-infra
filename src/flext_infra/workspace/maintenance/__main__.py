@@ -30,6 +30,8 @@ class FlextInfraWorkspaceMaintenanceCommand:
         parser = u.Infra.create_parser(
             prog="maintenance",
             description="Enforce Python version constraints via pyproject.toml",
+            include_apply=False,
+            include_diff=False,
             include_check=True,
         )
         _ = parser.add_argument(

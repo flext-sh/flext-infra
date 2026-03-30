@@ -29,19 +29,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize workspace checker services and paths."""
-        super().__init__(
-            config_type=None,
-            config_overrides=None,
-            initial_context=None,
-            subproject=None,
-            services=None,
-            factories=None,
-            resources=None,
-            container_overrides=None,
-            wire_modules=None,
-            wire_packages=None,
-            wire_classes=None,
-        )
+        super().__init__()
         self._workspace_root = self._resolve_workspace_root(workspace_root)
         self._registry = FlextInfraGateRegistry.default()
         report_dir = u.Infra.get_report_dir(
@@ -122,7 +110,13 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 c.Infra.Verbs.RUN: "Run quality gates",
                 "fix-pyrefly-config": "Repair [tool.pyrefly] blocks",
             },
-            include_apply=True,
+            include_apply=False,
+            subcommand_flags={
+                "fix-pyrefly-config": {
+                    "include_apply": True,
+                    "include_diff": False,
+                },
+            },
         )
         _ = subs[c.Infra.Verbs.RUN].add_argument(
             "--gates",
@@ -146,7 +140,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
     def run_cli(argv: t.StrSequence | None = None) -> int:
         """Run the subcommand-based workspace check CLI."""
         parser = FlextInfraWorkspaceChecker.build_parser()
-        args = parser.parse_args(argv)
+        args = u.Infra.parse_subcommand_args(parser, argv)
         cli = u.Infra.resolve(args)
         if args.command == c.Infra.Verbs.RUN:
             env_workspace = os.getenv("FLEXT_WORKSPACE_ROOT")

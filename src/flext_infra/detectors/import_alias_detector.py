@@ -31,9 +31,11 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         file_path: Path,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.ImportAliasViolation]:
         """Detect deep imports via ImportNormalizerTransformer."""
-        del parse_failures, rope_project
+        del parse_failures, rope_project, project_name, project_root
         transformer = cls._get_transformer()
         if transformer is None:
             return []

@@ -58,14 +58,14 @@ class TestRunPrWorkspace:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_ok))
-        assert run_pr_workspace(_cli(tmp_path), _pr_args()) == 0
+        assert run_pr_workspace(_cli(tmp_path), _pr_args(), None) == 0
 
     def test_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         def _fail(**kw: t.Scalar) -> r[m.Infra.PrOrchestrationResult]:
             return r[m.Infra.PrOrchestrationResult].fail("orchestration failed")
 
         monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_fail))
-        assert run_pr_workspace(_cli(tmp_path), _pr_args()) == 1
+        assert run_pr_workspace(_cli(tmp_path), _pr_args(), None) == 1
 
     def test_with_failures(
         self,
@@ -76,7 +76,7 @@ class TestRunPrWorkspace:
             return r[m.Infra.PrOrchestrationResult].fail("orchestration had failures")
 
         monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_fail2))
-        assert run_pr_workspace(_cli(tmp_path), _pr_args()) == 1
+        assert run_pr_workspace(_cli(tmp_path), _pr_args(), None) == 1
 
     def test_with_pr_args(
         self,
@@ -97,7 +97,7 @@ class TestRunPrWorkspace:
             staticmethod(_fake_orchestrate),
         )
         pr = _pr_args(pr_action="merge", pr_base="main", pr_head="feature/test")
-        assert run_pr_workspace(_cli(tmp_path), pr) == 0
+        assert run_pr_workspace(_cli(tmp_path), pr, None) == 0
         pr_args_val = captured.get("pr_args", {})
         tm.that(str(pr_args_val), has="action")
         tm.that(str(pr_args_val), has="base")
@@ -120,7 +120,7 @@ class TestRunPrWorkspace:
             staticmethod(_fake_orchestrate),
         )
         pr = _pr_args(branch="feature/test")
-        run_pr_workspace(_cli(tmp_path), pr)
+        run_pr_workspace(_cli(tmp_path), pr, None)
         assert captured["branch"] == "feature/test"
 
     def test_with_checkpoint(
@@ -140,7 +140,7 @@ class TestRunPrWorkspace:
             staticmethod(_fake_orchestrate),
         )
         pr = _pr_args(checkpoint=True)
-        run_pr_workspace(_cli(tmp_path), pr)
+        run_pr_workspace(_cli(tmp_path), pr, None)
         assert captured["checkpoint"] is True
 
     def test_with_fail_fast(
@@ -160,5 +160,31 @@ class TestRunPrWorkspace:
             staticmethod(_fake_orchestrate),
         )
         pr = _pr_args(fail_fast=True)
-        run_pr_workspace(_cli(tmp_path), pr)
+        run_pr_workspace(_cli(tmp_path), pr, None)
         assert captured["fail_fast"] is True
+
+    def test_with_selected_projects(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        captured_projects: list[str] = []
+
+        def _fake_orchestrate(
+            *,
+            projects: t.StrSequence | None = None,
+            **kw: t.Scalar,
+        ) -> r[m.Infra.PrOrchestrationResult]:
+            del kw
+            nonlocal captured_projects
+            captured_projects = list(projects or [])
+            return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
+
+        monkeypatch.setattr(
+            u.Infra,
+            "github_pr_orchestrate",
+            staticmethod(_fake_orchestrate),
+        )
+        pr = _pr_args()
+        run_pr_workspace(_cli(tmp_path), pr, ["flext-core", "flext-api"])
+        assert captured_projects == ["flext-core", "flext-api"]

@@ -46,9 +46,20 @@ class FlextInfraDocsCommand:
                     "generate": "Generate project docs",
                     c.Infra.Verbs.VALIDATE: "Validate documentation",
                 },
-                include_apply=True,
+                include_apply=False,
+                include_diff=False,
                 include_project=True,
-                include_check=True,
+                include_check=False,
+                subcommand_flags={
+                    "audit": {"include_check": True},
+                    "fix": {"include_apply": True, "include_diff": False},
+                    "generate": {"include_apply": True, "include_diff": False},
+                    c.Infra.Verbs.VALIDATE: {
+                        "include_apply": True,
+                        "include_diff": False,
+                        "include_check": True,
+                    },
+                },
             )
         )
         parser, subs = parser_subs
@@ -83,7 +94,7 @@ class FlextInfraDocsCommand:
             default=f"{c.Infra.Reporting.REPORTS_DIR_NAME}/docs",
         )
 
-        args = parser.parse_args(argv)
+        args = u.Infra.parse_subcommand_args(parser, argv)
         cli = u.Infra.resolve(args)
 
         if not args.command:

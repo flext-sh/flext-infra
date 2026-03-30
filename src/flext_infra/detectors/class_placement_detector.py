@@ -39,9 +39,11 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         file_path: Path,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.ClassPlacementViolation]:
         """Detect misplaced Pydantic model classes."""
-        del parse_failures
+        del parse_failures, project_name, project_root
         if (
             file_path.name in CANONICAL_MODEL_FILES
             or "_models" in file_path.parts

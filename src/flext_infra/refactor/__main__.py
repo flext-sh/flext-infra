@@ -29,8 +29,33 @@ class FlextInfraRefactorCommand:
                 "ultrawork-models": "Run full centralization + MRO + namespace workflow",
                 "census": "Run AST/CST census of MRO family method usage",
             },
-            include_apply=True,
-            include_project=True,
+            include_apply=False,
+            include_diff=False,
+            include_project=False,
+            subcommand_flags={
+                "centralize-pydantic": {
+                    "include_apply": True,
+                    "include_diff": False,
+                },
+                "migrate-mro": {
+                    "include_apply": True,
+                    "include_diff": False,
+                },
+                "namespace-enforce": {
+                    "include_apply": True,
+                    "include_diff": True,
+                    "include_project": True,
+                },
+                "imports": {
+                    "include_apply": True,
+                    "include_diff": False,
+                    "include_project": True,
+                },
+                "ultrawork-models": {
+                    "include_apply": True,
+                    "include_diff": False,
+                },
+            },
         )
         _ = subs["centralize-pydantic"].add_argument(
             "--normalize-remaining",
@@ -62,7 +87,7 @@ class FlextInfraRefactorCommand:
             help="Remove remaining BaseModel/TypedDict bases in non-allowed files",
         )
 
-        args = parser.parse_args(argv)
+        args = u.Infra.parse_subcommand_args(parser, argv)
         cli = u.Infra.resolve(args)
         handlers = {
             "centralize-pydantic": lambda: (

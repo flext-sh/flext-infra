@@ -11,7 +11,7 @@ from flext_core import r
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import m, u
+from flext_infra import FlextInfraDependencyPathSync, m
 from flext_infra.deps import path_sync as path_sync_module
 
 
@@ -23,6 +23,13 @@ def _project(path: Path) -> m.Infra.ProjectInfo:
         has_tests=False,
         has_src=False,
     )
+
+
+class _SilentLogger:
+    """No-op logger mock for path_sync tests."""
+
+    def info(self, _message: str) -> None:
+        pass
 
 
 def test_main_project_obj_not_dict_first_loop(
@@ -51,11 +58,7 @@ def test_main_project_obj_not_dict_first_loop(
         _read_document,
     )
 
-    def _noop_info(_msg: str) -> None:
-        msg = "Must use unified test helpers per Rule 3.6"
-        raise NotImplementedError(msg)
-
-    monkeypatch.setattr(u.Infra, "info", _noop_info)
+    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())
     tm.that(path_sync_module.main(), eq=0)
 
 
@@ -84,11 +87,7 @@ def test_main_project_obj_not_dict_second_loop(
         _read_document,
     )
 
-    def _noop_info(_msg: str) -> None:
-        msg = "Must use unified test helpers per Rule 3.6"
-        raise NotImplementedError(msg)
-
-    monkeypatch.setattr(u.Infra, "info", _noop_info)
+    monkeypatch.setattr(FlextInfraDependencyPathSync, "_log", _SilentLogger())
     tm.that(path_sync_module.main(), eq=0)
 
 

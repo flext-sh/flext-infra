@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from argparse import ArgumentParser, Namespace
+from argparse import SUPPRESS, ArgumentParser, Namespace
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
@@ -66,12 +66,10 @@ class FlextInfraUtilitiesCli:
                 List of project names if any specified, None if both arguments empty.
 
             """
-            names: MutableSequence[str] = []
-            if self.project:
-                names.append(self.project)
-            if self.projects:
-                names.extend(p.strip() for p in self.projects.split(",") if p.strip())
-            return names or None
+            return FlextInfraUtilitiesCli.project_names_from_values(
+                self.project,
+                self.projects,
+            )
 
         def project_dirs(self) -> Sequence[Path] | None:
             """Convert project names to absolute directory paths under workspace.
@@ -90,12 +88,166 @@ class FlextInfraUtilitiesCli:
             return [self.workspace / name for name in names]
 
     @staticmethod
-    def _shared_flags_parser(
+    def _shared_flag_options(
         *,
         include_apply: bool = True,
+        include_diff: bool | None = None,
         include_format: bool = False,
         include_check: bool = False,
         include_project: bool = False,
+    ) -> MutableMapping[str, bool]:
+        """Resolve shared parser options with backward-compatible diff behavior."""
+        resolved_include_diff = include_apply if include_diff is None else include_diff
+        return {
+            "include_apply": include_apply,
+            "include_diff": resolved_include_diff,
+            "include_format": include_format,
+            "include_check": include_check,
+            "include_project": include_project,
+        }
+
+    @staticmethod
+    def _merge_shared_flag_options(
+        base_options: Mapping[str, bool],
+        overrides: Mapping[str, bool] | None,
+    ) -> MutableMapping[str, bool]:
+        """Merge per-subcommand shared-flag overrides onto base options."""
+        merged: MutableMapping[str, bool] = dict(base_options)
+        if overrides is None:
+            return merged
+        unknown_keys = set(overrides) - set(base_options)
+        if unknown_keys:
+            msg = ", ".join(sorted(unknown_keys))
+            error_msg = f"Unknown shared flag override(s): {msg}"
+            raise ValueError(error_msg)
+        for key, value in overrides.items():
+            merged[key] = value
+        return merged
+
+    @staticmethod
+    def _union_shared_flag_options(
+        options: Sequence[Mapping[str, bool]],
+    ) -> MutableMapping[str, bool]:
+        """Compute the union of enabled shared flags across subcommands."""
+        union = FlextInfraUtilitiesCli._shared_flag_options(
+            include_apply=False,
+            include_diff=False,
+            include_format=False,
+            include_check=False,
+            include_project=False,
+        )
+        for option_set in options:
+            for key, value in option_set.items():
+                union[key] = union[key] or value
+        return union
+
+    @staticmethod
+    def _shared_option_tokens(options: Mapping[str, bool]) -> Sequence[str]:
+        """Return CLI option tokens enabled by the given shared-flag config."""
+        tokens: MutableSequence[str] = []
+        if options.get("include_apply", False):
+            tokens.extend(["--dry-run", "--apply"])
+        if options.get("include_diff", False):
+            tokens.append("--diff")
+        if options.get("include_format", False):
+            tokens.append("--format")
+        if options.get("include_check", False):
+            tokens.append("--check")
+        if options.get("include_project", False):
+            tokens.extend(["--project", "--projects"])
+        return tokens
+
+    @staticmethod
+    def _add_shared_flags(
+        parser: ArgumentParser,
+        *,
+        include_apply: bool = True,
+        include_diff: bool | None = None,
+        include_format: bool = False,
+        include_check: bool = False,
+        include_project: bool = False,
+        suppress_defaults: bool = False,
+    ) -> None:
+        """Attach standard shared CLI flags to an existing parser."""
+        options = FlextInfraUtilitiesCli._shared_flag_options(
+            include_apply=include_apply,
+            include_diff=include_diff,
+            include_format=include_format,
+            include_check=include_check,
+            include_project=include_project,
+        )
+        resolved_include_apply = options["include_apply"]
+        resolved_include_diff = options["include_diff"]
+        default_path = SUPPRESS if suppress_defaults else Path.cwd()
+        default_bool = SUPPRESS if suppress_defaults else False
+        default_text = SUPPRESS if suppress_defaults else "text"
+        default_project = SUPPRESS if suppress_defaults else None
+        _ = parser.add_argument(
+            "--workspace",
+            type=Path,
+            default=default_path,
+            help="Workspace root directory (default: cwd)",
+        )
+        if resolved_include_apply or resolved_include_diff:
+            mode = parser.add_mutually_exclusive_group(required=False)
+            if resolved_include_apply:
+                _ = mode.add_argument(
+                    "--dry-run",
+                    action="store_true",
+                    default=default_bool,
+                    help="Plan/Scan only",
+                )
+                _ = mode.add_argument(
+                    "--apply",
+                    action="store_true",
+                    default=default_bool,
+                    help="Apply changes",
+                )
+            if resolved_include_diff:
+                _ = mode.add_argument(
+                    "--diff",
+                    action="store_true",
+                    default=default_bool,
+                    help="Show unified diff of changes without applying",
+                )
+        if options["include_format"]:
+            _ = parser.add_argument(
+                "--format",
+                dest="output_format",
+                choices=["json", "text"],
+                default=default_text,
+                help="Output format (default: text)",
+            )
+        if options["include_check"]:
+            _ = parser.add_argument(
+                "--check",
+                action="store_true",
+                default=default_bool,
+                help="Run in check mode",
+            )
+        if options["include_project"]:
+            _ = parser.add_argument(
+                "--project",
+                type=str,
+                default=default_project,
+                help="Single project to process",
+            )
+            _ = parser.add_argument(
+                "--projects",
+                type=str,
+                default=default_project,
+                help="Multiple projects (comma-separated or glob pattern)",
+            )
+
+    @staticmethod
+    def _shared_flags_parser(
+        *,
+        include_apply: bool = True,
+        include_diff: bool | None = None,
+        include_format: bool = False,
+        include_check: bool = False,
+        include_project: bool = False,
+        suppress_defaults: bool = False,
     ) -> ArgumentParser:
         """Create base argument parser with optional standard flags.
 
@@ -117,52 +269,15 @@ class FlextInfraUtilitiesCli:
 
         """
         base = ArgumentParser(add_help=False)
-        _ = base.add_argument(
-            "--workspace",
-            type=Path,
-            default=Path.cwd(),
-            help="Workspace root directory (default: cwd)",
+        FlextInfraUtilitiesCli._add_shared_flags(
+            base,
+            include_apply=include_apply,
+            include_diff=include_diff,
+            include_format=include_format,
+            include_check=include_check,
+            include_project=include_project,
+            suppress_defaults=suppress_defaults,
         )
-        if include_apply:
-            mode = base.add_mutually_exclusive_group(required=False)
-            _ = mode.add_argument(
-                "--dry-run",
-                action="store_true",
-                help="Plan/Scan only",
-            )
-            _ = mode.add_argument("--apply", action="store_true", help="Apply changes")
-            _ = mode.add_argument(
-                "--diff",
-                action="store_true",
-                help="Show unified diff of changes without applying",
-            )
-        if include_format:
-            _ = base.add_argument(
-                "--format",
-                dest="output_format",
-                choices=["json", "text"],
-                default="text",
-                help="Output format (default: text)",
-            )
-        if include_check:
-            _ = base.add_argument(
-                "--check",
-                action="store_true",
-                help="Run in check mode",
-            )
-        if include_project:
-            _ = base.add_argument(
-                "--project",
-                type=str,
-                default=None,
-                help="Single project to process",
-            )
-            _ = base.add_argument(
-                "--projects",
-                type=str,
-                default=None,
-                help="Multiple projects (comma-separated or glob pattern)",
-            )
         return base
 
     @staticmethod
@@ -172,9 +287,11 @@ class FlextInfraUtilitiesCli:
         *,
         subcommands: t.StrMapping,
         include_apply: bool = True,
+        include_diff: bool | None = None,
         include_format: bool = False,
         include_check: bool = False,
         include_project: bool = False,
+        subcommand_flags: Mapping[str, Mapping[str, bool]] | None = None,
     ) -> t.Infra.Pair[ArgumentParser, Mapping[str, ArgumentParser]]:
         """Create main parser with subcommands and shared flags.
 
@@ -204,20 +321,49 @@ class FlextInfraUtilitiesCli:
               Each subcommand parser inherits shared flags from parent via MRO.
 
         """
-        shared = FlextInfraUtilitiesCli._shared_flags_parser(
+        base_options = FlextInfraUtilitiesCli._shared_flag_options(
             include_apply=include_apply,
+            include_diff=include_diff,
             include_format=include_format,
             include_check=include_check,
             include_project=include_project,
         )
+        command_options: MutableMapping[str, MutableMapping[str, bool]] = {}
+        for command in subcommands:
+            overrides = subcommand_flags.get(command) if subcommand_flags else None
+            command_options[command] = (
+                FlextInfraUtilitiesCli._merge_shared_flag_options(
+                    base_options,
+                    overrides,
+                )
+            )
+        root_options = FlextInfraUtilitiesCli._union_shared_flag_options(
+            [base_options, *command_options.values()],
+        )
+        root_shared_tokens = tuple(
+            FlextInfraUtilitiesCli._shared_option_tokens(root_options),
+        )
+        shared = FlextInfraUtilitiesCli._shared_flags_parser(**root_options)
         parser = ArgumentParser(prog=prog, description=description, parents=[shared])
         subparsers = parser.add_subparsers(dest="command")
         command_parsers: MutableMapping[str, ArgumentParser] = {}
         for command, command_help in subcommands.items():
+            command_shared = FlextInfraUtilitiesCli._shared_flags_parser(
+                **command_options[command],
+                suppress_defaults=True,
+            )
             command_parsers[command] = subparsers.add_parser(
                 command,
                 help=command_help,
-                parents=[shared],
+                parents=[command_shared],
+            )
+            command_parsers[command].set_defaults(
+                _allowed_shared_option_tokens=tuple(
+                    FlextInfraUtilitiesCli._shared_option_tokens(
+                        command_options[command],
+                    ),
+                ),
+                _root_shared_option_tokens=root_shared_tokens,
             )
         return parser, command_parsers
 
@@ -227,6 +373,7 @@ class FlextInfraUtilitiesCli:
         description: str,
         *,
         include_apply: bool = True,
+        include_diff: bool | None = None,
         include_format: bool = False,
         include_check: bool = False,
         include_project: bool = False,
@@ -246,64 +393,98 @@ class FlextInfraUtilitiesCli:
 
         """
         parser = ArgumentParser(prog=prog, description=description)
-
-        # Always add workspace argument
-        _ = parser.add_argument(
-            "--workspace",
-            type=Path,
-            default=Path.cwd(),
-            help="Workspace root directory (default: cwd)",
+        FlextInfraUtilitiesCli._add_shared_flags(
+            parser,
+            include_apply=include_apply,
+            include_diff=include_diff,
+            include_format=include_format,
+            include_check=include_check,
+            include_project=include_project,
         )
-
-        # Add apply/dry-run group if requested
-        if include_apply:
-            mode = parser.add_mutually_exclusive_group(required=False)
-            _ = mode.add_argument(
-                "--dry-run",
-                action="store_true",
-                help="Plan/Scan only",
-            )
-            _ = mode.add_argument("--apply", action="store_true", help="Apply changes")
-            _ = mode.add_argument(
-                "--diff",
-                action="store_true",
-                help="Show unified diff of changes without applying",
-            )
-
-        # Add format flag if requested
-        if include_format:
-            _ = parser.add_argument(
-                "--format",
-                dest="output_format",
-                choices=["json", "text"],
-                default="text",
-                help="Output format (default: text)",
-            )
-
-        # Add check flag if requested
-        if include_check:
-            _ = parser.add_argument(
-                "--check",
-                action="store_true",
-                help="Run in check mode",
-            )
-
-        # Add project selection flags if requested
-        if include_project:
-            _ = parser.add_argument(
-                "--project",
-                type=str,
-                default=None,
-                help="Single project to process",
-            )
-            _ = parser.add_argument(
-                "--projects",
-                type=str,
-                default=None,
-                help="Multiple projects (comma-separated or glob pattern)",
-            )
-
         return parser
+
+    @staticmethod
+    def _extract_used_shared_options(
+        argv: t.StrSequence,
+        candidate_tokens: Sequence[str],
+    ) -> Sequence[str]:
+        """Extract shared-option tokens explicitly provided on the CLI."""
+        used: MutableSequence[str] = []
+        known_tokens = set(candidate_tokens)
+        for token in argv:
+            normalized = token.split("=", 1)[0]
+            if normalized not in known_tokens or normalized in used:
+                continue
+            used.append(normalized)
+        return used
+
+    @staticmethod
+    def _coerce_option_tokens(
+        value: tuple[str, ...] | list[str] | None,
+    ) -> t.StrSequence:
+        """Normalize argparse metadata into a concrete list of option tokens."""
+        if value is None:
+            return []
+        return list(value)
+
+    @staticmethod
+    def project_names_from_values(
+        *values: str | t.StrSequence | None,
+    ) -> t.StrSequence | None:
+        """Normalize project selectors from repeated or comma-separated CLI values."""
+        names: MutableSequence[str] = []
+        for value in values:
+            if value is None:
+                continue
+            raw_values = [value] if isinstance(value, str) else list(value)
+            for raw_value in raw_values:
+                names.extend(
+                    item.strip() for item in raw_value.split(",") if item.strip()
+                )
+        return names or None
+
+    @staticmethod
+    def parse_subcommand_args(
+        parser: ArgumentParser,
+        argv: t.StrSequence | None = None,
+        *,
+        passthrough_subcommands: Sequence[str] | None = None,
+    ) -> Namespace:
+        """Parse and validate subcommand args against per-command shared flags."""
+        args, unknown_args = parser.parse_known_args(argv)
+        raw_argv = list(argv) if argv is not None else sys.argv[1:]
+        allowed_tokens = FlextInfraUtilitiesCli._coerce_option_tokens(
+            getattr(args, "_allowed_shared_option_tokens", None),
+        )
+        root_tokens = FlextInfraUtilitiesCli._coerce_option_tokens(
+            getattr(args, "_root_shared_option_tokens", None),
+        )
+        if not root_tokens:
+            return args
+        used_tokens = FlextInfraUtilitiesCli._extract_used_shared_options(
+            raw_argv,
+            root_tokens,
+        )
+        allowed_token_set = set(allowed_tokens)
+        disallowed = [token for token in used_tokens if token not in allowed_token_set]
+        if not disallowed:
+            passthrough = set(passthrough_subcommands or ())
+            command = getattr(args, "command", None)
+            command_label = str(command) if isinstance(command, str) else ""
+            if unknown_args:
+                if command_label in passthrough:
+                    setattr(args, "_unknown_args", tuple(unknown_args))
+                    return args
+                parser.error(f"unrecognized arguments: {' '.join(unknown_args)}")
+            return args
+        command = getattr(args, "command", None)
+        command_label = (
+            str(command) if isinstance(command, str) and command else "subcommand"
+        )
+        parser.error(
+            f"unrecognized arguments for '{command_label}': {' '.join(disallowed)}",
+        )
+        return args
 
     @staticmethod
     def resolve(args: Namespace) -> FlextInfraUtilitiesCli.CliArgs:

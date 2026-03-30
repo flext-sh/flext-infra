@@ -19,14 +19,43 @@ _SUBCOMMAND_MODULES: t.StrMapping = MappingProxyType({
     "modernize": "flext_infra.deps.modernizer",
     "path-sync": "flext_infra.deps.path_sync",
 })
+_VALUE_FLAGS: frozenset[str] = frozenset({
+    "--workspace",
+    "--project",
+    "--projects",
+    "--format",
+    "--output",
+    "-o",
+    "--limits",
+    "--mode",
+})
 
 
 class FlextInfraDepsCommand:
     """CLI entry point for dependency management operations."""
 
     @staticmethod
+    def _find_subcommand_index(argv: t.StrSequence) -> int | None:
+        """Locate the deps subcommand without consuming its forwarded flags."""
+        index = 0
+        while index < len(argv):
+            token = argv[index]
+            normalized = token.split("=", 1)[0]
+            if normalized in _VALUE_FLAGS:
+                index += 1 if "=" in token else 2
+                continue
+            if token.startswith("-"):
+                index += 1
+                continue
+            if token in _SUBCOMMAND_MODULES:
+                return index
+            index += 1
+        return None
+
+    @staticmethod
     def run(argv: t.StrSequence | None = None) -> int:
         """Dispatch to the appropriate deps subcommand."""
+        raw_args = list(argv) if argv is not None else sys.argv[1:]
         parser, _ = u.Infra.create_subcommand_parser(
             "flext-infra deps",
             "Dependency management services",
@@ -38,18 +67,24 @@ class FlextInfraDepsCommand:
                 "path-sync": "Rewrite internal FLEXT dependency paths",
             },
             include_apply=False,
-            include_project=True,
         )
-        args, remaining = parser.parse_known_args(argv)
-        subcommand: str = str(args.command) if args.command else ""
-        if not subcommand:
+        if not raw_args or raw_args[0] in {"-h", "--help"}:
             parser.print_help()
             return 0
+        command_index = FlextInfraDepsCommand._find_subcommand_index(raw_args)
+        if command_index is None:
+            _ = parser.parse_args(raw_args)
+            parser.print_help()
+            return 0
+        subcommand = raw_args[command_index]
         if subcommand not in _SUBCOMMAND_MODULES:
             output.error(f"flext-infra deps: unknown subcommand '{subcommand}'")
             parser.print_help()
             return 1
-        sys.argv = [f"flext-infra deps {subcommand}", *remaining]
+        forwarded_args = [
+            token for idx, token in enumerate(raw_args) if idx != command_index
+        ]
+        sys.argv = [f"flext-infra deps {subcommand}", *forwarded_args]
         module = importlib.import_module(_SUBCOMMAND_MODULES[subcommand])
         exit_code = module.main()
         return int(exit_code) if exit_code is not None else 0

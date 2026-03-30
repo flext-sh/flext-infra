@@ -29,8 +29,11 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         file_path: Path,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.MROCompletenessViolation]:
         """Detect missing MRO bases: expected - declared = violations."""
+        del project_name, project_root
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []

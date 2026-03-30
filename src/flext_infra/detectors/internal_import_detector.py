@@ -27,9 +27,11 @@ class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         file_path: Path,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.InternalImportViolation]:
         """Detect private module/symbol imports in a single file."""
-        del parse_failures
+        del parse_failures, project_name, project_root
         if file_path.name == "__init__.py":
             return []
         res = u.Infra.get_resource_from_path(rope_project, file_path)

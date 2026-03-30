@@ -107,6 +107,20 @@ class TestMainSysArgvModification:
         tm.that(sys.argv, has="-q")
         tm.that(sys.argv, has="--no-fail")
 
+    def test_preserves_shared_flags_before_subcommand(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _patch_dispatch(
+            monkeypatch,
+            ["prog", "--workspace", ".", "--project", "flext-core", "detect"],
+        )
+        _main_impl()
+        tm.that(sys.argv, has="--workspace")
+        tm.that(sys.argv, has=".")
+        tm.that(sys.argv, has="--project")
+        tm.that(sys.argv, has="flext-core")
+
 
 class TestMainDelegation:
     def test_main_delegates_to_run_cli(

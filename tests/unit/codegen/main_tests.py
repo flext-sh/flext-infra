@@ -13,6 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from flext_tests import t, tm
 
 from flext_infra.codegen import __main__ as codegen_main
@@ -38,6 +39,25 @@ class TestHandleLazyInit:
         result = codegen_main.main(["lazy-init", "--workspace", str(tmp_path)])
         tm.that(result, eq=0)
 
+    def test_returns_non_zero_when_generation_reports_errors(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """_handle_lazy_init fails when the generator reports errors."""
+
+        class _BrokenLazyInit:
+            def __init__(self, workspace_root: Path) -> None:
+                _ = workspace_root
+
+            def run(self, *, check_only: bool = False) -> int:
+                _ = check_only
+                return 1
+
+        monkeypatch.setattr(codegen_main, "FlextInfraCodegenLazyInit", _BrokenLazyInit)
+        result = codegen_main.main(["lazy-init", "--workspace", str(tmp_path)])
+        tm.that(result, eq=1)
+
 
 class TestMainCommandDispatch:
     """Tests for main() command routing."""
@@ -54,10 +74,22 @@ class TestMainCommandDispatch:
         )
         tm.that(result, eq=0)
 
+    def test_lazy_init_with_check_before_subcommand(self, tmp_path: Path) -> None:
+        """main() lazy-init accepts shared check flag before subcommand."""
+        result = codegen_main.main(
+            ["--check", "lazy-init", "--workspace", str(tmp_path)],
+        )
+        tm.that(result, eq=0)
+
     def test_lazy_init_default_root(self) -> None:
         """main() lazy-init uses cwd as default root."""
         result = codegen_main.main(["lazy-init"])
         tm.that(result, eq=0)
+
+    def test_lazy_init_rejects_apply_before_subcommand(self) -> None:
+        """main() lazy-init rejects unrelated apply-mode flags."""
+        result = codegen_main.main(["--apply", "lazy-init"])
+        tm.that(result, eq=2)
 
     def test_unknown_command(self) -> None:
         """main() with unknown command returns non-zero exit code."""

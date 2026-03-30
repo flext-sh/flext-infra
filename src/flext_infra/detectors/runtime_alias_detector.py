@@ -47,12 +47,13 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        project_name: str,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.RuntimeAliasViolation]:
         """Detect missing/duplicate runtime alias assignments in a facade file."""
-        del parse_failures, project_name
+        del parse_failures, project_name, project_root
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None or file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES:
             return []

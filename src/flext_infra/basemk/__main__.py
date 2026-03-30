@@ -24,7 +24,12 @@ def _build_config(project_name: str | None) -> m.Infra.BaseMkConfig | None:
 
 def run(argv: t.StrSequence | None = None) -> int:
     """Run the base.mk CLI command dispatcher."""
-    parser = u.Infra.create_parser("basemk", "base.mk generation utilities")
+    parser = u.Infra.create_parser(
+        "basemk",
+        "base.mk generation utilities",
+        include_apply=False,
+        include_diff=False,
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     generate_parser = subparsers.add_parser(
         "generate",

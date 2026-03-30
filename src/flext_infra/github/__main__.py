@@ -30,6 +30,17 @@ def configure_lint_parser(parser: ArgumentParser) -> None:
 
 def configure_pr_workspace_parser(parser: ArgumentParser) -> None:
     """Configure parser for the pr-workspace command."""
+    _ = parser.add_argument(
+        "--project",
+        action="append",
+        help="Project to process (repeatable)",
+    )
+    _ = parser.add_argument(
+        "--projects",
+        type=str,
+        default=None,
+        help="Multiple projects (comma-separated)",
+    )
     _ = parser.add_argument("--include-root", type=int, default=0, choices=[0, 1])
     _ = parser.add_argument("--branch", type=str, default="")
     _ = parser.add_argument("--checkpoint", type=int, default=1, choices=[0, 1])
@@ -107,6 +118,8 @@ def run_pr(argv: t.StrSequence) -> int:
     parser = u.Infra.create_parser(
         "flext-infra github pr",
         "Pull request lifecycle management",
+        include_apply=False,
+        include_diff=False,
     )
     _ = parser.add_argument(
         "--repo-root",
@@ -201,11 +214,12 @@ def run_pr(argv: t.StrSequence) -> int:
 def run_pr_workspace(
     cli: u.Infra.CliArgs,
     pr_args: m.Infra.PrWorkspaceArgs,
+    projects: t.StrSequence | None,
 ) -> int:
     """Manage PRs across workspace."""
     result = u.Infra.github_pr_orchestrate(
         workspace_root=cli.workspace,
-        projects=cli.projects if isinstance(cli.projects, list) else [],
+        projects=projects,
         include_root=pr_args.include_root,
         branch=pr_args.branch,
         checkpoint=pr_args.checkpoint,
@@ -226,14 +240,24 @@ def run(argv: t.StrSequence | None = None) -> int:
             c.Infra.PR: "Manage pull requests for a single project",
             "pr-workspace": "Manage pull requests across workspace projects",
         },
-        include_apply=True,
-        include_project=True,
+        include_apply=False,
+        include_project=False,
+        subcommand_flags={
+            "workflows": {
+                "include_apply": True,
+                "include_diff": False,
+            },
+        },
     )
     configure_workflows_parser(subs["workflows"])
     configure_lint_parser(subs[c.Infra.LINT_SECTION])
     configure_pr_workspace_parser(subs["pr-workspace"])
 
-    args = parser.parse_args(argv)
+    args = u.Infra.parse_subcommand_args(
+        parser,
+        argv,
+        passthrough_subcommands=(c.Infra.PR,),
+    )
     if not args.command:
         parser.print_help()
         return 1
@@ -243,10 +267,14 @@ def run(argv: t.StrSequence | None = None) -> int:
     if args.command == c.Infra.LINT_SECTION:
         return run_lint(cli, report=args.report, strict=args.strict)
     if args.command == c.Infra.PR:
-        return run_pr(argv[2:] if argv is not None else sys.argv[2:])
+        return run_pr(list(getattr(args, "_unknown_args", ()) or ()))
     if args.command == "pr-workspace":
+        project_names = u.Infra.project_names_from_values(
+            getattr(args, "project", None),
+            getattr(args, "projects", None),
+        )
         pr_args = m.Infra.PrWorkspaceArgs.from_cli_namespace(args)
-        return run_pr_workspace(cli, pr_args)
+        return run_pr_workspace(cli, pr_args, project_names)
     parser.print_help()
     return 1
 

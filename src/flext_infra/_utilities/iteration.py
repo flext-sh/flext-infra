@@ -23,6 +23,19 @@ class FlextInfraUtilitiesIteration:
     Used by: build orchestration, validation, and code generation tools.
     """
 
+    _IGNORED_PATH_PARTS = frozenset({
+        ".git",
+        ".venv",
+        "__pycache__",
+        "build",
+        "dist",
+        "dist-packages",
+        "node_modules",
+        "site-packages",
+        "vendor",
+        "venv",
+    })
+
     @staticmethod
     def discover_project_roots(
         workspace_root: Path,
@@ -110,9 +123,35 @@ class FlextInfraUtilitiesIteration:
             return []
         effective_pattern = pattern or c.Infra.Extensions.PYTHON_GLOB
         files = sorted(directory.rglob(effective_pattern))
-        if skip_pycache:
-            return [f for f in files if "__pycache__" not in f.parts]
-        return files
+        ignored_parts = (
+            FlextInfraUtilitiesIteration._IGNORED_PATH_PARTS
+            if skip_pycache
+            else FlextInfraUtilitiesIteration._IGNORED_PATH_PARTS - {"__pycache__"}
+        )
+        return [
+            file_path
+            for file_path in files
+            if not FlextInfraUtilitiesIteration._is_ignored_python_path(
+                file_path,
+                ignored_parts=ignored_parts,
+            )
+        ]
+
+    @staticmethod
+    def _is_ignored_python_path(
+        path: Path,
+        *,
+        ignored_parts: frozenset[str] | None = None,
+    ) -> bool:
+        """Return whether a Python path lives under an ignored directory tree."""
+        effective_ignored_parts = (
+            ignored_parts or FlextInfraUtilitiesIteration._IGNORED_PATH_PARTS
+        )
+        return any(
+            part in effective_ignored_parts
+            or (part.startswith(".") and part not in {".", ".."})
+            for part in path.parts
+        )
 
     @staticmethod
     def iter_python_files(
@@ -175,7 +214,11 @@ class FlextInfraUtilitiesIteration:
                         continue
                     directory = project_root / dir_name
                     if directory.is_dir():
-                        files.extend(directory.rglob(c.Infra.Extensions.PYTHON_GLOB))
+                        files.extend(
+                            FlextInfraUtilitiesIteration.iter_directory_python_files(
+                                directory,
+                            ),
+                        )
 
                 # Second: dynamically discover any other directories with Python files
                 # (for extensibility - docs/, tools/, etc.)
@@ -204,7 +247,9 @@ class FlextInfraUtilitiesIteration:
                     if dir_name.startswith("."):
                         continue
                     # Check if directory contains Python files
-                    py_files = list(subdir.rglob(c.Infra.Extensions.PYTHON_GLOB))
+                    py_files = FlextInfraUtilitiesIteration.iter_directory_python_files(
+                        subdir,
+                    )
                     if py_files:
                         files.extend(py_files)
 

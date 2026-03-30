@@ -137,6 +137,7 @@ if TYPE_CHECKING:
         test_basemk_build_config_with_project_name,
         test_basemk_main_ensures_structlog_configured,
         test_basemk_main_output_to_stdout,
+        test_basemk_main_rejects_apply_flag,
         test_basemk_main_with_generate_command,
         test_basemk_main_with_generation_failure,
         test_basemk_main_with_help,
@@ -173,6 +174,7 @@ if TYPE_CHECKING:
     )
     from tests.unit.check.cli_tests import (
         test_resolve_gates_maps_type_alias,
+        test_run_cli_rejects_fix_flags_for_run,
         test_run_cli_run_returns_one_for_fail,
         test_run_cli_run_returns_two_for_error,
         test_run_cli_run_returns_zero_for_pass,
@@ -662,6 +664,10 @@ if TYPE_CHECKING:
         StubVersioning,
         StubWorkspaceManager,
     )
+    from tests.unit.github.main_cli_tests import (
+        test_lint_rejects_apply_before_subcommand,
+        test_pr_subcommand_preserves_explicit_argv,
+    )
     from tests.unit.github.main_dispatch_tests import TestRunPrWorkspace
     from tests.unit.github.main_integration_tests import TestMain, main
     from tests.unit.github.main_tests import TestRunLint, TestRunPr, TestRunWorkflows
@@ -831,6 +837,10 @@ if TYPE_CHECKING:
         test_skips_union_with_none,
         test_typealias_conversion_preserves_used_typing_siblings,
     )
+    from tests.unit.refactor.test_main_cli import (
+        test_refactor_census_rejects_apply_before_subcommand,
+        test_refactor_centralize_accepts_apply_before_subcommand,
+    )
     from tests.unit.release._stubs import (
         FakeReporting,
         FakeSelection,
@@ -905,6 +915,9 @@ if TYPE_CHECKING:
         test_main_returns_error_when_no_args,
         test_main_unknown_group_returns_error,
     )
+    from tests.unit.test_infra_maintenance_cli import (
+        test_maintenance_rejects_apply_flag,
+    )
     from tests.unit.test_infra_maintenance_init import TestFlextInfraMaintenance
     from tests.unit.test_infra_maintenance_main import (
         TestMaintenanceMainEnforcer,
@@ -965,6 +978,7 @@ if TYPE_CHECKING:
     from tests.unit.test_infra_workspace_cli import (
         test_workspace_cli_migrate_command,
         test_workspace_cli_migrate_output_contains_summary,
+        test_workspace_cli_rejects_migrate_flags_for_detect,
     )
     from tests.unit.test_infra_workspace_detector import (
         TestDetectorBasicDetection,
@@ -1057,6 +1071,10 @@ if TYPE_CHECKING:
         TestInventoryServiceCore,
         TestInventoryServiceReports,
         TestInventoryServiceScripts,
+    )
+    from tests.unit.validate.main_cli_tests import (
+        test_stub_validate_rejects_all_with_project,
+        test_stub_validate_uses_all_flag,
     )
     from tests.unit.validate.main_tests import (
         TestMainBaseMkValidate,
@@ -2558,6 +2576,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.basemk.test_main",
         "test_basemk_main_output_to_stdout",
     ],
+    "test_basemk_main_rejects_apply_flag": [
+        "tests.unit.basemk.test_main",
+        "test_basemk_main_rejects_apply_flag",
+    ],
     "test_basemk_main_with_generate_command": [
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_generate_command",
@@ -3027,6 +3049,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
         "test_legacy_wrapper_non_passthrough_is_not_inlined",
     ],
+    "test_lint_rejects_apply_before_subcommand": [
+        "tests.unit.github.main_cli_tests",
+        "test_lint_rejects_apply_before_subcommand",
+    ],
     "test_main_all_groups_defined": [
         "tests.unit.test_infra_main",
         "test_main_all_groups_defined",
@@ -3098,6 +3124,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_main_with_changes_no_dry_run": [
         "tests.unit.deps.test_path_sync_main_more",
         "test_main_with_changes_no_dry_run",
+    ],
+    "test_maintenance_rejects_apply_flag": [
+        "tests.unit.test_infra_maintenance_cli",
+        "test_maintenance_rejects_apply_flag",
     ],
     "test_make_boot_works_without_existing_venv_in_workspace_mode": [
         "tests.unit.basemk.test_make_contract",
@@ -3283,6 +3313,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.refactor.test_infra_refactor_pattern_corrections",
         "test_pattern_rule_skips_overload_signatures",
     ],
+    "test_pr_subcommand_preserves_explicit_argv": [
+        "tests.unit.github.main_cli_tests",
+        "test_pr_subcommand_preserves_explicit_argv",
+    ],
     "test_preserves_annotated_in_function_params": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_preserves_annotated_in_function_params",
@@ -3342,6 +3376,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_read_project_metadata_preserves_poetry_dependency_order": [
         "tests.unit.refactor.test_infra_refactor_project_classifier",
         "test_read_project_metadata_preserves_poetry_dependency_order",
+    ],
+    "test_refactor_census_rejects_apply_before_subcommand": [
+        "tests.unit.refactor.test_main_cli",
+        "test_refactor_census_rejects_apply_before_subcommand",
+    ],
+    "test_refactor_centralize_accepts_apply_before_subcommand": [
+        "tests.unit.refactor.test_main_cli",
+        "test_refactor_centralize_accepts_apply_before_subcommand",
     ],
     "test_refactor_files_skips_non_python_inputs": [
         "tests.unit.refactor.test_infra_refactor_engine",
@@ -3497,6 +3539,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "test_rule_dispatch_prefers_fix_action_metadata",
     ],
     "test_run_cases": ["tests.unit.test_infra_subprocess_core", "test_run_cases"],
+    "test_run_cli_rejects_fix_flags_for_run": [
+        "tests.unit.check.cli_tests",
+        "test_run_cli_rejects_fix_flags_for_run",
+    ],
     "test_run_cli_run_returns_one_for_fail": [
         "tests.unit.check.cli_tests",
         "test_run_cli_run_returns_one_for_fail",
@@ -3621,6 +3667,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.deps.test_main_dispatch",
         "test_string_zero_return_value",
     ],
+    "test_stub_validate_rejects_all_with_project": [
+        "tests.unit.validate.main_cli_tests",
+        "test_stub_validate_rejects_all_with_project",
+    ],
+    "test_stub_validate_uses_all_flag": [
+        "tests.unit.validate.main_cli_tests",
+        "test_stub_validate_uses_all_flag",
+    ],
     "test_symbol_propagation_keeps_alias_reference_when_asname_used": [
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_symbol_propagation_keeps_alias_reference_when_asname_used",
@@ -3706,6 +3760,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "test_workspace_cli_migrate_output_contains_summary": [
         "tests.unit.test_infra_workspace_cli",
         "test_workspace_cli_migrate_output_contains_summary",
+    ],
+    "test_workspace_cli_rejects_migrate_flags_for_detect": [
+        "tests.unit.test_infra_workspace_cli",
+        "test_workspace_cli_rejects_migrate_flags_for_detect",
     ],
     "test_workspace_migrator_error_handling_on_invalid_workspace": [
         "tests.unit.test_infra_workspace_migrator_deps",
@@ -4240,6 +4298,7 @@ __all__ = [
     "test_basemk_engine_render_all_with_valid_config",
     "test_basemk_main_ensures_structlog_configured",
     "test_basemk_main_output_to_stdout",
+    "test_basemk_main_rejects_apply_flag",
     "test_basemk_main_with_generate_command",
     "test_basemk_main_with_generation_failure",
     "test_basemk_main_with_help",
@@ -4358,6 +4417,7 @@ __all__ = [
     "test_legacy_wrapper_forwarding_varargs_is_inlined_as_alias",
     "test_legacy_wrapper_function_is_inlined_as_alias",
     "test_legacy_wrapper_non_passthrough_is_not_inlined",
+    "test_lint_rejects_apply_before_subcommand",
     "test_main_all_groups_defined",
     "test_main_analyze_violations_is_read_only",
     "test_main_analyze_violations_writes_json_report",
@@ -4376,6 +4436,7 @@ __all__ = [
     "test_main_unknown_group_returns_error",
     "test_main_with_changes_and_dry_run",
     "test_main_with_changes_no_dry_run",
+    "test_maintenance_rejects_apply_flag",
     "test_make_boot_works_without_existing_venv_in_workspace_mode",
     "test_make_check_file_scope_rejects_unsupported_gates",
     "test_make_check_file_scope_runs_mypy",
@@ -4422,6 +4483,7 @@ __all__ = [
     "test_pattern_rule_removes_configured_redundant_casts",
     "test_pattern_rule_removes_nested_type_object_cast_chain",
     "test_pattern_rule_skips_overload_signatures",
+    "test_pr_subcommand_preserves_explicit_argv",
     "test_preserves_annotated_in_function_params",
     "test_preserves_non_matching_unions",
     "test_preserves_override_in_method",
@@ -4437,6 +4499,8 @@ __all__ = [
     "test_pyrefly_search_paths_include_workspace_declared_dev_dependencies",
     "test_read_project_metadata_preserves_pep621_dependency_order",
     "test_read_project_metadata_preserves_poetry_dependency_order",
+    "test_refactor_census_rejects_apply_before_subcommand",
+    "test_refactor_centralize_accepts_apply_before_subcommand",
     "test_refactor_files_skips_non_python_inputs",
     "test_refactor_project_integrates_safety_manager",
     "test_refactor_project_scans_tests_and_scripts_dirs",
@@ -4477,6 +4541,7 @@ __all__ = [
     "test_rule_dispatch_keeps_legacy_id_fallback_mapping",
     "test_rule_dispatch_prefers_fix_action_metadata",
     "test_run_cases",
+    "test_run_cli_rejects_fix_flags_for_run",
     "test_run_cli_run_returns_one_for_fail",
     "test_run_cli_run_returns_two_for_error",
     "test_run_cli_run_returns_zero_for_pass",
@@ -4508,6 +4573,8 @@ __all__ = [
     "test_standalone_typealias_detected_as_fixable",
     "test_standalone_typevar_detected_as_fixable",
     "test_string_zero_return_value",
+    "test_stub_validate_rejects_all_with_project",
+    "test_stub_validate_uses_all_flag",
     "test_symbol_propagation_keeps_alias_reference_when_asname_used",
     "test_symbol_propagation_renames_import_and_local_references",
     "test_symbol_propagation_updates_mro_base_references",
@@ -4531,6 +4598,7 @@ __all__ = [
     "test_workspace_check_main_returns_error_without_projects",
     "test_workspace_cli_migrate_command",
     "test_workspace_cli_migrate_output_contains_summary",
+    "test_workspace_cli_rejects_migrate_flags_for_detect",
     "test_workspace_migrator_error_handling_on_invalid_workspace",
     "test_workspace_migrator_makefile_not_found_dry_run",
     "test_workspace_migrator_makefile_read_error",

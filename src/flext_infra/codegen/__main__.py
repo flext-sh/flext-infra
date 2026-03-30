@@ -57,9 +57,23 @@ class FlextInfraCodegenCommand:
                 "pipeline": "Run full codegen pipeline",
                 "constants-quality-gate": "Run constants migration quality gate",
             },
-            include_apply=True,
-            include_format=True,
-            include_check=True,
+            include_apply=False,
+            include_diff=False,
+            include_format=False,
+            include_check=False,
+            subcommand_flags={
+                "lazy-init": {"include_check": True},
+                "census": {"include_format": True},
+                "deduplicate": {"include_apply": True, "include_diff": False},
+                "scaffold": {"include_apply": True, "include_diff": False},
+                "auto-fix": {"include_apply": True, "include_diff": False},
+                "py-typed": {"include_check": True},
+                "pipeline": {
+                    "include_apply": True,
+                    "include_diff": False,
+                    "include_format": True,
+                },
+            },
         )
         baseline_group = subs["constants-quality-gate"].add_mutually_exclusive_group(
             required=False,
@@ -89,7 +103,7 @@ class FlextInfraCodegenCommand:
             help="Full class path to deduplicate (e.g., flext_core.FlextConstants)",
         )
 
-        args = parser.parse_args(argv)
+        args = u.Infra.parse_subcommand_args(parser, argv)
         cli = u.Infra.resolve(args)
         if args.command == "lazy-init":
             return FlextInfraCodegenCommand.handle_lazy_init(cli)
@@ -118,9 +132,10 @@ class FlextInfraCodegenCommand:
     def handle_lazy_init(cli: u.Infra.CliArgs) -> int:
         """Handle lazy-init code generation."""
         generator = FlextInfraCodegenLazyInit(workspace_root=cli.workspace)
-        unmapped = generator.run(check_only=cli.check)
-        if cli.check and unmapped > 0:
-            output.warning(f"{unmapped} files have unmapped exports")
+        errors = generator.run(check_only=cli.check)
+        if errors > 0:
+            output.error(f"lazy-init failed in {errors} package directories")
+            return 1
         return 0
 
     @staticmethod

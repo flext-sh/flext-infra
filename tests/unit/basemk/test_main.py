@@ -59,6 +59,12 @@ def test_basemk_main_with_invalid_command() -> None:
     tm.that(result, eq=2)
 
 
+def test_basemk_main_rejects_apply_flag() -> None:
+    """Test main() rejects shared apply flags that basemk does not consume."""
+    result = main(argv=["--apply", "generate"])
+    tm.that(result, eq=2)
+
+
 def test_basemk_main_ensures_structlog_configured(
     monkeypatch: MonkeyPatch,
 ) -> None:

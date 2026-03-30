@@ -50,19 +50,7 @@ class FlextInfraCodegenFixer(s[bool]):
         rules_only: bool = False,
     ) -> None:
         """Initialize codegen fixer with workspace root."""
-        super().__init__(
-            config_type=None,
-            config_overrides=None,
-            initial_context=None,
-            subproject=None,
-            services=None,
-            factories=None,
-            resources=None,
-            container_overrides=None,
-            wire_modules=None,
-            wire_packages=None,
-            wire_classes=None,
-        )
+        super().__init__()
         self._workspace_root = workspace_root
         self._dry_run = dry_run
         self._rules_only = rules_only

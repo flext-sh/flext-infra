@@ -57,13 +57,16 @@ class FlextInfraScanFileMixin:
         file_path: Path,
         rope_project: t.Infra.RopeProject,
         parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[BaseModel]:
         """Detect violations in a single file.
 
-        Subclasses MUST override this classmethod.  Detectors that need
-        additional parameters (e.g. ``project_name``) should override
-        ``_collect_violations`` instead of relying on the default delegation.
+        Subclasses MUST override this classmethod.  ``project_name`` and
+        ``project_root`` are optional context params — detectors that need
+        them accept them here; the default raises ``NotImplementedError``.
         """
+        del file_path, rope_project, parse_failures, project_name, project_root
         msg = (
             f"{cls.__name__} must implement detect_file or override _collect_violations"
         )

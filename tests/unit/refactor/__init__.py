@@ -161,6 +161,10 @@ if TYPE_CHECKING:
         test_skips_union_with_none,
         test_typealias_conversion_preserves_used_typing_siblings,
     )
+    from tests.unit.refactor.test_main_cli import (
+        test_refactor_census_rejects_apply_before_subcommand,
+        test_refactor_centralize_accepts_apply_before_subcommand,
+    )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "EngineSafetyStub": [
@@ -463,6 +467,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.refactor.test_infra_refactor_project_classifier",
         "test_read_project_metadata_preserves_poetry_dependency_order",
     ],
+    "test_refactor_census_rejects_apply_before_subcommand": [
+        "tests.unit.refactor.test_main_cli",
+        "test_refactor_census_rejects_apply_before_subcommand",
+    ],
+    "test_refactor_centralize_accepts_apply_before_subcommand": [
+        "tests.unit.refactor.test_main_cli",
+        "test_refactor_centralize_accepts_apply_before_subcommand",
+    ],
     "test_refactor_files_skips_non_python_inputs": [
         "tests.unit.refactor.test_infra_refactor_engine",
         "test_refactor_files_skips_non_python_inputs",
@@ -721,6 +733,8 @@ __all__ = [
     "test_project_without_alias_facade_has_no_violation",
     "test_read_project_metadata_preserves_pep621_dependency_order",
     "test_read_project_metadata_preserves_poetry_dependency_order",
+    "test_refactor_census_rejects_apply_before_subcommand",
+    "test_refactor_centralize_accepts_apply_before_subcommand",
     "test_refactor_files_skips_non_python_inputs",
     "test_refactor_project_integrates_safety_manager",
     "test_refactor_project_scans_tests_and_scripts_dirs",

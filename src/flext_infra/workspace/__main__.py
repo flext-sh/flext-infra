@@ -119,7 +119,17 @@ class FlextInfraWorkspaceCommand:
                 "orchestrate": "Run make verb across projects",
                 "migrate": "Migrate workspace projects to flext_infra tooling",
             },
-            include_apply=True,
+            include_apply=False,
+            subcommand_flags={
+                "sync": {
+                    "include_apply": True,
+                    "include_diff": False,
+                },
+                "migrate": {
+                    "include_apply": True,
+                    "include_diff": False,
+                },
+            },
         )
 
         _ = subs["sync"].add_argument(
@@ -151,7 +161,7 @@ class FlextInfraWorkspaceCommand:
             help="Project directories to orchestrate",
         )
 
-        args = parser.parse_args(argv)
+        args = u.Infra.parse_subcommand_args(parser, argv)
         cli = u.Infra.resolve(args)
         handlers = {
             "detect": lambda: _run_detect(cli),

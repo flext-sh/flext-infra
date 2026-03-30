@@ -40,19 +40,7 @@ class FlextInfraCodegenCensus(s[bool]):
             class_to_analyze: Optional class path to analyze (e.g., 'flext_core.FlextConstants')
 
         """
-        super().__init__(
-            config_type=None,
-            config_overrides=None,
-            initial_context=None,
-            subproject=None,
-            services=None,
-            factories=None,
-            resources=None,
-            container_overrides=None,
-            wire_modules=None,
-            wire_packages=None,
-            wire_classes=None,
-        )
+        super().__init__()
         self._workspace_root: Path = workspace_root
         self._class_to_analyze: str | None = class_to_analyze
 

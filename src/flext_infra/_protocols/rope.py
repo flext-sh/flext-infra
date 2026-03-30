@@ -80,6 +80,10 @@ class FlextInfraProtocolsRope:
             """Return the module name, or None."""
             ...
 
+        def get_resource(self) -> FlextInfraProtocolsRope.RopeResourceLike | None:
+            """Return the resource backing this module, or None for builtins."""
+            ...
+
     @runtime_checkable
     class RopePyNameLike(Protocol):
         """Structural contract for rope PyName objects."""
@@ -90,8 +94,8 @@ class FlextInfraProtocolsRope:
 
         def get_definition_location(
             self,
-        ) -> tuple[FlextInfraProtocolsRope.RopeResourceLike, int]:
-            """Return (resource, line_number) of this name's definition."""
+        ) -> tuple[FlextInfraProtocolsRope.RopePyModuleLike | None, int | None]:
+            """Return (module, line_number) of this name's definition."""
             ...
 
     @runtime_checkable

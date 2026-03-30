@@ -29,10 +29,12 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
         *,
         file_path: Path,
         rope_project: t.Infra.RopeProject,
-        parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+        parse_failures: MutableSequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.ManualTypingAliasViolation]:
         """Detect type alias placement violations in a single file."""
-        del parse_failures
+        del parse_failures, project_name, project_root
         if (
             file_path.suffix != ".py"
             or file_path.name in c.Infra.MRO_TYPINGS_FILE_NAMES

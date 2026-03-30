@@ -66,12 +66,13 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         cls,
         *,
         file_path: Path,
-        project_name: str,
         rope_project: t.Infra.RopeProject,
         parse_failures: Sequence[m.Infra.ParseFailureViolation] | None = None,
+        project_name: str = "",
+        project_root: Path | None = None,
     ) -> Sequence[m.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
-        del parse_failures
+        del parse_failures, project_root
         if (
             file_path.name in c.Infra.NAMESPACE_PROTECTED_FILES
             or file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES
