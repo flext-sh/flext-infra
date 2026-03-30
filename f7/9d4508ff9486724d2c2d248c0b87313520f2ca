@@ -1,0 +1,47 @@
+src/flext_infra/refactor/__main__.py
+  6f0d1c387a2140f2 7,9-14,20-21,23-25,31,33-44,51
+src/flext_infra/_models/cli_inputs.py
+  6f0d1c387a2140f2 14,25-26
+src/flext_infra/codegen/__main__.py
+  6f0d1c387a2140f2 7,11,22,33-36
+src/flext_infra/docs/__main__.py
+  6f0d1c387a2140f2 18-19,23-28,31-32,43-46
+src/flext_infra/workspace/cli.py
+  6f0d1c387a2140f2 36,46,56,66,72-73,82-83,93-94,124-125
+src/flext_infra/release/cli.py
+  6f0d1c387a2140f2 20
+src/flext_infra/github/__main__.py
+  6f0d1c387a2140f2 6,8,15-37,42-43,51-58,63,66-73
+src/flext_infra/_utilities/cli.py
+  6f0d1c387a2140f2 633-667,669-670
+src/flext_infra/_constants/census.py
+  6f0d1c387a2140f2 23,36,48
+src/flext_infra/cli.py
+  6f0d1c387a2140f2 13,16
+src/flext_infra/basemk/__main__.py
+  6f0d1c387a2140f2 20,35,40
+src/flext_infra/transformers/census_visitors.py
+  6f0d1c387a2140f2 15,42,50,115
+src/flext_infra/validate/__main__.py
+  6f0d1c387a2140f2 7,12-17,20-21,32-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "f79d4508ff9486724d2c2d248c0b87313520f2ca",
+  "prompts": {
+    "6f0d1c387a2140f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df413ba6-7b61-48cd-8b6c-70053bacb125",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 681,
+      "total_deletions": 236,
+      "accepted_lines": 415,
+      "overriden_lines": 2
+    }
+  }
+}
