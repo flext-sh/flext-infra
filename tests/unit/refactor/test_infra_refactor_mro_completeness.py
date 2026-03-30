@@ -2,12 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-try:
-    from flext_infra import FlextInfraMROCompletenessDetector, t, u
-except ImportError as exc:
-    pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
+from flext_infra import FlextInfraMROCompletenessDetector, _DetectorContext, t, u
 
 
 def _make_rope(workspace: Path) -> t.Infra.RopeProject:
@@ -24,13 +19,18 @@ def _write_models_project(
     project_root = tmp_path / "flext-example"
     package_dir = project_root / "src" / "flext_example"
     package_dir.mkdir(parents=True)
-    (package_dir / "__init__.py").write_text("", encoding="utf-8")
     # Build import lines for any bases defined in _models/ so rope can resolve them.
-    imports = "".join(
-        f"from flext_example import {base}\n"
+    external_bases = [
+        base
         for base in facade_bases.replace(" ", "").split(",")
         if base.startswith("FlextExample") and base != "FlextExampleModelsBase"
+    ]
+    imports = "".join(f"from flext_example import {base}\n" for base in external_bases)
+    # Export candidate classes from __init__.py so rope can resolve them as bases.
+    init_exports = "".join(
+        f"from flext_example._models.domain import {base}\n" for base in external_bases
     )
+    (package_dir / "__init__.py").write_text(init_exports, encoding="utf-8")
     (package_dir / "models.py").write_text(
         "from __future__ import annotations\n"
         f"{imports}"
@@ -60,8 +60,10 @@ def test_detects_missing_local_composition_base(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraMROCompletenessDetector.detect_file(
-        file_path=facade_file,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=facade_file,
+            rope_project=rope_project,
+        ),
     )
 
     assert len(violations) == 1
@@ -78,8 +80,10 @@ def test_skips_when_candidate_is_already_in_facade_bases(tmp_path: Path) -> None
     )
 
     violations = FlextInfraMROCompletenessDetector.detect_file(
-        file_path=facade_file,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=facade_file,
+            rope_project=rope_project,
+        ),
     )
 
     assert violations == []
@@ -93,8 +97,10 @@ def test_skips_non_facade_files(tmp_path: Path) -> None:
     # Provide a minimal one anyway to satisfy the signature.
     rope_project = _make_rope(tmp_path)
     violations = FlextInfraMROCompletenessDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert violations == []
@@ -108,8 +114,10 @@ def test_skips_private_candidate_classes(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraMROCompletenessDetector.detect_file(
-        file_path=facade_file,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=facade_file,
+            rope_project=rope_project,
+        ),
     )
 
     assert violations == []
@@ -123,8 +131,10 @@ def test_rewriter_adds_missing_base_and_formats(tmp_path: Path) -> None:
     )
 
     violations = FlextInfraMROCompletenessDetector.detect_file(
-        file_path=facade_file,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=facade_file,
+            rope_project=rope_project,
+        ),
     )
     u.Infra.rewrite_mro_completeness_violations(
         violations=violations,

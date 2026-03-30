@@ -169,6 +169,7 @@ if TYPE_CHECKING:
         test_make_check_full_run_unsets_python_path_env,
         test_make_help_lists_supported_options,
         test_rendered_base_mk_declares_cli_group_roots,
+        test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight,
     )
     from tests.unit.check import (
         cli_tests,
@@ -1229,6 +1230,7 @@ if TYPE_CHECKING:
         svc,
         test_atomic_write_fail,
         test_atomic_write_ok,
+        test_cli_forwards_canonical_root,
         test_cli_result_by_project_root,
         test_gitignore_entry_scenarios,
         test_gitignore_sync_failure,
@@ -2890,6 +2892,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.refactor.test_infra_refactor_class_and_propagation",
         "test_class_reconstructor_skips_interleaved_non_method_members",
     ],
+    "test_cli_forwards_canonical_root": [
+        "tests.unit.test_infra_workspace_sync",
+        "test_cli_forwards_canonical_root",
+    ],
     "test_cli_result_by_project_root": [
         "tests.unit.test_infra_workspace_sync",
         "test_cli_result_by_project_root",
@@ -3913,6 +3919,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.basemk.test_make_contract",
         "test_rendered_base_mk_declares_cli_group_roots",
     ],
+    "test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight": [
+        "tests.unit.basemk.test_make_contract",
+        "test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight",
+    ],
     "test_replace_project_version": [
         "tests.unit.test_infra_versioning",
         "test_replace_project_version",
@@ -4844,6 +4854,7 @@ __all__ = [
     "test_class_reconstructor_reorders_each_contiguous_method_block",
     "test_class_reconstructor_reorders_methods_by_config",
     "test_class_reconstructor_skips_interleaved_non_method_members",
+    "test_cli_forwards_canonical_root",
     "test_cli_result_by_project_root",
     "test_codegen_dir_returns_all_exports",
     "test_codegen_getattr_raises_attribute_error",
@@ -5162,6 +5173,7 @@ __all__ = [
     "test_render_all_generates_large_makefile",
     "test_render_all_has_no_scripts_path_references",
     "test_rendered_base_mk_declares_cli_group_roots",
+    "test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight",
     "test_replace_project_version",
     "test_replaces_container_union",
     "test_replaces_numeric_union",

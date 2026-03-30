@@ -4,10 +4,7 @@ from pathlib import Path
 
 import pytest
 
-try:
-    from flext_infra import FlextInfraClassPlacementDetector, c, t, u
-except ImportError as exc:
-    pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
+from flext_infra import FlextInfraClassPlacementDetector, _DetectorContext, c, t, u
 
 
 @pytest.fixture
@@ -27,8 +24,10 @@ def test_detects_basemodel_in_non_model_file(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert len(violations) == 1
@@ -49,8 +48,10 @@ def test_detects_attribute_base_class(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert len(violations) == 1
@@ -69,8 +70,10 @@ def test_skips_models_file(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert violations == []
@@ -89,8 +92,10 @@ def test_skips_models_directory(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert violations == []
@@ -108,8 +113,10 @@ def test_skips_settings_file(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert violations == []
@@ -127,8 +134,10 @@ def test_skips_protected_files(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert violations == []
@@ -145,8 +154,10 @@ def test_skips_private_class(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert violations == []
@@ -168,8 +179,10 @@ def test_detects_multiple_models(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert len(violations) == 2
@@ -187,8 +200,10 @@ def test_non_pydantic_class_not_flagged(
     )
 
     violations = FlextInfraClassPlacementDetector.detect_file(
-        file_path=target,
-        rope_project=rope_project,
+        _DetectorContext(
+            file_path=target,
+            rope_project=rope_project,
+        ),
     )
 
     assert violations == []

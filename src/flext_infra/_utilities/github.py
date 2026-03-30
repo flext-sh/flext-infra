@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import shutil
 import time
 from collections.abc import MutableMapping, MutableSequence, Sequence
@@ -26,6 +27,37 @@ from flext_infra import (
     m,
     t,
 )
+
+
+@dataclasses.dataclass(slots=True)
+class _SyncContext:
+    """Bundled parameters for the workflow-sync call chain."""
+
+    project_name: str
+    project_root: Path
+    rendered_template: str
+    apply: bool
+    prune: bool
+    operations: MutableSequence[m.Infra.SyncOperation]
+
+    @property
+    def workflows_dir(self) -> Path:
+        return self.project_root / ".github" / "workflows"
+
+    @property
+    def ci_destination(self) -> Path:
+        return self.workflows_dir / "ci.yml"
+
+
+@dataclasses.dataclass(slots=True)
+class _PrRepoContext:
+    """Bundled parameters for the PR-per-repo processing chain."""
+
+    workspace_root: Path
+    effective_args: t.StrMapping
+    branch: str
+    checkpoint: bool
+    results: MutableSequence[m.Infra.PrExecutionResultModel]
 
 
 class FlextInfraUtilitiesGithub(
@@ -110,13 +142,15 @@ class FlextInfraUtilitiesGithub(
             )
         all_operations: MutableSequence[m.Infra.SyncOperation] = []
         for project in projects_result.value:
-            ops_result = cls._github_sync_project(
+            ctx = _SyncContext(
                 project_name=project.name,
                 project_root=project.path,
                 rendered_template=template_result.value,
                 apply=apply,
                 prune=prune,
+                operations=all_operations,
             )
+            ops_result = cls._github_sync_project(ctx)
             if ops_result.is_success:
                 all_operations.extend(ops_result.value)
         if report_path is not None:

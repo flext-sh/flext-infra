@@ -117,6 +117,49 @@ def test_cli_result_by_project_root(
     tm.that(FlextInfraSyncService.main(), eq=expected)
 
 
+def test_cli_forwards_canonical_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Path | None] = {}
+
+    def _sync(
+        self: _S,
+        _source: str | None = None,
+        _target: str | None = None,
+        *,
+        workspace_root: Path | None = None,
+        config: m.Infra.BaseMkConfig | None = None,
+        canonical_root: Path | None = None,
+    ) -> r[m.Infra.SyncResult]:
+        del self, _source, _target, config
+        captured["workspace_root"] = workspace_root
+        captured["canonical_root"] = canonical_root
+        return r[m.Infra.SyncResult].ok(
+            m.Infra.SyncResult(
+                files_changed=0,
+                source=workspace_root or Path(),
+                target=workspace_root or Path(),
+            ),
+        )
+
+    monkeypatch.setattr(_S, "sync", _sync)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "sync",
+            "--workspace",
+            str(tmp_path),
+            "--canonical-root",
+            str(tmp_path.parent),
+        ],
+    )
+    tm.that(FlextInfraSyncService.main(), eq=0)
+    tm.that(captured["workspace_root"], eq=tmp_path)
+    tm.that(captured["canonical_root"], eq=tmp_path.parent)
+
+
 @pytest.mark.parametrize(
     ("setup_fn", "expected_error"),
     [

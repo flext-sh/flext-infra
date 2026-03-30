@@ -199,8 +199,8 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
     ) -> bool:
         """Detect whether the sync target is the workspace root."""
         resolved_root = workspace_root.resolve()
-        if canonical_root is not None and resolved_root == canonical_root.resolve():
-            return True
+        if canonical_root is not None:
+            return resolved_root == canonical_root.resolve()
         if (resolved_root / c.Infra.Files.GITMODULES).exists():
             return True
         discovered = u.Infra.discover_projects(resolved_root)
@@ -296,7 +296,10 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         service = FlextInfraSyncService(
             canonical_root=getattr(args, "canonical_root", None),
         )
-        result = service.sync(workspace_root=cli.workspace)
+        result = service.sync(
+            workspace_root=cli.workspace,
+            canonical_root=getattr(args, "canonical_root", None),
+        )
         if result.is_success:
             return 0
         output.error(result.error or "sync failed")

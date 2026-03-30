@@ -84,7 +84,7 @@ def test_symbol_propagation_renames_import_and_local_references() -> None:
     rule = FlextInfraRefactorSymbolPropagationRule({
         "id": "propagate-refactor-api-renames",
         "fix_action": "propagate_symbol_renames",
-        "target_modules": ["flext_infra.refactor"],
+        "target_modules": ["flext_infra"],
         "import_symbol_renames": {
             "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule",
         },
@@ -103,7 +103,7 @@ def test_symbol_propagation_keeps_alias_reference_when_asname_used() -> None:
     rule = FlextInfraRefactorSymbolPropagationRule({
         "id": "propagate-refactor-api-renames",
         "fix_action": "propagate_symbol_renames",
-        "target_modules": ["flext_infra.refactor"],
+        "target_modules": ["flext_infra"],
         "import_symbol_renames": {
             "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule",
         },
@@ -123,7 +123,7 @@ def test_symbol_propagation_updates_mro_base_references() -> None:
     rule = FlextInfraRefactorSymbolPropagationRule({
         "id": "propagate-refactor-api-renames",
         "fix_action": "propagate_symbol_renames",
-        "target_modules": ["flext_infra.refactor"],
+        "target_modules": ["flext_infra"],
         "import_symbol_renames": {
             "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule",
         },

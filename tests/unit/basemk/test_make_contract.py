@@ -121,6 +121,14 @@ def test_rendered_base_mk_declares_cli_group_roots() -> None:
     )
 
 
+def test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight() -> None:
+    rendered = _render_base_mk()
+    tm.that(
+        rendered,
+        has='--workspace "$(CURDIR)" --canonical-root "$(WORKSPACE_ROOT)" --apply',
+    )
+
+
 def test_make_check_file_scope_runs_mypy(tmp_path: Path) -> None:
     log_path = tmp_path / "tool.log"
     bin_dir = tmp_path / "bin"
