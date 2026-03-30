@@ -41,7 +41,7 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         if res is None:
             if parse_failures is not None:
                 parse_failures.append(
-                    m.Infra.ParseFailureViolation.create(
+                    m.Infra.ParseFailureViolation(
                         file=str(file_path),
                         stage="mro-completeness",
                         error_type="ResourceNotFound",
@@ -93,7 +93,7 @@ class FlextInfraMROCompletenessDetector(FlextInfraScanFileMixin, p.Infra.Scanner
             ):
                 expected.setdefault(base, 1)
         return [
-            m.Infra.MROCompletenessViolation.create(
+            m.Infra.MROCompletenessViolation(
                 file=str(file_path),
                 line=line,
                 family=family,

@@ -20,7 +20,11 @@ class FlextInfraConstantsCensus:
         MODEL: Final[str] = "model"
         UTILITY: Final[str] = "utility"
         ALL: ClassVar[frozenset[str]] = frozenset({
-            CONSTANT, TYPE, PROTOCOL, MODEL, UTILITY,
+            CONSTANT,
+            TYPE,
+            PROTOCOL,
+            MODEL,
+            UTILITY,
         })
 
     class CensusViolationKind:
@@ -33,7 +37,12 @@ class FlextInfraConstantsCensus:
         FLAT_ALIAS: Final[str] = "flat_alias"
         WRONG_TIER: Final[str] = "wrong_tier"
         ALL: ClassVar[frozenset[str]] = frozenset({
-            MISPLACED, DUPLICATE, UNUSED, MISSING_MRO_BASE, FLAT_ALIAS, WRONG_TIER,
+            MISPLACED,
+            DUPLICATE,
+            UNUSED,
+            MISSING_MRO_BASE,
+            FLAT_ALIAS,
+            WRONG_TIER,
         })
 
     class CensusFixAction:
@@ -45,7 +54,11 @@ class FlextInfraConstantsCensus:
         ADD_MRO_BASE: Final[str] = "add_mro_base"
         REMOVE_FLAT_ALIAS: Final[str] = "remove_flat_alias"
         ALL: ClassVar[frozenset[str]] = frozenset({
-            MOVE_TO_TIER, DEDUPLICATE, REMOVE_UNUSED, ADD_MRO_BASE, REMOVE_FLAT_ALIAS,
+            MOVE_TO_TIER,
+            DEDUPLICATE,
+            REMOVE_UNUSED,
+            ADD_MRO_BASE,
+            REMOVE_FLAT_ALIAS,
         })
 
     CENSUS_TIER_MAP: ClassVar[Mapping[str, str]] = {

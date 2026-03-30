@@ -46,7 +46,7 @@ class FlextInfraFutureAnnotationsDetector(FlextInfraScanFileMixin, p.Infra.Scann
             return []
         if _FUTURE_ANNOTATIONS_RE.search(source):
             return []
-        return [m.Infra.FutureAnnotationsViolation.create(file=str(file_path))]
+        return [m.Infra.FutureAnnotationsViolation(file=str(file_path))]
 
 
 __all__ = ["FlextInfraFutureAnnotationsDetector"]

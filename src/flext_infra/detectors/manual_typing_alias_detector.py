@@ -48,7 +48,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
         # PEP 695: type Foo = ...
         for hit in _PEP695_RE.finditer(source):
             violations.append(
-                m.Infra.ManualTypingAliasViolation.create(
+                m.Infra.ManualTypingAliasViolation(
                     file=str(file_path),
                     line=source[: hit.start()].count("\n") + 1,
                     name=hit.group(1),
@@ -58,7 +58,7 @@ class FlextInfraManualTypingAliasDetector(FlextInfraScanFileMixin, p.Infra.Scann
         # TypeAlias annotation: Foo: TypeAlias = ...
         for hit in _TYPEALIAS_ANNOT_RE.finditer(source):
             violations.append(
-                m.Infra.ManualTypingAliasViolation.create(
+                m.Infra.ManualTypingAliasViolation(
                     file=str(file_path),
                     line=source[: hit.start()].count("\n") + 1,
                     name=hit.group(1),

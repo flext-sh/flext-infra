@@ -13,13 +13,12 @@ import sys
 from pathlib import Path
 from typing import override
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import (
     FlextInfraPythonVersionEnforcer,
+    main as infra_main,
 )
-from flext_infra.cli import main as infra_main
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -55,14 +54,10 @@ class TestMaintenanceMainSuccess:
     """Tests for main() success paths."""
 
     def test_main_with_help_flag(self) -> None:
-        with pytest.raises(SystemExit) as exc_info:
-            main(["--help"])
-        tm.that(exc_info.value.code, eq=0)
+        tm.that(main(["--help"]), eq=0)
 
     def test_main_calls_sys_exit_on_help(self) -> None:
-        with pytest.raises(SystemExit) as exc_info:
-            main(["--help"])
-        tm.that(exc_info.value.code, eq=0)
+        tm.that(main(["--help"]), eq=0)
 
 
 class TestMaintenanceMainEnforcer:

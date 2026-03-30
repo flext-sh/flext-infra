@@ -16,8 +16,7 @@ from typing import ClassVar, override
 
 import libcst as cst
 
-from flext_infra import FlextInfraUtilitiesParsing, t
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra import FlextInfraUtilitiesDiscovery, FlextInfraUtilitiesParsing, t
 
 
 class FlextInfraTransformerTier0ImportFixer:

@@ -15,10 +15,10 @@ from flext_tests import tm
 from flext_infra import (
     FlextInfraDocAuditor,
     FlextInfraDocFixer,
+    FlextInfraDocsCli,
     m,
     t,
 )
-from flext_infra.docs.cli import FlextInfraDocsCli
 
 
 def _ok(

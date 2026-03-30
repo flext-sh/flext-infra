@@ -14,8 +14,8 @@ try:
     from flext_infra import (
         FlextInfraRefactorEngine,
         FlextInfraRefactorViolationAnalyzer,
+        FlextInfraUtilitiesRefactorCli,
     )
-    from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
 except ImportError as exc:
     pytest.skip(f"refactor package unavailable: {exc}", allow_module_level=True)
 

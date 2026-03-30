@@ -11,6 +11,19 @@ from pydantic import Field
 from flext_infra import t
 
 
+class _FileLineViolation(FlextModels.FrozenStrictModel):
+    """Shared base: file + line for all violation models."""
+
+    file: Annotated[t.NonEmptyStr, Field(description="File path")]
+    line: Annotated[t.PositiveInt, Field(description="Line number")]
+
+
+class _ImportViolationBase(_FileLineViolation):
+    """Shared base: file + line + current_import."""
+
+    current_import: Annotated[str, Field(description="Current import statement")]
+
+
 class FlextInfraNamespaceEnforcerModels:
     """Namespace enforcer violation and report models."""
 
@@ -24,77 +37,18 @@ class FlextInfraNamespaceEnforcerModels:
             Field(default=0, description="Symbol count"),
         ]
 
-        @classmethod
-        def create(
-            cls,
-            *,
-            family: str,
-            exists: bool,
-            class_name: str,
-            file: str,
-            symbol_count: int,
-        ) -> Self:
-            return cls(
-                family=family,
-                exists=exists,
-                class_name=class_name,
-                file=file,
-                symbol_count=symbol_count,
-            )
-
-    class LooseObjectViolation(FlextModels.FrozenStrictModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
+    class LooseObjectViolation(_FileLineViolation):
         name: Annotated[t.NonEmptyStr, Field(description="Symbol name")]
         kind: Annotated[str, Field(description="Object kind")]
         suggestion: Annotated[str, Field(default="", description="Fix suggestion")]
 
-        @classmethod
-        def create(
-            cls,
-            *,
-            file: str,
-            line: int,
-            name: str,
-            kind: str,
-            suggestion: str,
-        ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                name=name,
-                kind=kind,
-                suggestion=suggestion,
-            )
-
-    class ImportAliasViolation(FlextModels.FrozenStrictModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
-        current_import: Annotated[str, Field(description="Current import statement")]
+    class ImportAliasViolation(_ImportViolationBase):
         suggested_import: Annotated[
             str,
             Field(description="Suggested import statement"),
         ]
 
-        @classmethod
-        def create(
-            cls,
-            *,
-            file: str,
-            line: int,
-            current_import: str,
-            suggested_import: str,
-        ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                current_import=current_import,
-                suggested_import=suggested_import,
-            )
-
-    class NamespaceSourceViolation(FlextModels.FrozenStrictModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
+    class NamespaceSourceViolation(_FileLineViolation):
         alias: Annotated[t.NonEmptyStr, Field(description="Runtime alias letter")]
         current_source: Annotated[
             t.NonEmptyStr,
@@ -110,106 +64,21 @@ class FlextInfraNamespaceEnforcerModels:
             Field(description="Suggested import statement"),
         ]
 
-        @classmethod
-        def create(
-            cls,
-            *,
-            file: str,
-            line: int,
-            alias: str,
-            current_source: str,
-            correct_source: str,
-            current_import: str,
-            suggested_import: str,
-        ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                alias=alias,
-                current_source=current_source,
-                correct_source=correct_source,
-                current_import=current_import,
-                suggested_import=suggested_import,
-            )
-
-    class ClassPlacementViolation(FlextModels.FrozenStrictModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
+    class ClassPlacementViolation(_FileLineViolation):
         name: Annotated[t.NonEmptyStr, Field(description="Class name")]
         base_class: Annotated[t.NonEmptyStr, Field(description="Base class name")]
         suggestion: Annotated[str, Field(description="Fix suggestion")]
 
-        @classmethod
-        def create(
-            cls,
-            *,
-            file: str,
-            line: int,
-            name: str,
-            base_class: str,
-            suggestion: str,
-        ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                name=name,
-                base_class=base_class,
-                suggestion=suggestion,
-            )
-
-    class MROCompletenessViolation(FlextModels.FrozenStrictModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
+    class MROCompletenessViolation(_FileLineViolation):
         family: Annotated[t.NonEmptyStr, Field(description="Facade family")]
         facade_class: Annotated[t.NonEmptyStr, Field(description="Facade class name")]
         missing_base: Annotated[t.NonEmptyStr, Field(description="Missing base class")]
         suggestion: Annotated[str, Field(description="Fix suggestion")]
 
-        @classmethod
-        def create(
-            cls,
-            *,
-            file: str,
-            line: int,
-            family: str,
-            facade_class: str,
-            missing_base: str,
-            suggestion: str,
-        ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                family=family,
-                facade_class=facade_class,
-                missing_base=missing_base,
-                suggestion=suggestion,
-            )
-
-    class InternalImportViolation(FlextModels.FrozenStrictModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
-        current_import: Annotated[str, Field(description="Current import statement")]
+    class InternalImportViolation(_ImportViolationBase):
         detail: Annotated[str, Field(description="Violation detail")]
 
-        @classmethod
-        def create(
-            cls,
-            *,
-            file: str,
-            line: int,
-            current_import: str,
-            detail: str,
-        ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                current_import=current_import,
-                detail=detail,
-            )
-
-    class ManualProtocolViolation(FlextModels.FrozenStrictModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
+    class ManualProtocolViolation(_FileLineViolation):
         name: Annotated[t.NonEmptyStr, Field(description="Protocol class name")]
         suggestion: Annotated[
             str,
@@ -218,24 +87,6 @@ class FlextInfraNamespaceEnforcerModels:
                 description="Fix suggestion",
             ),
         ] = "Move to protocols.py/protocols/*.py/_protocols.py"
-
-        @classmethod
-        def create(
-            cls,
-            *,
-            file: str,
-            line: int,
-            name: str,
-            suggestion: str = "",
-        ) -> Self:
-            if suggestion:
-                return cls(file=file, line=line, name=name, suggestion=suggestion)
-            return cls(
-                file=file,
-                line=line,
-                name=name,
-                suggestion="Move to protocols.py/protocols/*.py/_protocols.py",
-            )
 
     class CyclicImportViolation(FlextModels.FrozenStrictModel):
         cycle: Annotated[
@@ -246,12 +97,6 @@ class FlextInfraNamespaceEnforcerModels:
             Field(description="Files in cycle"),
         ] = Field(default_factory=tuple)
 
-        @classmethod
-        def create(
-            cls, *, cycle: t.Infra.VariadicTuple[str], files: t.Infra.VariadicTuple[str]
-        ) -> Self:
-            return cls(cycle=cycle, files=files)
-
     class RuntimeAliasViolation(FlextModels.FrozenStrictModel):
         file: Annotated[t.NonEmptyStr, Field(description="File path")]
         line: Annotated[t.NonNegativeInt, Field(default=0, description="Line number")]
@@ -259,72 +104,22 @@ class FlextInfraNamespaceEnforcerModels:
         alias: Annotated[str, Field(description="Alias involved")]
         detail: Annotated[str, Field(default="", description="Violation detail")]
 
-        @classmethod
-        def create(
-            cls,
-            *,
-            file: str,
-            kind: str,
-            alias: str,
-            detail: str,
-            line: int = 0,
-        ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                kind=kind,
-                alias=alias,
-                detail=detail,
-            )
-
     class FutureAnnotationsViolation(FlextModels.FrozenStrictModel):
         file: Annotated[t.NonEmptyStr, Field(description="File path")]
 
-        @classmethod
-        def create(cls, *, file: str) -> Self:
-            return cls(file=file)
-
-    class ManualTypingAliasViolation(FlextModels.FrozenStrictModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
+    class ManualTypingAliasViolation(_FileLineViolation):
         name: Annotated[t.NonEmptyStr, Field(description="Alias name")]
         detail: Annotated[str, Field(default="", description="Violation detail")]
 
-        @classmethod
-        def create(cls, *, file: str, line: int, name: str, detail: str) -> Self:
-            return cls(file=file, line=line, name=name, detail=detail)
-
-    class CompatibilityAliasViolation(FlextModels.FrozenStrictModel):
-        file: Annotated[t.NonEmptyStr, Field(description="File path")]
-        line: Annotated[t.PositiveInt, Field(description="Line number")]
+    class CompatibilityAliasViolation(_FileLineViolation):
         alias_name: Annotated[t.NonEmptyStr, Field(description="Alias name")]
         target_name: Annotated[t.NonEmptyStr, Field(description="Target name")]
-
-        @classmethod
-        def create(
-            cls,
-            *,
-            file: str,
-            line: int,
-            alias_name: str,
-            target_name: str,
-        ) -> Self:
-            return cls(
-                file=file,
-                line=line,
-                alias_name=alias_name,
-                target_name=target_name,
-            )
 
     class ParseFailureViolation(FlextModels.FrozenStrictModel):
         file: Annotated[t.NonEmptyStr, Field(description="File path")]
         stage: Annotated[t.NonEmptyStr, Field(description="Parse stage")]
         error_type: Annotated[t.NonEmptyStr, Field(description="Error type")]
         detail: Annotated[str, Field(default="", description="Error detail")]
-
-        @classmethod
-        def create(cls, *, file: str, stage: str, error_type: str, detail: str) -> Self:
-            return cls(file=file, stage=stage, error_type=error_type, detail=detail)
 
     class ProjectEnforcementReport(FlextModels.ArbitraryTypesModel):
         project: Annotated[t.NonEmptyStr, Field(description="Project name")]
@@ -390,73 +185,26 @@ class FlextInfraNamespaceEnforcerModels:
             Field(default=0, description="Files scanned"),
         ]
 
-        @classmethod
-        def create(
-            cls,
-            *,
-            project: str,
-            project_root: str,
-            facade_statuses: Sequence[FlextInfraNamespaceEnforcerModels.FacadeStatus],
-            loose_objects: Sequence[
-                FlextInfraNamespaceEnforcerModels.LooseObjectViolation
-            ],
-            import_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.ImportAliasViolation
-            ],
-            namespace_source_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.NamespaceSourceViolation
-            ],
-            internal_import_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.InternalImportViolation
-            ],
-            manual_protocol_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.ManualProtocolViolation
-            ],
-            cyclic_imports: Sequence[
-                FlextInfraNamespaceEnforcerModels.CyclicImportViolation
-            ],
-            runtime_alias_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.RuntimeAliasViolation
-            ],
-            future_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.FutureAnnotationsViolation
-            ],
-            manual_typing_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.ManualTypingAliasViolation
-            ],
-            compatibility_alias_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.CompatibilityAliasViolation
-            ],
-            class_placement_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.ClassPlacementViolation
-            ],
-            mro_completeness_violations: Sequence[
-                FlextInfraNamespaceEnforcerModels.MROCompletenessViolation
-            ],
-            parse_failures: Sequence[
-                FlextInfraNamespaceEnforcerModels.ParseFailureViolation
-            ],
-            files_scanned: int,
-        ) -> Self:
-            return cls(
-                project=project,
-                project_root=project_root,
-                facade_statuses=facade_statuses,
-                loose_objects=loose_objects,
-                import_violations=import_violations,
-                namespace_source_violations=namespace_source_violations,
-                internal_import_violations=internal_import_violations,
-                manual_protocol_violations=manual_protocol_violations,
-                cyclic_imports=cyclic_imports,
-                runtime_alias_violations=runtime_alias_violations,
-                future_violations=future_violations,
-                manual_typing_violations=manual_typing_violations,
-                compatibility_alias_violations=compatibility_alias_violations,
-                class_placement_violations=class_placement_violations,
-                mro_completeness_violations=mro_completeness_violations,
-                parse_failures=parse_failures,
-                files_scanned=files_scanned,
+        @property
+        def has_violations(self) -> bool:
+            """Check if this project has any violations."""
+            missing_facades = any(not f.exists for f in self.facade_statuses)
+            violation_fields = (
+                self.loose_objects,
+                self.import_violations,
+                self.namespace_source_violations,
+                self.internal_import_violations,
+                self.manual_protocol_violations,
+                self.cyclic_imports,
+                self.runtime_alias_violations,
+                self.future_violations,
+                self.manual_typing_violations,
+                self.compatibility_alias_violations,
+                self.class_placement_violations,
+                self.mro_completeness_violations,
+                self.parse_failures,
             )
+            return missing_facades or any(v for v in violation_fields)
 
     class WorkspaceEnforcementReport(FlextModels.ArbitraryTypesModel):
         workspace: Annotated[t.NonEmptyStr, Field(description="Workspace root path")]
@@ -526,66 +274,58 @@ class FlextInfraNamespaceEnforcerModels:
         ]
 
         @classmethod
-        def create(
+        def from_projects(
             cls,
             *,
             workspace: str,
             projects: Sequence[
                 FlextInfraNamespaceEnforcerModels.ProjectEnforcementReport
             ],
-            total_facades_missing: int,
-            total_loose_objects: int,
-            total_import_violations: int,
-            total_namespace_source_violations: int,
-            total_internal_import_violations: int,
-            total_manual_protocol_violations: int,
-            total_cyclic_imports: int,
-            total_runtime_alias_violations: int,
-            total_future_violations: int,
-            total_manual_typing_violations: int,
-            total_compatibility_alias_violations: int,
-            total_class_placement_violations: int,
-            total_mro_completeness_violations: int,
-            total_parse_failures: int,
-            total_files_scanned: int,
         ) -> Self:
             return cls(
                 workspace=workspace,
                 projects=projects,
-                total_facades_missing=total_facades_missing,
-                total_loose_objects=total_loose_objects,
-                total_import_violations=total_import_violations,
-                total_namespace_source_violations=total_namespace_source_violations,
-                total_internal_import_violations=total_internal_import_violations,
-                total_manual_protocol_violations=total_manual_protocol_violations,
-                total_cyclic_imports=total_cyclic_imports,
-                total_runtime_alias_violations=total_runtime_alias_violations,
-                total_future_violations=total_future_violations,
-                total_manual_typing_violations=total_manual_typing_violations,
-                total_compatibility_alias_violations=total_compatibility_alias_violations,
-                total_class_placement_violations=total_class_placement_violations,
-                total_mro_completeness_violations=total_mro_completeness_violations,
-                total_parse_failures=total_parse_failures,
-                total_files_scanned=total_files_scanned,
+                total_facades_missing=sum(
+                    1 for p in projects for f in p.facade_statuses if not f.exists
+                ),
+                total_loose_objects=sum(len(p.loose_objects) for p in projects),
+                total_import_violations=sum(len(p.import_violations) for p in projects),
+                total_namespace_source_violations=sum(
+                    len(p.namespace_source_violations) for p in projects
+                ),
+                total_internal_import_violations=sum(
+                    len(p.internal_import_violations) for p in projects
+                ),
+                total_manual_protocol_violations=sum(
+                    len(p.manual_protocol_violations) for p in projects
+                ),
+                total_cyclic_imports=sum(len(p.cyclic_imports) for p in projects),
+                total_runtime_alias_violations=sum(
+                    len(p.runtime_alias_violations) for p in projects
+                ),
+                total_future_violations=sum(len(p.future_violations) for p in projects),
+                total_manual_typing_violations=sum(
+                    len(p.manual_typing_violations) for p in projects
+                ),
+                total_compatibility_alias_violations=sum(
+                    len(p.compatibility_alias_violations) for p in projects
+                ),
+                total_class_placement_violations=sum(
+                    len(p.class_placement_violations) for p in projects
+                ),
+                total_mro_completeness_violations=sum(
+                    len(p.mro_completeness_violations) for p in projects
+                ),
+                total_parse_failures=sum(len(p.parse_failures) for p in projects),
+                total_files_scanned=sum(p.files_scanned for p in projects),
             )
 
         @property
         def has_violations(self) -> bool:
-            return (
-                self.total_facades_missing > 0
-                or self.total_loose_objects > 0
-                or self.total_import_violations > 0
-                or self.total_namespace_source_violations > 0
-                or self.total_internal_import_violations > 0
-                or self.total_manual_protocol_violations > 0
-                or self.total_cyclic_imports > 0
-                or self.total_runtime_alias_violations > 0
-                or self.total_future_violations > 0
-                or self.total_manual_typing_violations > 0
-                or self.total_compatibility_alias_violations > 0
-                or self.total_class_placement_violations > 0
-                or self.total_mro_completeness_violations > 0
-                or self.total_parse_failures > 0
+            return any(
+                getattr(self, f) > 0
+                for f in type(self).model_fields
+                if f.startswith("total_") and f != "total_files_scanned"
             )
 
 

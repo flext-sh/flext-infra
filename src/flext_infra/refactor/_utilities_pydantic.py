@@ -13,12 +13,12 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import (
+    FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesRefactorPydanticAnalysis,
     c,
     m,
     t,
 )
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilitiesRefactorPydantic:

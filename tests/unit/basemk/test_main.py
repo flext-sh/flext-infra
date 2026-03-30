@@ -14,16 +14,18 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraBaseMkGenerator, m
-from flext_infra.basemk import FlextInfraBaseMkTemplateEngine
-from flext_infra.cli import main as infra_main
+from flext_infra import (
+    FlextInfraBaseMkGenerator,
+    FlextInfraBaseMkTemplateEngine,
+    m,
+    main as infra_main,
+)
 from tests import t
 
 
 def main(argv: list[str] | None = None) -> int:
     args = ["basemk"]
-    if argv is not None:
-        args.extend(argv)
+    args.extend(list(argv) if argv is not None else sys.argv[1:])
     return infra_main(args)
 
 

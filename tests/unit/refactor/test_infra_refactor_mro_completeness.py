@@ -27,7 +27,7 @@ def _write_models_project(
     (package_dir / "__init__.py").write_text("", encoding="utf-8")
     # Build import lines for any bases defined in _models/ so rope can resolve them.
     imports = "".join(
-        f"from flext_example._models.domain import {base}\n"
+        f"from flext_example import {base}\n"
         for base in facade_bases.replace(" ", "").split(",")
         if base.startswith("FlextExample") and base != "FlextExampleModelsBase"
     )

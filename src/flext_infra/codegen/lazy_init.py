@@ -487,9 +487,9 @@ class FlextInfraCodegenLazyInit(s[int]):
 
         Returns:
             ``(inline_constants, lazy_entries)``.
-            ``inline_constants``: String constants to inline (``__version__``).
-            ``lazy_entries``: Non-string dunder constants for lazy loading
-            (``__version_info__``).
+            ``inline_constants``: String constants to inline directly.
+            ``lazy_entries``: Remaining exported names resolved lazily from
+            ``__version__.py``.
 
         """
         ver_file = pkg_dir / "__version__.py"
@@ -503,6 +503,13 @@ class FlextInfraCodegenLazyInit(s[int]):
         ver_mod = f"{current_pkg}.__version__" if current_pkg else "__version__"
 
         lazy: t.Infra.MutableLazyImportMap = {}
+        has_all, exported_names = u.Infra.extract_exports(tree)
+        if has_all and exported_names:
+            for name in exported_names:
+                if name not in inline:
+                    lazy[name] = (ver_mod, name)
+            return (inline, lazy)
+
         for node in tree.body:
             if isinstance(node, ast.Assign) and len(node.targets) == 1:
                 target = node.targets[0]

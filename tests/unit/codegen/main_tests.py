@@ -16,8 +16,7 @@ from pathlib import Path
 import pytest
 from flext_tests import t, tm
 
-from flext_infra.cli import main as infra_main
-from flext_infra.codegen import cli as codegen_cli
+from flext_infra import cli as codegen_cli, main as infra_main
 
 
 class TestHandleLazyInit:
@@ -119,7 +118,6 @@ class TestMainEntryPoint:
             [sys.executable, "-m", "flext_infra", "codegen", "lazy-init", "--help"],
             capture_output=True,
             text=True,
-            cwd="/home/marlonsc/flext/flext-core",
             check=False,
         )
         tm.that(result.returncode, eq=0)

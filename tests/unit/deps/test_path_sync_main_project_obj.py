@@ -11,8 +11,7 @@ from flext_core import r
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
-from flext_infra import FlextInfraDependencyPathSync, m
-from flext_infra.deps import path_sync as path_sync_module
+from flext_infra import FlextInfraDependencyPathSync, m, path_sync as path_sync_module
 
 
 def _project(path: Path) -> m.Infra.ProjectInfo:

@@ -7,11 +7,13 @@ from pathlib import Path
 
 from rope.base.exceptions import ModuleSyntaxError
 
-from flext_infra import c, m, t
-from flext_infra.refactor._utilities_mro_scan import FlextInfraUtilitiesRefactorMroScan
-from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
-from flext_infra.refactor.mro_migration_validator import (
+from flext_infra import (
+    FlextInfraRefactorMROImportRewriter,
     FlextInfraRefactorMROMigrationValidator,
+    FlextInfraUtilitiesRefactorMroScan,
+    c,
+    m,
+    t,
 )
 
 

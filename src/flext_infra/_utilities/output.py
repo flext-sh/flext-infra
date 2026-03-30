@@ -316,25 +316,10 @@ class FlextInfraUtilitiesOutput:
             "",
         ]
         for proj in report.projects:
-            missing = [s for s in proj.facade_statuses if not s.exists]
-            has_violations = (
-                missing
-                or proj.loose_objects
-                or proj.import_violations
-                or proj.internal_import_violations
-                or proj.runtime_alias_violations
-                or proj.future_violations
-                or proj.manual_protocol_violations
-                or proj.manual_typing_violations
-                or proj.compatibility_alias_violations
-                or proj.class_placement_violations
-                or proj.mro_completeness_violations
-                or proj.namespace_source_violations
-                or proj.parse_failures
-            )
-            if not has_violations:
+            if not proj.has_violations:
                 continue
             lines.append(f"--- {proj.project} ---")
+            missing = [s for s in proj.facade_statuses if not s.exists]
             if missing:
                 lines.append(
                     "  Missing facades: "

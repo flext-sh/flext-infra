@@ -9,8 +9,78 @@ from typing import override
 import libcst as cst
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import c, m, t
-from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
+from flext_infra import FlextInfraChangeTrackingTransformer, c, m, t
+
+_PROPERTY_DECORATORS: frozenset[str] = frozenset(
+    {"property", "cached_property", "computed_field"},
+)
+
+_DECORATOR_TO_CATEGORY: Sequence[tuple[str, str]] = [
+    ("staticmethod", c.Infra.MethodCategory.STATIC),
+    ("classmethod", c.Infra.MethodCategory.CLASS),
+]
+
+
+def _categorize_by_name(name: str) -> str:
+    """Determine method category from its name when decorators don't match."""
+    if name.startswith("__") and name.endswith("__"):
+        return c.Infra.MethodCategory.MAGIC
+    if name.startswith("__"):
+        return c.Infra.MethodCategory.PRIVATE
+    if name.startswith("_"):
+        return c.Infra.MethodCategory.PROTECTED
+    return c.Infra.MethodCategory.PUBLIC
+
+
+def _check_visibility(name: str, visibility: str | None) -> bool:
+    """Return True when the method name satisfies the visibility constraint."""
+    if visibility is None:
+        return True
+    if visibility == "public":
+        return not name.startswith("_")
+    if visibility == "protected":
+        return name.startswith("_") and not name.startswith("__")
+    if visibility == "private":
+        return name.startswith("__") and not name.endswith("__")
+    return True
+
+
+def _matches_rule(
+    method: m.Infra.MethodInfo,
+    rule_config: m.Infra.MethodOrderRule,
+) -> bool:
+    """Return True when *method* satisfies all constraints of *rule_config*."""
+    decorators = set(method.decorators)
+    exclude_decorators = set(rule_config.exclude_decorators)
+    if exclude_decorators and decorators.intersection(exclude_decorators):
+        return False
+    if not _check_visibility(method.name, rule_config.visibility):
+        return False
+    rule_decorators = rule_config.decorators
+    if rule_decorators and not decorators.intersection(rule_decorators):
+        return False
+    patterns = rule_config.patterns
+    return not patterns or any(re.match(p, method.name) for p in patterns)
+
+
+def _build_sort_key(
+    method: m.Infra.MethodInfo,
+    order_config: Sequence[m.Infra.MethodOrderRule],
+) -> t.Infra.Triple[int, int, str]:
+    """Return a sort key tuple for *method* given the rule sequence."""
+    for idx, rule_config in enumerate(order_config):
+        if rule_config.category == "class_attributes":
+            continue
+        if not _matches_rule(method, rule_config):
+            continue
+        explicit_order = rule_config.order
+        if explicit_order:
+            if method.name in explicit_order:
+                return (idx, explicit_order.index(method.name), method.name)
+            if "*" in explicit_order:
+                return (idx, explicit_order.index("*") + 1, method.name)
+        return (idx, 0, method.name)
+    return (len(order_config), 0, method.name)
 
 
 class FlextInfraRefactorClassReconstructor(FlextInfraChangeTrackingTransformer):
@@ -97,76 +167,22 @@ class FlextInfraRefactorClassReconstructor(FlextInfraChangeTrackingTransformer):
         )
 
     def _categorize(self, name: str, decorators: t.StrSequence) -> str:
-        if any(
-            decorator_name in decorators
-            for decorator_name in ["property", "cached_property", "computed_field"]
-        ):
+        if _PROPERTY_DECORATORS.intersection(decorators):
             return c.Infra.MethodCategory.PROPERTY
-        if "staticmethod" in decorators:
-            return c.Infra.MethodCategory.STATIC
-        if "classmethod" in decorators:
-            return c.Infra.MethodCategory.CLASS
-        if name.startswith("__") and name.endswith("__"):
-            return c.Infra.MethodCategory.MAGIC
-        if name.startswith("__"):
-            return c.Infra.MethodCategory.PRIVATE
-        if name.startswith("_"):
-            return c.Infra.MethodCategory.PROTECTED
-        return c.Infra.MethodCategory.PUBLIC
+        for decorator_name, category in _DECORATOR_TO_CATEGORY:
+            if decorator_name in decorators:
+                return category
+        return _categorize_by_name(name)
 
     def _sort_methods(
         self,
         methods: Sequence[m.Infra.MethodInfo],
     ) -> Sequence[m.Infra.MethodInfo]:
-
-        def matches_rule(
-            method: m.Infra.MethodInfo,
-            rule_config: m.Infra.MethodOrderRule,
-        ) -> bool:
-            decorators = set(method.decorators)
-            exclude_decorators = set(rule_config.exclude_decorators)
-            if exclude_decorators and decorators.intersection(exclude_decorators):
-                return False
-            visibility = rule_config.visibility
-            if visibility == "public" and method.name.startswith("_"):
-                return False
-            if visibility == "protected" and (
-                not (method.name.startswith("_") and (not method.name.startswith("__")))
-            ):
-                return False
-            if visibility == "private" and (
-                not (method.name.startswith("__") and (not method.name.endswith("__")))
-            ):
-                return False
-            rule_decorators = rule_config.decorators
-            if rule_decorators and (not decorators.intersection(rule_decorators)):
-                return False
-            patterns = rule_config.patterns
-            if patterns:
-                matched = False
-                for pattern in patterns:
-                    if re.match(pattern, method.name):
-                        matched = True
-                if not matched:
-                    return False
-            return True
-
-        def sort_key(method: m.Infra.MethodInfo) -> t.Infra.Triple[int, int, str]:
-            for idx, rule_config in enumerate(self._order_config):
-                if rule_config.category == "class_attributes":
-                    continue
-                if not matches_rule(method, rule_config):
-                    continue
-                explicit_order = rule_config.order
-                if explicit_order:
-                    if method.name in explicit_order:
-                        return (idx, explicit_order.index(method.name), method.name)
-                    if "*" in explicit_order:
-                        return (idx, explicit_order.index("*") + 1, method.name)
-                return (idx, 0, method.name)
-            return (len(self._order_config), 0, method.name)
-
-        return sorted(methods, key=sort_key)
+        order_config = self._order_config
+        return sorted(
+            methods,
+            key=lambda method: _build_sort_key(method, order_config),
+        )
 
 
 __all__ = ["FlextInfraRefactorClassReconstructor"]

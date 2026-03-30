@@ -45,7 +45,7 @@ class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             alias_map=None,
         )
         return [
-            m.Infra.ImportAliasViolation.create(
+            m.Infra.ImportAliasViolation(
                 file=getattr(raw, "file", ""),
                 line=getattr(raw, "line", 0),
                 current_import=getattr(raw, "current_import", ""),

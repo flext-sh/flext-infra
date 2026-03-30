@@ -11,6 +11,7 @@ from libcst.metadata import MetadataWrapper
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
+    CONTAINER_DICT_SEQ_ADAPTER,
     FlextInfraRefactorImportModernizer,
     FlextInfraRefactorLazyImportFixer,
     FlextInfraRefactorRule,
@@ -19,7 +20,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.refactor._base_rule import CONTAINER_DICT_SEQ_ADAPTER
 
 _RULE_CONFIG_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.ImportModernizerRuleConfig]] = (
     TypeAdapter(Sequence[m.Infra.ImportModernizerRuleConfig])

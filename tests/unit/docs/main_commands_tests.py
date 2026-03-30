@@ -12,11 +12,11 @@ from flext_tests import tm
 from flext_infra import (
     FlextInfraDocBuilder,
     FlextInfraDocGenerator,
+    FlextInfraDocsCli,
     FlextInfraDocValidator,
     c,
     m,
 )
-from flext_infra.docs.cli import FlextInfraDocsCli
 from tests import t
 
 _R: TypeAlias = m.Infra.DocsPhaseReport

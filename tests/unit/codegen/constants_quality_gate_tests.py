@@ -15,9 +15,9 @@ from flext_tests import tm
 
 from flext_infra import (
     FlextInfraCodegenConstantsQualityGate,
+    main as infra_main,
     t,
 )
-from flext_infra.cli import main as infra_main
 
 
 class TestConstantsQualityGateCLIDispatch:

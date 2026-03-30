@@ -48,7 +48,7 @@ class FlextInfraCompatibilityAliasDetector(FlextInfraScanFileMixin, p.Infra.Scan
                 continue
             line = source[: hit.start()].count("\n") + 1
             violations.append(
-                m.Infra.CompatibilityAliasViolation.create(
+                m.Infra.CompatibilityAliasViolation(
                     file=str(file_path),
                     line=line,
                     alias_name=alias_name,

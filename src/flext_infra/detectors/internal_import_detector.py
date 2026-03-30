@@ -39,7 +39,7 @@ class FlextInfraInternalImportDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
             return []
         imports = u.Infra.get_module_imports(rope_project, res)
         return [
-            m.Infra.InternalImportViolation.create(
+            m.Infra.InternalImportViolation(
                 file=str(file_path),
                 line=1,
                 current_import=f"from ... import {local}  # {fqn}",

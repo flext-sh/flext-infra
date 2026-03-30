@@ -44,7 +44,7 @@ class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         if res is None:
             return []
         return [
-            m.Infra.ManualProtocolViolation.create(
+            m.Infra.ManualProtocolViolation(
                 file=str(file_path), line=ci.line, name=ci.name
             )
             for ci in u.Infra.get_class_info(rope_project, res)

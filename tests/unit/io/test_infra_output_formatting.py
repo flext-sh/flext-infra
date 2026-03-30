@@ -14,7 +14,7 @@ import re
 
 from flext_tests import tm
 
-from flext_infra._utilities.output import FlextInfraUtilitiesOutput
+from flext_infra import FlextInfraUtilitiesOutput
 
 ANSI_RE = re.compile(r"\033\[\d+m")
 

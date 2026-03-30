@@ -10,6 +10,8 @@ import libcst as cst
 from pydantic import JsonValue, ValidationError
 
 from flext_infra import (
+    CONTAINER_DICT_SEQ_ADAPTER,
+    INFRA_MAPPING_ADAPTER,
     FlextInfraNestedClassPropagationTransformer,
     FlextInfraRefactorClassReconstructor,
     FlextInfraRefactorRule,
@@ -17,10 +19,6 @@ from flext_infra import (
     m,
     t,
     u,
-)
-from flext_infra.refactor._base_rule import (
-    CONTAINER_DICT_SEQ_ADAPTER,
-    INFRA_MAPPING_ADAPTER,
 )
 
 

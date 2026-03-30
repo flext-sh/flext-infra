@@ -6,9 +6,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import m
-from flext_infra.cli import main as infra_main
-from flext_infra.validate.cli import FlextInfraCliValidate as FlextInfraValidateCli
+from flext_infra import FlextInfraCliValidate, m, main as infra_main
 
 
 def test_stub_validate_uses_all_flag(
@@ -22,7 +20,7 @@ def test_stub_validate_uses_all_flag(
         return r[bool].ok(True)
 
     monkeypatch.setattr(
-        FlextInfraValidateCli,
+        FlextInfraCliValidate,
         "_handle_stub_validate",
         _mock_handler,
     )

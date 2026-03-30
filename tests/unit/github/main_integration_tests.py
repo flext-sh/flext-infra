@@ -8,9 +8,7 @@ from pathlib import Path
 import pytest
 from flext_core import r
 
-from flext_infra import u
-from flext_infra.cli import main
-from flext_infra.github.cli import FlextInfraCliGithub
+from flext_infra import FlextInfraCliGithub, main, u
 from tests import m
 
 

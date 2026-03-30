@@ -8,7 +8,7 @@ import pytest
 from rope.base.project import Project as RopeProject
 from rope.base.resources import File as RopeFile
 
-from flext_infra._utilities.rope import FlextInfraUtilitiesRope as R
+from flext_infra import FlextInfraUtilitiesRope as R
 
 
 @pytest.fixture

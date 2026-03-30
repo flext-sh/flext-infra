@@ -163,7 +163,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         canonical_root: Path,
     ) -> r[bool]:
         """Sync the generated section of a project Makefile from pyproject.toml."""
-        from flext_infra.workspace.project_makefile import (
+        from flext_infra import (
             FlextInfraProjectMakefileUpdater,
         )
 
@@ -175,7 +175,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
     @staticmethod
     def _sync_workspace_makefile(workspace_root: Path) -> r[bool]:
         """Sync the workspace root Makefile from the canonical generator."""
-        from flext_infra.workspace.workspace_makefile import (
+        from flext_infra import (
             FlextInfraWorkspaceMakefileGenerator,
         )
 

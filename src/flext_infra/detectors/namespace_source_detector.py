@@ -75,7 +75,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
             alias_map=None,
         )
         return [
-            m.Infra.NamespaceSourceViolation.create(
+            m.Infra.NamespaceSourceViolation(
                 file=getattr(raw, "file", ""),
                 line=getattr(raw, "line", 0),
                 alias=getattr(raw, "current_import", "").rsplit(" ", maxsplit=1)[-1]

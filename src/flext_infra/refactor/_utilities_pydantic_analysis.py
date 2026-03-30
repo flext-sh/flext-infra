@@ -88,6 +88,53 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             marker in expr for marker in ("Mapping[", "Mapping[", "MutableMapping[")
         )
 
+    _DICT_ALIAS_KEYS: tuple[str, ...] = (
+        "dict",
+        "payload",
+        "schema",
+        "entry",
+        "config",
+        "metadata",
+        "fixture",
+        "case",
+    )
+
+    @staticmethod
+    def _extract_alias_candidate(
+        node: ast.stmt,
+        source: str,
+        *,
+        is_typings_scope: bool,
+    ) -> tuple[str, str] | None:
+        """Extract (alias_name, expr) from an alias-like node, or None."""
+        keys = FlextInfraUtilitiesRefactorPydanticAnalysis._DICT_ALIAS_KEYS
+        is_dict_like = FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_expr
+        match node:
+            case ast.TypeAlias():
+                alias_name = node.name.id
+                value_node = node.value
+            case ast.AnnAssign(target=ast.Name() as target, value=value) if (
+                value is not None
+            ):
+                alias_name = target.id
+                annotation = ast.get_source_segment(source, node.annotation) or ""
+                if "TypeAlias" not in annotation and not is_typings_scope:
+                    return None
+                value_node = value
+            case ast.Assign(targets=[ast.Name() as target]):
+                alias_name = target.id
+                value_node = node.value
+            case _:
+                return None
+        if not is_typings_scope and not any(
+            token in alias_name.lower() for token in keys
+        ):
+            return None
+        expr = ast.get_source_segment(source, value_node)
+        if expr is None or not is_dict_like(expr):
+            return None
+        return (alias_name, expr)
+
     @staticmethod
     def _is_dict_like_alias(
         node: ast.stmt,
@@ -95,92 +142,49 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         *,
         file_path: Path,
     ) -> m.Infra.AliasMove | None:
-        keys = (
-            "dict",
-            "payload",
-            "schema",
-            "entry",
-            "config",
-            "metadata",
-            "fixture",
-            "case",
-        )
         is_typings_scope = (
-            FlextInfraUtilitiesRefactorPydanticAnalysis._is_typings_scope(
-                file_path,
-            )
+            FlextInfraUtilitiesRefactorPydanticAnalysis._is_typings_scope(file_path)
         )
-        match node:
-            case ast.TypeAlias():
-                alias_name = node.name.id
-                if (not is_typings_scope) and (
-                    not any(token in alias_name.lower() for token in keys)
-                ):
-                    return None
-                expr = ast.get_source_segment(source, node.value)
-                if expr is None:
-                    return None
-                if not FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_expr(
-                    expr,
-                ):
-                    return None
-                return m.Infra.AliasMove(
-                    name=alias_name,
-                    start=node.lineno,
-                    end=node.end_lineno or node.lineno,
-                    alias_expr=expr,
-                )
-            case ast.AnnAssign():
-                if not isinstance(node.target, ast.Name):
-                    return None
-                alias_name = node.target.id
-                if (not is_typings_scope) and (
-                    not any(token in alias_name.lower() for token in keys)
-                ):
-                    return None
-                if node.value is None:
-                    return None
-                expr = ast.get_source_segment(source, node.value)
-                if expr is None:
-                    return None
-                if not FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_expr(
-                    expr,
-                ):
-                    return None
-                annotation = ast.get_source_segment(source, node.annotation) or ""
-                if ("TypeAlias" not in annotation) and (not is_typings_scope):
-                    return None
-                return m.Infra.AliasMove(
-                    name=alias_name,
-                    start=node.lineno,
-                    end=node.end_lineno or node.lineno,
-                    alias_expr=expr,
-                )
-            case ast.Assign():
-                if len(node.targets) != 1:
-                    return None
-                if not isinstance(node.targets[0], ast.Name):
-                    return None
-                alias_name = node.targets[0].id
-                if (not is_typings_scope) and (
-                    not any(token in alias_name.lower() for token in keys)
-                ):
-                    return None
-                expr = ast.get_source_segment(source, node.value)
-                if expr is None:
-                    return None
-                if not FlextInfraUtilitiesRefactorPydanticAnalysis._is_dict_like_expr(
-                    expr,
-                ):
-                    return None
-                return m.Infra.AliasMove(
-                    name=alias_name,
-                    start=node.lineno,
-                    end=node.end_lineno or node.lineno,
-                    alias_expr=expr,
-                )
-            case _:
-                return None
+        result = FlextInfraUtilitiesRefactorPydanticAnalysis._extract_alias_candidate(
+            node,
+            source,
+            is_typings_scope=is_typings_scope,
+        )
+        if result is None:
+            return None
+        alias_name, expr = result
+        return m.Infra.AliasMove(
+            name=alias_name,
+            start=node.lineno,
+            end=node.end_lineno or node.lineno,
+            alias_expr=expr,
+        )
+
+    @staticmethod
+    def _is_typed_dict_call(func: ast.expr) -> bool:
+        """Return True when *func* references ``TypedDict``."""
+        if isinstance(func, ast.Name):
+            return func.id == "TypedDict"
+        if isinstance(func, ast.Attribute):
+            return func.attr == "TypedDict"
+        return False
+
+    @staticmethod
+    def _has_total_false(keywords: Sequence[ast.keyword]) -> bool:
+        """Return True when ``total=False`` is present in keyword args."""
+        return any(
+            kw.arg == "total"
+            and isinstance(kw.value, ast.Constant)
+            and kw.value.value is False
+            for kw in keywords
+        )
+
+    @staticmethod
+    def _render_field_line(key: str, annotation: str, *, total_false: bool) -> str:
+        """Render a single field line for a BaseModel class body."""
+        if total_false:
+            return f"    {key}: Annotated[{annotation} | None, Field(default=None)]"
+        return f"    {key}: {annotation}"
 
     @staticmethod
     def _typed_dict_factory_model(
@@ -193,13 +197,9 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             return None
         if not isinstance(node.value, ast.Call):
             return None
-        func = node.value.func
-        is_typed_dict_factory = False
-        if isinstance(func, ast.Name):
-            is_typed_dict_factory = func.id == "TypedDict"
-        elif isinstance(func, ast.Attribute):
-            is_typed_dict_factory = func.attr == "TypedDict"
-        if not is_typed_dict_factory:
+        if not FlextInfraUtilitiesRefactorPydanticAnalysis._is_typed_dict_call(
+            node.value.func,
+        ):
             return None
         if (
             len(node.value.args)
@@ -209,15 +209,11 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         field_map_arg = node.value.args[1]
         if not isinstance(field_map_arg, ast.Dict):
             return None
+        total_false = FlextInfraUtilitiesRefactorPydanticAnalysis._has_total_false(
+            node.value.keywords,
+        )
+        render = FlextInfraUtilitiesRefactorPydanticAnalysis._render_field_line
         field_lines: MutableSequence[str] = []
-        total_false = False
-        for kw in node.value.keywords:
-            if (
-                kw.arg == "total"
-                and isinstance(kw.value, ast.Constant)
-                and kw.value.value is False
-            ):
-                total_false = True
         for key_node, value_node in zip(
             field_map_arg.keys,
             field_map_arg.values,
@@ -228,13 +224,9 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
             key_value = key_node.value
             if not isinstance(key_value, str):
                 continue
-            annotation = ast.unparse(value_node)
-            if total_false:
-                field_lines.append(
-                    f"    {key_value}: Annotated[{annotation} | None, Field(default=None)]",
-                )
-            else:
-                field_lines.append(f"    {key_value}: {annotation}")
+            field_lines.append(
+                render(key_value, ast.unparse(value_node), total_false=total_false),
+            )
         if not field_lines:
             field_lines.append("    pass")
         rendered_fields = "\n".join(field_lines)
@@ -430,6 +422,48 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
         return updated
 
     @staticmethod
+    def _is_cst_docstring(stmt: cst.BaseStatement) -> bool:
+        """Return True when *stmt* is a module-level docstring."""
+        return (
+            isinstance(stmt, cst.SimpleStatementLine)
+            and len(stmt.body) == 1
+            and isinstance(stmt.body[0], cst.Expr)
+            and isinstance(
+                stmt.body[0].value,
+                (cst.SimpleString, cst.ConcatenatedString),
+            )
+        )
+
+    @staticmethod
+    def _is_cst_import(stmt: cst.BaseStatement) -> bool:
+        """Return True when *stmt* is an import statement."""
+        return isinstance(stmt, cst.SimpleStatementLine) and any(
+            isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body
+        )
+
+    @staticmethod
+    def _is_cst_future_import(stmt: cst.BaseStatement) -> bool:
+        """Return True when *stmt* is a ``from __future__`` import."""
+        if not isinstance(stmt, cst.SimpleStatementLine):
+            return False
+        return any(
+            isinstance(s, cst.ImportFrom)
+            and isinstance(s.module, cst.Name)
+            and s.module.value == "__future__"
+            for s in stmt.body
+        )
+
+    @staticmethod
+    def _is_preamble_stmt(stmt: cst.BaseStatement) -> bool:
+        """Return True for docstrings, imports, and future imports."""
+        cls = FlextInfraUtilitiesRefactorPydanticAnalysis
+        return (
+            cls._is_cst_docstring(stmt)
+            or cls._is_cst_future_import(stmt)
+            or cls._is_cst_import(stmt)
+        )
+
+    @staticmethod
     def _insert_import(source: str, import_stmt: str) -> str:
         """Insert import statement preserving canonical ordering."""
         normalized = import_stmt.strip()
@@ -449,30 +483,10 @@ class FlextInfraUtilitiesRefactorPydanticAnalysis:
                 continue
             if cst.Module(body=[stmt]).code.strip() == normalized:
                 return source
+        is_preamble = FlextInfraUtilitiesRefactorPydanticAnalysis._is_preamble_stmt
         insert_idx = 0
         for idx, stmt in enumerate(module.body):
-            is_docstring = (
-                isinstance(stmt, cst.SimpleStatementLine)
-                and len(stmt.body) == 1
-                and isinstance(stmt.body[0], cst.Expr)
-                and isinstance(
-                    stmt.body[0].value,
-                    (cst.SimpleString, cst.ConcatenatedString),
-                )
-            )
-            is_import = isinstance(stmt, cst.SimpleStatementLine) and any(
-                isinstance(s, (cst.Import, cst.ImportFrom)) for s in stmt.body
-            )
-            is_future = False
-            if isinstance(stmt, cst.SimpleStatementLine):
-                for s in stmt.body:
-                    if (
-                        isinstance(s, cst.ImportFrom)
-                        and isinstance(s.module, cst.Name)
-                        and s.module.value == "__future__"
-                    ):
-                        is_future = True
-            if is_docstring or is_future or is_import:
+            if is_preamble(stmt):
                 insert_idx = idx + 1
                 continue
             break

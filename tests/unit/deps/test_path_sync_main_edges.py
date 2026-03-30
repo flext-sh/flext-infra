@@ -8,8 +8,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import FlextInfraDependencyPathSync, t
-from flext_infra.deps import path_sync as path_sync_module
+from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module, t
 from tests import m
 
 

@@ -111,7 +111,7 @@ class FlextInfraUtilitiesRefactorLoader:
         except UnicodeDecodeError as exc:
             if parse_failures is not None:
                 parse_failures.append(
-                    m.Infra.ParseFailureViolation.create(
+                    m.Infra.ParseFailureViolation(
                         file=str(file_path),
                         stage=stage,
                         error_type=type(exc).__name__,
@@ -122,7 +122,7 @@ class FlextInfraUtilitiesRefactorLoader:
         except OSError as exc:
             if parse_failures is not None:
                 parse_failures.append(
-                    m.Infra.ParseFailureViolation.create(
+                    m.Infra.ParseFailureViolation(
                         file=str(file_path),
                         stage=stage,
                         error_type=type(exc).__name__,
@@ -134,7 +134,7 @@ class FlextInfraUtilitiesRefactorLoader:
         if tree is None:
             if parse_failures is not None:
                 parse_failures.append(
-                    m.Infra.ParseFailureViolation.create(
+                    m.Infra.ParseFailureViolation(
                         file=str(file_path),
                         stage=stage,
                         error_type="SyntaxError",

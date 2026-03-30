@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import libcst as cst
 
-from flext_infra import FlextInfraRefactorMRORemover
-from flext_infra.refactor._base_rule import FlextInfraGenericTransformerRule
+from flext_infra import FlextInfraGenericTransformerRule, FlextInfraRefactorMRORemover
 
 
 class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):

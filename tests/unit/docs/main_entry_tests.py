@@ -19,8 +19,8 @@ from flext_infra import (
     FlextInfraDocFixer,
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
+    main,
 )
-from flext_infra.cli import main
 from tests import m, t
 
 

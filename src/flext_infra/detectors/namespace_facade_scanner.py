@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t
-from flext_infra._utilities.rope import FlextInfraUtilitiesRope
+from flext_infra import FlextInfraUtilitiesRope, c, m, t
 
 
 class FlextInfraNamespaceFacadeScanner:
@@ -32,7 +31,7 @@ class FlextInfraNamespaceFacadeScanner:
         src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return [
-                m.Infra.FacadeStatus.create(
+                m.Infra.FacadeStatus(
                     family=family,
                     exists=False,
                     class_name="",
@@ -68,7 +67,7 @@ class FlextInfraNamespaceFacadeScanner:
                     )
                     break
             results.append(
-                m.Infra.FacadeStatus.create(
+                m.Infra.FacadeStatus(
                     family=family,
                     exists=bool(found_class),
                     class_name=found_class,

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import t
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra import FlextInfraWorkspaceChecker, t
 
 
 class FlextInfraCliCheck:

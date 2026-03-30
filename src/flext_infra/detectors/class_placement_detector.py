@@ -55,7 +55,7 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         if res is None:
             return []
         return [
-            m.Infra.ClassPlacementViolation.create(
+            m.Infra.ClassPlacementViolation(
                 file=str(file_path),
                 line=ci.line,
                 name=ci.name,

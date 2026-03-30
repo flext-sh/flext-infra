@@ -9,6 +9,7 @@ import libcst as cst
 from pydantic import ValidationError
 
 from flext_infra import (
+    INFRA_SEQ_ADAPTER,
     FlextInfraHelperConsolidationTransformer,
     FlextInfraPostCheckGate,
     FlextInfraPreCheckGate,
@@ -19,7 +20,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.refactor._base_rule import INFRA_SEQ_ADAPTER
 
 
 class FlextInfraClassNestingRefactorRule:
@@ -122,19 +122,27 @@ class FlextInfraClassNestingRefactorRule:
                     refactored_code=None,
                 )
             changes: MutableSequence[str] = []
-            tree = self._apply_class_nesting(
-                tree,
-                class_mappings,
-                changes,
-                policy_context,
-                class_families,
+            tree = self._apply_transformer(
+                tree=tree,
+                transformer=FlextInfraRefactorClassNestingTransformer(
+                    mappings=class_mappings,
+                    policy_context=policy_context,
+                    class_families=class_families,
+                ),
+                changes=changes,
+                label="FlextInfraRefactorClassNestingTransformer",
+                mapping_count=len(class_mappings),
             )
-            tree = self._apply_helper_consolidation(
-                tree,
-                helper_mappings,
-                changes,
-                policy_context,
-                helper_families,
+            tree = self._apply_transformer(
+                tree=tree,
+                transformer=FlextInfraHelperConsolidationTransformer(
+                    helper_mappings=helper_mappings,
+                    policy_context=policy_context,
+                    helper_families=helper_families,
+                ),
+                changes=changes,
+                label="FlextInfraHelperConsolidationTransformer",
+                mapping_count=len(helper_mappings),
             )
             tree = FlextInfraRefactorClassNestingReconstructor.apply_nested_class_propagation(
                 tree,
@@ -463,46 +471,6 @@ class FlextInfraClassNestingRefactorRule:
                 payload[c.Infra.ReportKeys.POST_CHECKS] = post_checks
             break
         return payload
-
-    def _apply_class_nesting(
-        self,
-        tree: cst.Module,
-        mappings: Mapping[str, str],
-        changes: MutableSequence[str],
-        policy_context: t.Infra.PolicyContext,
-        class_families: Mapping[str, str],
-    ) -> cst.Module:
-        return self._apply_transformer(
-            tree=tree,
-            transformer=FlextInfraRefactorClassNestingTransformer(
-                mappings=mappings,
-                policy_context=policy_context,
-                class_families=class_families,
-            ),
-            changes=changes,
-            label="FlextInfraRefactorClassNestingTransformer",
-            mapping_count=len(mappings),
-        )
-
-    def _apply_helper_consolidation(
-        self,
-        tree: cst.Module,
-        mappings: Mapping[str, str],
-        changes: MutableSequence[str],
-        policy_context: t.Infra.PolicyContext,
-        helper_families: Mapping[str, str],
-    ) -> cst.Module:
-        return self._apply_transformer(
-            tree=tree,
-            transformer=FlextInfraHelperConsolidationTransformer(
-                helper_mappings=mappings,
-                policy_context=policy_context,
-                helper_families=helper_families,
-            ),
-            changes=changes,
-            label="FlextInfraHelperConsolidationTransformer",
-            mapping_count=len(mappings),
-        )
 
     @staticmethod
     def _apply_transformer(

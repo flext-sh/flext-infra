@@ -17,8 +17,8 @@ from jinja2 import TemplateError
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,
+    main as infra_main,
 )
-from flext_infra.cli import main as infra_main
 from tests import m as im, t
 
 

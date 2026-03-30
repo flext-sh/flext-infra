@@ -8,20 +8,22 @@ from typing import ClassVar
 
 from flext_cli import cli
 
-from flext_infra._utilities.output import output
-from flext_infra.basemk.cli import FlextInfraCliBasemk
-from flext_infra.check.cli import FlextInfraCliCheck
-from flext_infra.codegen.cli import FlextInfraCliCodegen
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.deps.cli import FlextInfraCliDeps
-from flext_infra.docs.cli import FlextInfraCliDocs
-from flext_infra.github.cli import FlextInfraCliGithub
-from flext_infra.refactor.cli import FlextInfraCliRefactor
-from flext_infra.release.cli import FlextInfraCliRelease
-from flext_infra.typings import FlextInfraTypes as t
-from flext_infra.utilities import FlextInfraUtilities as u
-from flext_infra.validate.cli import FlextInfraCliValidate
-from flext_infra.workspace.cli import FlextInfraCliWorkspace
+from flext_infra import (
+    FlextInfraCliBasemk,
+    FlextInfraCliCheck,
+    FlextInfraCliCodegen,
+    FlextInfraCliDeps,
+    FlextInfraCliDocs,
+    FlextInfraCliGithub,
+    FlextInfraCliRefactor,
+    FlextInfraCliRelease,
+    FlextInfraCliValidate,
+    FlextInfraCliWorkspace,
+    FlextInfraConstants as c,
+    FlextInfraTypes as t,
+    FlextInfraUtilities as u,
+    output,
+)
 from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
 
 

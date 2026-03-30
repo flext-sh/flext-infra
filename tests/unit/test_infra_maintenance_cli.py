@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from flext_infra import u
-from flext_infra.cli import main as infra_main
+from flext_infra import main as infra_main, u
 
 
 def main(argv: Sequence[str] | None = None) -> int:

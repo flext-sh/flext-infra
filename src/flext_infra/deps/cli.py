@@ -49,6 +49,16 @@ class FlextInfraCliDeps:
             index += 1
         return None
 
+    @staticmethod
+    def _normalize_exit_code(exit_value: object) -> int:
+        """Convert CLI payloads and SystemExit codes into integer exits."""
+        if exit_value is None:
+            return 0
+        try:
+            return int(exit_value)
+        except (TypeError, ValueError):
+            return 1
+
     @classmethod
     def run(cls, args: t.StrSequence | None = None) -> int:
         """Dispatch to the appropriate deps subcommand."""
@@ -70,7 +80,10 @@ class FlextInfraCliDeps:
             return 0
         command_index = cls._find_subcommand_index(raw_args)
         if command_index is None:
-            _ = parser.parse_args(raw_args)
+            try:
+                _ = parser.parse_args(raw_args)
+            except SystemExit as exc:
+                return cls._normalize_exit_code(exc.code)
             parser.print_help()
             return 0
         subcommand = raw_args[command_index]
@@ -82,6 +95,12 @@ class FlextInfraCliDeps:
             token for idx, token in enumerate(raw_args) if idx != command_index
         ]
         sys.argv = [f"flext-infra deps {subcommand}", *forwarded_args]
-        module = importlib.import_module(cls._SUBCOMMAND_MODULES[subcommand])
-        exit_code = module.main()
-        return int(exit_code) if exit_code is not None else 0
+        try:
+            module = importlib.import_module(cls._SUBCOMMAND_MODULES[subcommand])
+            exit_code = module.main()
+        except SystemExit as exc:
+            return cls._normalize_exit_code(exc.code)
+        except Exception as exc:
+            output.error(str(exc))
+            return 1
+        return cls._normalize_exit_code(exit_code)

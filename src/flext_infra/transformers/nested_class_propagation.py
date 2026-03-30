@@ -7,8 +7,11 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraUtilitiesParsing, t
-from flext_infra.transformers.policy import FlextInfraRefactorTransformerPolicyUtilities
+from flext_infra import (
+    FlextInfraRefactorTransformerPolicyUtilities,
+    FlextInfraUtilitiesParsing,
+    t,
+)
 
 
 class FlextInfraNestedClassPropagationTransformer(cst.CSTTransformer):

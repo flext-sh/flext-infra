@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.cli import FlextInfraCli, main
+from flext_infra import FlextInfraCli, main
 
 
 def test_main_returns_error_when_no_args() -> None:

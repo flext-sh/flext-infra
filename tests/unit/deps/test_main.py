@@ -17,8 +17,7 @@ from types import ModuleType, SimpleNamespace
 import pytest
 from flext_tests import tm
 
-from flext_infra.deps import cli as deps_main
-from flext_infra.deps.cli import FlextInfraCliDeps
+from flext_infra import FlextInfraCliDeps, cli as deps_main
 from tests import t
 
 _SUBCOMMAND_MODULES = FlextInfraCliDeps._SUBCOMMAND_MODULES

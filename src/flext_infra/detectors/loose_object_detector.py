@@ -99,7 +99,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
                 continue
             line = source[: hit.start()].count("\n") + 1
             violations.append(
-                m.Infra.LooseObjectViolation.create(
+                m.Infra.LooseObjectViolation(
                     file=str(file_path),
                     line=line,
                     name=name,
@@ -121,7 +121,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
                 continue
             line = source[: hit.start()].count("\n") + 1
             violations.append(
-                m.Infra.LooseObjectViolation.create(
+                m.Infra.LooseObjectViolation(
                     file=str(file_path),
                     line=line,
                     name=name,
@@ -136,7 +136,7 @@ class FlextInfraLooseObjectDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             if name not in _ALLOWED_TOP_LEVEL:
                 line = source[: hit.start()].count("\n") + 1
                 violations.append(
-                    m.Infra.LooseObjectViolation.create(
+                    m.Infra.LooseObjectViolation(
                         file=str(file_path),
                         line=line,
                         name=name,

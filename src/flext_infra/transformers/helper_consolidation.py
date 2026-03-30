@@ -8,9 +8,12 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import m, t
-from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
-from flext_infra.transformers.policy import FlextInfraRefactorTransformerPolicyUtilities
+from flext_infra import (
+    FlextInfraChangeTrackingTransformer,
+    FlextInfraRefactorTransformerPolicyUtilities,
+    m,
+    t,
+)
 
 
 class FlextInfraHelperConsolidationTransformer(cst.CSTTransformer):

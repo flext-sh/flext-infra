@@ -10,6 +10,8 @@ import libcst as cst
 from pydantic import ValidationError
 
 from flext_infra import (
+    INFRA_MAPPING_ADAPTER,
+    INFRA_SEQ_ADAPTER,
     FlextInfraRefactorAliasRemover,
     FlextInfraRefactorDeprecatedRemover,
     FlextInfraRefactorImportBypassRemover,
@@ -17,7 +19,6 @@ from flext_infra import (
     c,
     t,
 )
-from flext_infra.refactor._base_rule import INFRA_MAPPING_ADAPTER, INFRA_SEQ_ADAPTER
 
 
 class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):

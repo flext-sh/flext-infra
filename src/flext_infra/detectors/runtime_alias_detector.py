@@ -67,7 +67,7 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
         ]
         if not matches:
             return [
-                m.Infra.RuntimeAliasViolation.create(
+                m.Infra.RuntimeAliasViolation(
                     file=str(file_path),
                     kind="missing",
                     alias=family,
@@ -76,7 +76,7 @@ class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):
             ]
         if len(matches) > 1:
             return [
-                m.Infra.RuntimeAliasViolation.create(
+                m.Infra.RuntimeAliasViolation(
                     file=str(file_path),
                     kind="duplicate",
                     alias=family,

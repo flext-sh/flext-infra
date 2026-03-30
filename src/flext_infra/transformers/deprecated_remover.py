@@ -7,8 +7,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import t
-from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
+from flext_infra import FlextInfraChangeTrackingTransformer, t
 
 
 class FlextInfraRefactorDeprecatedRemover(FlextInfraChangeTrackingTransformer):

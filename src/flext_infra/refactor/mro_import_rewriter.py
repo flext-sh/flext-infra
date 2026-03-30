@@ -5,15 +5,16 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, t
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
-from flext_infra._utilities.rope import FlextInfraUtilitiesRope
-from flext_infra.refactor._utilities_mro_transform import (
-    FlextInfraUtilitiesRefactorMroTransform,
-)
-from flext_infra.transformers.mro_symbol_propagator import (
+from flext_infra import (
     FlextInfraRefactorMROSymbolPropagator,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesParsing,
+    FlextInfraUtilitiesRefactorMroTransform,
+    FlextInfraUtilitiesRope,
+    c,
+    m,
+    p,
+    t,
 )
 
 

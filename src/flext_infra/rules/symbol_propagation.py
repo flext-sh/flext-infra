@@ -11,13 +11,14 @@ from libcst.metadata import MetadataWrapper, QualifiedNameProvider
 from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
+    INFRA_MAPPING_ADAPTER,
+    STR_MAPPING_ADAPTER,
     FlextInfraRefactorRule,
     FlextInfraRefactorSymbolPropagator,
     m,
     t,
     u,
 )
-from flext_infra.refactor._base_rule import INFRA_MAPPING_ADAPTER, STR_MAPPING_ADAPTER
 
 _SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
     TypeAdapter(Sequence[m.Infra.SignatureMigration])

@@ -7,9 +7,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import m
-from flext_infra.cli import main as infra_main
-from flext_infra.refactor.cli import FlextInfraCliRefactor as FlextInfraRefactorCli
+from flext_infra import FlextInfraCliRefactor, m, main as infra_main
 
 
 def refactor_main(argv: list[str] | None = None) -> int:
@@ -42,16 +40,18 @@ def test_refactor_centralize_accepts_apply_before_subcommand(
         return r[Mapping[str, int]].ok({"files": 0})
 
     monkeypatch.setattr(
-        FlextInfraRefactorCli,
+        FlextInfraCliRefactor,
         "_handle_centralize_pydantic",
         _mock_handler,
     )
-    result = refactor_main([
-        "--workspace",
-        str(tmp_path),
-        "--apply",
-        "centralize-pydantic",
-    ])
+    result = refactor_main(
+        [
+            "centralize-pydantic",
+            "--workspace",
+            str(tmp_path),
+            "--apply",
+        ],
+    )
     tm.that(result, eq=0)
     tm.that(captured_apply, eq=True)
     tm.that(captured_workspace, eq=tmp_path.resolve())

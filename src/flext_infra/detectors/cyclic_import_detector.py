@@ -91,7 +91,7 @@ class FlextInfraCyclicImportDetector:
             if cycle_nodes:
                 normalized = tuple(n for n in cycle_nodes if isinstance(n, str))
                 violations.append(
-                    m.Infra.CyclicImportViolation.create(
+                    m.Infra.CyclicImportViolation(
                         cycle=normalized,
                         files=tuple(file_map.get(n, n) for n in normalized),
                     ),

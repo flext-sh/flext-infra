@@ -13,9 +13,9 @@ from _pytest.monkeypatch import MonkeyPatch
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import u
-from flext_infra.release.cli import (
+from flext_infra import (
     FlextInfraCliRelease,
+    u,
 )
 
 

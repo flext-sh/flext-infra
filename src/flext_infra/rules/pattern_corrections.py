@@ -8,8 +8,7 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import FlextInfraRefactorRule, c, t, u
-from flext_infra.refactor._base_rule import INFRA_MAPPING_ADAPTER
+from flext_infra import INFRA_MAPPING_ADAPTER, FlextInfraRefactorRule, c, t, u
 
 
 class FlextInfraDictToMappingTransformer(cst.CSTTransformer):

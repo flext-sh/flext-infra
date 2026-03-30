@@ -60,47 +60,9 @@ class FlextInfraNamespaceEnforcer:
                 apply=apply,
             )
             project_reports.append(report)
-        return m.Infra.WorkspaceEnforcementReport.create(
+        return m.Infra.WorkspaceEnforcementReport.from_projects(
             workspace=str(self._workspace_root),
             projects=project_reports,
-            total_facades_missing=sum(
-                sum(1 for s in r.facade_statuses if not s.exists)
-                for r in project_reports
-            ),
-            total_loose_objects=sum(len(r.loose_objects) for r in project_reports),
-            total_import_violations=sum(
-                len(r.import_violations) for r in project_reports
-            ),
-            total_namespace_source_violations=sum(
-                len(r.namespace_source_violations) for r in project_reports
-            ),
-            total_internal_import_violations=sum(
-                len(r.internal_import_violations) for r in project_reports
-            ),
-            total_cyclic_imports=sum(len(r.cyclic_imports) for r in project_reports),
-            total_runtime_alias_violations=sum(
-                len(r.runtime_alias_violations) for r in project_reports
-            ),
-            total_future_violations=sum(
-                len(r.future_violations) for r in project_reports
-            ),
-            total_manual_protocol_violations=sum(
-                len(r.manual_protocol_violations) for r in project_reports
-            ),
-            total_manual_typing_violations=sum(
-                len(r.manual_typing_violations) for r in project_reports
-            ),
-            total_compatibility_alias_violations=sum(
-                len(r.compatibility_alias_violations) for r in project_reports
-            ),
-            total_class_placement_violations=sum(
-                len(r.class_placement_violations) for r in project_reports
-            ),
-            total_mro_completeness_violations=sum(
-                len(r.mro_completeness_violations) for r in project_reports
-            ),
-            total_parse_failures=sum(len(r.parse_failures) for r in project_reports),
-            total_files_scanned=sum(r.files_scanned for r in project_reports),
         )
 
     def _resolve_project_roots(
@@ -300,7 +262,7 @@ class FlextInfraNamespaceEnforcer:
             ),
             apply=apply,
         )
-        return m.Infra.ProjectEnforcementReport.create(
+        return m.Infra.ProjectEnforcementReport(
             project=project_name,
             project_root=str(project_root),
             facade_statuses=facade_statuses,

@@ -8,16 +8,14 @@ from flext_core import r
 from flext_tests import tm
 
 from flext_infra import (
+    FlextInfraCliWorkspace,
     FlextInfraModels as m,
     FlextInfraOrchestratorService,
     FlextInfraProjectMigrator,
     FlextInfraSyncService,
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceMode,
-)
-from flext_infra.cli import main as infra_main
-from flext_infra.workspace.cli import (
-    FlextInfraCliWorkspace,
+    main as infra_main,
 )
 from tests import t
 

@@ -11,7 +11,7 @@ import sys
 
 def test_fix_pyrefly_config_main_executes_real_cli_help() -> None:
     completed = subprocess.run(
-        [sys.executable, "-m", "flext_infra.check", "fix-pyrefly-config", "--help"],
+        [sys.executable, "-m", "flext_infra", "check", "fix-pyrefly-config", "--help"],
         check=False,
         capture_output=True,
         text=True,

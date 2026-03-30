@@ -9,8 +9,7 @@ import pytest
 from flext_core import r
 from flext_tests import tm
 
-from flext_infra import m, t, u
-from flext_infra.github.cli import FlextInfraCliGithub as FlextInfraGithubCli
+from flext_infra import FlextInfraCliGithub, m, t, u
 
 
 def _orch(*, fail: int = 0, total: int = 1) -> m.Infra.PrOrchestrationResult:
@@ -28,7 +27,7 @@ class TestRunPrWorkspace:
             return r[m.Infra.PrOrchestrationResult].ok(_orch(fail=0))
 
         monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_ok))
-        result = FlextInfraGithubCli._handle_pr_workspace(
+        result = FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path)),
         )
         tm.that(result.is_success, eq=True)
@@ -38,7 +37,7 @@ class TestRunPrWorkspace:
             return r[m.Infra.PrOrchestrationResult].fail("orchestration failed")
 
         monkeypatch.setattr(u.Infra, "github_pr_orchestrate", staticmethod(_fail))
-        result = FlextInfraGithubCli._handle_pr_workspace(
+        result = FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path)),
         )
         tm.that(result.is_failure, eq=True)
@@ -61,7 +60,7 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        result = FlextInfraGithubCli._handle_pr_workspace(
+        result = FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(
                 workspace=str(tmp_path),
                 pr_action="merge",
@@ -91,7 +90,7 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubCli._handle_pr_workspace(
+        FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(
                 workspace=str(tmp_path),
                 branch="feature/test",
@@ -115,7 +114,7 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubCli._handle_pr_workspace(
+        FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path), checkpoint=True),
         )
         assert captured["checkpoint"] is True
@@ -136,7 +135,7 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubCli._handle_pr_workspace(
+        FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(workspace=str(tmp_path), fail_fast=True),
         )
         assert captured["fail_fast"] is True
@@ -163,7 +162,7 @@ class TestRunPrWorkspace:
             "github_pr_orchestrate",
             staticmethod(_fake_orchestrate),
         )
-        FlextInfraGithubCli._handle_pr_workspace(
+        FlextInfraCliGithub._handle_pr_workspace(
             m.Infra.GithubPrWorkspaceInput(
                 workspace=str(tmp_path),
                 project=["flext-core", "flext-api"],

@@ -17,9 +17,9 @@ from flext_cli import FlextCliTypes
 
 from flext_infra import (
     FlextInfraTypesBase,
+    FlextInfraTypesCst,
     FlextInfraTypesRope,
 )
-from flext_infra._typings.cst import FlextInfraTypesCst
 
 
 class FlextInfraTypes(FlextCliTypes):
