@@ -1,1 +1,10 @@
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    [
+{%- for export_name in exports %}
+        "{{ export_name }}",
+{%- endfor %}
+    ],
+)

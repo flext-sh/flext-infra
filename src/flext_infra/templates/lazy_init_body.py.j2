@@ -2,6 +2,10 @@
 {{ runtime_import_lines }}
 
 {% endif %}
+{%- if child_lazy_import_lines %}
+{{ child_lazy_import_lines }}
+
+{% endif %}
 {%- if type_checking_lines %}
 {{ type_checking_lines }}
 {% endif %}
@@ -12,6 +16,9 @@
 
 {% endif %}
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+{%- for alias_name in child_lazy_aliases %}
+    **{{ alias_name }},
+{%- endfor %}
 {%- for name, mod, attr in lazy_entries %}
 {%- if attr == name or attr == "" %}
     "{{ name }}": "{{ mod }}",
@@ -20,3 +27,5 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 {%- endif %}
 {%- endfor %}
 }
+
+LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = _LAZY_IMPORTS

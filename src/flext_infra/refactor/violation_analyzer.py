@@ -261,9 +261,7 @@ class FlextInfraRefactorViolationAnalyzer:
                         if not isinstance(raw.name, cst.Name):
                             continue
                         imported_name = raw.name.value
-                        local = (
-                            u.Infra.cst_asname_to_local(raw.asname) or imported_name
-                        )
+                        local = u.Infra.cst_asname_to_local(raw.asname) or imported_name
                         result[local] = f"{module_name}.{imported_name}"
         return result
 

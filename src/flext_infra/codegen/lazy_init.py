@@ -201,13 +201,22 @@ class FlextInfraCodegenLazyInit(s[int]):
         lazy_map = self._build_sibling_export_index(pkg_dir, current_pkg)
 
         # 3. Add exports from child subdirectories (already computed)
-        child_packages_raw = self._collect_child_packages(pkg_dir, current_pkg, dir_exports)
+        child_packages_for_lazy = self._collect_child_packages(
+            pkg_dir,
+            current_pkg,
+            dir_exports,
+        )
+        collapse_packages = self._collect_descendant_packages(
+            pkg_dir,
+            current_pkg,
+            dir_exports,
+        )
         self._merge_child_exports(pkg_dir, current_pkg, lazy_map, dir_exports)
         # TYPE_CHECKING collapse is always safe (never runs at runtime).
-        child_packages_for_tc = child_packages_raw
+        child_packages_for_tc = collapse_packages
 
         # 4. Handle __version__.py
-        inline_constants, version_eager = self._extract_version_exports(
+        inline_constants, version_entries = self._extract_version_exports(
             pkg_dir,
             current_pkg,
         )
@@ -232,9 +241,13 @@ class FlextInfraCodegenLazyInit(s[int]):
         for k in inline_constants:
             lazy_map.pop(k, None)
 
+        # 7b. Version exports should resolve via lazy __getattr__, not eager imports.
+        for name, entry in version_entries.items():
+            lazy_map.setdefault(name, entry)
+
         # 8. Build final exports list (includes both lazy and eager)
         exports = sorted(
-            set(lazy_map) | set(inline_constants) | eager_tvars | set(version_eager),
+            set(lazy_map) | set(inline_constants) | eager_tvars,
         )
         if not exports:
             return (None, dict(lazy_map))
@@ -251,7 +264,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             inline_constants,
             current_pkg,
             eager_tvars,
-            version_eager,
+            child_packages_for_lazy=child_packages_for_lazy,
             child_packages_for_tc=child_packages_for_tc,
         )
 
@@ -265,6 +278,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
+        child_packages_for_lazy: Sequence[str] | None = None,
         child_packages_for_tc: Sequence[str] | None = None,
     ) -> t.Infra.LazyInitWriteResult:
         """Write the generated ``__init__.py`` and run ruff fix."""
@@ -277,6 +291,7 @@ class FlextInfraCodegenLazyInit(s[int]):
                 current_pkg,
                 eager_typevar_names,
                 eager_imports,
+                child_packages_for_lazy=child_packages_for_lazy or [],
                 child_packages_for_tc=child_packages_for_tc or [],
             )
             init_path.write_text(generated, encoding=c.Infra.Encoding.DEFAULT)
@@ -379,9 +394,15 @@ class FlextInfraCodegenLazyInit(s[int]):
         """Index exports from a single ``.py`` file into the lazy map."""
         if py_file.name in {"__init__.py", "__main__.py", "__version__.py"}:
             return
-        # Only filter underscore files in root dir, not in nested submodules
+        # Only filter root underscore files for top-level packages.
+        # Public descendant packages must aggregate their internal _*.py files
+        # so parent packages can delegate to them without re-declaring exports.
         rel_path = py_file.relative_to(pkg_dir)
-        if len(rel_path.parts) == 1 and py_file.name.startswith("_"):
+        if (
+            len(rel_path.parts) == 1
+            and py_file.name.startswith("_")
+            and "." not in current_pkg
+        ):
             return
         if py_file.stem[0:1].isdigit():
             return
@@ -497,21 +518,6 @@ class FlextInfraCodegenLazyInit(s[int]):
         return not name.isupper()
 
     @staticmethod
-    def _is_self_referential(pkg_dir: Path, current_pkg: str) -> bool:
-        """Check if any sibling .py file imports from the package itself."""
-        import_prefix = f"from {current_pkg} import"
-        for py_file in pkg_dir.glob("*.py"):
-            if py_file.name == "__init__.py":
-                continue
-            try:
-                text = py_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
-                if import_prefix in text:
-                    return True
-            except OSError:
-                continue
-        return False
-
-    @staticmethod
     def _collect_child_packages(
         pkg_dir: Path,
         current_pkg: str,
@@ -527,6 +533,29 @@ class FlextInfraCodegenLazyInit(s[int]):
             child_pkg = f"{current_pkg}.{subdir.name}" if current_pkg else subdir.name
             children.append(child_pkg)
         return children
+
+    @staticmethod
+    def _collect_descendant_packages(
+        pkg_dir: Path,
+        current_pkg: str,
+        dir_exports: Mapping[str, t.Infra.LazyImportMap],
+    ) -> Sequence[str]:
+        """Return all descendant package names with generated exports."""
+        descendants: MutableSequence[str] = []
+        for subdir_key in sorted(dir_exports):
+            subdir_path = Path(subdir_key)
+            if subdir_path == pkg_dir or pkg_dir not in subdir_path.parents:
+                continue
+            rel_parts = subdir_path.relative_to(pkg_dir).parts
+            if not rel_parts:
+                continue
+            descendant_pkg = (
+                ".".join((current_pkg, *rel_parts))
+                if current_pkg
+                else ".".join(rel_parts)
+            )
+            descendants.append(descendant_pkg)
+        return descendants
 
     @staticmethod
     def _merge_child_exports(

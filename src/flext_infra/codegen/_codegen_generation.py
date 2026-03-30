@@ -112,6 +112,7 @@ class FlextInfraCodegenGeneration:
         *,
         include_flext_types: bool = True,
         child_packages: Sequence[str] | None = None,
+        local_package_root: str | None = None,
     ) -> t.StrSequence:
         """Generate TYPE_CHECKING import block with wildcard imports.
 
@@ -132,18 +133,20 @@ class FlextInfraCodegenGeneration:
 
         # Collapse: if mod starts with a child_package prefix, replace with the child
         children = set(child_packages or [])
+        sorted_children = sorted(children, key=len, reverse=True)
         collapsed: MutableMapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(
             list,
         )
         for mod, items in groups.items():
             target = mod
-            for cp in children:
+            for cp in sorted_children:
                 if mod.startswith(cp + ".") or mod == cp:
                     target = cp
                     break
             collapsed[target].extend(items)
 
         lines: MutableSequence[str] = ["if TYPE_CHECKING:"]
+        root_name = "" if not local_package_root else local_package_root.split(".")[0]
         flext_types_in_groups = any(
             export_name == "FlextTypes"
             for items in collapsed.values()
@@ -170,23 +173,15 @@ class FlextInfraCodegenGeneration:
             if is_collapsed_child:
                 lines.append(f"    from {mod} import *")
             else:
-                alias_items = [(exp, attr) for exp, attr in items if not attr]
                 attr_items = [(exp, attr) for exp, attr in items if attr]
-                # Skip submodule aliases whose target already has a wildcard
-                for export_name, _ in sorted(alias_items, key=operator.itemgetter(0)):
-                    target_mod = f"{mod}.{export_name}" if not mod.startswith(".") else mod
-                    if target_mod in wildcard_mods or target_mod in children:
-                        continue
-                    if mod.startswith(".") and mod != ".":
-                        parent_mod, _, child_name = mod.rpartition(".")
-                        lines.append(
-                            f"    from {parent_mod or '.'} import {child_name} "
-                            f"as {export_name}",
-                        )
-                    else:
-                        lines.append(f"    import {mod} as {export_name}")
                 if attr_items:
-                    lines.append(f"    from {mod} import *")
+                    is_local_module = (
+                        mod.startswith(".")
+                        or not root_name
+                        or mod.split(".")[0] == root_name
+                    )
+                    if is_local_module:
+                        lines.append(f"    from {mod} import *")
             prev_top = top
         return lines
 
@@ -199,6 +194,7 @@ class FlextInfraCodegenGeneration:
         current_pkg: str,
         eager_typevar_names: frozenset[str] = frozenset(),
         eager_imports: t.Infra.LazyImportMap | None = None,
+        child_packages_for_lazy: Sequence[str] | None = None,
         child_packages_for_tc: Sequence[str] | None = None,
     ) -> str:
         """Generate complete module file with lazy imports and type hints.
@@ -266,6 +262,15 @@ class FlextInfraCodegenGeneration:
         runtime_import_lines = FlextInfraCodegenGeneration.generate_runtime_imports(
             runtime_groups,
         )
+        children_lazy = tuple(child_packages_for_lazy or ())
+        child_lazy_specs = [
+            (child_pkg, f"_CHILD_LAZY_{index}")
+            for index, child_pkg in enumerate(children_lazy)
+        ]
+        child_lazy_import_lines = [
+            f"from {child_pkg} import LAZY_IMPORTS as {alias_name}"
+            for child_pkg, alias_name in child_lazy_specs
+        ]
 
         # --- determine child packages for TYPE_CHECKING collapse ---
         children_tc = child_packages_for_tc or []
@@ -280,19 +285,34 @@ class FlextInfraCodegenGeneration:
             groups,
             include_flext_types=False,
             child_packages=children_tc,
+            local_package_root=current_pkg,
         )
-        lazy_entries = [
-            (exp, lazy_filtered[exp][0], lazy_filtered[exp][1])
-            for exp in sorted(exports)
-            if exp in lazy_filtered
-        ]
+        lazy_entries: MutableSequence[tuple[str, str, str]] = []
+        child_prefixes = tuple(f"{child_pkg}." for child_pkg in children_lazy)
+        child_package_aliases = set(children_lazy)
+        for exp in sorted(exports):
+            if exp not in lazy_filtered:
+                continue
+            mod, attr = lazy_filtered[exp]
+            if mod in child_package_aliases and not attr:
+                lazy_entries.append((exp, mod, attr))
+                continue
+            if not mod.startswith(child_prefixes):
+                lazy_entries.append((exp, mod, attr))
 
         # --- body (inline constants + _LAZY_IMPORTS) from .j2 ---
         body: str = _render(
             _ENV.get_template(tpl.BODY),
             runtime_import_lines="\n".join(runtime_import_lines),
+            child_lazy_import_lines="\n".join(child_lazy_import_lines),
+            child_lazy_aliases=[alias_name for _, alias_name in child_lazy_specs],
             type_checking_lines="\n".join(type_checking_lines),
             inline_constants=sorted(inline_constants.items()),
+            eager_export_names=[
+                export_name
+                for export_name in sorted(exports)
+                if export_name not in lazy_filtered
+            ],
             lazy_entries=lazy_entries,
             exports=sorted(exports),
         )
@@ -304,7 +324,6 @@ class FlextInfraCodegenGeneration:
         getattr_rendered: str = _render(
             _ENV.get_template(getattr_name),
             exports=sorted(exports),
-            child_packages=[],
         )
         out.extend(getattr_rendered.splitlines())
 

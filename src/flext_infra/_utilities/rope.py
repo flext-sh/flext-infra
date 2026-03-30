@@ -502,13 +502,8 @@ class FlextInfraUtilitiesRope:
         for idx, line in enumerate(lines):
             stripped = line.strip()
             if (
-                stripped.startswith(("import ", "from "))
+                stripped.startswith(("import ", "from ", "#", '"""', "'''"))
                 or stripped == ""
-                or (
-                    stripped.startswith("#")
-                    or stripped.startswith('"""')
-                    or stripped.startswith("'''")
-                )
             ):
                 last_import_idx = idx + 1
             elif last_import_idx > 0:

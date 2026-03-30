@@ -260,6 +260,7 @@ tools:
           - D107
           - F401
           - F403
+          - F405
           - F822
           - N999
           - PLC2701
@@ -395,6 +396,9 @@ tools:
       default-excludes:
         - '**/node_modules'
         - '**/__pycache__'
+        - '**/.mypy_cache'
+        - '**/.ruff_cache'
+        - '**/.pytest_cache'
         - '**/.*'
         - .venv
         - '**/.venv'
@@ -407,9 +411,6 @@ tools:
         - '**/dist-packages/**'
       dynamic-exclude-dirs:
         - .git
-        - .mypy_cache
-        - .pytest_cache
-        - .ruff_cache
         - .sisyphus
         - vendor
       root-typings-paths:
