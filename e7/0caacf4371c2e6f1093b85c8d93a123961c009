@@ -1,0 +1,65 @@
+src/flext_infra/_utilities/rope.py
+  6f0d1c387a2140f2 118-120,122,125-126,130
+src/flext_infra/detectors/runtime_alias_detector.py
+  6f0d1c387a2140f2 52-53,56
+src/flext_infra/detectors/compatibility_alias_detector.py
+  6f0d1c387a2140f2 32-33,36
+src/flext_infra/_protocols/rope.py
+  6f0d1c387a2140f2 83-86,97-98
+src/flext_infra/detectors/internal_import_detector.py
+  6f0d1c387a2140f2 30-31,34
+src/flext_infra/codegen/scaffolder.py
+  6f0d1c387a2140f2 32
+src/flext_infra/detectors/manual_protocol_detector.py
+  6f0d1c387a2140f2 32-33,36
+src/flext_infra/detectors/manual_typing_alias_detector.py
+  6f0d1c387a2140f2 32-34,37
+src/flext_infra/detectors/mro_completeness_detector.py
+  6f0d1c387a2140f2 32-33,36
+src/flext_infra/detectors/namespace_source_detector.py
+  6f0d1c387a2140f2 59-60,64-65
+src/flext_infra/detectors/class_placement_detector.py
+  6f0d1c387a2140f2 42-43,46
+tests/unit/check/extended_cli_entry_tests.py
+  6f0d1c387a2140f2 217
+src/flext_infra/detectors/_base_detector.py
+  6f0d1c387a2140f2 60-61,65-67,69
+src/flext_infra/detectors/loose_object_detector.py
+  6f0d1c387a2140f2 71-72,75
+src/flext_infra/deps/fix_pyrefly_config.py
+  6f0d1c387a2140f2 43
+tests/unit/deps/test_path_sync_main_project_obj.py
+  6f0d1c387a2140f2 28-30,32,61,90
+src/flext_infra/workspace/orchestrator.py
+  6f0d1c387a2140f2 36
+src/flext_infra/detectors/import_alias_detector.py
+  6f0d1c387a2140f2 34-35,38
+src/flext_infra/codegen/py_typed.py
+  6f0d1c387a2140f2 30
+src/flext_infra/codegen/census.py
+  6f0d1c387a2140f2 43
+src/flext_infra/codegen/fixer.py
+  6f0d1c387a2140f2 53
+src/flext_infra/detectors/future_annotations_detector.py
+  6f0d1c387a2140f2 33-34,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "e70caacf4371c2e6f1093b85c8d93a123961c009",
+  "prompts": {
+    "6f0d1c387a2140f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df413ba6-7b61-48cd-8b6c-70053bacb125",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 79,
+      "total_deletions": 127,
+      "accepted_lines": 73,
+      "overriden_lines": 0
+    }
+  }
+}
