@@ -1,0 +1,83 @@
+src/flext_infra/basemk/__main__.py
+  6f0d1c387a2140f2 1,5,8,12,20-21,23-27,29,32-47
+src/flext_infra/docs/builder.py
+  6f0d1c387a2140f2 83-100
+src/flext_infra/_models/cli_inputs.py
+  6f0d1c387a2140f2 490-493
+src/flext_infra/workspace/maintenance/cli.py
+  6f0d1c387a2140f2 1-31
+src/flext_infra/release/cli.py
+  6f0d1c387a2140f2 1-39
+src/flext_infra/workspace/maintenance/python_version.py
+  6f0d1c387a2140f2 37,104-107
+src/flext_infra/codegen/cli.py
+  6f0d1c387a2140f2 1-398
+src/flext_infra/workspace/__main__.py
+  6f0d1c387a2140f2 1,7,9,11,14-18,20-21,24-25,27-31,34-36,38-48,50-99
+src/flext_infra/github/__main__.py
+  6f0d1c387a2140f2 1,7,9,15-16,18-22,24,27-33
+tests/unit/deps/test_modernizer_main_extra.py
+  6f0d1c387a2140f2 74-78,86
+src/flext_infra/docs/auditor.py
+  6f0d1c387a2140f2 162-179
+src/flext_infra/codegen/__main__.py
+  6f0d1c387a2140f2 1,7,9,13-14,17,20-21,23-39,42-43,45-49,51,54-68,75
+src/flext_infra/github/cli.py
+  6f0d1c387a2140f2 1-160
+src/flext_infra/refactor/cli.py
+  6f0d1c387a2140f2 1-196
+src/flext_infra/release/__main__.py
+  6f0d1c387a2140f2 1,8,13,39,57,60-67,69-88,90-114,121-130,132-138
+src/flext_infra/docs/cli.py
+  6f0d1c387a2140f2 1-256
+src/flext_infra/workspace/_constants.py
+  6f0d1c387a2140f2 54
+src/flext_infra/validate/cli.py
+  6f0d1c387a2140f2 1-222
+src/flext_infra/docs/validator.py
+  6f0d1c387a2140f2 91-110
+src/flext_infra/docs/__main__.py
+  6f0d1c387a2140f2 4-8,18,20-21,23,26-27,29-33,35,38-52
+src/flext_infra/docs/generator.py
+  6f0d1c387a2140f2 94-107
+src/flext_infra/basemk/cli.py
+  6f0d1c387a2140f2 1-30
+src/flext_infra/workspace/cli.py
+  6f0d1c387a2140f2 1-152
+src/flext_infra/validate/__main__.py
+  6f0d1c387a2140f2 1,7,9-10,13-14,16-20,23-29
+tests/unit/release/flow_tests.py
+  6f0d1c387a2140f2 82,91-92,106-107,126-127,141-142,149-150,159-160,162-163,172-178,180-181,190-197,199-200
+tests/unit/release/version_resolution_tests.py
+  6f0d1c387a2140f2 95,101,113-119,131,137,149-155,168,174,187-193,207,213,226-232,244,250,267-273,287-293,300-301,304-305,308-309
+src/flext_infra/workspace/maintenance/__main__.py
+  6f0d1c387a2140f2 1,7,10-11,13-17,19,22-30
+src/flext_infra/docs/fixer.py
+  6f0d1c387a2140f2 78-91
+src/flext_infra/cli.py
+  6f0d1c387a2140f2 1-67
+src/flext_infra/refactor/__main__.py
+  6f0d1c387a2140f2 1,14,16-18,20-26,32-34
+src/flext_infra/basemk/generator.py
+  6f0d1c387a2140f2 5,87-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "75656f87307aeee729f0b6aabc9ee2b98357d742",
+  "prompts": {
+    "6f0d1c387a2140f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df413ba6-7b61-48cd-8b6c-70053bacb125",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "FLEXT Bot <team@flext.sh>",
+      "messages": [],
+      "total_additions": 2446,
+      "total_deletions": 2131,
+      "accepted_lines": 2193,
+      "overriden_lines": 6
+    }
+  }
+}
