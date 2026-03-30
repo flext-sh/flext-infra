@@ -11,17 +11,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from tests.unit.release import (
-        flow_tests,
-        main_tests,
-        orchestrator_git_tests,
-        orchestrator_helpers_tests,
-        orchestrator_phases_tests,
-        orchestrator_publish_tests,
-        orchestrator_tests,
-        release_init_tests,
-        version_resolution_tests,
-    )
+    from tests.unit.release._stubs import *
     from tests.unit.release.flow_tests import *
     from tests.unit.release.main_tests import *
     from tests.unit.release.orchestrator_git_tests import *
@@ -33,6 +23,11 @@ if TYPE_CHECKING:
     from tests.unit.release.version_resolution_tests import *
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "FakeReporting": "tests.unit.release._stubs",
+    "FakeSelection": "tests.unit.release._stubs",
+    "FakeSubprocess": "tests.unit.release._stubs",
+    "FakeUtilsNamespace": "tests.unit.release._stubs",
+    "FakeVersioning": "tests.unit.release._stubs",
     "TestBuildTargets": "tests.unit.release.orchestrator_helpers_tests",
     "TestBumpNextDev": "tests.unit.release.orchestrator_helpers_tests",
     "TestCollectChanges": "tests.unit.release.orchestrator_git_tests",
@@ -56,6 +51,7 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "TestRunMake": "tests.unit.release.orchestrator_helpers_tests",
     "TestUpdateChangelog": "tests.unit.release.orchestrator_helpers_tests",
     "TestVersionFiles": "tests.unit.release.orchestrator_helpers_tests",
+    "_stubs": "tests.unit.release._stubs",
     "flow_tests": "tests.unit.release.flow_tests",
     "main": "tests.unit.release.flow_tests",
     "main_tests": "tests.unit.release.main_tests",
@@ -70,4 +66,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

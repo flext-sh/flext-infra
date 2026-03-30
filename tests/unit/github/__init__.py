@@ -11,23 +11,33 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from tests.unit.github import (
-        main_cli_tests,
-        main_dispatch_tests,
-        main_integration_tests,
-        main_tests,
-    )
+    from tests.unit.github._stubs import *
     from tests.unit.github.main_cli_tests import *
     from tests.unit.github.main_dispatch_tests import *
     from tests.unit.github.main_integration_tests import *
     from tests.unit.github.main_tests import *
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "StubCommandOutput": "tests.unit.github._stubs",
+    "StubJsonIo": "tests.unit.github._stubs",
+    "StubLinter": "tests.unit.github._stubs",
+    "StubPrManager": "tests.unit.github._stubs",
+    "StubProjectInfo": "tests.unit.github._stubs",
+    "StubReporting": "tests.unit.github._stubs",
+    "StubRunner": "tests.unit.github._stubs",
+    "StubSelector": "tests.unit.github._stubs",
+    "StubSyncer": "tests.unit.github._stubs",
+    "StubTemplates": "tests.unit.github._stubs",
+    "StubUtilities": "tests.unit.github._stubs",
+    "StubVersioning": "tests.unit.github._stubs",
+    "StubWorkspaceManager": "tests.unit.github._stubs",
     "TestMain": "tests.unit.github.main_integration_tests",
     "TestRunLint": "tests.unit.github.main_tests",
     "TestRunPr": "tests.unit.github.main_tests",
     "TestRunPrWorkspace": "tests.unit.github.main_dispatch_tests",
     "TestRunWorkflows": "tests.unit.github.main_tests",
+    "_stubs": "tests.unit.github._stubs",
+    "_stubs_extra": "tests.unit.github._stubs_extra",
     "main_cli_tests": "tests.unit.github.main_cli_tests",
     "main_dispatch_tests": "tests.unit.github.main_dispatch_tests",
     "main_integration_tests": "tests.unit.github.main_integration_tests",
@@ -38,4 +48,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

@@ -11,16 +11,9 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.gates import (
-        bandit,
-        go,
-        markdown,
-        mypy,
-        pyrefly,
-        pyright,
-        ruff_format,
-        ruff_lint,
-    )
+    from flext_infra.gates._base_gate import *
+    from flext_infra.gates._gate_registry import *
+    from flext_infra.gates._models import *
     from flext_infra.gates.bandit import *
     from flext_infra.gates.go import *
     from flext_infra.gates.markdown import *
@@ -32,6 +25,9 @@ if TYPE_CHECKING:
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraBanditGate": "flext_infra.gates.bandit",
+    "FlextInfraGate": "flext_infra.gates._base_gate",
+    "FlextInfraGateRegistry": "flext_infra.gates._gate_registry",
+    "FlextInfraGatesModels": "flext_infra.gates._models",
     "FlextInfraGoGate": "flext_infra.gates.go",
     "FlextInfraMarkdownGate": "flext_infra.gates.markdown",
     "FlextInfraMypyGate": "flext_infra.gates.mypy",
@@ -39,6 +35,9 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraPyrightGate": "flext_infra.gates.pyright",
     "FlextInfraRuffFormatGate": "flext_infra.gates.ruff_format",
     "FlextInfraRuffLintGate": "flext_infra.gates.ruff_lint",
+    "_base_gate": "flext_infra.gates._base_gate",
+    "_gate_registry": "flext_infra.gates._gate_registry",
+    "_models": "flext_infra.gates._models",
     "bandit": "flext_infra.gates.bandit",
     "go": "flext_infra.gates.go",
     "markdown": "flext_infra.gates.markdown",
@@ -50,4 +49,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

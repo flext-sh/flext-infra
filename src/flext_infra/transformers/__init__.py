@@ -11,30 +11,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.transformers import (
-        alias_remover,
-        census_visitors,
-        class_nesting,
-        class_reconstructor,
-        deprecated_remover,
-        dict_to_mapping,
-        helper_consolidation,
-        import_bypass_remover,
-        import_modernizer,
-        lazy_import_fixer,
-        mro_private_inline,
-        mro_remover,
-        mro_symbol_propagator,
-        nested_class_propagation,
-        policy,
-        redundant_cast_remover,
-        signature_propagator,
-        symbol_propagator,
-        tier0_import_fixer,
-        typing_annotation_replacer,
-        typing_unifier,
-        violation_census_visitor,
-    )
+    from flext_infra.transformers._base import *
+    from flext_infra.transformers._utilities_normalizer import *
     from flext_infra.transformers.alias_remover import *
     from flext_infra.transformers.census_visitors import *
     from flext_infra.transformers.class_nesting import *
@@ -61,9 +39,11 @@ if TYPE_CHECKING:
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraCensusImportDiscoveryVisitor": "flext_infra.transformers.census_visitors",
     "FlextInfraCensusUsageCollector": "flext_infra.transformers.census_visitors",
+    "FlextInfraChangeTrackingTransformer": "flext_infra.transformers._base",
     "FlextInfraDictToMappingTransformer": "flext_infra.transformers.dict_to_mapping",
     "FlextInfraHelperConsolidationTransformer": "flext_infra.transformers.helper_consolidation",
     "FlextInfraNestedClassPropagationTransformer": "flext_infra.transformers.nested_class_propagation",
+    "FlextInfraNormalizerContext": "flext_infra.transformers._utilities_normalizer",
     "FlextInfraRedundantCastRemover": "flext_infra.transformers.redundant_cast_remover",
     "FlextInfraRefactorAliasRemover": "flext_infra.transformers.alias_remover",
     "FlextInfraRefactorClassNestingTransformer": "flext_infra.transformers.class_nesting",
@@ -82,7 +62,10 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraRefactorTypingUnifier": "flext_infra.transformers.typing_unifier",
     "FlextInfraTransformerTier0ImportFixer": "flext_infra.transformers.tier0_import_fixer",
     "FlextInfraTypingAnnotationReplacer": "flext_infra.transformers.typing_annotation_replacer",
+    "FlextInfraUtilitiesImportNormalizer": "flext_infra.transformers._utilities_normalizer",
     "FlextInfraViolationCensusVisitor": "flext_infra.transformers.violation_census_visitor",
+    "_base": "flext_infra.transformers._base",
+    "_utilities_normalizer": "flext_infra.transformers._utilities_normalizer",
     "alias_remover": "flext_infra.transformers.alias_remover",
     "census_visitors": "flext_infra.transformers.census_visitors",
     "class_nesting": "flext_infra.transformers.class_nesting",
@@ -108,4 +91,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

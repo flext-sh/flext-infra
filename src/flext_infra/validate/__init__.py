@@ -19,16 +19,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.validate import (
-        basemk_validator,
-        cli,
-        inventory,
-        namespace_validator,
-        pytest_diag,
-        scanner,
-        skill_validator,
-        stub_chain,
-    )
+    from flext_infra.validate._constants import *
+    from flext_infra.validate._models import *
     from flext_infra.validate.basemk_validator import *
     from flext_infra.validate.cli import *
     from flext_infra.validate.inventory import *
@@ -41,12 +33,17 @@ if TYPE_CHECKING:
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraBaseMkValidator": "flext_infra.validate.basemk_validator",
     "FlextInfraCliValidate": "flext_infra.validate.cli",
+    "FlextInfraCoreConstants": "flext_infra.validate._constants",
+    "FlextInfraCoreModels": "flext_infra.validate._models",
     "FlextInfraInventoryService": "flext_infra.validate.inventory",
     "FlextInfraNamespaceValidator": "flext_infra.validate.namespace_validator",
     "FlextInfraPytestDiagExtractor": "flext_infra.validate.pytest_diag",
+    "FlextInfraSharedInfraConstants": "flext_infra.validate._constants",
     "FlextInfraSkillValidator": "flext_infra.validate.skill_validator",
     "FlextInfraStubSupplyChain": "flext_infra.validate.stub_chain",
     "FlextInfraTextPatternScanner": "flext_infra.validate.scanner",
+    "_constants": "flext_infra.validate._constants",
+    "_models": "flext_infra.validate._models",
     "basemk_validator": "flext_infra.validate.basemk_validator",
     "cli": "flext_infra.validate.cli",
     "inventory": "flext_infra.validate.inventory",
@@ -58,4 +55,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

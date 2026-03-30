@@ -11,15 +11,20 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.check import cli, services, workspace_check
+    from flext_infra.check._constants import *
+    from flext_infra.check._models import *
     from flext_infra.check.cli import *
     from flext_infra.check.services import *
     from flext_infra.check.workspace_check import *
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "FlextInfraCheckConstants": "flext_infra.check._constants",
+    "FlextInfraCheckModels": "flext_infra.check._models",
     "FlextInfraCliCheck": "flext_infra.check.cli",
     "FlextInfraConfigFixer": "flext_infra.check.services",
     "FlextInfraWorkspaceChecker": "flext_infra.check.services",
+    "_constants": "flext_infra.check._constants",
+    "_models": "flext_infra.check._models",
     "build_parser": "flext_infra.check.workspace_check",
     "cli": "flext_infra.check.cli",
     "main": "flext_infra.check.workspace_check",
@@ -29,4 +34,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

@@ -11,20 +11,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.deps._phases import (
-        consolidate_groups,
-        ensure_coverage,
-        ensure_extra_paths,
-        ensure_formatting,
-        ensure_mypy,
-        ensure_namespace,
-        ensure_pydantic_mypy,
-        ensure_pyrefly,
-        ensure_pyright,
-        ensure_pytest,
-        ensure_ruff,
-        inject_comments,
-    )
     from flext_infra.deps._phases.consolidate_groups import *
     from flext_infra.deps._phases.ensure_coverage import *
     from flext_infra.deps._phases.ensure_extra_paths import *
@@ -66,4 +52,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

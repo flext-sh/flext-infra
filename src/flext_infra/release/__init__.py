@@ -18,16 +18,21 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.release import cli, orchestrator
+    from flext_infra.release._constants import *
+    from flext_infra.release._models import *
     from flext_infra.release.cli import *
     from flext_infra.release.orchestrator import *
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraCliRelease": "flext_infra.release.cli",
+    "FlextInfraReleaseConstants": "flext_infra.release._constants",
+    "FlextInfraReleaseModels": "flext_infra.release._models",
     "FlextInfraReleaseOrchestrator": "flext_infra.release.orchestrator",
+    "_constants": "flext_infra.release._constants",
+    "_models": "flext_infra.release._models",
     "cli": "flext_infra.release.cli",
     "orchestrator": "flext_infra.release.orchestrator",
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

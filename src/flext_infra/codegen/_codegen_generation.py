@@ -183,7 +183,7 @@ class FlextInfraCodegenGeneration:
                     if is_local_module:
                         lines.append(f"    from {mod} import *")
             prev_top = top
-        return lines
+        return [] if len(lines) == 1 else lines
 
     @staticmethod
     def generate_file(
@@ -268,7 +268,7 @@ class FlextInfraCodegenGeneration:
             for index, child_pkg in enumerate(children_lazy)
         ]
         child_lazy_import_lines = [
-            f"from {child_pkg} import LAZY_IMPORTS as {alias_name}"
+            f"from {child_pkg} import _LAZY_IMPORTS as {alias_name}"
             for child_pkg, alias_name in child_lazy_specs
         ]
 
@@ -317,17 +317,21 @@ class FlextInfraCodegenGeneration:
             exports=sorted(exports),
         )
         out.extend(body.splitlines())
-        out.extend(["", ""])
+        out.append("")
 
         # --- getattr block (from .j2 template) ---
         getattr_name = tpl.GETATTR_L0 if is_l0_typings else tpl.GETATTR_STANDARD
         getattr_rendered: str = _render(
             _ENV.get_template(getattr_name),
-            exports=sorted(exports),
+            eager_export_names=[
+                export_name
+                for export_name in sorted(exports)
+                if export_name not in lazy_filtered
+            ],
         )
         out.extend(getattr_rendered.splitlines())
 
-        return "\n".join(out)
+        return "\n".join(out) + "\n"
 
 
 __all__ = ["FlextInfraCodegenGeneration"]

@@ -18,7 +18,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.docs import auditor, builder, cli, fixer, generator, validator
+    from flext_infra.docs._constants import *
+    from flext_infra.docs._models import *
     from flext_infra.docs.auditor import *
     from flext_infra.docs.builder import *
     from flext_infra.docs.cli import *
@@ -34,6 +35,10 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraDocGenerator": "flext_infra.docs.generator",
     "FlextInfraDocValidator": "flext_infra.docs.validator",
     "FlextInfraDocsCli": "flext_infra.docs.cli",
+    "FlextInfraDocsConstants": "flext_infra.docs._constants",
+    "FlextInfraDocsModels": "flext_infra.docs._models",
+    "_constants": "flext_infra.docs._constants",
+    "_models": "flext_infra.docs._models",
     "auditor": "flext_infra.docs.auditor",
     "builder": "flext_infra.docs.builder",
     "cli": "flext_infra.docs.cli",
@@ -44,4 +49,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

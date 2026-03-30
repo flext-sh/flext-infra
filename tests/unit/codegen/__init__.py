@@ -11,24 +11,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from tests.unit.codegen import (
-        autofix_tests,
-        autofix_workspace_tests,
-        census_models_tests,
-        census_tests,
-        constants_quality_gate_tests,
-        init_tests,
-        lazy_init_generation_tests,
-        lazy_init_helpers_tests,
-        lazy_init_process_tests,
-        lazy_init_service_tests,
-        lazy_init_tests,
-        lazy_init_transforms_tests,
-        main_tests,
-        pipeline_tests,
-        scaffolder_naming_tests,
-        scaffolder_tests,
-    )
+    from tests.unit.codegen._project_factory import *
     from tests.unit.codegen.autofix_tests import *
     from tests.unit.codegen.autofix_workspace_tests import *
     from tests.unit.codegen.census_models_tests import *
@@ -47,6 +30,7 @@ if TYPE_CHECKING:
     from tests.unit.codegen.scaffolder_tests import *
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "FlextInfraCodegenTestProjectFactory": "tests.unit.codegen._project_factory",
     "TestAllDirectoriesScanned": "tests.unit.codegen.lazy_init_tests",
     "TestBuildSiblingExportIndex": "tests.unit.codegen.lazy_init_helpers_tests",
     "TestCensusReportModel": "tests.unit.codegen.census_models_tests",
@@ -84,6 +68,7 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "TestScanAstPublicDefs": "tests.unit.codegen.lazy_init_transforms_tests",
     "TestShouldBubbleUp": "tests.unit.codegen.lazy_init_transforms_tests",
     "TestViolationPattern": "tests.unit.codegen.census_models_tests",
+    "_project_factory": "tests.unit.codegen._project_factory",
     "autofix_tests": "tests.unit.codegen.autofix_tests",
     "autofix_workspace_tests": "tests.unit.codegen.autofix_workspace_tests",
     "census": "tests.unit.codegen.census_tests",
@@ -118,4 +103,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

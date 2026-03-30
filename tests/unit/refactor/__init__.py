@@ -11,23 +11,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from tests.unit.refactor import (
-        test_infra_refactor_analysis,
-        test_infra_refactor_class_and_propagation,
-        test_infra_refactor_class_placement,
-        test_infra_refactor_engine,
-        test_infra_refactor_import_modernizer,
-        test_infra_refactor_legacy_and_annotations,
-        test_infra_refactor_mro_completeness,
-        test_infra_refactor_mro_import_rewriter,
-        test_infra_refactor_namespace_aliases,
-        test_infra_refactor_namespace_source,
-        test_infra_refactor_pattern_corrections,
-        test_infra_refactor_project_classifier,
-        test_infra_refactor_safety,
-        test_infra_refactor_typing_unifier,
-        test_main_cli,
-    )
     from tests.unit.refactor.test_infra_refactor_analysis import *
     from tests.unit.refactor.test_infra_refactor_class_and_propagation import *
     from tests.unit.refactor.test_infra_refactor_class_placement import *
@@ -186,4 +169,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

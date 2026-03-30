@@ -11,33 +11,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from tests.unit.check import (
-        cli_tests,
-        extended_cli_entry_tests,
-        extended_config_fixer_errors_tests,
-        extended_config_fixer_tests,
-        extended_error_reporting_tests,
-        extended_gate_bandit_markdown_tests,
-        extended_gate_go_cmd_tests,
-        extended_gate_mypy_pyright_tests,
-        extended_models_tests,
-        extended_project_runners_tests,
-        extended_projects_tests,
-        extended_reports_tests,
-        extended_resolve_gates_tests,
-        extended_run_projects_tests,
-        extended_runners_extra_tests,
-        extended_runners_go_tests,
-        extended_runners_ruff_tests,
-        extended_runners_tests,
-        extended_workspace_init_tests,
-        fix_pyrefly_config_tests,
-        init_tests,
-        main_tests,
-        pyrefly_tests,
-        workspace_check_tests,
-        workspace_tests,
-    )
+    from tests.unit.check._shared_fixtures import *
+    from tests.unit.check._stubs import *
     from tests.unit.check.cli_tests import *
     from tests.unit.check.extended_cli_entry_tests import *
     from tests.unit.check.extended_config_fixer_errors_tests import *
@@ -68,6 +43,8 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "CheckProjectStub": "tests.unit.check.extended_run_projects_tests",
     "GateClass": "tests.unit.check.extended_runners_extra_tests",
     "RunCallable": "tests.unit.check.extended_runners_go_tests",
+    "RunProjectsMock": "tests.unit.check._shared_fixtures",
+    "Spy": "tests.unit.check._stubs",
     "TestCheckIssueFormatted": "tests.unit.check.extended_models_tests",
     "TestCheckMainEntryPoint": "tests.unit.check.extended_cli_entry_tests",
     "TestCheckProjectRunners": "tests.unit.check.extended_projects_tests",
@@ -136,7 +113,15 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "TestWorkspaceCheckerRunPyright": "tests.unit.check.extended_gate_mypy_pyright_tests",
     "TestWorkspaceCheckerSARIFReport": "tests.unit.check.extended_reports_tests",
     "TestWorkspaceCheckerSARIFReportEdgeCases": "tests.unit.check.extended_reports_tests",
+    "_shared_fixtures": "tests.unit.check._shared_fixtures",
+    "_stubs": "tests.unit.check._stubs",
     "cli_tests": "tests.unit.check.cli_tests",
+    "create_check_project_iter_stub": "tests.unit.check._shared_fixtures",
+    "create_check_project_stub": "tests.unit.check._shared_fixtures",
+    "create_checker_project": "tests.unit.check._shared_fixtures",
+    "create_fake_run_projects": "tests.unit.check._shared_fixtures",
+    "create_fake_run_raw": "tests.unit.check._shared_fixtures",
+    "create_gate_execution": "tests.unit.check._shared_fixtures",
     "extended_cli_entry_tests": "tests.unit.check.extended_cli_entry_tests",
     "extended_config_fixer_errors_tests": "tests.unit.check.extended_config_fixer_errors_tests",
     "extended_config_fixer_tests": "tests.unit.check.extended_config_fixer_tests",
@@ -158,6 +143,12 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "fix_pyrefly_config_tests": "tests.unit.check.fix_pyrefly_config_tests",
     "init_tests": "tests.unit.check.init_tests",
     "main_tests": "tests.unit.check.main_tests",
+    "make_cmd_result": "tests.unit.check._stubs",
+    "make_gate_exec": "tests.unit.check._stubs",
+    "make_issue": "tests.unit.check._stubs",
+    "make_project": "tests.unit.check._stubs",
+    "patch_gate_run": "tests.unit.check._shared_fixtures",
+    "patch_python_dir_detection": "tests.unit.check._shared_fixtures",
     "pyrefly_tests": "tests.unit.check.pyrefly_tests",
     "run_command_failure_check": "tests.unit.check.extended_gate_go_cmd_tests",
     "test_check_main_executes_real_cli": "tests.unit.check.main_tests",
@@ -176,4 +167,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

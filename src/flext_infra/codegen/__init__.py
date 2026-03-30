@@ -18,15 +18,21 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codegen import (
-        census,
-        cli,
-        constants_quality_gate,
-        fixer,
-        lazy_init,
-        py_typed,
-        scaffolder,
-    )
+    from flext_infra.codegen._codegen_coercion import *
+    from flext_infra.codegen._codegen_execution_tools import *
+    from flext_infra.codegen._codegen_generation import *
+    from flext_infra.codegen._codegen_metrics import *
+    from flext_infra.codegen._codegen_metrics_checks import *
+    from flext_infra.codegen._codegen_snapshot import *
+    from flext_infra.codegen._constants import *
+    from flext_infra.codegen._models import *
+    from flext_infra.codegen._utilities import *
+    from flext_infra.codegen._utilities_codegen_ast_parsing import *
+    from flext_infra.codegen._utilities_codegen_constant_transformer import *
+    from flext_infra.codegen._utilities_codegen_constant_visitor import *
+    from flext_infra.codegen._utilities_codegen_execution import *
+    from flext_infra.codegen._utilities_codegen_governance import *
+    from flext_infra.codegen._utilities_transforms import *
     from flext_infra.codegen.census import *
     from flext_infra.codegen.cli import *
     from flext_infra.codegen.constants_quality_gate import *
@@ -38,11 +44,41 @@ if TYPE_CHECKING:
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraCliCodegen": "flext_infra.codegen.cli",
     "FlextInfraCodegenCensus": "flext_infra.codegen.census",
+    "FlextInfraCodegenCoercion": "flext_infra.codegen._codegen_coercion",
+    "FlextInfraCodegenConstants": "flext_infra.codegen._constants",
     "FlextInfraCodegenConstantsQualityGate": "flext_infra.codegen.constants_quality_gate",
+    "FlextInfraCodegenExecutionTools": "flext_infra.codegen._codegen_execution_tools",
     "FlextInfraCodegenFixer": "flext_infra.codegen.fixer",
+    "FlextInfraCodegenGeneration": "flext_infra.codegen._codegen_generation",
     "FlextInfraCodegenLazyInit": "flext_infra.codegen.lazy_init",
+    "FlextInfraCodegenMetrics": "flext_infra.codegen._codegen_metrics",
+    "FlextInfraCodegenMetricsChecks": "flext_infra.codegen._codegen_metrics_checks",
+    "FlextInfraCodegenModels": "flext_infra.codegen._models",
     "FlextInfraCodegenPyTyped": "flext_infra.codegen.py_typed",
     "FlextInfraCodegenScaffolder": "flext_infra.codegen.scaffolder",
+    "FlextInfraCodegenSnapshot": "flext_infra.codegen._codegen_snapshot",
+    "FlextInfraUtilitiesCodegen": "flext_infra.codegen._utilities",
+    "FlextInfraUtilitiesCodegenAstParsing": "flext_infra.codegen._utilities_codegen_ast_parsing",
+    "FlextInfraUtilitiesCodegenConstantDetection": "flext_infra.codegen._utilities_codegen_constant_visitor",
+    "FlextInfraUtilitiesCodegenConstantTransformation": "flext_infra.codegen._utilities_codegen_constant_transformer",
+    "FlextInfraUtilitiesCodegenExecution": "flext_infra.codegen._utilities_codegen_execution",
+    "FlextInfraUtilitiesCodegenGovernance": "flext_infra.codegen._utilities_codegen_governance",
+    "FlextInfraUtilitiesCodegenTransforms": "flext_infra.codegen._utilities_transforms",
+    "_codegen_coercion": "flext_infra.codegen._codegen_coercion",
+    "_codegen_execution_tools": "flext_infra.codegen._codegen_execution_tools",
+    "_codegen_generation": "flext_infra.codegen._codegen_generation",
+    "_codegen_metrics": "flext_infra.codegen._codegen_metrics",
+    "_codegen_metrics_checks": "flext_infra.codegen._codegen_metrics_checks",
+    "_codegen_snapshot": "flext_infra.codegen._codegen_snapshot",
+    "_constants": "flext_infra.codegen._constants",
+    "_models": "flext_infra.codegen._models",
+    "_utilities": "flext_infra.codegen._utilities",
+    "_utilities_codegen_ast_parsing": "flext_infra.codegen._utilities_codegen_ast_parsing",
+    "_utilities_codegen_constant_transformer": "flext_infra.codegen._utilities_codegen_constant_transformer",
+    "_utilities_codegen_constant_visitor": "flext_infra.codegen._utilities_codegen_constant_visitor",
+    "_utilities_codegen_execution": "flext_infra.codegen._utilities_codegen_execution",
+    "_utilities_codegen_governance": "flext_infra.codegen._utilities_codegen_governance",
+    "_utilities_transforms": "flext_infra.codegen._utilities_transforms",
     "census": "flext_infra.codegen.census",
     "cli": "flext_infra.codegen.cli",
     "constants_quality_gate": "flext_infra.codegen.constants_quality_gate",
@@ -53,4 +89,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)

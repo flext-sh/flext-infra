@@ -11,23 +11,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.detectors import (
-        class_placement_detector,
-        compatibility_alias_detector,
-        cyclic_import_detector,
-        dependency_analyzer_base,
-        future_annotations_detector,
-        import_alias_detector,
-        import_collector,
-        internal_import_detector,
-        loose_object_detector,
-        manual_protocol_detector,
-        manual_typing_alias_detector,
-        mro_completeness_detector,
-        namespace_facade_scanner,
-        namespace_source_detector,
-        runtime_alias_detector,
-    )
+    from flext_infra.detectors._base_detector import *
     from flext_infra.detectors.class_placement_detector import *
     from flext_infra.detectors.compatibility_alias_detector import *
     from flext_infra.detectors.cyclic_import_detector import *
@@ -60,6 +44,9 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraNamespaceFacadeScanner": "flext_infra.detectors.namespace_facade_scanner",
     "FlextInfraNamespaceSourceDetector": "flext_infra.detectors.namespace_source_detector",
     "FlextInfraRuntimeAliasDetector": "flext_infra.detectors.runtime_alias_detector",
+    "FlextInfraScanFileMixin": "flext_infra.detectors._base_detector",
+    "_DetectorContext": "flext_infra.detectors._base_detector",
+    "_base_detector": "flext_infra.detectors._base_detector",
     "class_placement_detector": "flext_infra.detectors.class_placement_detector",
     "compatibility_alias_detector": "flext_infra.detectors.compatibility_alias_detector",
     "cyclic_import_detector": "flext_infra.detectors.cyclic_import_detector",
@@ -78,4 +65,4 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
 }
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, sorted(_LAZY_IMPORTS))
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
