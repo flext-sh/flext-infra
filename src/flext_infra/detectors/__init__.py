@@ -13,6 +13,23 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.detectors import (
+        class_placement_detector,
+        compatibility_alias_detector,
+        cyclic_import_detector,
+        dependency_analyzer_base,
+        future_annotations_detector,
+        import_alias_detector,
+        import_collector,
+        internal_import_detector,
+        loose_object_detector,
+        manual_protocol_detector,
+        manual_typing_alias_detector,
+        mro_completeness_detector,
+        namespace_facade_scanner,
+        namespace_source_detector,
+        runtime_alias_detector,
+    )
     from flext_infra.detectors.class_placement_detector import (
         FlextInfraClassPlacementDetector,
     )
@@ -118,6 +135,36 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.detectors.runtime_alias_detector",
         "FlextInfraRuntimeAliasDetector",
     ],
+    "class_placement_detector": ["flext_infra.detectors.class_placement_detector", ""],
+    "compatibility_alias_detector": [
+        "flext_infra.detectors.compatibility_alias_detector",
+        "",
+    ],
+    "cyclic_import_detector": ["flext_infra.detectors.cyclic_import_detector", ""],
+    "dependency_analyzer_base": ["flext_infra.detectors.dependency_analyzer_base", ""],
+    "future_annotations_detector": [
+        "flext_infra.detectors.future_annotations_detector",
+        "",
+    ],
+    "import_alias_detector": ["flext_infra.detectors.import_alias_detector", ""],
+    "import_collector": ["flext_infra.detectors.import_collector", ""],
+    "internal_import_detector": ["flext_infra.detectors.internal_import_detector", ""],
+    "loose_object_detector": ["flext_infra.detectors.loose_object_detector", ""],
+    "manual_protocol_detector": ["flext_infra.detectors.manual_protocol_detector", ""],
+    "manual_typing_alias_detector": [
+        "flext_infra.detectors.manual_typing_alias_detector",
+        "",
+    ],
+    "mro_completeness_detector": [
+        "flext_infra.detectors.mro_completeness_detector",
+        "",
+    ],
+    "namespace_facade_scanner": ["flext_infra.detectors.namespace_facade_scanner", ""],
+    "namespace_source_detector": [
+        "flext_infra.detectors.namespace_source_detector",
+        "",
+    ],
+    "runtime_alias_detector": ["flext_infra.detectors.runtime_alias_detector", ""],
 }
 
 __all__ = [
@@ -136,6 +183,21 @@ __all__ = [
     "FlextInfraNamespaceFacadeScanner",
     "FlextInfraNamespaceSourceDetector",
     "FlextInfraRuntimeAliasDetector",
+    "class_placement_detector",
+    "compatibility_alias_detector",
+    "cyclic_import_detector",
+    "dependency_analyzer_base",
+    "future_annotations_detector",
+    "import_alias_detector",
+    "import_collector",
+    "internal_import_detector",
+    "loose_object_detector",
+    "manual_protocol_detector",
+    "manual_typing_alias_detector",
+    "mro_completeness_detector",
+    "namespace_facade_scanner",
+    "namespace_source_detector",
+    "runtime_alias_detector",
 ]
 
 

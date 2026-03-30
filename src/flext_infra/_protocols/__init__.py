@@ -13,6 +13,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra._protocols import base, cst, rope
     from flext_infra._protocols.base import FlextInfraProtocolsBase
     from flext_infra._protocols.cst import FlextInfraProtocolsCst
     from flext_infra._protocols.rope import FlextInfraProtocolsRope
@@ -27,12 +28,18 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra._protocols.rope",
         "FlextInfraProtocolsRope",
     ],
+    "base": ["flext_infra._protocols.base", ""],
+    "cst": ["flext_infra._protocols.cst", ""],
+    "rope": ["flext_infra._protocols.rope", ""],
 }
 
 __all__ = [
     "FlextInfraProtocolsBase",
     "FlextInfraProtocolsCst",
     "FlextInfraProtocolsRope",
+    "base",
+    "cst",
+    "rope",
 ]
 
 

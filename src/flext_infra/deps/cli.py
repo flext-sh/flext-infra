@@ -50,10 +50,12 @@ class FlextInfraCliDeps:
         return None
 
     @staticmethod
-    def _normalize_exit_code(exit_value: object) -> int:
+    def _normalize_exit_code(exit_value: int | str | None) -> int:
         """Convert CLI payloads and SystemExit codes into integer exits."""
         if exit_value is None:
             return 0
+        if isinstance(exit_value, int):
+            return exit_value
         try:
             return int(exit_value)
         except (TypeError, ValueError):

@@ -13,6 +13,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra._models import base, census, cli_inputs, cst, rope, scan
     from flext_infra._models.base import FlextInfraModelsBase
     from flext_infra._models.census import FlextInfraModelsCensus
     from flext_infra._models.cli_inputs import FlextInfraModelsCliInputs
@@ -30,6 +31,12 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraModelsCst": ["flext_infra._models.cst", "FlextInfraModelsCst"],
     "FlextInfraModelsRope": ["flext_infra._models.rope", "FlextInfraModelsRope"],
     "FlextInfraModelsScan": ["flext_infra._models.scan", "FlextInfraModelsScan"],
+    "base": ["flext_infra._models.base", ""],
+    "census": ["flext_infra._models.census", ""],
+    "cli_inputs": ["flext_infra._models.cli_inputs", ""],
+    "cst": ["flext_infra._models.cst", ""],
+    "rope": ["flext_infra._models.rope", ""],
+    "scan": ["flext_infra._models.scan", ""],
 }
 
 __all__ = [
@@ -39,6 +46,12 @@ __all__ = [
     "FlextInfraModelsCst",
     "FlextInfraModelsRope",
     "FlextInfraModelsScan",
+    "base",
+    "census",
+    "cli_inputs",
+    "cst",
+    "rope",
+    "scan",
 ]
 
 

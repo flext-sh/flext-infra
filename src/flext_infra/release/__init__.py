@@ -20,6 +20,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.release import cli, orchestrator
     from flext_infra.release.cli import FlextInfraCliRelease
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 
@@ -29,11 +30,15 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.release.orchestrator",
         "FlextInfraReleaseOrchestrator",
     ],
+    "cli": ["flext_infra.release.cli", ""],
+    "orchestrator": ["flext_infra.release.orchestrator", ""],
 }
 
 __all__ = [
     "FlextInfraCliRelease",
     "FlextInfraReleaseOrchestrator",
+    "cli",
+    "orchestrator",
 ]
 
 

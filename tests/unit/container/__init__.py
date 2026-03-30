@@ -13,6 +13,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.container import test_infra_container
     from tests.unit.container.test_infra_container import (
         TestInfraContainerFunctions,
         TestInfraMroPattern,
@@ -32,12 +33,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.container.test_infra_container",
         "TestInfraServiceRetrieval",
     ],
+    "test_infra_container": ["tests.unit.container.test_infra_container", ""],
 }
 
 __all__ = [
     "TestInfraContainerFunctions",
     "TestInfraMroPattern",
     "TestInfraServiceRetrieval",
+    "test_infra_container",
 ]
 
 

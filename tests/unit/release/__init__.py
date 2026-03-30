@@ -13,6 +13,17 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.release import (
+        flow_tests,
+        main_tests,
+        orchestrator_git_tests,
+        orchestrator_helpers_tests,
+        orchestrator_phases_tests,
+        orchestrator_publish_tests,
+        orchestrator_tests,
+        release_init_tests,
+        version_resolution_tests,
+    )
     from tests.unit.release.flow_tests import TestReleaseMainFlow, main
     from tests.unit.release.main_tests import TestReleaseMainParsing
     from tests.unit.release.orchestrator_git_tests import (
@@ -123,7 +134,16 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.release.orchestrator_helpers_tests",
         "TestVersionFiles",
     ],
+    "flow_tests": ["tests.unit.release.flow_tests", ""],
     "main": ["tests.unit.release.flow_tests", "main"],
+    "main_tests": ["tests.unit.release.main_tests", ""],
+    "orchestrator_git_tests": ["tests.unit.release.orchestrator_git_tests", ""],
+    "orchestrator_helpers_tests": ["tests.unit.release.orchestrator_helpers_tests", ""],
+    "orchestrator_phases_tests": ["tests.unit.release.orchestrator_phases_tests", ""],
+    "orchestrator_publish_tests": ["tests.unit.release.orchestrator_publish_tests", ""],
+    "orchestrator_tests": ["tests.unit.release.orchestrator_tests", ""],
+    "release_init_tests": ["tests.unit.release.release_init_tests", ""],
+    "version_resolution_tests": ["tests.unit.release.version_resolution_tests", ""],
     "workspace_root": ["tests.unit.release.orchestrator_tests", "workspace_root"],
 }
 
@@ -151,7 +171,16 @@ __all__ = [
     "TestRunMake",
     "TestUpdateChangelog",
     "TestVersionFiles",
+    "flow_tests",
     "main",
+    "main_tests",
+    "orchestrator_git_tests",
+    "orchestrator_helpers_tests",
+    "orchestrator_phases_tests",
+    "orchestrator_publish_tests",
+    "orchestrator_tests",
+    "release_init_tests",
+    "version_resolution_tests",
     "workspace_root",
 ]
 

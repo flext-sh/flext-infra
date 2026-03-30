@@ -43,7 +43,7 @@ class TestErrorReporting:
 
         monkeypatch.setattr(
             checker,
-            "_check_project",
+            "_check_project_with_ctx",
             create_check_project_stub(project),
         )
         h.mk_project(tmp_path, "p1")
@@ -67,7 +67,7 @@ class TestErrorReporting:
         project2 = m.Infra.ProjectResult(project="p2", gates={"lint": exec_without})
         monkeypatch.setattr(
             checker,
-            "_check_project",
+            "_check_project_with_ctx",
             create_check_project_iter_stub([project1, project2]),
         )
         h.mk_project(tmp_path, "p1")
@@ -98,7 +98,7 @@ class TestMarkdownReportEmptyGates:
         )
         monkeypatch.setattr(
             checker,
-            "_check_project",
+            "_check_project_with_ctx",
             create_check_project_stub(project),
         )
         h.mk_project(tmp_path, "p1")

@@ -326,35 +326,12 @@ class FlextInfraWorkspaceChecker(s[bool]):
             ruff_args=ruff_args,
             pyright_args=pyright_args,
         )
-        results: MutableSequence[m.Infra.ProjectResult] = []
-        total = len(projects)
-        failed = 0
-        skipped = 0
-        loop_start = time.monotonic()
-        for index, project_name in enumerate(projects, 1):
-            project_dir = self._workspace_root / project_name
-            pyproject_path = project_dir / c.Infra.Files.PYPROJECT_FILENAME
-            if not project_dir.is_dir() or not pyproject_path.exists():
-                output.progress(index, total, project_name, c.Infra.Severity.SKIP)
-                skipped += 1
-                continue
-            output.progress(index, total, project_name, c.Infra.Verbs.CHECK)
-            start = time.monotonic()
-            project_result = self._check_project_with_ctx(
-                project_dir,
-                resolved_gates,
-                ctx,
-            )
-            elapsed = time.monotonic() - start
-            results.append(project_result)
-            if project_result.passed:
-                output.status(c.Infra.Verbs.CHECK, project_name, True, elapsed)
-            else:
-                output.status(c.Infra.Verbs.CHECK, project_name, False, elapsed)
-                failed += 1
-                if fail_fast:
-                    break
-        total_elapsed = time.monotonic() - loop_start
+        results, failed, skipped, total_elapsed = self._run_project_loop(
+            projects,
+            resolved_gates,
+            ctx,
+            fail_fast=fail_fast,
+        )
         return self._write_reports_and_summary(
             results,
             resolved_gates,
@@ -363,6 +340,69 @@ class FlextInfraWorkspaceChecker(s[bool]):
             skipped=skipped,
             total_elapsed=total_elapsed,
         )
+
+    def _run_project_loop(
+        self,
+        projects: t.StrSequence,
+        resolved_gates: t.StrSequence,
+        ctx: m.Infra.GateContext,
+        *,
+        fail_fast: bool,
+    ) -> tuple[Sequence[m.Infra.ProjectResult], int, int, float]:
+        """Execute gate checks across projects, collecting results and timing."""
+        results: MutableSequence[m.Infra.ProjectResult] = []
+        total = len(projects)
+        failed = 0
+        skipped = 0
+        loop_start = time.monotonic()
+        for index, project_name in enumerate(projects, 1):
+            outcome = self._run_single_project(
+                project_name,
+                index,
+                total,
+                resolved_gates,
+                ctx,
+            )
+            if outcome is None:
+                skipped += 1
+                continue
+            results.append(outcome)
+            if not outcome.passed:
+                failed += 1
+                if fail_fast:
+                    break
+        total_elapsed = time.monotonic() - loop_start
+        return (results, failed, skipped, total_elapsed)
+
+    def _run_single_project(
+        self,
+        project_name: str,
+        index: int,
+        total: int,
+        resolved_gates: t.StrSequence,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.ProjectResult | None:
+        """Check one project, returning None when the project should be skipped."""
+        project_dir = self._workspace_root / project_name
+        pyproject_path = project_dir / c.Infra.Files.PYPROJECT_FILENAME
+        if not project_dir.is_dir() or not pyproject_path.exists():
+            output.progress(index, total, project_name, c.Infra.Severity.SKIP)
+            return None
+        output.progress(index, total, project_name, c.Infra.Verbs.CHECK)
+        start = time.monotonic()
+        project_result = self._check_project_with_ctx(
+            project_dir,
+            resolved_gates,
+            ctx,
+        )
+        elapsed = time.monotonic() - start
+        output.status(
+            c.Infra.Verbs.CHECK,
+            project_name,
+            project_result.passed,
+            elapsed,
+        )
+        return project_result
 
     def _gate_ctx(
         self,

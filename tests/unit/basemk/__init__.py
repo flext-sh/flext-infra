@@ -13,6 +13,14 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.basemk import (
+        test_engine,
+        test_generator,
+        test_generator_edge_cases,
+        test_init,
+        test_main,
+        test_make_contract,
+    )
     from tests.unit.basemk.test_engine import (
         basemk_main,
         test_basemk_cli_generate_to_file,
@@ -166,6 +174,9 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.basemk.test_main",
         "test_basemk_main_with_write_failure",
     ],
+    "test_engine": ["tests.unit.basemk.test_engine", ""],
+    "test_generator": ["tests.unit.basemk.test_generator", ""],
+    "test_generator_edge_cases": ["tests.unit.basemk.test_generator_edge_cases", ""],
     "test_generator_execute_returns_generated_content": [
         "tests.unit.basemk.test_generator",
         "test_generator_execute_returns_generated_content",
@@ -254,6 +265,8 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.basemk.test_generator_edge_cases",
         "test_generator_write_to_stream_handles_oserror",
     ],
+    "test_init": ["tests.unit.basemk.test_init", ""],
+    "test_main": ["tests.unit.basemk.test_main", ""],
     "test_make_boot_works_without_existing_venv_in_workspace_mode": [
         "tests.unit.basemk.test_make_contract",
         "test_make_boot_works_without_existing_venv_in_workspace_mode",
@@ -282,6 +295,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.basemk.test_make_contract",
         "test_make_check_full_run_unsets_python_path_env",
     ],
+    "test_make_contract": ["tests.unit.basemk.test_make_contract", ""],
     "test_make_help_lists_supported_options": [
         "tests.unit.basemk.test_make_contract",
         "test_make_help_lists_supported_options",
@@ -332,6 +346,9 @@ __all__ = [
     "test_basemk_main_with_output_file",
     "test_basemk_main_with_project_name",
     "test_basemk_main_with_write_failure",
+    "test_engine",
+    "test_generator",
+    "test_generator_edge_cases",
     "test_generator_execute_returns_generated_content",
     "test_generator_fails_for_invalid_make_syntax",
     "test_generator_generate_propagates_render_failure",
@@ -354,6 +371,8 @@ __all__ = [
     "test_generator_write_to_file",
     "test_generator_write_to_stream",
     "test_generator_write_to_stream_handles_oserror",
+    "test_init",
+    "test_main",
     "test_make_boot_works_without_existing_venv_in_workspace_mode",
     "test_make_check_fast_path_check_only_suppresses_fix_writes",
     "test_make_check_file_scope_rejects_unsupported_gates",
@@ -361,6 +380,7 @@ __all__ = [
     "test_make_check_file_scope_unsets_python_path_env",
     "test_make_check_full_run_forwards_fix_and_tool_args",
     "test_make_check_full_run_unsets_python_path_env",
+    "test_make_contract",
     "test_make_help_lists_supported_options",
     "test_render_all_declares_and_documents_runtime_options",
     "test_render_all_exposes_canonical_public_targets",

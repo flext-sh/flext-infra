@@ -13,6 +13,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.check import cli, services, workspace_check
     from flext_infra.check.cli import FlextInfraCliCheck
     from flext_infra.check.services import (
         FlextInfraConfigFixer,
@@ -28,8 +29,11 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "FlextInfraWorkspaceChecker",
     ],
     "build_parser": ["flext_infra.check.workspace_check", "build_parser"],
+    "cli": ["flext_infra.check.cli", ""],
     "main": ["flext_infra.check.workspace_check", "main"],
     "run_cli": ["flext_infra.check.workspace_check", "run_cli"],
+    "services": ["flext_infra.check.services", ""],
+    "workspace_check": ["flext_infra.check.workspace_check", ""],
 }
 
 __all__ = [
@@ -37,8 +41,11 @@ __all__ = [
     "FlextInfraConfigFixer",
     "FlextInfraWorkspaceChecker",
     "build_parser",
+    "cli",
     "main",
     "run_cli",
+    "services",
+    "workspace_check",
 ]
 
 

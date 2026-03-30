@@ -13,6 +13,23 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.refactor import (
+        test_infra_refactor_analysis,
+        test_infra_refactor_class_and_propagation,
+        test_infra_refactor_class_placement,
+        test_infra_refactor_engine,
+        test_infra_refactor_import_modernizer,
+        test_infra_refactor_legacy_and_annotations,
+        test_infra_refactor_mro_completeness,
+        test_infra_refactor_mro_import_rewriter,
+        test_infra_refactor_namespace_aliases,
+        test_infra_refactor_namespace_source,
+        test_infra_refactor_pattern_corrections,
+        test_infra_refactor_project_classifier,
+        test_infra_refactor_safety,
+        test_infra_refactor_typing_unifier,
+        test_main_cli,
+    )
     from tests.unit.refactor.test_infra_refactor_analysis import (
         test_build_impact_map_extracts_rename_entries,
         test_build_impact_map_extracts_signature_entries,
@@ -305,6 +322,62 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.refactor.test_infra_refactor_import_modernizer",
         "test_import_modernizer_updates_aliased_symbol_usage",
     ],
+    "test_infra_refactor_analysis": [
+        "tests.unit.refactor.test_infra_refactor_analysis",
+        "",
+    ],
+    "test_infra_refactor_class_and_propagation": [
+        "tests.unit.refactor.test_infra_refactor_class_and_propagation",
+        "",
+    ],
+    "test_infra_refactor_class_placement": [
+        "tests.unit.refactor.test_infra_refactor_class_placement",
+        "",
+    ],
+    "test_infra_refactor_engine": [
+        "tests.unit.refactor.test_infra_refactor_engine",
+        "",
+    ],
+    "test_infra_refactor_import_modernizer": [
+        "tests.unit.refactor.test_infra_refactor_import_modernizer",
+        "",
+    ],
+    "test_infra_refactor_legacy_and_annotations": [
+        "tests.unit.refactor.test_infra_refactor_legacy_and_annotations",
+        "",
+    ],
+    "test_infra_refactor_mro_completeness": [
+        "tests.unit.refactor.test_infra_refactor_mro_completeness",
+        "",
+    ],
+    "test_infra_refactor_mro_import_rewriter": [
+        "tests.unit.refactor.test_infra_refactor_mro_import_rewriter",
+        "",
+    ],
+    "test_infra_refactor_namespace_aliases": [
+        "tests.unit.refactor.test_infra_refactor_namespace_aliases",
+        "",
+    ],
+    "test_infra_refactor_namespace_source": [
+        "tests.unit.refactor.test_infra_refactor_namespace_source",
+        "",
+    ],
+    "test_infra_refactor_pattern_corrections": [
+        "tests.unit.refactor.test_infra_refactor_pattern_corrections",
+        "",
+    ],
+    "test_infra_refactor_project_classifier": [
+        "tests.unit.refactor.test_infra_refactor_project_classifier",
+        "",
+    ],
+    "test_infra_refactor_safety": [
+        "tests.unit.refactor.test_infra_refactor_safety",
+        "",
+    ],
+    "test_infra_refactor_typing_unifier": [
+        "tests.unit.refactor.test_infra_refactor_typing_unifier",
+        "",
+    ],
     "test_injects_t_import_when_needed": [
         "tests.unit.refactor.test_infra_refactor_typing_unifier",
         "test_injects_t_import_when_needed",
@@ -349,6 +422,7 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.refactor.test_infra_refactor_analysis",
         "test_main_analyze_violations_writes_json_report",
     ],
+    "test_main_cli": ["tests.unit.refactor.test_main_cli", ""],
     "test_migrate_workspace_applies_consumer_rewrites": [
         "tests.unit.refactor.test_infra_refactor_mro_import_rewriter",
         "test_migrate_workspace_applies_consumer_rewrites",
@@ -695,6 +769,20 @@ __all__ = [
     "test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function",
     "test_import_modernizer_skips_when_runtime_alias_name_is_blocked",
     "test_import_modernizer_updates_aliased_symbol_usage",
+    "test_infra_refactor_analysis",
+    "test_infra_refactor_class_and_propagation",
+    "test_infra_refactor_class_placement",
+    "test_infra_refactor_engine",
+    "test_infra_refactor_import_modernizer",
+    "test_infra_refactor_legacy_and_annotations",
+    "test_infra_refactor_mro_completeness",
+    "test_infra_refactor_mro_import_rewriter",
+    "test_infra_refactor_namespace_aliases",
+    "test_infra_refactor_namespace_source",
+    "test_infra_refactor_pattern_corrections",
+    "test_infra_refactor_project_classifier",
+    "test_infra_refactor_safety",
+    "test_infra_refactor_typing_unifier",
     "test_injects_t_import_when_needed",
     "test_lazy_import_rule_hoists_import_to_module_level",
     "test_lazy_import_rule_uses_fix_action_for_hoist",
@@ -706,6 +794,7 @@ __all__ = [
     "test_legacy_wrapper_non_passthrough_is_not_inlined",
     "test_main_analyze_violations_is_read_only",
     "test_main_analyze_violations_writes_json_report",
+    "test_main_cli",
     "test_migrate_workspace_applies_consumer_rewrites",
     "test_migrate_workspace_dry_run_preserves_files",
     "test_mro_checker_keeps_external_attribute_base",

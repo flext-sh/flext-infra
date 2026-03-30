@@ -81,20 +81,29 @@ class FlextInfraDocAuditor:
         workspace_root: Path,
     ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
         """Load audit issue budgets from architecture config."""
+        audit_gate = FlextInfraDocAuditor._load_audit_gate_mapping(workspace_root)
+        if audit_gate is None:
+            return FlextInfraDocAuditor._NO_BUDGETS
+        return FlextInfraDocAuditor._parse_audit_gate(audit_gate)
+
+    @staticmethod
+    def _load_audit_gate_mapping(
+        workspace_root: Path,
+    ) -> Mapping[str, t.Infra.InfraValue] | None:
+        """Extract the audit_gate mapping from architecture config, or None."""
         config_path = FlextInfraDocAuditor._find_architecture_config(workspace_root)
         if config_path is None:
-            return FlextInfraDocAuditor._NO_BUDGETS
+            return None
         payload_result = u.Infra.read_json(config_path)
         if payload_result.is_failure:
-            return FlextInfraDocAuditor._NO_BUDGETS
-        payload = payload_result.value
-        docs_validation_value = payload.get("docs_validation")
-        if not isinstance(docs_validation_value, Mapping):
-            return FlextInfraDocAuditor._NO_BUDGETS
-        audit_gate_value = docs_validation_value.get("audit_gate")
-        if not isinstance(audit_gate_value, Mapping):
-            return FlextInfraDocAuditor._NO_BUDGETS
-        return FlextInfraDocAuditor._parse_audit_gate(audit_gate_value)
+            return None
+        docs_validation = payload_result.value.get("docs_validation")
+        if not isinstance(docs_validation, Mapping):
+            return None
+        audit_gate = docs_validation.get("audit_gate")
+        if not isinstance(audit_gate, Mapping):
+            return None
+        return audit_gate
 
     @staticmethod
     def normalize_link(target: str) -> str:
@@ -158,7 +167,7 @@ class FlextInfraDocAuditor:
             r with list of AuditReport objects.
 
         """
-        default_budget, by_scope_budget = self.load_audit_budgets(workspace_root)
+        budgets = self.load_audit_budgets(workspace_root)
         return u.Infra.run_scoped(
             workspace_root,
             project=project,
@@ -168,8 +177,7 @@ class FlextInfraDocAuditor:
                 scope,
                 check=check,
                 strict=strict,
-                max_issues_default=default_budget,
-                max_issues_by_scope=by_scope_budget,
+                budgets=budgets,
             ),
         )
 
@@ -236,10 +244,16 @@ class FlextInfraDocAuditor:
         *,
         check: str,
         strict: bool,
-        max_issues_default: int | None,
-        max_issues_by_scope: Mapping[str, int],
+        budgets: t.Infra.Pair[int | None, Mapping[str, int]] | None = None,
+        max_issues_default: int | None = None,
+        max_issues_by_scope: Mapping[str, int] | None = None,
     ) -> m.Infra.DocsPhaseReport:
         """Run configured audit checks on a single scope."""
+        resolved_default, resolved_by_scope = self._resolve_budgets(
+            budgets,
+            max_issues_default,
+            max_issues_by_scope,
+        )
         checks = {part.strip() for part in check.split(",") if part.strip()}
         if not checks or "all" in checks:
             checks = {"links", "forbidden-terms"}
@@ -249,7 +263,7 @@ class FlextInfraDocAuditor:
         if "forbidden-terms" in checks:
             issues.extend(self.forbidden_term_issues(scope))
         self._write_audit_reports(scope, issues, checks, strict=strict)
-        max_issues = max_issues_by_scope.get(scope.name, max_issues_default)
+        max_issues = resolved_by_scope.get(scope.name, resolved_default)
         if strict:
             limit = 0 if max_issues is None else max_issues
             passed = len(issues) <= limit
@@ -284,6 +298,17 @@ class FlextInfraDocAuditor:
             reason=reason,
             message=f"issues: {len(issues)}",
         )
+
+    @staticmethod
+    def _resolve_budgets(
+        budgets: t.Infra.Pair[int | None, Mapping[str, int]] | None,
+        max_issues_default: int | None,
+        max_issues_by_scope: Mapping[str, int] | None,
+    ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
+        """Unpack budgets tuple or fall back to individual keyword args."""
+        if budgets is not None:
+            return budgets
+        return (max_issues_default, max_issues_by_scope or {})
 
     def _check_links_in_file(
         self,

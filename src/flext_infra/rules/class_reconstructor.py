@@ -1,20 +1,21 @@
-"""Rule that reorders class methods based on configured method order."""
+"""Pre-check gate and class nesting reconstruction utilities.
+
+FlextInfraPreCheckGate and FlextInfraRefactorClassNestingReconstructor are
+used by class_nesting.py. The thin wrapper FlextInfraRefactorClassReconstructorRule
+has been inlined into engine.py.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import override
 
 import libcst as cst
 from pydantic import JsonValue, ValidationError
 
 from flext_infra import (
-    CONTAINER_DICT_SEQ_ADAPTER,
     INFRA_MAPPING_ADAPTER,
     FlextInfraNestedClassPropagationTransformer,
-    FlextInfraRefactorClassReconstructor,
-    FlextInfraRefactorRule,
     c,
     m,
     t,
@@ -200,36 +201,7 @@ class FlextInfraRefactorClassNestingReconstructor:
         return updated_tree
 
 
-class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
-    """Apply class method ordering reconstruction to matching class nodes."""
-
-    @override
-    def apply(
-        self,
-        tree: cst.Module,
-        _file_path: Path | None = None,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        """Apply method reordering transformer when order config is available."""
-        order_config_raw = self.config.get("method_order") or self.config.get(
-            "order",
-            [],
-        )
-        try:
-            order_config: Sequence[t.Infra.ContainerDict] = (
-                CONTAINER_DICT_SEQ_ADAPTER.validate_python(order_config_raw)
-            )
-        except ValidationError:
-            return (tree, [])
-        if not order_config:
-            return (tree, [])
-        return self._apply_transformer(
-            FlextInfraRefactorClassReconstructor(order_config=order_config),
-            tree,
-        )
-
-
 __all__ = [
     "FlextInfraPreCheckGate",
     "FlextInfraRefactorClassNestingReconstructor",
-    "FlextInfraRefactorClassReconstructorRule",
 ]

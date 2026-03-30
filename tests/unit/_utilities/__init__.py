@@ -13,6 +13,15 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit._utilities import (
+        test_discovery_consolidated,
+        test_formatting,
+        test_iteration,
+        test_parsing,
+        test_rope_hooks,
+        test_safety,
+        test_scanning,
+    )
     from tests.unit._utilities.test_discovery_consolidated import (
         TestDiscoveryDiscoverProjects,
         TestDiscoveryFindAllPyprojectFiles,
@@ -74,6 +83,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     ],
     "TestSafetyRollback": ["tests.unit._utilities.test_safety", "TestSafetyRollback"],
     "TestScanModels": ["tests.unit._utilities.test_scanning", "TestScanModels"],
+    "test_discovery_consolidated": [
+        "tests.unit._utilities.test_discovery_consolidated",
+        "",
+    ],
+    "test_formatting": ["tests.unit._utilities.test_formatting", ""],
+    "test_iteration": ["tests.unit._utilities.test_iteration", ""],
+    "test_parsing": ["tests.unit._utilities.test_parsing", ""],
+    "test_rope_hooks": ["tests.unit._utilities.test_rope_hooks", ""],
     "test_run_rope_post_hooks_applies_mro_migration": [
         "tests.unit._utilities.test_rope_hooks",
         "test_run_rope_post_hooks_applies_mro_migration",
@@ -82,6 +99,8 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit._utilities.test_rope_hooks",
         "test_run_rope_post_hooks_dry_run_is_non_mutating",
     ],
+    "test_safety": ["tests.unit._utilities.test_safety", ""],
+    "test_scanning": ["tests.unit._utilities.test_scanning", ""],
 }
 
 __all__ = [
@@ -96,8 +115,15 @@ __all__ = [
     "TestSafetyCheckpoint",
     "TestSafetyRollback",
     "TestScanModels",
+    "test_discovery_consolidated",
+    "test_formatting",
+    "test_iteration",
+    "test_parsing",
+    "test_rope_hooks",
     "test_run_rope_post_hooks_applies_mro_migration",
     "test_run_rope_post_hooks_dry_run_is_non_mutating",
+    "test_safety",
+    "test_scanning",
 ]
 
 

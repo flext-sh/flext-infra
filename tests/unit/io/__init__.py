@@ -13,6 +13,12 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.io import (
+        test_infra_json_io,
+        test_infra_output_edge_cases,
+        test_infra_output_formatting,
+        test_infra_terminal_detection,
+    )
     from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
     from tests.unit.io.test_infra_output_edge_cases import (
         TestInfraOutputEdgeCases,
@@ -79,6 +85,13 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.io.test_infra_terminal_detection",
         "TestShouldUseUnicode",
     ],
+    "test_infra_json_io": ["tests.unit.io.test_infra_json_io", ""],
+    "test_infra_output_edge_cases": ["tests.unit.io.test_infra_output_edge_cases", ""],
+    "test_infra_output_formatting": ["tests.unit.io.test_infra_output_formatting", ""],
+    "test_infra_terminal_detection": [
+        "tests.unit.io.test_infra_terminal_detection",
+        "",
+    ],
 }
 
 __all__ = [
@@ -95,6 +108,10 @@ __all__ = [
     "TestMroFacadeMethods",
     "TestShouldUseColor",
     "TestShouldUseUnicode",
+    "test_infra_json_io",
+    "test_infra_output_edge_cases",
+    "test_infra_output_formatting",
+    "test_infra_terminal_detection",
 ]
 
 

@@ -20,6 +20,35 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra._utilities import (
+        base,
+        cli,
+        cst,
+        discovery,
+        docs,
+        formatting,
+        git,
+        github,
+        io,
+        iteration,
+        log_parser,
+        output,
+        parsing,
+        paths,
+        patterns,
+        release,
+        reporting,
+        rope,
+        safety,
+        selection,
+        subprocess,
+        templates,
+        terminal,
+        toml,
+        toml_parse,
+        versioning,
+        yaml,
+    )
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.cli import FlextInfraUtilitiesCli
     from flext_infra._utilities.cst import FlextInfraUtilitiesCst
@@ -31,7 +60,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.io import FlextInfraUtilitiesIo
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
-    from flext_infra._utilities.output import FlextInfraUtilitiesOutput, output
+    from flext_infra._utilities.output import FlextInfraUtilitiesOutput
     from flext_infra._utilities.parsing import FlextInfraUtilitiesParsing
     from flext_infra._utilities.paths import FlextInfraUtilitiesPaths
     from flext_infra._utilities.patterns import FlextInfraUtilitiesPatterns
@@ -145,7 +174,33 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra._utilities.yaml",
         "FlextInfraUtilitiesYaml",
     ],
-    "output": ["flext_infra._utilities.output", "output"],
+    "base": ["flext_infra._utilities.base", ""],
+    "cli": ["flext_infra._utilities.cli", ""],
+    "cst": ["flext_infra._utilities.cst", ""],
+    "discovery": ["flext_infra._utilities.discovery", ""],
+    "docs": ["flext_infra._utilities.docs", ""],
+    "formatting": ["flext_infra._utilities.formatting", ""],
+    "git": ["flext_infra._utilities.git", ""],
+    "github": ["flext_infra._utilities.github", ""],
+    "io": ["flext_infra._utilities.io", ""],
+    "iteration": ["flext_infra._utilities.iteration", ""],
+    "log_parser": ["flext_infra._utilities.log_parser", ""],
+    "output": ["flext_infra._utilities.output", ""],
+    "parsing": ["flext_infra._utilities.parsing", ""],
+    "paths": ["flext_infra._utilities.paths", ""],
+    "patterns": ["flext_infra._utilities.patterns", ""],
+    "release": ["flext_infra._utilities.release", ""],
+    "reporting": ["flext_infra._utilities.reporting", ""],
+    "rope": ["flext_infra._utilities.rope", ""],
+    "safety": ["flext_infra._utilities.safety", ""],
+    "selection": ["flext_infra._utilities.selection", ""],
+    "subprocess": ["flext_infra._utilities.subprocess", ""],
+    "templates": ["flext_infra._utilities.templates", ""],
+    "terminal": ["flext_infra._utilities.terminal", ""],
+    "toml": ["flext_infra._utilities.toml", ""],
+    "toml_parse": ["flext_infra._utilities.toml_parse", ""],
+    "versioning": ["flext_infra._utilities.versioning", ""],
+    "yaml": ["flext_infra._utilities.yaml", ""],
 }
 
 __all__ = [
@@ -176,7 +231,33 @@ __all__ = [
     "FlextInfraUtilitiesTomlParse",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesYaml",
+    "base",
+    "cli",
+    "cst",
+    "discovery",
+    "docs",
+    "formatting",
+    "git",
+    "github",
+    "io",
+    "iteration",
+    "log_parser",
     "output",
+    "parsing",
+    "paths",
+    "patterns",
+    "release",
+    "reporting",
+    "rope",
+    "safety",
+    "selection",
+    "subprocess",
+    "templates",
+    "terminal",
+    "toml",
+    "toml_parse",
+    "versioning",
+    "yaml",
 ]
 
 

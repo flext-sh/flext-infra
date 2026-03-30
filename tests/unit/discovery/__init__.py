@@ -13,6 +13,10 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.discovery import (
+        test_infra_discovery,
+        test_infra_discovery_edge_cases,
+    )
     from tests.unit.discovery.test_infra_discovery import TestFlextInfraDiscoveryService
     from tests.unit.discovery.test_infra_discovery_edge_cases import (
         TestFlextInfraDiscoveryServiceUncoveredLines,
@@ -27,11 +31,18 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.discovery.test_infra_discovery_edge_cases",
         "TestFlextInfraDiscoveryServiceUncoveredLines",
     ],
+    "test_infra_discovery": ["tests.unit.discovery.test_infra_discovery", ""],
+    "test_infra_discovery_edge_cases": [
+        "tests.unit.discovery.test_infra_discovery_edge_cases",
+        "",
+    ],
 }
 
 __all__ = [
     "TestFlextInfraDiscoveryService",
     "TestFlextInfraDiscoveryServiceUncoveredLines",
+    "test_infra_discovery",
+    "test_infra_discovery_edge_cases",
 ]
 
 

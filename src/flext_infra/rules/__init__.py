@@ -13,11 +13,19 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.rules import (
+        class_nesting,
+        class_reconstructor,
+        ensure_future_annotations,
+        import_modernizer,
+        legacy_removal,
+        mro_class_migration,
+        pattern_corrections,
+    )
     from flext_infra.rules.class_nesting import FlextInfraClassNestingRefactorRule
     from flext_infra.rules.class_reconstructor import (
         FlextInfraPreCheckGate,
         FlextInfraRefactorClassNestingReconstructor,
-        FlextInfraRefactorClassReconstructorRule,
     )
     from flext_infra.rules.ensure_future_annotations import (
         FlextInfraRefactorEnsureFutureAnnotationsRule,
@@ -29,23 +37,8 @@ if TYPE_CHECKING:
     from flext_infra.rules.mro_class_migration import (
         FlextInfraRefactorMROClassMigrationRule,
     )
-    from flext_infra.rules.mro_redundancy_checker import (
-        FlextInfraRefactorMRORedundancyChecker,
-    )
     from flext_infra.rules.pattern_corrections import (
         FlextInfraRefactorPatternCorrectionsRule,
-    )
-    from flext_infra.rules.symbol_propagation import (
-        FlextInfraRefactorSignaturePropagationRule,
-        FlextInfraRefactorSignaturePropagator,
-        FlextInfraRefactorSymbolPropagationRule,
-    )
-    from flext_infra.rules.tier0_import_fix import FlextInfraRefactorTier0ImportFixRule
-    from flext_infra.rules.type_alias_unification import (
-        FlextInfraRefactorTypingUnificationRule,
-    )
-    from flext_infra.rules.typing_census import (
-        FlextInfraRefactorTypingAnnotationFixRule,
     )
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
@@ -60,10 +53,6 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraRefactorClassNestingReconstructor": [
         "flext_infra.rules.class_reconstructor",
         "FlextInfraRefactorClassNestingReconstructor",
-    ],
-    "FlextInfraRefactorClassReconstructorRule": [
-        "flext_infra.rules.class_reconstructor",
-        "FlextInfraRefactorClassReconstructorRule",
     ],
     "FlextInfraRefactorEnsureFutureAnnotationsRule": [
         "flext_infra.rules.ensure_future_annotations",
@@ -81,57 +70,35 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.rules.mro_class_migration",
         "FlextInfraRefactorMROClassMigrationRule",
     ],
-    "FlextInfraRefactorMRORedundancyChecker": [
-        "flext_infra.rules.mro_redundancy_checker",
-        "FlextInfraRefactorMRORedundancyChecker",
-    ],
     "FlextInfraRefactorPatternCorrectionsRule": [
         "flext_infra.rules.pattern_corrections",
         "FlextInfraRefactorPatternCorrectionsRule",
     ],
-    "FlextInfraRefactorSignaturePropagationRule": [
-        "flext_infra.rules.symbol_propagation",
-        "FlextInfraRefactorSignaturePropagationRule",
-    ],
-    "FlextInfraRefactorSignaturePropagator": [
-        "flext_infra.rules.symbol_propagation",
-        "FlextInfraRefactorSignaturePropagator",
-    ],
-    "FlextInfraRefactorSymbolPropagationRule": [
-        "flext_infra.rules.symbol_propagation",
-        "FlextInfraRefactorSymbolPropagationRule",
-    ],
-    "FlextInfraRefactorTier0ImportFixRule": [
-        "flext_infra.rules.tier0_import_fix",
-        "FlextInfraRefactorTier0ImportFixRule",
-    ],
-    "FlextInfraRefactorTypingAnnotationFixRule": [
-        "flext_infra.rules.typing_census",
-        "FlextInfraRefactorTypingAnnotationFixRule",
-    ],
-    "FlextInfraRefactorTypingUnificationRule": [
-        "flext_infra.rules.type_alias_unification",
-        "FlextInfraRefactorTypingUnificationRule",
-    ],
+    "class_nesting": ["flext_infra.rules.class_nesting", ""],
+    "class_reconstructor": ["flext_infra.rules.class_reconstructor", ""],
+    "ensure_future_annotations": ["flext_infra.rules.ensure_future_annotations", ""],
+    "import_modernizer": ["flext_infra.rules.import_modernizer", ""],
+    "legacy_removal": ["flext_infra.rules.legacy_removal", ""],
+    "mro_class_migration": ["flext_infra.rules.mro_class_migration", ""],
+    "pattern_corrections": ["flext_infra.rules.pattern_corrections", ""],
 }
 
 __all__ = [
     "FlextInfraClassNestingRefactorRule",
     "FlextInfraPreCheckGate",
     "FlextInfraRefactorClassNestingReconstructor",
-    "FlextInfraRefactorClassReconstructorRule",
     "FlextInfraRefactorEnsureFutureAnnotationsRule",
     "FlextInfraRefactorImportModernizerRule",
     "FlextInfraRefactorLegacyRemovalRule",
     "FlextInfraRefactorMROClassMigrationRule",
-    "FlextInfraRefactorMRORedundancyChecker",
     "FlextInfraRefactorPatternCorrectionsRule",
-    "FlextInfraRefactorSignaturePropagationRule",
-    "FlextInfraRefactorSignaturePropagator",
-    "FlextInfraRefactorSymbolPropagationRule",
-    "FlextInfraRefactorTier0ImportFixRule",
-    "FlextInfraRefactorTypingAnnotationFixRule",
-    "FlextInfraRefactorTypingUnificationRule",
+    "class_nesting",
+    "class_reconstructor",
+    "ensure_future_annotations",
+    "import_modernizer",
+    "legacy_removal",
+    "mro_class_migration",
+    "pattern_corrections",
 ]
 
 

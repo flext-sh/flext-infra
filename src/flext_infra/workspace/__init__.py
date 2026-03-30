@@ -20,12 +20,22 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.workspace import maintenance
+    from flext_infra.workspace import (
+        cli,
+        detector,
+        maintenance,
+        migrator,
+        orchestrator,
+        project_makefile,
+        sync,
+        workspace_makefile,
+    )
     from flext_infra.workspace.cli import FlextInfraCliWorkspace
     from flext_infra.workspace.detector import (
         FlextInfraWorkspaceDetector,
         FlextInfraWorkspaceMode,
     )
+    from flext_infra.workspace.maintenance import python_version
     from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
     from flext_infra.workspace.maintenance.python_version import (
         FlextInfraPythonVersionEnforcer,
@@ -74,9 +84,17 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.workspace.detector",
         "FlextInfraWorkspaceMode",
     ],
+    "cli": ["flext_infra.workspace.cli", ""],
+    "detector": ["flext_infra.workspace.detector", ""],
     "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
     "main": ["flext_infra.workspace.sync", "main"],
     "maintenance": ["flext_infra.workspace.maintenance", ""],
+    "migrator": ["flext_infra.workspace.migrator", ""],
+    "orchestrator": ["flext_infra.workspace.orchestrator", ""],
+    "project_makefile": ["flext_infra.workspace.project_makefile", ""],
+    "python_version": ["flext_infra.workspace.maintenance.python_version", ""],
+    "sync": ["flext_infra.workspace.sync", ""],
+    "workspace_makefile": ["flext_infra.workspace.workspace_makefile", ""],
 }
 
 __all__ = [
@@ -90,9 +108,17 @@ __all__ = [
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceMakefileGenerator",
     "FlextInfraWorkspaceMode",
+    "cli",
+    "detector",
     "logger",
     "main",
     "maintenance",
+    "migrator",
+    "orchestrator",
+    "project_makefile",
+    "python_version",
+    "sync",
+    "workspace_makefile",
 ]
 
 

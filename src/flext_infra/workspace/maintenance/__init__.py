@@ -19,6 +19,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.workspace.maintenance import cli, python_version
     from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
     from flext_infra.workspace.maintenance.python_version import (
         FlextInfraPythonVersionEnforcer,
@@ -34,13 +35,17 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.workspace.maintenance.python_version",
         "FlextInfraPythonVersionEnforcer",
     ],
+    "cli": ["flext_infra.workspace.maintenance.cli", ""],
     "logger": ["flext_infra.workspace.maintenance.python_version", "logger"],
+    "python_version": ["flext_infra.workspace.maintenance.python_version", ""],
 }
 
 __all__ = [
     "FlextInfraCliMaintenance",
     "FlextInfraPythonVersionEnforcer",
+    "cli",
     "logger",
+    "python_version",
 ]
 
 

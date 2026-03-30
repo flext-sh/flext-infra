@@ -20,6 +20,15 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.codegen import (
+        census,
+        cli,
+        constants_quality_gate,
+        fixer,
+        lazy_init,
+        py_typed,
+        scaffolder,
+    )
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.cli import FlextInfraCliCodegen
     from flext_infra.codegen.constants_quality_gate import (
@@ -53,6 +62,13 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.codegen.scaffolder",
         "FlextInfraCodegenScaffolder",
     ],
+    "census": ["flext_infra.codegen.census", ""],
+    "cli": ["flext_infra.codegen.cli", ""],
+    "constants_quality_gate": ["flext_infra.codegen.constants_quality_gate", ""],
+    "fixer": ["flext_infra.codegen.fixer", ""],
+    "lazy_init": ["flext_infra.codegen.lazy_init", ""],
+    "py_typed": ["flext_infra.codegen.py_typed", ""],
+    "scaffolder": ["flext_infra.codegen.scaffolder", ""],
 }
 
 __all__ = [
@@ -63,6 +79,13 @@ __all__ = [
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenScaffolder",
+    "census",
+    "cli",
+    "constants_quality_gate",
+    "fixer",
+    "lazy_init",
+    "py_typed",
+    "scaffolder",
 ]
 
 

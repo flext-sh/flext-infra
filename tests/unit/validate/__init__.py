@@ -13,6 +13,17 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.validate import (
+        basemk_validator_tests,
+        init_tests,
+        inventory_tests,
+        main_cli_tests,
+        main_tests,
+        pytest_diag,
+        scanner_tests,
+        skill_validator_tests,
+        stub_chain_tests,
+    )
     from tests.unit.validate.basemk_validator_tests import (
         TestBaseMkValidatorCore,
         TestBaseMkValidatorEdgeCases,
@@ -150,6 +161,15 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.unit.validate.stub_chain_tests",
         "TestStubChainValidate",
     ],
+    "basemk_validator_tests": ["tests.unit.validate.basemk_validator_tests", ""],
+    "init_tests": ["tests.unit.validate.init_tests", ""],
+    "inventory_tests": ["tests.unit.validate.inventory_tests", ""],
+    "main_cli_tests": ["tests.unit.validate.main_cli_tests", ""],
+    "main_tests": ["tests.unit.validate.main_tests", ""],
+    "pytest_diag": ["tests.unit.validate.pytest_diag", ""],
+    "scanner_tests": ["tests.unit.validate.scanner_tests", ""],
+    "skill_validator_tests": ["tests.unit.validate.skill_validator_tests", ""],
+    "stub_chain_tests": ["tests.unit.validate.stub_chain_tests", ""],
     "test_stub_validate_help_returns_zero": [
         "tests.unit.validate.main_cli_tests",
         "test_stub_validate_help_returns_zero",
@@ -190,6 +210,15 @@ __all__ = [
     "TestStubChainIsInternal",
     "TestStubChainStubExists",
     "TestStubChainValidate",
+    "basemk_validator_tests",
+    "init_tests",
+    "inventory_tests",
+    "main_cli_tests",
+    "main_tests",
+    "pytest_diag",
+    "scanner_tests",
+    "skill_validator_tests",
+    "stub_chain_tests",
     "test_stub_validate_help_returns_zero",
     "test_stub_validate_uses_all_flag",
     "v",

@@ -13,6 +13,16 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.gates import (
+        bandit,
+        go,
+        markdown,
+        mypy,
+        pyrefly,
+        pyright,
+        ruff_format,
+        ruff_lint,
+    )
     from flext_infra.gates.bandit import FlextInfraBanditGate
     from flext_infra.gates.go import FlextInfraGoGate
     from flext_infra.gates.markdown import FlextInfraMarkdownGate
@@ -34,6 +44,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "FlextInfraRuffFormatGate",
     ],
     "FlextInfraRuffLintGate": ["flext_infra.gates.ruff_lint", "FlextInfraRuffLintGate"],
+    "bandit": ["flext_infra.gates.bandit", ""],
+    "go": ["flext_infra.gates.go", ""],
+    "markdown": ["flext_infra.gates.markdown", ""],
+    "mypy": ["flext_infra.gates.mypy", ""],
+    "pyrefly": ["flext_infra.gates.pyrefly", ""],
+    "pyright": ["flext_infra.gates.pyright", ""],
+    "ruff_format": ["flext_infra.gates.ruff_format", ""],
+    "ruff_lint": ["flext_infra.gates.ruff_lint", ""],
 }
 
 __all__ = [
@@ -45,6 +63,14 @@ __all__ = [
     "FlextInfraPyrightGate",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
+    "bandit",
+    "go",
+    "markdown",
+    "mypy",
+    "pyrefly",
+    "pyright",
+    "ruff_format",
+    "ruff_lint",
 ]
 
 

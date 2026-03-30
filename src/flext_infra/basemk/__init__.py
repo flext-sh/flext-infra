@@ -20,6 +20,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.basemk import cli, engine, generator
     from flext_infra.basemk.cli import FlextInfraCliBasemk
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -34,12 +35,18 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "FlextInfraBaseMkTemplateEngine",
     ],
     "FlextInfraCliBasemk": ["flext_infra.basemk.cli", "FlextInfraCliBasemk"],
+    "cli": ["flext_infra.basemk.cli", ""],
+    "engine": ["flext_infra.basemk.engine", ""],
+    "generator": ["flext_infra.basemk.generator", ""],
 }
 
 __all__ = [
     "FlextInfraBaseMkGenerator",
     "FlextInfraBaseMkTemplateEngine",
     "FlextInfraCliBasemk",
+    "cli",
+    "engine",
+    "generator",
 ]
 
 

@@ -104,37 +104,12 @@ class FlextInfraRefactorMROImportRewriter:
         ] = {}
         try:
             for module_name, module_move in module_moves.items():
-                resource = FlextInfraUtilitiesRope.get_file_resource(
+                cls._collect_module_occurrences(
                     rope_project,
                     module_name,
+                    module_move,
+                    module_file_moves,
                 )
-                if resource is None:
-                    continue
-                facade_alias, symbol_paths = module_move
-                for symbol_name, target_path in symbol_paths.items():
-                    offset = FlextInfraUtilitiesRope.find_definition_offset(
-                        rope_project,
-                        resource,
-                        symbol_name,
-                    )
-                    if offset is None:
-                        continue
-                    for occurrence in FlextInfraUtilitiesRope.find_occurrences(
-                        rope_project,
-                        resource,
-                        offset,
-                    ):
-                        resource_like = getattr(occurrence, "resource", None)
-                        if not isinstance(resource_like, p.Infra.RopeResourceLike):
-                            continue
-                        file_path = Path(resource_like.real_path).resolve()
-                        per_file = module_file_moves.setdefault(file_path, {})
-                        existing_move = per_file.get(module_name)
-                        existing_paths: MutableMapping[str, str] = (
-                            dict(existing_move[1]) if existing_move is not None else {}
-                        )
-                        existing_paths[symbol_name] = target_path
-                        per_file[module_name] = (facade_alias, existing_paths)
         finally:
             rope_project.close()
         return cls._expand_file_moves(
@@ -142,6 +117,49 @@ class FlextInfraRefactorMROImportRewriter:
             file_moves=cls._merge_file_moves(module_file_moves),
             module_moves=module_moves,
         )
+
+    @staticmethod
+    def _collect_module_occurrences(
+        rope_project: t.Infra.RopeProject,
+        module_name: str,
+        module_move: t.Infra.Pair[str, t.StrMapping],
+        module_file_moves: MutableMapping[
+            Path,
+            MutableMapping[str, t.Infra.Pair[str, t.StrMapping]],
+        ],
+    ) -> None:
+        """Find rope occurrences for one module's symbols and merge into file_moves."""
+        resource = FlextInfraUtilitiesRope.get_file_resource(
+            rope_project,
+            module_name,
+        )
+        if resource is None:
+            return
+        facade_alias, symbol_paths = module_move
+        for symbol_name, target_path in symbol_paths.items():
+            offset = FlextInfraUtilitiesRope.find_definition_offset(
+                rope_project,
+                resource,
+                symbol_name,
+            )
+            if offset is None:
+                continue
+            for occurrence in FlextInfraUtilitiesRope.find_occurrences(
+                rope_project,
+                resource,
+                offset,
+            ):
+                resource_like = getattr(occurrence, "resource", None)
+                if not isinstance(resource_like, p.Infra.RopeResourceLike):
+                    continue
+                file_path = Path(resource_like.real_path).resolve()
+                per_file = module_file_moves.setdefault(file_path, {})
+                existing_move = per_file.get(module_name)
+                existing_paths: MutableMapping[str, str] = (
+                    dict(existing_move[1]) if existing_move is not None else {}
+                )
+                existing_paths[symbol_name] = target_path
+                per_file[module_name] = (facade_alias, existing_paths)
 
     @staticmethod
     def _merge_file_moves(

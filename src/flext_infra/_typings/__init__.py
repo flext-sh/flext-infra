@@ -13,6 +13,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra._typings import base, cst, rope
     from flext_infra._typings.base import FlextInfraTypesBase
     from flext_infra._typings.cst import FlextInfraTypesCst
     from flext_infra._typings.rope import FlextInfraTypesRope
@@ -21,12 +22,18 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraTypesBase": ["flext_infra._typings.base", "FlextInfraTypesBase"],
     "FlextInfraTypesCst": ["flext_infra._typings.cst", "FlextInfraTypesCst"],
     "FlextInfraTypesRope": ["flext_infra._typings.rope", "FlextInfraTypesRope"],
+    "base": ["flext_infra._typings.base", ""],
+    "cst": ["flext_infra._typings.cst", ""],
+    "rope": ["flext_infra._typings.rope", ""],
 }
 
 __all__ = [
     "FlextInfraTypesBase",
     "FlextInfraTypesCst",
     "FlextInfraTypesRope",
+    "base",
+    "cst",
+    "rope",
 ]
 
 

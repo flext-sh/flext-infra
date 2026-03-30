@@ -21,6 +21,16 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.validate import (
+        basemk_validator,
+        cli,
+        inventory,
+        namespace_validator,
+        pytest_diag,
+        scanner,
+        skill_validator,
+        stub_chain,
+    )
     from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
     from flext_infra.validate.cli import FlextInfraCliValidate
     from flext_infra.validate.inventory import FlextInfraInventoryService
@@ -60,6 +70,14 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra.validate.scanner",
         "FlextInfraTextPatternScanner",
     ],
+    "basemk_validator": ["flext_infra.validate.basemk_validator", ""],
+    "cli": ["flext_infra.validate.cli", ""],
+    "inventory": ["flext_infra.validate.inventory", ""],
+    "namespace_validator": ["flext_infra.validate.namespace_validator", ""],
+    "pytest_diag": ["flext_infra.validate.pytest_diag", ""],
+    "scanner": ["flext_infra.validate.scanner", ""],
+    "skill_validator": ["flext_infra.validate.skill_validator", ""],
+    "stub_chain": ["flext_infra.validate.stub_chain", ""],
 }
 
 __all__ = [
@@ -71,6 +89,14 @@ __all__ = [
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
     "FlextInfraTextPatternScanner",
+    "basemk_validator",
+    "cli",
+    "inventory",
+    "namespace_validator",
+    "pytest_diag",
+    "scanner",
+    "skill_validator",
+    "stub_chain",
 ]
 
 

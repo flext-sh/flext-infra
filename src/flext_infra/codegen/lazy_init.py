@@ -384,6 +384,8 @@ class FlextInfraCodegenLazyInit(s[int]):
         mod_parts = rel_path.with_suffix("").parts
         mod_stem = ".".join(mod_parts)
         mod_path = f"{current_pkg}.{mod_stem}" if current_pkg else mod_stem
+        if len(rel_path.parts) == 1 and py_file.stem not in index:
+            index[py_file.stem] = (mod_path, "")
 
         sibling_tree = u.Infra.parse_module_ast(py_file)
         if sibling_tree is None:

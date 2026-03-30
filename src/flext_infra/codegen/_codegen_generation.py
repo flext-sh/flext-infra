@@ -175,7 +175,9 @@ class FlextInfraCodegenGeneration:
 
         """
         tpl = c.Infra.Templates
-        runtime_imports: t.Infra.LazyImportMap = {} if eager_imports is None else eager_imports
+        runtime_imports: t.Infra.LazyImportMap = (
+            {} if eager_imports is None else eager_imports
+        )
         lazy_filtered: t.Infra.LazyImportMap = {
             name: val
             for name, val in filtered.items()

@@ -1,66 +1,14 @@
-"""Rule that propagates refactor API/module renames across callsites."""
+"""Signature propagation transformer — declarative signature migrations."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
-from pathlib import Path
+from collections.abc import MutableSequence, Sequence
 from typing import override
 
 import libcst as cst
-from libcst.metadata import MetadataWrapper, QualifiedNameProvider
-from pydantic import TypeAdapter, ValidationError
+from libcst.metadata import QualifiedNameProvider
 
-from flext_infra import (
-    INFRA_MAPPING_ADAPTER,
-    STR_MAPPING_ADAPTER,
-    FlextInfraRefactorRule,
-    FlextInfraRefactorSymbolPropagator,
-    m,
-    t,
-    u,
-)
-
-_SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
-    TypeAdapter(Sequence[m.Infra.SignatureMigration])
-)
-
-
-class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
-    """Apply declarative module/symbol renames for workspace-wide propagation."""
-
-    @override
-    def apply(
-        self,
-        tree: cst.Module,
-        _file_path: Path | None = None,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        typed_cfg: Mapping[str, t.Infra.InfraValue] = (
-            INFRA_MAPPING_ADAPTER.validate_python(self.config)
-        )
-        target_modules_raw = typed_cfg.get("target_modules", [])
-        module_renames_raw = typed_cfg.get("module_renames", {})
-        symbol_renames_raw = typed_cfg.get("import_symbol_renames", {})
-        target_modules = set(u.Infra.string_list(target_modules_raw))
-        try:
-            module_renames: Mapping[str, str] = STR_MAPPING_ADAPTER.validate_python(
-                module_renames_raw,
-            )
-        except ValidationError:
-            module_renames = {}
-        try:
-            symbol_renames: Mapping[str, str] = STR_MAPPING_ADAPTER.validate_python(
-                symbol_renames_raw,
-            )
-        except ValidationError:
-            symbol_renames = {}
-        if not target_modules and (not module_renames) and (not symbol_renames):
-            return (tree, [])
-        transformer = FlextInfraRefactorSymbolPropagator(
-            target_modules=target_modules,
-            module_renames=module_renames,
-            import_symbol_renames=symbol_renames,
-        )
-        return (tree.visit(transformer), transformer.changes)
+from flext_infra import m, t
 
 
 class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
@@ -215,32 +163,4 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
         return None
 
 
-class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
-    """Apply declarative signature migrations in a generic, workspace-safe way."""
-
-    @override
-    def apply(
-        self,
-        tree: cst.Module,
-        _file_path: Path | None = None,
-    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        migrations_raw = self.config.get("signature_migrations", [])
-        try:
-            parsed: Sequence[m.Infra.SignatureMigration] = (
-                _SIG_MIGRATION_SEQ_ADAPTER.validate_python(migrations_raw)
-            )
-        except ValidationError:
-            return (tree, [])
-        migrations = [item for item in parsed if item.enabled]
-        if not migrations:
-            return (tree, [])
-        transformer = FlextInfraRefactorSignaturePropagator(migrations=migrations)
-        wrapper = MetadataWrapper(tree)
-        return (wrapper.visit(transformer), transformer.changes)
-
-
-__all__ = [
-    "FlextInfraRefactorSignaturePropagationRule",
-    "FlextInfraRefactorSignaturePropagator",
-    "FlextInfraRefactorSymbolPropagationRule",
-]
+__all__ = ["FlextInfraRefactorSignaturePropagator"]

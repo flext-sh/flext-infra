@@ -38,22 +38,34 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
     def visit_ImportFrom(self, node: cst.ImportFrom) -> bool:
         module_name = FlextInfraUtilitiesParsing.cst_module_name(node.module)
         if module_name == "typing":
-            names = node.names
-            if isinstance(names, cst.ImportStar):
-                return False
-            for alias in tuple(names):
-                if not isinstance(alias.name, cst.Name):
-                    continue
-                self._typing_import_names.add(self._bound_name(alias))
-                self._typing_import_aliases.append(alias)
-            return False
-        if not isinstance(node.names, cst.ImportStar):
-            for alias in tuple(node.names):
-                if not isinstance(alias.name, cst.Name):
-                    continue
-                if self._bound_name(alias) == "t":
-                    self._has_t_import = True
+            return self._collect_typing_imports(node.names)
+        self._detect_t_import(node.names)
         return True
+
+    def _collect_typing_imports(
+        self,
+        names: Sequence[cst.ImportAlias] | cst.ImportStar,
+    ) -> bool:
+        """Record imported typing names for later unused-import filtering."""
+        if isinstance(names, cst.ImportStar):
+            return False
+        for alias in tuple(names):
+            if not isinstance(alias.name, cst.Name):
+                continue
+            self._typing_import_names.add(self._bound_name(alias))
+            self._typing_import_aliases.append(alias)
+        return False
+
+    def _detect_t_import(
+        self,
+        names: Sequence[cst.ImportAlias] | cst.ImportStar,
+    ) -> None:
+        """Check whether 't' is already imported from the module."""
+        if isinstance(names, cst.ImportStar):
+            return
+        for alias in tuple(names):
+            if isinstance(alias.name, cst.Name) and self._bound_name(alias) == "t":
+                self._has_t_import = True
 
     @override
     def visit_Name(self, node: cst.Name) -> None:
@@ -109,12 +121,7 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         original_node: cst.AnnAssign,
         updated_node: cst.AnnAssign,
     ) -> cst.BaseSmallStatement:
-        if not isinstance(original_node.target, cst.Name):
-            return updated_node
-        if original_node.value is None:
-            return updated_node
-        annotation_name = self._annotation_name(original_node.annotation.annotation)
-        if annotation_name not in {"TypeAlias", "typing.TypeAlias"}:
+        if not self._is_legacy_typealias(original_node):
             return updated_node
         if self._scope_depth > 0:
             self._typealias_unconverted += 1
@@ -122,9 +129,17 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         alias_value = updated_node.value
         if alias_value is None:
             return updated_node
-        alias_name = original_node.target.value
+        target = original_node.target
+        alias_name = target.value if isinstance(target, cst.Name) else ""
         self.changes.append(f"Converted legacy TypeAlias assignment: {alias_name}")
         return cst.TypeAlias(name=cst.Name(alias_name), value=alias_value)
+
+    def _is_legacy_typealias(self, node: cst.AnnAssign) -> bool:
+        """Return True when node is a ``X: TypeAlias = ...`` declaration."""
+        if not isinstance(node.target, cst.Name) or node.value is None:
+            return False
+        annotation_name = self._annotation_name(node.annotation.annotation)
+        return annotation_name in {"TypeAlias", "typing.TypeAlias"}
 
     @override
     def leave_Annotation(
@@ -133,24 +148,31 @@ class FlextInfraRefactorTypingUnifier(cst.CSTTransformer):
         updated_node: cst.Annotation,
     ) -> cst.Annotation:
         del original_node
-        if self._is_definition_file:
-            return updated_node
-        union_leaf_names = self._extract_union_leaf_names(updated_node.annotation)
-        if union_leaf_names is None:
-            return updated_node
-        if "None" in union_leaf_names:
-            return updated_node
-        canonical_target = self._canonical_map.get(frozenset(union_leaf_names))
-        if canonical_target is None:
-            return updated_node
-        replacement = self._build_t_attribute(canonical_target)
+        replacement = self._resolve_canonical_replacement(updated_node.annotation)
         if replacement is None:
             return updated_node
         self._needs_t_import = True
-        self.changes.append(
-            f"Canonicalized inline union -> {canonical_target}",
-        )
         return updated_node.with_changes(annotation=replacement)
+
+    def _resolve_canonical_replacement(
+        self,
+        annotation: cst.BaseExpression,
+    ) -> cst.BaseExpression | None:
+        """Map an inline union annotation to its canonical t.* replacement, if any."""
+        if self._is_definition_file:
+            return None
+        union_leaf_names = self._extract_union_leaf_names(annotation)
+        if union_leaf_names is None or "None" in union_leaf_names:
+            return None
+        canonical_target = self._canonical_map.get(frozenset(union_leaf_names))
+        if canonical_target is None:
+            return None
+        replacement = self._build_t_attribute(canonical_target)
+        if replacement is not None:
+            self.changes.append(
+                f"Canonicalized inline union -> {canonical_target}",
+            )
+        return replacement
 
     @override
     def leave_Module(

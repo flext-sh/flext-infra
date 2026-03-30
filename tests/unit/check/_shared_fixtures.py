@@ -226,19 +226,15 @@ def create_fake_run_projects(
 def create_check_project_stub(
     project: m.Infra.ProjectResult,
 ) -> Callable[..., m.Infra.ProjectResult]:
-    """Factory for _check_project stub that returns fixed project result.
+    """Factory for _check_project_with_ctx stub that returns fixed project result.
 
     Single Responsibility: Create consistent project checking mocks.
     Eliminates duplication: Identical _fake_check definitions.
     """
 
     def _fake_check(
-        _project_dir: Path,
-        _gates: t.StrSequence,
-        _reports_dir: Path,
-        **_kwargs: t.Infra.InfraValue,
+        *_args: t.NormalizedValue, **_kwargs: t.Infra.InfraValue
     ) -> m.Infra.ProjectResult:
-        del _project_dir, _gates, _reports_dir, _kwargs
         return project
 
     return _fake_check
@@ -247,7 +243,7 @@ def create_check_project_stub(
 def create_check_project_iter_stub(
     projects: Sequence[m.Infra.ProjectResult],
 ) -> Callable[..., m.Infra.ProjectResult]:
-    """Factory for _check_project stub that iterates through project results.
+    """Factory for _check_project_with_ctx stub that iterates through project results.
 
     Single Responsibility: Create consistent project checking mocks with state.
     Eliminates duplication: Multiple _iter_check_project_stub definitions.
@@ -255,12 +251,8 @@ def create_check_project_iter_stub(
     project_iter = iter(projects)
 
     def _fake_check(
-        _project_dir: Path,
-        _gates: t.StrSequence,
-        _reports_dir: Path,
-        **_kwargs: t.Infra.InfraValue,
+        *_args: t.NormalizedValue, **_kwargs: t.Infra.InfraValue
     ) -> m.Infra.ProjectResult:
-        del _project_dir, _gates, _reports_dir, _kwargs
         return next(project_iter)
 
     return _fake_check

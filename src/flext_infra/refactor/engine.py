@@ -6,35 +6,253 @@ import argparse
 import fnmatch
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, override
 
-from pydantic import TypeAdapter
+import libcst as cst
+from libcst.metadata import MetadataWrapper
+from pydantic import TypeAdapter, ValidationError
 
 from flext_infra import (
+    CONTAINER_DICT_SEQ_ADAPTER,
+    INFRA_MAPPING_ADAPTER,
+    STR_MAPPING_ADAPTER,
     FlextInfraClassNestingRefactorRule,
-    FlextInfraRefactorClassReconstructorRule,
+    FlextInfraGenericTransformerRule,
+    FlextInfraRefactorClassReconstructor,
     FlextInfraRefactorEnsureFutureAnnotationsRule,
     FlextInfraRefactorImportModernizerRule,
     FlextInfraRefactorLegacyRemovalRule,
     FlextInfraRefactorMROClassMigrationRule,
-    FlextInfraRefactorMRORedundancyChecker,
+    FlextInfraRefactorMRORemover,
     FlextInfraRefactorPatternCorrectionsRule,
     FlextInfraRefactorRule,
     FlextInfraRefactorRuleDefinitionValidator,
     FlextInfraRefactorRuleLoader,
     FlextInfraRefactorSafetyManager,
-    FlextInfraRefactorSignaturePropagationRule,
-    FlextInfraRefactorSymbolPropagationRule,
-    FlextInfraRefactorTier0ImportFixRule,
-    FlextInfraRefactorTypingAnnotationFixRule,
-    FlextInfraRefactorTypingUnificationRule,
+    FlextInfraRefactorSignaturePropagator,
+    FlextInfraRefactorSymbolPropagator,
+    FlextInfraRefactorTypingUnifier,
     FlextInfraRefactorViolationAnalyzer,
+    FlextInfraTransformerTier0ImportFixer,
+    FlextInfraTypingAnnotationReplacer,
     c,
     m,
     r,
     t,
     u,
 )
+
+_SIG_MIGRATION_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.SignatureMigration]] = (
+    TypeAdapter(Sequence[m.Infra.SignatureMigration])
+)
+
+
+class FlextInfraRefactorMRORedundancyChecker(FlextInfraGenericTransformerRule):
+    """Detect and fix nested classes inheriting from their parent namespace."""
+
+    TRANSFORMER_CLASS: type[cst.CSTTransformer] = FlextInfraRefactorMRORemover
+
+
+class FlextInfraRefactorTypingUnificationRule(FlextInfraRefactorRule):
+    """Unify duplicate type alias definitions into canonical t.* contracts."""
+
+    @override
+    def apply(
+        self,
+        tree: cst.Module,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+        return self._apply_transformer(
+            FlextInfraRefactorTypingUnifier(
+                canonical_map=c.Infra.TYPING_INLINE_UNION_CANONICAL_MAP,
+                file_path=_file_path,
+            ),
+            tree,
+        )
+
+
+class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
+    """Replace legacy typing annotations with canonical t.* contracts."""
+
+    @override
+    def apply(
+        self,
+        tree: cst.Module,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+        fix_action = (
+            str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
+        )
+        if fix_action == "replace_object_annotations":
+            return self._apply_transformer(
+                FlextInfraTypingAnnotationReplacer(),
+                tree,
+            )
+        return (tree, [])
+
+
+class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
+    """Enforce tier-0 import conventions via CST transformation.
+
+    Inlined from rules/tier0_import_fix.py — config extraction + direct
+    transformer instantiation.
+    """
+
+    @override
+    def apply(
+        self,
+        tree: cst.Module,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[cst.Module, Sequence[str]]:
+        if _file_path is None:
+            return (tree, [])
+        analyzer = FlextInfraTransformerTier0ImportFixer.Analyzer(
+            file_path=_file_path,
+            tier0_modules=self._tier0_modules(),
+            core_aliases=self._core_aliases(),
+        )
+        tree.visit(analyzer)
+        analysis = analyzer.build_analysis()
+        if not analysis.has_violations:
+            return (tree, [])
+
+        project_root = u.Infra.discover_project_root_from_file(_file_path)
+        core_package = (
+            u.Infra.discover_core_package(project_root)
+            if project_root
+            else self._core_package()
+        )
+
+        fixer = FlextInfraTransformerTier0ImportFixer.Transformer(
+            analysis=analysis,
+            alias_to_submodule=self._alias_to_submodule(),
+            core_package=core_package,
+        )
+        updated = tree.visit(fixer)
+        return (updated, fixer.changes)
+
+    def _tier0_modules(self) -> tuple[str, ...]:
+        value = self.config.get("tier0_modules", [])
+        if not isinstance(value, list):
+            return ("constants.py", "typings.py", "protocols.py")
+        return tuple(str(item) for item in value)
+
+    def _core_aliases(self) -> tuple[str, ...]:
+        value = self.config.get("core_aliases", [])
+        if not isinstance(value, list):
+            return tuple(c.Infra.NAMESPACE_SOURCE_UNIVERSAL_ALIASES)
+        return tuple(str(item) for item in value)
+
+    def _core_package(self) -> str:
+        return str(self.config.get("core_package", "flext_core"))
+
+    def _alias_to_submodule(self) -> t.StrMapping:
+        value = self.config.get("alias_to_submodule", {})
+        if not isinstance(value, dict):
+            return {}
+        return {str(key): str(item) for key, item in value.items()}
+
+
+class FlextInfraRefactorSymbolPropagationRule(FlextInfraRefactorRule):
+    """Apply declarative module/symbol renames for workspace-wide propagation.
+
+    Inlined from rules/symbol_propagation.py — config extraction + direct
+    FlextInfraRefactorSymbolPropagator usage.
+    """
+
+    @override
+    def apply(
+        self,
+        tree: cst.Module,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+        typed_cfg: Mapping[str, t.Infra.InfraValue] = (
+            INFRA_MAPPING_ADAPTER.validate_python(self.config)
+        )
+        target_modules_raw = typed_cfg.get("target_modules", [])
+        module_renames_raw = typed_cfg.get("module_renames", {})
+        symbol_renames_raw = typed_cfg.get("import_symbol_renames", {})
+        target_modules = set(u.Infra.string_list(target_modules_raw))
+        try:
+            module_renames: Mapping[str, str] = STR_MAPPING_ADAPTER.validate_python(
+                module_renames_raw,
+            )
+        except ValidationError:
+            module_renames = {}
+        try:
+            symbol_renames: Mapping[str, str] = STR_MAPPING_ADAPTER.validate_python(
+                symbol_renames_raw,
+            )
+        except ValidationError:
+            symbol_renames = {}
+        if not target_modules and (not module_renames) and (not symbol_renames):
+            return (tree, [])
+        transformer = FlextInfraRefactorSymbolPropagator(
+            target_modules=target_modules,
+            module_renames=module_renames,
+            import_symbol_renames=symbol_renames,
+        )
+        return (tree.visit(transformer), transformer.changes)
+
+
+class FlextInfraRefactorSignaturePropagationRule(FlextInfraRefactorRule):
+    """Apply declarative signature migrations in a generic, workspace-safe way.
+
+    Inlined from rules/symbol_propagation.py — config extraction + direct
+    FlextInfraRefactorSignaturePropagator usage.
+    """
+
+    @override
+    def apply(
+        self,
+        tree: cst.Module,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+        migrations_raw = self.config.get("signature_migrations", [])
+        try:
+            parsed: Sequence[m.Infra.SignatureMigration] = (
+                _SIG_MIGRATION_SEQ_ADAPTER.validate_python(migrations_raw)
+            )
+        except ValidationError:
+            return (tree, [])
+        migrations = [item for item in parsed if item.enabled]
+        if not migrations:
+            return (tree, [])
+        transformer = FlextInfraRefactorSignaturePropagator(migrations=migrations)
+        wrapper = MetadataWrapper(tree)
+        return (wrapper.visit(transformer), transformer.changes)
+
+
+class FlextInfraRefactorClassReconstructorRule(FlextInfraRefactorRule):
+    """Apply class method ordering reconstruction to matching class nodes.
+
+    Inlined from rules/class_reconstructor.py — config extraction + direct
+    FlextInfraRefactorClassReconstructor usage.
+    """
+
+    @override
+    def apply(
+        self,
+        tree: cst.Module,
+        _file_path: Path | None = None,
+    ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
+        """Apply method reordering transformer when order config is available."""
+        order_config_raw = self.config.get("method_order") or self.config.get(
+            "order",
+            [],
+        )
+        try:
+            order_config: Sequence[t.Infra.ContainerDict] = (
+                CONTAINER_DICT_SEQ_ADAPTER.validate_python(order_config_raw)
+            )
+        except ValidationError:
+            return (tree, [])
+        if not order_config:
+            return (tree, [])
+        return self._apply_transformer(
+            FlextInfraRefactorClassReconstructor(order_config=order_config),
+            tree,
+        )
 
 
 class FlextInfraRefactorEngine:
@@ -818,4 +1036,13 @@ class FlextInfraRefactorEngine:
         return Path(__file__).parent / "config.yml"
 
 
-__all__ = ["FlextInfraRefactorEngine"]
+__all__ = [
+    "FlextInfraRefactorClassReconstructorRule",
+    "FlextInfraRefactorEngine",
+    "FlextInfraRefactorMRORedundancyChecker",
+    "FlextInfraRefactorSignaturePropagationRule",
+    "FlextInfraRefactorSymbolPropagationRule",
+    "FlextInfraRefactorTier0ImportFixRule",
+    "FlextInfraRefactorTypingAnnotationFixRule",
+    "FlextInfraRefactorTypingUnificationRule",
+]

@@ -114,7 +114,9 @@ class TestRunProjectsReports:
             project="p1",
             gates={"lint": _make_gate_exec(passed=False)},
         )
-        monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
+        monkeypatch.setattr(
+            checker, "_check_project_with_ctx", _check_project_stub(project)
+        )
         _setup_project(tmp_path, "p1")
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
@@ -131,7 +133,9 @@ class TestRunProjectsReports:
             project="p1",
             gates={"lint": _make_gate_exec(passed=True)},
         )
-        monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
+        monkeypatch.setattr(
+            checker, "_check_project_with_ctx", _check_project_stub(project)
+        )
         _setup_project(tmp_path, "p1")
         result = checker.run_projects(["p1"], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
@@ -162,7 +166,7 @@ class TestRunProjectsBehavior:
                 gates={"lint": _make_gate_exec(passed=False)},
             )
 
-        monkeypatch.setattr(checker, "_check_project", _fake_check)
+        monkeypatch.setattr(checker, "_check_project_with_ctx", _fake_check)
         for name in ["p1", "p2", "p3"]:
             _setup_project(tmp_path, name)
         result = checker.run_projects(
@@ -190,7 +194,9 @@ class TestRunProjectsBehavior:
         )
         gate_exec = _make_gate_exec(passed=True, issues=[issue])
         project = m.Infra.ProjectResult(project="p1", gates={"lint": gate_exec})
-        monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
+        monkeypatch.setattr(
+            checker, "_check_project_with_ctx", _check_project_stub(project)
+        )
         _setup_project(tmp_path, "p1")
         result = checker.run_projects(
             ["p1"],
@@ -221,7 +227,7 @@ class TestRunProjectsBehavior:
         project2 = m.Infra.ProjectResult(project="p2", gates={"lint": exec_without})
         monkeypatch.setattr(
             checker,
-            "_check_project",
+            "_check_project_with_ctx",
             _iter_check_project_stub([project1, project2]),
         )
         for name in ["p1", "p2"]:
@@ -251,7 +257,9 @@ class TestRunSingleProject:
             project="p1",
             gates={"lint": _make_gate_exec(passed=True)},
         )
-        monkeypatch.setattr(checker, "_check_project", _check_project_stub(project))
+        monkeypatch.setattr(
+            checker, "_check_project_with_ctx", _check_project_stub(project)
+        )
         result = checker.run("p1", ["lint"])
         tm.ok(result)
         tm.that(len(result.value), eq=1)

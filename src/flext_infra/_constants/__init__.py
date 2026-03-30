@@ -13,6 +13,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra._constants import base, census, cst, rope
     from flext_infra._constants.base import FlextInfraConstantsBase
     from flext_infra._constants.census import FlextInfraConstantsCensus
     from flext_infra._constants.cst import FlextInfraConstantsCst
@@ -32,6 +33,10 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "flext_infra._constants.rope",
         "FlextInfraConstantsRope",
     ],
+    "base": ["flext_infra._constants.base", ""],
+    "census": ["flext_infra._constants.census", ""],
+    "cst": ["flext_infra._constants.cst", ""],
+    "rope": ["flext_infra._constants.rope", ""],
 }
 
 __all__ = [
@@ -39,6 +44,10 @@ __all__ = [
     "FlextInfraConstantsCensus",
     "FlextInfraConstantsCst",
     "FlextInfraConstantsRope",
+    "base",
+    "census",
+    "cst",
+    "rope",
 ]
 
 

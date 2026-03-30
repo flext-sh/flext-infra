@@ -13,6 +13,7 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.refactor import test_rope_semantic, test_rope_stubs
     from tests.refactor.test_rope_semantic import (
         TestFindDefinitionOffset,
         TestGetClassBases,
@@ -56,6 +57,8 @@ _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
         "tests.refactor.test_rope_stubs",
         "test_rope_rename_import",
     ],
+    "test_rope_semantic": ["tests.refactor.test_rope_semantic", ""],
+    "test_rope_stubs": ["tests.refactor.test_rope_stubs", ""],
 }
 
 __all__ = [
@@ -70,6 +73,8 @@ __all__ = [
     "test_rope_find_occurrences_import",
     "test_rope_import",
     "test_rope_rename_import",
+    "test_rope_semantic",
+    "test_rope_stubs",
 ]
 
 

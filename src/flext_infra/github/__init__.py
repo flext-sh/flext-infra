@@ -20,14 +20,17 @@ from flext_core.lazy import cleanup_submodule_namespace, lazy_getattr
 if TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from flext_infra.github import cli
     from flext_infra.github.cli import FlextInfraCliGithub
 
 _LAZY_IMPORTS: Mapping[str, Sequence[str]] = {
     "FlextInfraCliGithub": ["flext_infra.github.cli", "FlextInfraCliGithub"],
+    "cli": ["flext_infra.github.cli", ""],
 }
 
 __all__ = [
     "FlextInfraCliGithub",
+    "cli",
 ]
 
 
