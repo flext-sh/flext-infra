@@ -18,7 +18,7 @@ from pathlib import Path
 from flext_core import FlextRuntime, FlextUtilities
 from pydantic import model_validator
 
-from flext_infra import m, output, t
+from flext_infra import FlextInfraUtilitiesOutput, m, t
 
 
 class _SharedFlags(m.FrozenStrictModel):
@@ -518,10 +518,10 @@ class FlextInfraUtilitiesCli:
                 return exit_value
             if exit_value is None:
                 return 0
-            output.error(str(exit_value))
+            FlextInfraUtilitiesOutput.error(str(exit_value))
             return 1
         except Exception as exc:
-            output.error(str(exc))
+            FlextInfraUtilitiesOutput.error(str(exc))
             return 1
 
 

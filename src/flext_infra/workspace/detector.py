@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
-from flext_infra import c, output, r, s, u
+from flext_infra import c, r, s, u
 
 
 @unique
@@ -74,18 +74,20 @@ class FlextInfraWorkspaceDetector(s[FlextInfraWorkspaceMode]):
             parent = resolved_project_root.parent
             git_marker = parent / c.Infra.Git.DIR
             if not git_marker.exists():
-                output.info("Running in standalone mode (no parent workspace detected)")
+                u.Infra.info(
+                    "Running in standalone mode (no parent workspace detected)"
+                )
                 return r[FlextInfraWorkspaceMode].ok(FlextInfraWorkspaceMode.STANDALONE)
             result = u.Infra.git_run(
                 ["config", "--get", "remote.origin.url"],
                 cwd=parent,
             )
             if result.is_failure:
-                output.info("Running in standalone mode (unable to detect workspace)")
+                u.Infra.info("Running in standalone mode (unable to detect workspace)")
                 return r[FlextInfraWorkspaceMode].ok(FlextInfraWorkspaceMode.STANDALONE)
             origin = result.value.strip()
             if not origin:
-                output.info("Running in standalone mode (no remote origin found)")
+                u.Infra.info("Running in standalone mode (no remote origin found)")
                 return r[FlextInfraWorkspaceMode].ok(FlextInfraWorkspaceMode.STANDALONE)
             repo_name = self._repo_name_from_url(origin)
             mode = (
@@ -94,10 +96,10 @@ class FlextInfraWorkspaceDetector(s[FlextInfraWorkspaceMode]):
                 else FlextInfraWorkspaceMode.STANDALONE
             )
             if mode == FlextInfraWorkspaceMode.STANDALONE:
-                output.info(f"Running in standalone mode (parent repo: {repo_name})")
+                u.Infra.info(f"Running in standalone mode (parent repo: {repo_name})")
             return r[FlextInfraWorkspaceMode].ok(mode)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
-            output.info(f"Running in standalone mode (detection error: {exc})")
+            u.Infra.info(f"Running in standalone mode (detection error: {exc})")
             return r[FlextInfraWorkspaceMode].fail(f"Detection failed: {exc}")
 
     @override

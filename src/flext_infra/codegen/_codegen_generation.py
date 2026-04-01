@@ -52,6 +52,18 @@ def _format_import(
     ]
 
 
+def _format_module_alias_import(
+    indent: str,
+    mod: str,
+    export_name: str,
+) -> str:
+    """Format a module import that binds the module object to an alias."""
+    if mod.startswith(".") and mod != ".":
+        parent_mod, _, child_name = mod.rpartition(".")
+        return f"{indent}from {parent_mod or '.'} import {child_name} as {export_name}"
+    return f"{indent}import {mod} as {export_name}"
+
+
 def _group_imports(
     import_map: t.Infra.LazyImportMap,
 ) -> Mapping[str, MutableSequence[t.Infra.StrPair]]:
@@ -89,14 +101,7 @@ class FlextInfraCodegenGeneration:
                 key=lambda x: (x[1], x[0] != x[1]),
             )
             for export_name, _ in alias_items:
-                if mod.startswith(".") and mod != ".":
-                    parent_mod, _, child_name = mod.rpartition(".")
-                    lines.append(
-                        f"{indent}from {parent_mod or '.'} import {child_name} "
-                        f"as {export_name}",
-                    )
-                else:
-                    lines.append(f"{indent}import {mod} as {export_name}")
+                lines.append(_format_module_alias_import(indent, mod, export_name))
             if not sorted_items:
                 return
             parts: Sequence[str] = [
@@ -173,7 +178,18 @@ class FlextInfraCodegenGeneration:
 
         for mod in sorted(external_imports, key=str.lower):
             parts = sorted(set(external_imports[mod]))
-            lines.extend(_format_import("    ", mod, parts))
+            alias_exports = [
+                part.removeprefix("import::")
+                for part in parts
+                if part.startswith("import::")
+            ]
+            symbol_parts = tuple(
+                part for part in parts if not part.startswith("import::")
+            )
+            for export_name in alias_exports:
+                lines.append(_format_module_alias_import("    ", mod, export_name))
+            if symbol_parts:
+                lines.extend(_format_import("    ", mod, symbol_parts))
 
         return () if len(lines) == 1 else lines
 
@@ -309,30 +325,41 @@ def _emit_type_checking_module(
     lines: MutableSequence[str],
     external_imports: MutableMapping[str, MutableSequence[str]],
 ) -> None:
-    """Emit TYPE_CHECKING lines for a single module."""
-    if mod in children and ".fixtures." not in mod:
-        lines.append(f"    from {mod} import *")
+    """Emit TYPE_CHECKING lines for a single module using explicit imports only."""
+    alias_exports: MutableSequence[str] = []
+    parts: MutableSequence[str] = []
+    module_basename = mod.rsplit(".", maxsplit=1)[-1]
+    for export_name, attr_name in sorted(
+        items,
+        key=lambda item: (item[1] or item[0], item[0] != (item[1] or item[0])),
+    ):
+        if not attr_name:
+            if export_name == module_basename:
+                alias_exports.append(export_name)
+            else:
+                parts.append(export_name)
+            continue
+        parts.append(
+            export_name if export_name == attr_name else f"{attr_name} as {export_name}"
+        )
+
+    deduped_aliases = tuple(dict.fromkeys(alias_exports))
+    deduped_parts = tuple(dict.fromkeys(parts))
+    if not deduped_aliases and not deduped_parts:
         return
 
-    attr_items = [(exp, attr) for exp, attr in items if attr]
-    if attr_items:
-        mod_leaf = mod.rsplit(".", maxsplit=1)[-1]
-        is_test_file = mod_leaf.startswith("test_") or mod_leaf.endswith("_test")
-        use_star = (
-            _is_local_module(mod, root_name)
-            and ".fixtures." not in mod
-            and not is_test_file
-        )
-        if use_star:
-            lines.append(f"    from {mod} import *")
-        else:
-            external_imports[mod].extend(
-                exp if exp == attr else f"{attr} as {exp}" for exp, attr in attr_items
-            )
+    if mod in children or (
+        _is_local_module(mod, root_name) and ".fixtures." not in mod
+    ):
+        for export_name in deduped_aliases:
+            lines.append(_format_module_alias_import("    ", mod, export_name))
+        if deduped_parts:
+            lines.extend(_format_import("    ", mod, deduped_parts))
+        return
 
-    alias_items = [exp for exp, attr in items if not attr]
-    if alias_items and not _is_local_module(mod, root_name):
-        external_imports[mod].extend(alias_items)
+    for export_name in deduped_aliases:
+        external_imports[mod].append(f"import::{export_name}")
+    external_imports[mod].extend(deduped_parts)
 
 
 def _build_lazy_entries(

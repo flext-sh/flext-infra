@@ -17,7 +17,7 @@ class TestFlextInfraBaseMk:
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:
         """Test __getattr__ raises AttributeError for unknown attributes."""
         with pytest.raises(AttributeError):
-            _ = basemk_module.nonexistent_symbol_xyz
+            _ = getattr(basemk_module, "nonexistent_symbol_xyz")
 
     def test_lazy_import_template_engine(self) -> None:
         """Test lazy import of FlextInfraBaseMkTemplateEngine."""

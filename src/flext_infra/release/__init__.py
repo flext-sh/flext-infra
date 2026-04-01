@@ -20,10 +20,11 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.release._constants import *
-    from flext_infra.release._models import *
-    from flext_infra.release.cli import *
-    from flext_infra.release.orchestrator import *
+    from flext_infra.release import _constants, _models, cli, orchestrator
+    from flext_infra.release._constants import FlextInfraReleaseConstants
+    from flext_infra.release._models import FlextInfraReleaseModels
+    from flext_infra.release.cli import FlextInfraCliRelease
+    from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraCliRelease": "flext_infra.release.cli",

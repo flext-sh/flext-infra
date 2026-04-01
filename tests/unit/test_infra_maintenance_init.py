@@ -17,7 +17,7 @@ class TestFlextInfraMaintenance:
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:
         """Test __getattr__ raises AttributeError for unknown attributes."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.workspace.maintenance.nonexistent_symbol_xyz
+            _ = getattr(flext_infra.workspace.maintenance, "nonexistent_symbol_xyz")
 
     def test_lazy_import_python_version_enforcer(self) -> None:
         """Test lazy import of FlextInfraPythonVersionEnforcer."""

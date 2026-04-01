@@ -13,13 +13,33 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.rules.class_nesting import *
-    from flext_infra.rules.class_reconstructor import *
-    from flext_infra.rules.ensure_future_annotations import *
-    from flext_infra.rules.import_modernizer import *
-    from flext_infra.rules.legacy_removal import *
-    from flext_infra.rules.mro_class_migration import *
-    from flext_infra.rules.pattern_corrections import *
+    from flext_infra.rules import (
+        class_nesting,
+        class_reconstructor,
+        ensure_future_annotations,
+        import_modernizer,
+        legacy_removal,
+        mro_class_migration,
+        pattern_corrections,
+    )
+    from flext_infra.rules.class_nesting import FlextInfraClassNestingRefactorRule
+    from flext_infra.rules.class_reconstructor import (
+        FlextInfraPreCheckGate,
+        FlextInfraRefactorClassNestingReconstructor,
+    )
+    from flext_infra.rules.ensure_future_annotations import (
+        FlextInfraRefactorEnsureFutureAnnotationsRule,
+    )
+    from flext_infra.rules.import_modernizer import (
+        FlextInfraRefactorImportModernizerRule,
+    )
+    from flext_infra.rules.legacy_removal import FlextInfraRefactorLegacyRemovalRule
+    from flext_infra.rules.mro_class_migration import (
+        FlextInfraRefactorMROClassMigrationRule,
+    )
+    from flext_infra.rules.pattern_corrections import (
+        FlextInfraRefactorPatternCorrectionsRule,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraClassNestingRefactorRule": "flext_infra.rules.class_nesting",

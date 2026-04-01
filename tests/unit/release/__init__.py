@@ -13,16 +13,59 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.unit.release._stubs import *
-    from tests.unit.release.flow_tests import *
-    from tests.unit.release.main_tests import *
-    from tests.unit.release.orchestrator_git_tests import *
-    from tests.unit.release.orchestrator_helpers_tests import *
-    from tests.unit.release.orchestrator_phases_tests import *
-    from tests.unit.release.orchestrator_publish_tests import *
-    from tests.unit.release.orchestrator_tests import *
-    from tests.unit.release.release_init_tests import *
-    from tests.unit.release.version_resolution_tests import *
+    from tests.unit.release import (
+        _stubs,
+        flow_tests,
+        main_tests,
+        orchestrator_git_tests,
+        orchestrator_helpers_tests,
+        orchestrator_phases_tests,
+        orchestrator_publish_tests,
+        orchestrator_tests,
+        release_init_tests,
+        version_resolution_tests,
+    )
+    from tests.unit.release._stubs import (
+        FakeReporting,
+        FakeSelection,
+        FakeSubprocess,
+        FakeUtilsNamespace,
+        FakeVersioning,
+    )
+    from tests.unit.release.flow_tests import TestReleaseMainFlow, main
+    from tests.unit.release.main_tests import TestReleaseMainParsing
+    from tests.unit.release.orchestrator_git_tests import (
+        TestCollectChanges,
+        TestCreateBranches,
+        TestCreateTag,
+        TestPreviousTag,
+        TestPushRelease,
+    )
+    from tests.unit.release.orchestrator_helpers_tests import (
+        TestBuildTargets,
+        TestBumpNextDev,
+        TestDispatchPhase,
+        TestGenerateNotes,
+        TestRunMake,
+        TestUpdateChangelog,
+        TestVersionFiles,
+    )
+    from tests.unit.release.orchestrator_phases_tests import (
+        TestPhaseBuild,
+        TestPhaseValidate,
+        TestPhaseVersion,
+    )
+    from tests.unit.release.orchestrator_publish_tests import TestPhasePublish
+    from tests.unit.release.orchestrator_tests import (
+        TestReleaseOrchestratorExecute,
+        workspace_root,
+    )
+    from tests.unit.release.release_init_tests import TestReleaseInit
+    from tests.unit.release.version_resolution_tests import (
+        TestReleaseMainTagResolution,
+        TestReleaseMainVersionResolution,
+        TestResolveVersionInteractive,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FakeReporting": "tests.unit.release._stubs",

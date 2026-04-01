@@ -14,7 +14,7 @@ import hashlib
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfraBaseMkGenerator, c, m, output, r, s, t, u
+from flext_infra import FlextInfraBaseMkGenerator, c, m, r, s, t, u
 
 
 class FlextInfraSyncService(s[m.Infra.SyncResult]):
@@ -302,7 +302,7 @@ class FlextInfraSyncService(s[m.Infra.SyncResult]):
         )
         if result.is_success:
             return 0
-        output.error(result.error or "sync failed")
+        u.Infra.error(result.error or "sync failed")
         return 1
 
 

@@ -13,15 +13,64 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.unit.validate.basemk_validator_tests import *
-    from tests.unit.validate.init_tests import *
-    from tests.unit.validate.inventory_tests import *
-    from tests.unit.validate.main_cli_tests import *
-    from tests.unit.validate.main_tests import *
-    from tests.unit.validate.pytest_diag import *
-    from tests.unit.validate.scanner_tests import *
-    from tests.unit.validate.skill_validator_tests import *
-    from tests.unit.validate.stub_chain_tests import *
+    from tests.unit.validate import (
+        basemk_validator_tests,
+        init_tests,
+        inventory_tests,
+        main_cli_tests,
+        main_tests,
+        pytest_diag,
+        scanner_tests,
+        skill_validator_tests,
+        stub_chain_tests,
+    )
+    from tests.unit.validate.basemk_validator_tests import (
+        TestBaseMkValidatorCore,
+        TestBaseMkValidatorEdgeCases,
+        TestBaseMkValidatorSha256,
+        v,
+    )
+    from tests.unit.validate.init_tests import TestCoreModuleInit
+    from tests.unit.validate.inventory_tests import (
+        TestInventoryServiceCore,
+        TestInventoryServiceReports,
+        TestInventoryServiceScripts,
+    )
+    from tests.unit.validate.main_cli_tests import (
+        test_stub_validate_help_returns_zero,
+        test_stub_validate_uses_all_flag,
+    )
+    from tests.unit.validate.main_tests import (
+        TestMainBaseMkValidate,
+        TestMainCliRouting,
+        TestMainInventory,
+        TestMainScan,
+    )
+    from tests.unit.validate.pytest_diag import (
+        TestPytestDiagExtractorCore,
+        TestPytestDiagLogParsing,
+        TestPytestDiagParseXml,
+    )
+    from tests.unit.validate.scanner_tests import (
+        TestScannerCore,
+        TestScannerHelpers,
+        TestScannerMultiFile,
+    )
+    from tests.unit.validate.skill_validator_tests import (
+        TestSafeLoadYaml,
+        TestSkillValidatorAstGrepCount,
+        TestSkillValidatorCore,
+        TestSkillValidatorRenderTemplate,
+        TestStringList,
+    )
+    from tests.unit.validate.stub_chain_tests import (
+        TestStubChainAnalyze,
+        TestStubChainCore,
+        TestStubChainDiscoverProjects,
+        TestStubChainIsInternal,
+        TestStubChainStubExists,
+        TestStubChainValidate,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "TestBaseMkValidatorCore": "tests.unit.validate.basemk_validator_tests",

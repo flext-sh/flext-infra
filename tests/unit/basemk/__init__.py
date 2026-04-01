@@ -13,6 +13,14 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.basemk import (
+        test_engine,
+        test_generator,
+        test_generator_edge_cases,
+        test_init,
+        test_main,
+        test_make_contract,
+    )
     from tests.unit.basemk.test_engine import (
         basemk_main,
         test_basemk_cli_generate_to_file,

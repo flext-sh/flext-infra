@@ -22,7 +22,6 @@ from flext_infra import (
     FlextInfraConstants as c,
     FlextInfraTypes as t,
     FlextInfraUtilities as u,
-    output,
 )
 from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
 
@@ -81,7 +80,7 @@ class FlextInfraCli(
         if group == "deps":
             return FlextInfraCliDeps.run(group_args)
         if group not in self.GROUPS:
-            output.error(f"unknown group '{group}'")
+            u.Infra.error(f"unknown group '{group}'")
             self.print_help()
             return 1
         return self._run_group(group, group_args)
@@ -89,10 +88,10 @@ class FlextInfraCli(
     @classmethod
     def print_help(cls) -> None:
         """Display the canonical command groups."""
-        output.info("Usage: flext-infra <group> [subcommand] [args...]")
-        output.header("Groups")
+        u.Infra.info("Usage: flext-infra <group> [subcommand] [args...]")
+        u.Infra.header("Groups")
         for group in sorted(cls.GROUPS):
-            output.info(f"  {group:<16}{cls.GROUPS[group]}")
+            u.Infra.info(f"  {group:<16}{cls.GROUPS[group]}")
 
     def _run_group(self, group: str, args: t.StrSequence) -> int:
         """Execute a registered flext-cli group."""

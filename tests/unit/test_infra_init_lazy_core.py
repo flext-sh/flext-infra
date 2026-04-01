@@ -22,18 +22,18 @@ class TestFlextInfraInitLazyLoading:
     def test_getattr_nonexistent_name_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute raises AttributeError."""
         with pytest.raises(AttributeError) as exc_info:
-            _ = flext_infra.NonexistentAttribute
+            _ = getattr(flext_infra, "NonexistentAttribute")
         assert "NonexistentAttribute" in str(exc_info.value)
 
     def test_getattr_invalid_name_raises_attribute_error(self) -> None:
         """Test that accessing invalid attribute raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.InvalidNameThatDoesNotExist
+            _ = getattr(flext_infra, "InvalidNameThatDoesNotExist")
 
     def test_getattr_typo_in_name_raises_attribute_error(self) -> None:
         """Test that typos in attribute names raise AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.FlextInfraConstantsTypo
+            _ = getattr(flext_infra, "FlextInfraConstantsTypo")
 
     def test_dir_returns_all_exports(self) -> None:
         """Test that dir() returns all exported names."""

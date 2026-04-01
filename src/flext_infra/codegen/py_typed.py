@@ -17,7 +17,7 @@ from typing import override
 
 from flext_core import r, s
 
-from flext_infra import c, output
+from flext_infra import c, u
 
 
 class FlextInfraCodegenPyTyped(s[int]):
@@ -70,7 +70,7 @@ class FlextInfraCodegenPyTyped(s[int]):
                         marker.unlink()
                     removed += 1
         mode = "check" if check_only else "apply"
-        output.info(
+        u.Infra.info(
             f"py.typed {mode}: {created} created, {removed} removed",
         )
         return created + removed

@@ -13,6 +13,10 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.discovery import (
+        test_infra_discovery,
+        test_infra_discovery_edge_cases,
+    )
     from tests.unit.discovery.test_infra_discovery import TestFlextInfraDiscoveryService
     from tests.unit.discovery.test_infra_discovery_edge_cases import (
         TestFlextInfraDiscoveryServiceUncoveredLines,

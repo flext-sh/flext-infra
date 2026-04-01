@@ -13,11 +13,15 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.check._constants import *
-    from flext_infra.check._models import *
-    from flext_infra.check.cli import *
-    from flext_infra.check.services import *
-    from flext_infra.check.workspace_check import *
+    from flext_infra.check import _constants, _models, cli, services, workspace_check
+    from flext_infra.check._constants import FlextInfraCheckConstants
+    from flext_infra.check._models import FlextInfraCheckModels
+    from flext_infra.check.cli import FlextInfraCliCheck
+    from flext_infra.check.services import (
+        FlextInfraConfigFixer,
+        FlextInfraWorkspaceChecker,
+    )
+    from flext_infra.check.workspace_check import build_parser, main, run_cli
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraCheckConstants": "flext_infra.check._constants",

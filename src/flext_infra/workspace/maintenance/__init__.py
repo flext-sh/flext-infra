@@ -19,8 +19,12 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.workspace.maintenance.cli import *
-    from flext_infra.workspace.maintenance.python_version import *
+    from flext_infra.workspace.maintenance import cli, python_version
+    from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
+    from flext_infra.workspace.maintenance.python_version import (
+        FlextInfraPythonVersionEnforcer,
+        logger,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraCliMaintenance": "flext_infra.workspace.maintenance.cli",

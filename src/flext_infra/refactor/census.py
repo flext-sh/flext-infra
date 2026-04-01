@@ -17,7 +17,6 @@ from flext_infra import (
     FlextInfraCensusUsageCollector,
     c,
     m,
-    output,
     r,
     u,
 )
@@ -42,7 +41,7 @@ class FlextInfraRefactorCensus:
             c.Infra.Census.DEFAULT_FAMILY,
         )
         t0 = time.monotonic()
-        output.header(f"Usage Census — family={target.family} ({target.class_suffix})")
+        u.Infra.header(f"Usage Census — family={target.family} ({target.class_suffix})")
 
         pkg = (
             workspace_root
@@ -58,7 +57,7 @@ class FlextInfraRefactorCensus:
         )
 
         # 1-3. Metadata & Discovery
-        output.progress(1, 5, "Metadata gathering", "metadata")
+        u.Infra.progress(1, 5, "Metadata gathering", "metadata")
         parsed = (
             u.Infra.extract_public_methods_from_dir(pkg)
             if pkg.is_dir()
@@ -77,7 +76,7 @@ class FlextInfraRefactorCensus:
         inner = u.Infra.build_facade_inner_class_map(facade, target.facade_class_prefix)
 
         # 4. Scanning & Visitors
-        output.progress(4, 5, "scan-files", "libcst")
+        u.Infra.progress(4, 5, "scan-files", "libcst")
         files_result = u.Infra.iter_workspace_python_modules(
             workspace_root,
             exclude_packages=frozenset({target.core_project}),
@@ -94,7 +93,7 @@ class FlextInfraRefactorCensus:
         errs = usage = 0
         for i, fp in enumerate(files, 1):
             if i % 500 == 0:
-                output.info(f"  [{i}/{len(files)}] scanned...")
+                u.Infra.info(f"  [{i}/{len(files)}] scanned...")
 
             project = u.Infra.identify_project_by_roots(fp, roots)
             imp = FlextInfraCensusImportDiscoveryVisitor(
@@ -118,12 +117,12 @@ class FlextInfraRefactorCensus:
                 usage += 1
                 recs.extend(col.records)
 
-        output.info(f"Files with usage: {usage}, parse errors: {errs}")
+        u.Infra.info(f"Files with usage: {usage}, parse errors: {errs}")
 
         # 5. Rollup and format
-        output.progress(5, 5, "aggregate", "report")
+        u.Infra.progress(5, 5, "aggregate", "report")
         rep = u.Infra.aggregate_usage_metrics(methods, recs, len(files), errs)
-        output.summary(
+        u.Infra.summary(
             m.Infra.SummaryStats(
                 verb="census",
                 total=rep.total_methods,

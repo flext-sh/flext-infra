@@ -16,7 +16,7 @@ class TestFlextInfraDeps:
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:
         """Test __getattr__ raises AttributeError for unknown attributes."""
         with pytest.raises(AttributeError):
-            _ = deps_mod.nonexistent_symbol_xyz
+            _ = getattr(deps_mod, "nonexistent_symbol_xyz")
 
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""

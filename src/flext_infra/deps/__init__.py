@@ -20,18 +20,57 @@ from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.deps._constants import *
-    from flext_infra.deps._detector_runtime import *
-    from flext_infra.deps._models import *
-    from flext_infra.deps._phases import *
-    from flext_infra.deps.cli import *
-    from flext_infra.deps.detection import *
-    from flext_infra.deps.detector import *
-    from flext_infra.deps.extra_paths import *
-    from flext_infra.deps.fix_pyrefly_config import *
-    from flext_infra.deps.internal_sync import *
-    from flext_infra.deps.modernizer import *
-    from flext_infra.deps.path_sync import *
+    from flext_infra.deps import (
+        _constants,
+        _detector_runtime,
+        _models,
+        _phases,
+        cli,
+        detection,
+        detector,
+        extra_paths,
+        fix_pyrefly_config,
+        internal_sync,
+        modernizer,
+        path_sync,
+    )
+    from flext_infra.deps._constants import FlextInfraDepsConstants
+    from flext_infra.deps._detector_runtime import FlextInfraDependencyDetectorRuntime
+    from flext_infra.deps._models import FlextInfraDepsModels
+    from flext_infra.deps._phases import (
+        FlextInfraConsolidateGroupsPhase,
+        FlextInfraEnsureCoverageConfigPhase,
+        FlextInfraEnsureExtraPathsPhase,
+        FlextInfraEnsureFormattingToolingPhase,
+        FlextInfraEnsureMypyConfigPhase,
+        FlextInfraEnsureNamespaceToolingPhase,
+        FlextInfraEnsurePydanticMypyConfigPhase,
+        FlextInfraEnsurePyreflyConfigPhase,
+        FlextInfraEnsurePyrightConfigPhase,
+        FlextInfraEnsurePytestConfigPhase,
+        FlextInfraEnsureRuffConfigPhase,
+        FlextInfraInjectCommentsPhase,
+        consolidate_groups,
+        ensure_coverage,
+        ensure_extra_paths,
+        ensure_formatting,
+        ensure_mypy,
+        ensure_namespace,
+        ensure_pydantic_mypy,
+        ensure_pyrefly,
+        ensure_pyright,
+        ensure_pytest,
+        ensure_ruff,
+        inject_comments,
+    )
+    from flext_infra.deps.cli import FlextInfraCliDeps
+    from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+    from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector, main
+    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+    from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
+    from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
+    from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+    from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(
     ("flext_infra.deps._phases",),

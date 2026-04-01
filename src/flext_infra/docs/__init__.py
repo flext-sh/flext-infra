@@ -20,14 +20,24 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.docs._constants import *
-    from flext_infra.docs._models import *
-    from flext_infra.docs.auditor import *
-    from flext_infra.docs.builder import *
-    from flext_infra.docs.cli import *
-    from flext_infra.docs.fixer import *
-    from flext_infra.docs.generator import *
-    from flext_infra.docs.validator import *
+    from flext_infra.docs import (
+        _constants,
+        _models,
+        auditor,
+        builder,
+        cli,
+        fixer,
+        generator,
+        validator,
+    )
+    from flext_infra.docs._constants import FlextInfraDocsConstants
+    from flext_infra.docs._models import FlextInfraDocsModels
+    from flext_infra.docs.auditor import FlextInfraDocAuditor, main
+    from flext_infra.docs.builder import FlextInfraDocBuilder
+    from flext_infra.docs.cli import FlextInfraCliDocs, FlextInfraDocsCli
+    from flext_infra.docs.fixer import FlextInfraDocFixer
+    from flext_infra.docs.generator import FlextInfraDocGenerator
+    from flext_infra.docs.validator import FlextInfraDocValidator
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraCliDocs": "flext_infra.docs.cli",

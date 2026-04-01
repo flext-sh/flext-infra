@@ -20,11 +20,12 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.basemk._constants import *
-    from flext_infra.basemk._models import *
-    from flext_infra.basemk.cli import *
-    from flext_infra.basemk.engine import *
-    from flext_infra.basemk.generator import *
+    from flext_infra.basemk import _constants, _models, cli, engine, generator
+    from flext_infra.basemk._constants import FlextInfraBasemkConstants
+    from flext_infra.basemk._models import FlextInfraBasemkModels
+    from flext_infra.basemk.cli import FlextInfraCliBasemk
+    from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
+    from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraBaseMkGenerator": "flext_infra.basemk.generator",

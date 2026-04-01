@@ -17,7 +17,7 @@ from flext_core import FlextLogger, r, s
 from pydantic import JsonValue, ValidationError
 from tomlkit import items
 
-from flext_infra import FlextInfraExtraPathsManager, c, m, output, t, u
+from flext_infra import FlextInfraExtraPathsManager, c, m, t, u
 
 _logger = FlextLogger.create_module_logger(__name__)
 
@@ -256,7 +256,7 @@ class FlextInfraConfigFixer(s[bool]):
             verbose=args.verbose,
         )
         if result.is_failure:
-            output.error(result.error or "pyrefly config fix failed")
+            u.Infra.error(result.error or "pyrefly config fix failed")
             return 1
         return 0
 

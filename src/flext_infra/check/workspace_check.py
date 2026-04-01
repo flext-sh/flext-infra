@@ -19,7 +19,6 @@ from flext_infra import (
     FlextInfraGateRegistry,
     c,
     m,
-    output,
     t,
     u,
 )
@@ -193,7 +192,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 ctx=gate_ctx,
             )
             if run_result.is_failure:
-                output.error(run_result.error or "check failed")
+                u.Infra.error(run_result.error or "check failed")
                 return 2
             run_results: Sequence[m.Infra.ProjectResult] = run_result.value
             failed_projects = [project for project in run_results if not project.passed]
@@ -206,7 +205,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 verbose=args.verbose,
             )
             if fix_result.is_failure:
-                output.error(fix_result.error or "pyrefly config fix failed")
+                u.Infra.error(fix_result.error or "pyrefly config fix failed")
                 return 1
             return 0
         parser.print_help()
@@ -229,7 +228,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
         _ = parser.add_argument("--fail-fast", action="store_true")
         args = parser.parse_args(argv)
         if not args.projects:
-            output.error("no projects specified")
+            u.Infra.error("no projects specified")
             return 1
         checker = FlextInfraWorkspaceChecker()
         gates = FlextInfraWorkspaceChecker.parse_gate_csv(args.gates)
@@ -243,7 +242,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
             fail_fast=args.fail_fast,
         )
         if result.is_failure:
-            output.error(result.error or "workspace check failed")
+            u.Infra.error(result.error or "workspace check failed")
             return 2
         projects = result.value
         failed_projects = [project for project in projects if not project.passed]
@@ -280,7 +279,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
             )
         total_errors = sum(project.total_errors for project in results)
         success = len(results) - outcome.failed
-        output.summary(
+        u.Infra.summary(
             m.Infra.SummaryStats(
                 verb=c.Infra.Verbs.CHECK,
                 total=len(results),
@@ -290,10 +289,10 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 elapsed=outcome.total_elapsed,
             )
         )
-        output.info(f"Reports: {md_path}")
-        output.info(f"         {sarif_path}")
+        u.Infra.info(f"Reports: {md_path}")
+        u.Infra.info(f"         {sarif_path}")
         if total_errors > 0:
-            output.info("Errors by project:")
+            u.Infra.info("Errors by project:")
             for project in sorted(
                 results,
                 key=lambda item: item.total_errors,
@@ -306,7 +305,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
                     for gate in resolved_gates
                     if gate in project.gates and project.gates[gate].issues
                 )
-                output.error(
+                u.Infra.error(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",
                 )
         return r[Sequence[m.Infra.ProjectResult]].ok(results)
@@ -397,9 +396,9 @@ class FlextInfraWorkspaceChecker(s[bool]):
         project_dir = self._workspace_root / project_name
         pyproject_path = project_dir / c.Infra.Files.PYPROJECT_FILENAME
         if not project_dir.is_dir() or not pyproject_path.exists():
-            output.progress(index, total, project_name, c.Infra.Severity.SKIP)
+            u.Infra.progress(index, total, project_name, c.Infra.Severity.SKIP)
             return None
-        output.progress(index, total, project_name, c.Infra.Verbs.CHECK)
+        u.Infra.progress(index, total, project_name, c.Infra.Verbs.CHECK)
         start = time.monotonic()
         project_result = self._check_project_with_ctx(
             project_dir,
@@ -407,7 +406,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
             ctx,
         )
         elapsed = time.monotonic() - start
-        output.status(
+        u.Infra.status(
             c.Infra.Verbs.CHECK,
             project_name,
             project_result.passed,
@@ -503,7 +502,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
                 fix_execution = gate_instance.fix(project_dir, ctx)
                 if not fix_execution.result.passed:
                     result.gates[gate] = fix_execution
-                    output.gate_result(
+                    u.Infra.gate_result(
                         gate,
                         len(fix_execution.issues),
                         fix_execution.result.passed,
@@ -512,7 +511,7 @@ class FlextInfraWorkspaceChecker(s[bool]):
                     continue
             execution = gate_instance.check(project_dir, ctx)
             result.gates[gate] = execution
-            output.gate_result(
+            u.Infra.gate_result(
                 gate,
                 len(execution.issues),
                 execution.result.passed,

@@ -274,4 +274,4 @@ class TestRunRuffFix:
 def test_codegen_init_getattr_raises_attribute_error() -> None:
     """Test that accessing nonexistent attribute raises AttributeError."""
     with pytest.raises(AttributeError):
-        mod.nonexistent_xyz_attribute
+        _ = getattr(mod, "nonexistent_xyz_attribute")

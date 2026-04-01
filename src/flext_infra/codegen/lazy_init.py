@@ -27,7 +27,6 @@ from flext_core import r, s
 from flext_infra import (
     FlextInfraCodegenGeneration,
     c,
-    output,
     t,
     u,
 )
@@ -85,7 +84,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         if not check_only:
             self._fix_import_cycles(pkg_dirs)
 
-        output.info(
+        u.Infra.info(
             f"Lazy-init summary: {ok} generated, {errors} errors"
             f" ({total} dirs scanned)",
         )
@@ -134,10 +133,10 @@ class FlextInfraCodegenLazyInit(s[int]):
             modified, changes = u.Infra.break_import_cycles(pkg_dir)
             if modified:
                 for change in changes:
-                    output.info(f"  CYCLE-FIX: {change}")
+                    u.Infra.info(f"  CYCLE-FIX: {change}")
                 cycle_fixes += len(changes)
         if cycle_fixes:
-            output.info(f"Cycle-fix: {cycle_fixes} circular imports resolved")
+            u.Infra.info(f"Cycle-fix: {cycle_fixes} circular imports resolved")
 
     def _find_package_dirs(self) -> Sequence[Path]:
         """Find all package directories across every workspace project.
@@ -243,7 +242,7 @@ class FlextInfraCodegenLazyInit(s[int]):
 
         # 7b. Version dunder exports must be eager to prevent Python's submodule
         # import mechanism from shadowing them with the __version__ module object.
-        eager_version: t.Infra.LazyImportMap = {}
+        eager_version: t.Infra.MutableLazyImportMap = {}
         for name, entry in version_entries.items():
             eager_version[name] = entry
 
@@ -300,7 +299,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             init_path.write_text(generated, encoding=c.Infra.Encoding.DEFAULT)
             self._run_ruff_fix(init_path)
         except (OSError, ValueError) as exc:
-            output.error(f"generating {init_path}: {exc}")
+            u.Infra.error(f"generating {init_path}: {exc}")
             return (-1, dict(lazy_map))
 
         rel_path = (
@@ -308,7 +307,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             if self._root in init_path.parents
             else init_path
         )
-        output.info(f"  OK: {rel_path} — {len(exports)} exports")
+        u.Infra.info(f"  OK: {rel_path} — {len(exports)} exports")
         return (0, dict(lazy_map))
 
     # ---------------------------------------------------------------------------
@@ -419,7 +418,7 @@ class FlextInfraCodegenLazyInit(s[int]):
 
         sibling_tree = u.Infra.parse_module_ast(py_file)
         if sibling_tree is None:
-            output.warning(f"skipping {py_file.name}: parse failed")
+            u.Infra.warning(f"skipping {py_file.name}: parse failed")
             return
 
         # Prefer __all__ when available

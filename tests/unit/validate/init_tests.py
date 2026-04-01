@@ -19,7 +19,7 @@ class TestCoreModuleInit:
     def test_core_getattr_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute raises AttributeError."""
         with pytest.raises(AttributeError):
-            core_module.nonexistent_xyz_attribute
+            _ = getattr(core_module, "nonexistent_xyz_attribute")
 
     def test_core_dir_returns_all_exports(self) -> None:
         """Test that dir() returns all exported attributes."""

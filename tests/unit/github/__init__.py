@@ -13,11 +13,37 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.unit.github._stubs import *
-    from tests.unit.github.main_cli_tests import *
-    from tests.unit.github.main_dispatch_tests import *
-    from tests.unit.github.main_integration_tests import *
-    from tests.unit.github.main_tests import *
+    from tests.unit.github import (
+        _stubs,
+        _stubs_extra,
+        main_cli_tests,
+        main_dispatch_tests,
+        main_integration_tests,
+        main_tests,
+    )
+    from tests.unit.github._stubs import (
+        StubCommandOutput,
+        StubJsonIo,
+        StubLinter,
+        StubPrManager,
+        StubProjectInfo,
+        StubReporting,
+        StubRunner,
+        StubSelector,
+        StubSyncer,
+        StubTemplates,
+        StubUtilities,
+        StubVersioning,
+        StubWorkspaceManager,
+    )
+    from tests.unit.github.main_cli_tests import (
+        test_main_returns_nonzero_on_unknown,
+        test_main_returns_zero_on_help,
+        test_pr_workspace_accepts_repeated_project_options,
+    )
+    from tests.unit.github.main_dispatch_tests import TestRunPrWorkspace
+    from tests.unit.github.main_integration_tests import TestMain
+    from tests.unit.github.main_tests import TestRunLint, TestRunPr, TestRunWorkflows
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "StubCommandOutput": "tests.unit.github._stubs",

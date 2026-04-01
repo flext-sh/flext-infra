@@ -7,7 +7,7 @@ import sys
 from types import MappingProxyType
 from typing import ClassVar
 
-from flext_infra import output, t, u
+from flext_infra import t, u
 
 
 class FlextInfraCliDeps:
@@ -90,7 +90,7 @@ class FlextInfraCliDeps:
             return 0
         subcommand = raw_args[command_index]
         if subcommand not in cls._SUBCOMMAND_MODULES:
-            output.error(f"flext-infra deps: unknown subcommand '{subcommand}'")
+            u.Infra.error(f"flext-infra deps: unknown subcommand '{subcommand}'")
             parser.print_help()
             return 1
         forwarded_args = [
@@ -103,6 +103,6 @@ class FlextInfraCliDeps:
         except SystemExit as exc:
             return cls._normalize_exit_code(exc.code)
         except Exception as exc:
-            output.error(str(exc))
+            u.Infra.error(str(exc))
             return 1
         return cls._normalize_exit_code(exit_code)

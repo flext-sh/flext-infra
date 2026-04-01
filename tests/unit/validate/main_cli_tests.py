@@ -14,7 +14,6 @@ def test_stub_validate_uses_all_flag(
 ) -> None:
     captured: list[bool] = []
 
-    @staticmethod
     def _mock_handler(params: m.Infra.ValidateStubValidateInput) -> r[bool]:
         captured.append(params.all_projects)
         return r[bool].ok(True)

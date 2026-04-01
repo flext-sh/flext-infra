@@ -13,6 +13,12 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.unit.io import (
+        test_infra_json_io,
+        test_infra_output_edge_cases,
+        test_infra_output_formatting,
+        test_infra_terminal_detection,
+    )
     from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
     from tests.unit.io.test_infra_output_edge_cases import (
         TestInfraOutputEdgeCases,

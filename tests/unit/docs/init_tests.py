@@ -27,7 +27,7 @@ class TestFlextInfraDocs:
     def test_getattr_raises_attribute_error_for_unknown_symbol(self) -> None:
         """Test __getattr__ raises AttributeError for unknown attributes."""
         with pytest.raises(AttributeError):
-            _ = docs_module.nonexistent_symbol_xyz
+            _ = getattr(docs_module, "nonexistent_symbol_xyz")
 
     def test_lazy_import_builder(self) -> None:
         """Test lazy import of FlextInfraDocBuilder."""

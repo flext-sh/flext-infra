@@ -13,30 +13,99 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.transformers._base import *
-    from flext_infra.transformers._utilities_normalizer import *
-    from flext_infra.transformers.alias_remover import *
-    from flext_infra.transformers.census_visitors import *
-    from flext_infra.transformers.class_nesting import *
-    from flext_infra.transformers.class_reconstructor import *
-    from flext_infra.transformers.deprecated_remover import *
-    from flext_infra.transformers.dict_to_mapping import *
-    from flext_infra.transformers.helper_consolidation import *
-    from flext_infra.transformers.import_bypass_remover import *
-    from flext_infra.transformers.import_modernizer import *
-    from flext_infra.transformers.lazy_import_fixer import *
-    from flext_infra.transformers.mro_private_inline import *
-    from flext_infra.transformers.mro_remover import *
-    from flext_infra.transformers.mro_symbol_propagator import *
-    from flext_infra.transformers.nested_class_propagation import *
-    from flext_infra.transformers.policy import *
-    from flext_infra.transformers.redundant_cast_remover import *
-    from flext_infra.transformers.signature_propagator import *
-    from flext_infra.transformers.symbol_propagator import *
-    from flext_infra.transformers.tier0_import_fixer import *
-    from flext_infra.transformers.typing_annotation_replacer import *
-    from flext_infra.transformers.typing_unifier import *
-    from flext_infra.transformers.violation_census_visitor import *
+    from flext_infra.transformers import (
+        _base,
+        _utilities_normalizer,
+        alias_remover,
+        census_visitors,
+        class_nesting,
+        class_reconstructor,
+        deprecated_remover,
+        dict_to_mapping,
+        helper_consolidation,
+        import_bypass_remover,
+        import_modernizer,
+        lazy_import_fixer,
+        mro_private_inline,
+        mro_remover,
+        mro_symbol_propagator,
+        nested_class_propagation,
+        policy,
+        redundant_cast_remover,
+        signature_propagator,
+        symbol_propagator,
+        tier0_import_fixer,
+        typing_annotation_replacer,
+        typing_unifier,
+        violation_census_visitor,
+    )
+    from flext_infra.transformers._base import FlextInfraChangeTrackingTransformer
+    from flext_infra.transformers._utilities_normalizer import (
+        FlextInfraNormalizerContext,
+        FlextInfraUtilitiesImportNormalizer,
+    )
+    from flext_infra.transformers.alias_remover import FlextInfraRefactorAliasRemover
+    from flext_infra.transformers.census_visitors import (
+        FlextInfraCensusImportDiscoveryVisitor,
+        FlextInfraCensusUsageCollector,
+    )
+    from flext_infra.transformers.class_nesting import (
+        FlextInfraRefactorClassNestingTransformer,
+    )
+    from flext_infra.transformers.class_reconstructor import (
+        FlextInfraRefactorClassReconstructor,
+    )
+    from flext_infra.transformers.deprecated_remover import (
+        FlextInfraRefactorDeprecatedRemover,
+    )
+    from flext_infra.transformers.dict_to_mapping import (
+        FlextInfraDictToMappingTransformer,
+    )
+    from flext_infra.transformers.helper_consolidation import (
+        FlextInfraHelperConsolidationTransformer,
+    )
+    from flext_infra.transformers.import_bypass_remover import (
+        FlextInfraRefactorImportBypassRemover,
+    )
+    from flext_infra.transformers.import_modernizer import (
+        FlextInfraRefactorImportModernizer,
+    )
+    from flext_infra.transformers.lazy_import_fixer import (
+        FlextInfraRefactorLazyImportFixer,
+    )
+    from flext_infra.transformers.mro_private_inline import (
+        FlextInfraRefactorMROPrivateInlineTransformer,
+        FlextInfraRefactorMROQualifiedReferenceTransformer,
+    )
+    from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
+    from flext_infra.transformers.mro_symbol_propagator import (
+        FlextInfraRefactorMROSymbolPropagator,
+    )
+    from flext_infra.transformers.nested_class_propagation import (
+        FlextInfraNestedClassPropagationTransformer,
+    )
+    from flext_infra.transformers.policy import (
+        FlextInfraRefactorTransformerPolicyUtilities,
+    )
+    from flext_infra.transformers.redundant_cast_remover import (
+        FlextInfraRedundantCastRemover,
+    )
+    from flext_infra.transformers.signature_propagator import (
+        FlextInfraRefactorSignaturePropagator,
+    )
+    from flext_infra.transformers.symbol_propagator import (
+        FlextInfraRefactorSymbolPropagator,
+    )
+    from flext_infra.transformers.tier0_import_fixer import (
+        FlextInfraTransformerTier0ImportFixer,
+    )
+    from flext_infra.transformers.typing_annotation_replacer import (
+        FlextInfraTypingAnnotationReplacer,
+    )
+    from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+    from flext_infra.transformers.violation_census_visitor import (
+        FlextInfraViolationCensusVisitor,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraCensusImportDiscoveryVisitor": "flext_infra.transformers.census_visitors",

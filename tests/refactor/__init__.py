@@ -13,6 +13,7 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
+    from tests.refactor import test_rope_semantic, test_rope_stubs
     from tests.refactor.test_rope_semantic import (
         TestFindDefinitionOffset,
         TestGetClassBases,

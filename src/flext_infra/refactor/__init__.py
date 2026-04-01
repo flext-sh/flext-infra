@@ -13,35 +13,107 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.refactor._base_rule import *
-    from flext_infra.refactor._constants import *
-    from flext_infra.refactor._models import *
-    from flext_infra.refactor._models_ast_grep import *
-    from flext_infra.refactor._models_namespace_enforcer import *
-    from flext_infra.refactor._post_check_gate import *
-    from flext_infra.refactor._utilities import *
-    from flext_infra.refactor._utilities_cli import *
-    from flext_infra.refactor._utilities_loader import *
-    from flext_infra.refactor._utilities_mro_scan import *
-    from flext_infra.refactor._utilities_mro_transform import *
-    from flext_infra.refactor._utilities_namespace import *
-    from flext_infra.refactor._utilities_pydantic import *
-    from flext_infra.refactor._utilities_pydantic_analysis import *
-    from flext_infra.refactor.census import *
-    from flext_infra.refactor.class_nesting_analyzer import *
-    from flext_infra.refactor.cli import *
-    from flext_infra.refactor.engine import *
-    from flext_infra.refactor.migrate_to_class_mro import *
-    from flext_infra.refactor.mro_import_rewriter import *
-    from flext_infra.refactor.mro_migration_validator import *
-    from flext_infra.refactor.mro_resolver import *
-    from flext_infra.refactor.namespace_enforcer import *
-    from flext_infra.refactor.project_classifier import *
-    from flext_infra.refactor.rule import *
-    from flext_infra.refactor.rule_definition_validator import *
-    from flext_infra.refactor.safety import *
-    from flext_infra.refactor.scanner import *
-    from flext_infra.refactor.violation_analyzer import *
+    from flext_infra.refactor import (
+        _base_rule,
+        _constants,
+        _models,
+        _models_ast_grep,
+        _models_namespace_enforcer,
+        _post_check_gate,
+        _utilities,
+        _utilities_cli,
+        _utilities_loader,
+        _utilities_mro_scan,
+        _utilities_mro_transform,
+        _utilities_namespace,
+        _utilities_pydantic,
+        _utilities_pydantic_analysis,
+        census,
+        class_nesting_analyzer,
+        cli,
+        engine,
+        migrate_to_class_mro,
+        mro_import_rewriter,
+        mro_migration_validator,
+        mro_resolver,
+        namespace_enforcer,
+        project_classifier,
+        rule,
+        rule_definition_validator,
+        safety,
+        scanner,
+        violation_analyzer,
+    )
+    from flext_infra.refactor._base_rule import (
+        CONTAINER_DICT_SEQ_ADAPTER,
+        INFRA_MAPPING_ADAPTER,
+        INFRA_SEQ_ADAPTER,
+        STR_MAPPING_ADAPTER,
+        FlextInfraChangeTracker,
+        FlextInfraGenericTransformerRule,
+        FlextInfraRefactorRule,
+    )
+    from flext_infra.refactor._constants import FlextInfraRefactorConstants
+    from flext_infra.refactor._models import FlextInfraRefactorModels
+    from flext_infra.refactor._models_ast_grep import FlextInfraRefactorAstGrepModels
+    from flext_infra.refactor._models_namespace_enforcer import (
+        FlextInfraNamespaceEnforcerModels,
+    )
+    from flext_infra.refactor._post_check_gate import FlextInfraPostCheckGate
+    from flext_infra.refactor._utilities import FlextInfraUtilitiesRefactor
+    from flext_infra.refactor._utilities_cli import FlextInfraUtilitiesRefactorCli
+    from flext_infra.refactor._utilities_loader import FlextInfraUtilitiesRefactorLoader
+    from flext_infra.refactor._utilities_mro_scan import (
+        FlextInfraUtilitiesRefactorMroScan,
+    )
+    from flext_infra.refactor._utilities_mro_transform import (
+        FlextInfraUtilitiesRefactorMroTransform,
+    )
+    from flext_infra.refactor._utilities_namespace import (
+        FlextInfraUtilitiesRefactorNamespace,
+    )
+    from flext_infra.refactor._utilities_pydantic import (
+        FlextInfraUtilitiesRefactorPydantic,
+    )
+    from flext_infra.refactor._utilities_pydantic_analysis import (
+        FlextInfraUtilitiesRefactorPydanticAnalysis,
+    )
+    from flext_infra.refactor.census import FlextInfraRefactorCensus
+    from flext_infra.refactor.class_nesting_analyzer import (
+        FlextInfraRefactorClassNestingAnalyzer,
+    )
+    from flext_infra.refactor.cli import FlextInfraCliRefactor
+    from flext_infra.refactor.engine import (
+        FlextInfraRefactorClassReconstructorRule,
+        FlextInfraRefactorEngine,
+        FlextInfraRefactorMRORedundancyChecker,
+        FlextInfraRefactorSignaturePropagationRule,
+        FlextInfraRefactorSymbolPropagationRule,
+        FlextInfraRefactorTier0ImportFixRule,
+        FlextInfraRefactorTypingAnnotationFixRule,
+        FlextInfraRefactorTypingUnificationRule,
+    )
+    from flext_infra.refactor.migrate_to_class_mro import (
+        FlextInfraRefactorMigrateToClassMRO,
+    )
+    from flext_infra.refactor.mro_import_rewriter import (
+        FlextInfraRefactorMROImportRewriter,
+    )
+    from flext_infra.refactor.mro_migration_validator import (
+        FlextInfraRefactorMROMigrationValidator,
+    )
+    from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
+    from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+    from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+    from flext_infra.refactor.rule import FlextInfraRefactorRuleLoader
+    from flext_infra.refactor.rule_definition_validator import (
+        FlextInfraRefactorRuleDefinitionValidator,
+    )
+    from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
+    from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+    from flext_infra.refactor.violation_analyzer import (
+        FlextInfraRefactorViolationAnalyzer,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "CONTAINER_DICT_SEQ_ADAPTER": "flext_infra.refactor._base_rule",

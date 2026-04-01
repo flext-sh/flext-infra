@@ -20,16 +20,38 @@ from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.workspace._constants import *
-    from flext_infra.workspace._models import *
-    from flext_infra.workspace.cli import *
-    from flext_infra.workspace.detector import *
-    from flext_infra.workspace.maintenance import *
-    from flext_infra.workspace.migrator import *
-    from flext_infra.workspace.orchestrator import *
-    from flext_infra.workspace.project_makefile import *
-    from flext_infra.workspace.sync import *
-    from flext_infra.workspace.workspace_makefile import *
+    from flext_infra.workspace import (
+        _constants,
+        _models,
+        cli,
+        detector,
+        maintenance,
+        migrator,
+        orchestrator,
+        project_makefile,
+        sync,
+        workspace_makefile,
+    )
+    from flext_infra.workspace._constants import FlextInfraWorkspaceConstants
+    from flext_infra.workspace._models import FlextInfraWorkspaceModels
+    from flext_infra.workspace.cli import FlextInfraCliWorkspace
+    from flext_infra.workspace.detector import (
+        FlextInfraWorkspaceDetector,
+        FlextInfraWorkspaceMode,
+    )
+    from flext_infra.workspace.maintenance import (
+        FlextInfraCliMaintenance,
+        FlextInfraPythonVersionEnforcer,
+        logger,
+        python_version,
+    )
+    from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+    from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+    from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
+    from flext_infra.workspace.sync import FlextInfraSyncService, main
+    from flext_infra.workspace.workspace_makefile import (
+        FlextInfraWorkspaceMakefileGenerator,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(
     ("flext_infra.workspace.maintenance",),

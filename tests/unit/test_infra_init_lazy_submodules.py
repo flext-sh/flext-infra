@@ -26,49 +26,49 @@ class TestFlextInfraSubmoduleInitLazyLoading:
     def test_basemk_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in basemk raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.basemk.NonexistentAttribute
+            _ = getattr(flext_infra.basemk, "NonexistentAttribute")
 
     def test_check_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in check raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.check.NonexistentAttribute
+            _ = getattr(flext_infra.check, "NonexistentAttribute")
 
     def test_codegen_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in codegen raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.codegen.NonexistentAttribute
+            _ = getattr(flext_infra.codegen, "NonexistentAttribute")
 
     def test_core_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in core raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.validate.NonexistentAttribute
+            _ = getattr(flext_infra.validate, "NonexistentAttribute")
 
     def test_deps_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in deps raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.deps.NonexistentAttribute
+            _ = getattr(flext_infra.deps, "NonexistentAttribute")
 
     def test_docs_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in docs raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.docs.NonexistentAttribute
+            _ = getattr(flext_infra.docs, "NonexistentAttribute")
 
     def test_github_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in github raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.github.NonexistentAttribute
+            _ = getattr(flext_infra.github, "NonexistentAttribute")
 
     def test_maintenance_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in maintenance raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.workspace.maintenance.NonexistentAttribute
+            _ = getattr(flext_infra.workspace.maintenance, "NonexistentAttribute")
 
     def test_release_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in release raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.release.NonexistentAttribute
+            _ = getattr(flext_infra.release, "NonexistentAttribute")
 
     def test_workspace_getattr_nonexistent_raises_attribute_error(self) -> None:
         """Test that accessing nonexistent attribute in workspace raises AttributeError."""
         with pytest.raises(AttributeError):
-            _ = flext_infra.workspace.NonexistentAttribute
+            _ = getattr(flext_infra.workspace, "NonexistentAttribute")

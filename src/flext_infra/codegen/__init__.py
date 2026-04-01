@@ -20,28 +20,70 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.codegen._codegen_coercion import *
-    from flext_infra.codegen._codegen_execution_tools import *
-    from flext_infra.codegen._codegen_generation import *
-    from flext_infra.codegen._codegen_metrics import *
-    from flext_infra.codegen._codegen_metrics_checks import *
-    from flext_infra.codegen._codegen_snapshot import *
-    from flext_infra.codegen._constants import *
-    from flext_infra.codegen._models import *
-    from flext_infra.codegen._utilities import *
-    from flext_infra.codegen._utilities_codegen_ast_parsing import *
-    from flext_infra.codegen._utilities_codegen_constant_transformer import *
-    from flext_infra.codegen._utilities_codegen_constant_visitor import *
-    from flext_infra.codegen._utilities_codegen_execution import *
-    from flext_infra.codegen._utilities_codegen_governance import *
-    from flext_infra.codegen._utilities_transforms import *
-    from flext_infra.codegen.census import *
-    from flext_infra.codegen.cli import *
-    from flext_infra.codegen.constants_quality_gate import *
-    from flext_infra.codegen.fixer import *
-    from flext_infra.codegen.lazy_init import *
-    from flext_infra.codegen.py_typed import *
-    from flext_infra.codegen.scaffolder import *
+    from flext_infra.codegen import (
+        _codegen_coercion,
+        _codegen_execution_tools,
+        _codegen_generation,
+        _codegen_metrics,
+        _codegen_metrics_checks,
+        _codegen_snapshot,
+        _constants,
+        _models,
+        _utilities,
+        _utilities_codegen_ast_parsing,
+        _utilities_codegen_constant_transformer,
+        _utilities_codegen_constant_visitor,
+        _utilities_codegen_execution,
+        _utilities_codegen_governance,
+        _utilities_transforms,
+        census,
+        cli,
+        constants_quality_gate,
+        fixer,
+        lazy_init,
+        py_typed,
+        scaffolder,
+    )
+    from flext_infra.codegen._codegen_coercion import FlextInfraCodegenCoercion
+    from flext_infra.codegen._codegen_execution_tools import (
+        FlextInfraCodegenExecutionTools,
+    )
+    from flext_infra.codegen._codegen_generation import FlextInfraCodegenGeneration
+    from flext_infra.codegen._codegen_metrics import FlextInfraCodegenMetrics
+    from flext_infra.codegen._codegen_metrics_checks import (
+        FlextInfraCodegenMetricsChecks,
+    )
+    from flext_infra.codegen._codegen_snapshot import FlextInfraCodegenSnapshot
+    from flext_infra.codegen._constants import FlextInfraCodegenConstants
+    from flext_infra.codegen._models import FlextInfraCodegenModels
+    from flext_infra.codegen._utilities import FlextInfraUtilitiesCodegen
+    from flext_infra.codegen._utilities_codegen_ast_parsing import (
+        FlextInfraUtilitiesCodegenAstParsing,
+    )
+    from flext_infra.codegen._utilities_codegen_constant_transformer import (
+        FlextInfraUtilitiesCodegenConstantTransformation,
+    )
+    from flext_infra.codegen._utilities_codegen_constant_visitor import (
+        FlextInfraUtilitiesCodegenConstantDetection,
+    )
+    from flext_infra.codegen._utilities_codegen_execution import (
+        FlextInfraUtilitiesCodegenExecution,
+    )
+    from flext_infra.codegen._utilities_codegen_governance import (
+        FlextInfraUtilitiesCodegenGovernance,
+    )
+    from flext_infra.codegen._utilities_transforms import (
+        FlextInfraUtilitiesCodegenTransforms,
+    )
+    from flext_infra.codegen.census import FlextInfraCodegenCensus
+    from flext_infra.codegen.cli import FlextInfraCliCodegen
+    from flext_infra.codegen.constants_quality_gate import (
+        FlextInfraCodegenConstantsQualityGate,
+    )
+    from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+    from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+    from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
+    from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraCliCodegen": "flext_infra.codegen.cli",

@@ -21,16 +21,31 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from flext_infra.validate._constants import *
-    from flext_infra.validate._models import *
-    from flext_infra.validate.basemk_validator import *
-    from flext_infra.validate.cli import *
-    from flext_infra.validate.inventory import *
-    from flext_infra.validate.namespace_validator import *
-    from flext_infra.validate.pytest_diag import *
-    from flext_infra.validate.scanner import *
-    from flext_infra.validate.skill_validator import *
-    from flext_infra.validate.stub_chain import *
+    from flext_infra.validate import (
+        _constants,
+        _models,
+        basemk_validator,
+        cli,
+        inventory,
+        namespace_validator,
+        pytest_diag,
+        scanner,
+        skill_validator,
+        stub_chain,
+    )
+    from flext_infra.validate._constants import (
+        FlextInfraCoreConstants,
+        FlextInfraSharedInfraConstants,
+    )
+    from flext_infra.validate._models import FlextInfraCoreModels
+    from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+    from flext_infra.validate.cli import FlextInfraCliValidate
+    from flext_infra.validate.inventory import FlextInfraInventoryService
+    from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
+    from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+    from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+    from flext_infra.validate.skill_validator import FlextInfraSkillValidator
+    from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraBaseMkValidator": "flext_infra.validate.basemk_validator",

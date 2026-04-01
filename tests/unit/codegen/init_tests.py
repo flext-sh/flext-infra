@@ -16,7 +16,7 @@ from flext_infra import FlextInfraCodegenLazyInit, t
 def test_codegen_getattr_raises_attribute_error() -> None:
     """Test that accessing nonexistent attribute raises AttributeError."""
     with pytest.raises(AttributeError):
-        codegen_module.nonexistent_xyz_attribute
+        _ = getattr(codegen_module, "nonexistent_xyz_attribute")
 
 
 def test_codegen_dir_returns_all_exports() -> None:

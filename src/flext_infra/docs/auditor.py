@@ -15,7 +15,7 @@ from pathlib import Path
 from flext_core import FlextLogger
 from pydantic import JsonValue, ValidationError
 
-from flext_infra import c, m, output, r, t, u
+from flext_infra import c, m, r, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
@@ -319,7 +319,7 @@ class FlextInfraDocAuditor:
             params=scope_params,
         )
         if result.is_failure:
-            output.error(result.error or "audit failed")
+            u.Infra.error(result.error or "audit failed")
             return 1
         failures = u.count(result.value, lambda report: not report.passed)
         return 1 if failures else 0
