@@ -7,15 +7,10 @@ import os
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextLogger, r
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from flext_core import FlextLogger, FlextUtilities, r
+from pydantic import ValidationError
 
 from flext_infra import c, m, p, t, u
-
-_JSON_SEQ_ADAPTER: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(Sequence[JsonValue])
-_STR_INFRA_MAP_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
 
 
 class FlextInfraDependencyDetectionService:
@@ -69,7 +64,7 @@ class FlextInfraDependencyDetectionService:
         scalar_types = (str, int, float, bool, type(None))
         if isinstance(value, list):
             try:
-                sequence = _JSON_SEQ_ADAPTER.validate_python(value)
+                sequence = t.Infra.JSON_SEQ_ADAPTER.validate_python(value)
             except ValidationError:
                 return None
             converted: MutableSequence[t.Infra.InfraValue] = []
@@ -84,7 +79,7 @@ class FlextInfraDependencyDetectionService:
                 converted.append(converted_item)
             return converted
         try:
-            mapping_value = _STR_INFRA_MAP_ADAPTER.validate_python(value)
+            mapping_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
         except ValidationError:
             return None
         converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
@@ -130,10 +125,10 @@ class FlextInfraDependencyDetectionService:
                 if isinstance(raw_value, (str, int, float, bool)):
                     normalized_item[str(key)] = str(raw_value)
             error_obj = item.get(c.Infra.ERROR)
-            if not isinstance(error_obj, Mapping):
+            if not u.is_mapping(error_obj):
                 continue
             try:
-                error_data = _STR_INFRA_MAP_ADAPTER.validate_python(error_obj)
+                error_data = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(error_obj)
             except ValidationError:
                 continue
             code = error_data.get(c.Infra.CODE)
@@ -142,7 +137,7 @@ class FlextInfraDependencyDetectionService:
                 "DEP002": groups.dep002,
                 "DEP003": groups.dep003,
                 "DEP004": groups.dep004,
-            }.get(str(code) if code is not None else "")
+            }.get(FlextUtilities.ensure_str(code))
             if bucket is not None:
                 bucket.append(normalized_item)
         return groups
@@ -240,7 +235,7 @@ class FlextInfraDependencyDetectionService:
                     .split("==", maxsplit=1)[0]
                     .strip(),
                 )
-        elif isinstance(typings, Mapping):
+        elif u.is_mapping(typings):
             names.update(str(k) for k in typings)
         return sorted(names)
 
@@ -256,7 +251,7 @@ class FlextInfraDependencyDetectionService:
         limits = self.load_dependency_limits(limits_path)
         exclude_set: t.Infra.StrSet = set()
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
-        if isinstance(typing_libraries, Mapping):
+        if u.is_mapping(typing_libraries):
             excluded = typing_libraries.get(c.Infra.EXCLUDE)
             if isinstance(excluded, list):
                 exclude_set = {str(e) for e in excluded}
@@ -280,7 +275,7 @@ class FlextInfraDependencyDetectionService:
         current_set = set(current)
         python_cfg = limits.get(c.Infra.PYTHON)
         version_val = (
-            python_cfg.get(c.Infra.VERSION) if isinstance(python_cfg, Mapping) else None
+            python_cfg.get(c.Infra.VERSION) if u.is_mapping(python_cfg) else None
         )
         python_version = str(version_val) if version_val is not None else None
         report = m.Infra.TypingsReport(
@@ -316,9 +311,9 @@ class FlextInfraDependencyDetectionService:
         if root.startswith(u.Infra.INTERNAL_PREFIXES):
             return None
         typing_libraries = limits.get(c.Infra.TYPING_LIBRARIES)
-        if isinstance(typing_libraries, Mapping):
+        if u.is_mapping(typing_libraries):
             module_to_package = typing_libraries.get(c.Infra.MODULE_TO_PACKAGE)
-            if isinstance(module_to_package, Mapping) and root in module_to_package:
+            if u.is_mapping(module_to_package) and root in module_to_package:
                 value = module_to_package.get(root)
                 return str(value) if value is not None else None
         return self.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root.lower())
@@ -369,7 +364,7 @@ class FlextInfraDependencyDetectionService:
             ):
                 normalized_issues: MutableSequence[t.Infra.ContainerDict] = []
                 for item in loaded_result.value:
-                    if not isinstance(item, dict):
+                    if not u.is_mapping(item):
                         continue
                     converted_issue = self._to_toml_config(item)
                     if len(converted_issue) == len(item):

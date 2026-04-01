@@ -13,8 +13,8 @@ from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
 
-from flext_core import r
-from pydantic import TypeAdapter, ValidationError
+from flext_core import FlextUtilities, r
+from pydantic import ValidationError
 from yaml import YAMLError, safe_load
 
 from flext_infra import c, m, t
@@ -29,16 +29,6 @@ class FlextInfraUtilitiesYaml:
 
         data = u.Infra.safe_load_yaml(path)
     """
-
-    _MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] | None = None
-
-    @staticmethod
-    def _get_mapping_adapter() -> TypeAdapter[Mapping[str, t.Infra.InfraValue]]:
-        if FlextInfraUtilitiesYaml._MAPPING_ADAPTER is None:
-            FlextInfraUtilitiesYaml._MAPPING_ADAPTER = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            )
-        return FlextInfraUtilitiesYaml._MAPPING_ADAPTER
 
     @staticmethod
     def safe_load_yaml(path: Path) -> Mapping[str, t.Infra.InfraValue]:
@@ -58,11 +48,11 @@ class FlextInfraUtilitiesYaml:
         parsed: t.Infra.InfraValue | None = safe_load(raw)
         if parsed is None:
             return {}
-        if not isinstance(parsed, Mapping):
+        if not FlextUtilities.is_mapping(parsed):
             msg = f"rules.yml must be a mapping: {path}"
             raise TypeError(msg)
         try:
-            return FlextInfraUtilitiesYaml._get_mapping_adapter().validate_python(
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 parsed,
             )
         except ValidationError as exc:
@@ -85,7 +75,7 @@ class FlextInfraUtilitiesYaml:
                 )
             )
             parsed_raw: t.Infra.InfraValue | None = safe_load(raw_text)
-            if not isinstance(parsed_raw, Mapping):
+            if not FlextUtilities.is_mapping(parsed_raw):
                 result = r[m.Infra.ToolConfigDocument].fail(
                     "tool_config.yml must contain a top-level mapping",
                 )

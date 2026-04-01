@@ -4,20 +4,15 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import ClassVar
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_infra import c, m, t, u
 
 
 class FlextInfraGate(ABC):
-    _MAPPING_ADAPTER: ClassVar[TypeAdapter[Mapping[str, t.Infra.InfraValue]]] = (
-        TypeAdapter(Mapping[str, t.Infra.InfraValue])
-    )
-    _SEQUENCE_ADAPTER: ClassVar[TypeAdapter[Sequence[t.Infra.InfraValue]]] = (
-        TypeAdapter(Sequence[t.Infra.InfraValue])
-    )
+    _MAPPING_ADAPTER = t.Infra.INFRA_MAPPING_ADAPTER
+    _SEQUENCE_ADAPTER = t.Infra.INFRA_SEQ_ADAPTER
 
     gate_id: str = ""
     gate_name: str = ""
@@ -114,7 +109,7 @@ class FlextInfraGate(ABC):
     def _to_mapping(
         value: t.Infra.InfraValue,
     ) -> Mapping[str, t.Infra.InfraValue]:
-        if not isinstance(value, Mapping):
+        if not u.is_mapping(value):
             return {}
         return FlextInfraGate._MAPPING_ADAPTER.validate_python(value)
 
@@ -177,12 +172,12 @@ class FlextInfraGate(ABC):
     ) -> int:
         current: t.Infra.InfraValue = data
         for key in keys[:-1]:
-            if not isinstance(current, Mapping):
+            if not u.is_mapping(current):
                 return default
             current = current.get(key)
             if current is None:
                 return default
-        if not isinstance(current, Mapping):
+        if not u.is_mapping(current):
             return default
         raw: t.Infra.InfraValue = current.get(keys[-1])
         if raw is None:

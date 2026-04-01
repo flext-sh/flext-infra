@@ -12,22 +12,13 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_infra import (
     FlextInfraCodegenExecutionTools,
     c,
     m,
     t,
-)
-
-_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
-_INFRA_SEQ_MAPPING_ADAPTER: TypeAdapter[Sequence[Mapping[str, t.Infra.InfraValue]]] = (
-    TypeAdapter(
-        Sequence[Mapping[str, t.Infra.InfraValue]],
-    )
 )
 
 
@@ -54,7 +45,7 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
         validate_json = directory / "validate-after.json"
         baseline_json = directory / "baseline-used.json"
         report_json.write_text(
-            _INFRA_MAPPING_ADAPTER.dump_json(report, by_alias=True).decode(
+            t.Infra.INFRA_MAPPING_ADAPTER.dump_json(report, by_alias=True).decode(
                 c.Infra.Encoding.DEFAULT,
             ),
             encoding=c.Infra.Encoding.DEFAULT,
@@ -64,13 +55,15 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
             item.model_dump() for item in census_reports
         ]
         census_json.write_text(
-            _INFRA_SEQ_MAPPING_ADAPTER.dump_json(census_payload, by_alias=True).decode(
+            t.Infra.INFRA_SEQ_MAPPING_ADAPTER.dump_json(
+                census_payload, by_alias=True
+            ).decode(
                 c.Infra.Encoding.DEFAULT,
             ),
             encoding=c.Infra.Encoding.DEFAULT,
         )
         groups_payload: Sequence[t.Infra.InfraValue] = [
-            _INFRA_MAPPING_ADAPTER.validate_python(group.model_dump())
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(group.model_dump())
             for group in duplicate_groups
         ]
         inventory_payload: Mapping[str, t.Infra.InfraValue] = {
@@ -78,14 +71,14 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
             "count": len(duplicate_groups),
         }
         inventory_json.write_text(
-            _INFRA_MAPPING_ADAPTER.dump_json(
+            t.Infra.INFRA_MAPPING_ADAPTER.dump_json(
                 inventory_payload,
                 by_alias=True,
             ).decode(c.Infra.Encoding.DEFAULT),
             encoding=c.Infra.Encoding.DEFAULT,
         )
         validate_json.write_text(
-            _INFRA_MAPPING_ADAPTER.dump_json(
+            t.Infra.INFRA_MAPPING_ADAPTER.dump_json(
                 {
                     "mro_failures": 0,
                     "layer_violations": 0,
@@ -97,7 +90,9 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
         )
         if before_payload is not None:
             baseline_json.write_text(
-                _INFRA_MAPPING_ADAPTER.dump_json(before_payload, by_alias=True).decode(
+                t.Infra.INFRA_MAPPING_ADAPTER.dump_json(
+                    before_payload, by_alias=True
+                ).decode(
                     c.Infra.Encoding.DEFAULT,
                 ),
                 encoding=c.Infra.Encoding.DEFAULT,
@@ -147,11 +142,11 @@ class FlextInfraUtilitiesCodegenExecution(FlextInfraCodegenExecutionTools):
             return []
         try:
             text = fallback.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            payload = _INFRA_MAPPING_ADAPTER.validate_json(text)
+            payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_json(text)
         except (OSError, UnicodeDecodeError, ValueError):
             return []
         try:
-            raw = _INFRA_MAPPING_ADAPTER.validate_python(payload)
+            raw = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
         except ValidationError:
             return []
         modified = raw.get("modified_files")

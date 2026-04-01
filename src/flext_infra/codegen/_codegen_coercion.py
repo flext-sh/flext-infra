@@ -2,20 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from pydantic import TypeAdapter
+from flext_core import FlextUtilities
 
 from flext_infra import FlextInfraUtilitiesCodegenTransforms, c, t
 
-_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
-
 
 class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
-    container_mapping_adapter: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = (
-        _INFRA_MAPPING_ADAPTER
-    )
-
     @staticmethod
     def as_int(value: t.Infra.InfraValue) -> int:
         if isinstance(value, bool):
@@ -33,9 +25,9 @@ class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
 
     @staticmethod
     def dict_or_empty(value: t.Infra.InfraValue) -> Mapping[str, t.Infra.InfraValue]:
-        if not isinstance(value, dict):
+        if not FlextUtilities.is_mapping(value):
             return {}
-        return _INFRA_MAPPING_ADAPTER.validate_python(value)
+        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
 
     @staticmethod
     def dict_list(
@@ -44,9 +36,9 @@ class FlextInfraCodegenCoercion(FlextInfraUtilitiesCodegenTransforms):
         if not isinstance(value, list):
             return []
         result: Sequence[Mapping[str, t.Infra.InfraValue]] = [
-            _INFRA_MAPPING_ADAPTER.validate_python(item)
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
             for item in value
-            if isinstance(item, dict)
+            if FlextUtilities.is_mapping(item)
         ]
         return result
 

@@ -13,13 +13,11 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic import JsonValue, ValidationError
 
 from flext_infra import c, m, r, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
-
-_STR_SEQ_ADAPTER: TypeAdapter[Sequence[str]] = TypeAdapter(Sequence[str])
 
 
 class FlextInfraDocValidator:
@@ -123,7 +121,7 @@ class FlextInfraDocValidator:
         if configured is None:
             return []
         try:
-            required_items: Sequence[str] = _STR_SEQ_ADAPTER.validate_python(
+            required_items: Sequence[str] = t.Infra.STR_SEQ_ADAPTER.validate_python(
                 configured,
                 strict=True,
             )
@@ -137,7 +135,7 @@ class FlextInfraDocValidator:
     ) -> list[JsonValue] | None:
         """Extract the required_skills list from config payload. None if absent/invalid."""
         docs_validation = payload.get("docs_validation")
-        if not isinstance(docs_validation, dict):
+        if not u.is_mapping(docs_validation):
             return None
         configured = docs_validation.get("required_skills")
         if not isinstance(configured, list):

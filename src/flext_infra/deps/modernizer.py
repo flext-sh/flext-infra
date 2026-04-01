@@ -77,7 +77,7 @@ class FlextInfraPyprojectModernizer:
             changes.append("created [build-system]")
         expected_backend = "hatchling.build"
         backend_item = self._item_get(build_system, "build-backend")
-        current_backend = str(backend_item).strip() if backend_item is not None else ""
+        current_backend = u.norm_str(backend_item)
         if current_backend != expected_backend:
             build_system["build-backend"] = expected_backend
             changes.append("build-system.build-backend set to hatchling.build")
@@ -94,7 +94,7 @@ class FlextInfraPyprojectModernizer:
         hatch_table = u.Infra.ensure_table(tool_table, "hatch")
         metadata_table = u.Infra.ensure_table(hatch_table, "metadata")
         allow_item = self._item_get(metadata_table, "allow-direct-references")
-        if allow_item is None or str(allow_item).strip().lower() != "true":
+        if allow_item is None or u.norm_str(str(allow_item), case="lower") != "true":
             metadata_table["allow-direct-references"] = True
             changes.append("tool.hatch.metadata.allow-direct-references set to true")
         return changes
@@ -368,7 +368,7 @@ class FlextInfraPyprojectModernizer:
                 has_warning = True
                 continue
             backend_item = self._item_get(build_sys, "build-backend")
-            backend = str(backend_item).strip() if backend_item is not None else ""
+            backend = u.norm_str(backend_item)
             if backend != "hatchling.build":
                 u.Infra.info(f"{path}: expected hatchling.build, got {backend}")
                 has_warning = True

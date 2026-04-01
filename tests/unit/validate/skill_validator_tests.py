@@ -66,7 +66,7 @@ class TestStringList:
         """Non-string items and non-list values raise."""
         with pytest.raises(TypeError):
             _string_list(["a", 123, "c"])
-        with pytest.raises(ValueError, match="expected list"):
+        with pytest.raises(TypeError, match="expected list"):
             _string_list({"key": "value"})
 
 

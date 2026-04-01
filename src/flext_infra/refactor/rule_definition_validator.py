@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from flext_infra import c, t
+from flext_infra import c, t, u
 
 
 class FlextInfraRefactorRuleDefinitionValidator:
@@ -16,14 +16,14 @@ class FlextInfraRefactorRuleDefinitionValidator:
     ) -> str | None:
         """Return validation error text or None when rule definition is valid."""
         rule_id = str(rule_def.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN))
-        fix_action = (
-            str(rule_def.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
+        fix_action = u.Infra.get_str_key(
+            rule_def, c.Infra.ReportKeys.FIX_ACTION, lower=True
         )
         if not fix_action:
             return None
         if fix_action in c.Infra.PROPAGATION_FIX_ACTIONS:
             if fix_action == "propagate_symbol_renames" and (
-                not isinstance(rule_def.get("import_symbol_renames"), dict)
+                not u.is_mapping(rule_def.get("import_symbol_renames"))
             ):
                 return f"{rule_id}: import_symbol_renames must be a mapping"
             if fix_action == "propagate_signature_migrations":

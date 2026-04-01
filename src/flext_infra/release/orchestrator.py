@@ -176,12 +176,12 @@ class FlextInfraReleaseOrchestrator(s[bool]):
         return r[bool].ok(True)
 
     def phase_validate(self, workspace_root: Path, *, dry_run: bool = False) -> r[bool]:
-        """Execute validation phase via make validate."""
+        """Execute validation phase via the workspace make validation target."""
         if dry_run:
             self.logger.info("release_phase_validate", action="dry-run", status="ok")
             return r[bool].ok(True)
         return u.Infra.run_checked(
-            [c.Infra.MAKE, c.Infra.Verbs.VALIDATE, "VALIDATE_SCOPE=workspace"],
+            [c.Infra.MAKE, "val", "VALIDATE_SCOPE=workspace"],
             cwd=workspace_root,
         )
 
@@ -319,7 +319,7 @@ class FlextInfraReleaseOrchestrator(s[bool]):
             phase=c.Infra.VERSION,
             workspace_root=workspace_root,
             version=next_version,
-            tag="",
+            tag=f"v{next_version}",
             project_names=project_names,
             dev_suffix=True,
         )

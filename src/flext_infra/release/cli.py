@@ -56,7 +56,7 @@ class FlextInfraCliRelease:
             return r[str].ok(str(bump_result.value))
         if interactive != 1:
             return r[str].ok(current)
-        bump = input("bump> ").strip().lower()
+        bump = u.norm_str(input("bump> "), case="lower")
         if bump not in {"major", "minor", "patch"}:
             return r[str].fail("invalid bump type")
         bump_result = u.Infra.bump_version(current, bump)

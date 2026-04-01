@@ -17,6 +17,7 @@ from operator import itemgetter
 from pathlib import Path
 
 import orjson
+from flext_core import FlextUtilities
 
 from flext_infra import c, m, t
 
@@ -212,9 +213,11 @@ class FlextInfraUtilitiesRefactorCli:
     @staticmethod
     def print_summary(results: Sequence[m.Infra.Result], *, dry_run: bool) -> None:
         """Print execution summary for processed files."""
-        modified = sum(1 for item in results if item.modified)
-        failed = sum(1 for item in results if not item.success)
-        unchanged = sum(1 for item in results if item.success and (not item.modified))
+        modified = FlextUtilities.count(results, lambda item: item.modified)
+        failed = FlextUtilities.count(results, lambda item: not item.success)
+        unchanged = FlextUtilities.count(
+            results, lambda item: item.success and not item.modified
+        )
         FlextInfraUtilitiesRefactorCli.refactor_header("Summary")
         FlextInfraUtilitiesRefactorCli.refactor_info(f"Total files: {len(results)}")
         FlextInfraUtilitiesRefactorCli.refactor_info(f"Modified: {modified}")

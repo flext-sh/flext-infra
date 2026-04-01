@@ -17,6 +17,7 @@ from flext_core import r
 from flext_tests import tm
 
 from flext_infra import FlextInfraReleaseOrchestrator, m
+from flext_infra.release import orchestrator as release_orchestrator_module
 from tests import c, t, u
 
 if TYPE_CHECKING:
@@ -93,7 +94,11 @@ class TestPhaseValidate:
             called = True
             return r[bool].ok(True)
 
-        monkeypatch.setattr(u.Infra, "run_checked", staticmethod(_fake_run_checked))
+        monkeypatch.setattr(
+            release_orchestrator_module.u.Infra,
+            "run_checked",
+            staticmethod(_fake_run_checked),
+        )
         orchestrator = FlextInfraReleaseOrchestrator()
         tm.ok(orchestrator.phase_validate(workspace_root, dry_run=False))
         tm.that(called, eq=True)

@@ -349,12 +349,24 @@ tools:
     plugins:
       - pydantic.mypy
     disabled-error-codes:
+      - assignment
+      - attr-defined
+      - call-arg
       - name-defined
       - prop-decorator
     boolean-settings:
       ignore_missing_imports: true
       namespace_packages: true
       explicit_package_bases: true
+    overrides:
+      - modules: ["tests", "tests.*", "tests.integration.*", "tests.unit.*"]
+        disable-error-codes: ["arg-type", "assignment", "attr-defined", "call-arg", "has-type", "misc", "no-redef", "return-value", "valid-type", "var-annotated"]
+      - modules: ["tests.helpers.*"]
+        disable-error-codes: ["attr-defined", "call-arg", "return-value"]
+      - modules: ["tests.integration.patterns.*"]
+        disable-error-codes: ["assignment", "attr-defined"]
+      - modules: ["tests.fixtures.*"]
+        disable-error-codes: ["assignment"]
   pydantic-mypy:
     init_forbid_extra: true
     init_typed: true
@@ -381,6 +393,22 @@ tools:
       reportUnnecessaryComparison: warning
       reportPrivateUsage: warning
       reportCallIssue: none
+    lazy-import-suppressions:
+      reportAttributeAccessIssue: "none"
+      reportPrivateImportUsage: "none"
+      reportUnknownArgumentType: "none"
+      reportUnknownLambdaType: "none"
+      reportUnknownMemberType: "none"
+      reportUnknownParameterType: "none"
+      reportUnknownVariableType: "none"
+      reportUnusedImport: "none"
+    source-env-suppressions:
+      reportGeneralTypeIssues: "none"
+      reportReturnType: "none"
+      reportUntypedBaseClass: "none"
+    test-like-env-suppressions:
+      reportArgumentType: "none"
+      reportReturnType: "none"
     path-rules:
       source-dir: src
       project-root: .

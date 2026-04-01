@@ -142,13 +142,13 @@ class FlextInfraCodegenCensus(s[bool]):
         """Format top-3 type stats from census data into a bracket-delimited string."""
         by_type_val = census_data.get("by_type", {})
         by_type: Mapping[str, t.Infra.InfraValue] = (
-            by_type_val if isinstance(by_type_val, dict) else {}
+            by_type_val if u.is_mapping(by_type_val) else {}
         )
         type_stats: MutableSequence[str] = []
         if by_type:
             for type_key in sorted(by_type.keys())[:3]:
                 type_info_val = by_type[type_key]
-                if isinstance(type_info_val, dict):
+                if u.is_mapping(type_info_val):
                     cnt_val = type_info_val.get("total", 0)
                     cnt = int(cnt_val) if isinstance(cnt_val, int) else 0
                     type_stats.append(f"{type_key}:{cnt}")
@@ -192,7 +192,7 @@ class FlextInfraCodegenCensus(s[bool]):
             project=project.name,
             violations=violations,
             total=len(violations),
-            fixable=sum(1 for v in violations if v.fixable),
+            fixable=u.count(violations, lambda v: v.fixable),
         )
 
     @staticmethod

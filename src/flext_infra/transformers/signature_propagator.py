@@ -8,7 +8,7 @@ from typing import ClassVar, override
 import libcst as cst
 from libcst.metadata import QualifiedNameProvider
 
-from flext_infra import m, t
+from flext_infra import m, t, u
 
 
 class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
@@ -151,7 +151,7 @@ class FlextInfraRefactorSignaturePropagator(cst.CSTTransformer):
     }
 
     def _literal_expr(self, value: str) -> cst.BaseExpression:
-        lowered = value.strip().lower()
+        lowered = u.norm_str(value, case="lower")
         keyword_name = self._KEYWORD_LITERALS.get(lowered)
         if keyword_name is not None:
             return cst.Name(keyword_name)

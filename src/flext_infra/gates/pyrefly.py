@@ -54,7 +54,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 raw_text = json_file.read_text(encoding=c.Infra.Encoding.DEFAULT)
                 parsed = u.Infra.parse(raw_text)
                 error_items: Sequence[Mapping[str, t.Infra.InfraValue]] = []
-                if parsed.is_success and isinstance(parsed.value, Mapping):
+                if parsed.is_success and u.is_mapping(parsed.value):
                     parsed_map = self._to_mapping(parsed.value)
                     error_items = self._to_mapping_list(parsed_map.get("errors", []))
                 elif parsed.is_success and isinstance(parsed.value, list):

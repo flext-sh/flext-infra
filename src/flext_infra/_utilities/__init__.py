@@ -18,9 +18,10 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
+    from flext_core import FlextTypes
+
     from flext_infra._utilities.base import *
     from flext_infra._utilities.cli import *
-    from flext_infra._utilities.cst import *
     from flext_infra._utilities.discovery import *
     from flext_infra._utilities.docs import *
     from flext_infra._utilities.formatting import *
@@ -49,7 +50,6 @@ if _TYPE_CHECKING:
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraUtilitiesBase": "flext_infra._utilities.base",
     "FlextInfraUtilitiesCli": "flext_infra._utilities.cli",
-    "FlextInfraUtilitiesCst": "flext_infra._utilities.cst",
     "FlextInfraUtilitiesDiscovery": "flext_infra._utilities.discovery",
     "FlextInfraUtilitiesDocs": "flext_infra._utilities.docs",
     "FlextInfraUtilitiesFormatting": "flext_infra._utilities.formatting",
@@ -76,7 +76,6 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraUtilitiesYaml": "flext_infra._utilities.yaml",
     "base": "flext_infra._utilities.base",
     "cli": "flext_infra._utilities.cli",
-    "cst": "flext_infra._utilities.cst",
     "discovery": "flext_infra._utilities.discovery",
     "docs": "flext_infra._utilities.docs",
     "formatting": "flext_infra._utilities.formatting",

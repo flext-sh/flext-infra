@@ -16,7 +16,7 @@ from collections.abc import Mapping, MutableMapping
 from functools import lru_cache
 from pathlib import Path
 
-from flext_core import m
+from flext_core import FlextUtilities, m
 
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
@@ -68,7 +68,7 @@ class FlextInfraUtilitiesImportNormalizer:
         )
         loaded = FlextInfraUtilitiesYaml.safe_load_yaml(rules_path)
         root = loaded.get("import_normalization")
-        if isinstance(root, Mapping):
+        if FlextUtilities.is_mapping(root):
             normalized: Mapping[str, t.Infra.InfraValue] = dict(root.items())
             return normalized
         return {}
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesImportNormalizer:
         config = FlextInfraUtilitiesImportNormalizer.load_config().get(
             "alias_tiers",
         )
-        if not isinstance(config, Mapping):
+        if not FlextUtilities.is_mapping(config):
             return {}
         tiers: MutableMapping[str, int] = {}
         for alias_name, tier_value in config.items():
@@ -97,7 +97,7 @@ class FlextInfraUtilitiesImportNormalizer:
         config = FlextInfraUtilitiesImportNormalizer.load_config().get(
             "wrong_source",
         )
-        if not isinstance(config, Mapping):
+        if not FlextUtilities.is_mapping(config):
             return False, frozenset()
         enabled_raw = config.get("enabled")
         enabled = isinstance(enabled_raw, bool) and enabled_raw

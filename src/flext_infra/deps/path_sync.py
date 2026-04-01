@@ -328,7 +328,7 @@ class FlextInfraDependencyPathSync:
             if root_data_result.is_success:
                 root_data: TOMLDocument = root_data_result.value
                 root_project = self._table_get(root_data, c.Infra.PROJECT)
-                if isinstance(root_project, Mapping):
+                if u.is_mapping(root_project):
                     root_name = self._mapping_str_value(root_project, c.Infra.NAME)
                     if root_name is not None:
                         internal_names.add(root_name)
@@ -362,7 +362,7 @@ class FlextInfraDependencyPathSync:
                 continue
             project_data: TOMLDocument = data_result.value
             project_obj = self._table_get(project_data, c.Infra.PROJECT)
-            if not isinstance(project_obj, Mapping):
+            if not u.is_mapping(project_obj):
                 continue
             project_name = self._mapping_str_value(project_obj, c.Infra.NAME)
             if project_name is not None:

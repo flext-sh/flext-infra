@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
+    from flext_core import FlextTypes
+
     from flext_infra.deps._phases.consolidate_groups import *
     from flext_infra.deps._phases.ensure_coverage import *
     from flext_infra.deps._phases.ensure_extra_paths import *

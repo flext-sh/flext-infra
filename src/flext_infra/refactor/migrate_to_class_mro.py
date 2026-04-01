@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
+from flext_core import FlextUtilities
 from rope.base.exceptions import ModuleSyntaxError
 
 from flext_infra import (
@@ -151,7 +152,7 @@ class FlextInfraRefactorMigrateToClassMRO:
 
     @staticmethod
     def _normalize_target(*, target: str) -> str:
-        value = target.strip().lower()
+        value = FlextUtilities.norm_str(target, case="lower")
         if value in c.Infra.MRO_TARGETS:
             return value
         msg = f"unsupported target: {target}"

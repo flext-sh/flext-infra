@@ -68,7 +68,7 @@ class FlextInfraProjectClassifier:
         self,
         raw_value: t.Infra.InfraValue,
     ) -> Mapping[str, t.Infra.InfraValue]:
-        if isinstance(raw_value, dict):
+        if u.is_mapping(raw_value):
             return raw_value
         return {}
 
@@ -183,7 +183,7 @@ class FlextInfraProjectClassifier:
         return self._normalize_dependency_name(base_token)
 
     def _normalize_dependency_name(self, raw_name: str) -> str:
-        normalized = raw_name.strip().lower().replace("_", "-")
+        normalized = u.norm_str(raw_name, case="lower").replace("_", "-")
         return normalized.strip("./")
 
     def _discover_facade_inheritance(

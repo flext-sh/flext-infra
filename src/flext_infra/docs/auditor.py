@@ -3,9 +3,6 @@
 Audits documentation for broken links and forbidden terms,
 returning structured r reports.
 
-Usage:
-    python -m flext_infra docs audit --workspace flext-core
-
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
@@ -16,15 +13,13 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic import JsonValue, ValidationError
 
 from flext_infra import c, m, output, r, t, u
 
 logger = FlextLogger.create_module_logger(__name__)
 
-_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
+_NO_BUDGETS: t.Infra.Pair[int | None, Mapping[str, int]] = (None, {})
 
 
 class FlextInfraDocAuditor:
@@ -37,73 +32,27 @@ class FlextInfraDocAuditor:
     @staticmethod
     def is_external(target: str) -> bool:
         """Return True when target points outside the repository."""
-        lower = target.strip().lower().lstrip("<")
+        lower = u.norm_str(target, case="lower").lstrip("<")
         return lower.startswith(("http://", "https://", "mailto:", "tel:", "data:"))
-
-    _NO_BUDGETS: t.Infra.Pair[int | None, Mapping[str, int]] = (None, {})
-
-    @staticmethod
-    def _find_architecture_config(workspace_root: Path) -> Path | None:
-        """Walk up from workspace_root looking for the architecture config."""
-        for candidate in [workspace_root, *workspace_root.parents]:
-            path = candidate / "docs/architecture/architecture_config.json"
-            if path.exists():
-                return path
-        return None
-
-    @staticmethod
-    def _parse_audit_gate(
-        audit_gate: Mapping[str, t.Infra.InfraValue],
-    ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
-        """Extract default budget and per-scope budgets from an audit_gate mapping."""
-        default_budget = audit_gate.get("max_issues_default")
-        by_scope_raw_value = audit_gate.get("max_issues_by_scope")
-        by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
-        if isinstance(by_scope_raw_value, Mapping):
-            try:
-                by_scope_raw = _INFRA_MAPPING_ADAPTER.validate_python(
-                    by_scope_raw_value,
-                    strict=True,
-                )
-            except ValidationError:
-                by_scope_raw = {}
-        by_scope: MutableMapping[str, int] = {}
-        for name, value in by_scope_raw.items():
-            if isinstance(value, (int, float)):
-                by_scope[name] = int(value)
-        resolved_default = (
-            int(default_budget) if isinstance(default_budget, (int, float)) else None
-        )
-        return (resolved_default, by_scope)
 
     @staticmethod
     def load_audit_budgets(
         workspace_root: Path,
     ) -> t.Infra.Pair[int | None, Mapping[str, int]]:
         """Load audit issue budgets from architecture config."""
-        audit_gate = FlextInfraDocAuditor._load_audit_gate_mapping(workspace_root)
-        if audit_gate is None:
-            return FlextInfraDocAuditor._NO_BUDGETS
-        return FlextInfraDocAuditor._parse_audit_gate(audit_gate)
-
-    @staticmethod
-    def _load_audit_gate_mapping(
-        workspace_root: Path,
-    ) -> Mapping[str, t.Infra.InfraValue] | None:
-        """Extract the audit_gate mapping from architecture config, or None."""
-        config_path = FlextInfraDocAuditor._find_architecture_config(workspace_root)
+        config_path = _find_architecture_config(workspace_root)
         if config_path is None:
-            return None
+            return _NO_BUDGETS
         payload_result = u.Infra.read_json(config_path)
         if payload_result.is_failure:
-            return None
+            return _NO_BUDGETS
         docs_validation = payload_result.value.get("docs_validation")
-        if not isinstance(docs_validation, Mapping):
-            return None
+        if not u.is_mapping(docs_validation):
+            return _NO_BUDGETS
         audit_gate = docs_validation.get("audit_gate")
-        if not isinstance(audit_gate, Mapping):
-            return None
-        return audit_gate
+        if not u.is_mapping(audit_gate):
+            return _NO_BUDGETS
+        return _parse_audit_gate(audit_gate)
 
     @staticmethod
     def normalize_link(target: str) -> str:
@@ -118,9 +67,10 @@ class FlextInfraDocAuditor:
         """Return whether link text should be ignored as a non-path target."""
         if target.startswith("http"):
             return False
-        if "," in raw and ".md" not in raw and ("/" not in raw):
-            return True
-        return bool(" " in raw and ".md" not in raw and ("/" not in raw))
+        looks_like_prose = ".md" not in raw and "/" not in raw
+        if not looks_like_prose:
+            return False
+        return "," in raw or " " in raw
 
     @staticmethod
     def to_markdown(
@@ -152,19 +102,7 @@ class FlextInfraDocAuditor:
         output_dir: str = c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         params: m.Infra.AuditScopeParams | None = None,
     ) -> r[Sequence[m.Infra.DocsPhaseReport]]:
-        """Run documentation audit across project scopes.
-
-        Args:
-            workspace_root: Workspace root directory.
-            project: Single project name filter.
-            projects: Comma-separated project names.
-            output_dir: Report output directory.
-            params: Audit scope parameters (check, strict, budgets).
-
-        Returns:
-            r with list of AuditReport objects.
-
-        """
+        """Run documentation audit across project scopes."""
         resolved = params or m.Infra.AuditScopeParams()
         budgets = resolved.budgets or self.load_audit_budgets(workspace_root)
         scope_params = m.Infra.AuditScopeParams(
@@ -196,49 +134,10 @@ class FlextInfraDocAuditor:
         )
         if result.is_failure:
             return r[bool].fail(result.error or "audit failed")
-        failures = sum(1 for report in result.value if not report.passed)
+        failures = u.count(result.value, lambda report: not report.passed)
         if failures:
             return r[bool].fail(f"Audit found {failures} failure(s)")
         return r[bool].ok(True)
-
-    @staticmethod
-    def _write_audit_reports(
-        scope: m.Infra.DocScope,
-        issues: Sequence[m.Infra.AuditIssue],
-        checks: set[str],
-        *,
-        strict: bool,
-    ) -> None:
-        """Persist JSON summary and markdown report to the scope report directory."""
-        sorted_checks: list[JsonValue] = [str(ck) for ck in sorted(checks)]
-        summary: dict[str, JsonValue] = {
-            c.Infra.ReportKeys.SCOPE: scope.name,
-            "issues": len(issues),
-            c.Infra.Verbs.CHECKS: sorted_checks,
-            c.Infra.Modes.STRICT: strict,
-            "report_dir": scope.report_dir.as_posix(),
-        }
-        issues_payload: JsonValue = [
-            {
-                c.Infra.ReportKeys.FILE: issue.file,
-                "issue_type": issue.issue_type,
-                "severity": issue.severity,
-                c.Infra.ReportKeys.MESSAGE: issue.message,
-            }
-            for issue in issues
-        ]
-        summary_payload: dict[str, JsonValue] = {
-            c.Infra.ReportKeys.SUMMARY: summary,
-            "issues": issues_payload,
-        }
-        _ = u.Infra.write_json(
-            scope.report_dir / "audit-summary.json",
-            summary_payload,
-        )
-        _ = u.Infra.write_markdown(
-            scope.report_dir / "audit-report.md",
-            FlextInfraDocAuditor.to_markdown(scope, issues),
-        )
 
     def audit_scope(
         self,
@@ -248,70 +147,25 @@ class FlextInfraDocAuditor:
     ) -> m.Infra.DocsPhaseReport:
         """Run configured audit checks on a single scope."""
         resolved = params or m.Infra.AuditScopeParams()
-        checks = self._resolve_checks(resolved.check)
-        issues = self._collect_issues(scope, checks)
-        self._write_audit_reports(scope, issues, checks, strict=resolved.strict)
-        passed = self._evaluate_pass(
-            scope.name,
-            issues,
-            strict=resolved.strict,
-            budgets=resolved.budgets or self._NO_BUDGETS,
-        )
-        return self._build_audit_report(
-            scope,
-            issues,
-            checks,
-            strict=resolved.strict,
-            passed=passed,
-        )
+        checks = _resolve_checks(resolved.check)
 
-    @staticmethod
-    def _resolve_checks(check: str) -> set[str]:
-        """Parse check string into a resolved set of check names."""
-        checks = {part.strip() for part in check.split(",") if part.strip()}
-        if not checks or "all" in checks:
-            return {"links", "forbidden-terms"}
-        return checks
-
-    def _collect_issues(
-        self,
-        scope: m.Infra.DocScope,
-        checks: set[str],
-    ) -> MutableSequence[m.Infra.AuditIssue]:
-        """Run enabled checks and collect all issues."""
         issues: MutableSequence[m.Infra.AuditIssue] = []
         if "links" in checks:
             issues.extend(self.broken_link_issues(scope))
         if "forbidden-terms" in checks:
             issues.extend(self.forbidden_term_issues(scope))
-        return issues
 
-    @staticmethod
-    def _evaluate_pass(
-        scope_name: str,
-        issues: Sequence[m.Infra.AuditIssue],
-        *,
-        strict: bool,
-        budgets: t.Infra.Pair[int | None, Mapping[str, int]],
-    ) -> bool:
-        """Determine whether the scope passes given strictness and budgets."""
-        if not strict:
-            return True
-        resolved_default, resolved_by_scope = budgets
-        max_issues = resolved_by_scope.get(scope_name, resolved_default)
-        limit = 0 if max_issues is None else max_issues
-        return len(issues) <= limit
+        _write_audit_reports(scope, issues, checks, strict=resolved.strict)
 
-    @staticmethod
-    def _build_audit_report(
-        scope: m.Infra.DocScope,
-        issues: Sequence[m.Infra.AuditIssue],
-        checks: set[str],
-        *,
-        strict: bool,
-        passed: bool,
-    ) -> m.Infra.DocsPhaseReport:
-        """Build the final DocsPhaseReport from audit results."""
+        budgets = resolved.budgets or _NO_BUDGETS
+        if not resolved.strict:
+            passed = True
+        else:
+            default_limit, by_scope = budgets
+            max_issues = by_scope.get(scope.name, default_limit)
+            limit = 0 if max_issues is None else max_issues
+            passed = len(issues) <= limit
+
         status = c.Infra.Status.OK if passed else c.Infra.Status.FAIL
         reason = f"issues:{len(issues)}"
         logger.info(
@@ -335,7 +189,7 @@ class FlextInfraDocAuditor:
                 for issue in issues
             ],
             checks=sorted(checks),
-            strict=strict,
+            strict=resolved.strict,
             passed=passed,
             result=status,
             reason=reason,
@@ -363,22 +217,33 @@ class FlextInfraDocAuditor:
                 continue
             clean_line = u.Infra.INLINE_CODE_RE.sub("", line)
             for raw in u.Infra.MARKDOWN_LINK_URL_RE.findall(clean_line):
-                target = self.normalize_link(raw)
-                if not target or target.startswith("#") or self.is_external(target):
-                    continue
-                if self.should_skip_target(raw, target):
-                    continue
-                path = (md_file.parent / target).resolve()
-                if not path.exists():
-                    issues.append(
-                        m.Infra.AuditIssue(
-                            file=rel,
-                            issue_type="broken_link",
-                            severity="high",
-                            message=f"line {number}: target not found -> {raw}",
-                        ),
-                    )
+                issue = self._check_single_link(md_file, rel, raw, number)
+                if issue is not None:
+                    issues.append(issue)
         return issues
+
+    def _check_single_link(
+        self,
+        md_file: Path,
+        rel: str,
+        raw: str,
+        line_number: int,
+    ) -> m.Infra.AuditIssue | None:
+        """Return an AuditIssue if a single link target is broken, else None."""
+        target = self.normalize_link(raw)
+        if not target or target.startswith("#") or self.is_external(target):
+            return None
+        if self.should_skip_target(raw, target):
+            return None
+        path = (md_file.parent / target).resolve()
+        if path.exists():
+            return None
+        return m.Infra.AuditIssue(
+            file=rel,
+            issue_type="broken_link",
+            severity="high",
+            message=f"line {line_number}: target not found -> {raw}",
+        )
 
     def broken_link_issues(
         self,
@@ -424,7 +289,7 @@ class FlextInfraDocAuditor:
 
     @staticmethod
     def main() -> int:
-        """CLI entry point for the documentation auditor."""
+        """CLI entry point for the documentation auditor (legacy argparse)."""
         parser = u.Infra.create_parser(
             "flext-infra docs audit",
             "Audit documentation for issues",
@@ -456,8 +321,89 @@ class FlextInfraDocAuditor:
         if result.is_failure:
             output.error(result.error or "audit failed")
             return 1
-        failures = sum(1 for report in result.value if not report.passed)
+        failures = u.count(result.value, lambda report: not report.passed)
         return 1 if failures else 0
+
+
+def _find_architecture_config(workspace_root: Path) -> Path | None:
+    """Walk up from workspace_root looking for the architecture config."""
+    for candidate in [workspace_root, *workspace_root.parents]:
+        path = candidate / "docs/architecture/architecture_config.json"
+        if path.exists():
+            return path
+    return None
+
+
+def _parse_audit_gate(
+    audit_gate: Mapping[str, t.Infra.InfraValue],
+) -> t.Infra.Pair[int | None, Mapping[str, int]]:
+    """Extract default budget and per-scope budgets from an audit_gate mapping."""
+    default_budget = audit_gate.get("max_issues_default")
+    by_scope_raw_value = audit_gate.get("max_issues_by_scope")
+    by_scope_raw: Mapping[str, t.Infra.InfraValue] = {}
+    if u.is_mapping(by_scope_raw_value):
+        try:
+            by_scope_raw = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                by_scope_raw_value,
+                strict=True,
+            )
+        except ValidationError:
+            by_scope_raw = {}
+    by_scope: MutableMapping[str, int] = {}
+    for name, value in by_scope_raw.items():
+        if isinstance(value, (int, float)):
+            by_scope[name] = int(value)
+    resolved_default = (
+        int(default_budget) if isinstance(default_budget, (int, float)) else None
+    )
+    return (resolved_default, by_scope)
+
+
+def _resolve_checks(check: str) -> set[str]:
+    """Parse check string into a resolved set of check names."""
+    checks = {part.strip() for part in check.split(",") if part.strip()}
+    if not checks or "all" in checks:
+        return {"links", "forbidden-terms"}
+    return checks
+
+
+def _write_audit_reports(
+    scope: m.Infra.DocScope,
+    issues: Sequence[m.Infra.AuditIssue],
+    checks: set[str],
+    *,
+    strict: bool,
+) -> None:
+    """Persist JSON summary and markdown report to the scope report directory."""
+    sorted_checks: list[JsonValue] = [str(ck) for ck in sorted(checks)]
+    summary: dict[str, JsonValue] = {
+        c.Infra.ReportKeys.SCOPE: scope.name,
+        "issues": len(issues),
+        c.Infra.Verbs.CHECKS: sorted_checks,
+        c.Infra.Modes.STRICT: strict,
+        "report_dir": scope.report_dir.as_posix(),
+    }
+    issues_payload: JsonValue = [
+        {
+            c.Infra.ReportKeys.FILE: issue.file,
+            "issue_type": issue.issue_type,
+            "severity": issue.severity,
+            c.Infra.ReportKeys.MESSAGE: issue.message,
+        }
+        for issue in issues
+    ]
+    summary_payload: dict[str, JsonValue] = {
+        c.Infra.ReportKeys.SUMMARY: summary,
+        "issues": issues_payload,
+    }
+    _ = u.Infra.write_json(
+        scope.report_dir / "audit-summary.json",
+        summary_payload,
+    )
+    _ = u.Infra.write_markdown(
+        scope.report_dir / "audit-report.md",
+        FlextInfraDocAuditor.to_markdown(scope, issues),
+    )
 
 
 main = FlextInfraDocAuditor.main

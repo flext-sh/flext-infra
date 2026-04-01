@@ -80,8 +80,8 @@ class FlextInfraRefactorTypingAnnotationFixRule(FlextInfraRefactorRule):
         tree: cst.Module,
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        fix_action = (
-            str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
+        fix_action = u.Infra.get_str_key(
+            self.config, c.Infra.ReportKeys.FIX_ACTION, lower=True
         )
         if fix_action == "replace_object_annotations":
             return self._apply_transformer(
@@ -148,7 +148,7 @@ class FlextInfraRefactorTier0ImportFixRule(FlextInfraRefactorRule):
 
     def _alias_to_submodule(self) -> t.StrMapping:
         value = self.config.get("alias_to_submodule", {})
-        if not isinstance(value, dict):
+        if not u.is_mapping(value):
             return {}
         return {str(key): str(item) for key, item in value.items()}
 
@@ -272,12 +272,17 @@ class FlextInfraRefactorEngine:
         (c.Infra.TYPE_ALIAS_FIX_ACTIONS, FlextInfraRefactorTypingUnificationRule),
         (c.Infra.TYPING_FIX_ACTIONS, FlextInfraRefactorTypingAnnotationFixRule),
         (c.Infra.TIER0_FIX_ACTIONS, FlextInfraRefactorTier0ImportFixRule),
+        (
+            frozenset({"migrate_to_class_mro"}),
+            FlextInfraRefactorMROClassMigrationRule,
+        ),
+        (
+            frozenset({"propagate_signature_migrations"}),
+            FlextInfraRefactorSignaturePropagationRule,
+        ),
+        (c.Infra.PROPAGATION_FIX_ACTIONS, FlextInfraRefactorSymbolPropagationRule),
+        (c.Infra.MRO_FIX_ACTIONS, FlextInfraRefactorMRORedundancyChecker),
     ]
-
-    _RULE_SUBDISPATCH_REGISTRY: ClassVar[Mapping[str, type[FlextInfraRefactorRule]]] = {
-        "migrate_to_class_mro": FlextInfraRefactorMROClassMigrationRule,
-        "propagate_signature_migrations": FlextInfraRefactorSignaturePropagationRule,
-    }
 
     _RULE_ID_FALLBACKS: ClassVar[
         Sequence[tuple[frozenset[str], type[FlextInfraRefactorRule]]]
@@ -299,6 +304,15 @@ class FlextInfraRefactorEngine:
             frozenset({"redundant-cast", "dict-to-mapping", "container-invariance"}),
             FlextInfraRefactorPatternCorrectionsRule,
         ),
+        (
+            frozenset({"migrate-to-class-mro"}),
+            FlextInfraRefactorMROClassMigrationRule,
+        ),
+        (frozenset({"mro"}), FlextInfraRefactorMRORedundancyChecker),
+        (
+            frozenset({"propagate", "symbol-rename", "rename"}),
+            FlextInfraRefactorSymbolPropagationRule,
+        ),
     ]
 
     def __init__(self, config_path: Path | None = None) -> None:
@@ -313,6 +327,32 @@ class FlextInfraRefactorEngine:
         self.rule_validator = FlextInfraRefactorRuleDefinitionValidator()
         self.safety_manager = FlextInfraRefactorSafetyManager()
 
+    @staticmethod
+    def _error_result(
+        file_path: Path,
+        error: str,
+    ) -> m.Infra.Result:
+        """Build a failure result with no modifications."""
+        return m.Infra.Result(
+            file_path=file_path,
+            success=False,
+            modified=False,
+            error=error,
+            changes=[],
+            refactored_code=None,
+        )
+
+    @staticmethod
+    def _skip_result(file_path: Path) -> m.Infra.Result:
+        """Build a success result for skipped non-Python files."""
+        return m.Infra.Result(
+            file_path=file_path,
+            success=True,
+            modified=False,
+            changes=["Skipped non-Python file"],
+            refactored_code=None,
+        )
+
     def _try_safety_stash(
         self,
         target_path: Path,
@@ -324,22 +364,12 @@ class FlextInfraRefactorEngine:
 
         Returns (stash_ref, None) on success or ("", error_results) on failure.
         """
-        skip_stash = (not apply_safety) or dry_run
-        if skip_stash:
+        if not apply_safety or dry_run:
             return "", None
         stash_ref_result = self._prepare_safety_stash(target_path)
         if stash_ref_result.is_failure:
             error_msg = stash_ref_result.error or "pre-transformation stash failed"
-            return "", [
-                m.Infra.Result(
-                    file_path=target_path,
-                    success=False,
-                    modified=False,
-                    error=error_msg,
-                    changes=[],
-                    refactored_code=None,
-                ),
-            ]
+            return "", [self._error_result(target_path, error_msg)]
         return stash_ref_result.value, None
 
     @staticmethod
@@ -440,35 +470,7 @@ class FlextInfraRefactorEngine:
         args: argparse.Namespace,
     ) -> MutableSequence[Path] | None:
         """Collect project files for violation analysis. Returns None on error."""
-        scan_dirs = frozenset(
-            self.rule_loader.extract_project_scan_dirs(self.config),
-        )
-        iter_result = u.Infra.iter_python_files(
-            workspace_root=args.project,
-            project_roots=[args.project],
-            include_tests=c.Infra.Directories.TESTS in scan_dirs,
-            include_examples=c.Infra.Directories.EXAMPLES in scan_dirs,
-            include_scripts=c.Infra.Directories.SCRIPTS in scan_dirs,
-            src_dirs=scan_dirs or None,
-        )
-        if iter_result.is_failure:
-            u.Infra.refactor_error(
-                iter_result.error
-                or f"File iteration failed for project: {args.project}",
-            )
-            return None
-        ignore_items, extension_items = self.rule_loader.extract_engine_file_filters(
-            self.config
-        )
-        return list(
-            self._filter_files(
-                iter_result.value,
-                base_path=args.project,
-                pattern=args.pattern,
-                ignore_patterns={str(item) for item in ignore_items},
-                allowed_extensions={str(item) for item in extension_items},
-            ),
-        )
+        return self._collect_project_files(args.project, pattern=args.pattern)
 
     @staticmethod
     def _collect_explicit_files(
@@ -484,6 +486,42 @@ class FlextInfraRefactorEngine:
             return [item for item in args.files if item.exists()]
         return []
 
+    def _collect_project_files(
+        self,
+        project_path: Path,
+        *,
+        pattern: str = c.Infra.Extensions.PYTHON_GLOB,
+    ) -> MutableSequence[Path] | None:
+        """Iterate and filter Python files under a project. Returns None on error."""
+        scan_dirs = frozenset(
+            self.rule_loader.extract_project_scan_dirs(self.config),
+        )
+        iter_result = u.Infra.iter_python_files(
+            workspace_root=project_path,
+            project_roots=[project_path],
+            include_tests=c.Infra.Directories.TESTS in scan_dirs,
+            include_examples=c.Infra.Directories.EXAMPLES in scan_dirs,
+            include_scripts=c.Infra.Directories.SCRIPTS in scan_dirs,
+            src_dirs=scan_dirs or None,
+        )
+        if iter_result.is_failure:
+            u.Infra.refactor_error(
+                iter_result.error or f"File iteration failed for {project_path}",
+            )
+            return None
+        ignore_items, extension_items = self.rule_loader.extract_engine_file_filters(
+            self.config,
+        )
+        return list(
+            self._filter_files(
+                iter_result.value,
+                base_path=project_path,
+                pattern=pattern,
+                ignore_patterns={str(item) for item in ignore_items},
+                allowed_extensions={str(item) for item in extension_items},
+            ),
+        )
+
     def _run_refactor(self, args: argparse.Namespace) -> int:
         """Execute the refactoring branch of the CLI."""
         results = self._collect_refactor_results(args)
@@ -492,7 +530,7 @@ class FlextInfraRefactorEngine:
         u.Infra.print_summary(results, dry_run=args.dry_run)
         if args.impact_map_output is not None:
             _ = u.Infra.write_impact_map(results, args.impact_map_output)
-        failed = sum(1 for item in results if not item.success)
+        failed = u.count(results, lambda item: not item.success)
         return 0 if failed == 0 else 1
 
     def _collect_refactor_results(
@@ -706,14 +744,7 @@ class FlextInfraRefactorEngine:
         """Parse and apply CST rules, returning error Result or (code, changes)."""
         tree = u.Infra.parse_cst_from_source(source)
         if tree is None:
-            return m.Infra.Result(
-                file_path=file_path,
-                success=False,
-                modified=False,
-                error="parse_failed",
-                changes=[],
-                refactored_code=None,
-            )
+            return self._error_result(file_path, "parse_failed")
         all_changes: MutableSequence[str] = []
         for rule in self.rules:
             if rule.enabled:
@@ -730,13 +761,7 @@ class FlextInfraRefactorEngine:
         """Refactor one file with currently loaded rules."""
         try:
             if file_path.suffix != c.Infra.Extensions.PYTHON:
-                return m.Infra.Result(
-                    file_path=file_path,
-                    success=True,
-                    modified=False,
-                    changes=["Skipped non-Python file"],
-                    refactored_code=None,
-                )
+                return self._skip_result(file_path)
             original_source = file_path.read_text(encoding=c.Infra.Encoding.DEFAULT)
             file_result = self._apply_file_rules(file_path, original_source)
             if isinstance(file_result, m.Infra.Result):
@@ -758,14 +783,7 @@ class FlextInfraRefactorEngine:
                 refactored_code=result_code,
             )
         except Exception as exc:
-            return m.Infra.Result(
-                file_path=file_path,
-                success=False,
-                modified=False,
-                error=str(exc),
-                changes=[],
-                refactored_code=None,
-            )
+            return self._error_result(file_path, str(exc))
 
     def refactor_files(
         self,
@@ -776,20 +794,6 @@ class FlextInfraRefactorEngine:
         """Refactor many files and collect individual results."""
         results: MutableSequence[m.Infra.Result] = []
         for file_path in file_paths:
-            if file_path.suffix != c.Infra.Extensions.PYTHON:
-                u.Infra.refactor_info(
-                    f"Skipped non-Python file: {file_path.name}",
-                )
-                results.append(
-                    m.Infra.Result(
-                        file_path=file_path,
-                        success=True,
-                        modified=False,
-                        changes=["Skipped non-Python file"],
-                        refactored_code=None,
-                    ),
-                )
-                continue
             result = self.refactor_file(file_path, dry_run=dry_run)
             results.append(result)
             if result.success:
@@ -823,38 +827,15 @@ class FlextInfraRefactorEngine:
         )
         if stash_error is not None:
             return stash_error
-        scan_dirs = frozenset(self.rule_loader.extract_project_scan_dirs(self.config))
-        iter_result = u.Infra.iter_python_files(
-            workspace_root=project_path,
-            project_roots=[project_path],
-            include_tests=c.Infra.Directories.TESTS in scan_dirs,
-            include_examples=c.Infra.Directories.EXAMPLES in scan_dirs,
-            include_scripts=c.Infra.Directories.SCRIPTS in scan_dirs,
-            src_dirs=scan_dirs or None,
-        )
-        if iter_result.is_failure:
-            error_msg = iter_result.error or f"File iteration failed for {project_path}"
-            u.Infra.refactor_error(error_msg)
+        collected = self._collect_project_files(project_path, pattern=pattern)
+        if collected is None:
             return [
-                m.Infra.Result(
-                    file_path=project_path,
-                    success=False,
-                    modified=False,
-                    error=error_msg,
-                    changes=[],
-                    refactored_code=None,
+                self._error_result(
+                    project_path,
+                    f"File iteration failed for {project_path}",
                 ),
             ]
-        ignore_items, extension_items = self.rule_loader.extract_engine_file_filters(
-            self.config,
-        )
-        files = self._filter_files(
-            iter_result.value,
-            base_path=project_path,
-            pattern=pattern,
-            ignore_patterns={str(item) for item in ignore_items},
-            allowed_extensions={str(item) for item in extension_items},
-        )
+        files = collected
         u.Infra.refactor_info(f"Found {len(files)} files to process")
         results: MutableSequence[m.Infra.Result] = list(
             u.Infra.run_rope_pre_hooks(project_path, dry_run=dry_run),
@@ -966,16 +947,7 @@ class FlextInfraRefactorEngine:
                 u.Infra.refactor_error(
                     rollback_result.error or "rollback failed",
                 )
-            results.append(
-                m.Infra.Result(
-                    file_path=target_path,
-                    success=False,
-                    modified=False,
-                    error=error_msg,
-                    changes=[],
-                    refactored_code=None,
-                ),
-            )
+            results.append(self._error_result(target_path, error_msg))
             return
 
         clear_result = self.safety_manager.clear_checkpoint()
@@ -1004,57 +976,29 @@ class FlextInfraRefactorEngine:
         rule_def: Mapping[str, t.Infra.InfraValue],
     ) -> FlextInfraRefactorRule | None:
         rule_id = str(rule_def.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN))
-        fix_action = (
-            str(
-                rule_def.get(
-                    c.Infra.ReportKeys.FIX_ACTION,
-                    rule_def.get(c.Infra.ReportKeys.ACTION, ""),
-                ),
-            )
-            .strip()
-            .lower()
+        fix_action = u.Infra.get_str_key(
+            rule_def,
+            c.Infra.ReportKeys.FIX_ACTION,
+            default=u.Infra.get_str_key(rule_def, c.Infra.ReportKeys.ACTION),
+            lower=True,
         )
-        check = str(rule_def.get(c.Infra.Verbs.CHECK, "")).strip().lower()
+        check = u.Infra.get_str_key(rule_def, c.Infra.Verbs.CHECK, lower=True)
+        return self._resolve_by_action(
+            fix_action,
+            check,
+            rule_def,
+        ) or self._resolve_by_rule_id(rule_id.lower(), rule_def)
 
-        return (
-            self._resolve_by_subdispatch(fix_action, rule_def)
-            or self._resolve_by_action_registry(fix_action, check, rule_def)
-            or self._resolve_by_action_sets(fix_action, rule_def)
-            or self._resolve_by_rule_id(rule_id.lower(), rule_def)
-        )
-
-    def _resolve_by_subdispatch(
-        self,
-        fix_action: str,
-        rule_def: Mapping[str, t.Infra.InfraValue],
-    ) -> FlextInfraRefactorRule | None:
-        """Resolve rule via direct subdispatch registry."""
-        if fix_action in self._RULE_SUBDISPATCH_REGISTRY:
-            return self._RULE_SUBDISPATCH_REGISTRY[fix_action](rule_def)
-        return None
-
-    def _resolve_by_action_registry(
+    def _resolve_by_action(
         self,
         fix_action: str,
         check: str,
         rule_def: Mapping[str, t.Infra.InfraValue],
     ) -> FlextInfraRefactorRule | None:
-        """Resolve rule via action-set registry lookup."""
+        """Resolve rule via unified action registry lookup."""
         for action_set, rule_class in self._RULE_ACTION_REGISTRY:
             if fix_action in action_set or check in action_set:
                 return rule_class(rule_def)
-        return None
-
-    def _resolve_by_action_sets(
-        self,
-        fix_action: str,
-        rule_def: Mapping[str, t.Infra.InfraValue],
-    ) -> FlextInfraRefactorRule | None:
-        """Resolve rule via MRO/propagation action sets."""
-        if fix_action in c.Infra.MRO_FIX_ACTIONS:
-            return FlextInfraRefactorMRORedundancyChecker(rule_def)
-        if fix_action in c.Infra.PROPAGATION_FIX_ACTIONS:
-            return FlextInfraRefactorSymbolPropagationRule(rule_def)
         return None
 
     def _resolve_by_rule_id(
@@ -1063,17 +1007,13 @@ class FlextInfraRefactorEngine:
         rule_def: Mapping[str, t.Infra.InfraValue],
     ) -> FlextInfraRefactorRule | None:
         """Resolve rule via rule_id keyword heuristics."""
+        if "signature" in rule_id_lower and any(
+            kw in rule_id_lower for kw in ("propagate", "rename")
+        ):
+            return FlextInfraRefactorSignaturePropagationRule(rule_def)
         for keywords, rule_class in self._RULE_ID_FALLBACKS:
             if any(kw in rule_id_lower for kw in keywords):
                 return rule_class(rule_def)
-        if "mro" in rule_id_lower:
-            if "migrate-to-class-mro" in rule_id_lower:
-                return FlextInfraRefactorMROClassMigrationRule(rule_def)
-            return FlextInfraRefactorMRORedundancyChecker(rule_def)
-        if any(kw in rule_id_lower for kw in ("propagate", "symbol-rename", "rename")):
-            if "signature" in rule_id_lower:
-                return FlextInfraRefactorSignaturePropagationRule(rule_def)
-            return FlextInfraRefactorSymbolPropagationRule(rule_def)
         return None
 
     def _default_config_path(self) -> Path:

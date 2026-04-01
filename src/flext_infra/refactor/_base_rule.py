@@ -13,23 +13,14 @@ from pathlib import Path
 from typing import Protocol, override, runtime_checkable
 
 import libcst as cst
-from pydantic import TypeAdapter
 
 from flext_infra import c, t
 
-# ── Shared TypeAdapter constants ──────────────────────────────────────
-# Defined once here; imported by rules/ modules that need them.
-
-INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
-CONTAINER_DICT_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.ContainerDict]] = TypeAdapter(
-    Sequence[t.Infra.ContainerDict],
-)
-STR_MAPPING_ADAPTER: TypeAdapter[Mapping[str, str]] = TypeAdapter(Mapping[str, str])
-INFRA_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.InfraValue]] = TypeAdapter(
-    Sequence[t.Infra.InfraValue],
-)
+# ── Shared TypeAdapter re-exports (SSOT: t.Infra.*_ADAPTER) ─────────
+INFRA_MAPPING_ADAPTER = t.Infra.INFRA_MAPPING_ADAPTER
+CONTAINER_DICT_SEQ_ADAPTER = t.Infra.CONTAINER_DICT_SEQ_ADAPTER
+STR_MAPPING_ADAPTER = t.Infra.STR_MAPPING_ADAPTER
+INFRA_SEQ_ADAPTER = t.Infra.INFRA_SEQ_ADAPTER
 
 
 @runtime_checkable

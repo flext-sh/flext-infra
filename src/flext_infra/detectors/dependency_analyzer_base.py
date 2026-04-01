@@ -17,7 +17,7 @@ from pathlib import Path
 from flext_core import r
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraImportCollector, c, m, t, u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraDependencyAnalyzer:
@@ -201,24 +201,16 @@ class FlextInfraDependencyAnalyzer:
             return r[Sequence[m.Infra.AstGrepMatchEnvelope]].fail(str(exc))
 
     def _parse_imports(self, file_path: Path) -> r[m.Infra.FileImportData]:
-        """Parse a Python file and extract its import information.
-
-        Args:
-            file_path: Path to the Python file to parse.
-
-        Returns:
-            Result containing FileImportData with imported modules and symbols.
-
-        """
-        tree = u.Infra.parse_module_cst(file_path)
-        if tree is None:
+        """Parse a Python file and extract its import information via rope."""
+        rope_project = u.Infra.init_rope_project(file_path.parent)
+        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        if res is None:
             return r[m.Infra.FileImportData].fail(f"{file_path}: parse_failed")
-        col = FlextInfraImportCollector()
-        _ = tree.visit(col)
+        imports = u.Infra.get_module_imports(rope_project, res)
         return r[m.Infra.FileImportData].ok(
             m.Infra.FileImportData(
-                imported_modules=col.imported_modules,
-                imported_symbols=col.imported_symbols,
+                imported_modules={fqn.split(".")[0] for fqn in imports.values()},
+                imported_symbols=set(imports.keys()),
             ),
         )
 

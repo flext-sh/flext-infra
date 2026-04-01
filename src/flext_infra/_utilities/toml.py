@@ -12,8 +12,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import tomlkit
-from flext_core import FlextLogger, r
-from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
+from flext_core import FlextLogger, FlextUtilities, r
+from pydantic import BaseModel, ValidationError
 from tomlkit.items import Array, Item, Table
 from tomlkit.toml_document import TOMLDocument
 
@@ -33,37 +33,14 @@ class FlextInfraUtilitiesToml:
 
     logger = FlextLogger(__name__)
 
-    _CONTAINER_DICT_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] | None = None
-    _CONTAINER_LIST_ADAPTER: TypeAdapter[Sequence[JsonValue]] | None = None
-
-    @staticmethod
-    def _get_container_dict_adapter() -> TypeAdapter[Mapping[str, t.Infra.InfraValue]]:
-        """Get or create TypeAdapter for Mapping[str, t.Infra.InfraValue]."""
-        if FlextInfraUtilitiesToml._CONTAINER_DICT_ADAPTER is None:
-            FlextInfraUtilitiesToml._CONTAINER_DICT_ADAPTER = TypeAdapter(
-                Mapping[str, t.Infra.InfraValue],
-            )
-        return FlextInfraUtilitiesToml._CONTAINER_DICT_ADAPTER
-
-    @staticmethod
-    def _get_container_list_adapter() -> TypeAdapter[Sequence[JsonValue]]:
-        """Get or create TypeAdapter for Sequence[JsonValue]."""
-        if FlextInfraUtilitiesToml._CONTAINER_LIST_ADAPTER is None:
-            FlextInfraUtilitiesToml._CONTAINER_LIST_ADAPTER = TypeAdapter(
-                Sequence[JsonValue],
-            )
-        return FlextInfraUtilitiesToml._CONTAINER_LIST_ADAPTER
-
     @staticmethod
     def as_toml_mapping(value: t.Infra.InfraValue) -> t.Infra.ContainerDict | None:
         """Check if value is a MutableMapping and return it typed, otherwise None."""
-        if not isinstance(value, dict):
+        if not FlextUtilities.is_mapping(value):
             return None
         try:
-            normalized_value = (
-                FlextInfraUtilitiesToml._get_container_dict_adapter().validate_python(
-                    value,
-                )
+            normalized_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                value,
             )
         except ValidationError:
             return None
@@ -99,10 +76,8 @@ class FlextInfraUtilitiesToml:
         if normalized is None:
             return []
         try:
-            return (
-                FlextInfraUtilitiesToml._get_container_list_adapter().validate_python(
-                    normalized,
-                )
+            return t.Infra.JSON_SEQ_ADAPTER.validate_python(
+                normalized,
             )
         except ValidationError:
             return []
@@ -122,7 +97,7 @@ class FlextInfraUtilitiesToml:
             return []
         if isinstance(normalized, list):
             try:
-                typed_items = FlextInfraUtilitiesToml._get_container_list_adapter().validate_python(
+                typed_items = t.Infra.JSON_SEQ_ADAPTER.validate_python(
                     normalized,
                 )
             except ValidationError:
@@ -184,18 +159,16 @@ class FlextInfraUtilitiesToml:
             (str, int, float, bool, type(None), BaseModel, Path),
         ):
             return raw_value
-        if isinstance(raw_value, dict):
+        if FlextUtilities.is_mapping(raw_value):
             try:
-                return FlextInfraUtilitiesToml._get_container_dict_adapter().validate_python(
+                return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                     raw_value,
                 )
             except ValidationError:
                 return None
         try:
-            return (
-                FlextInfraUtilitiesToml._get_container_list_adapter().validate_python(
-                    raw_value,
-                )
+            return t.Infra.JSON_SEQ_ADAPTER.validate_python(
+                raw_value,
             )
         except ValidationError:
             return None

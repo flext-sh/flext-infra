@@ -123,7 +123,7 @@ class FlextInfraCodegenConstantsQualityGate:
         for check in checks:
             status = "PASS" if bool(check.get("passed", False)) else "FAIL"
             lines.append(f"- [{status}] {check.get('name', 'unknown')}")
-            detail = str(check.get("detail", "")).strip()
+            detail = u.Infra.get_str_key(check, "detail")
             if detail:
                 lines.append(f"  {detail}")
         lines.extend([

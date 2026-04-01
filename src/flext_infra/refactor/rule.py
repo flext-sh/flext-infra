@@ -6,7 +6,7 @@ import fnmatch
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_infra import (
     FlextInfraClassNestingRefactorRule,
@@ -17,13 +17,6 @@ from flext_infra import (
     r,
     t,
     u,
-)
-
-_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
-_INFRA_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.InfraValue]] = TypeAdapter(
-    Sequence[t.Infra.InfraValue],
 )
 
 
@@ -39,7 +32,7 @@ class FlextInfraRefactorRuleLoader:
         try:
             loaded = u.Infra.safe_load_yaml(self.config_path)
             normalized: MutableMapping[str, t.Infra.InfraValue] = dict(
-                _INFRA_MAPPING_ADAPTER.validate_python(dict(loaded.items())),
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(dict(loaded.items())),
             )
             scope_raw = normalized.get("refactor_engine")
             scope_map = self._normalize_str_object_mapping(scope_raw)
@@ -88,7 +81,7 @@ class FlextInfraRefactorRuleLoader:
             for rule_file in sorted(rules_dir.glob("*.yml")):
                 try:
                     rule_config: Mapping[str, t.Infra.InfraValue] = (
-                        _INFRA_MAPPING_ADAPTER.validate_python(
+                        t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                             dict(u.Infra.safe_load_yaml(rule_file).items())
                         )
                     )
@@ -175,8 +168,8 @@ class FlextInfraRefactorRuleLoader:
         value: t.Infra.InfraValue | None,
     ) -> Sequence[Mapping[str, t.Infra.InfraValue]]:
         try:
-            entries: Sequence[t.Infra.InfraValue] = _INFRA_SEQ_ADAPTER.validate_python(
-                value
+            entries: Sequence[t.Infra.InfraValue] = (
+                t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
             )
         except ValidationError:
             return []
@@ -195,7 +188,7 @@ class FlextInfraRefactorRuleLoader:
         value: t.Infra.InfraValue | None,
     ) -> Mapping[str, t.Infra.InfraValue]:
         try:
-            return _INFRA_MAPPING_ADAPTER.validate_python(value)
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
         except ValidationError:
             return {}
 

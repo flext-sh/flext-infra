@@ -10,19 +10,9 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_core import FlextLogger
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic import JsonValue, ValidationError
 
 from flext_infra import c, m, p, r, t, u
-
-_STR_OBJECT_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = (
-    TypeAdapter(
-        Mapping[str, t.Infra.InfraValue],
-    )
-)
-_STR_SEQUENCE_ADAPTER: TypeAdapter[t.StrSequence] = TypeAdapter(t.StrSequence)
-_JSON_VALUE_SEQUENCE_ADAPTER: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(
-    Sequence[JsonValue],
-)
 
 
 class FlextInfraInternalDependencySyncService:
@@ -374,21 +364,19 @@ class FlextInfraInternalDependencySyncService:
         value: t.Infra.InfraValue,
     ) -> Mapping[str, t.Infra.InfraValue]:
         try:
-            return _STR_OBJECT_MAPPING_ADAPTER.validate_python(value)
+            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
         except ValidationError:
             return {}
 
     @staticmethod
     def _normalize_string_list(value: t.Infra.InfraValue) -> t.StrSequence:
         try:
-            return _STR_SEQUENCE_ADAPTER.validate_python(value)
+            return t.Infra.STR_SEQ_SIMPLE_ADAPTER.validate_python(value)
         except ValidationError:
             if not isinstance(value, list):
                 return []
-            raw_items: Sequence[JsonValue] = (
-                _JSON_VALUE_SEQUENCE_ADAPTER.validate_python(
-                    value,
-                )
+            raw_items: Sequence[JsonValue] = t.Infra.JSON_SEQ_ADAPTER.validate_python(
+                value,
             )
             return [str(item) for item in raw_items]
 

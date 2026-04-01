@@ -24,8 +24,8 @@ class FlextInfraRefactorPatternCorrectionsRule(FlextInfraRefactorRule):
         tree: cst.Module,
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
-        fix_action = (
-            str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
+        fix_action = u.Infra.get_str_key(
+            self.config, c.Infra.ReportKeys.FIX_ACTION, lower=True
         )
         if fix_action == "convert_dict_to_mapping_annotations":
             include_returns = bool(self.config.get("include_return_annotations", False))

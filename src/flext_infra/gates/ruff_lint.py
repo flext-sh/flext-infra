@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Mapping, MutableSequence
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
@@ -66,7 +66,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                         message=str(entry.get("message", "")),
                     )
                     for entry in ruff_data
-                    if isinstance(entry, Mapping)
+                    if u.is_mapping(entry)
                 )
         except (TypeError, ValidationError):
             pass

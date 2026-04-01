@@ -95,7 +95,8 @@ class TestFlextInfraCodegenLazyInit:
         tm.that(parent_init.exists(), eq=True)
         parent_content = parent_init.read_text()
         tm.that(parent_content, contains="PkgModel")
-        tm.that(parent_content, contains="SubService")
+        tm.that(parent_content, contains="merge_lazy_imports")
+        tm.that(parent_content, contains='"sub": "pkg.sub"')
 
     def test_generate_preserves_existing_docstring(self, tmp_path: Path) -> None:
         """Test that existing docstring is preserved in regenerated file."""

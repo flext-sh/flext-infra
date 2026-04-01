@@ -14,7 +14,7 @@ from typing import override
 
 import tomlkit
 from flext_core import FlextLogger, r, s
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic import JsonValue, ValidationError
 from tomlkit import items
 
 from flext_infra import FlextInfraExtraPathsManager, c, m, output, t, u
@@ -24,19 +24,6 @@ _logger = FlextLogger.create_module_logger(__name__)
 
 class FlextInfraConfigFixer(s[bool]):
     """Fix pyrefly configuration across workspace projects."""
-
-    _MUTABLE_MAP_ADAPTER: TypeAdapter[MutableMapping[str, t.Infra.InfraValue]] = (
-        TypeAdapter(MutableMapping[str, t.Infra.InfraValue])
-    )
-    _MAP_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-        Mapping[str, t.Infra.InfraValue],
-    )
-    _JSON_SEQ_ADAPTER: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(
-        Sequence[JsonValue],
-    )
-    _INFRA_SEQ_ADAPTER: TypeAdapter[Sequence[t.Infra.InfraValue]] = TypeAdapter(
-        Sequence[t.Infra.InfraValue],
-    )
 
     def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize pyrefly config fixer."""
@@ -87,17 +74,17 @@ class FlextInfraConfigFixer(s[bool]):
         doc = document_result.value
         doc_data = doc.unwrap()
         tool_data = doc_data.get(c.Infra.TOOL)
-        if not isinstance(tool_data, dict):
+        if not u.is_mapping(tool_data):
             return r[t.StrSequence].ok([])
         typed_tool_data: MutableMapping[str, t.Infra.InfraValue] = (
-            self._MUTABLE_MAP_ADAPTER.validate_python(tool_data)
+            t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(tool_data)
         )
         pyrefly_data = typed_tool_data.get(c.Infra.PYREFLY)
-        if not isinstance(pyrefly_data, Mapping):
+        if not u.is_mapping(pyrefly_data):
             return r[t.StrSequence].ok([])
         try:
             pyrefly: MutableMapping[str, t.Infra.InfraValue] = (
-                self._MUTABLE_MAP_ADAPTER.validate_python(pyrefly_data)
+                t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(pyrefly_data)
             )
         except ValidationError:
             return r[t.StrSequence].ok([])
@@ -175,7 +162,7 @@ class FlextInfraConfigFixer(s[bool]):
         if isinstance(excludes, list):
             exclude_items: Sequence[JsonValue] = []
             with contextlib.suppress(ValidationError):
-                exclude_items = self._JSON_SEQ_ADAPTER.validate_python([*excludes])
+                exclude_items = t.Infra.JSON_SEQ_ADAPTER.validate_python([*excludes])
             current = [str(value) for value in exclude_items]
         expected = sorted(set(self._tool_config.tools.pyrefly.project_exclude_globs))
         if current != expected:
@@ -201,7 +188,9 @@ class FlextInfraConfigFixer(s[bool]):
         current_paths: Sequence[JsonValue] = []
         if isinstance(search_raw, list):
             with contextlib.suppress(ValidationError):
-                current_paths = self._JSON_SEQ_ADAPTER.validate_python(list(search_raw))
+                current_paths = t.Infra.JSON_SEQ_ADAPTER.validate_python(
+                    list(search_raw)
+                )
         current_search = [
             str(path_item) for path_item in current_paths if isinstance(path_item, str)
         ]
@@ -221,13 +210,13 @@ class FlextInfraConfigFixer(s[bool]):
         new_configs: MutableSequence[t.Infra.InfraValue] = []
         configs: Sequence[t.Infra.InfraValue] = []
         with contextlib.suppress(ValidationError):
-            configs = self._INFRA_SEQ_ADAPTER.validate_python(sub_configs)
+            configs = t.Infra.INFRA_SEQ_ADAPTER.validate_python(sub_configs)
         for conf in configs:
             conf_out: t.Infra.InfraValue = conf
             conf_map: Mapping[str, t.Infra.InfraValue] = {}
-            if isinstance(conf, Mapping):
+            if u.is_mapping(conf):
                 try:
-                    conf_map = self._MAP_ADAPTER.validate_python(conf)
+                    conf_map = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(conf)
                     conf_out = dict(conf_map.items())
                 except ValidationError:
                     pass

@@ -23,15 +23,31 @@ class FlextInfraEnsurePyrightConfigPhase:
         root: str,
         report_private_usage: str,
         extra_paths: Sequence[str],
+        suppressions: Mapping[str, str] | None = None,
     ) -> t.Infra.ContainerDict:
-        return {
+        entry: t.Infra.ContainerDict = {
             "root": root,
             "reportPrivateUsage": report_private_usage,
             "extraPaths": [*extra_paths],
         }
+        if suppressions:
+            for key in sorted(suppressions):
+                entry[key] = suppressions[key]
+        return entry
 
     def _path_rules(self) -> m.Infra.PyrightConfig.PathRulesConfig:
         return self._tool_config.tools.pyright.path_rules
+
+    def _suppressions_for_env(self, env_dir: str) -> Mapping[str, str]:
+        """Return merged pyright suppressions for the given env directory."""
+        pyright_cfg = self._tool_config.tools.pyright
+        merged: MutableMapping[str, str] = {**pyright_cfg.lazy_import_suppressions}
+        rules = self._path_rules()
+        if env_dir == rules.source_dir:
+            merged.update(pyright_cfg.source_env_suppressions)
+        elif env_dir in set(rules.test_like_dirs):
+            merged.update(pyright_cfg.test_like_env_suppressions)
+        return merged
 
     def _report_private_usage_for_env(self, env_dir: str) -> str:
         rules = self._path_rules()
@@ -86,6 +102,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     rules.source_dir,
                 ),
                 extra_paths=[source_path],
+                suppressions=self._suppressions_for_env(rules.source_dir),
             ),
             self._env_entry(
                 root=default_test_root,
@@ -93,6 +110,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     default_test_root,
                 ),
                 extra_paths=test_like_extra,
+                suppressions=self._suppressions_for_env(default_test_root),
             ),
         ]
 
@@ -141,6 +159,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     root=env_dir,
                     report_private_usage=report_private_usage,
                     extra_paths=extra_paths,
+                    suppressions=self._suppressions_for_env(env_dir),
                 ),
             )
 
@@ -171,6 +190,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                         root=(relative_root / env_dir).as_posix(),
                         report_private_usage=report_private_usage,
                         extra_paths=extra_paths,
+                        suppressions=self._suppressions_for_env(env_dir),
                     ),
                 )
         return expected_envs
@@ -204,6 +224,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                         project_root=rules.project_root,
                         test_like_dirs=test_like_dirs,
                     ),
+                    suppressions=self._suppressions_for_env(env_dir),
                 ),
             )
         if not envs:

@@ -17,6 +17,7 @@ from flext_infra import (
     FlextInfraDocValidator,
     c,
     m,
+    u,
 )
 
 if TYPE_CHECKING:
@@ -182,7 +183,7 @@ class FlextInfraDocsCli:
         )
         if result.is_failure:
             return r[bool].fail(result.error or "audit failed")
-        failures = sum(1 for report in result.value if not report.passed)
+        failures = u.count(result.value, lambda report: not report.passed)
         if failures:
             return r[bool].fail(f"Audit found {failures} failure(s)")
         return r[bool].ok(True)

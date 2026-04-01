@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
 
-from flext_infra import FlextInfraTopLevelClassCollector, c, m, r, t, u
+from flext_infra import c, m, r, t, u
 
 _AST_GREP_MATCH_SEQ_ADAPTER: TypeAdapter[Sequence[m.Infra.AstGrepMatchEnvelope]] = (
     TypeAdapter(
@@ -150,22 +150,22 @@ class FlextInfraRefactorLooseClassScanner:
         self,
         file_path: Path,
     ) -> r[Sequence[m.Infra.ClassOccurrence]]:
-        tree = u.Infra.parse_module_cst(file_path)
-        if tree is None:
+        rope_project = u.Infra.init_rope_project(file_path.parent)
+        res = u.Infra.get_resource_from_path(rope_project, file_path)
+        if res is None:
             out: r[Sequence[m.Infra.ClassOccurrence]] = r[
                 Sequence[m.Infra.ClassOccurrence]
-            ].fail(
-                f"{file_path}: parse_failed",
-            )
+            ].fail(f"{file_path}: parse_failed")
             return out
-        col = FlextInfraTopLevelClassCollector()
-        tree.visit(col)
-        out2: r[Sequence[m.Infra.ClassOccurrence]] = r[
-            Sequence[m.Infra.ClassOccurrence]
-        ].ok(
-            col.classes,
-        )
-        return out2
+        classes = [
+            m.Infra.ClassOccurrence(
+                name=ci.name,
+                line=ci.line,
+                is_top_level=True,
+            )
+            for ci in u.Infra.get_class_info(rope_project, res)
+        ]
+        return r[Sequence[m.Infra.ClassOccurrence]].ok(classes)
 
     def _scan_with_ast_grep(
         self,

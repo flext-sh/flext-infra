@@ -44,7 +44,7 @@ class FlextInfraUtilitiesDiscovery:
                         name=entry.name,
                         stack=f"python/{kind}",
                         has_tests=(entry / "tests").is_dir(),
-                        has_src=(entry / "src").is_dir(),
+                        has_src=(entry / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir(),
                     ),
                 )
             return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
@@ -69,9 +69,9 @@ class FlextInfraUtilitiesDiscovery:
         candidate = resolved.parent if resolved.is_file() else resolved
         lineage = (candidate, *candidate.parents)
         for current in lineage:
-            if current.name == "src":
+            if current.name == c.Infra.Paths.DEFAULT_SRC_DIR:
                 return current.parent
-            if (current / "src").is_dir():
+            if (current / c.Infra.Paths.DEFAULT_SRC_DIR).is_dir():
                 return current
         return None
 
@@ -94,13 +94,13 @@ class FlextInfraUtilitiesDiscovery:
         candidate = resolved.parent if resolved.is_file() else resolved
         lineage = (candidate, *candidate.parents)
         for current in lineage:
-            if current.name != "src":
+            if current.name != c.Infra.Paths.DEFAULT_SRC_DIR:
                 continue
             try:
                 relative = resolved.relative_to(current)
                 if relative.parts:
                     package_name = relative.parts[0]
-                    if (current / package_name / "__init__.py").is_file():
+                    if (current / package_name / c.Infra.Files.INIT_PY).is_file():
                         return package_name
             except ValueError:
                 continue
@@ -114,11 +114,11 @@ class FlextInfraUtilitiesDiscovery:
         )
         if project_root is None:
             return ""
-        src_dir = project_root / "src"
+        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return ""
         for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / "__init__.py").is_file():
+            if child.is_dir() and (child / c.Infra.Files.INIT_PY).is_file():
                 return child.name
         return ""
 
@@ -138,7 +138,7 @@ class FlextInfraUtilitiesDiscovery:
             if not entry.is_dir() or entry.name.startswith("."):
                 continue
             name = FlextInfraUtilitiesDiscovery.discover_package_from_file(
-                entry / "src",
+                entry / c.Infra.Paths.DEFAULT_SRC_DIR,
             )
             if name:
                 packages.add(name)
@@ -149,8 +149,8 @@ class FlextInfraUtilitiesDiscovery:
         """Return (package_dir, package_name) for any project type."""
         parts = file_path.resolve().parts
         # 1. Standard FLEXT structure: .../src/<package_name>/...
-        if "src" in parts:
-            src_idx = parts.index("src")
+        if c.Infra.Paths.DEFAULT_SRC_DIR in parts:
+            src_idx = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
             # Package name is always the directory immediately after 'src'
             if src_idx + 1 < len(parts):
                 package_name = parts[src_idx + 1]
@@ -161,7 +161,7 @@ class FlextInfraUtilitiesDiscovery:
         current = file_path.resolve().parent
         best_dir, best_name = current, ""
         while current.parent != current:
-            if (current / "__init__.py").is_file():
+            if (current / c.Infra.Files.INIT_PY).is_file():
                 best_dir, best_name = current, current.name
             elif best_name:  # Stop once we've crossed out of the package
                 break
@@ -306,11 +306,11 @@ class FlextInfraUtilitiesDiscovery:
     @staticmethod
     def discover_src_package_dir(project_root: Path) -> t.Infra.Pair[str, Path] | None:
         """Find the main package directory inside src/."""
-        src_dir = project_root / "src"
+        src_dir = project_root / c.Infra.Paths.DEFAULT_SRC_DIR
         if not src_dir.is_dir():
             return None
         for child in sorted(src_dir.iterdir()):
-            if child.is_dir() and (child / "__init__.py").is_file():
+            if child.is_dir() and (child / c.Infra.Files.INIT_PY).is_file():
                 return child.name, child
         return None
 

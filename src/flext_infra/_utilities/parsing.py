@@ -186,13 +186,13 @@ class FlextInfraUtilitiesParsing:
         """Determine if a file is at the package root level (Facade level)."""
         parts = file_path.resolve().parts
         try:
-            src_idx = parts.index("src")
+            src_idx = parts.index(c.Infra.Paths.DEFAULT_SRC_DIR)
             # Package root files are (..., 'src', 'package_name', 'file.py')
             return len(parts) == src_idx + 3
         except ValueError:
             # Fallback: if 'src' not found, check if it's in a package root
-            return (file_path.parent / "__init__.py").is_file() and not (
-                file_path.parent.parent / "__init__.py"
+            return (file_path.parent / c.Infra.Files.INIT_PY).is_file() and not (
+                file_path.parent.parent / c.Infra.Files.INIT_PY
             ).is_file()
 
     @staticmethod
@@ -226,6 +226,17 @@ class FlextInfraUtilitiesParsing:
             return base_expr.attr
         if isinstance(base_expr, ast.Subscript):
             return FlextInfraUtilitiesParsing.ast_extract_base_name(base_expr.value)
+        return ""
+
+    @staticmethod
+    def cst_root_name(expr: cst.BaseExpression) -> str:
+        """Extract the leftmost root name from a CST expression."""
+        if isinstance(expr, cst.Name):
+            return expr.value
+        if isinstance(expr, cst.Attribute):
+            return FlextInfraUtilitiesParsing.cst_root_name(expr.value)
+        if isinstance(expr, cst.Call):
+            return FlextInfraUtilitiesParsing.cst_root_name(expr.func)
         return ""
 
     @staticmethod

@@ -249,7 +249,7 @@ class FlextInfraClassNestingRefactorRule:
         if not isinstance(raw, str):
             msg = "confidence_threshold must be a string"
             raise TypeError(msg)
-        candidate = raw.strip().lower()
+        candidate = u.norm_str(raw, case="lower")
         if candidate in c.Infra.CONFIDENCE_RANKS:
             return candidate
         msg = f"unsupported confidence_threshold: {raw}"
@@ -257,7 +257,7 @@ class FlextInfraClassNestingRefactorRule:
 
     def _confidence_allowed(self, confidence: str, threshold: str) -> bool:
         confidence_rank = c.Infra.CONFIDENCE_RANKS.get(
-            confidence.strip().lower(),
+            u.norm_str(confidence, case="lower"),
             0,
         )
         threshold_rank = c.Infra.CONFIDENCE_RANKS.get(threshold, 0)

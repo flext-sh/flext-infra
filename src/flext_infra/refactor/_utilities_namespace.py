@@ -19,6 +19,7 @@ from typing import ClassVar, override
 
 import libcst as cst
 import tomlkit
+from flext_core import FlextUtilities
 from tomlkit.exceptions import TOMLKitError
 
 from flext_infra import (
@@ -131,7 +132,7 @@ class FlextInfraUtilitiesRefactorNamespace:
     ) -> None:
         """Collect PEP 621 ``project.dependencies`` with ``@ file:`` path refs."""
         project_val: t.Infra.InfraValue = raw.get("project")
-        if not isinstance(project_val, dict):
+        if not FlextUtilities.is_mapping(project_val):
             return
         deps_val: t.Infra.InfraValue = project_val.get("dependencies")
         if not isinstance(deps_val, Sequence) or isinstance(deps_val, str):
@@ -155,19 +156,19 @@ class FlextInfraUtilitiesRefactorNamespace:
     ) -> None:
         """Collect Poetry ``tool.poetry.dependencies`` with ``path = "..."``."""
         tool_val: t.Infra.InfraValue = raw.get("tool")
-        if not isinstance(tool_val, dict):
+        if not FlextUtilities.is_mapping(tool_val):
             return
         poetry_val: t.Infra.InfraValue = tool_val.get("poetry")
-        if not isinstance(poetry_val, dict):
+        if not FlextUtilities.is_mapping(poetry_val):
             return
         deps_tbl_val: t.Infra.InfraValue = poetry_val.get("dependencies")
-        if not isinstance(deps_tbl_val, dict):
+        if not FlextUtilities.is_mapping(deps_tbl_val):
             return
         for dep_entry in deps_tbl_val.values():
-            if not isinstance(dep_entry, dict):
+            if not FlextUtilities.is_mapping(dep_entry):
                 continue
             dep_path_val: t.Infra.InfraValue = dep_entry.get("path")
-            dep_path_str = str(dep_path_val) if dep_path_val is not None else ""
+            dep_path_str = FlextUtilities.ensure_str(dep_path_val)
             if dep_path_str:
                 dep_path_clean = dep_path_str.strip().removeprefix("./").strip()
                 if dep_path_clean:

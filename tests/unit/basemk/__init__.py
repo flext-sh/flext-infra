@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
+    from flext_core import FlextTypes
+
     from tests.unit.basemk.test_engine import *
     from tests.unit.basemk.test_generator import *
     from tests.unit.basemk.test_generator_edge_cases import *

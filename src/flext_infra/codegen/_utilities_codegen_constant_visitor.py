@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Final, override
 
 import libcst as cst
+from flext_core import FlextUtilities
 
 from flext_infra import (
     FlextInfraUtilitiesCodegenGovernance,
@@ -877,7 +878,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         duplicates = duplicates_val if isinstance(duplicates_val, list) else []
 
         for dup in duplicates:
-            if not isinstance(dup, dict):
+            if not FlextUtilities.is_mapping(dup):
                 continue
             dup_name = str(dup.get("name", ""))
 

@@ -11,13 +11,14 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
+    from flext_core import FlextTypes
+
     from flext_infra.refactor._base_rule import *
     from flext_infra.refactor._constants import *
     from flext_infra.refactor._models import *
     from flext_infra.refactor._models_ast_grep import *
     from flext_infra.refactor._models_namespace_enforcer import *
     from flext_infra.refactor._post_check_gate import *
-    from flext_infra.refactor._top_level_class_collector import *
     from flext_infra.refactor._utilities import *
     from flext_infra.refactor._utilities_cli import *
     from flext_infra.refactor._utilities_loader import *
@@ -74,7 +75,6 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraRefactorTypingAnnotationFixRule": "flext_infra.refactor.engine",
     "FlextInfraRefactorTypingUnificationRule": "flext_infra.refactor.engine",
     "FlextInfraRefactorViolationAnalyzer": "flext_infra.refactor.violation_analyzer",
-    "FlextInfraTopLevelClassCollector": "flext_infra.refactor._top_level_class_collector",
     "FlextInfraUtilitiesRefactor": "flext_infra.refactor._utilities",
     "FlextInfraUtilitiesRefactorCli": "flext_infra.refactor._utilities_cli",
     "FlextInfraUtilitiesRefactorLoader": "flext_infra.refactor._utilities_loader",
@@ -92,7 +92,6 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "_models_ast_grep": "flext_infra.refactor._models_ast_grep",
     "_models_namespace_enforcer": "flext_infra.refactor._models_namespace_enforcer",
     "_post_check_gate": "flext_infra.refactor._post_check_gate",
-    "_top_level_class_collector": "flext_infra.refactor._top_level_class_collector",
     "_utilities": "flext_infra.refactor._utilities",
     "_utilities_cli": "flext_infra.refactor._utilities_cli",
     "_utilities_loader": "flext_infra.refactor._utilities_loader",

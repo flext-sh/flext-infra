@@ -381,7 +381,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
         """Build a dependency graph among modules within the same package."""
         graph: MutableMapping[str, t.Infra.StrSet] = {}
         for py_file in pkg_dir.glob("*.py"):
-            if py_file.name == "__init__.py":
+            if py_file.name == c.Infra.Files.INIT_PY:
                 continue
             stem = py_file.stem
             tree = FlextInfraUtilitiesParsing.parse_module_cst(py_file)
@@ -577,7 +577,7 @@ class FlextInfraUtilitiesCodegenConstantTransformation:
     def break_import_cycles(pkg_dir: Path) -> t.Infra.Pair[bool, t.StrSequence]:
         """Detect and break intra-package import cycles by redirecting to parent."""
         cls = FlextInfraUtilitiesCodegenConstantTransformation
-        lazy_map = cls.parse_lazy_imports(pkg_dir / "__init__.py")
+        lazy_map = cls.parse_lazy_imports(pkg_dir / c.Infra.Files.INIT_PY)
         if not lazy_map:
             return False, []
 

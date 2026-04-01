@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import ast
+from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import FlextInfraScanFileMixin, c, m, p, u
@@ -31,6 +33,46 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         "Model class '{name}' must be in canonical model files ({suggestion})"
     )
 
+    @staticmethod
+    def _normalize_base_name(base_name: str) -> str:
+        """Normalize semantic/AST base names to their terminal class name."""
+        return base_name.rsplit(".", maxsplit=1)[-1]
+
+    @classmethod
+    def _matching_base_class(cls, base_names: Sequence[str]) -> str | None:
+        """Return the first supported Pydantic base class found in base_names."""
+        for base_name in base_names:
+            normalized = cls._normalize_base_name(base_name)
+            if normalized in PYDANTIC_BASE_NAMES:
+                return normalized
+        return None
+
+    @classmethod
+    def _ast_class_info(cls, file_path: Path) -> Mapping[str, m.Infra.ClassInfo]:
+        """Parse class declarations when rope cannot resolve imported base classes."""
+        try:
+            module = ast.parse(file_path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            return {}
+
+        class_info: dict[str, m.Infra.ClassInfo] = {}
+        for node in module.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            bases: list[str] = []
+            for base in node.bases:
+                match base:
+                    case ast.Name(id=name):
+                        bases.append(name)
+                    case ast.Attribute(attr=attr):
+                        bases.append(attr)
+            class_info[node.name] = m.Infra.ClassInfo(
+                name=node.name,
+                line=node.lineno,
+                bases=tuple(bases),
+            )
+        return class_info
+
     @classmethod
     @override
     def detect_file(
@@ -50,18 +92,39 @@ class FlextInfraClassPlacementDetector(FlextInfraScanFileMixin, p.Infra.Scanner)
         res = u.Infra.get_resource_from_path(rope_project, file_path)
         if res is None:
             return []
-        return [
-            m.Infra.ClassPlacementViolation(
-                file=str(file_path),
-                line=ci.line,
-                name=ci.name,
-                base_class=next(b for b in ci.bases if b in PYDANTIC_BASE_NAMES),
-                suggestion="Move class to models.py/_models.py or _models/",
-            )
-            for ci in u.Infra.get_class_info(rope_project, res)
-            if not ci.name.startswith("_")
-            and any(b in PYDANTIC_BASE_NAMES for b in ci.bases)
+        ast_class_info = cls._ast_class_info(file_path)
+        rope_class_info = list(u.Infra.get_class_info(rope_project, res))
+        processed_names = {ci.name for ci in rope_class_info}
+        class_info = [
+            *rope_class_info,
+            *[
+                info
+                for name, info in ast_class_info.items()
+                if name not in processed_names
+            ],
         ]
+        violations: list[m.Infra.ClassPlacementViolation] = []
+        for ci in class_info:
+            if ci.name.startswith("_"):
+                continue
+            base_class = cls._matching_base_class(ci.bases)
+            if base_class is None:
+                ast_info = ast_class_info.get(ci.name)
+                if ast_info is None:
+                    continue
+                base_class = cls._matching_base_class(ast_info.bases)
+                if base_class is None:
+                    continue
+            violations.append(
+                m.Infra.ClassPlacementViolation(
+                    file=str(file_path),
+                    line=ci.line,
+                    name=ci.name,
+                    base_class=base_class,
+                    suggestion="Move class to models.py/_models.py or _models/",
+                ),
+            )
+        return violations
 
 
 __all__ = ["FlextInfraClassPlacementDetector"]

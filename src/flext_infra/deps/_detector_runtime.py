@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_core import r
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from flext_infra import c, m, p, t, u
-
-_STR_INFRA_MAP_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
 
 
 class FlextInfraDependencyDetectorRuntime:
@@ -80,7 +76,7 @@ class FlextInfraDependencyDetectorRuntime:
                 python_cfg = limits_data.get(c.Infra.PYTHON)
                 python_version = (
                     str(python_cfg.get(c.Infra.VERSION))
-                    if isinstance(python_cfg, dict)
+                    if u.is_mapping(python_cfg)
                     and python_cfg.get(c.Infra.VERSION) is not None
                     else None
                 )
@@ -196,9 +192,11 @@ class FlextInfraDependencyDetectorRuntime:
         total_issues = 0
         for payload in projects_report.values():
             deptry_obj = payload.get(c.Infra.DEPTRY)
-            if isinstance(deptry_obj, dict):
+            if u.is_mapping(deptry_obj):
                 try:
-                    deptry_payload = _STR_INFRA_MAP_ADAPTER.validate_python(deptry_obj)
+                    deptry_payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                        deptry_obj
+                    )
                 except ValidationError:
                     continue
                 raw_count_obj: t.Infra.InfraValue = deptry_payload.get("raw_count", 0)

@@ -11,14 +11,19 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
+    from flext_core import FlextTypes
+
+    from flext_infra._typings.adapters import *
     from flext_infra._typings.base import *
     from flext_infra._typings.cst import *
     from flext_infra._typings.rope import *
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+    "FlextInfraTypesAdapters": "flext_infra._typings.adapters",
     "FlextInfraTypesBase": "flext_infra._typings.base",
     "FlextInfraTypesCst": "flext_infra._typings.cst",
     "FlextInfraTypesRope": "flext_infra._typings.rope",
+    "adapters": "flext_infra._typings.adapters",
     "base": "flext_infra._typings.base",
     "cst": "flext_infra._typings.cst",
     "rope": "flext_infra._typings.rope",

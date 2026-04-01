@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
+    from flext_core import FlextTypes
+
     from flext_infra.transformers._base import *
     from flext_infra.transformers._utilities_normalizer import *
     from flext_infra.transformers.alias_remover import *

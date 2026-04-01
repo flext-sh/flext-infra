@@ -16,6 +16,7 @@ from __future__ import annotations
 from flext_cli import FlextCliTypes
 
 from flext_infra import (
+    FlextInfraTypesAdapters,
     FlextInfraTypesBase,
     FlextInfraTypesCst,
     FlextInfraTypesRope,
@@ -32,6 +33,7 @@ class FlextInfraTypes(FlextCliTypes):
     """
 
     class Infra(
+        FlextInfraTypesAdapters,
         FlextInfraTypesCst,
         FlextInfraTypesRope,
         FlextInfraTypesBase,

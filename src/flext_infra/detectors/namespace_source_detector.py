@@ -100,7 +100,7 @@ class FlextInfraNamespaceSourceDetector(FlextInfraScanFileMixin, p.Infra.Scanner
         package_dirs = [
             entry
             for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
-            if entry.is_dir() and (entry / "__init__.py").is_file()
+            if entry.is_dir() and (entry / c.Infra.Files.INIT_PY).is_file()
         ]
         return package_dirs[0].name if package_dirs else ""
 

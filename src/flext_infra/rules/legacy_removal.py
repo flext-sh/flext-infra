@@ -18,6 +18,7 @@ from flext_infra import (
     FlextInfraRefactorRule,
     c,
     t,
+    u,
 )
 
 
@@ -123,8 +124,8 @@ class FlextInfraRefactorLegacyRemovalRule(FlextInfraRefactorRule):
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         """Apply configured legacy-removal transforms to module tree."""
         changes: MutableSequence[str] = []
-        fix_action = (
-            str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
+        fix_action = u.Infra.get_str_key(
+            self.config, c.Infra.ReportKeys.FIX_ACTION, lower=True
         )
         if "alias" in self.rule_id or fix_action == "remove":
             tree, alias_changes = self._remove_aliases(tree)

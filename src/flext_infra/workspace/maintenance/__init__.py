@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
+    from flext_core import FlextTypes
+
     from flext_infra.workspace.maintenance.cli import *
     from flext_infra.workspace.maintenance.python_version import *
 

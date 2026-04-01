@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from typing import Annotated
 
 from flext_core import m
@@ -140,6 +140,21 @@ class FlextInfraDepsModels:
         format: FlextInfraDepsModels.RuffFormatConfig
         lint: FlextInfraDepsModels.RuffLintConfig
 
+    class MypyOverrideConfig(m.ArbitraryTypesModel):
+        """Single [[tool.mypy.overrides]] entry."""
+
+        modules: Annotated[
+            t.StrSequence,
+            Field(description="Module patterns for this override."),
+        ]
+        disable_error_codes: Annotated[
+            t.StrSequence,
+            Field(
+                alias="disable-error-codes",
+                description="Error codes disabled for these modules.",
+            ),
+        ]
+
     class MypyConfig(m.ArbitraryTypesModel):
         """Mypy baseline settings loaded from YAML."""
 
@@ -163,6 +178,12 @@ class FlextInfraDepsModels:
                 description="Mypy boolean settings keyed by option name.",
             ),
         ]
+        overrides: Annotated[
+            Sequence[FlextInfraDepsModels.MypyOverrideConfig],
+            Field(
+                description="Per-module mypy overrides for auto-generated files and PEP 695 generics.",
+            ),
+        ] = Field(default_factory=list)
 
     class PydanticMypyConfig(m.ArbitraryTypesModel):
         """Pydantic mypy plugin settings loaded from YAML."""
@@ -310,6 +331,27 @@ class FlextInfraDepsModels:
             Field(
                 alias="extended-settings",
                 description="Pyright extended settings options.",
+            ),
+        ] = Field(default_factory=dict)
+        lazy_import_suppressions: Annotated[
+            t.StrMapping,
+            Field(
+                alias="lazy-import-suppressions",
+                description="Pyright rules suppressed in ALL envs due to lazy import pattern.",
+            ),
+        ] = Field(default_factory=dict)
+        source_env_suppressions: Annotated[
+            t.StrMapping,
+            Field(
+                alias="source-env-suppressions",
+                description="Additional pyright rules suppressed in source env only.",
+            ),
+        ] = Field(default_factory=dict)
+        test_like_env_suppressions: Annotated[
+            t.StrMapping,
+            Field(
+                alias="test-like-env-suppressions",
+                description="Additional pyright rules suppressed in test-like envs.",
             ),
         ] = Field(default_factory=dict)
         path_rules: Annotated[

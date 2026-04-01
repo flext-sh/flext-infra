@@ -13,14 +13,9 @@ import sys
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic import JsonValue, ValidationError
 
 from flext_infra import c, m, p, r, t, u
-
-_INFRA_MAPPING_ADAPTER: TypeAdapter[Mapping[str, t.Infra.InfraValue]] = TypeAdapter(
-    Mapping[str, t.Infra.InfraValue],
-)
-_JSON_SEQ_ADAPTER: TypeAdapter[Sequence[JsonValue]] = TypeAdapter(Sequence[JsonValue])
 
 
 class FlextInfraSkillValidator:
@@ -47,7 +42,7 @@ class FlextInfraSkillValidator:
         value: t.Infra.InfraValue | Mapping[str, t.Infra.InfraValue],
     ) -> Mapping[str, t.Infra.InfraValue]:
         try:
-            adapter = _INFRA_MAPPING_ADAPTER
+            adapter = t.Infra.INFRA_MAPPING_ADAPTER
             return adapter.validate_python(value)
         except ValidationError:
             return {}
@@ -64,9 +59,9 @@ class FlextInfraSkillValidator:
         violations: MutableSequence[str],
     ) -> None:
         """Evaluate one rule entry and accumulate counts/violations."""
-        rule_id = str(rule_obj.get(c.Infra.ReportKeys.ID, "")).strip()
-        rule_type = str(rule_obj.get("type", "")).strip()
-        group = str(rule_obj.get(c.Infra.GROUP, rule_id)).strip() or rule_id
+        rule_id = u.Infra.get_str_key(rule_obj, c.Infra.ReportKeys.ID)
+        rule_type = u.Infra.get_str_key(rule_obj, "type")
+        group = u.Infra.get_str_key(rule_obj, c.Infra.GROUP, default=rule_id) or rule_id
         if rule_type == "ast-grep":
             count = self._run_ast_grep_count(
                 rule_obj,
@@ -173,7 +168,7 @@ class FlextInfraSkillValidator:
             rules_list_obj = rules.get(c.Infra.ReportKeys.RULES, [])
             if not isinstance(rules_list_obj, list):
                 return r[m.Infra.ValidationReport].fail("rules must be a list")
-            rules_list: Sequence[JsonValue] = _JSON_SEQ_ADAPTER.validate_python(
+            rules_list: Sequence[JsonValue] = t.Infra.JSON_SEQ_ADAPTER.validate_python(
                 rules_list_obj,
             )
             counts: MutableMapping[str, int] = {}
@@ -227,7 +222,7 @@ class FlextInfraSkillValidator:
         exclude_globs: t.StrSequence,
     ) -> int:
         """Run an ast-grep rule and return match count."""
-        rule_file_raw = str(rule.get(c.Infra.ReportKeys.FILE, "")).strip()
+        rule_file_raw = u.Infra.get_str_key(rule, c.Infra.ReportKeys.FILE)
         if not rule_file_raw:
             return 0
         rule_file = Path(rule_file_raw)
@@ -276,7 +271,7 @@ class FlextInfraSkillValidator:
             if not line:
                 continue
             payload_result = u.Infra.parse(line)
-            if payload_result.is_success and isinstance(payload_result.value, dict):
+            if payload_result.is_success and u.is_mapping(payload_result.value):
                 payload = payload_result.value
                 maybe = payload.get("violation_count", payload.get("count", 0))
                 if isinstance(maybe, int):
@@ -291,7 +286,7 @@ class FlextInfraSkillValidator:
         mode: str,
     ) -> int:
         """Run a custom rule script and return violation count."""
-        script_raw = str(rule.get("script", "")).strip()
+        script_raw = u.Infra.get_str_key(rule, "script")
         if not script_raw:
             return 0
         script = Path(script_raw)

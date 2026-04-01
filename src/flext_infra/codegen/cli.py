@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_core import r
-from pydantic import TypeAdapter
 
 from flext_infra import (
     FlextInfraCodegenCensus,
@@ -25,10 +24,6 @@ from flext_infra import (
 
 if TYPE_CHECKING:
     import typer
-
-_JSON_OUTPUT_ADAPTER: TypeAdapter[t.ContainerMapping] = TypeAdapter(
-    t.ContainerMapping,
-)
 
 
 def _format_text(value: str) -> str:
@@ -154,7 +149,7 @@ class FlextInfraCliCodegen:
         )
         reports = census.run()
         if params.output_format == "json":
-            text = _JSON_OUTPUT_ADAPTER.dump_json({
+            text = t.Infra.CONTAINER_MAPPING_ADAPTER.dump_json({
                 c.Infra.ReportKeys.PROJECTS: [rpt.model_dump() for rpt in reports],
                 "total_violations": sum(rpt.total for rpt in reports),
                 "total_fixable": sum(rpt.fixable for rpt in reports),
@@ -203,7 +198,7 @@ class FlextInfraCliCodegen:
                 f" | Replace {len(duplicates)} others",
             )
             for dup in duplicates:
-                if isinstance(dup, dict):
+                if u.is_mapping(dup):
                     dup_name = str(dup.get("name", ""))
                     dup_usages_val = dup.get("usages", 0)
                     dup_usages = (
@@ -324,7 +319,7 @@ class FlextInfraCliCodegen:
         reports_after = census.run()
 
         if params.output_format == "json":
-            text = _JSON_OUTPUT_ADAPTER.dump_json({
+            text = t.Infra.CONTAINER_MAPPING_ADAPTER.dump_json({
                 "census_before": {
                     "total_violations": sum(rpt.total for rpt in reports_before),
                     "total_fixable": sum(rpt.fixable for rpt in reports_before),

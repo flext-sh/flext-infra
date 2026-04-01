@@ -144,7 +144,7 @@ class FlextInfraPreCheckGate:
         if not u.Infra.has_required_fields(loaded, top_required):
             return False
         definitions_raw: JsonValue | None = schema.get("definitions")
-        if not isinstance(definitions_raw, dict):
+        if not u.is_mapping(definitions_raw):
             return False
         required_defs = self._extract_definition_requirements(definitions_raw)
         if required_defs is None:
@@ -163,8 +163,8 @@ class FlextInfraPreCheckGate:
         """Extract required field lists from schema definitions. None if invalid."""
         policy_entry_raw: JsonValue | None = definitions.get("policyEntry")
         class_rule_raw: JsonValue | None = definitions.get("classRule")
-        if not isinstance(policy_entry_raw, dict) or not isinstance(
-            class_rule_raw, dict
+        if not u.is_mapping(policy_entry_raw) or not u.is_mapping(
+            class_rule_raw,
         ):
             return None
         return (

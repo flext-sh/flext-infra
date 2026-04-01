@@ -21,12 +21,12 @@ class FlextInfraCyclicImportDetector:
         """Discover local package roots for import filtering."""
         package_roots: set[str] = set()
         for sd in scan_dirs:
-            if (sd / "__init__.py").is_file():
+            if (sd / c.Infra.Files.INIT_PY).is_file():
                 package_roots.add(sd.name)
             for entry in sd.iterdir():
                 if entry.name.startswith(".") or entry.name == "__pycache__":
                     continue
-                if entry.is_dir() and (entry / "__init__.py").is_file():
+                if entry.is_dir() and (entry / c.Infra.Files.INIT_PY).is_file():
                     package_roots.add(entry.name)
                 elif (
                     entry.is_file()
@@ -66,7 +66,7 @@ class FlextInfraCyclicImportDetector:
         file_map: MutableMapping[str, str] = {}
         for sd in scan_dirs:
             is_src = sd.name == c.Infra.Paths.DEFAULT_SRC_DIR
-            is_pkg = (sd / "__init__.py").is_file()
+            is_pkg = (sd / c.Infra.Files.INIT_PY).is_file()
             for py_file in u.Infra.iter_directory_python_files(sd):
                 mod = FlextInfraCyclicImportDetector._file_to_module(
                     py_file,

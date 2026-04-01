@@ -95,8 +95,8 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         _file_path: Path | None = None,
     ) -> t.Infra.Pair[cst.Module, t.StrSequence]:
         """Apply import modernizer or lazy-import hoisting based on fix action."""
-        fix_action = (
-            str(self.config.get(c.Infra.ReportKeys.FIX_ACTION, "")).strip().lower()
+        fix_action = u.Infra.get_str_key(
+            self.config, c.Infra.ReportKeys.FIX_ACTION, lower=True
         )
         if "lazy-import" in self.rule_id or fix_action == "hoist_to_module_top":
             return self._fix_lazy_imports(tree)
@@ -111,9 +111,17 @@ class FlextInfraRefactorImportModernizerRule(FlextInfraRefactorRule):
         if not forbidden:
             return (tree, [])
         imports_to_remove: MutableSequence[str] = []
+        seen_modules: t.Infra.StrSet = set()
         symbols_to_replace: MutableMapping[str, str] = {}
         for rule_config in self._parse_forbidden_rules(forbidden):
-            imports_to_remove.append(rule_config.module)
+            module_candidates = [rule_config.module]
+            if "." in rule_config.module:
+                module_candidates.append(rule_config.module.split(".", 1)[0])
+            for module_name in module_candidates:
+                if module_name in seen_modules:
+                    continue
+                seen_modules.add(module_name)
+                imports_to_remove.append(module_name)
             symbols_to_replace.update(rule_config.symbol_mapping)
         transformer = FlextInfraRefactorImportModernizer(
             imports_to_remove=imports_to_remove,

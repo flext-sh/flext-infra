@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _TYPE_CHECKING:
+    from flext_core import FlextTypes
+
     from flext_infra.deps._constants import *
     from flext_infra.deps._detector_runtime import *
     from flext_infra.deps._models import *

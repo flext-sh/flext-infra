@@ -128,7 +128,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         """Phase 2: break circular imports in generated ``__init__.py`` files."""
         cycle_fixes = 0
         for pkg_dir in pkg_dirs:
-            init_file = pkg_dir / "__init__.py"
+            init_file = pkg_dir / c.Infra.Files.INIT_PY
             if not init_file.is_file():
                 continue
             modified, changes = u.Infra.break_import_cycles(pkg_dir)
@@ -187,7 +187,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             result_code is ``None`` if skipped, ``0`` if OK, ``<0`` on error.
 
         """
-        init_path = pkg_dir / "__init__.py"
+        init_path = pkg_dir / c.Infra.Files.INIT_PY
         current_pkg = u.Infra.infer_package(init_path)
         if not current_pkg:
             return (None, {})
@@ -241,13 +241,15 @@ class FlextInfraCodegenLazyInit(s[int]):
         for k in inline_constants:
             lazy_map.pop(k, None)
 
-        # 7b. Version exports should resolve via lazy __getattr__, not eager imports.
+        # 7b. Version dunder exports must be eager to prevent Python's submodule
+        # import mechanism from shadowing them with the __version__ module object.
+        eager_version: t.Infra.LazyImportMap = {}
         for name, entry in version_entries.items():
-            lazy_map.setdefault(name, entry)
+            eager_version[name] = entry
 
         # 8. Build final exports list (includes both lazy and eager)
         exports = sorted(
-            set(lazy_map) | set(inline_constants) | eager_tvars,
+            set(lazy_map) | set(inline_constants) | eager_tvars | set(eager_version),
         )
         if not exports:
             return (None, dict(lazy_map))
@@ -264,6 +266,7 @@ class FlextInfraCodegenLazyInit(s[int]):
             inline_constants,
             current_pkg,
             eager_tvars,
+            eager_version or None,
             child_packages_for_lazy=child_packages_for_lazy,
             child_packages_for_tc=child_packages_for_tc,
         )
@@ -316,7 +319,7 @@ class FlextInfraCodegenLazyInit(s[int]):
     def _dir_has_py_files(pkg_dir: Path) -> bool:
         """Return True if directory has ``.py`` files besides ``__init__.py``."""
         return any(
-            f.name != "__init__.py" and f.suffix == ".py"
+            f.name != c.Infra.Files.INIT_PY and f.suffix == ".py"
             for f in pkg_dir.iterdir()
             if f.is_file()
         )
@@ -392,7 +395,7 @@ class FlextInfraCodegenLazyInit(s[int]):
         index: t.Infra.MutableLazyImportMap,
     ) -> None:
         """Index exports from a single ``.py`` file into the lazy map."""
-        if py_file.name in {"__init__.py", "__main__.py", "__version__.py"}:
+        if py_file.name in {c.Infra.Files.INIT_PY, "__main__.py", "__version__.py"}:
             return
         # Only filter root underscore files for top-level packages.
         # Public descendant packages must aggregate their internal _*.py files

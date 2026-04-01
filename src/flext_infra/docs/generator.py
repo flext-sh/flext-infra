@@ -228,7 +228,7 @@ class FlextInfraDocGenerator:
             )
             files.extend(self._generate_project_mkdocs(scope=scope, apply=apply))
             source = "workspace-docs-guides"
-        generated = sum(1 for item in files if item.written)
+        generated = u.count(files, lambda item: item.written)
         _ = u.Infra.write_json(
             scope.report_dir / "generate-summary.json",
             {

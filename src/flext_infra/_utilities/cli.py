@@ -15,7 +15,7 @@ from argparse import SUPPRESS, ArgumentParser, Namespace
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextRuntime
+from flext_core import FlextRuntime, FlextUtilities
 from pydantic import model_validator
 
 from flext_infra import m, output, t
@@ -42,7 +42,7 @@ class _SharedFlags(m.FrozenStrictModel):
         data: Mapping[str, bool | None] | _SharedFlags,
     ) -> Mapping[str, bool | None] | _SharedFlags:
         """Default include_diff to include_apply when not explicitly provided or None."""
-        if isinstance(data, Mapping) and (
+        if FlextUtilities.is_mapping(data) and (
             "include_diff" not in data or data.get("include_diff") is None
         ):
             resolved: MutableMapping[str, bool | None] = dict(data)
@@ -436,7 +436,7 @@ class FlextInfraUtilitiesCli:
         if not disallowed:
             passthrough = set(passthrough_subcommands or ())
             command = getattr(args, "command", None)
-            command_label = str(command) if isinstance(command, str) else ""
+            command_label = FlextUtilities.ensure_str(command)
             if unknown_args:
                 if command_label in passthrough:
                     setattr(args, "_unknown_args", tuple(unknown_args))
@@ -444,9 +444,7 @@ class FlextInfraUtilitiesCli:
                 parser.error(f"unrecognized arguments: {' '.join(unknown_args)}")
             return args
         command = getattr(args, "command", None)
-        command_label = (
-            str(command) if isinstance(command, str) and command else "subcommand"
-        )
+        command_label = FlextUtilities.ensure_str(command, default="subcommand")
         parser.error(
             f"unrecognized arguments for '{command_label}': {' '.join(disallowed)}",
         )

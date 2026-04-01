@@ -9,7 +9,6 @@ import operator
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import Protocol
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
@@ -27,13 +26,41 @@ _ENV = Environment(
 )
 
 
-class _Renderable(Protocol):
-    def render(self, **kwargs: t.Infra.InfraValue) -> str: ...
+def _is_local_module(mod: str, root_name: str) -> bool:
+    """Check if a module path belongs to the local package."""
+    return (
+        mod.startswith(".")
+        or not root_name
+        or mod.split(".", maxsplit=1)[0] == root_name
+    )
 
 
-def _render(template: _Renderable, **kwargs: t.Infra.InfraValue) -> str:
-    """Render a jinja2 template with explicit str return type."""
-    return template.render(**kwargs)
+def _format_import(
+    indent: str,
+    mod: str,
+    parts: Sequence[str],
+) -> Sequence[str]:
+    """Format an import statement, wrapping to multi-line if too long."""
+    joined = ", ".join(parts)
+    line = f"{indent}from {mod} import {joined}"
+    if len(line) <= c.Infra.MAX_LINE_LENGTH:
+        return [line]
+    return [
+        f"{indent}from {mod} import (",
+        *(f"{indent}    {part}," for part in parts),
+        f"{indent})",
+    ]
+
+
+def _group_imports(
+    import_map: t.Infra.LazyImportMap,
+) -> Mapping[str, MutableSequence[t.Infra.StrPair]]:
+    """Group a flat import map into module-keyed pairs."""
+    groups: MutableMapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(list)
+    for export_name in sorted(import_map):
+        mod, attr = import_map[export_name]
+        groups[mod].append((export_name, attr))
+    return groups
 
 
 class FlextInfraCodegenGeneration:
@@ -53,7 +80,6 @@ class FlextInfraCodegenGeneration:
 
         def _emit_module(mod: str) -> None:
             items = groups[mod]
-            rendered_mod = mod
             alias_items = sorted(
                 (item for item in items if not item[1]),
                 key=operator.itemgetter(0),
@@ -63,15 +89,14 @@ class FlextInfraCodegenGeneration:
                 key=lambda x: (x[1], x[0] != x[1]),
             )
             for export_name, _ in alias_items:
-                if rendered_mod.startswith(".") and rendered_mod != ".":
-                    parent_mod, _, child_name = rendered_mod.rpartition(".")
-                    alias_line = (
+                if mod.startswith(".") and mod != ".":
+                    parent_mod, _, child_name = mod.rpartition(".")
+                    lines.append(
                         f"{indent}from {parent_mod or '.'} import {child_name} "
-                        f"as {export_name}"
+                        f"as {export_name}",
                     )
                 else:
-                    alias_line = f"{indent}import {mod} as {export_name}"
-                lines.append(alias_line)
+                    lines.append(f"{indent}import {mod} as {export_name}")
             if not sorted_items:
                 return
             parts: Sequence[str] = [
@@ -80,14 +105,7 @@ class FlextInfraCodegenGeneration:
                 else f"{attr_name} as {export_name}"
                 for export_name, attr_name in sorted_items
             ]
-            joined = ", ".join(parts)
-            line = f"{indent}from {rendered_mod} import {joined}"
-            if len(line) > c.Infra.MAX_LINE_LENGTH:
-                lines.append(f"{indent}from {rendered_mod} import (")
-                lines.extend(f"{indent}    {part}," for part in parts)
-                lines.append(f"{indent})")
-            else:
-                lines.append(line)
+            lines.extend(_format_import(indent, mod, parts))
 
         sorted_mods = sorted(groups, key=str.lower)
         prev_top: str | None = None
@@ -98,13 +116,6 @@ class FlextInfraCodegenGeneration:
             _emit_module(mod)
             prev_top = top
         return lines
-
-    @staticmethod
-    def generate_runtime_imports(
-        groups: Mapping[str, t.Infra.StrPairSequence],
-    ) -> t.StrSequence:
-        """Generate eager runtime import lines."""
-        return FlextInfraCodegenGeneration._generate_import_lines(groups)
 
     @staticmethod
     def generate_type_checking(
@@ -123,45 +134,26 @@ class FlextInfraCodegenGeneration:
             groups: Mapping of module paths to lists of (export_name, attr_name) tuples.
             include_flext_types: Whether to import FlextTypes from flext_core.
             child_packages: Child packages whose sub-modules should be collapsed.
+            local_package_root: Root package name for local/external classification.
 
         Returns:
             List of code lines forming the TYPE_CHECKING block.
 
         """
-        if not groups:
+        if not groups and not include_flext_types:
             return ()
+        if not groups and include_flext_types:
+            return ("if _TYPE_CHECKING:", "    from flext_core import FlextTypes")
 
-        # Collapse: if mod starts with a child_package prefix, replace with the child
+        collapsed = _collapse_to_children(groups, child_packages)
         children = set(child_packages or [])
-        sorted_children = sorted(children, key=len, reverse=True)
-        collapsed: MutableMapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(
-            list,
-        )
-        for mod, items in groups.items():
-            target = mod
-            for cp in sorted_children:
-                if mod.startswith(cp + ".") or mod == cp:
-                    target = cp
-                    break
-            collapsed[target].extend(items)
+        root_name = "" if not local_package_root else local_package_root.split(".")[0]
 
         lines: MutableSequence[str] = ["if _TYPE_CHECKING:"]
-        root_name = "" if not local_package_root else local_package_root.split(".")[0]
-        flext_types_in_groups = any(
-            export_name == "FlextTypes"
-            for items in collapsed.values()
-            for export_name, _ in items
-        )
-        if include_flext_types and not flext_types_in_groups:
+        if include_flext_types and not _has_flext_types(collapsed):
             lines.append("    from flext_core import FlextTypes")
-        external_imports: MutableMapping[str, MutableSequence[str]] = defaultdict(list)
 
-        # Collect all mods that will get wildcard imports
-        wildcard_mods: set[str] = set()
-        for mod in collapsed:
-            items = collapsed[mod]
-            if mod in children or any(attr for _, attr in items):
-                wildcard_mods.add(mod)
+        external_imports: MutableMapping[str, MutableSequence[str]] = defaultdict(list)
 
         sorted_mods = sorted(collapsed, key=str.lower)
         prev_top: str | None = None
@@ -169,44 +161,20 @@ class FlextInfraCodegenGeneration:
             top = mod.split(".")[0]
             if prev_top is not None and top != prev_top:
                 lines.append("")
-            items = collapsed[mod]
-            is_collapsed_child = mod in children
-            if is_collapsed_child:
-                lines.append(f"    from {mod} import *")
-            else:
-                attr_items = [(exp, attr) for exp, attr in items if attr]
-                if attr_items:
-                    is_local_module = (
-                        mod.startswith(".")
-                        or not root_name
-                        or mod.split(".")[0] == root_name
-                    )
-                    if is_local_module:
-                        lines.append(f"    from {mod} import *")
-                    else:
-                        external_imports[mod].extend(
-                            [
-                                exp if exp == attr else f"{attr} as {exp}"
-                                for exp, attr in attr_items
-                            ],
-                        )
-                alias_items = [exp for exp, attr in items if not attr]
-                if alias_items and not (
-                    mod.startswith(".")
-                    or (root_name and mod.split(".")[0] == root_name)
-                ):
-                    external_imports[mod].extend(alias_items)
+            _emit_type_checking_module(
+                mod,
+                collapsed[mod],
+                children,
+                root_name,
+                lines,
+                external_imports,
+            )
             prev_top = top
+
         for mod in sorted(external_imports, key=str.lower):
             parts = sorted(set(external_imports[mod]))
-            joined = ", ".join(parts)
-            line = f"    from {mod} import {joined}"
-            if len(line) > c.Infra.MAX_LINE_LENGTH:
-                lines.append(f"    from {mod} import (")
-                lines.extend(f"        {part}," for part in parts)
-                lines.append("    )")
-            else:
-                lines.append(line)
+            lines.extend(_format_import("    ", mod, parts))
+
         return () if len(lines) == 1 else lines
 
     @staticmethod
@@ -223,9 +191,6 @@ class FlextInfraCodegenGeneration:
     ) -> str:
         """Generate complete module file with lazy imports and type hints.
 
-        Assembles all components (docstring, imports, lazy import table, __all__,
-        __getattr__, __dir__) into a single module file using Jinja2 templates.
-
         Args:
             docstring_source: Module docstring text (empty string for none).
             exports: List of all exported names.
@@ -234,121 +199,151 @@ class FlextInfraCodegenGeneration:
             current_pkg: Current package name for import strategy selection.
             eager_typevar_names: Type variable names to import eagerly (not lazily).
             eager_imports: Runtime imports that must exist eagerly in module globals.
+            child_packages_for_lazy: Child packages for lazy import collapsing.
+            child_packages_for_tc: Child packages for TYPE_CHECKING collapsing.
 
         Returns:
             Complete Python module file as a single string.
 
         """
         tpl = c.Infra.Templates
-        runtime_imports: t.Infra.LazyImportMap = (
-            {} if eager_imports is None else eager_imports
-        )
+        runtime_imports: t.Infra.LazyImportMap = eager_imports or {}
         lazy_filtered: t.Infra.LazyImportMap = {
             name: val
             for name, val in filtered.items()
             if name not in eager_typevar_names
         }
+        children_lazy = tuple(child_packages_for_lazy or ())
+        eager_export_names = [
+            name for name in sorted(exports) if name not in lazy_filtered
+        ]
 
-        # L0 (_typings) no longer needs special templates — flext_core.lazy
-        # has zero runtime imports from flext_core, so no circular deps.
-        is_l0_typings = False
-
-        # --- header + docstring ---
         out: MutableSequence[str] = [c.Infra.AUTOGEN_HEADER]
         if docstring_source:
             out.extend([docstring_source, ""])
 
-        # --- preamble (from .j2 template) ---
-        preamble_name = tpl.PREAMBLE_L0 if is_l0_typings else tpl.PREAMBLE_STANDARD
-        children_lazy = tuple(child_packages_for_lazy or ())
-        preamble_rendered: str = _render(
-            _ENV.get_template(preamble_name),
+        preamble: str = _ENV.get_template(tpl.PREAMBLE_STANDARD).render(
             include_merge_helper=bool(children_lazy),
         )
-        out.extend(preamble_rendered.splitlines())
+        out.extend(preamble.splitlines())
 
-        # --- eager TypeVar imports ---
         if eager_typevar_names:
             typings_mod = f"{current_pkg}.typings"
             sorted_tvars = sorted(eager_typevar_names)
-            eager_line = f"from {typings_mod} import " + ", ".join(sorted_tvars)
-            if len(eager_line) > c.Infra.MAX_LINE_LENGTH:
-                out.append(f"from {typings_mod} import (")
-                out.extend(f"    {tv}," for tv in sorted_tvars)
-                out.append(")")
-            else:
-                out.append(eager_line)
+            out.extend(_format_import("", typings_mod, sorted_tvars))
         out.append("")
 
-        # --- eager runtime imports ---
-        runtime_groups: Mapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(
-            list
-        )
-        for export_name in sorted(runtime_imports):
-            mod, attr = runtime_imports[export_name]
-            runtime_groups[mod].append((export_name, attr))
-        runtime_import_lines = FlextInfraCodegenGeneration.generate_runtime_imports(
+        runtime_groups = _group_imports(runtime_imports)
+        runtime_import_lines = FlextInfraCodegenGeneration._generate_import_lines(
             runtime_groups,
         )
-        # --- determine child packages for TYPE_CHECKING collapse ---
-        children_tc = child_packages_for_tc or []
 
-        # --- TYPE_CHECKING block ---
-        groups: Mapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(list)
-        for export_name in sorted(lazy_filtered):
-            mod, attr = lazy_filtered[export_name]
-            groups[mod].append((export_name, attr))
-
+        tc_groups = _group_imports(lazy_filtered)
+        is_core_pkg = current_pkg == "flext_core"
         type_checking_lines = FlextInfraCodegenGeneration.generate_type_checking(
-            groups,
-            include_flext_types=False,
-            child_packages=children_tc,
+            tc_groups,
+            include_flext_types=not is_core_pkg,
+            child_packages=child_packages_for_tc or [],
             local_package_root=current_pkg,
         )
-        lazy_entries: MutableSequence[tuple[str, str, str]] = []
-        child_prefixes = tuple(f"{child_pkg}." for child_pkg in children_lazy)
-        child_package_aliases = set(children_lazy)
-        for exp in sorted(exports):
-            if exp not in lazy_filtered:
-                continue
-            mod, attr = lazy_filtered[exp]
-            if mod in child_package_aliases and not attr:
-                lazy_entries.append((exp, mod, attr))
-                continue
-            if not mod.startswith(child_prefixes):
-                lazy_entries.append((exp, mod, attr))
 
-        # --- body (inline constants + _LAZY_IMPORTS) from .j2 ---
-        body: str = _render(
-            _ENV.get_template(tpl.BODY),
+        lazy_entries = _build_lazy_entries(
+            exports,
+            lazy_filtered,
+            children_lazy,
+        )
+
+        body: str = _ENV.get_template(tpl.BODY).render(
             runtime_import_lines="\n".join(runtime_import_lines),
             child_module_paths=children_lazy,
             type_checking_lines="\n".join(type_checking_lines),
             inline_constants=sorted(inline_constants.items()),
-            eager_export_names=[
-                export_name
-                for export_name in sorted(exports)
-                if export_name not in lazy_filtered
-            ],
+            eager_export_names=eager_export_names,
             lazy_entries=lazy_entries,
             exports=sorted(exports),
         )
         out.extend(body.splitlines())
         out.append("")
 
-        # --- getattr block (from .j2 template) ---
-        getattr_name = tpl.GETATTR_L0 if is_l0_typings else tpl.GETATTR_STANDARD
-        getattr_rendered: str = _render(
-            _ENV.get_template(getattr_name),
-            eager_export_names=[
-                export_name
-                for export_name in sorted(exports)
-                if export_name not in lazy_filtered
-            ],
+        getattr_rendered: str = _ENV.get_template(tpl.GETATTR_STANDARD).render(
+            eager_export_names=eager_export_names,
         )
         out.extend(getattr_rendered.splitlines())
 
         return "\n".join(out) + "\n"
+
+
+def _collapse_to_children(
+    groups: Mapping[str, t.Infra.StrPairSequence],
+    child_packages: Sequence[str] | None,
+) -> MutableMapping[str, MutableSequence[t.Infra.StrPair]]:
+    """Collapse sub-module imports into parent package when parent is a child package."""
+    sorted_children = sorted(set(child_packages or []), key=len, reverse=True)
+    collapsed: MutableMapping[str, MutableSequence[t.Infra.StrPair]] = defaultdict(list)
+    for mod, items in groups.items():
+        target = mod
+        for cp in sorted_children:
+            if mod.startswith(cp + ".") or mod == cp:
+                target = cp
+                break
+        collapsed[target].extend(items)
+    return collapsed
+
+
+def _has_flext_types(
+    collapsed: Mapping[str, Sequence[t.Infra.StrPair]],
+) -> bool:
+    """Check if FlextTypes is already present in collapsed imports."""
+    return any(
+        export_name == "FlextTypes"
+        for items in collapsed.values()
+        for export_name, _ in items
+    )
+
+
+def _emit_type_checking_module(
+    mod: str,
+    items: Sequence[t.Infra.StrPair],
+    children: set[str],
+    root_name: str,
+    lines: MutableSequence[str],
+    external_imports: MutableMapping[str, MutableSequence[str]],
+) -> None:
+    """Emit TYPE_CHECKING lines for a single module."""
+    if mod in children and ".fixtures." not in mod:
+        lines.append(f"    from {mod} import *")
+        return
+
+    attr_items = [(exp, attr) for exp, attr in items if attr]
+    if attr_items:
+        if _is_local_module(mod, root_name) and ".fixtures." not in mod:
+            lines.append(f"    from {mod} import *")
+        else:
+            external_imports[mod].extend(
+                exp if exp == attr else f"{attr} as {exp}" for exp, attr in attr_items
+            )
+
+    alias_items = [exp for exp, attr in items if not attr]
+    if alias_items and not _is_local_module(mod, root_name):
+        external_imports[mod].extend(alias_items)
+
+
+def _build_lazy_entries(
+    exports: t.StrSequence,
+    lazy_filtered: t.Infra.LazyImportMap,
+    children_lazy: tuple[str, ...],
+) -> Sequence[tuple[str, str, str]]:
+    """Build the list of lazy import entries, excluding child-package sub-modules."""
+    child_prefixes = tuple(f"{cp}." for cp in children_lazy)
+    child_aliases = set(children_lazy)
+    entries: MutableSequence[tuple[str, str, str]] = []
+    for exp in sorted(exports):
+        if exp not in lazy_filtered:
+            continue
+        mod, attr = lazy_filtered[exp]
+        if (mod in child_aliases and not attr) or not mod.startswith(child_prefixes):
+            entries.append((exp, mod, attr))
+    return entries
 
 
 __all__ = ["FlextInfraCodegenGeneration"]

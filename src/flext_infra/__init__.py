@@ -12,6 +12,7 @@ from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _TYPE_CHECKING:
     from flext_cli import d, e, h, r, s, x
+    from flext_core import FlextTypes
 
     from flext_infra.__version__ import *
     from flext_infra._constants import *

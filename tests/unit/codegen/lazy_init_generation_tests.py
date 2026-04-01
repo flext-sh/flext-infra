@@ -78,7 +78,7 @@ class TestGenerateTypeChecking:
         """Test with no imports returns header + FlextTypes only."""
         groups: Mapping[str, Sequence[tuple[str, str]]] = {}
         lines = u.Infra.generate_type_checking(groups)
-        tm.that(lines, contains="if TYPE_CHECKING:")
+        tm.that(lines, contains="if _TYPE_CHECKING:")
         tm.that(any("FlextTypes" in line for line in lines), eq=True)
 
     def test_with_empty_groups_no_flext_types(self) -> None:
@@ -101,7 +101,7 @@ class TestGenerateTypeChecking:
         groups = {"module": [("c", "FlextConstants"), ("m", "FlextModels")]}
         lines = u.Infra.generate_type_checking(groups)
         joined = " ".join(lines)
-        tm.that(joined, contains="as")
+        tm.that(joined, contains="from module import *")
 
     def test_with_long_import_line(self) -> None:
         """Test wraps long import lines."""
@@ -140,7 +140,7 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
         content = _generate_file("", exports, filtered, inline_constants, "other_pkg")
-        tm.that(content, contains="from flext_core import")
+        tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
 
     def test_with_inline_constants(self) -> None:
         """Test includes inline constants."""
@@ -171,7 +171,9 @@ class TestGenerateFile:
             content,
             contains="from test_pkg.__version__ import FlextVersion, __version__",
         )
-        tm.that(content, contains="_LAZY_IMPORTS: Mapping[str, Sequence[str]] = {")
+        tm.that(
+            content, contains="_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {"
+        )
 
     def test_with_docstring(self) -> None:
         """Test preserves docstring."""
@@ -196,13 +198,13 @@ class TestGenerateFile:
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
         tm.that(content, contains="AUTO-GENERATED")
 
-    def test_has_all_list(self) -> None:
-        """Test generated file has __all__ list."""
+    def test_has_lazy_imports_with_exports(self) -> None:
+        """Test generated file registers exports in _LAZY_IMPORTS."""
         exports = ["Alpha", "Beta"]
         filtered = {"Alpha": ("mod", "Alpha"), "Beta": ("mod", "Beta")}
         inline_constants: t.StrMapping = {}
         content = _generate_file("", exports, filtered, inline_constants, "test_pkg")
-        tm.that(content, contains="__all__")
+        tm.that(content, contains="install_lazy_exports")
         tm.that(content, contains='"Alpha"')
         tm.that(content, contains='"Beta"')
 

@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from flext_core import FlextUtilities
+
 from flext_infra import FlextInfraUtilitiesRope, c, m, t
 
 
@@ -83,7 +85,9 @@ class FlextInfraNamespaceFacadeScanner:
 
         Examples: 'flext-core' → 'Flext', 'flext-db-oracle' → 'FlextDbOracle'.
         """
-        normalized = project_name.strip().lower().replace("_", "-")
+        normalized = FlextUtilities.norm_str(project_name, case="lower").replace(
+            "_", "-"
+        )
         if normalized == "flext-core":
             return "Flext"
         if normalized.startswith("flext-"):

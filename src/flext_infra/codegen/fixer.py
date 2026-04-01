@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 from collections.abc import MutableSequence, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import override
 
@@ -36,8 +37,36 @@ from flext_infra import (
 )
 
 
+def _violation(
+    *,
+    module: str,
+    rule: str,
+    line: int,
+    message: str,
+    fixable: bool,
+) -> m.Infra.CensusViolation:
+    """Create a CensusViolation with standard fields."""
+    return m.Infra.CensusViolation(
+        module=module,
+        rule=rule,
+        line=line,
+        message=message,
+        fixable=fixable,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class _MoveTarget:
+    """Configuration for moving AST nodes to a target module."""
+
+    rule: str
+    target_filename: str
+    target_module: str
+    check_first_party: bool = False
+
+
 class FlextInfraCodegenFixer(s[bool]):
-    """AST-based auto-fixer for namespace violations (Rules 1-2)."""
+    """AST-based auto-fixer for namespace violations (Rules 1-5)."""
 
     class _FixContext(m.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations."""
@@ -49,6 +78,22 @@ class FlextInfraCodegenFixer(s[bool]):
             default_factory=list,
         )
         files_modified: t.Infra.StrSet = Field(default_factory=set)
+
+        def skip(self, *, module: str, rule: str, line: int, message: str) -> None:
+            """Record a skipped violation."""
+            self.violations_skipped.append(
+                _violation(
+                    module=module, rule=rule, line=line, message=message, fixable=False
+                ),
+            )
+
+        def fix(self, *, module: str, rule: str, line: int, message: str) -> None:
+            """Record a fixed violation."""
+            self.violations_fixed.append(
+                _violation(
+                    module=module, rule=rule, line=line, message=message, fixable=True
+                ),
+            )
 
     _workspace_root: Path
     _dry_run: bool
@@ -84,6 +129,18 @@ class FlextInfraCodegenFixer(s[bool]):
             files_modified=[],
         )
 
+    @staticmethod
+    def _build_result(
+        project_name: str,
+        ctx: FlextInfraCodegenFixer._FixContext,
+    ) -> m.Infra.AutoFixResult:
+        return m.Infra.AutoFixResult(
+            project=project_name,
+            violations_fixed=ctx.violations_fixed,
+            violations_skipped=ctx.violations_skipped,
+            files_modified=sorted(ctx.files_modified),
+        )
+
     def fix_project(self, project_path: Path) -> m.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project.
 
@@ -111,46 +168,22 @@ class FlextInfraCodegenFixer(s[bool]):
             ctx=ctx,
         )
         if self._dry_run or self._rules_only:
-            return m.Infra.AutoFixResult(
-                project=project_path.name,
-                violations_fixed=ctx.violations_fixed,
-                violations_skipped=ctx.violations_skipped,
-                files_modified=sorted(ctx.files_modified),
-            )
+            return self._build_result(project_path.name, ctx)
         report = self._apply_project_mro_migrations(
             project_path=project_path,
-            files_modified=ctx.files_modified,
+            ctx=ctx,
         )
-        self._record_mro_migration_result(
-            report=report,
-            violations_fixed=ctx.violations_fixed,
-            violations_skipped=ctx.violations_skipped,
-        )
-        self._apply_refactor_engine_pass(
-            project_path=project_path,
-            files_modified=ctx.files_modified,
-            violations_skipped=ctx.violations_skipped,
-        )
-        self._apply_namespace_enforcement_pass(
-            project_path=project_path,
-            files_modified=ctx.files_modified,
-        )
-        self._run_lazy_propagation(
-            project_path=project_path,
-            files_modified=ctx.files_modified,
-        )
+        self._record_mro_migration_result(report=report, ctx=ctx)
+        self._apply_refactor_engine_pass(project_path=project_path, ctx=ctx)
+        self._apply_namespace_enforcement_pass(project_path=project_path, ctx=ctx)
+        self._run_lazy_propagation(project_path=project_path, ctx=ctx)
         try:
-            self._cleanup_stale_all_entries(files_modified=ctx.files_modified)
-            self._normalize_rewritten_python_files(files_modified=ctx.files_modified)
+            self._cleanup_stale_all_entries(ctx)
+            self._normalize_rewritten_python_files(ctx)
         except (OSError, UnicodeDecodeError):
             _ = u.Infra.rollback_to_checkpoint(self._workspace_root, stash_ref)
             raise
-        return m.Infra.AutoFixResult(
-            project=project_path.name,
-            violations_fixed=ctx.violations_fixed,
-            violations_skipped=ctx.violations_skipped,
-            files_modified=sorted(ctx.files_modified),
-        )
+        return self._build_result(project_path.name, ctx)
 
     def _apply_ns_rules(
         self,
@@ -160,7 +193,7 @@ class FlextInfraCodegenFixer(s[bool]):
         ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
         """Apply NS-001 and NS-002 rules to all Python files in src_dir."""
-        excluded = {"constants.py", "typings.py", "__init__.py"}
+        excluded = {"constants.py", "typings.py", c.Infra.Files.INIT_PY}
         for py_file in sorted(src_dir.rglob("*.py")):
             if py_file.name in excluded:
                 continue
@@ -195,7 +228,7 @@ class FlextInfraCodegenFixer(s[bool]):
         self,
         *,
         project_path: Path,
-        files_modified: t.Infra.StrSet,
+        ctx: FlextInfraCodegenFixer._FixContext,
     ) -> m.Infra.MROMigrationReport:
         service = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path)
         try:
@@ -223,57 +256,48 @@ class FlextInfraCodegenFixer(s[bool]):
                 migrations=(),
                 rewrites=(),
             )
-        files_modified.update(migration.file for migration in report.migrations)
-        files_modified.update(rewrite.file for rewrite in report.rewrites)
+        ctx.files_modified.update(migration.file for migration in report.migrations)
+        ctx.files_modified.update(rewrite.file for rewrite in report.rewrites)
         return report
+
+    _REFACTOR_RULES: Sequence[str] = (
+        "modernize-constants-import",
+        "modernize-models-import",
+        "modernize-result-import",
+        "ban-lazy-imports",
+        "ensure-future-annotations",
+        "remove-compatibility-aliases",
+        "remove-wrapper-functions",
+        "remove-deprecated-classes",
+        "remove-import-bypasses",
+        "fix-container-invariance-annotations",
+        "remove-validated-redundant-casts",
+    )
 
     def _apply_refactor_engine_pass(
         self,
         *,
         project_path: Path,
-        files_modified: t.Infra.StrSet,
-        violations_skipped: MutableSequence[m.Infra.CensusViolation],
+        ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
         engine = FlextInfraRefactorEngine()
         config_result = engine.load_config()
         if config_result.is_failure:
-            message = config_result.error or "Failed to load refactor engine config"
-            violations_skipped.append(
-                m.Infra.CensusViolation(
-                    module=str(project_path),
-                    rule="NS-ENGINE",
-                    line=1,
-                    message=message,
-                    fixable=False,
-                ),
+            ctx.skip(
+                module=str(project_path),
+                rule="NS-ENGINE",
+                line=1,
+                message=config_result.error or "Failed to load refactor engine config",
             )
             return
-        engine.set_rule_filters(
-            [
-                "modernize-constants-import",
-                "modernize-models-import",
-                "modernize-result-import",
-                "ban-lazy-imports",
-                "ensure-future-annotations",
-                "remove-compatibility-aliases",
-                "remove-wrapper-functions",
-                "remove-deprecated-classes",
-                "remove-import-bypasses",
-                "fix-container-invariance-annotations",
-                "remove-validated-redundant-casts",
-            ],
-        )
+        engine.set_rule_filters(list(self._REFACTOR_RULES))
         rules_result = engine.load_rules()
         if rules_result.is_failure:
-            message = rules_result.error or "Failed to load filtered refactor rules"
-            violations_skipped.append(
-                m.Infra.CensusViolation(
-                    module=str(project_path),
-                    rule="NS-ENGINE",
-                    line=1,
-                    message=message,
-                    fixable=False,
-                ),
+            ctx.skip(
+                module=str(project_path),
+                rule="NS-ENGINE",
+                line=1,
+                message=rules_result.error or "Failed to load filtered refactor rules",
             )
             return
         results = engine.refactor_project(
@@ -281,28 +305,25 @@ class FlextInfraCodegenFixer(s[bool]):
             dry_run=False,
             apply_safety=False,
         )
-        files_modified.update(
+        ctx.files_modified.update(
             str(result.file_path)
             for result in results
             if result.success and result.modified
         )
-        violations_skipped.extend(
-            m.Infra.CensusViolation(
-                module=str(result.file_path),
-                rule="NS-ENGINE",
-                line=1,
-                message=result.error or "Refactor engine pass failed",
-                fixable=False,
-            )
-            for result in results
-            if not result.success
-        )
+        for result in results:
+            if not result.success:
+                ctx.skip(
+                    module=str(result.file_path),
+                    rule="NS-ENGINE",
+                    line=1,
+                    message=result.error or "Refactor engine pass failed",
+                )
 
     def _apply_namespace_enforcement_pass(
         self,
         *,
         project_path: Path,
-        files_modified: t.Infra.StrSet,
+        ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
         py_files_result = u.Infra.iter_python_files(
             workspace_root=project_path,
@@ -311,10 +332,9 @@ class FlextInfraCodegenFixer(s[bool]):
         )
         if py_files_result.is_failure:
             return
-        py_files = py_files_result.value
         src_files = [
             file_path
-            for file_path in py_files
+            for file_path in py_files_result.value
             if c.Infra.Paths.DEFAULT_SRC_DIR in file_path.parts
         ]
         before_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_files(
@@ -327,97 +347,66 @@ class FlextInfraCodegenFixer(s[bool]):
             py_files=src_files,
             project_package=package_name,
         )
-        u.Infra.rewrite_runtime_alias_violations(
-            py_files=src_files,
-        )
-        u.Infra.rewrite_missing_future_annotations(
-            py_files=src_files,
-        )
-        changed_paths: t.Infra.StrSet = FlextInfraCodegenSnapshot.detect_changed_files(
+        u.Infra.rewrite_runtime_alias_violations(py_files=src_files)
+        u.Infra.rewrite_missing_future_annotations(py_files=src_files)
+        changed_paths = FlextInfraCodegenSnapshot.detect_changed_files(
             before_snapshot=before_snapshot,
             file_paths=src_files,
         )
-        files_modified.update(changed_paths)
+        ctx.files_modified.update(changed_paths)
 
     @staticmethod
     def _record_mro_migration_result(
         *,
         report: m.Infra.MROMigrationReport,
-        violations_fixed: MutableSequence[m.Infra.CensusViolation],
-        violations_skipped: MutableSequence[m.Infra.CensusViolation],
+        ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
         for migration in report.migrations:
-            violations_fixed.extend(
-                m.Infra.CensusViolation(
+            for moved_symbol in migration.moved_symbols:
+                ctx.fix(
                     module=migration.file,
                     rule="NS-MRO",
                     line=1,
-                    message=(
-                        "Moved symbol "
-                        f"'{moved_symbol}' into namespace class via MRO migration"
-                    ),
-                    fixable=True,
+                    message=f"Moved symbol '{moved_symbol}' into namespace class via MRO migration",
                 )
-                for moved_symbol in migration.moved_symbols
-            )
         if report.remaining_violations > 0:
-            violations_skipped.append(
-                m.Infra.CensusViolation(
-                    module=report.workspace,
-                    rule="NS-MRO",
-                    line=1,
-                    message=(
-                        "MRO migration finished with "
-                        f"{report.remaining_violations} remaining violations"
-                    ),
-                    fixable=False,
-                ),
+            ctx.skip(
+                module=report.workspace,
+                rule="NS-MRO",
+                line=1,
+                message=f"MRO migration finished with {report.remaining_violations} remaining violations",
             )
         if report.mro_failures > 0:
-            violations_skipped.append(
-                m.Infra.CensusViolation(
-                    module=report.workspace,
-                    rule="NS-MRO",
-                    line=1,
-                    message=f"MRO validation reported {report.mro_failures} failures",
-                    fixable=False,
-                ),
-            )
-        violations_skipped.extend(
-            m.Infra.CensusViolation(
+            ctx.skip(
                 module=report.workspace,
                 rule="NS-MRO",
                 line=1,
-                message=warning,
-                fixable=False,
+                message=f"MRO validation reported {report.mro_failures} failures",
             )
-            for warning in report.warnings
-        )
-        violations_skipped.extend(
-            m.Infra.CensusViolation(
+        for message in [*report.warnings, *report.errors]:
+            ctx.skip(
                 module=report.workspace,
                 rule="NS-MRO",
                 line=1,
-                message=error,
-                fixable=False,
+                message=message,
             )
-            for error in report.errors
-        )
 
-    def _cleanup_stale_all_entries(self, *, files_modified: t.Infra.StrSet) -> None:
-        for file_path in sorted(files_modified):
+    @staticmethod
+    def _cleanup_stale_all_entries(ctx: FlextInfraCodegenFixer._FixContext) -> None:
+        for file_path in sorted(ctx.files_modified):
             path = Path(file_path)
             if not path.exists() or path.suffix != c.Infra.Extensions.PYTHON:
                 continue
             if path.name == c.Infra.Files.INIT_PY:
                 continue
             if u.Infra.prune_stale_all_assignment(path=path):
-                files_modified.add(str(path))
+                ctx.files_modified.add(str(path))
 
+    @staticmethod
     def _normalize_rewritten_python_files(
-        self, *, files_modified: t.Infra.StrSet
+        ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
-        for file_path in sorted(files_modified):
+        for file_path in sorted(ctx.files_modified):
             path = Path(file_path)
             if not path.exists() or path.suffix != c.Infra.Extensions.PYTHON:
                 continue
@@ -427,7 +416,7 @@ class FlextInfraCodegenFixer(s[bool]):
         self,
         *,
         project_path: Path,
-        files_modified: t.Infra.StrSet,
+        ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
         before_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_init_files(
             project_path=project_path,
@@ -436,11 +425,11 @@ class FlextInfraCodegenFixer(s[bool]):
         after_snapshot: t.StrMapping = FlextInfraCodegenSnapshot.snapshot_init_files(
             project_path=project_path,
         )
-        for path_str, updated in after_snapshot.items():
-            previous = before_snapshot.get(path_str)
-            if previous == updated:
-                continue
-            files_modified.add(path_str)
+        ctx.files_modified.update(
+            path_str
+            for path_str, updated in after_snapshot.items()
+            if before_snapshot.get(path_str) != updated
+        )
 
     def run(self) -> Sequence[m.Infra.AutoFixResult]:
         """Run auto-fix on all projects in workspace.
@@ -467,120 +456,46 @@ class FlextInfraCodegenFixer(s[bool]):
     # Rule implementations (parse fresh, text-based writes)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _node_kind_label(node: ast.stmt) -> str:
+        """Return a human-readable label for an AST assignment node."""
+        if isinstance(node, ast.AnnAssign):
+            return "Final constant"
+        if isinstance(node, ast.Assign):
+            return "TypeVar"
+        return "TypeAlias"
+
     def _move_nodes_to_target(
         self,
         *,
         source_file: Path,
         pkg_dir: Path,
-        rule: str,
-        target_filename: str,
-        target_module: str,
+        target: _MoveTarget,
         candidates: Sequence[ast.stmt],
         tree: ast.Module,
         ctx: FlextInfraCodegenFixer._FixContext,
-        check_first_party: bool = False,
     ) -> None:
-        """Shared logic for moving nodes from source to target module."""
-        target_path = pkg_dir / target_filename
+        """Move qualifying AST nodes from source to target module."""
+        target_path = pkg_dir / target.target_filename
         if not target_path.exists():
             return
         target_tree = u.Infra.parse_module_ast(target_path)
         if target_tree is None:
             return
-        # Filter private names
-        nodes_to_move: MutableSequence[ast.stmt] = []
-        for node in candidates:
-            name = u.Infra.get_node_name(node)
-            if (
-                not name
-                and isinstance(node, ast.AnnAssign)
-                and isinstance(node.target, ast.Name)
-            ):
-                name = node.target.id
-            if not name:
-                continue
-            if name.startswith("_"):
-                ctx.violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule=rule,
-                        line=node.lineno,
-                        message=f"'{name}' is private — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            nodes_to_move.append(node)
-        if not nodes_to_move:
+        module_str = str(source_file)
+        public_nodes = self._filter_private_nodes(
+            candidates, module_str=module_str, rule=target.rule, ctx=ctx
+        )
+        if not public_nodes:
             return
-        actually_moved: MutableSequence[ast.stmt] = []
-        moved_names: MutableSequence[str] = []
-        for node in nodes_to_move:
-            name = u.Infra.get_node_name(node)
-            if (
-                not name
-                and isinstance(node, ast.AnnAssign)
-                and isinstance(node.target, ast.Name)
-            ):
-                name = node.target.id
-            if not name:
-                continue
-            if u.Infra.name_exists_in_module(name, target_tree):
-                ctx.violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule=rule,
-                        line=node.lineno,
-                        message=f"'{name}' already in {target_filename} — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            if check_first_party and u.Infra.needs_first_party_import(
-                node, tree, target_tree
-            ):
-                ctx.violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule=rule,
-                        line=node.lineno,
-                        message=f"'{name}' needs first-party import — circular risk, skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            u.Infra.copy_required_imports(node, tree, target_tree)
-            if not u.Infra.all_deps_resolvable(node, target_tree):
-                ctx.violations_skipped.append(
-                    m.Infra.CensusViolation(
-                        module=str(source_file),
-                        rule=rule,
-                        line=node.lineno,
-                        message=f"'{name}' has unresolvable deps — skipped",
-                        fixable=False,
-                    ),
-                )
-                continue
-            insert_idx = u.Infra.find_insert_position(target_tree)
-            target_tree.body.insert(insert_idx, node)
-            kind = ""
-            if isinstance(node, ast.AnnAssign):
-                kind = "Final constant "
-            elif isinstance(node, ast.Assign):
-                kind = "TypeVar "
-            else:
-                kind = "TypeAlias "
-            ctx.violations_fixed.append(
-                m.Infra.CensusViolation(
-                    module=str(source_file),
-                    rule=rule,
-                    line=node.lineno,
-                    message=f"{kind}'{name}' moved to {target_filename}",
-                    fixable=True,
-                ),
-            )
-            actually_moved.append(node)
-            moved_names.append(name)
+        actually_moved, moved_names = self._try_move_nodes(
+            nodes=public_nodes,
+            tree=tree,
+            target_tree=target_tree,
+            target=target,
+            module_str=module_str,
+            ctx=ctx,
+        )
         if actually_moved:
             FlextInfraCodegenSnapshot.write_changes(
                 source_path=source_file,
@@ -589,11 +504,114 @@ class FlextInfraCodegenFixer(s[bool]):
                 moved_names=moved_names,
                 source_tree=tree,
                 pkg_name=pkg_dir.name,
-                target_module=target_module,
+                target_module=target.target_module,
                 dry_run=self._dry_run,
             )
-            ctx.files_modified.add(str(source_file))
+            ctx.files_modified.add(module_str)
             ctx.files_modified.add(str(target_path))
+
+    @staticmethod
+    def _filter_private_nodes(
+        candidates: Sequence[ast.stmt],
+        *,
+        module_str: str,
+        rule: str,
+        ctx: FlextInfraCodegenFixer._FixContext,
+    ) -> Sequence[ast.stmt]:
+        """Keep only public nodes; record skips for private ones."""
+        public: MutableSequence[ast.stmt] = []
+        for node in candidates:
+            name = u.Infra.get_node_name(node)
+            if not name:
+                continue
+            if name.startswith("_"):
+                ctx.skip(
+                    module=module_str,
+                    rule=rule,
+                    line=node.lineno,
+                    message=f"'{name}' is private — skipped",
+                )
+                continue
+            public.append(node)
+        return public
+
+    def _try_move_nodes(
+        self,
+        *,
+        nodes: Sequence[ast.stmt],
+        tree: ast.Module,
+        target_tree: ast.Module,
+        target: _MoveTarget,
+        module_str: str,
+        ctx: FlextInfraCodegenFixer._FixContext,
+    ) -> tuple[Sequence[ast.stmt], Sequence[str]]:
+        """Attempt to move each node; return (moved_nodes, moved_names)."""
+        moved: MutableSequence[ast.stmt] = []
+        names: MutableSequence[str] = []
+        for node in nodes:
+            name = u.Infra.get_node_name(node)
+            if not name:
+                continue
+            skip_reason = self._check_move_blockers(
+                node=node,
+                name=name,
+                tree=tree,
+                target_tree=target_tree,
+                target=target,
+            )
+            if skip_reason:
+                ctx.skip(
+                    module=module_str,
+                    rule=target.rule,
+                    line=node.lineno,
+                    message=skip_reason,
+                )
+                continue
+            insert_idx = u.Infra.find_insert_position(target_tree)
+            target_tree.body.insert(insert_idx, node)
+            kind = self._node_kind_label(node)
+            ctx.fix(
+                module=module_str,
+                rule=target.rule,
+                line=node.lineno,
+                message=f"{kind} '{name}' moved to {target.target_filename}",
+            )
+            moved.append(node)
+            names.append(name)
+        return moved, names
+
+    @staticmethod
+    def _check_move_blockers(
+        *,
+        node: ast.stmt,
+        name: str,
+        tree: ast.Module,
+        target_tree: ast.Module,
+        target: _MoveTarget,
+    ) -> str:
+        """Return skip reason if node cannot be moved, or empty string."""
+        if u.Infra.name_exists_in_module(name, target_tree):
+            return f"'{name}' already in {target.target_filename} — skipped"
+        if target.check_first_party and u.Infra.needs_first_party_import(
+            node, tree, target_tree
+        ):
+            return f"'{name}' needs first-party import — circular risk, skipped"
+        u.Infra.copy_required_imports(node, tree, target_tree)
+        if not u.Infra.all_deps_resolvable(node, target_tree):
+            return f"'{name}' has unresolvable deps — skipped"
+        return ""
+
+    _RULE1_TARGET = _MoveTarget(
+        rule="NS-001",
+        target_filename="constants.py",
+        target_module="constants",
+    )
+    _RULE2_TARGET = _MoveTarget(
+        rule="NS-002",
+        target_filename="typings.py",
+        target_module=c.Infra.Directories.TYPINGS,
+        check_first_party=True,
+    )
 
     def _fix_rule1(
         self,
@@ -612,9 +630,7 @@ class FlextInfraCodegenFixer(s[bool]):
         self._move_nodes_to_target(
             source_file=source_file,
             pkg_dir=pkg_dir,
-            rule="NS-001",
-            target_filename="constants.py",
-            target_module="constants",
+            target=self._RULE1_TARGET,
             candidates=finals,
             tree=tree,
             ctx=ctx,
@@ -639,13 +655,10 @@ class FlextInfraCodegenFixer(s[bool]):
         self._move_nodes_to_target(
             source_file=source_file,
             pkg_dir=pkg_dir,
-            rule="NS-002",
-            target_filename="typings.py",
-            target_module=c.Infra.Directories.TYPINGS,
+            target=self._RULE2_TARGET,
             candidates=candidates,
             tree=tree,
             ctx=ctx,
-            check_first_party=True,
         )
 
     @staticmethod
@@ -661,12 +674,43 @@ class FlextInfraCodegenFixer(s[bool]):
             return ast.unparse(node.bases[0])
         return ""
 
+    @staticmethod
+    def _record_bulk_result(
+        *,
+        modified: bool,
+        file_path: Path,
+        items: Sequence[m.Infra.ConstantDefinition],
+        rule: str,
+        fix_message: str,
+        skip_message: str,
+        ctx: FlextInfraCodegenFixer._FixContext,
+    ) -> None:
+        """Record fix/skip violations for a bulk file operation."""
+        if modified:
+            ctx.files_modified.add(str(file_path))
+            for item in items:
+                ctx.fix(
+                    module=item.file_path,
+                    rule=rule,
+                    line=item.line,
+                    message=fix_message.format(name=item.name),
+                )
+        else:
+            for item in items:
+                ctx.skip(
+                    module=item.file_path,
+                    rule=rule,
+                    line=item.line,
+                    message=skip_message.format(name=item.name),
+                )
+
     def _fix_rule3(
         self,
         *,
         pkg_dir: Path,
         ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
+        """Fix Rule 3 — replace hardcoded canonical constants with parent refs."""
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
             return
@@ -674,55 +718,32 @@ class FlextInfraCodegenFixer(s[bool]):
             file_path=constants_file,
             project=pkg_dir.name,
         )
-        hardcoded = u.Infra.detect_hardcoded_canonicals(
-            definitions,
-        )
+        hardcoded = u.Infra.detect_hardcoded_canonicals(definitions)
         if not hardcoded:
             return
         parent_class = self._resolve_parent_constants_class(constants_file)
         if not parent_class:
-            ctx.violations_skipped.extend(
-                m.Infra.CensusViolation(
+            for definition in hardcoded:
+                ctx.skip(
                     module=definition.file_path,
                     rule="NS-003",
                     line=definition.line,
-                    message=(
-                        f"Could not resolve parent constants class for '{definition.name}'"
-                    ),
-                    fixable=False,
+                    message=f"Could not resolve parent constants class for '{definition.name}'",
                 )
-                for definition in hardcoded
-            )
             return
         modified, _ = u.Infra.replace_canonical_values(
             file_path=constants_file,
             parent_class=parent_class,
             definitions=hardcoded,
         )
-        if modified:
-            ctx.files_modified.add(str(constants_file))
-            ctx.violations_fixed.extend(
-                m.Infra.CensusViolation(
-                    module=definition.file_path,
-                    rule="NS-003",
-                    line=definition.line,
-                    message=(
-                        f"Hardcoded canonical '{definition.name}' replaced with {parent_class} reference"
-                    ),
-                    fixable=True,
-                )
-                for definition in hardcoded
-            )
-            return
-        ctx.violations_skipped.extend(
-            m.Infra.CensusViolation(
-                module=definition.file_path,
-                rule="NS-003",
-                line=definition.line,
-                message=f"No canonical replacement applied for '{definition.name}'",
-                fixable=False,
-            )
-            for definition in hardcoded
+        self._record_bulk_result(
+            modified=modified,
+            file_path=constants_file,
+            items=hardcoded,
+            rule="NS-003",
+            fix_message=f"Hardcoded canonical '{{name}}' replaced with {parent_class} reference",
+            skip_message="No canonical replacement applied for '{name}'",
+            ctx=ctx,
         )
 
     def _fix_rule4(
@@ -732,6 +753,7 @@ class FlextInfraCodegenFixer(s[bool]):
         pkg_dir: Path,
         ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
+        """Fix Rule 4 — remove unused constants."""
         constants_file = pkg_dir / "constants.py"
         if not constants_file.exists():
             return
@@ -741,14 +763,37 @@ class FlextInfraCodegenFixer(s[bool]):
         )
         if not definitions:
             return
+        all_used_names = self._collect_used_constant_names(src_dir, pkg_dir)
+        unused = u.Infra.detect_unused_constants(
+            definitions=definitions,
+            all_used_names=all_used_names,
+        )
+        if not unused:
+            return
+        modified, _ = u.Infra.remove_unused_constants(
+            file_path=constants_file,
+            unused=unused,
+        )
+        self._record_bulk_result(
+            modified=modified,
+            file_path=constants_file,
+            items=unused,
+            rule="NS-004",
+            fix_message="Removed unused constant '{name}'",
+            skip_message="Unused constant '{name}' detected but not removed",
+            ctx=ctx,
+        )
 
+    def _collect_used_constant_names(
+        self,
+        src_dir: Path,
+        pkg_dir: Path,
+    ) -> t.Infra.StrSet:
+        """Scan all workspace projects (or fallback to src_dir) for used constant names."""
         all_used_names: t.Infra.StrSet = set()
         projects_result = u.Infra.discover_projects(self._workspace_root)
         if projects_result.is_success:
-            discovered_projects: Sequence[m.Infra.ProjectInfo] = (
-                projects_result.unwrap()
-            )
-            for project in discovered_projects:
+            for project in projects_result.unwrap():
                 discovered_src = project.path / c.Infra.Paths.DEFAULT_SRC_DIR
                 if not discovered_src.is_dir():
                     continue
@@ -765,40 +810,7 @@ class FlextInfraCodegenFixer(s[bool]):
                     project=pkg_dir.name,
                 )
                 all_used_names.update(used_names)
-
-        unused = u.Infra.detect_unused_constants(
-            definitions=definitions,
-            all_used_names=all_used_names,
-        )
-        if not unused:
-            return
-        modified, _ = u.Infra.remove_unused_constants(
-            file_path=constants_file,
-            unused=unused,
-        )
-        if modified:
-            ctx.files_modified.add(str(constants_file))
-            ctx.violations_fixed.extend(
-                m.Infra.CensusViolation(
-                    module=item.file_path,
-                    rule="NS-004",
-                    line=item.line,
-                    message=f"Removed unused constant '{item.name}'",
-                    fixable=True,
-                )
-                for item in unused
-            )
-            return
-        ctx.violations_skipped.extend(
-            m.Infra.CensusViolation(
-                module=item.file_path,
-                rule="NS-004",
-                line=item.line,
-                message=f"Unused constant '{item.name}' detected but not removed",
-                fixable=False,
-            )
-            for item in unused
-        )
+        return all_used_names
 
     def _fix_rule5(
         self,
@@ -807,6 +819,7 @@ class FlextInfraCodegenFixer(s[bool]):
         pkg_dir: Path,
         ctx: FlextInfraCodegenFixer._FixContext,
     ) -> None:
+        """Fix Rule 5 — normalize direct constant references to c.* aliases."""
         project_import = f"from {pkg_dir.name} import c"
         for py_file in sorted(src_dir.rglob("*.py")):
             if py_file.name == "constants.py":
@@ -823,31 +836,21 @@ class FlextInfraCodegenFixer(s[bool]):
             )
             if modified:
                 ctx.files_modified.add(str(py_file))
-                ctx.violations_fixed.extend(
-                    m.Infra.CensusViolation(
+                for ref in direct_refs:
+                    ctx.fix(
                         module=ref.file_path,
                         rule="NS-005",
                         line=ref.line,
-                        message=(
-                            f"Direct ref {ref.full_ref} normalized to {ref.alias_ref}"
-                        ),
-                        fixable=True,
+                        message=f"Direct ref {ref.full_ref} normalized to {ref.alias_ref}",
                     )
-                    for ref in direct_refs
-                )
-                continue
-            ctx.violations_skipped.extend(
-                m.Infra.CensusViolation(
-                    module=ref.file_path,
-                    rule="NS-005",
-                    line=ref.line,
-                    message=(
-                        f"Direct ref {ref.full_ref} detected but replacement did not apply"
-                    ),
-                    fixable=False,
-                )
-                for ref in direct_refs
-            )
+            else:
+                for ref in direct_refs:
+                    ctx.skip(
+                        module=ref.file_path,
+                        rule="NS-005",
+                        line=ref.line,
+                        message=f"Direct ref {ref.full_ref} detected but replacement did not apply",
+                    )
 
 
 __all__ = ["FlextInfraCodegenFixer"]

@@ -183,7 +183,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     def _normalize_rewrite_scope(cls, raw_scope: str | None) -> str:
         if not isinstance(raw_scope, str):
             return c.Infra.ReportKeys.FILE
-        candidate = raw_scope.strip().lower()
+        candidate = u.norm_str(raw_scope, case="lower")
         if candidate in {
             c.Infra.ReportKeys.FILE,
             c.Infra.PROJECT,

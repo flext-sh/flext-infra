@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
+    from flext_core import FlextTypes
+
     from flext_infra.detectors._base_detector import *
     from flext_infra.detectors.class_placement_detector import *
     from flext_infra.detectors.compatibility_alias_detector import *
@@ -18,7 +20,6 @@ if _TYPE_CHECKING:
     from flext_infra.detectors.dependency_analyzer_base import *
     from flext_infra.detectors.future_annotations_detector import *
     from flext_infra.detectors.import_alias_detector import *
-    from flext_infra.detectors.import_collector import *
     from flext_infra.detectors.internal_import_detector import *
     from flext_infra.detectors.loose_object_detector import *
     from flext_infra.detectors.manual_protocol_detector import *
@@ -35,7 +36,6 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "FlextInfraDependencyAnalyzer": "flext_infra.detectors.dependency_analyzer_base",
     "FlextInfraFutureAnnotationsDetector": "flext_infra.detectors.future_annotations_detector",
     "FlextInfraImportAliasDetector": "flext_infra.detectors.import_alias_detector",
-    "FlextInfraImportCollector": "flext_infra.detectors.import_collector",
     "FlextInfraInternalImportDetector": "flext_infra.detectors.internal_import_detector",
     "FlextInfraLooseObjectDetector": "flext_infra.detectors.loose_object_detector",
     "FlextInfraMROCompletenessDetector": "flext_infra.detectors.mro_completeness_detector",
@@ -53,7 +53,6 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "dependency_analyzer_base": "flext_infra.detectors.dependency_analyzer_base",
     "future_annotations_detector": "flext_infra.detectors.future_annotations_detector",
     "import_alias_detector": "flext_infra.detectors.import_alias_detector",
-    "import_collector": "flext_infra.detectors.import_collector",
     "internal_import_detector": "flext_infra.detectors.internal_import_detector",
     "loose_object_detector": "flext_infra.detectors.loose_object_detector",
     "manual_protocol_detector": "flext_infra.detectors.manual_protocol_detector",

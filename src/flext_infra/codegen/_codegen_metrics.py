@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
+from flext_core import FlextUtilities
 from pydantic import ValidationError
 
 from flext_infra import FlextInfraCodegenCoercion, FlextInfraCodegenGeneration, c, m, t
@@ -29,13 +30,13 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
             return (None, str(resolved), f"baseline file not found: {resolved}")
         try:
             text = resolved.read_text(encoding=c.Infra.Encoding.DEFAULT)
-            payload = FlextInfraCodegenMetrics.container_mapping_adapter.validate_json(
+            payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_json(
                 text,
             )
         except (OSError, UnicodeDecodeError, ValueError):
             return (None, str(resolved), "baseline parse failed")
         try:
-            raw = FlextInfraCodegenMetrics.container_mapping_adapter.validate_python(
+            raw = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 payload,
             )
         except ValidationError:
@@ -99,7 +100,9 @@ class FlextInfraCodegenMetrics(FlextInfraCodegenCoercion, FlextInfraCodegenGener
                 if parsed.rule in by_rule:
                     by_rule[parsed.rule] += 1
         projects_total = len(census_reports)
-        projects_passed = sum(1 for item in census_reports if int(item.total) == 0)
+        projects_passed = FlextUtilities.count(
+            census_reports, lambda item: int(item.total) == 0
+        )
         projects_failed = projects_total - projects_passed
         violations_by_rule: Mapping[str, t.Infra.InfraValue] = dict(by_rule)
         modified_python_files_value: Sequence[t.Infra.InfraValue] = list(modified_files)

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
+from collections.abc import Mapping, MutableSequence, Sequence
 
 import tomlkit
 from tomlkit.container import Container
-from tomlkit.items import Item, Table
+from tomlkit.items import AoT, Item, Table
 
 from flext_infra import c, m, t, u
 
@@ -71,7 +71,46 @@ class FlextInfraEnsureMypyConfigPhase:
             if u.Infra.unwrap_item(u.Infra.get(mypy, key)) is not value:
                 mypy[key] = value
                 changes.append(f"tool.mypy.{key} set to {value}")
+        self._ensure_overrides(tool, changes)
         return changes
+
+    def _ensure_overrides(
+        self,
+        tool: Table,
+        changes: MutableSequence[str],
+    ) -> None:
+        """Ensure [[tool.mypy.overrides]] matches configured overrides."""
+        configured = self._tool_config.tools.mypy.overrides
+        if not configured:
+            return
+        expected: Sequence[Mapping[str, Sequence[str]]] = [
+            {
+                "module": list(entry.modules),
+                "disable_error_code": list(entry.disable_error_codes),
+            }
+            for entry in configured
+        ]
+        mypy_table = u.Infra.get(tool, c.Infra.MYPY)
+        raw = (
+            u.Infra.get(mypy_table, "overrides")
+            if isinstance(mypy_table, Table)
+            else None
+        )
+        current: Sequence[Mapping[str, Sequence[str]]] = []
+        if isinstance(raw, (list, AoT)):
+            current = [dict(item) for item in raw]
+        if list(current) == list(expected):
+            return
+        aot = tomlkit.aot()
+        for entry in expected:
+            tbl = tomlkit.table()
+            tbl["module"] = list(entry["module"])
+            tbl["disable_error_code"] = list(entry["disable_error_code"])
+            aot.append(tbl)
+        tool["mypy"]["overrides"] = aot
+        changes.append(
+            "tool.mypy.overrides synchronized for auto-generated files and PEP 695 generics",
+        )
 
 
 __all__ = ["FlextInfraEnsureMypyConfigPhase"]
