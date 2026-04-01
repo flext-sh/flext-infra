@@ -10,11 +10,22 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
+from flext_infra.__version__ import (
+    FlextInfraVersion,
+    __author__,
+    __author_email__,
+    __description__,
+    __license__,
+    __title__,
+    __url__,
+    __version__,
+    __version_info__,
+)
+
 if _TYPE_CHECKING:
     from flext_cli import d, e, h, r, s, x
     from flext_core import FlextTypes
 
-    from flext_infra.__version__ import *
     from flext_infra._constants import *
     from flext_infra._models import *
     from flext_infra._protocols import *
@@ -72,15 +83,6 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(
         "FlextInfraProtocols": "flext_infra.protocols",
         "FlextInfraTypes": "flext_infra.typings",
         "FlextInfraUtilities": "flext_infra.utilities",
-        "FlextInfraVersion": "flext_infra.__version__",
-        "__author__": "flext_infra.__version__",
-        "__author_email__": "flext_infra.__version__",
-        "__description__": "flext_infra.__version__",
-        "__license__": "flext_infra.__version__",
-        "__title__": "flext_infra.__version__",
-        "__url__": "flext_infra.__version__",
-        "__version__": "flext_infra.__version__",
-        "__version_info__": "flext_infra.__version__",
         "_constants": "flext_infra._constants",
         "_models": "flext_infra._models",
         "_protocols": "flext_infra._protocols",
@@ -119,4 +121,19 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(
 )
 
 
-install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    [
+        "FlextInfraVersion",
+        "__author__",
+        "__author_email__",
+        "__description__",
+        "__license__",
+        "__title__",
+        "__url__",
+        "__version__",
+        "__version_info__",
+    ],
+)
