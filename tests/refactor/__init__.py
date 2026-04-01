@@ -13,8 +13,21 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.refactor.test_rope_semantic import *
-    from tests.refactor.test_rope_stubs import *
+    from tests.refactor.test_rope_semantic import (
+        TestFindDefinitionOffset,
+        TestGetClassBases,
+        TestGetClassMethods,
+        TestGetModuleClasses,
+        TestGetModuleImports,
+        models_resource,
+        rope_workspace,
+        services_resource,
+    )
+    from tests.refactor.test_rope_stubs import (
+        test_rope_find_occurrences_import,
+        test_rope_import,
+        test_rope_rename_import,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "TestFindDefinitionOffset": "tests.refactor.test_rope_semantic",

@@ -24,7 +24,10 @@ if _TYPE_CHECKING:
     from tests.refactor import *
     from tests.runner_service import *
     from tests.scenarios import *
-    from tests.test_infra_refactor_rope_migrations import *
+    from tests.test_infra_refactor_rope_migrations import (
+        TestNestedClassPropagationRopeMigration,
+        TestSymbolPropagatorRopeMigration,
+    )
     from tests.typings import *
     from tests.unit import *
     from tests.unit._utilities import *

@@ -316,7 +316,14 @@ def _emit_type_checking_module(
 
     attr_items = [(exp, attr) for exp, attr in items if attr]
     if attr_items:
-        if _is_local_module(mod, root_name) and ".fixtures." not in mod:
+        mod_leaf = mod.rsplit(".", maxsplit=1)[-1]
+        is_test_file = mod_leaf.startswith("test_") or mod_leaf.endswith("_test")
+        use_star = (
+            _is_local_module(mod, root_name)
+            and ".fixtures." not in mod
+            and not is_test_file
+        )
+        if use_star:
             lines.append(f"    from {mod} import *")
         else:
             external_imports[mod].extend(

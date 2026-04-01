@@ -13,12 +13,75 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.unit.basemk.test_engine import *
-    from tests.unit.basemk.test_generator import *
-    from tests.unit.basemk.test_generator_edge_cases import *
-    from tests.unit.basemk.test_init import *
-    from tests.unit.basemk.test_main import *
-    from tests.unit.basemk.test_make_contract import *
+    from tests.unit.basemk.test_engine import (
+        basemk_main,
+        test_basemk_cli_generate_to_file,
+        test_basemk_cli_generate_to_stdout,
+        test_basemk_engine_execute_calls_render_all,
+        test_basemk_engine_render_all_handles_template_error,
+        test_basemk_engine_render_all_returns_string,
+        test_basemk_engine_render_all_with_valid_config,
+        test_generator_fails_for_invalid_make_syntax,
+        test_generator_renders_with_config_override,
+        test_generator_write_saves_output_file,
+        test_render_all_declares_and_documents_runtime_options,
+        test_render_all_exposes_canonical_public_targets,
+        test_render_all_generates_large_makefile,
+        test_render_all_has_no_scripts_path_references,
+    )
+    from tests.unit.basemk.test_generator import (
+        test_generator_execute_returns_generated_content,
+        test_generator_generate_propagates_render_failure,
+        test_generator_generate_with_basemk_config_object,
+        test_generator_generate_with_dict_config,
+        test_generator_generate_with_invalid_dict_config,
+        test_generator_generate_with_none_config_uses_default,
+        test_generator_initializes_with_custom_engine,
+        test_generator_initializes_with_default_engine,
+        test_generator_write_creates_parent_directories,
+        test_generator_write_fails_without_output_or_stream,
+        test_generator_write_to_file,
+        test_generator_write_to_stream,
+    )
+    from tests.unit.basemk.test_generator_edge_cases import (
+        test_generator_normalize_config_with_basemk_config,
+        test_generator_normalize_config_with_dict,
+        test_generator_normalize_config_with_invalid_dict,
+        test_generator_normalize_config_with_none,
+        test_generator_validate_generated_output_handles_oserror,
+        test_generator_write_handles_file_permission_error,
+        test_generator_write_to_stream_handles_oserror,
+    )
+    from tests.unit.basemk.test_init import TestFlextInfraBaseMk
+    from tests.unit.basemk.test_main import (
+        main,
+        test_basemk_build_config_with_none,
+        test_basemk_build_config_with_project_name,
+        test_basemk_main_ensures_structlog_configured,
+        test_basemk_main_output_to_stdout,
+        test_basemk_main_rejects_apply_flag,
+        test_basemk_main_with_generate_command,
+        test_basemk_main_with_generation_failure,
+        test_basemk_main_with_help,
+        test_basemk_main_with_invalid_command,
+        test_basemk_main_with_no_command,
+        test_basemk_main_with_none_argv,
+        test_basemk_main_with_output_file,
+        test_basemk_main_with_project_name,
+        test_basemk_main_with_write_failure,
+    )
+    from tests.unit.basemk.test_make_contract import (
+        test_make_boot_works_without_existing_venv_in_workspace_mode,
+        test_make_check_fast_path_check_only_suppresses_fix_writes,
+        test_make_check_file_scope_rejects_unsupported_gates,
+        test_make_check_file_scope_runs_mypy,
+        test_make_check_file_scope_unsets_python_path_env,
+        test_make_check_full_run_forwards_fix_and_tool_args,
+        test_make_check_full_run_unsets_python_path_env,
+        test_make_help_lists_supported_options,
+        test_rendered_base_mk_declares_cli_group_roots,
+        test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "TestFlextInfraBaseMk": "tests.unit.basemk.test_init",

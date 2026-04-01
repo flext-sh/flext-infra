@@ -13,13 +13,27 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.unit._utilities.test_discovery_consolidated import *
-    from tests.unit._utilities.test_formatting import *
-    from tests.unit._utilities.test_iteration import *
-    from tests.unit._utilities.test_parsing import *
-    from tests.unit._utilities.test_rope_hooks import *
-    from tests.unit._utilities.test_safety import *
-    from tests.unit._utilities.test_scanning import *
+    from tests.unit._utilities.test_discovery_consolidated import (
+        TestDiscoveryDiscoverProjects,
+        TestDiscoveryFindAllPyprojectFiles,
+        TestDiscoveryIterPythonFiles,
+        TestDiscoveryProjectRoots,
+    )
+    from tests.unit._utilities.test_formatting import TestFormattingRunRuffFix
+    from tests.unit._utilities.test_iteration import TestIterWorkspacePythonModules
+    from tests.unit._utilities.test_parsing import (
+        TestParsingModuleAst,
+        TestParsingModuleCst,
+    )
+    from tests.unit._utilities.test_rope_hooks import (
+        test_run_rope_post_hooks_applies_mro_migration,
+        test_run_rope_post_hooks_dry_run_is_non_mutating,
+    )
+    from tests.unit._utilities.test_safety import (
+        TestSafetyCheckpoint,
+        TestSafetyRollback,
+    )
+    from tests.unit._utilities.test_scanning import TestScanModels
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "TestDiscoveryDiscoverProjects": "tests.unit._utilities.test_discovery_consolidated",

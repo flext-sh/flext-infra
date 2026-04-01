@@ -13,10 +13,24 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.unit.io.test_infra_json_io import *
-    from tests.unit.io.test_infra_output_edge_cases import *
-    from tests.unit.io.test_infra_output_formatting import *
-    from tests.unit.io.test_infra_terminal_detection import *
+    from tests.unit.io.test_infra_json_io import SampleModel, TestFlextInfraJsonService
+    from tests.unit.io.test_infra_output_edge_cases import (
+        TestInfraOutputEdgeCases,
+        TestInfraOutputNoColor,
+        TestMroFacadeMethods,
+    )
+    from tests.unit.io.test_infra_output_formatting import (
+        ANSI_RE,
+        TestInfraOutputHeader,
+        TestInfraOutputMessages,
+        TestInfraOutputProgress,
+        TestInfraOutputStatus,
+        TestInfraOutputSummary,
+    )
+    from tests.unit.io.test_infra_terminal_detection import (
+        TestShouldUseColor,
+        TestShouldUseUnicode,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "ANSI_RE": "tests.unit.io.test_infra_output_formatting",

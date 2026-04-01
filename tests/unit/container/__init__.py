@@ -13,7 +13,11 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.unit.container.test_infra_container import *
+    from tests.unit.container.test_infra_container import (
+        TestInfraContainerFunctions,
+        TestInfraMroPattern,
+        TestInfraServiceRetrieval,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "TestInfraContainerFunctions": "tests.unit.container.test_infra_container",

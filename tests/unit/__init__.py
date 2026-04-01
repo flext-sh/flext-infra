@@ -25,43 +25,191 @@ if _TYPE_CHECKING:
     from tests.unit.io import *
     from tests.unit.refactor import *
     from tests.unit.release import *
-    from tests.unit.test_infra_constants_core import *
-    from tests.unit.test_infra_constants_extra import *
-    from tests.unit.test_infra_git import *
-    from tests.unit.test_infra_init_lazy_core import *
-    from tests.unit.test_infra_init_lazy_submodules import *
-    from tests.unit.test_infra_main import *
-    from tests.unit.test_infra_maintenance_cli import *
-    from tests.unit.test_infra_maintenance_init import *
-    from tests.unit.test_infra_maintenance_main import *
-    from tests.unit.test_infra_maintenance_python_version import *
-    from tests.unit.test_infra_paths import *
-    from tests.unit.test_infra_patterns_core import *
-    from tests.unit.test_infra_patterns_extra import *
-    from tests.unit.test_infra_protocols import *
-    from tests.unit.test_infra_reporting_core import *
-    from tests.unit.test_infra_reporting_extra import *
-    from tests.unit.test_infra_selection import *
-    from tests.unit.test_infra_subprocess_core import *
-    from tests.unit.test_infra_subprocess_extra import *
-    from tests.unit.test_infra_toml_io import *
-    from tests.unit.test_infra_typings import *
-    from tests.unit.test_infra_utilities import *
-    from tests.unit.test_infra_version_core import *
-    from tests.unit.test_infra_version_extra import *
-    from tests.unit.test_infra_versioning import *
-    from tests.unit.test_infra_workspace_cli import *
-    from tests.unit.test_infra_workspace_detector import *
-    from tests.unit.test_infra_workspace_init import *
-    from tests.unit.test_infra_workspace_main import *
-    from tests.unit.test_infra_workspace_migrator import *
-    from tests.unit.test_infra_workspace_migrator_deps import *
-    from tests.unit.test_infra_workspace_migrator_dryrun import *
-    from tests.unit.test_infra_workspace_migrator_errors import *
-    from tests.unit.test_infra_workspace_migrator_internal import *
-    from tests.unit.test_infra_workspace_migrator_pyproject import *
-    from tests.unit.test_infra_workspace_orchestrator import *
-    from tests.unit.test_infra_workspace_sync import *
+    from tests.unit.test_infra_constants_core import (
+        TestFlextInfraConstantsExcludedNamespace,
+        TestFlextInfraConstantsFilesNamespace,
+        TestFlextInfraConstantsGatesNamespace,
+        TestFlextInfraConstantsPathsNamespace,
+        TestFlextInfraConstantsStatusNamespace,
+    )
+    from tests.unit.test_infra_constants_extra import (
+        TestFlextInfraConstantsAlias,
+        TestFlextInfraConstantsCheckNamespace,
+        TestFlextInfraConstantsConsistency,
+        TestFlextInfraConstantsEncodingNamespace,
+        TestFlextInfraConstantsGithubNamespace,
+        TestFlextInfraConstantsImmutability,
+    )
+    from tests.unit.test_infra_git import (
+        TestFlextInfraGitService,
+        TestGitPush,
+        TestGitTagOperations,
+        TestRemovedCompatibilityMethods,
+        git_repo,
+    )
+    from tests.unit.test_infra_init_lazy_core import TestFlextInfraInitLazyLoading
+    from tests.unit.test_infra_init_lazy_submodules import (
+        TestFlextInfraSubmoduleInitLazyLoading,
+    )
+    from tests.unit.test_infra_main import (
+        test_main_all_groups_defined,
+        test_main_group_descriptions_are_present,
+        test_main_help_flag_returns_zero,
+        test_main_returns_error_when_no_args,
+        test_main_unknown_group_returns_error,
+    )
+    from tests.unit.test_infra_maintenance_cli import (
+        test_maintenance_rejects_apply_flag,
+    )
+    from tests.unit.test_infra_maintenance_init import TestFlextInfraMaintenance
+    from tests.unit.test_infra_maintenance_main import (
+        TestMaintenanceMainEnforcer,
+        TestMaintenanceMainSuccess,
+        main,
+    )
+    from tests.unit.test_infra_maintenance_python_version import (
+        TestDiscoverProjects,
+        TestEnforcerExecute,
+        TestEnsurePythonVersionFile,
+        TestReadRequiredMinor,
+        TestWorkspaceRoot,
+    )
+    from tests.unit.test_infra_paths import TestFlextInfraPathResolver
+    from tests.unit.test_infra_patterns_core import (
+        TestFlextInfraPatternsMarkdown,
+        TestFlextInfraPatternsTooling,
+    )
+    from tests.unit.test_infra_patterns_extra import (
+        TestFlextInfraPatternsEdgeCases,
+        TestFlextInfraPatternsPatternTypes,
+    )
+    from tests.unit.test_infra_protocols import TestFlextInfraProtocolsImport
+    from tests.unit.test_infra_reporting_core import TestFlextInfraReportingServiceCore
+    from tests.unit.test_infra_reporting_extra import (
+        TestFlextInfraReportingServiceExtra,
+    )
+    from tests.unit.test_infra_selection import TestFlextInfraUtilitiesSelection
+    from tests.unit.test_infra_subprocess_core import (
+        runner,
+        test_capture_cases,
+        test_run_cases,
+        test_run_raw_cases,
+    )
+    from tests.unit.test_infra_subprocess_extra import TestFlextInfraCommandRunnerExtra
+    from tests.unit.test_infra_toml_io import (
+        TestFlextInfraTomlDocument,
+        TestFlextInfraTomlHelpers,
+        TestFlextInfraTomlRead,
+    )
+    from tests.unit.test_infra_typings import TestFlextInfraTypesImport
+    from tests.unit.test_infra_utilities import TestFlextInfraUtilitiesImport
+    from tests.unit.test_infra_version_core import TestFlextInfraVersionClass
+    from tests.unit.test_infra_version_extra import (
+        TestFlextInfraVersionModuleLevel,
+        TestFlextInfraVersionPackageInfo,
+    )
+    from tests.unit.test_infra_versioning import (
+        service,
+        test_bump_version_invalid,
+        test_bump_version_result_type,
+        test_bump_version_valid,
+        test_current_workspace_version,
+        test_parse_semver_invalid,
+        test_parse_semver_result_type,
+        test_parse_semver_valid,
+        test_replace_project_version,
+    )
+    from tests.unit.test_infra_workspace_cli import (
+        test_workspace_cli_migrate_command,
+        test_workspace_cli_migrate_output_contains_summary,
+        test_workspace_cli_rejects_migrate_flags_for_detect,
+    )
+    from tests.unit.test_infra_workspace_detector import (
+        TestDetectorBasicDetection,
+        TestDetectorGitRunScenarios,
+        TestDetectorRepoNameExtraction,
+        detector,
+    )
+    from tests.unit.test_infra_workspace_init import TestFlextInfraWorkspace
+    from tests.unit.test_infra_workspace_main import (
+        TestMainCli,
+        TestRunDetect,
+        TestRunMigrate,
+        TestRunOrchestrate,
+        TestRunSync,
+        workspace_main,
+    )
+    from tests.unit.test_infra_workspace_migrator import (
+        test_migrator_apply_updates_project_files,
+        test_migrator_discovery_failure,
+        test_migrator_dry_run_reports_changes_without_writes,
+        test_migrator_execute_returns_failure,
+        test_migrator_handles_missing_pyproject_gracefully,
+        test_migrator_no_changes_needed,
+        test_migrator_preserves_custom_makefile_content,
+        test_migrator_workspace_root_not_exists,
+        test_migrator_workspace_root_project_detection,
+    )
+    from tests.unit.test_infra_workspace_migrator_deps import (
+        test_migrate_makefile_not_found_non_dry_run,
+        test_migrate_pyproject_flext_core_non_dry_run,
+        test_migrator_has_flext_core_dependency_in_poetry,
+        test_migrator_has_flext_core_dependency_poetry_deps_not_table,
+        test_migrator_has_flext_core_dependency_poetry_table_missing,
+        test_workspace_migrator_error_handling_on_invalid_workspace,
+        test_workspace_migrator_makefile_not_found_dry_run,
+        test_workspace_migrator_makefile_read_error,
+        test_workspace_migrator_pyproject_write_error,
+    )
+    from tests.unit.test_infra_workspace_migrator_dryrun import (
+        test_migrator_flext_core_dry_run,
+        test_migrator_flext_core_project_skipped,
+        test_migrator_gitignore_already_normalized_dry_run,
+        test_migrator_makefile_not_found_dry_run,
+        test_migrator_makefile_read_failure,
+        test_migrator_pyproject_not_found_dry_run,
+    )
+    from tests.unit.test_infra_workspace_migrator_errors import (
+        TestMigratorReadFailures,
+        TestMigratorWriteFailures,
+    )
+    from tests.unit.test_infra_workspace_migrator_internal import (
+        TestMigratorEdgeCases,
+        TestMigratorInternalMakefile,
+        TestMigratorInternalPyproject,
+    )
+    from tests.unit.test_infra_workspace_migrator_pyproject import (
+        TestMigratorDryRun,
+        TestMigratorFlextCore,
+        TestMigratorPoetryDeps,
+    )
+    from tests.unit.test_infra_workspace_orchestrator import (
+        TestOrchestratorBasic,
+        TestOrchestratorFailures,
+        TestOrchestratorGateNormalization,
+        orchestrator,
+    )
+    from tests.unit.test_infra_workspace_sync import (
+        SetupFn,
+        svc,
+        test_atomic_write_fail,
+        test_atomic_write_ok,
+        test_cli_forwards_canonical_root,
+        test_cli_result_by_project_root,
+        test_gitignore_entry_scenarios,
+        test_gitignore_sync_failure,
+        test_gitignore_write_failure,
+        test_sync_basemk_scenarios,
+        test_sync_error_scenarios,
+        test_sync_regenerates_project_makefile_without_legacy_passthrough,
+        test_sync_root_validation,
+        test_sync_success_scenarios,
+        test_sync_updates_project_makefile_for_standalone_project,
+        test_sync_updates_workspace_makefile_for_workspace_root,
+        test_workspace_makefile_generator_declares_canonical_workspace_variables,
+        test_workspace_makefile_generator_reuses_mod_and_boot_feedback,
+        test_workspace_makefile_generator_sanitizes_orchestrator_env,
+    )
     from tests.unit.validate import *
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(

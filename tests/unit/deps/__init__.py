@@ -13,56 +13,228 @@ from flext_core.lazy import install_lazy_exports
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
 
-    from tests.unit.deps.test_detection_classify import *
-    from tests.unit.deps.test_detection_deptry import *
-    from tests.unit.deps.test_detection_discover import *
-    from tests.unit.deps.test_detection_models import *
-    from tests.unit.deps.test_detection_pip_check import *
-    from tests.unit.deps.test_detection_typings import *
-    from tests.unit.deps.test_detection_typings_flow import *
-    from tests.unit.deps.test_detection_uncovered import *
-    from tests.unit.deps.test_detector_detect import *
-    from tests.unit.deps.test_detector_detect_failures import *
-    from tests.unit.deps.test_detector_init import *
-    from tests.unit.deps.test_detector_main import *
-    from tests.unit.deps.test_detector_models import *
-    from tests.unit.deps.test_detector_report import *
-    from tests.unit.deps.test_detector_report_flags import *
-    from tests.unit.deps.test_extra_paths_manager import *
-    from tests.unit.deps.test_extra_paths_pep621 import *
-    from tests.unit.deps.test_extra_paths_sync import *
-    from tests.unit.deps.test_init import *
-    from tests.unit.deps.test_internal_sync_discovery import *
-    from tests.unit.deps.test_internal_sync_discovery_edge import *
-    from tests.unit.deps.test_internal_sync_resolve import *
-    from tests.unit.deps.test_internal_sync_sync import *
-    from tests.unit.deps.test_internal_sync_sync_edge import *
-    from tests.unit.deps.test_internal_sync_sync_edge_more import *
-    from tests.unit.deps.test_internal_sync_update import *
-    from tests.unit.deps.test_internal_sync_update_checkout_edge import *
-    from tests.unit.deps.test_internal_sync_validation import *
-    from tests.unit.deps.test_internal_sync_workspace import *
-    from tests.unit.deps.test_main import *
-    from tests.unit.deps.test_main_dispatch import *
-    from tests.unit.deps.test_modernizer_comments import *
-    from tests.unit.deps.test_modernizer_consolidate import *
-    from tests.unit.deps.test_modernizer_coverage import *
-    from tests.unit.deps.test_modernizer_helpers import *
-    from tests.unit.deps.test_modernizer_main import *
-    from tests.unit.deps.test_modernizer_main_extra import *
-    from tests.unit.deps.test_modernizer_pyrefly import *
-    from tests.unit.deps.test_modernizer_pyright import *
-    from tests.unit.deps.test_modernizer_pytest import *
-    from tests.unit.deps.test_modernizer_workspace import *
-    from tests.unit.deps.test_path_sync_helpers import *
-    from tests.unit.deps.test_path_sync_init import *
-    from tests.unit.deps.test_path_sync_main import *
-    from tests.unit.deps.test_path_sync_main_edges import *
-    from tests.unit.deps.test_path_sync_main_more import *
-    from tests.unit.deps.test_path_sync_main_project_obj import *
-    from tests.unit.deps.test_path_sync_rewrite_deps import *
-    from tests.unit.deps.test_path_sync_rewrite_pep621 import *
-    from tests.unit.deps.test_path_sync_rewrite_poetry import *
+    from tests.unit.deps.test_detection_classify import (
+        TestBuildProjectReport,
+        TestClassifyIssues,
+    )
+    from tests.unit.deps.test_detection_deptry import TestRunDeptry
+    from tests.unit.deps.test_detection_discover import TestDiscoverProjects
+    from tests.unit.deps.test_detection_models import (
+        TestFlextInfraDependencyDetectionModels,
+        TestFlextInfraDependencyDetectionService,
+        TestToInfraValue,
+    )
+    from tests.unit.deps.test_detection_pip_check import TestRunPipCheck
+    from tests.unit.deps.test_detection_typings import (
+        TestLoadDependencyLimits,
+        TestRunMypyStubHints,
+    )
+    from tests.unit.deps.test_detection_typings_flow import TestModuleAndTypingsFlow
+    from tests.unit.deps.test_detection_uncovered import TestDetectionUncoveredLines
+    from tests.unit.deps.test_detector_detect import (
+        TestFlextInfraRuntimeDevDependencyDetectorRunDetect,
+    )
+    from tests.unit.deps.test_detector_detect_failures import TestDetectorRunFailures
+    from tests.unit.deps.test_detector_init import (
+        TestFlextInfraRuntimeDevDependencyDetectorInit,
+    )
+    from tests.unit.deps.test_detector_main import (
+        TestFlextInfraRuntimeDevDependencyDetectorRunTypings,
+        TestMainFunction,
+    )
+    from tests.unit.deps.test_detector_models import (
+        TestFlextInfraDependencyDetectorModels,
+    )
+    from tests.unit.deps.test_detector_report import (
+        TestFlextInfraRuntimeDevDependencyDetectorRunReport,
+    )
+    from tests.unit.deps.test_detector_report_flags import TestDetectorReportFlags
+    from tests.unit.deps.test_extra_paths_manager import (
+        TestConstants,
+        TestFlextInfraExtraPathsManager,
+        TestGetDepPaths,
+        TestSyncOne,
+        test_pyrefly_search_paths_include_workspace_declared_dev_dependencies,
+    )
+    from tests.unit.deps.test_extra_paths_pep621 import (
+        TestPathDepPathsPep621,
+        TestPathDepPathsPoetry,
+    )
+    from tests.unit.deps.test_extra_paths_sync import (
+        pyright_content,
+        test_main_success_modes,
+        test_main_sync_failure,
+        test_sync_extra_paths_missing_root_pyproject,
+        test_sync_extra_paths_success_modes,
+        test_sync_extra_paths_sync_failure,
+        test_sync_one_edge_cases,
+    )
+    from tests.unit.deps.test_init import TestFlextInfraDeps
+    from tests.unit.deps.test_internal_sync_discovery import (
+        TestCollectInternalDeps,
+        TestParseGitmodules,
+        TestParseRepoMap,
+    )
+    from tests.unit.deps.test_internal_sync_discovery_edge import (
+        TestCollectInternalDepsEdgeCases,
+    )
+    from tests.unit.deps.test_internal_sync_resolve import (
+        TestInferOwnerFromOrigin,
+        TestResolveRef,
+        TestSynthesizedRepoMap,
+    )
+    from tests.unit.deps.test_internal_sync_sync import TestSync
+    from tests.unit.deps.test_internal_sync_sync_edge import TestSyncMethodEdgeCases
+    from tests.unit.deps.test_internal_sync_sync_edge_more import (
+        TestSyncMethodEdgeCasesMore,
+    )
+    from tests.unit.deps.test_internal_sync_update import (
+        TestEnsureCheckout,
+        TestEnsureSymlink,
+        TestEnsureSymlinkEdgeCases,
+    )
+    from tests.unit.deps.test_internal_sync_update_checkout_edge import (
+        TestEnsureCheckoutEdgeCases,
+    )
+    from tests.unit.deps.test_internal_sync_validation import (
+        TestFlextInfraInternalDependencySyncService,
+        TestIsInternalPathDep,
+        TestIsRelativeTo,
+        TestOwnerFromRemoteUrl,
+        TestValidateGitRefEdgeCases,
+    )
+    from tests.unit.deps.test_internal_sync_workspace import (
+        TestIsWorkspaceMode,
+        TestWorkspaceRootFromEnv,
+        TestWorkspaceRootFromParents,
+    )
+    from tests.unit.deps.test_main import (
+        TestMainHelpAndErrors,
+        TestMainReturnValues,
+        TestSubcommandMapping,
+    )
+    from tests.unit.deps.test_main_dispatch import (
+        TestMainDelegation,
+        TestMainExceptionHandling,
+        TestMainModuleImport,
+        TestMainSubcommandDispatch,
+        TestMainSysArgvModification,
+        main,
+        test_string_zero_return_value,
+    )
+    from tests.unit.deps.test_modernizer_comments import (
+        TestInjectCommentsPhase,
+        test_inject_comments_phase_apply_banner,
+        test_inject_comments_phase_apply_broken_group_section,
+        test_inject_comments_phase_apply_markers,
+        test_inject_comments_phase_apply_with_optional_dependencies_dev,
+        test_inject_comments_phase_deduplicates_family_markers,
+        test_inject_comments_phase_marks_pytest_and_coverage_subtables,
+        test_inject_comments_phase_removes_auto_banner_and_auto_marker,
+        test_inject_comments_phase_repositions_marker_before_section,
+    )
+    from tests.unit.deps.test_modernizer_consolidate import (
+        TestConsolidateGroupsPhase,
+        test_consolidate_groups_phase_apply_removes_old_groups,
+        test_consolidate_groups_phase_apply_with_empty_poetry_group,
+    )
+    from tests.unit.deps.test_modernizer_coverage import TestEnsureCoverageConfigPhase
+    from tests.unit.deps.test_modernizer_helpers import (
+        doc,
+        test_array,
+        test_as_string_list,
+        test_as_string_list_toml_item,
+        test_canonical_dev_dependencies,
+        test_declared_dependency_names_collects_all_supported_groups,
+        test_dedupe_specs,
+        test_dep_name,
+        test_ensure_table,
+        test_project_dev_groups,
+        test_project_dev_groups_missing_sections,
+        test_unwrap_item,
+        test_unwrap_item_toml_item,
+    )
+    from tests.unit.deps.test_modernizer_main import (
+        TestFlextInfraPyprojectModernizer,
+        TestModernizerRunAndMain,
+    )
+    from tests.unit.deps.test_modernizer_main_extra import (
+        TestModernizerEdgeCases,
+        TestModernizerUncoveredLines,
+        test_flext_infra_pyproject_modernizer_find_pyproject_files,
+        test_flext_infra_pyproject_modernizer_process_file_invalid_toml,
+    )
+    from tests.unit.deps.test_modernizer_pyrefly import (
+        TestEnsurePyreflyConfigPhase,
+        test_ensure_pyrefly_config_phase_apply_errors,
+        test_ensure_pyrefly_config_phase_apply_ignore_errors,
+        test_ensure_pyrefly_config_phase_apply_python_version,
+        test_ensure_pyrefly_config_phase_apply_search_path,
+    )
+    from tests.unit.deps.test_modernizer_pyright import TestEnsurePyrightConfigPhase
+    from tests.unit.deps.test_modernizer_pytest import (
+        TestEnsurePytestConfigPhase,
+        test_ensure_pytest_config_phase_apply_markers,
+        test_ensure_pytest_config_phase_apply_minversion,
+        test_ensure_pytest_config_phase_apply_python_classes,
+    )
+    from tests.unit.deps.test_modernizer_workspace import (
+        TestParser,
+        TestReadDoc,
+        TestWorkspaceRoot,
+        test_workspace_root_doc_construction,
+    )
+    from tests.unit.deps.test_path_sync_helpers import (
+        extract_dep_name,
+        test_extract_dep_name,
+        test_extract_requirement_name,
+        test_helpers_alias_is_reachable_helpers,
+        test_target_path,
+    )
+    from tests.unit.deps.test_path_sync_init import (
+        TestDetectMode,
+        TestFlextInfraDependencyPathSync,
+        TestPathSyncEdgeCases,
+        test_detect_mode_with_nonexistent_path,
+        test_detect_mode_with_path_object,
+    )
+    from tests.unit.deps.test_path_sync_main import TestMain
+    from tests.unit.deps.test_path_sync_main_edges import TestMainEdgeCases
+    from tests.unit.deps.test_path_sync_main_more import (
+        test_main_discovery_failure,
+        test_main_no_changes_needed,
+        test_main_project_invalid_toml,
+        test_main_project_no_name,
+        test_main_project_non_string_name,
+        test_main_with_changes_and_dry_run,
+        test_main_with_changes_no_dry_run,
+        test_workspace_root_fallback,
+    )
+    from tests.unit.deps.test_path_sync_main_project_obj import (
+        test_helpers_alias_is_reachable_project_obj,
+        test_main_project_obj_not_dict_first_loop,
+        test_main_project_obj_not_dict_second_loop,
+    )
+    from tests.unit.deps.test_path_sync_rewrite_deps import (
+        TestRewriteDepPaths,
+        rewrite_dep_paths,
+        test_rewrite_dep_paths_dry_run,
+        test_rewrite_dep_paths_read_failure,
+        test_rewrite_dep_paths_with_internal_names,
+        test_rewrite_dep_paths_with_no_deps,
+    )
+    from tests.unit.deps.test_path_sync_rewrite_pep621 import (
+        TestRewritePep621,
+        test_rewrite_pep621_invalid_path_dep_regex,
+        test_rewrite_pep621_no_project_table,
+        test_rewrite_pep621_non_string_item,
+    )
+    from tests.unit.deps.test_path_sync_rewrite_poetry import (
+        TestRewritePoetry,
+        test_rewrite_poetry_no_poetry_table,
+        test_rewrite_poetry_no_tool_table,
+        test_rewrite_poetry_with_non_dict_value,
+    )
 
 _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
     "TestBuildProjectReport": "tests.unit.deps.test_detection_classify",
