@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.transformers import (
         _base,
         _utilities_normalizer,
@@ -107,7 +106,7 @@ if _TYPE_CHECKING:
         FlextInfraViolationCensusVisitor,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraCensusImportDiscoveryVisitor": "flext_infra.transformers.census_visitors",
     "FlextInfraCensusUsageCollector": "flext_infra.transformers.census_visitors",
     "FlextInfraChangeTrackingTransformer": "flext_infra.transformers._base",

@@ -15,11 +15,11 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
-from flext_core import FlextUtilities, r
 from pydantic import TypeAdapter, ValidationError
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
 
+from flext_core import FlextUtilities, r
 from flext_infra import FlextInfraUtilitiesToml, c, t
 
 
@@ -87,6 +87,19 @@ class FlextInfraUtilitiesTomlParse:
             and "-" not in entry.name
         ]
         return namespaces
+
+    @staticmethod
+    def workspace_dep_namespaces(doc: tomlkit.TOMLDocument) -> t.StrSequence:
+        """Extract Python package names of workspace (flext-*) dependencies.
+
+        Converts hyphenated dependency names (``flext-core``) to Python namespace
+        format (``flext_core``) so they can be added to ``known-first-party`` for
+        projects that consume flext packages but are not themselves flext-prefixed.
+        """
+        all_deps = FlextInfraUtilitiesTomlParse.declared_dependency_names(doc)
+        return sorted(
+            dep.replace("-", "_") for dep in all_deps if dep.startswith("flext-")
+        )
 
     @staticmethod
     def project_dev_groups(doc: tomlkit.TOMLDocument) -> Mapping[str, t.StrSequence]:

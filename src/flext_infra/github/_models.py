@@ -7,9 +7,9 @@ from collections.abc import MutableSequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import FlextModels
 from pydantic import ConfigDict, Field
 
+from flext_core import FlextModels
 from flext_infra import c, t
 
 

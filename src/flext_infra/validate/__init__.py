@@ -20,7 +20,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.validate import (
         _constants,
         _models,
@@ -47,7 +46,7 @@ if _TYPE_CHECKING:
     from flext_infra.validate.skill_validator import FlextInfraSkillValidator
     from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraBaseMkValidator": "flext_infra.validate.basemk_validator",
     "FlextInfraCliValidate": "flext_infra.validate.cli",
     "FlextInfraCoreConstants": "flext_infra.validate._constants",

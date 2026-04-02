@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.container import test_infra_container
     from tests.unit.container.test_infra_container import (
         TestInfraContainerFunctions,
@@ -20,7 +19,7 @@ if _TYPE_CHECKING:
         TestInfraServiceRetrieval,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestInfraContainerFunctions": "tests.unit.container.test_infra_container",
     "TestInfraMroPattern": "tests.unit.container.test_infra_container",
     "TestInfraServiceRetrieval": "tests.unit.container.test_infra_container",

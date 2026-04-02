@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.rules import (
         class_nesting,
         class_reconstructor,
@@ -41,7 +40,7 @@ if _TYPE_CHECKING:
         FlextInfraRefactorPatternCorrectionsRule,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraClassNestingRefactorRule": "flext_infra.rules.class_nesting",
     "FlextInfraPreCheckGate": "flext_infra.rules.class_reconstructor",
     "FlextInfraRefactorClassNestingReconstructor": "flext_infra.rules.class_reconstructor",

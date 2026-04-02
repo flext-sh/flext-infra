@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.detectors import (
         _base_detector,
         class_placement_detector,
@@ -77,7 +76,7 @@ if _TYPE_CHECKING:
         FlextInfraRuntimeAliasDetector,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "DetectorContext": "flext_infra.detectors._base_detector",
     "FlextInfraClassPlacementDetector": "flext_infra.detectors.class_placement_detector",
     "FlextInfraCompatibilityAliasDetector": "flext_infra.detectors.compatibility_alias_detector",

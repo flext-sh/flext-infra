@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.github import (
         _stubs,
         _stubs_extra,
@@ -45,7 +44,7 @@ if _TYPE_CHECKING:
     from tests.unit.github.main_integration_tests import TestMain
     from tests.unit.github.main_tests import TestRunLint, TestRunPr, TestRunWorkflows
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "StubCommandOutput": "tests.unit.github._stubs",
     "StubJsonIo": "tests.unit.github._stubs",
     "StubLinter": "tests.unit.github._stubs",

@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.release import (
         _stubs,
         flow_tests,
@@ -67,7 +66,7 @@ if _TYPE_CHECKING:
         TestResolveVersionInteractive,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FakeReporting": "tests.unit.release._stubs",
     "FakeSelection": "tests.unit.release._stubs",
     "FakeSubprocess": "tests.unit.release._stubs",

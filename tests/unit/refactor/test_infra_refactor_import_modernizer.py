@@ -55,7 +55,7 @@ def test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias() -> 
 
 
 def test_import_modernizer_adds_c_when_existing_c_is_aliased() -> None:
-    source = "from flext_core import c as consts\nfrom flext_core.constants import PLATFORM\n\nvalue = PLATFORM\n"
+    source = "from flext_core import c as consts\nfrom flext_core import PLATFORM\n\nvalue = PLATFORM\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
@@ -101,7 +101,7 @@ def test_import_modernizer_does_not_rewrite_rebound_local_name_usage() -> None:
 
 
 def test_import_modernizer_skips_when_runtime_alias_name_is_blocked() -> None:
-    source = "from flext_infra import c\nfrom flext_core.constants import PLATFORM\n\nvalue = PLATFORM\n"
+    source = "from flext_infra import c\nfrom flext_core import PLATFORM\n\nvalue = PLATFORM\n"
     tree = cst.parse_module(source)
     rule = FlextInfraRefactorImportModernizerRule({
         "id": "modernize-constants-import",
@@ -111,7 +111,7 @@ def test_import_modernizer_skips_when_runtime_alias_name_is_blocked() -> None:
     updated_tree, _ = rule.apply(tree)
     updated = updated_tree.code
     assert "from flext_infra import c" in updated
-    assert "from flext_core.constants import PLATFORM" in updated
+    assert "from flext_core import PLATFORM" in updated
     assert "from flext_core import c" not in updated
     assert "value = PLATFORM" in updated
 

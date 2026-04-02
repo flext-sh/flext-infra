@@ -13,10 +13,10 @@ from pathlib import Path
 from typing import override
 
 import tomlkit
-from flext_core import FlextLogger, r, s
 from pydantic import JsonValue, ValidationError
 from tomlkit import items
 
+from flext_core import FlextLogger, r, s
 from flext_infra import FlextInfraExtraPathsManager, c, m, t, u
 
 _logger = FlextLogger.create_module_logger(__name__)
@@ -100,7 +100,7 @@ class FlextInfraConfigFixer(s[bool]):
             fixes = self._ensure_project_excludes_tk(pyrefly)
             all_fixes.extend(fixes)
         if all_fixes and (not dry_run):
-            typed_tool_data[c.Infra.PYREFLY] = dict(pyrefly.items())
+            typed_tool_data[c.Infra.PYREFLY] = dict(pyrefly)
             doc_data[c.Infra.TOOL] = typed_tool_data
             new_doc = tomlkit.document()
             for key, value in doc_data.items():
@@ -217,7 +217,7 @@ class FlextInfraConfigFixer(s[bool]):
             if u.is_mapping(conf):
                 try:
                     conf_map = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(conf)
-                    conf_out = dict(conf_map.items())
+                    conf_out = dict(conf_map)
                 except ValidationError:
                     pass
             if conf_map.get(c.Infra.IGNORE) is True:

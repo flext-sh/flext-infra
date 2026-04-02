@@ -8,10 +8,14 @@ from typing import override
 
 import libcst as cst
 
-from flext_infra import INFRA_MAPPING_ADAPTER, FlextInfraRefactorRule, c, t, u
-from flext_infra.transformers.dict_to_mapping import FlextInfraDictToMappingTransformer
-from flext_infra.transformers.redundant_cast_remover import (
+from flext_infra import (
+    INFRA_MAPPING_ADAPTER,
+    FlextInfraDictToMappingTransformer,
     FlextInfraRedundantCastRemover,
+    FlextInfraRefactorRule,
+    c,
+    t,
+    u,
 )
 
 

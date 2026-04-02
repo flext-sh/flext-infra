@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import override
 
-from flext_core import r
 from flext_tests import s
 
+from flext_core import r
 from flext_infra import FlextInfraUtilitiesSubprocess
 from tests import t
 

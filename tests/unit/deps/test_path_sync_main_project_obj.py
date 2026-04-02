@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 import tomlkit
-from flext_core import r
 from flext_tests import tm
 from tomlkit.toml_document import TOMLDocument
 
+from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
 from tests import h, m
 

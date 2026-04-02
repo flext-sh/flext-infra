@@ -35,7 +35,7 @@ class FlextInfraRefactorRule:
 
     def __init__(self, config: Mapping[str, t.Infra.InfraValue]) -> None:
         """Initialize rule metadata from rule config."""
-        self.config = dict(config.items())
+        self.config = dict(config)
         rule_id = self.config.get(c.Infra.ReportKeys.ID, c.Infra.Defaults.UNKNOWN)
         self.rule_id = str(rule_id)
         name_raw = self.config.get(c.Infra.NAME, self.rule_id)

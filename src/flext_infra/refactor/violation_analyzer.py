@@ -92,12 +92,12 @@ class FlextInfraRefactorViolationAnalyzer:
             for file_name, total, counts in ranked_sorted[:25]
         ]
         helper_report = m.Infra.HelperClassificationReport(
-            totals=dict(helper_totals.items()),
+            totals=dict(helper_totals),
             suggestions=helper_suggestions,
             manual_review=helper_manual_review,
         )
         return m.Infra.ViolationAnalysisReport(
-            totals=dict(totals.items()),
+            totals=dict(totals),
             files={k: {**v} for k, v in per_file.items()},
             top_files=hottest_files,
             files_scanned=len(files),
@@ -118,7 +118,7 @@ class FlextInfraRefactorViolationAnalyzer:
         if module is None:
             return m.Infra.HelperFileAnalysis(
                 suggestions=suggestions,
-                totals=dict(totals.items()),
+                totals=dict(totals),
                 manual_review=manual_review,
             )
         local_to_import = cls._extract_local_to_import(module)
@@ -137,7 +137,7 @@ class FlextInfraRefactorViolationAnalyzer:
                 manual_review.append(classification)
         return m.Infra.HelperFileAnalysis(
             suggestions=suggestions,
-            totals=dict(totals.items()),
+            totals=dict(totals),
             manual_review=manual_review,
         )
 

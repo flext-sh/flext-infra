@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.codegen import (
         _project_factory,
         autofix_tests,
@@ -112,7 +111,7 @@ if _TYPE_CHECKING:
         TestScaffoldProjectNoop,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraCodegenTestProjectFactory": "tests.unit.codegen._project_factory",
     "TestAllDirectoriesScanned": "tests.unit.codegen.lazy_init_tests",
     "TestBuildSiblingExportIndex": "tests.unit.codegen.lazy_init_helpers_tests",

@@ -14,9 +14,9 @@ import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_core import FlextUtilities, r
 from pydantic import BaseModel, JsonValue, ValidationError
 
+from flext_core import FlextUtilities, r
 from flext_infra import c, t
 
 

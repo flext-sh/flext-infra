@@ -10,9 +10,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from _pytest.monkeypatch import MonkeyPatch
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import FlextInfraProjectMigrator, main as infra_main
 from tests import m
 

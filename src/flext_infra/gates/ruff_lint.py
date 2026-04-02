@@ -56,9 +56,9 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 issues.extend(
                     m.Infra.Issue(
                         file=str(entry.get("filename", "?")),
-                        line=self._nested_int(dict(entry.items()), "location", "row"),
+                        line=self._nested_int(dict(entry), "location", "row"),
                         column=self._nested_int(
-                            dict(entry.items()),
+                            dict(entry),
                             "location",
                             "column",
                         ),

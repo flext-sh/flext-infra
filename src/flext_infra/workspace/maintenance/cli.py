@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
-
 from flext_infra import FlextInfraPythonVersionEnforcer, m
 
 if TYPE_CHECKING:

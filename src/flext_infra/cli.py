@@ -7,7 +7,6 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import cli
-
 from flext_infra import (
     FlextInfraCliBasemk,
     FlextInfraCliCheck,
@@ -15,6 +14,7 @@ from flext_infra import (
     FlextInfraCliDeps,
     FlextInfraCliDocs,
     FlextInfraCliGithub,
+    FlextInfraCliMaintenance,
     FlextInfraCliRefactor,
     FlextInfraCliRelease,
     FlextInfraCliValidate,
@@ -23,7 +23,6 @@ from flext_infra import (
     FlextInfraTypes as t,
     FlextInfraUtilities as u,
 )
-from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
 
 
 class FlextInfraCli(

@@ -5,11 +5,11 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
 import flext_infra.deps as detector_module
 import flext_infra.deps.detector as detector_main_module
+from flext_core import r
 from tests import t
 
 

@@ -13,9 +13,9 @@ from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, override
 
-from flext_core import FlextModels, r
 from pydantic import BaseModel, Field, JsonValue
 
+from flext_core import FlextModels, r
 from flext_infra import (
     FlextInfraUtilitiesIo,
     FlextInfraUtilitiesReporting,

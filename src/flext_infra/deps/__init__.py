@@ -19,7 +19,6 @@ from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.deps import (
         _constants,
         _detector_runtime,
@@ -72,7 +71,7 @@ if _TYPE_CHECKING:
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
     from flext_infra.deps.path_sync import FlextInfraDependencyPathSync
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
     ("flext_infra.deps._phases",),
     {
         "FlextInfraCliDeps": "flext_infra.deps.cli",

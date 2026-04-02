@@ -7,7 +7,6 @@ from collections.abc import Callable, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import FlextUtilities, r
-
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesPatterns,

@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.deps import (
         test_detection_classify,
         test_detection_deptry,
@@ -289,7 +288,7 @@ if _TYPE_CHECKING:
         test_rewrite_poetry_with_non_dict_value,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestBuildProjectReport": "tests.unit.deps.test_detection_classify",
     "TestClassifyIssues": "tests.unit.deps.test_detection_classify",
     "TestCollectInternalDeps": "tests.unit.deps.test_internal_sync_discovery",

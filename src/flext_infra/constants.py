@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import FlextCliConstants
-
 from flext_infra import (
     FlextInfraBasemkConstants,
     FlextInfraCheckConstants,

@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit._utilities import (
         test_discovery_consolidated,
         test_formatting,
@@ -44,7 +43,7 @@ if _TYPE_CHECKING:
     )
     from tests.unit._utilities.test_scanning import TestScanModels
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestDiscoveryDiscoverProjects": "tests.unit._utilities.test_discovery_consolidated",
     "TestDiscoveryFindAllPyprojectFiles": "tests.unit._utilities.test_discovery_consolidated",
     "TestDiscoveryIterPythonFiles": "tests.unit._utilities.test_discovery_consolidated",

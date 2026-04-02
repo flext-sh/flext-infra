@@ -11,8 +11,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, u
-from flext_infra.detectors._base_detector import DetectorContext
+from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, u
 
 PYDANTIC_BASE_NAMES: frozenset[str] = frozenset({
     "BaseModel",

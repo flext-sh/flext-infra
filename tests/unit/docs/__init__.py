@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.docs import (
         auditor_budgets_tests,
         auditor_cli_tests,
@@ -94,7 +93,7 @@ if _TYPE_CHECKING:
     )
     from tests.unit.docs.validator_tests import TestValidateCore, TestValidateReport
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestAdrHelpers": "tests.unit.docs.validator_internals_tests",
     "TestAuditorBrokenLinks": "tests.unit.docs.auditor_links_tests",
     "TestAuditorCore": "tests.unit.docs.auditor_tests",

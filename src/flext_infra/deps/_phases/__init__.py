@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.deps._phases import (
         consolidate_groups,
         ensure_coverage,
@@ -56,7 +55,7 @@ if _TYPE_CHECKING:
     from flext_infra.deps._phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
     from flext_infra.deps._phases.inject_comments import FlextInfraInjectCommentsPhase
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraConsolidateGroupsPhase": "flext_infra.deps._phases.consolidate_groups",
     "FlextInfraEnsureCoverageConfigPhase": "flext_infra.deps._phases.ensure_coverage",
     "FlextInfraEnsureExtraPathsPhase": "flext_infra.deps._phases.ensure_extra_paths",

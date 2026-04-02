@@ -19,7 +19,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra._utilities import (
         base,
         cli,
@@ -75,7 +74,7 @@ if _TYPE_CHECKING:
     from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
     from flext_infra._utilities.yaml import FlextInfraUtilitiesYaml
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraUtilitiesBase": "flext_infra._utilities.base",
     "FlextInfraUtilitiesCli": "flext_infra._utilities.cli",
     "FlextInfraUtilitiesDiscovery": "flext_infra._utilities.discovery",

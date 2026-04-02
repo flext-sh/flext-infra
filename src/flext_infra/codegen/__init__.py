@@ -19,7 +19,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.codegen import (
         _codegen_coercion,
         _codegen_execution_tools,
@@ -85,7 +84,7 @@ if _TYPE_CHECKING:
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraCliCodegen": "flext_infra.codegen.cli",
     "FlextInfraCodegenCensus": "flext_infra.codegen.census",
     "FlextInfraCodegenCoercion": "flext_infra.codegen._codegen_coercion",

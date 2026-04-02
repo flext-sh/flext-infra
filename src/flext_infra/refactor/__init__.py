@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.refactor import (
         _base_rule,
         _constants,
@@ -115,7 +114,7 @@ if _TYPE_CHECKING:
         FlextInfraRefactorViolationAnalyzer,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "CONTAINER_DICT_SEQ_ADAPTER": "flext_infra.refactor._base_rule",
     "FlextInfraChangeTracker": "flext_infra.refactor._base_rule",
     "FlextInfraCliRefactor": "flext_infra.refactor.cli",

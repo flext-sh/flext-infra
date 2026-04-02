@@ -10,8 +10,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, t
-from flext_infra.detectors._base_detector import DetectorContext
+from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, t
 
 
 class FlextInfraRuntimeAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):

@@ -13,7 +13,6 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_core import r
-
 from tests import m, t
 
 

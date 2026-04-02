@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p
-from flext_infra.detectors._base_detector import DetectorContext
+from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p
 
 _FUTURE_ANNOTATIONS_RE = c.Infra.FUTURE_ANNOTATIONS_RE
 _ONLY_DOCSTRING_RE = c.Infra.ONLY_DOCSTRING_RE

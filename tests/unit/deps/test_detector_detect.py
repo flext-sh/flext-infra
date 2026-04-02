@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
 import flext_infra.deps as detector_module
 import flext_infra.deps.detector as _det_mod
+from flext_core import r
 from tests import p, t
 
 

@@ -29,7 +29,7 @@ def _write_models_project(
     imports = "".join(f"from flext_example import {base}\n" for base in external_bases)
     # Export candidate classes from __init__.py so rope can resolve them as bases.
     init_exports = "".join(
-        f"from flext_example._models.domain import {base}\n" for base in external_bases
+        f"from flext_example import {base}\n" for base in external_bases
     )
     (package_dir / "__init__.py").write_text(init_exports, encoding="utf-8")
     (package_dir / "models.py").write_text(

@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p
-from flext_infra.detectors._base_detector import DetectorContext
+from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p
 
 _PEP695_RE = c.Infra.PEP695_RE
 _TYPEALIAS_ANNOT_RE = c.Infra.TYPEALIAS_ANNOT_RE

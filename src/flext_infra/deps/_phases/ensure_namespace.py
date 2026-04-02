@@ -17,7 +17,12 @@ class FlextInfraEnsureNamespaceToolingPhase:
 
     def apply(self, doc: tomlkit.TOMLDocument, *, path: Path) -> t.StrSequence:
         changes: MutableSequence[str] = []
-        detected = sorted(u.Infra.discover_first_party_namespaces(path.parent))
+        detected = sorted(
+            {
+                *u.Infra.discover_first_party_namespaces(path.parent),
+                *u.Infra.workspace_dep_namespaces(doc),
+            },
+        )
         if not detected:
             return changes
         tool: Item | Container | None = None

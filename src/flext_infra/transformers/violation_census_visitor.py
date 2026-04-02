@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
@@ -34,7 +34,7 @@ class FlextInfraViolationCensusVisitor(cst.CSTVisitor):
         """Initialize visitor state for one file violation census."""
         self._file_path = file_path
         self._renderer = cst.Module(body=[])
-        self.records: MutableSequence[Mapping[str, str | int]] = []
+        self.records: t.Infra.MutableCensusRecordList = []
 
     @override
     def visit_Subscript(self, node: cst.Subscript) -> None:

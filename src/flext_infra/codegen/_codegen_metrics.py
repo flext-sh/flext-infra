@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_core import FlextUtilities
 from pydantic import ValidationError
 
+from flext_core import FlextUtilities
 from flext_infra import FlextInfraCodegenCoercion, FlextInfraCodegenGeneration, c, m, t
 
 

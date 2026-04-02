@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p, u
-from flext_infra.detectors._base_detector import DetectorContext
+from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p, u
 
 
 class FlextInfraManualProtocolDetector(FlextInfraScanFileMixin, p.Infra.Scanner):

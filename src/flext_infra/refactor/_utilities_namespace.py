@@ -19,9 +19,9 @@ from typing import ClassVar, override
 
 import libcst as cst
 import tomlkit
-from flext_core import FlextUtilities
 from tomlkit.exceptions import TOMLKitError
 
+from flext_core import FlextUtilities
 from flext_infra import (
     FlextInfraNamespaceFacadeScanner,
     FlextInfraUtilitiesFormatting,

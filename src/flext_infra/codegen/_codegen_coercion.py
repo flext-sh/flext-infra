@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from flext_core import FlextUtilities
-
 from flext_infra import FlextInfraUtilitiesCodegenTransforms, c, t
 
 

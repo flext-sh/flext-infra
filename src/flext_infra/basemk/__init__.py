@@ -19,7 +19,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.basemk import _constants, _models, cli, engine, generator
     from flext_infra.basemk._constants import FlextInfraBasemkConstants
     from flext_infra.basemk._models import FlextInfraBasemkModels
@@ -27,7 +26,7 @@ if _TYPE_CHECKING:
     from flext_infra.basemk.engine import FlextInfraBaseMkTemplateEngine
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraBaseMkGenerator": "flext_infra.basemk.generator",
     "FlextInfraBaseMkTemplateEngine": "flext_infra.basemk.engine",
     "FlextInfraBasemkConstants": "flext_infra.basemk._constants",

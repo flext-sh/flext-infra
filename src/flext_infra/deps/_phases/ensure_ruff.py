@@ -104,7 +104,12 @@ class FlextInfraEnsureRuffConfigPhase:
                 per_file_ignores[pattern] = u.Infra.array(sorted(rules))
                 changes.append(f"tool.ruff.lint.per-file-ignores.{pattern} set")
 
-        detected_packages = sorted(u.Infra.discover_first_party_namespaces(path.parent))
+        detected_packages = sorted(
+            {
+                *u.Infra.discover_first_party_namespaces(path.parent),
+                *u.Infra.workspace_dep_namespaces(doc),
+            },
+        )
         if detected_packages:
             current_kfp = sorted(
                 u.Infra.as_string_list(

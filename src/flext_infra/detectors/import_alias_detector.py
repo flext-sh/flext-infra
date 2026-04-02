@@ -12,8 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraScanFileMixin, c, m, p
-from flext_infra.detectors._base_detector import DetectorContext
+from flext_infra import DetectorContext, FlextInfraScanFileMixin, c, m, p
 
 
 class FlextInfraImportAliasDetector(FlextInfraScanFileMixin, p.Infra.Scanner):

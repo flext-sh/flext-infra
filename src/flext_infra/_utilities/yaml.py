@@ -13,10 +13,10 @@ from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
 
-from flext_core import FlextUtilities, r
 from pydantic import ValidationError
 from yaml import YAMLError, safe_load
 
+from flext_core import FlextUtilities, r
 from flext_infra import c, m, t
 
 
@@ -81,7 +81,7 @@ class FlextInfraUtilitiesYaml:
                 )
                 FlextInfraUtilitiesYaml._tool_config_cache = result
                 return result
-            payload: t.Infra.ContainerDict = dict(parsed_raw.items())
+            payload: t.Infra.ContainerDict = dict(parsed_raw)
             validated = m.Infra.ToolConfigDocument.model_validate(payload)
             result = r[m.Infra.ToolConfigDocument].ok(validated)
             FlextInfraUtilitiesYaml._tool_config_cache = result

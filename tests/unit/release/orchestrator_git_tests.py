@@ -15,10 +15,10 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
 import flext_infra.release.orchestrator as _orch_mod
+from flext_core import r
 from flext_infra import FlextInfraReleaseOrchestrator
 from tests import FakeUtilsNamespace, t
 

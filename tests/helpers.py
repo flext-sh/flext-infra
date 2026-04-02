@@ -20,9 +20,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from tests import t
 
 

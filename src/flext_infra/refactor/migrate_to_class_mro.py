@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextUtilities
 from rope.base.exceptions import ModuleSyntaxError
 
+from flext_core import FlextUtilities
 from flext_infra import (
     FlextInfraRefactorMROImportRewriter,
     FlextInfraRefactorMROMigrationValidator,

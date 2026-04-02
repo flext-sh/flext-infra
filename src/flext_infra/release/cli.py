@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_core import r
-
 from flext_infra import FlextInfraReleaseOrchestrator, c, m, u
 
 if TYPE_CHECKING:

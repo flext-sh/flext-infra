@@ -13,10 +13,10 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import ClassVar
 
-from flext_core import FlextTypes
 from pydantic import JsonValue, TypeAdapter
 
-from flext_infra._typings.base import FlextInfraTypesBase
+from flext_core import FlextTypes
+from flext_infra import FlextInfraTypesBase
 
 
 class FlextInfraTypesAdapters:

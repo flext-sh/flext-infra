@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import (
+    DetectorContext,
     FlextInfraNamespaceFacadeScanner,
     FlextInfraScanFileMixin,
     c,
@@ -20,7 +21,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.detectors._base_detector import DetectorContext
 
 _CONSTANT_RE = c.Infra.NAMESPACE_CONSTANT_PATTERN
 _ALLOWED_TOP_LEVEL: frozenset[str] = frozenset({

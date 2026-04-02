@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.gates import (
         _base_gate,
         _gate_registry,
@@ -38,7 +37,7 @@ if _TYPE_CHECKING:
     from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
     from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraBanditGate": "flext_infra.gates.bandit",
     "FlextInfraGate": "flext_infra.gates._base_gate",
     "FlextInfraGateRegistry": "flext_infra.gates._gate_registry",

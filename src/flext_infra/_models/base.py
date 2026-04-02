@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import FlextModels
 from pydantic import Field
 
+from flext_core import FlextModels
 from flext_infra import t
 
 

@@ -15,9 +15,9 @@ from argparse import SUPPRESS, ArgumentParser, Namespace
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextRuntime, FlextUtilities
 from pydantic import model_validator
 
+from flext_core import FlextRuntime, FlextUtilities
 from flext_infra import FlextInfraUtilitiesOutput, m, t
 
 

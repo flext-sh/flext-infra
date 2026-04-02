@@ -11,10 +11,10 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
 import flext_infra.codegen as mod
+from flext_core import r
 from flext_infra import FlextInfraCodegenGeneration, FlextInfraCodegenLazyInit
 from tests import t, u
 
@@ -141,7 +141,7 @@ class TestGenerateFile:
         filtered = {"Test": ("module", "Test")}
         inline_constants: t.StrMapping = {}
         content = _generate_file("", exports, filtered, inline_constants, "other_pkg")
-        tm.that(content, contains="from flext_core.lazy import install_lazy_exports")
+        tm.that(content, contains="from flext_core import install_lazy_exports")
 
     def test_with_inline_constants(self) -> None:
         """Test includes inline constants."""
@@ -172,9 +172,7 @@ class TestGenerateFile:
             content,
             contains="from test_pkg.__version__ import FlextVersion, __version__",
         )
-        tm.that(
-            content, contains="_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {"
-        )
+        tm.that(content, contains="_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {")
 
     def test_with_docstring(self) -> None:
         """Test preserves docstring."""

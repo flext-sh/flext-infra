@@ -9,8 +9,9 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path as _Path
 
-from flext_core import FlextTypes
 from pydantic import BaseModel
+
+from flext_core import FlextTypes
 
 
 class FlextInfraTypesBase:
@@ -96,6 +97,18 @@ class FlextInfraTypesBase:
     "Mutable set of (str, int) tuples."
     type TomlData = dict[str, InfraValue]
     "Unwrapped TOML table data — nested dicts of primitives from tomlkit unwrap()."
+
+    type CensusRecord = FlextTypes.HeaderMapping
+    "Single census record: string keys with str|int values (name, type, usages)."
+    type MutableCensusRecordList = MutableSequence[CensusRecord]
+    "Mutable list of census records."
+    type DeduplicationFix = Mapping[str, str | int | Sequence[CensusRecord]]
+    "Deduplication fix proposal: scalar fields + nested duplicate records."
+    type DeduplicationResult = Mapping[
+        str,
+        str | int | FlextTypes.StrSequence | Sequence[CensusRecord],
+    ]
+    "Result of applying a deduplication fix: includes replaced names list."
 
     type InfraMapping = Mapping[str, InfraValue]
     "Read-only string-keyed infra value mapping."

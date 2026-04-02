@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.basemk import (
         test_engine,
         test_generator,
@@ -91,7 +90,7 @@ if _TYPE_CHECKING:
         test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestFlextInfraBaseMk": "tests.unit.basemk.test_init",
     "basemk_main": "tests.unit.basemk.test_engine",
     "main": "tests.unit.basemk.test_main",

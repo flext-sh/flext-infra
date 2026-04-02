@@ -97,9 +97,9 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 per_file_counts[normalized_file] += 1
         return m.Infra.ClassNestingReport(
             violations_count=len(violations),
-            confidence_counts=dict(confidence_counts.items()),
+            confidence_counts=dict(confidence_counts),
             violations=violations,
-            per_file_counts=dict(per_file_counts.items()),
+            per_file_counts=dict(per_file_counts),
         )
 
     @classmethod

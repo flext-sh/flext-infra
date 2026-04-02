@@ -6,9 +6,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import FlextModels
 from pydantic import BaseModel, ConfigDict, Field
 
+from flext_core import FlextModels
 from flext_infra import t
 
 

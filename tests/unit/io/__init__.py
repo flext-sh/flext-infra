@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.io import (
         test_infra_json_io,
         test_infra_output_edge_cases,
@@ -38,7 +37,7 @@ if _TYPE_CHECKING:
         TestShouldUseUnicode,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "ANSI_RE": "tests.unit.io.test_infra_output_formatting",
     "SampleModel": "tests.unit.io.test_infra_json_io",
     "TestFlextInfraJsonService": "tests.unit.io.test_infra_json_io",

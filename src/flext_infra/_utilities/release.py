@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from flext_core import FlextLogger, r, u
-
 from flext_infra import c, m
 
 logger = FlextLogger.create_module_logger(__name__)

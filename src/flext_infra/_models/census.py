@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Annotated, ClassVar
 
-from flext_core import FlextModels
 from pydantic import ConfigDict, Field
 
+from flext_core import FlextModels
 from flext_infra import t
 
 

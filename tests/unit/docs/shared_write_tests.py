@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import pathlib
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -79,7 +78,7 @@ class TestWriteJson:
     def test_file_readable(self, tmp_path: Path) -> None:
         """Test write_json creates readable JSON file."""
         json_file = tmp_path / "readable.json"
-        payload: Mapping[str, str | int] = {"key": "value", "number": 42}
+        payload: t.Infra.CensusRecord = {"key": "value", "number": 42}
         u.Infra.write_json(json_file, payload)
         content = json.loads(json_file.read_text())
         tm.that(content["key"], eq="value")

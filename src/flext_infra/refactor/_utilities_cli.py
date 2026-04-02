@@ -12,13 +12,13 @@ from __future__ import annotations
 import difflib
 import re
 import sys
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 
 import orjson
-from flext_core import FlextUtilities
 
+from flext_core import FlextUtilities
 from flext_infra import c, m, t
 
 
@@ -172,7 +172,7 @@ class FlextInfraUtilitiesRefactorCli:
         FlextInfraUtilitiesRefactorCli.refactor_info("No changes")
 
     @staticmethod
-    def print_rules_table(rules: Sequence[Mapping[str, str | bool]]) -> None:
+    def print_rules_table(rules: Sequence[t.FeatureFlagMapping]) -> None:
         """Print configured rule table for interactive CLI output."""
         FlextInfraUtilitiesRefactorCli.refactor_header("Available Rules")
         if not rules:

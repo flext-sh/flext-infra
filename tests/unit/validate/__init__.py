@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.validate import (
         basemk_validator_tests,
         init_tests,
@@ -72,7 +71,7 @@ if _TYPE_CHECKING:
         TestStubChainValidate,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "TestBaseMkValidatorCore": "tests.unit.validate.basemk_validator_tests",
     "TestBaseMkValidatorEdgeCases": "tests.unit.validate.basemk_validator_tests",
     "TestBaseMkValidatorSha256": "tests.unit.validate.basemk_validator_tests",

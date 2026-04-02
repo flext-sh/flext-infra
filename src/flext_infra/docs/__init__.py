@@ -19,7 +19,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.docs import (
         _constants,
         _models,
@@ -39,7 +38,7 @@ if _TYPE_CHECKING:
     from flext_infra.docs.generator import FlextInfraDocGenerator
     from flext_infra.docs.validator import FlextInfraDocValidator
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraCliDocs": "flext_infra.docs.cli",
     "FlextInfraDocAuditor": "flext_infra.docs.auditor",
     "FlextInfraDocBuilder": "flext_infra.docs.builder",

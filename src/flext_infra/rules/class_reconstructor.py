@@ -121,7 +121,7 @@ class FlextInfraPreCheckGate:
         except (OSError, TypeError):
             return {}
         loaded_dict: Mapping[str, t.Infra.InfraValue] = (
-            INFRA_MAPPING_ADAPTER.validate_python(dict(loaded.items()))
+            INFRA_MAPPING_ADAPTER.validate_python(dict(loaded))
         )
         if not self._schema_valid(loaded_dict):
             return {}
@@ -139,7 +139,7 @@ class FlextInfraPreCheckGate:
         schema_result = u.Infra.read_json(self._schema_path)
         if schema_result.is_failure:
             return True
-        schema: Mapping[str, JsonValue] = dict(schema_result.value.items())
+        schema: Mapping[str, JsonValue] = dict(schema_result.value)
         top_required = u.Infra.string_list(schema.get("required"))
         if not u.Infra.has_required_fields(loaded, top_required):
             return False

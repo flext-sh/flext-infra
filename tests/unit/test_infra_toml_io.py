@@ -13,10 +13,10 @@ from typing import cast
 
 import pytest
 import tomlkit
-from flext_core import r
 from flext_tests import tm
 from tomlkit.items import Table
 
+from flext_core import r
 from flext_infra import FlextInfraUtilitiesToml
 from tests import t
 

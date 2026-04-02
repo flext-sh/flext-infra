@@ -664,7 +664,7 @@ class FlextInfraRefactorEngine:
             )
         return all_files
 
-    def list_rules(self) -> Sequence[Mapping[str, str | bool]]:
+    def list_rules(self) -> Sequence[t.FeatureFlagMapping]:
         """Return loaded rules metadata for listing."""
         return [
             {
@@ -683,7 +683,7 @@ class FlextInfraRefactorEngine:
         if result.is_success:
             config_dict: Mapping[str, t.Infra.InfraValue] = TypeAdapter(
                 Mapping[str, t.Infra.InfraValue],
-            ).validate_python(dict(result.value.items()))
+            ).validate_python(dict(result.value))
             self.config = config_dict
             u.Infra.refactor_info(f"Loaded config from {self.config_path}")
         return result

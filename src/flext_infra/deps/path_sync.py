@@ -11,10 +11,10 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import tomlkit
-from flext_core import FlextLogger
 from tomlkit.items import Item, Table
 from tomlkit.toml_document import TOMLDocument
 
+from flext_core import FlextLogger
 from flext_infra import c, m, r, t, u
 
 

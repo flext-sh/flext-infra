@@ -23,7 +23,6 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_core import r, s
-
 from flext_infra import (
     FlextInfraCodegenGeneration,
     c,

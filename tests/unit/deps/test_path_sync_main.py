@@ -5,9 +5,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import FlextInfraDependencyPathSync, path_sync as path_sync_module
 from tests import m, t
 

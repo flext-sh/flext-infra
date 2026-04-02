@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.check import (
         _shared_fixtures,
         _stubs,
@@ -178,7 +177,7 @@ if _TYPE_CHECKING:
     )
     from tests.unit.check.workspace_tests import TestFlextInfraWorkspaceChecker
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "CheckProjectStub": "tests.unit.check.extended_run_projects_tests",
     "GateClass": "tests.unit.check.extended_runners_extra_tests",
     "RunCallable": "tests.unit.check.extended_runners_go_tests",

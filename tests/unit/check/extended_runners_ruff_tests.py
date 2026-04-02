@@ -13,9 +13,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from flext_core import r
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import (
     FlextInfraMarkdownGate,
     FlextInfraPyrightGate,

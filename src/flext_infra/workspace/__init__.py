@@ -19,7 +19,6 @@ from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.workspace import (
         _constants,
         _models,
@@ -53,7 +52,7 @@ if _TYPE_CHECKING:
         FlextInfraWorkspaceMakefileGenerator,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
     ("flext_infra.workspace.maintenance",),
     {
         "FlextInfraCliWorkspace": "flext_infra.workspace.cli",

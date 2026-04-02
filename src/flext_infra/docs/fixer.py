@@ -13,9 +13,9 @@ import re
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextLogger
 from pydantic import JsonValue
 
+from flext_core import FlextLogger
 from flext_infra import c, m, r, t, u
 
 logger = FlextLogger.create_module_logger(__name__)

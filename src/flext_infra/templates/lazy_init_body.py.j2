@@ -12,7 +12,7 @@
 
 {% endif %}
 {%- if child_module_paths %}
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
     (
 {%- for child_module_path in child_module_paths %}
         "{{ child_module_path }}",
@@ -29,7 +29,7 @@ _LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = merge_lazy_imports(
     },
 )
 {%- else %}
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
 {%- for name, mod, attr in lazy_entries %}
 {%- if attr == name or attr == "" %}
     "{{ name }}": "{{ mod }}",

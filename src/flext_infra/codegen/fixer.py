@@ -19,10 +19,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s
 from pydantic import Field
 from rope.base.exceptions import ModuleSyntaxError
 
+from flext_core import r, s
 from flext_infra import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenSnapshot,

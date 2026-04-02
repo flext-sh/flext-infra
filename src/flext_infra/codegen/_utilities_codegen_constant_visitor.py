@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Final, override
 
 import libcst as cst
-from flext_core import FlextUtilities
 
+from flext_core import FlextUtilities
 from flext_infra import (
     FlextInfraUtilitiesCodegenGovernance,
     FlextInfraUtilitiesParsing,
@@ -779,7 +779,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             "__pycache__",
         }),
         max_files: int = 2000,
-    ) -> Sequence[Mapping[str, str | int | Sequence[Mapping[str, str | int]]]]:
+    ) -> Sequence[t.Infra.DeduplicationFix]:
         """Propose fixes to deduplicate constant values across a class."""
         attrs, _, usage_map = (
             FlextInfraUtilitiesCodegenConstantDetection._analyze_class_internal(
@@ -793,11 +793,11 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             return []
 
         # Group by value
-        by_value: MutableMapping[str, MutableSequence[Mapping[str, str | int]]] = {}
+        by_value: MutableMapping[str, t.Infra.MutableCensusRecordList] = {}
         for name, defn in attrs.items():
             value_key = defn.value_repr[:100]
             if value_key not in by_value:
-                by_value[value_key] = list[Mapping[str, str | int]]()
+                by_value[value_key] = list[t.Infra.CensusRecord]()
             by_value[value_key].append({
                 "name": name,
                 "type": defn.type_annotation,
@@ -805,9 +805,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
             })
 
         # Create fix proposals for duplicates
-        fixes: MutableSequence[
-            Mapping[str, str | int | Sequence[Mapping[str, str | int]]]
-        ] = []
+        fixes: MutableSequence[t.Infra.DeduplicationFix] = []
         for value, names_list in by_value.items():
             if len(names_list) <= 1:
                 continue  # Not a duplicate
@@ -826,7 +824,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
         # Sort by impact (total usages × duplicates)
         def _sort_key(
-            x: Mapping[str, str | int | Sequence[Mapping[str, str | int]]],
+            x: t.Infra.DeduplicationFix,
         ) -> int:
             usages_val = x.get("canonical_usages", 0)
             usages = usages_val if isinstance(usages_val, int) else 0
@@ -838,12 +836,12 @@ class FlextInfraUtilitiesCodegenConstantDetection:
 
     @staticmethod
     def apply_deduplication_fix(
-        fix_proposal: Mapping[str, str | int | Sequence[Mapping[str, str | int]]],
+        fix_proposal: t.Infra.DeduplicationFix,
         root_path: Path,
         class_path: str,
         *,
         dry_run: bool = True,
-    ) -> Mapping[str, str | int | t.StrSequence | Sequence[Mapping[str, str | int]]]:
+    ) -> t.Infra.DeduplicationResult:
         """Apply a single deduplication fix using rope.
 
         Uses FlextInfraUtilitiesRope.rename_symbol_workspace to safely rename
@@ -852,7 +850,7 @@ class FlextInfraUtilitiesCodegenConstantDetection:
         canonical_name = str(fix_proposal.get("canonical_name", ""))
         files_modified = 0
         replaced_names: MutableSequence[str] = []
-        replaced_details: MutableSequence[Mapping[str, str | int]] = []
+        replaced_details: t.Infra.MutableCensusRecordList = []
 
         rope_project = FlextInfraUtilitiesRope.init_rope_project(root_path)
 

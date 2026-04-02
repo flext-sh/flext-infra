@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 import libcst as cst
-from flext_core import m
 from pydantic import ConfigDict, Field
 
+from flext_core import m
 from flext_infra import (
     FlextInfraNamespaceEnforcerModels,
     FlextInfraRefactorAstGrepModels,

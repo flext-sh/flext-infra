@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_core import r
-
 from flext_infra import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenConstantsQualityGate,
@@ -189,7 +188,7 @@ class FlextInfraCliCodegen:
             usages_val = fix.get("canonical_usages", 0)
             usages = int(usages_val) if isinstance(usages_val, int) else 0
             duplicates_val = fix.get("duplicates", [])
-            duplicates: Sequence[Mapping[str, str | int]] = (
+            duplicates: Sequence[t.Infra.CensusRecord] = (
                 duplicates_val if isinstance(duplicates_val, list) else []
             )
             lines.append(

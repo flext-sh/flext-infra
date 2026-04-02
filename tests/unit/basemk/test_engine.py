@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 from _pytest.capture import CaptureFixture
-from flext_core import r
 from flext_tests import tm
 from jinja2 import TemplateError
 
+from flext_core import r
 from flext_infra import (
     FlextInfraBaseMkGenerator,
     FlextInfraBaseMkTemplateEngine,

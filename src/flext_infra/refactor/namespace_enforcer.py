@@ -7,6 +7,7 @@ from collections.abc import Callable, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import (
+    DetectorContext,
     FlextInfraClassPlacementDetector,
     FlextInfraCompatibilityAliasDetector,
     FlextInfraCyclicImportDetector,
@@ -25,7 +26,6 @@ from flext_infra import (
     t,
     u,
 )
-from flext_infra.detectors._base_detector import DetectorContext
 
 
 class FlextInfraNamespaceEnforcer:

@@ -7,9 +7,9 @@ import os
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_core import FlextLogger, FlextUtilities, r
 from pydantic import ValidationError
 
+from flext_core import FlextLogger, FlextUtilities, r
 from flext_infra import c, m, p, t, u
 
 

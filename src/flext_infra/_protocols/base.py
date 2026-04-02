@@ -11,8 +11,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_core import FlextProtocols, r
 from pydantic import JsonValue
+
+from flext_core import FlextProtocols, r
 
 if TYPE_CHECKING:
     from flext_infra import m, t, u

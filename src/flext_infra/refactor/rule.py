@@ -32,7 +32,7 @@ class FlextInfraRefactorRuleLoader:
         try:
             loaded = u.Infra.safe_load_yaml(self.config_path)
             normalized: MutableMapping[str, t.Infra.InfraValue] = dict(
-                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(dict(loaded.items())),
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(dict(loaded)),
             )
             scope_raw = normalized.get("refactor_engine")
             scope_map = self._normalize_str_object_mapping(scope_raw)
@@ -82,7 +82,7 @@ class FlextInfraRefactorRuleLoader:
                 try:
                     rule_config: Mapping[str, t.Infra.InfraValue] = (
                         t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                            dict(u.Infra.safe_load_yaml(rule_file).items())
+                            dict(u.Infra.safe_load_yaml(rule_file))
                         )
                     )
                 except (OSError, TypeError):

@@ -6,14 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 from flext_tests import tf, tm
 from pydantic import BaseModel
 
-from flext_infra import FlextInfraUtilitiesIo
+from flext_infra import FlextInfraUtilitiesIo, t
 
 
 class SampleModel(BaseModel):
@@ -87,7 +86,7 @@ class TestFlextInfraJsonService:
         self,
         tmp_path: Path,
         path_parts: tuple[str, ...],
-        payload: Mapping[str, str | int] | SampleModel,
+        payload: t.Infra.CensusRecord | SampleModel,
         sort_keys: bool,
         ensure_ascii: bool,
         expected: str,

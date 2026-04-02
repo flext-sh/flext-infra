@@ -4,8 +4,8 @@ from collections.abc import MutableSequence
 from pathlib import Path
 
 import pytest
-from flext_core import r
 
+from flext_core import r
 from flext_infra import FlextInfraUtilitiesSubprocess
 from tests import c, t, u
 

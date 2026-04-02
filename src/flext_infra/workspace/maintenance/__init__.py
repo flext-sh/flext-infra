@@ -18,7 +18,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.workspace.maintenance import cli, python_version
     from flext_infra.workspace.maintenance.cli import FlextInfraCliMaintenance
     from flext_infra.workspace.maintenance.python_version import (
@@ -26,7 +25,7 @@ if _TYPE_CHECKING:
         logger,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraCliMaintenance": "flext_infra.workspace.maintenance.cli",
     "FlextInfraPythonVersionEnforcer": "flext_infra.workspace.maintenance.python_version",
     "cli": "flext_infra.workspace.maintenance.cli",

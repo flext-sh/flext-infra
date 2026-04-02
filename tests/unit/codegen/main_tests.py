@@ -16,8 +16,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import main as infra_main
-from flext_infra.codegen import cli as codegen_cli
+from flext_infra import cli as codegen_cli, main as infra_main
 from tests import t
 
 

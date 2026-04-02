@@ -17,7 +17,6 @@ from functools import lru_cache
 from pathlib import Path
 
 from flext_core import FlextUtilities, m
-
 from flext_infra import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesParsing,
@@ -69,7 +68,7 @@ class FlextInfraUtilitiesImportNormalizer:
         loaded = FlextInfraUtilitiesYaml.safe_load_yaml(rules_path)
         root = loaded.get("import_normalization")
         if FlextUtilities.is_mapping(root):
-            normalized: Mapping[str, t.Infra.InfraValue] = dict(root.items())
+            normalized: Mapping[str, t.Infra.InfraValue] = dict(root)
             return normalized
         return {}
 

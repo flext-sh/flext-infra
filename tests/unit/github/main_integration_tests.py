@@ -6,8 +6,8 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
 import pytest
-from flext_core import r
 
+from flext_core import r
 from flext_infra import FlextInfraCliGithub, main
 from tests import m, u
 

@@ -11,9 +11,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import override
 
-from flext_core import r, s
 from pydantic import JsonValue
 
+from flext_core import r, s
 from flext_infra import (
     FlextInfraConfigFixer,
     FlextInfraGateRegistry,

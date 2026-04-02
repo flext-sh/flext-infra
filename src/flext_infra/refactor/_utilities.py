@@ -15,9 +15,9 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 import libcst as cst
-from flext_core import FlextUtilities
 from pydantic import BaseModel, JsonValue, ValidationError
 
+from flext_core import FlextUtilities
 from flext_infra import (
     FlextInfraUtilitiesIo,
     FlextInfraUtilitiesParsing,
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesRefactor(
         if schema_result.is_failure:
             return False
         raw_schema: Mapping[str, JsonValue] = schema_result.value
-        schema: Mapping[str, t.Infra.InfraValue] = dict(raw_schema.items())
+        schema: Mapping[str, t.Infra.InfraValue] = dict(raw_schema)
         top_required = FlextInfraUtilitiesRefactor.string_list(
             schema.get("required", []),
         )
@@ -275,7 +275,7 @@ class FlextInfraUtilitiesRefactor(
         except (OSError, TypeError) as exc:
             msg = f"failed to read policy document: {policy_path}"
             raise ValueError(msg) from exc
-        raw_dict: Mapping[str, t.Infra.InfraValue] = dict(loaded.items())
+        raw_dict: Mapping[str, t.Infra.InfraValue] = dict(loaded)
         loaded_dict: t.Infra.ContainerDict = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
                 raw_dict,

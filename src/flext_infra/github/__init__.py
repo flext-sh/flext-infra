@@ -19,13 +19,12 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from flext_infra.github import _constants, _models, cli
     from flext_infra.github._constants import FlextInfraGithubConstants
     from flext_infra.github._models import FlextInfraGithubModels
     from flext_infra.github.cli import FlextInfraCliGithub
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "FlextInfraCliGithub": "flext_infra.github.cli",
     "FlextInfraGithubConstants": "flext_infra.github._constants",
     "FlextInfraGithubModels": "flext_infra.github._models",

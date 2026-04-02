@@ -12,7 +12,6 @@ from flext_core.lazy import install_lazy_exports
 
 if _TYPE_CHECKING:
     from flext_core import FlextTypes
-
     from tests.unit.refactor import (
         test_infra_refactor_analysis,
         test_infra_refactor_class_and_propagation,
@@ -184,7 +183,7 @@ if _TYPE_CHECKING:
         test_refactor_centralize_accepts_apply_before_subcommand,
     )
 
-_LAZY_IMPORTS: Mapping[str, str | Sequence[str]] = {
+_LAZY_IMPORTS: FlextTypes.LazyImportIndex = {
     "EngineSafetyStub": "tests.unit.refactor.test_infra_refactor_safety",
     "FAMILY_FILE_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
     "FAMILY_SUFFIX_MAP": "tests.unit.refactor.test_infra_refactor_namespace_source",
