@@ -48,6 +48,14 @@ class FlextInfraCodegenLazyInit(s[int]):
         """Initialize lazy init generator with workspace root."""
         super().__init__()
         self._root: Path = workspace_root
+        self._alias_target_cache: MutableMapping[
+            tuple[str, str],
+            t.Infra.StrPair | None,
+        ] = {}
+        self._package_dir_cache: MutableMapping[
+            tuple[str, str],
+            Path | None,
+        ] = {}
 
     _TYPEVAR_CALL_NAMES: ClassVar[frozenset[str]] = frozenset({
         "TypeVar",
@@ -658,10 +666,11 @@ class FlextInfraCodegenLazyInit(s[int]):
 
         return (inline, eager)
 
-    @staticmethod
     def _resolve_aliases(
+        self,
         lazy_map: t.Infra.MutableLazyImportMap,
-        pkg_dir: Path | None = None,
+        *,
+        pkg_dir: Path,
     ) -> None:
         """Resolve single-letter aliases from ``ALIAS_TO_SUFFIX`` mapping.
 
@@ -670,13 +679,15 @@ class FlextInfraCodegenLazyInit(s[int]):
            (e.g., Models -> 'models', Types -> 'typings').
         2. Only accept classes ending with the suffix IF they reside in
            the EXACT canonical depth-1 module.
-        3. This guarantees we never confuse internal packages (_models)
-           or other public modules with the true facade.
+        3. If no local canonical facade exists, resolve the alias recursively
+           from the parent package's real exports rather than guessing module
+           names. This guarantees generated imports match the exported MRO
+           surface instead of hardcoded heuristics.
         """
         for alias, suffix in c.Infra.ALIAS_TO_SUFFIX.items():
             expected_module = "typings" if suffix == "Types" else suffix.lower()
 
-            if FlextInfraCodegenLazyInit._existing_alias_is_canonical(
+            if self._existing_alias_is_canonical(
                 lazy_map,
                 alias,
                 suffix,
@@ -684,22 +695,27 @@ class FlextInfraCodegenLazyInit(s[int]):
             ):
                 continue
 
-            if FlextInfraCodegenLazyInit._find_facade_for_alias(
+            facade_target = self._find_facade_target(
                 lazy_map,
+                suffix,
+                expected_module,
+            )
+            if facade_target is not None:
+                lazy_map[alias] = facade_target
+                continue
+
+            if alias in lazy_map:
+                continue
+
+            parent_target = self._resolve_export_target(
+                pkg_dir,
                 alias,
                 suffix,
                 expected_module,
-            ):
-                continue
-
-            # Phase 2: no local facade — delegate to parent package
-            # Only delegate if alias has no local mapping already (e.g. s from tests.base)
-            if pkg_dir is not None and alias not in lazy_map:
-                parent_pkg = FlextInfraCodegenLazyInit._discover_parent_package(
-                    pkg_dir,
-                )
-                if parent_pkg:
-                    lazy_map[alias] = (parent_pkg, alias)
+                seen=frozenset(),
+            )
+            if parent_target is not None:
+                lazy_map[alias] = parent_target
 
     @staticmethod
     def _existing_alias_is_canonical(
@@ -720,13 +736,12 @@ class FlextInfraCodegenLazyInit(s[int]):
         )
 
     @staticmethod
-    def _find_facade_for_alias(
+    def _find_facade_target(
         lazy_map: t.Infra.MutableLazyImportMap,
-        alias: str,
         suffix: str,
         expected_module: str,
-    ) -> bool:
-        """Search lazy_map for a facade class matching the suffix. Return True if found."""
+    ) -> t.Infra.StrPair | None:
+        """Return the canonical facade target for a suffix when present locally."""
         for name, (mod, _attr) in list(lazy_map.items()):
             basename = mod.rsplit(".", 1)[-1]
             if (
@@ -734,9 +749,8 @@ class FlextInfraCodegenLazyInit(s[int]):
                 and mod.count(".") == 1
                 and basename == expected_module
             ):
-                lazy_map[alias] = (mod, name)
-                return True
-        return False
+                return (mod, name)
+        return None
 
     @staticmethod
     def _discover_parent_package(pkg_dir: Path) -> str | None:
@@ -765,6 +779,168 @@ class FlextInfraCodegenLazyInit(s[int]):
                 if name.startswith("Flext") and name.endswith("Constants"):
                     return node.module.split(".")[0]
         return None
+
+    def _resolve_export_target(
+        self,
+        pkg_dir: Path,
+        alias: str,
+        suffix: str,
+        expected_module: str,
+        *,
+        seen: frozenset[str],
+    ) -> t.Infra.StrPair | None:
+        """Resolve an alias target from the package's real exported surface.
+
+        Resolution order:
+        1. Local canonical facade in the expected root module.
+        2. Existing local explicit alias export.
+        3. Recursively resolve the same alias from the parent package.
+        """
+        cache_key = (str(pkg_dir), alias)
+        if cache_key in self._alias_target_cache:
+            return self._alias_target_cache[cache_key]
+
+        pkg_key = str(pkg_dir.resolve())
+        if pkg_key in seen:
+            return None
+
+        current_pkg = u.Infra.infer_package(pkg_dir / c.Infra.Files.INIT_PY)
+        if not current_pkg:
+            self._alias_target_cache[cache_key] = None
+            return None
+
+        local_exports = self._build_sibling_export_index(pkg_dir, current_pkg)
+        target: t.Infra.StrPair | None = None
+
+        if self._existing_alias_is_canonical(
+            local_exports,
+            alias,
+            suffix,
+            expected_module,
+        ):
+            target = local_exports[alias]
+        else:
+            target = self._find_facade_target(
+                local_exports,
+                suffix,
+                expected_module,
+            )
+
+        if target is None:
+            parent_pkg = self._discover_parent_package(pkg_dir)
+            if parent_pkg:
+                parent_dir = self._find_package_directory(pkg_dir, parent_pkg)
+                if parent_dir is not None:
+                    target = self._resolve_export_target(
+                        parent_dir,
+                        alias,
+                        suffix,
+                        expected_module,
+                        seen=seen | {pkg_key},
+                    )
+
+        self._alias_target_cache[cache_key] = target
+        return target
+
+    def _find_package_directory(
+        self,
+        pkg_dir: Path,
+        package_name: str,
+    ) -> Path | None:
+        """Locate a package directory by import name.
+
+        Search order:
+        1. Same project root as the package being generated.
+        2. Workspace-wide canonical package locations.
+        """
+        project_root = self._discover_project_root(pkg_dir)
+        cache_key = (str(project_root) if project_root else "", package_name)
+        if cache_key in self._package_dir_cache:
+            return self._package_dir_cache[cache_key]
+
+        candidates: MutableSequence[Path] = []
+        if project_root is not None:
+            candidates.extend(
+                self._build_package_candidates(project_root, package_name),
+            )
+        candidates.extend(self._build_package_candidates(self._root, package_name))
+        candidates.extend(self._build_workspace_package_candidates(package_name))
+
+        resolved: Path | None = None
+        seen_candidates: MutableSequence[Path] = []
+        for candidate in candidates:
+            candidate_resolved = candidate.resolve()
+            if candidate_resolved in seen_candidates:
+                continue
+            seen_candidates.append(candidate_resolved)
+            if candidate.is_dir():
+                resolved = candidate
+                break
+
+        self._package_dir_cache[cache_key] = resolved
+        return resolved
+
+    @staticmethod
+    def _discover_project_root(pkg_dir: Path) -> Path | None:
+        """Return the owning project root for a package directory."""
+        for candidate in (pkg_dir, *pkg_dir.parents):
+            if (candidate / "pyproject.toml").is_file():
+                return candidate
+        return None
+
+    @staticmethod
+    def _build_package_candidates(
+        base_dir: Path,
+        package_name: str,
+    ) -> Sequence[Path]:
+        """Build deterministic candidate directories for an import path."""
+        package_path = Path(*package_name.split("."))
+        root_segment = package_path.parts[0] if package_path.parts else ""
+        candidates: MutableSequence[Path] = []
+
+        if root_segment in {"tests", "examples", "scripts"}:
+            candidates.append(base_dir / package_path)
+
+        candidates.append(base_dir / "src" / package_path)
+
+        if root_segment not in {"tests", "examples", "scripts"}:
+            candidates.extend(
+                [
+                    base_dir / "tests" / package_path,
+                    base_dir / "examples" / package_path,
+                    base_dir / "scripts" / package_path,
+                ],
+            )
+
+        return tuple(candidates)
+
+    def _build_workspace_package_candidates(
+        self,
+        package_name: str,
+    ) -> Sequence[Path]:
+        """Build workspace-wide candidates for external project packages."""
+        package_path = Path(*package_name.split("."))
+        root_segment = package_path.parts[0] if package_path.parts else ""
+        patterns: MutableSequence[str] = []
+
+        if root_segment in {"tests", "examples", "scripts"}:
+            patterns.append(str(Path("*") / package_path))
+        else:
+            patterns.append(str(Path("*") / "src" / package_path))
+
+        if root_segment not in {"tests", "examples", "scripts"}:
+            patterns.extend(
+                [
+                    str(Path("*") / "tests" / package_path),
+                    str(Path("*") / "examples" / package_path),
+                    str(Path("*") / "scripts" / package_path),
+                ],
+            )
+
+        candidates: MutableSequence[Path] = []
+        for pattern in patterns:
+            candidates.extend(sorted(self._root.glob(pattern)))
+        return tuple(candidates)
 
     # ---------------------------------------------------------------------------
     # Post-generation cleanup

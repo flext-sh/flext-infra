@@ -11,9 +11,12 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports, merge_lazy_imports
 
 if _TYPE_CHECKING:
-    from flext_tests import d, e, r, s, x
-
     from flext_core import FlextTypes
+    from flext_core.decorators import FlextDecorators as d
+    from flext_core.exceptions import FlextExceptions as e
+    from flext_core.mixins import FlextMixins as x
+    from flext_core.result import FlextResult as r
+    from flext_core.service import FlextService as s
     from tests import (
         constants,
         fixtures,
@@ -1117,8 +1120,8 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "WorkspaceScenarios": "tests.scenarios",
         "c": ("tests.constants", "FlextInfraTestConstants"),
         "constants": "tests.constants",
-        "d": "flext_tests",
-        "e": "flext_tests",
+        "d": ("flext_core.decorators", "FlextDecorators"),
+        "e": ("flext_core.exceptions", "FlextExceptions"),
         "fixtures": "tests.fixtures",
         "fixtures_git": "tests.fixtures_git",
         "git_service": "tests.git_service",
@@ -1128,7 +1131,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "models": "tests.models",
         "p": ("tests.protocols", "FlextInfraTestProtocols"),
         "protocols": "tests.protocols",
-        "r": "flext_tests",
+        "r": ("flext_core.result", "FlextResult"),
         "real_docs_project": "tests.fixtures",
         "real_git_repo": "tests.fixtures_git",
         "real_makefile_project": "tests.fixtures",
@@ -1137,7 +1140,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "real_workspace": "tests.fixtures",
         "refactor": "tests.refactor",
         "runner_service": "tests.runner_service",
-        "s": "flext_tests",
+        "s": ("flext_core.service", "FlextService"),
         "scenarios": "tests.scenarios",
         "t": ("tests.typings", "FlextInfraTestTypes"),
         "test_infra_refactor_rope_migrations": "tests.test_infra_refactor_rope_migrations",
@@ -1147,7 +1150,7 @@ _LAZY_IMPORTS: FlextTypes.LazyImportIndex = merge_lazy_imports(
         "utilities": "tests.utilities",
         "workspace_factory": "tests.workspace_factory",
         "workspace_scenarios": "tests.workspace_scenarios",
-        "x": "flext_tests",
+        "x": ("flext_core.mixins", "FlextMixins"),
     },
 )
 

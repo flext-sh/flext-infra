@@ -26,17 +26,26 @@ class FlextInfraUtilitiesCodegenAstParsing(FlextInfraCodegenSnapshot):
         exports: MutableSequence[str] = []
         has_all = False
         for node in tree.body:
+            targets: MutableSequence[ast.Name] = []
+            value: ast.expr | None = None
             if isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if isinstance(target, ast.Name) and target.id == "__all__":
-                        has_all = True
-                        if isinstance(node.value, (ast.List, ast.Tuple)):
-                            exports.extend(
-                                elt.value
-                                for elt in node.value.elts
-                                if isinstance(elt, ast.Constant)
-                                and isinstance(elt.value, str)
-                            )
+                targets.extend(
+                    target for target in node.targets if isinstance(target, ast.Name)
+                )
+                value = node.value
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                targets.append(node.target)
+                value = node.value
+            for target in targets:
+                if target.id != "__all__":
+                    continue
+                has_all = True
+                if isinstance(value, (ast.List, ast.Tuple)):
+                    exports.extend(
+                        elt.value
+                        for elt in value.elts
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+                    )
         return (has_all, exports)
 
     @staticmethod
